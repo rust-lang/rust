@@ -608,6 +608,7 @@ opt inject-std-version 1 "inject the current compiler version of libstd into pro
 opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt rustbuild 0 "use the rust and cargo based build system"
 opt orbit 0 "get MIR where it belongs - everywhere; most importantly, in orbit"
+opt codegen-tests 1 "run the src/test/codegen tests"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -1497,7 +1498,9 @@ do
         LLVM_INST_DIR=$CFG_LLVM_ROOT
         do_reconfigure=0
         # Check that LLVm FileCheck is available. Needed for the tests
-        need_cmd $LLVM_INST_DIR/bin/FileCheck
+        if [ -z "$CFG_DISABLE_CODEGEN_TESTS" ]; then
+            need_cmd $LLVM_INST_DIR/bin/FileCheck
+        fi
     fi
 
     if [ ${do_reconfigure} -ne 0 ]

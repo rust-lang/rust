@@ -305,10 +305,14 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-gdb-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-lldb-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-codegen-units-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-doc-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-exec
+
+ifndef CFG_DISABLE_CODEGEN_TESTS
+check-stage$(1)-T-$(2)-H-$(3)-exec: \
+	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-codegen-units-exec
+endif
 
 # Only test the compiler-dependent crates when the target is
 # able to build a compiler (when the target triple is in the set of host triples)
