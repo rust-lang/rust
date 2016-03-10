@@ -19,7 +19,6 @@ use front::map::blocks::FnLikeNode;
 use middle::cstore::{self, CrateStore, InlinedItem};
 use middle::{infer, subst, traits};
 use middle::def::Def;
-use middle::subst::Subst;
 use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty, TyCtxt};
@@ -89,16 +88,13 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::TyCtxt,
 }
 
 /// * `def_id` is the id of the constant.
-/// * `maybe_ref_id` is the id of the expr referencing the constant.
-/// * `param_substs` is the monomorphization substitution for the expression.
+/// * `substs` is the monomorphized substitutions for the expression.
 ///
-/// `maybe_ref_id` and `param_substs` are optional and are used for
-/// finding substitutions in associated constants. This generally
-/// happens in late/trans const evaluation.
+/// `substs` is optional and is used for associated constants.
+/// This generally happens in late/trans const evaluation.
 pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                         def_id: DefId,
-                                        maybe_ref_id: Option<ast::NodeId>,
-                                        param_substs: Option<&'tcx subst::Substs<'tcx>>)
+                                        substs: Option<subst::Substs<'tcx>>)
                                         -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
@@ -111,28 +107,20 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
                 hir::ConstTraitItem(_, _) => {
-                    match maybe_ref_id {
-                        // If we have a trait item, and we know the expression
-                        // that's the source of the obligation to resolve it,
+                    if let Some(substs) = substs {
+                        // If we have a trait item and the substitutions for it,
                         // `resolve_trait_associated_const` will select an impl
                         // or the default.
-                        Some(ref_id) => {
-                            let trait_id = tcx.trait_of_item(def_id)
-                                              .unwrap();
-                            let mut substs = tcx.node_id_item_substs(ref_id)
-                                                .substs;
-                            if let Some(param_substs) = param_substs {
-                                substs = substs.subst(tcx, param_substs);
-                            }
-                            resolve_trait_associated_const(tcx, ti, trait_id, substs)
-                        }
+                        let trait_id = tcx.trait_of_item(def_id).unwrap();
+                        resolve_trait_associated_const(tcx, ti, trait_id, substs)
+                    } else {
                         // Technically, without knowing anything about the
                         // expression that generates the obligation, we could
                         // still return the default if there is one. However,
                         // it's safer to return `None` than to return some value
                         // that may differ from what you would get from
                         // correctly selecting an impl.
-                        None => None
+                        None
                     }
                 }
                 _ => None
@@ -153,7 +141,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             }
             None => {}
         }
-        let mut used_ref_id = false;
+        let mut used_substs = false;
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
             cstore::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 hir::ItemConst(ref ty, ref const_expr) => {
@@ -163,21 +151,15 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             },
             cstore::FoundAst::Found(&InlinedItem::TraitItem(trait_id, ref ti)) => match ti.node {
                 hir::ConstTraitItem(_, _) => {
-                    used_ref_id = true;
-                    match maybe_ref_id {
+                    used_substs = true;
+                    if let Some(substs) = substs {
                         // As mentioned in the comments above for in-crate
                         // constants, we only try to find the expression for
                         // a trait-associated const if the caller gives us
-                        // the expression that refers to it.
-                        Some(ref_id) => {
-                            let mut substs = tcx.node_id_item_substs(ref_id)
-                                                .substs;
-                            if let Some(param_substs) = param_substs {
-                                substs = substs.subst(tcx, param_substs);
-                            }
-                            resolve_trait_associated_const(tcx, ti, trait_id, substs)
-                        }
-                        None => None
+                        // the substitutions for the reference to it.
+                        resolve_trait_associated_const(tcx, ti, trait_id, substs)
+                    } else {
+                        None
                     }
                 }
                 _ => None
@@ -190,10 +172,10 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             },
             _ => None
         };
-        // If we used the reference expression, particularly to choose an impl
+        // If we used the substitutions, particularly to choose an impl
         // of a trait-associated const, don't cache that, because the next
         // lookup with the same def_id may yield a different result.
-        if !used_ref_id {
+        if !used_substs {
             tcx.extern_const_statics
                .borrow_mut()
                .insert(def_id, expr_ty.map(|(e, t)| (e.id, t)));
@@ -389,7 +371,8 @@ pub fn const_expr_to_pat(tcx: &TyCtxt, expr: &Expr, span: Span) -> P<hir::Pat> {
                     PatKind::Path(path.clone()),
                 Some(Def::Const(def_id)) |
                 Some(Def::AssociatedConst(def_id)) => {
-                    let (expr, _ty) = lookup_const_by_id(tcx, def_id, Some(expr.id), None).unwrap();
+                    let substs = Some(tcx.node_id_item_substs(expr.id).substs);
+                    let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
                     return const_expr_to_pat(tcx, expr, span);
                 },
                 _ => unreachable!(),
@@ -788,12 +771,12 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           match opt_def {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
-                  let maybe_ref_id = if let ExprTypeChecked = ty_hint {
-                      Some(e.id)
+                  let substs = if let ExprTypeChecked = ty_hint {
+                      Some(tcx.node_id_item_substs(e.id).substs)
                   } else {
                       None
                   };
-                  if let Some((e, ty)) = lookup_const_by_id(tcx, def_id, maybe_ref_id, None) {
+                  if let Some((e, ty)) = lookup_const_by_id(tcx, def_id, substs) {
                       let item_hint = match ty {
                           Some(ty) => ty_hint.checked_or(ty),
                           None => ty_hint,
@@ -1077,7 +1060,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
         traits::VtableImpl(ref impl_data) => {
             match tcx.associated_consts(impl_data.impl_def_id)
                      .iter().find(|ic| ic.name == ti.name) {
-                Some(ic) => lookup_const_by_id(tcx, ic.def_id, None, None),
+                Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                 None => match ti.node {
                     hir::ConstTraitItem(ref ty, Some(ref expr)) => {
                         Some((&*expr, ast_ty_to_prim_ty(tcx, ty)))

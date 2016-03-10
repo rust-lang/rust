@@ -86,9 +86,9 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             {
                 let def = self.cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
                 match def {
-                    Def::Const(def_id) | Def::AssociatedConst(def_id) =>
-                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id,
-                                                             Some(pat.id), None) {
+                    Def::Const(def_id) | Def::AssociatedConst(def_id) => {
+                        let substs = Some(self.cx.tcx.node_id_item_substs(pat.id).substs);
+                        match const_eval::lookup_const_by_id(self.cx.tcx, def_id, substs) {
                             Some((const_expr, _const_ty)) => {
                                 let pat = const_eval::const_expr_to_pat(self.cx.tcx, const_expr,
                                                                         pat.span);
@@ -99,7 +99,8 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                                     pat.span,
                                     &format!("cannot eval constant: {:?}", def_id))
                             }
-                        },
+                        }
+                    }
                     _ =>
                         self.cx.tcx.sess.span_bug(
                             pat.span,

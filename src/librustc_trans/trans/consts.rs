@@ -13,12 +13,11 @@ use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
-use middle::cstore::LOCAL_CRATE;
 use middle::const_eval::{self, ConstEvalErr};
 use middle::def::Def;
 use middle::def_id::DefId;
 use rustc::front::map as hir_map;
-use trans::{abi, adt, closure, debuginfo, expr, inline, machine};
+use trans::{abi, adt, closure, debuginfo, expr, machine};
 use trans::base::{self, exported_name, imported_name, push_ctxt};
 use trans::callee::Callee;
 use trans::collector::{self, TransItem};
@@ -225,14 +224,11 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 ref_expr: &hir::Expr,
                                 param_substs: &'tcx Substs<'tcx>)
                                 -> &'tcx hir::Expr {
-    let def_id = inline::maybe_instantiate_inline(ccx, def_id);
-
-    if def_id.krate != LOCAL_CRATE {
-        ccx.sess().span_bug(ref_expr.span,
-                            "cross crate constant could not be inlined");
-    }
-
-    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id), Some(param_substs)) {
+    let substs = ccx.tcx().node_id_item_substs(ref_expr.id).substs;
+    let substs = monomorphize::apply_param_substs(ccx.tcx(),
+                                                  param_substs,
+                                                  &substs.erase_regions());
+    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(substs)) {
         Some((ref expr, _ty)) => expr,
         None => {
             ccx.sess().span_bug(ref_expr.span, "constant item not found")

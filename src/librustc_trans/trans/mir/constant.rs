@@ -19,7 +19,6 @@ use trans::common::{self, BlockAndBuilder, C_bool, C_bytes, C_floating_f64, C_in
 use trans::consts;
 use trans::datum;
 use trans::expr;
-use trans::inline;
 use trans::type_of;
 use trans::type_::Type;
 
@@ -114,9 +113,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     };
                 }
 
-                let substs = bcx.tcx().mk_substs(bcx.monomorphize(&substs));
-                let def_id = inline::maybe_instantiate_inline(bcx.ccx(), def_id);
-                let expr = const_eval::lookup_const_by_id(bcx.tcx(), def_id, None, Some(substs))
+                let substs = Some(bcx.monomorphize(substs));
+                let expr = const_eval::lookup_const_by_id(bcx.tcx(), def_id, substs)
                             .expect("def was const, but lookup_const_by_id failed").0;
                 // FIXME: this is falling back to translating from HIR. This is not easy to fix,
                 // because we would have somehow adapt const_eval to work on MIR rather than HIR.
