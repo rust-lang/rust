@@ -153,13 +153,13 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
 }
 
 // Functions that write types into the node type table
-fn write_ty_to_tcx<'tcx>(tcx: &TyCtxt<'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
+fn write_ty_to_tcx<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, node_id: ast::NodeId, ty: Ty<'tcx>) {
     debug!("write_ty_to_tcx({}, {:?})", node_id,  ty);
     assert!(!ty.needs_infer());
-    tcx.node_type_insert(node_id, ty);
+    ccx.tcx.node_type_insert(node_id, ty);
 }
 
-fn write_substs_to_tcx<'tcx>(tcx: &TyCtxt<'tcx>,
+fn write_substs_to_tcx<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                  node_id: ast::NodeId,
                                  item_substs: ty::ItemSubsts<'tcx>) {
     if !item_substs.is_noop() {
@@ -169,7 +169,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &TyCtxt<'tcx>,
 
         assert!(!item_substs.substs.types.needs_infer());
 
-        tcx.tables.borrow_mut().item_substs.insert(node_id, item_substs);
+        ccx.tcx.tables.borrow_mut().item_substs.insert(node_id, item_substs);
     }
 }
 
@@ -192,44 +192,35 @@ fn require_c_abi_if_variadic(tcx: &TyCtxt,
     }
 }
 
-fn require_same_types<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
+fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
-                                t1_is_expected: bool,
                                 span: Span,
                                 t1: Ty<'tcx>,
                                 t2: Ty<'tcx>,
                                 msg: &str)
                                 -> bool
 {
-    let result = match maybe_infcx {
-        None => {
-            let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
-            infer::mk_eqty(&infcx, t1_is_expected, TypeOrigin::Misc(span), t1, t2)
-        }
-        Some(infcx) => {
-            infer::mk_eqty(infcx, t1_is_expected, TypeOrigin::Misc(span), t1, t2)
-        }
+    let err = if let Some(infcx) = maybe_infcx {
+        infer::mk_eqty(infcx, false, TypeOrigin::Misc(span), t1, t2).err()
+    } else {
+        let infcx = InferCtxt::new(ccx.tcx, &ccx.tcx.tables, None, ProjectionMode::AnyFinal);
+        infer::mk_eqty(&infcx, false, TypeOrigin::Misc(span), t1, t2).err()
     };
 
-    match result {
-        Ok(_) => true,
-        Err(ref terr) => {
-            let mut err = struct_span_err!(tcx.sess, span, E0211, "{}", msg);
-            err = err.span_label(span, &terr);
-            let (mut expected_ty, mut found_ty) =
-                if t1_is_expected {(t1, t2)} else {(t2, t1)};
-            if let Some(infcx) = maybe_infcx {
-                expected_ty = infcx.resolve_type_vars_if_possible(&expected_ty);
-                found_ty = infcx.resolve_type_vars_if_possible(&found_ty);
-            }
-            err = err.note_expected_found(&"type",
-                                          &expected_ty,
-                                          &found_ty);
-            tcx.note_and_explain_type_err(&mut err, terr, span);
-            err.emit();
-            false
+    if let Some(ref terr) = err {
+        let mut err = struct_span_err!(ccx.tcx.sess, span, E0211, "{}", msg);
+        err = err.span_label(span, &terr);
+        let (mut expected_ty, mut found_ty) = (t2, t1);
+        if let Some(infcx) = maybe_infcx {
+            expected_ty = infcx.resolve_type_vars_if_possible(&expected_ty);
+            found_ty = infcx.resolve_type_vars_if_possible(&found_ty);
         }
+        err = err.note_expected_found(&"type", &expected_ty, &found_ty);
+        ccx.tcx.note_and_explain_type_err(&mut err, terr, span);
+        err.emit();
     }
+
+    err.is_none()
 }
 
 fn check_main_fn_ty(ccx: &CrateCtxt,
@@ -265,7 +256,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 })
             });
 
-            require_same_types(tcx, None, false, main_span, main_t, se_ty,
+            require_same_types(ccx, None, main_span, main_t, se_ty,
                                "main function has wrong type");
         }
         _ => {
@@ -313,7 +304,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 }),
             });
 
-            require_same_types(tcx, None, false, start_span, start_t, se_ty,
+            require_same_types(ccx, None, start_span, start_t, se_ty,
                                "start function has wrong type");
         }
         _ => {

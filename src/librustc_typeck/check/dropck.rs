@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use CrateCtxt;
 use check::regionck::{self, Rcx};
 
 use hir::def_id::DefId;
@@ -15,7 +16,7 @@ use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferCtxt};
 use middle::region;
 use rustc::ty::subst::{self, Subst};
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty};
 use rustc::traits::{self, ProjectionMode};
 use util::nodemap::FnvHashSet;
 
@@ -39,20 +40,20 @@ use syntax::codemap::{self, Span};
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: &TyCtxt, drop_impl_did: DefId) -> Result<(), ()> {
+pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> {
     let ty::TypeScheme { generics: ref dtor_generics,
-                         ty: dtor_self_type } = tcx.lookup_item_type(drop_impl_did);
-    let dtor_predicates = tcx.lookup_predicates(drop_impl_did);
+                         ty: dtor_self_type } = ccx.tcx.lookup_item_type(drop_impl_did);
+    let dtor_predicates = ccx.tcx.lookup_predicates(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyEnum(adt_def, self_to_impl_substs) |
         ty::TyStruct(adt_def, self_to_impl_substs) => {
-            ensure_drop_params_and_item_params_correspond(tcx,
+            ensure_drop_params_and_item_params_correspond(ccx,
                                                           drop_impl_did,
                                                           dtor_generics,
                                                           &dtor_self_type,
                                                           adt_def.did)?;
 
-            ensure_drop_predicates_are_implied_by_item_defn(tcx,
+            ensure_drop_predicates_are_implied_by_item_defn(ccx,
                                                             drop_impl_did,
                                                             &dtor_predicates,
                                                             adt_def.did,
@@ -61,7 +62,7 @@ pub fn check_drop_impl(tcx: &TyCtxt, drop_impl_did: DefId) -> Result<(), ()> {
         _ => {
             // Destructors only work on nominal types.  This was
             // already checked by coherence, so we can panic here.
-            let span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
+            let span = ccx.tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
             span_bug!(span,
                       "should have been rejected by coherence check: {}",
                       dtor_self_type);
@@ -69,13 +70,14 @@ pub fn check_drop_impl(tcx: &TyCtxt, drop_impl_did: DefId) -> Result<(), ()> {
     }
 }
 
-fn ensure_drop_params_and_item_params_correspond<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
+    ccx: &CrateCtxt<'a, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_generics: &ty::Generics<'tcx>,
     drop_impl_ty: &ty::Ty<'tcx>,
     self_type_did: DefId) -> Result<(), ()>
 {
+    let tcx = ccx.tcx;
     let drop_impl_node_id = tcx.map.as_local_node_id(drop_impl_did).unwrap();
     let self_type_node_id = tcx.map.as_local_node_id(self_type_did).unwrap();
 
@@ -124,8 +126,8 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
-fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
+    ccx: &CrateCtxt<'a, 'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
@@ -165,6 +167,8 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     // assumptions. Here, `'y:'z` is present, but `'x:'y` is
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
+
+    let tcx = ccx.tcx;
 
     let self_type_node_id = tcx.map.as_local_node_id(self_type_did).unwrap();
 
@@ -407,7 +411,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     // unbounded type parameter `T`, we must resume the recursive
     // analysis on `T` (since it would be ignored by
     // type_must_outlive).
-    if has_dtor_of_interest(tcx, ty) {
+    if has_dtor_of_interest(cx, ty) {
         debug!("iterate_over_potentially_unsafe_regions_in_type \
                 {}ty: {} - is a dtorck type!",
                (0..depth).map(|_| ' ').collect::<String>(),
@@ -499,11 +503,11 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     }
 }
 
-fn has_dtor_of_interest<'tcx>(tcx: &TyCtxt<'tcx>,
-                              ty: ty::Ty<'tcx>) -> bool {
+fn has_dtor_of_interest<'a, 'b, 'tcx>(cx: &DropckContext<'a, 'b, 'tcx>,
+                                      ty: ty::Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
-            def.is_dtorck(tcx)
+            def.is_dtorck(cx.rcx.tcx())
         }
         ty::TyTrait(..) | ty::TyProjection(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);

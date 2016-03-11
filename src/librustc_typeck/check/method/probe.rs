@@ -406,7 +406,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         debug!("assemble_inherent_impl_probe {:?}", impl_def_id);
 
-        let item = match impl_item(self.tcx(), impl_def_id, self.item_name) {
+        let item = match self.impl_item(impl_def_id) {
             Some(m) => m,
             None => { return; } // No method with correct name on this impl
         };
@@ -563,9 +563,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         let tcx = self.tcx();
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            let item = match trait_item(tcx,
-                                        bound_trait_ref.def_id(),
-                                        self.item_name) {
+            let item = match self.trait_item(bound_trait_ref.def_id()) {
                 Some(v) => v,
                 None => { continue; }
             };
@@ -1311,33 +1309,20 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     {
         self.tcx().erase_late_bound_regions(value)
     }
-}
 
-fn impl_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                   impl_def_id: DefId,
-                   item_name: ast::Name)
-                   -> Option<ty::ImplOrTraitItem<'tcx>>
-{
-    let impl_items = tcx.impl_items.borrow();
-    let impl_items = impl_items.get(&impl_def_id).unwrap();
-    impl_items
-        .iter()
-        .map(|&did| tcx.impl_or_trait_item(did.def_id()))
-        .find(|item| item.name() == item_name)
-}
+    fn impl_item(&self, impl_def_id: DefId)
+                 -> Option<ty::ImplOrTraitItem<'tcx>>
+    {
+        super::impl_item(self.fcx, impl_def_id, self.item_name)
+    }
 
-/// Find item with name `item_name` defined in `trait_def_id`
-/// and return it, or `None`, if no such item.
-fn trait_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                    trait_def_id: DefId,
-                    item_name: ast::Name)
-                    -> Option<ty::ImplOrTraitItem<'tcx>>
-{
-    let trait_items = tcx.trait_items(trait_def_id);
-    debug!("trait_method; items: {:?}", trait_items);
-    trait_items.iter()
-               .find(|item| item.name() == item_name)
-               .cloned()
+    /// Find item with name `item_name` defined in `trait_def_id`
+    /// and return it, or `None`, if no such item.
+    fn trait_item(&self, trait_def_id: DefId)
+                  -> Option<ty::ImplOrTraitItem<'tcx>>
+    {
+        super::trait_item(self.fcx, trait_def_id, self.item_name)
+    }
 }
 
 impl<'tcx> Candidate<'tcx> {

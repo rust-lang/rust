@@ -33,7 +33,7 @@ use hir;
 
 pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx>;
-    fn disr_incr(&self, val: Disr) -> Option<Disr>;
+    fn disr_incr(&self, tcx: &TyCtxt, val: Option<Disr>) -> Option<Disr>;
     fn assert_ty_matches(&self, val: Disr);
     fn initial_discriminant(&self, tcx: &TyCtxt) -> Disr;
 }
@@ -93,9 +93,13 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn disr_incr(&self, val: Disr) -> Option<Disr> {
-        self.assert_ty_matches(val);
-        (val + ConstInt::Infer(1)).ok()
+    fn disr_incr(&self, tcx: &TyCtxt, val: Option<Disr>) -> Option<Disr> {
+        if let Some(val) = val {
+            self.assert_ty_matches(val);
+            (val + ConstInt::Infer(1)).ok()
+        } else {
+            Some(self.initial_discriminant(tcx))
+        }
     }
 }
 

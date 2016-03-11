@@ -15,7 +15,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::ty::subst;
 use rustc::traits;
-use rustc::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use rustc::infer;
 
@@ -219,7 +219,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Trait must have a method named `m_name` and it should not have
     // type parameters or early-bound regions.
     let tcx = fcx.tcx();
-    let method_item = trait_item(tcx, trait_def_id, m_name).unwrap();
+    let method_item = trait_item(fcx, trait_def_id, m_name).unwrap();
     let method_ty = method_item.as_opt_method().unwrap();
     assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
     assert_eq!(method_ty.generics.regions.len(subst::FnSpace), 0);
@@ -361,26 +361,26 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 /// Find item with name `item_name` defined in `trait_def_id`
 /// and return it, or `None`, if no such item.
-fn trait_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                    trait_def_id: DefId,
-                    item_name: ast::Name)
-                    -> Option<ty::ImplOrTraitItem<'tcx>>
+pub fn trait_item<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                            trait_def_id: DefId,
+                            item_name: ast::Name)
+                            -> Option<ty::ImplOrTraitItem<'tcx>>
 {
-    let trait_items = tcx.trait_items(trait_def_id);
+    let trait_items = fcx.tcx().trait_items(trait_def_id);
     trait_items.iter()
                .find(|item| item.name() == item_name)
                .cloned()
 }
 
-fn impl_item<'tcx>(tcx: &TyCtxt<'tcx>,
-                   impl_def_id: DefId,
-                   item_name: ast::Name)
-                   -> Option<ty::ImplOrTraitItem<'tcx>>
+pub fn impl_item<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                           impl_def_id: DefId,
+                           item_name: ast::Name)
+                           -> Option<ty::ImplOrTraitItem<'tcx>>
 {
-    let impl_items = tcx.impl_items.borrow();
+    let impl_items = fcx.tcx().impl_items.borrow();
     let impl_items = impl_items.get(&impl_def_id).unwrap();
     impl_items
         .iter()
-        .map(|&did| tcx.impl_or_trait_item(did.def_id()))
+        .map(|&did| fcx.tcx().impl_or_trait_item(did.def_id()))
         .find(|m| m.name() == item_name)
 }
