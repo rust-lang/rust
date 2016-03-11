@@ -823,7 +823,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                     impl_did,
                                                     tcx.mk_substs(callee_substs),
                                                     trait_method.name);
-            Some((impl_method.method.def_id, impl_method.substs))
+            Some((impl_method.method.def_id, &impl_method.substs))
         }
         // If we have a closure or a function pointer, we will also encounter
         // the concrete closure/function somewhere else (during closure or fn
@@ -983,7 +983,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             if can_have_local_instance(ccx, impl_method.method.def_id) {
                                 Some(create_fn_trans_item(ccx,
                                                           impl_method.method.def_id,
-                                                          impl_method.substs,
+                                                          &impl_method.substs,
                                                           &Substs::trans_empty()))
                             } else {
                                 None
@@ -1163,12 +1163,12 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     // the method type from the impl to substitute into.
                     let mth = meth::get_impl_method(tcx,
                                                     impl_def_id,
-                                                    callee_substs.clone(),
+                                                    callee_substs,
                                                     default_impl.name);
 
                     assert!(mth.is_provided);
 
-                    let predicates = mth.method.predicates.predicates.subst(tcx, mth.substs);
+                    let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
                     if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
                         continue;
                     }

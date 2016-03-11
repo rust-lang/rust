@@ -97,7 +97,7 @@ impl Graph {
                 let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Topmost);
                 let overlap = traits::overlapping_impls(&infcx, possible_sibling, impl_def_id);
 
-                if let Some(trait_ref) = overlap {
+                if let Some(impl_header) = overlap {
                     let le = specializes(tcx, impl_def_id, possible_sibling);
                     let ge = specializes(tcx, possible_sibling, impl_def_id);
 
@@ -124,7 +124,7 @@ impl Graph {
                         // overlap, but no specialization; error out
                         return Err(Overlap {
                             with_impl: possible_sibling,
-                            on_trait_ref: trait_ref,
+                            on_trait_ref: impl_header.trait_ref.unwrap(),
                             in_context: infcx,
                         });
                     }

@@ -34,7 +34,6 @@ use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
-use middle::ty::MethodCall;
 
 use syntax::ast::{self, Name};
 use syntax::attr;
@@ -110,7 +109,7 @@ pub fn callee_for_trait_impl<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // those from the impl and those from the method:
             let impl_substs = vtable_impl.substs.with_method_from(&substs);
             let substs = ccx.tcx().mk_substs(impl_substs);
-            let mth = get_impl_method(ccx.tcx(), impl_did, impl_substs, mname);
+            let mth = get_impl_method(ccx.tcx(), impl_did, substs, mname);
 
             // Translate the function, bypassing Callee::def.
             // That is because default methods have the same ID as the
@@ -318,7 +317,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 trans_fn_ref_with_substs(ccx,
                                                          mth.method.def_id,
                                                          None,
-                                                         mth.substs).val
+                                                         &mth.substs).val
                             }
                             None => nullptr
                         }
@@ -431,7 +430,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
-            let mth = get_impl_method(tcx, impl_id, substs.clone(), name);
+            let mth = get_impl_method(tcx, impl_id, substs, name);
 
             debug!("get_vtable_methods: mth={:?}", mth);
 
@@ -441,7 +440,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // method could then never be called, so we do not want to
             // try and trans it, in that case. Issue #23435.
             if mth.is_provided {
-                let predicates = mth.method.predicates.predicates.subst(tcx, mth.substs);
+                let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
                 if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
                     debug!("get_vtable_methods: predicates do not hold");
                     return None;
@@ -473,14 +472,14 @@ fn opaque_method_ty<'tcx>(tcx: &TyCtxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
 #[derive(Debug)]
 pub struct ImplMethod<'tcx> {
     pub method: Rc<ty::Method<'tcx>>,
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
     pub is_provided: bool
 }
 
 /// Locates the applicable definition of a method, given its name.
 pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
                              impl_def_id: DefId,
-                             substs: Substs<'tcx>,
+                             substs: &'tcx Substs<'tcx>,
                              name: Name)
                              -> ImplMethod<'tcx>
 {

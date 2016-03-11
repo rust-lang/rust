@@ -1121,7 +1121,7 @@ fn confirm_impl_candidate<'cx,'tcx>(
                 tcx.types.err
             });
             let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
-            (ty.subst(tcx, &substs), nested)
+            (ty.subst(tcx, substs), nested)
         }
         None => {
             tcx.sess.span_bug(obligation.cause.span,
@@ -1135,7 +1135,9 @@ fn confirm_impl_candidate<'cx,'tcx>(
 ///
 /// Based on the "projection mode", this lookup may in fact only examine the
 /// topmost impl. See the comments for `ProjectionMode` for more details.
-fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>, impl_def_id: DefId, assoc_ty_name: ast::Name)
+fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>,
+                           impl_def_id: DefId,
+                           assoc_ty_name: ast::Name)
                            -> Option<specialization_graph::NodeItem<Rc<ty::AssociatedType<'tcx>>>>
 {
     let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
