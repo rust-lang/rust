@@ -677,7 +677,7 @@ fn test_rev() {
 
 #[test]
 fn test_cloned() {
-    let xs = [2u8, 4, 6, 8];
+    let xs = [2, 4, 6, 8];
 
     let mut it = xs.iter().cloned();
     assert_eq!(it.len(), 4);
@@ -861,8 +861,8 @@ fn test_range() {
     assert_eq!((-10..-1).size_hint(), (9, Some(9)));
     assert_eq!((-1..-10).size_hint(), (0, Some(0)));
 
-    assert_eq!((-70..58i8).size_hint(), (128, Some(128)));
-    assert_eq!((-128..127i8).size_hint(), (255, Some(255)));
+    assert_eq!((-70..58).size_hint(), (128, Some(128)));
+    assert_eq!((-128..127).size_hint(), (255, Some(255)));
     assert_eq!((-2..isize::MAX).size_hint(),
                (isize::MAX as usize + 2, Some(isize::MAX as usize + 2)));
 }
@@ -1013,7 +1013,7 @@ fn bench_max_by_key2(b: &mut Bencher) {
         array.iter().enumerate().max_by_key(|&(_, item)| item).unwrap().0
     }
 
-    let mut data = vec![0i32; 1638];
+    let mut data = vec![0; 1638];
     data[514] = 9999;
 
     b.iter(|| max_index_iter(&data));
