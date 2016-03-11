@@ -1,11 +1,14 @@
 #rust-clippy
 [![Build Status](https://travis-ci.org/Manishearth/rust-clippy.svg?branch=master)](https://travis-ci.org/Manishearth/rust-clippy)
+[![Clippy Linting Result](http://clippy.bashy.io/github/Manishearth/rust-clippy/master/badge.svg)](http://clippy.bashy.io/github/Manishearth/rust-clippy/master/log)
 [![Current Version](http://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MPL-2.0](https://img.shields.io/crates/l/clippy.svg)](#License)
 
 A collection of lints to catch common mistakes and improve your Rust code.
 
 [Jump to usage instructions](#usage)
+
+[Jump to link with clippy-service](#link-with-clippy-service)
 
 ##Lints
 There are 133 lints included in this crate:
@@ -225,6 +228,13 @@ And, in your `main.rs` or `lib.rs`:
 
 #![cfg_attr(feature="clippy", plugin(clippy))]
 ```
+
+##Link with clippy service
+`clippy-service` is a rust web initiative providing `rust-clippy` as a web service.
+
+Both projects are independent and maintained by different people (even if some `clippy-service`'s contributions are authored by some `rust-clippy` members).
+
+You can check it out this great service at [clippy.bashy.io](https://clippy.bashy.io/)
 
 ##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
