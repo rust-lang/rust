@@ -25,7 +25,7 @@ use middle::def_id::DefId;
 use middle::infer::{self, InferCtxt, TypeOrigin};
 use middle::region;
 use middle::subst::{Subst, Substs};
-use middle::traits::ProjectionMode;
+use middle::traits::{self, ProjectionMode, ObligationCause, Normalized};
 use middle::ty::{self, TyCtxt};
 use syntax::codemap::DUMMY_SP;
 
@@ -149,13 +149,20 @@ pub fn specializes(tcx: &TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> bo
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
     let scheme = tcx.lookup_item_type(impl1_def_id);
     let predicates = tcx.lookup_predicates(impl1_def_id);
-    let penv = tcx.construct_parameter_environment(DUMMY_SP,
-                                                   &scheme.generics,
-                                                   &predicates,
-                                                   region::DUMMY_CODE_EXTENT);
+    let mut penv = tcx.construct_parameter_environment(DUMMY_SP,
+                                                       &scheme.generics,
+                                                       &predicates,
+                                                       region::DUMMY_CODE_EXTENT);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id)
                              .unwrap()
                              .subst(tcx, &penv.free_substs);
+
+    // Normalize the trait reference, adding any obligations that arise into the impl1 assumptions
+    let Normalized { value: impl1_trait_ref, obligations: normalization_obligations } = {
+        let selcx = &mut SelectionContext::new(&infcx);
+        traits::normalize(selcx, ObligationCause::dummy(), &impl1_trait_ref)
+    };
+    penv.caller_bounds.extend(normalization_obligations.into_iter().map(|o| o.predicate));
 
     // Install the parameter environment, which means we take the predicates of impl1 as assumptions:
     infcx.parameter_environment = penv;

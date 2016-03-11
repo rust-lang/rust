@@ -28,14 +28,14 @@ fn generic<T>() -> <T as Foo>::Assoc {
     // `T` could be some downstream crate type that specializes (or,
     // for that matter, `u8`).
 
-    () //~ ERROR E0308
+    () //~ ERROR mismatched types
 }
 
 fn monomorphic() -> () {
     // Even though we know that `()` is not specialized in a
     // downstream crate, typeck refuses to project here.
 
-    generic::<()>() //~ ERROR E0308
+    generic::<()>() //~ ERROR mismatched types
 }
 
 fn main() {

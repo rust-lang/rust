@@ -10,6 +10,8 @@
 
 #![feature(specialization)]
 
+// Ensure that specialization works for impls defined directly on a projection
+
 trait Foo<T> {}
 
 trait Assoc {

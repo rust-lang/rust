@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Ensure that provided items are inherited properly even when impls vary in
+// type parameters *and* rely on projections.
+
 #![feature(specialization)]
 
 use std::convert::Into;
