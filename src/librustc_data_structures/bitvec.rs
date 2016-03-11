@@ -9,6 +9,7 @@
 // except according to those terms.
 
 /// A very simple BitVector type.
+#[derive(Clone)]
 pub struct BitVector {
     data: Vec<u64>,
 }
