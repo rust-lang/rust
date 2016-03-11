@@ -53,7 +53,7 @@ mod debug_struct {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_struct("Foo")
                     .field("bar", &true)
-                    .field("baz", &format_args!("{}/{}", 10i32, 20i32))
+                    .field("baz", &format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -75,7 +75,7 @@ mod debug_struct {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_struct("Foo")
                     .field("bar", &true)
-                    .field("baz", &format_args!("{}/{}", 10i32, 20i32))
+                    .field("baz", &format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -150,7 +150,7 @@ mod debug_tuple {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_tuple("Foo")
                     .field(&true)
-                    .field(&format_args!("{}/{}", 10i32, 20i32))
+                    .field(&format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -172,7 +172,7 @@ mod debug_tuple {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_tuple("Foo")
                     .field(&true)
-                    .field(&format_args!("{}/{}", 10i32, 20i32))
+                    .field(&format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -247,7 +247,7 @@ mod debug_map {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_map()
                     .entry(&"bar", &true)
-                    .entry(&10i32, &format_args!("{}/{}", 10i32, 20i32))
+                    .entry(&10, &format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -269,7 +269,7 @@ mod debug_map {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_map()
                     .entry(&"bar", &true)
-                    .entry(&10i32, &format_args!("{}/{}", 10i32, 20i32))
+                    .entry(&10, &format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -348,7 +348,7 @@ mod debug_set {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_set()
                     .entry(&true)
-                    .entry(&format_args!("{}/{}", 10i32, 20i32))
+                    .entry(&format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -370,7 +370,7 @@ mod debug_set {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_set()
                     .entry(&true)
-                    .entry(&format_args!("{}/{}", 10i32, 20i32))
+                    .entry(&format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -445,7 +445,7 @@ mod debug_list {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_list()
                     .entry(&true)
-                    .entry(&format_args!("{}/{}", 10i32, 20i32))
+                    .entry(&format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
@@ -467,7 +467,7 @@ mod debug_list {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
                 fmt.debug_list()
                     .entry(&true)
-                    .entry(&format_args!("{}/{}", 10i32, 20i32))
+                    .entry(&format_args!("{}/{}", 10, 20))
                     .finish()
             }
         }
