@@ -79,11 +79,10 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::FnvHashMap;
-use write_ty_to_tcx;
+use {CrateCtxt, write_ty_to_tcx};
 
 use rustc_const_math::ConstInt;
 
-use std::cell::RefCell;
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
@@ -101,21 +100,12 @@ use rustc::hir::print as pprust;
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
-pub fn collect_item_types(tcx: &TyCtxt) {
-    let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
-    let mut visitor = CollectItemTypesVisitor{ ccx: ccx };
+pub fn collect_item_types(ccx: &CrateCtxt) {
+    let mut visitor = CollectItemTypesVisitor { ccx: ccx };
     ccx.tcx.visit_all_items_in_krate(DepNode::CollectItem, &mut visitor);
 }
 
 ///////////////////////////////////////////////////////////////////////////
-
-struct CrateCtxt<'a,'tcx:'a> {
-    tcx: &'a TyCtxt<'tcx>,
-
-    // This stack is used to identify cycles in the user's source.
-    // Note that these cycles can cross multiple items.
-    stack: RefCell<Vec<AstConvRequest>>,
-}
 
 /// Context specific to some particular item. This is what implements
 /// AstConv. It has information about the predicates that are defined
@@ -134,7 +124,7 @@ struct ItemCtxt<'a,'tcx:'a> {
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-enum AstConvRequest {
+pub enum AstConvRequest {
     GetItemTypeScheme(DefId),
     GetTraitDef(DefId),
     EnsureSuperPredicates(DefId),
