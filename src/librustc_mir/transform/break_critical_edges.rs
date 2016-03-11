@@ -7,9 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use std::mem;
-
-use rustc_back::slice;
 use rustc::mir::repr::*;
 use rustc::mir::mir_map::MirMap;
 
@@ -43,95 +40,14 @@ pub fn break_critical_edges<'tcx>(mir_map: &mut MirMap<'tcx>) {
     }
 }
 
-/*
- * Predecessor map for tracking the predecessors of a block
- */
-struct PredMap {
-    preds: Vec<BlockPredecessors>
-}
-
-/**
- * Most blocks only have one predecessor, so we can cut down on
- * some allocation by not using Vec until we have more than one.
- */
-#[derive(Clone)]
-enum BlockPredecessors {
-    None,
-    One(BasicBlock),
-    Some(Vec<BasicBlock>)
-}
-
-impl PredMap {
-    pub fn new(n: usize) -> PredMap {
-        let preds = vec![BlockPredecessors::None; n];
-
-        PredMap {
-            preds: preds
-        }
-    }
-
-    fn ensure_len(&mut self, bb: BasicBlock) {
-        let idx = bb.index();
-        while self.preds.len() <= idx {
-            self.preds.push(BlockPredecessors::None);
-        }
-    }
-
-    pub fn add_pred(&mut self, target: BasicBlock, pred: BasicBlock) {
-        self.ensure_len(target);
-
-        let preds = mem::replace(&mut self.preds[target.index()], BlockPredecessors::None);
-        match preds {
-            BlockPredecessors::None => {
-                self.preds[target.index()] = BlockPredecessors::One(pred);
-            }
-            BlockPredecessors::One(bb) => {
-                self.preds[target.index()] = BlockPredecessors::Some(vec![bb, pred]);
-            }
-            BlockPredecessors::Some(mut preds) => {
-                preds.push(pred);
-                self.preds[target.index()] = BlockPredecessors::Some(preds);
-            }
-        }
-    }
-
-    pub fn remove_pred(&mut self, target: BasicBlock, pred: BasicBlock) {
-        self.ensure_len(target);
-
-        let preds = mem::replace(&mut self.preds[target.index()], BlockPredecessors::None);
-        match preds {
-            BlockPredecessors::None => {}
-            BlockPredecessors::One(bb) if bb == pred => {}
-
-            BlockPredecessors::One(bb) => {
-                self.preds[target.index()] = BlockPredecessors::One(bb);
-            }
-
-            BlockPredecessors::Some(mut preds) => {
-                preds.retain(|&bb| bb != pred);
-                self.preds[target.index()] = BlockPredecessors::Some(preds);
-            }
-        }
-    }
-
-    pub fn get_preds(&self, bb: BasicBlock) -> &[BasicBlock] {
-        match self.preds[bb.index()] {
-            BlockPredecessors::None => &[],
-            BlockPredecessors::One(ref bb) => slice::ref_slice(bb),
-            BlockPredecessors::Some(ref bbs) => &bbs[..]
-        }
-    }
-}
-
-
 fn break_critical_edges_fn(mir: &mut Mir) {
-    let mut pred_map = PredMap::new(mir.basic_blocks.len());
+    let mut pred_count = vec![0u32; mir.basic_blocks.len()];
 
     // Build the precedecessor map for the MIR
-    for (pred, data) in traversal::preorder(mir) {
+    for (_, data) in traversal::preorder(mir) {
         if let Some(ref term) = data.terminator {
             for &tgt in term.successors().iter() {
-                pred_map.add_pred(tgt, pred);
+                pred_count[tgt.index()] += 1;
             }
         }
     }
@@ -150,7 +66,7 @@ fn break_critical_edges_fn(mir: &mut Mir) {
             let succs = term.successors_mut();
             if succs.len() > 1 || (succs.len() > 0 && is_invoke) {
                 for tgt in succs {
-                    let num_preds = pred_map.get_preds(*tgt).len();
+                    let num_preds = pred_count[tgt.index()];
                     if num_preds > 1 {
                         // It's a critical edge, break it
                         let goto = Terminator::Goto { target: *tgt };
