@@ -250,11 +250,11 @@ use option::Option::{self, None, Some};
 pub enum Result<T, E> {
     /// Contains the success value
     #[stable(feature = "rust1", since = "1.0.0")]
-    Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
+    Ok(T),
 
     /// Contains the error value
     #[stable(feature = "rust1", since = "1.0.0")]
-    Err(#[stable(feature = "rust1", since = "1.0.0")] E)
+    Err(E)
 }
 
 /////////////////////////////////////////////////////////////////////////////
