@@ -53,21 +53,24 @@ impl LateLintPass for UnnecessaryMutPassed {
 }
 
 fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &TyS, name: &str) {
-    if let TypeVariants::TyBareFn(_, ref fn_type) = type_definition.sty {
-        let parameters = &fn_type.sig.skip_binder().inputs;
-        for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
-            match parameter.sty {
-                TypeVariants::TyRef(_, TypeAndMut {mutbl: MutImmutable, ..}) |
-                TypeVariants::TyRawPtr(TypeAndMut {mutbl: MutImmutable, ..}) => {
-                    if let ExprAddrOf(MutMutable, _) = argument.node {
-                        span_lint(cx,
-                                  UNNECESSARY_MUT_PASSED,
-                                  argument.span,
-                                  &format!("The function/method \"{}\" doesn't need a mutable reference", name));
+    match type_definition.sty {
+        TypeVariants::TyFnDef(_, _, ref fn_type) | TypeVariants::TyFnPtr(ref fn_type) => {
+            let parameters = &fn_type.sig.skip_binder().inputs;
+            for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
+                match parameter.sty {
+                    TypeVariants::TyRef(_, TypeAndMut {mutbl: MutImmutable, ..}) |
+                    TypeVariants::TyRawPtr(TypeAndMut {mutbl: MutImmutable, ..}) => {
+                        if let ExprAddrOf(MutMutable, _) = argument.node {
+                            span_lint(cx,
+                                      UNNECESSARY_MUT_PASSED,
+                                      argument.span,
+                                      &format!("The function/method \"{}\" doesn't need a mutable reference", name));
+                        }
                     }
+                    _ => {}
                 }
-                _ => {}
             }
         }
+        _ => (),
     }
 }
