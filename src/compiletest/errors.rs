@@ -15,7 +15,7 @@ use std::io::prelude::*;
 use std::path::Path;
 
 pub struct ExpectedError {
-    pub line: usize,
+    pub line_num: usize,
     pub kind: String,
     pub msg: String,
 }
@@ -53,15 +53,15 @@ pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<ExpectedError> {
 
     rdr.lines()
        .enumerate()
-       .filter_map(|(line_no, ln)| {
+       .filter_map(|(line_num, line)| {
            parse_expected(last_nonfollow_error,
-                          line_no + 1,
-                          &ln.unwrap(),
+                          line_num + 1,
+                          &line.unwrap(),
                           &tag)
                .map(|(which, error)| {
                    match which {
                        FollowPrevious(_) => {}
-                       _ => last_nonfollow_error = Some(error.line),
+                       _ => last_nonfollow_error = Some(error.line_num),
                    }
                    error
                })
@@ -91,23 +91,21 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
                      .skip_while(|c| !c.is_whitespace())
                      .collect::<String>().trim().to_owned();
 
-    let (which, line) = if follow {
+    let (which, line_num) = if follow {
         assert!(adjusts == 0, "use either //~| or //~^, not both.");
-        let line = last_nonfollow_error.unwrap_or_else(|| {
-            panic!("encountered //~| without preceding //~^ line.")
-        });
-        (FollowPrevious(line), line)
+        let line_num = last_nonfollow_error.expect("encountered //~| without \
+                                                    preceding //~^ line.");
+        (FollowPrevious(line_num), line_num)
     } else {
         let which =
             if adjusts > 0 { AdjustBackward(adjusts) } else { ThisLine };
-        let line = line_num - adjusts;
-        (which, line)
+        let line_num = line_num - adjusts;
+        (which, line_num)
     };
 
     debug!("line={} tag={:?} which={:?} kind={:?} msg={:?}",
            line_num, tag, which, kind, msg);
-
-    Some((which, ExpectedError { line: line,
+    Some((which, ExpectedError { line_num: line_num,
                                  kind: kind,
                                  msg: msg, }))
 }

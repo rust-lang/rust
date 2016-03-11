@@ -1004,7 +1004,7 @@ fn check_expected_errors(revision: Option<&str>,
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        let expected = format!("{}:{}:", testpaths.file.display(), ee.line);
+        let expected = format!("{}:{}:", testpaths.file.display(), ee.line_num);
         // On windows just translate all '\' path separators to '/'
         expected.replace(r"\", "/")
     }).collect::<Vec<String>>();
@@ -1076,7 +1076,7 @@ fn check_expected_errors(revision: Option<&str>,
         if !flag {
             let ee = &expected_errors[i];
             error(revision, &format!("expected {} on line {} not found: {}",
-                                     ee.kind, ee.line, ee.msg));
+                                     ee.kind, ee.line_num, ee.msg));
             not_found += 1;
         }
     }
