@@ -1443,6 +1443,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            span)
     }
 
+    /// This function resolves `name` in `namespace` in the current lexical scope, returning
+    /// Success(binding) if `name` resolves to an item, or Failed(None) if `name` does not resolve
+    /// or resolves to a type parameter or local variable.
+    /// n.b. `resolve_identifier_in_local_ribs` also resolves names in the current lexical scope.
+    ///
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_item_in_lexical_scope(&mut self,
@@ -1450,9 +1455,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      namespace: Namespace,
                                      record_used: bool)
                                      -> ResolveResult<&'a NameBinding<'a>> {
-        // Check the local set of ribs.
+        // Walk backwards up the ribs in scope.
         for i in (0 .. self.get_ribs(namespace).len()).rev() {
             if let Some(_) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
+                // The name resolves to a type parameter or local variable, so return Failed(None).
                 return Failed(None);
             }
 
@@ -1462,6 +1468,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                       namespace,
                                                                       true,
                                                                       record_used) {
+                    // The name resolves to an item.
                     return Success(binding);
                 }
                 // We can only see through anonymous modules
