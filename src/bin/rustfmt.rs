@@ -28,14 +28,14 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-macro_rules! msg(
+macro_rules! msg {
     ($($arg:tt)*) => (
         match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
             Ok(_) => {},
             Err(x) => panic!("Unable to write to stderr: {}", x),
         }
     )
-);
+}
 
 /// Rustfmt operations.
 enum Operation {
