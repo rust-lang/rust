@@ -9,6 +9,13 @@
             "args": ["0", "0"]
         },
         {
+            "intrinsic": "256_blendv_{0.data_type}",
+            "width": [256],
+            "llvm": "blendv.{0.data_type}.256",
+            "ret": "f(32-64)",
+            "args": ["0", "0", "0"]
+        },
+        {
             "intrinsic": "256_broadcast_{0.data_type}",
             "width": [256],
             "llvm": "vbroadcastf128.{0.data_type}.256",
