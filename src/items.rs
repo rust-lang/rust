@@ -1078,11 +1078,12 @@ fn rewrite_fn_base(context: &RewriteContext,
     let mut result = String::with_capacity(1024);
     // Vis unsafety abi.
     result.push_str(format_visibility(vis));
-    result.push_str(::utils::format_unsafety(unsafety));
 
     if let ast::Constness::Const = constness {
         result.push_str("const ");
     }
+
+    result.push_str(::utils::format_unsafety(unsafety));
 
     if abi != abi::Abi::Rust {
         result.push_str(&::utils::format_abi(abi));
