@@ -22,7 +22,6 @@ use ops::Deref;
 use result;
 use slice;
 use str;
-use self::rt::v1::Alignment;
 
 #[unstable(feature = "fmt_radix", issue = "27728")]
 #[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
@@ -38,6 +37,9 @@ pub use self::num::Radix;
 pub use self::num::RadixFmt;
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
+#[unstable(feature = "fmt_flags_align", reason = "method was just created",
+           issue = "27726")]
+pub use self::rt::v1::Alignment;
 
 mod num;
 mod builders;
@@ -156,7 +158,7 @@ impl<'a, W: Write + ?Sized> Write for &'a mut W {
 pub struct Formatter<'a> {
     flags: u32,
     fill: char,
-    align: rt::v1::Alignment,
+    align: Alignment,
     width: Option<usize>,
     precision: Option<usize>,
 
