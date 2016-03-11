@@ -178,7 +178,7 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                 req_kind: ty::BorrowKind)
                                 -> Result<(),()> {
 
-    let aliasability = cmt.freely_aliasable(bccx.tcx);
+    let aliasability = cmt.freely_aliasable();
     debug!("check_aliasability aliasability={:?} req_kind={:?}",
            aliasability, req_kind);
 
