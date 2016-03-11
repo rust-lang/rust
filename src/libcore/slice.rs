@@ -535,6 +535,16 @@ fn slice_index_order_fail(index: usize, end: usize) -> ! {
 
 // FIXME implement indexing with inclusive ranges
 
+/// Implements slicing with syntax `&self[begin .. end]`.
+///
+/// Returns a slice of self for the index range [`begin`..`end`).
+///
+/// This operation is `O(1)`.
+///
+/// # Panics
+///
+/// Requires that `begin <= end` and `end <= self.len()`,
+/// otherwise slicing will panic.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<usize>> for [T] {
     type Output = [T];
@@ -554,6 +564,13 @@ impl<T> ops::Index<ops::Range<usize>> for [T] {
         }
     }
 }
+
+/// Implements slicing with syntax `&self[.. end]`.
+///
+/// Returns a slice of self from the beginning until but not including
+/// the index `end`.
+///
+/// Equivalent to `&self[0 .. end]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeTo<usize>> for [T] {
     type Output = [T];
@@ -563,6 +580,12 @@ impl<T> ops::Index<ops::RangeTo<usize>> for [T] {
         self.index(0 .. index.end)
     }
 }
+
+/// Implements slicing with syntax `&self[begin ..]`.
+///
+/// Returns a slice of self from and including the index `begin` until the end.
+///
+/// Equivalent to `&self[begin .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFrom<usize>> for [T] {
     type Output = [T];
@@ -572,6 +595,12 @@ impl<T> ops::Index<ops::RangeFrom<usize>> for [T] {
         self.index(index.start .. self.len())
     }
 }
+
+/// Implements slicing with syntax `&self[..]`.
+///
+/// Returns a slice of the whole slice. This operation can not panic.
+///
+/// Equivalent to `&self[0 .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<RangeFull> for [T] {
     type Output = [T];
@@ -608,6 +637,16 @@ impl<T> ops::Index<ops::RangeToInclusive<usize>> for [T] {
     }
 }
 
+/// Implements mutable slicing with syntax `&mut self[begin .. end]`.
+///
+/// Returns a slice of self for the index range [`begin`..`end`).
+///
+/// This operation is `O(1)`.
+///
+/// # Panics
+///
+/// Requires that `begin <= end` and `end <= self.len()`,
+/// otherwise slicing will panic.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
     #[inline]
@@ -625,6 +664,13 @@ impl<T> ops::IndexMut<ops::Range<usize>> for [T] {
         }
     }
 }
+
+/// Implements mutable slicing with syntax `&mut self[.. end]`.
+///
+/// Returns a slice of self from the beginning until but not including
+/// the index `end`.
+///
+/// Equivalent to `&mut self[0 .. end]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for [T] {
     #[inline]
@@ -632,6 +678,12 @@ impl<T> ops::IndexMut<ops::RangeTo<usize>> for [T] {
         self.index_mut(0 .. index.end)
     }
 }
+
+/// Implements mutable slicing with syntax `&mut self[begin ..]`.
+///
+/// Returns a slice of self from and including the index `begin` until the end.
+///
+/// Equivalent to `&mut self[begin .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFrom<usize>> for [T] {
     #[inline]
@@ -640,6 +692,12 @@ impl<T> ops::IndexMut<ops::RangeFrom<usize>> for [T] {
         self.index_mut(index.start .. len)
     }
 }
+
+/// Implements mutable slicing with syntax `&mut self[..]`.
+///
+/// Returns a slice of the whole slice. This operation can not panic.
+///
+/// Equivalent to `&mut self[0 .. self.len()]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<RangeFull> for [T] {
     #[inline]
