@@ -149,10 +149,8 @@ fn test_env<F>(source_string: &str,
                                index,
                                "test_crate",
                                |tcx| {
-                                   let infcx = infer::new_infer_ctxt(tcx,
-                                                                     &tcx.tables,
-                                                                     None,
-                                                                     ProjectionMode::AnyFinal);
+                                   let infcx = InferCtxt::new(tcx, &tcx.tables, None,
+                                                              ProjectionMode::AnyFinal);
                                    body(Env { infcx: &infcx });
                                    let free_regions = FreeRegionMap::new();
                                    infcx.resolve_regions_and_report_errors(&free_regions,

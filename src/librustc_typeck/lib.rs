@@ -104,7 +104,7 @@ pub use rustc::util;
 use dep_graph::DepNode;
 use hir::map as hir_map;
 use hir::def::Def;
-use rustc::infer::{self, TypeOrigin};
+use rustc::infer::{self, InferCtxt, TypeOrigin};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::traits::ProjectionMode;
@@ -197,7 +197,7 @@ fn require_same_types<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
 {
     let result = match maybe_infcx {
         None => {
-            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
+            let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
             infer::mk_eqty(&infcx, t1_is_expected, TypeOrigin::Misc(span), t1, t2)
         }
         Some(infcx) => {

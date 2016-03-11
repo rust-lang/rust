@@ -18,8 +18,9 @@ use back::symbol_names;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
+use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Substs};
-use rustc::{infer, traits};
+use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use abi::{Abi, FnType};
 use adt;
@@ -115,9 +116,9 @@ pub fn get_drop_glue_type<'tcx>(tcx: &TyCtxt<'tcx>,
     match t.sty {
         ty::TyBox(typ) if !type_needs_drop(&tcx, typ)
                          && type_is_sized(tcx, typ) => {
-            let infcx = infer::normalizing_infer_ctxt(tcx,
-                                                      &tcx.tables,
-                                                      traits::ProjectionMode::Any);
+            let infcx = InferCtxt::normalizing(tcx,
+                                               &tcx.tables,
+                                               traits::ProjectionMode::Any);
             let layout = t.layout(&infcx).unwrap();
             if layout.size(&tcx.data_layout).bytes() == 0 {
                 // `Box<ZeroSizeType>` does not allocate.

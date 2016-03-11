@@ -22,7 +22,7 @@ use rustc::hir::def_id::{DefId};
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer;
+use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization::{cmt};
 use rustc::hir::pat_util::*;
 use rustc::traits::ProjectionMode;
@@ -1123,10 +1123,9 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     PatKind::Ident(hir::BindByValue(_), _, ref sub) => {
                         let pat_ty = tcx.node_id_to_type(p.id);
                         //FIXME: (@jroesch) this code should be floated up as well
-                        let infcx = infer::new_infer_ctxt(cx.tcx,
-                                                          &cx.tcx.tables,
-                                                          Some(cx.param_env.clone()),
-                                                          ProjectionMode::AnyFinal);
+                        let infcx = InferCtxt::new(cx.tcx, &cx.tcx.tables,
+                                                   Some(cx.param_env.clone()),
+                                                   ProjectionMode::AnyFinal);
                         if infcx.type_moves_by_default(pat_ty, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
@@ -1155,10 +1154,9 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
         cx: cx,
     };
 
-    let infcx = infer::new_infer_ctxt(cx.tcx,
-                                      &cx.tcx.tables,
-                                      Some(checker.cx.param_env.clone()),
-                                      ProjectionMode::AnyFinal);
+    let infcx = InferCtxt::new(cx.tcx, &cx.tcx.tables,
+                               Some(checker.cx.param_env.clone()),
+                               ProjectionMode::AnyFinal);
 
     let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
     visitor.walk_expr(guard);

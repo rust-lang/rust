@@ -11,7 +11,7 @@
 use dep_graph::DepNode;
 use hir::def::Def;
 use hir::def_id::DefId;
-use infer::{InferCtxt, new_infer_ctxt};
+use infer::InferCtxt;
 use traits::ProjectionMode;
 use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
@@ -36,7 +36,7 @@ struct ItemVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
     fn visit_const(&mut self, item_id: ast::NodeId, expr: &hir::Expr) {
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, item_id);
-        let infcx = new_infer_ctxt(self.tcx, &self.tcx.tables,
+        let infcx = InferCtxt::new(self.tcx, &self.tcx.tables,
                                    Some(param_env),
                                    ProjectionMode::Any);
         let mut visitor = ExprVisitor {
@@ -115,7 +115,7 @@ impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
 impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     // const, static and N in [T; N].
     fn visit_expr(&mut self, expr: &hir::Expr) {
-        let infcx = new_infer_ctxt(self.tcx, &self.tcx.tables,
+        let infcx = InferCtxt::new(self.tcx, &self.tcx.tables,
                                    None, ProjectionMode::Any);
         let mut visitor = ExprVisitor {
             infcx: &infcx
@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
         match fk {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-                let infcx = new_infer_ctxt(self.tcx, &self.tcx.tables,
+                let infcx = InferCtxt::new(self.tcx, &self.tcx.tables,
                                            Some(param_env),
                                            ProjectionMode::Any);
                 let mut visitor = ExprVisitor {

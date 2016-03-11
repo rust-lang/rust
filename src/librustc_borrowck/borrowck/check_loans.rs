@@ -22,7 +22,7 @@ use borrowck::*;
 use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::expr_use_visitor::MutateMode;
-use rustc::infer;
+use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
@@ -203,10 +203,8 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = infer::new_infer_ctxt(bccx.tcx,
-                                      &bccx.tcx.tables,
-                                      Some(param_env),
-                                      ProjectionMode::AnyFinal);
+    let infcx = InferCtxt::new(bccx.tcx, &bccx.tcx.tables, Some(param_env),
+                               ProjectionMode::AnyFinal);
 
     let mut clcx = CheckLoanCtxt {
         bccx: bccx,

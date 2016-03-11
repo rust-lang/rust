@@ -12,7 +12,7 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_param, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer;
+use rustc::infer::{self, InferCtxt};
 use rustc::traits::ProjectionMode;
 use abi::{Abi, FnType};
 use adt;
@@ -155,7 +155,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let symbol = symbol_names::exported_name(ccx, &instance);
 
     // Compute the rust-call form of the closure call method.
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+    let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
     let sig = &infcx.closure_type(closure_id, &substs).sig;
     let sig = tcx.erase_late_bound_regions(sig);
     let sig = infer::normalize_associated_type(tcx, &sig);
@@ -220,7 +220,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
 
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
+    let infcx = InferCtxt::normalizing(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
     let function_type = infcx.closure_type(closure_def_id, closure_substs);
 
     let sig = tcx.erase_late_bound_regions(&function_type.sig);
@@ -344,7 +344,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            closure_def_id, substs, Value(llreffn));
 
     let tcx = ccx.tcx();
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
+    let infcx = InferCtxt::normalizing(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.

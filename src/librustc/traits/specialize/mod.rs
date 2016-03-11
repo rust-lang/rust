@@ -133,7 +133,7 @@ pub fn specializes(tcx: &TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> bo
         return false;
     }
 
-    let mut infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Topmost);
+    let mut infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Topmost);
 
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
     let scheme = tcx.lookup_item_type(impl1_def_id);
