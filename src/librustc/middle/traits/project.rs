@@ -38,13 +38,13 @@ use std::rc::Rc;
 /// more or less conservative.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ProjectionMode {
+    /// FIXME (#32205)
     /// At coherence-checking time, we're still constructing the
     /// specialization graph, and thus we only project project
     /// non-`default` associated types that are defined directly in
     /// the applicable impl. (This behavior should be improved over
     /// time, to allow for successful projections modulo cycles
     /// between different impls).
-    // TODO: Add tracking issue to do better here.
     ///
     /// Here's an example that will fail due to the restriction:
     ///
@@ -66,7 +66,6 @@ pub enum ProjectionMode {
     ///
     /// The projection would succeed if `Output` had been defined
     /// directly in the impl for `u8`.
-    // TODO: Add test
     Topmost,
 
     /// At type-checking time, we refuse to project any associated
@@ -91,7 +90,6 @@ pub enum ProjectionMode {
     /// fn main() {
     ///     let <() as Assoc>::Output = true;
     /// }
-    // TODO: Add test
     AnyFinal,
 
     /// At trans time, all projections will succeed.
@@ -695,7 +693,34 @@ fn project_type<'cx,'tcx>(
                     // at the topmost impl (we don't even consider the trait
                     // itself) for the definition -- so we can fail to find a
                     // definition of the type even if it exists.
-                    return None;
+
+                    // For now, we just unconditionally ICE, because otherwise,
+                    // examples like the following will succeed:
+                    //
+                    // ```
+                    // trait Assoc {
+                    //     type Output;
+                    // }
+                    //
+                    // impl<T> Assoc for T {
+                    //     default type Output = bool;
+                    // }
+                    //
+                    // impl Assoc for u8 {}
+                    // impl Assoc for u16 {}
+                    //
+                    // trait Foo {}
+                    // impl Foo for <u8 as Assoc>::Output {}
+                    // impl Foo for <u16 as Assoc>::Output {}
+                    //     return None;
+                    // }
+                    // ```
+                    //
+                    // The essential problem here is that the projection fails,
+                    // leaving two unnormalized types, which appear not to unify
+                    // -- so the overlap check succeeds, when it should fail.
+                    selcx.tcx().sess.bug("Tried to project an inherited associated type during \
+                                          coherence checking, which is currently not supported.");
                 }
             }
         }
