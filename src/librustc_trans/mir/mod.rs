@@ -19,6 +19,8 @@ use common::{self, Block, BlockAndBuilder, FunctionContext};
 use std::ops::Deref;
 use std::rc::Rc;
 
+use trans::basic_block::BasicBlock;
+
 use rustc_data_structures::bitvec::BitVector;
 
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
@@ -170,19 +172,20 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         mircx.trans_block(bb);
     }
 
-    // Add unreachable instructions at the end of unreachable blocks
-    // so they're actually terminated.
-    // TODO: Remove the blocks from the function
+    // Remove blocks that haven't been visited, or have no
+    // predecessors.
     for &bb in &mir_blocks {
+        let block = mircx.blocks[bb.index()];
+        let block = BasicBlock(block.llbb);
+        // Unreachable block
         if !visited.contains(bb.index()) {
-            mircx.blocks[bb.index()].build().unreachable();
+            block.delete();
+        } else if block.pred_iter().count() == 0 {
+            block.delete();
         }
     }
 
-
     fcx.cleanup();
-
-    debug!("trans_mir: {:?}", ::trans::value::Value(fcx.llfn));
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the

@@ -49,4 +49,10 @@ impl BasicBlock {
             _ => None
         }
     }
+
+    pub fn delete(self) {
+        unsafe {
+            llvm::LLVMDeleteBasicBlock(self.0);
+        }
+    }
 }
