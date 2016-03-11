@@ -181,6 +181,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
 
     reg.register_lint_group("clippy_pedantic", vec![
+        array_indexing::INDEXING_SLICING,
         enum_glob_use::ENUM_GLOB_USE,
         matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,

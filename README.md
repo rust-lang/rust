@@ -11,7 +11,7 @@ A collection of lints to catch common mistakes and improve your Rust code.
 [Jump to link with clippy-service](#link-with-clippy-service)
 
 ##Lints
-There are 133 lints included in this crate:
+There are 134 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -58,6 +58,7 @@ name                                                                            
 [if_not_else](https://github.com/Manishearth/rust-clippy/wiki#if_not_else)                                           | warn    | finds if branches that could be swapped so no negation operation is necessary on the condition
 [if_same_then_else](https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else)                               | warn    | if with the same *then* and *else* blocks
 [ifs_same_cond](https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond)                                       | warn    | consecutive `ifs` with the same condition
+[indexing_slicing](https://github.com/Manishearth/rust-clippy/wiki#indexing_slicing)                                 | allow   | indexing/slicing usage
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                         | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                       | warn    | `#[inline(always)]` is a bad idea in most cases
 [invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                       | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
