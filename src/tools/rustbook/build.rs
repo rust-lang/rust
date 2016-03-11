@@ -160,7 +160,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
 
     // Copy js for playpen
     let mut playpen = try!(File::create(tgt.join("playpen.js")));
-    let js = include_bytes!("../librustdoc/html/static/playpen.js");
+    let js = include_bytes!("../../librustdoc/html/static/playpen.js");
     try!(playpen.write_all(js));
     Ok(())
 }

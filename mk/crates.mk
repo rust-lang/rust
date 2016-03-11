@@ -126,8 +126,8 @@ TOOL_DEPS_error_index_generator := rustdoc syntax serialize
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
-TOOL_SOURCE_rustbook := $(S)src/rustbook/main.rs
-TOOL_SOURCE_error_index_generator := $(S)src/error_index_generator/main.rs
+TOOL_SOURCE_rustbook := $(S)src/tools/rustbook/main.rs
+TOOL_SOURCE_error_index_generator := $(S)src/tools/error_index_generator/main.rs
 
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1

@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::path::Path;
 use std::fs::{self, File};
 use std::io::prelude::*;
+use std::path::Path;
+use std::process::Command;
 
-use build::{Build, Compiler};
-use build::util::up_to_date;
+use build::{Build, Compiler, Mode};
+use build::util::{up_to_date, cp_r};
 
 pub fn rustbook(build: &Build, stage: u32, host: &str, name: &str, out: &Path) {
     t!(fs::create_dir_all(out));
@@ -69,7 +70,7 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
         }
 
         let html = out.join(filename).with_extension("html");
-        let rustdoc = build.tool(&compiler, "rustdoc");
+        let rustdoc = build.rustdoc(&compiler);
         if up_to_date(&path, &html) &&
            up_to_date(&footer, &html) &&
            up_to_date(&favicon, &html) &&
@@ -79,7 +80,7 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
             continue
         }
 
-        let mut cmd = build.tool_cmd(&compiler, "rustdoc");
+        let mut cmd = Command::new(&rustdoc);
         cmd.arg("--html-after-content").arg(&footer)
            .arg("--html-before-content").arg(&version_info)
            .arg("--html-in-header").arg(&favicon)
@@ -101,4 +102,53 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
         }
         build.run(&mut cmd);
     }
+}
+
+pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
+    println!("Documenting stage{} std ({})", stage, host);
+    let compiler = Compiler::new(stage, host);
+    let out_dir = build.stage_out(stage, host, Mode::Libstd)
+                       .join(host).join("doc");
+    let rustdoc = build.rustdoc(&compiler);
+
+    build.clear_if_dirty(&out_dir, &rustdoc);
+
+    let mut cargo = build.cargo(stage, &compiler, Mode::Libstd, Some(host),
+                                "doc");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
+         .arg("--features").arg(build.std_features());
+    build.run(&mut cargo);
+    cp_r(&out_dir, out)
+}
+
+pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
+    println!("Documenting stage{} compiler ({})", stage, host);
+    let compiler = Compiler::new(stage, host);
+    let out_dir = build.stage_out(stage, host, Mode::Librustc)
+                       .join(host).join("doc");
+    let rustdoc = build.rustdoc(&compiler);
+    if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) {
+        t!(fs::remove_dir_all(&out_dir));
+    }
+    let mut cargo = build.cargo(stage, &compiler, Mode::Librustc, Some(host),
+                                "doc");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join("src/rustc/Cargo.toml"))
+         .arg("--features").arg(build.rustc_features());
+    build.run(&mut cargo);
+    cp_r(&out_dir, out)
+}
+
+pub fn error_index(build: &Build, stage: u32, host: &str, out: &Path) {
+    println!("Documenting stage{} error index ({})", stage, host);
+    let compiler = Compiler::new(stage, host);
+    let mut index = Command::new(build.tool(&compiler, "error_index_generator"));
+    index.arg("html");
+    index.arg(out.join("error-index.html"));
+
+    // FIXME: shouldn't have to pass this env var
+    index.env("CFG_BUILD", &build.config.build);
+
+    build.run(&mut index);
 }

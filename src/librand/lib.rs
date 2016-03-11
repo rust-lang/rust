@@ -67,6 +67,7 @@ mod rand_impls;
 // needed by librand; this is necessary because librand doesn't
 // depend on libstd.  This will go away when librand is integrated
 // into libstd.
+#[doc(hidden)]
 trait FloatMath : Sized {
     fn exp(self) -> Self;
     fn ln(self) -> Self;

@@ -101,7 +101,7 @@ The convention for a field `foo: T` is:
   here may take `&T` or some other type, depending on the context.)
 
 Note that this convention is about getters/setters on ordinary data types, *not*
-on [builder objects](../ownership/builders.html).
+on [builder objects](../../ownership/builders.html).
 
 ### Escape hatches [FIXME]
 

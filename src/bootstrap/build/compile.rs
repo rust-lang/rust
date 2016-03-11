@@ -16,7 +16,7 @@ use std::process::Command;
 use build_helper::output;
 
 use build::util::{exe, staticlib, libdir, mtime, is_dylib};
-use build::{Build, Compiler};
+use build::{Build, Compiler, Mode};
 
 /// Build the standard library.
 ///
@@ -39,9 +39,10 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
 
     build_startup_objects(build, target, &libdir);
 
-    let out_dir = build.cargo_out(stage, &host, true, target);
+    let out_dir = build.cargo_out(stage, &host, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
-    let mut cargo = build.cargo(stage, compiler, true, target, "build");
+    let mut cargo = build.cargo(stage, compiler, Mode::Libstd, Some(target),
+                                "build");
     cargo.arg("--features").arg(build.std_features())
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
@@ -71,7 +72,7 @@ pub fn std_link(build: &Build,
                 compiler: &Compiler,
                 host: &str) {
     let libdir = build.sysroot_libdir(stage, host, target);
-    let out_dir = build.cargo_out(stage, compiler.host, true, target);
+    let out_dir = build.cargo_out(stage, compiler.host, Mode::Libstd, target);
 
     // If we're linking one compiler host's output into another, then we weren't
     // called from the `std` method above. In that case we clean out what's
@@ -135,18 +136,14 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
     println!("Building stage{} compiler artifacts ({} -> {})", stage,
              host, target);
 
-    let out_dir = build.cargo_out(stage, &host, false, target);
+    let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
     build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
 
-    let mut cargo = build.cargo(stage, compiler, false, target, "build");
-    cargo.arg("--features").arg(build.rustc_features(stage))
+    let mut cargo = build.cargo(stage, compiler, Mode::Librustc, Some(target),
+                                "build");
+    cargo.arg("--features").arg(build.rustc_features())
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"));
-
-    // In stage0 we may not need to build as many executables
-    if stage == 0 {
-        cargo.arg("--bin").arg("rustc");
-    }
 
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
@@ -200,14 +197,14 @@ pub fn rustc_link(build: &Build,
                   compiler: &Compiler,
                   host: &str) {
     let libdir = build.sysroot_libdir(stage, host, target);
-    let out_dir = build.cargo_out(stage, compiler.host, false, target);
+    let out_dir = build.cargo_out(stage, compiler.host, Mode::Librustc, target);
     add_to_sysroot(&out_dir, &libdir);
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
 fn libstd_shim(build: &Build, stage: u32, host: &str, target: &str) -> PathBuf {
-    build.cargo_out(stage, host, true, target).join("libstd_shim.rlib")
+    build.cargo_out(stage, host, Mode::Libstd, target).join("libstd_shim.rlib")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> String {
@@ -239,7 +236,8 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
         }
     }
 
-    let out_dir = build.cargo_out(stage - 1, &build.config.build, false, host);
+    let out_dir = build.cargo_out(stage - 1, &build.config.build,
+                                  Mode::Librustc, host);
 
     // Link the compiler binary itself into place
     let rustc = out_dir.join(exe("rustc", host));
@@ -297,4 +295,28 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
         t!(fs::hard_link(&path,
                          sysroot_dst.join(path.file_name().unwrap())));
     }
+}
+
+/// Build a tool in `src/tools`
+///
+/// This will build the specified tool with the specified `host` compiler in
+/// `stage` into the normal cargo output directory.
+pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
+    println!("Building stage{} tool {} ({})", stage, tool, host);
+
+    let compiler = Compiler::new(stage, host);
+
+    // FIXME: need to clear out previous tool and ideally deps, may require
+    //        isolating output directories or require a pseudo shim step to
+    //        clear out all the info.
+    //
+    //        Maybe when libstd is compiled it should clear out the rustc of the
+    //        corresponding stage?
+    // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
+    // build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
+
+    let mut cargo = build.cargo(stage, &compiler, Mode::Tool, None, "build");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+    build.run(&mut cargo);
 }

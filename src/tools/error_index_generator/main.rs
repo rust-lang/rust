@@ -15,11 +15,12 @@ extern crate rustdoc;
 extern crate serialize as rustc_serialize;
 
 use std::collections::BTreeMap;
+use std::env;
+use std::error::Error;
 use std::fs::{read_dir, File};
 use std::io::{Read, Write};
-use std::env;
 use std::path::Path;
-use std::error::Error;
+use std::path::PathBuf;
 
 use syntax::diagnostics::metadata::{get_metadata_dir, ErrorMetadataMap, ErrorMetadata};
 
@@ -173,31 +174,35 @@ fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Pat
     formatter.footer(&mut output_file)
 }
 
-fn main_with_result(format: OutputFormat) -> Result<(), Box<Error>> {
+fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<Error>> {
     let build_arch = try!(env::var("CFG_BUILD"));
     let metadata_dir = get_metadata_dir(&build_arch);
     let err_map = try!(load_all_errors(&metadata_dir));
     match format {
         OutputFormat::Unknown(s)  => panic!("Unknown output format: {}", s),
-        OutputFormat::HTML(h)     => try!(render_error_page(&err_map,
-                                                            Path::new("doc/error-index.html"),
-                                                            h)),
-        OutputFormat::Markdown(m) => try!(render_error_page(&err_map,
-                                                            Path::new("doc/error-index.md"),
-                                                            m)),
+        OutputFormat::HTML(h)     => try!(render_error_page(&err_map, dst, h)),
+        OutputFormat::Markdown(m) => try!(render_error_page(&err_map, dst, m)),
     }
     Ok(())
 }
 
-fn parse_args() -> OutputFormat {
-    for arg in env::args().skip(1) {
-        return OutputFormat::from(&arg);
-    }
-    OutputFormat::from("html")
+fn parse_args() -> (OutputFormat, PathBuf) {
+    let mut args = env::args().skip(1);
+    let format = args.next().map(|a| OutputFormat::from(&a))
+                            .unwrap_or(OutputFormat::from("html"));
+    let dst = args.next().map(PathBuf::from).unwrap_or_else(|| {
+        match format {
+            OutputFormat::HTML(..) => PathBuf::from("doc/error-index.html"),
+            OutputFormat::Markdown(..) => PathBuf::from("doc/error-index.md"),
+            OutputFormat::Unknown(..) => PathBuf::from("<nul>"),
+        }
+    });
+    (format, dst)
 }
 
 fn main() {
-    if let Err(e) = main_with_result(parse_args()) {
+    let (format, dst) = parse_args();
+    if let Err(e) = main_with_result(format, &dst) {
         panic!("{}", e.description());
     }
 }
