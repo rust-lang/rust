@@ -12,7 +12,7 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_param, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer::{self, InferCtxt};
+use rustc::infer::InferCtxt;
 use rustc::traits::ProjectionMode;
 use abi::{Abi, FnType};
 use adt;
@@ -158,7 +158,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
     let sig = &infcx.closure_type(closure_id, &substs).sig;
     let sig = tcx.erase_late_bound_regions(sig);
-    let sig = infer::normalize_associated_type(tcx, &sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let closure_type = tcx.mk_closure_from_closure_substs(closure_id, Box::new(substs));
     let function_type = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
@@ -224,7 +224,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let function_type = infcx.closure_type(closure_def_id, closure_substs);
 
     let sig = tcx.erase_late_bound_regions(&function_type.sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
 
     let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
         Box::new(closure_substs.clone()));
@@ -369,7 +369,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     sig.0.inputs[0] = closure_ty;
 
     let sig = tcx.erase_late_bound_regions(&sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
     let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {

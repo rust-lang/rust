@@ -21,7 +21,6 @@
 //! * When in doubt, define.
 use llvm::{self, ValueRef};
 use rustc::ty;
-use rustc::infer;
 use abi::{Abi, FnType};
 use attributes;
 use context::CrateContext;
@@ -105,7 +104,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
     let abi = fn_type.fn_abi();
     let sig = ccx.tcx().erase_late_bound_regions(fn_type.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
     let fty = FnType::new(ccx, abi, &sig, &[]);

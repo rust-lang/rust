@@ -15,7 +15,6 @@ use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
 use llvm::{ValueRef, TypeKind};
-use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::subst::FnSpace;
 use abi::{Abi, FnType};
@@ -114,7 +113,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let (def_id, substs, sig) = match callee_ty.sty {
         ty::TyFnDef(def_id, substs, fty) => {
             let sig = tcx.erase_late_bound_regions(&fty.sig);
-            (def_id, substs, infer::normalize_associated_type(tcx, &sig))
+            (def_id, substs, tcx.normalize_associated_type(&sig))
         }
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
@@ -1352,7 +1351,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
     let tcx = bcx.tcx();
     let sig = tcx.erase_late_bound_regions(callee_ty.fn_sig());
-    let sig = infer::normalize_associated_type(tcx, &sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let arg_tys = sig.inputs;
 
     // every intrinsic takes a SIMD vector as its first argument

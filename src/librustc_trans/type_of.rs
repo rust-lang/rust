@@ -11,7 +11,7 @@
 #![allow(non_camel_case_types)]
 
 use rustc::hir::def_id::DefId;
-use rustc::infer::{self, InferCtxt};
+use rustc::infer::InferCtxt;
 use rustc::ty::subst;
 use abi::FnType;
 use adt;
@@ -296,7 +296,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(f) => {
         let sig = cx.tcx().erase_late_bound_regions(&f.sig);
-        let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+        let sig = cx.tcx().normalize_associated_type(&sig);
         FnType::new(cx, f.abi, &sig, &[]).llvm_type(cx).ptr_to()
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),

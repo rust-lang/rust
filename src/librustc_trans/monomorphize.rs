@@ -12,7 +12,6 @@ use back::symbol_names;
 use llvm::ValueRef;
 use llvm;
 use rustc::hir::def_id::DefId;
-use rustc::infer::normalize_associated_type;
 use rustc::ty::subst;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
@@ -197,7 +196,7 @@ pub fn apply_param_substs<'tcx,T>(tcx: &TyCtxt<'tcx>,
     where T : TypeFoldable<'tcx>
 {
     let substituted = value.subst(tcx, param_substs);
-    normalize_associated_type(tcx, &substituted)
+    tcx.normalize_associated_type(&substituted)
 }
 
 
@@ -207,5 +206,5 @@ pub fn field_ty<'tcx>(tcx: &TyCtxt<'tcx>,
                       f: ty::FieldDef<'tcx>)
                       -> Ty<'tcx>
 {
-    normalize_associated_type(tcx, &f.ty(tcx, param_substs))
+    tcx.normalize_associated_type(&f.ty(tcx, param_substs))
 }
