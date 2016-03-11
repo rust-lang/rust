@@ -509,6 +509,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         }
 
                         ProjectionElem::ConstantIndex {..} |
+                        ProjectionElem::Subslice {..} |
                         ProjectionElem::Downcast(..) => {
                             this.not_const()
                         }
@@ -708,7 +709,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
 
-            Rvalue::Slice {..} |
             Rvalue::InlineAsm {..} => {
                 self.not_const();
             }

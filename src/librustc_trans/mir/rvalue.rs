@@ -29,7 +29,7 @@ use Disr;
 use super::MirContext;
 use super::constant::const_scalar_checked_binop;
 use super::operand::{OperandRef, OperandValue};
-use super::lvalue::{LvalueRef, get_dataptr, get_meta};
+use super::lvalue::{LvalueRef, get_dataptr};
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
@@ -167,26 +167,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         }
                     }
                 }
-                bcx
-            }
-
-            mir::Rvalue::Slice { ref input, from_start, from_end } => {
-                let ccx = bcx.ccx();
-                let input = self.trans_lvalue(&bcx, input);
-                let ty = input.ty.to_ty(bcx.tcx());
-                let (llbase1, lllen) = match ty.sty {
-                    ty::TyArray(_, n) => {
-                        (bcx.gepi(input.llval, &[0, from_start]), C_uint(ccx, n))
-                    }
-                    ty::TySlice(_) | ty::TyStr => {
-                        (bcx.gepi(input.llval, &[from_start]), input.llextra)
-                    }
-                    _ => bug!("cannot slice {}", ty)
-                };
-                let adj = C_uint(ccx, from_start + from_end);
-                let lllen1 = bcx.sub(lllen, adj);
-                bcx.store(llbase1, get_dataptr(&bcx, dest.llval));
-                bcx.store(lllen1, get_meta(&bcx, dest.llval));
                 bcx
             }
 
@@ -498,7 +478,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) |
-            mir::Rvalue::Slice { .. } |
             mir::Rvalue::InlineAsm { .. } => {
                 bug!("cannot generate operand from rvalue {:?}", rvalue);
 
@@ -652,7 +631,6 @@ pub fn rvalue_creates_operand<'bcx, 'tcx>(_mir: &mir::Mir<'tcx>,
             true,
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) |
-        mir::Rvalue::Slice { .. } |
         mir::Rvalue::InlineAsm { .. } =>
             false,
     }

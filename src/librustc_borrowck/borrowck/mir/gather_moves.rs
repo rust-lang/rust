@@ -620,22 +620,6 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                         Rvalue::Ref(..) |
                         Rvalue::Len(..) |
                         Rvalue::InlineAsm { .. } => {}
-
-                        Rvalue::Slice {..} => {
-                            // A slice pattern `x..` binds `x` to a
-                            // reference; thus no move occurs.
-                            //
-                            // FIXME: I recall arielb1 questioning
-                            // whether this is even a legal thing to
-                            // have as an R-value. The particular
-                            // example where I am seeing this arise is
-                            // `TargetDataLayout::parse(&Session)` in
-                            // `rustc::ty::layout`.
-                            //
-                            // this should be removed soon.
-                            debug!("encountered Rvalue::Slice as RHS of Assign, source: {:?}",
-                                   source);
-                        }
                     }
                 }
             }

@@ -1061,43 +1061,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         Ok(ret)
     }
 
-    /// Given a pattern P like: `[_, ..Q, _]`, where `vec_cmt` is the cmt for `P`, `slice_pat` is
-    /// the pattern `Q`, returns:
-    ///
-    /// * a cmt for `Q`
-    /// * the mutability and region of the slice `Q`
-    ///
-    /// These last two bits of info happen to be things that borrowck needs.
-    pub fn cat_slice_pattern(&self,
-                             vec_cmt: cmt<'tcx>,
-                             slice_pat: &hir::Pat)
-                             -> McResult<(cmt<'tcx>, hir::Mutability, ty::Region)> {
-        let slice_ty = self.node_ty(slice_pat.id)?;
-        let (slice_mutbl, slice_r) = vec_slice_info(slice_pat, slice_ty);
-        let context = InteriorOffsetKind::Pattern;
-        let cmt_vec = self.deref_vec(slice_pat, vec_cmt, context)?;
-        let cmt_slice = self.cat_index(slice_pat, cmt_vec, context)?;
-        return Ok((cmt_slice, slice_mutbl, slice_r));
-
-        /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
-        /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
-        /// have to recurse through rptrs.
-        fn vec_slice_info(pat: &hir::Pat, slice_ty: Ty)
-                          -> (hir::Mutability, ty::Region) {
-            match slice_ty.sty {
-                ty::TyRef(r, ref mt) => match mt.ty.sty {
-                    ty::TySlice(_) => (mt.mutbl, *r),
-                    _ => vec_slice_info(pat, mt.ty),
-                },
-
-                _ => {
-                    span_bug!(pat.span,
-                              "type of slice pattern is not a slice");
-                }
-            }
-        }
-    }
-
     pub fn cat_imm_interior<N:ast_node>(&self,
                                         node: &N,
                                         base_cmt: cmt<'tcx>,
@@ -1325,9 +1288,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                   self.cat_pattern_(elt_cmt.clone(), &before_pat, op)?;
               }
               if let Some(ref slice_pat) = *slice {
-                  let slice_ty = self.pat_ty(&slice_pat)?;
-                  let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
-                  self.cat_pattern_(slice_cmt, &slice_pat, op)?;
+                  self.cat_pattern_(elt_cmt.clone(), &slice_pat, op)?;
               }
               for after_pat in after {
                   self.cat_pattern_(elt_cmt.clone(), &after_pat, op)?;

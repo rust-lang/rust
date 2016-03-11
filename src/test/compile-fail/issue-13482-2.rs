@@ -15,11 +15,7 @@
 fn main() {
     let x = [1,2];
     let y = match x {
-        [] => None,
-//~^ ERROR mismatched types
-//~| expected type `[_#1i; 2]`
-//~| found type `[_#7t; 0]`
-//~| expected an array with a fixed size of 2 elements, found one with 0 elements
+        [] => None, //~ ERROR pattern requires 0 elements but array has 2
         [a,_] => Some(a)
     };
 }

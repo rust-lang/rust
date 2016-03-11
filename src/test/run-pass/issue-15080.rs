@@ -16,12 +16,12 @@ fn main() {
 
     let mut result = vec!();
     loop {
-        x = match x {
-            [1, n, 3, rest..] => {
+        x = match *x {
+            [1, n, 3, ref rest..] => {
                 result.push(n);
                 rest
             }
-            [n, rest..] => {
+            [n, ref rest..] => {
                 result.push(n);
                 rest
             }

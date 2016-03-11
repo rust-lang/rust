@@ -28,7 +28,7 @@ fn b() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_b..] => {
+        &mut [ref _b..] => {
         //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
             //~^ assignment to borrowed `vec[..]` occurs here
@@ -40,10 +40,11 @@ fn c() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_a,         //~ ERROR cannot move out
-        //~| cannot move out
-        //~| to prevent move
-         _b..] => {
+        &mut [_a, //~ ERROR cannot move out of borrowed content
+            //~| cannot move out
+            //~| to prevent move
+            ..
+        ] => {
             // Note: `_a` is *moved* here, but `b` is borrowing,
             // hence illegal.
             //
@@ -61,7 +62,7 @@ fn d() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_a..,     //~ ERROR cannot move out
+        &mut [ //~ ERROR cannot move out
         //~^ cannot move out
          _b] => {} //~ NOTE to prevent move
         _ => {}
@@ -75,7 +76,7 @@ fn e() {
     let mut vec = vec!(box 1, box 2, box 3);
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
-        [_a, _b, _c] => {}  //~ ERROR cannot move out
+        &mut [_a, _b, _c] => {}  //~ ERROR cannot move out
         //~| cannot move out
         //~| NOTE to prevent move
         //~| NOTE and here
