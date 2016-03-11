@@ -478,7 +478,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                     Some(Def::Const(did)) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
                         if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
-                            match const_expr_to_pat(self.tcx, const_expr, pat.span) {
+                            match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
                                 Ok(new_pat) => {
                                     if let Some(ref mut map) = self.renaming_map {
                                         // Record any renamings we do here
@@ -487,7 +487,6 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                                     new_pat
                                 }
                                 Err(def_id) => {
-                                    // TODO back-compat
                                     self.failed = true;
                                     self.tcx.sess.span_err(
                                         pat.span,

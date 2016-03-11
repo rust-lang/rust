@@ -92,6 +92,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                             Some((const_expr, _const_ty)) => {
                                 match const_eval::const_expr_to_pat(self.cx.tcx,
                                                                     const_expr,
+                                                                    pat.id,
                                                                     pat.span) {
                                     Ok(pat) =>
                                         return self.to_pattern(&pat),

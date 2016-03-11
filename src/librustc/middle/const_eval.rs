@@ -16,6 +16,7 @@ use self::EvalHint::*;
 
 use front::map as ast_map;
 use front::map::blocks::FnLikeNode;
+use lint;
 use middle::cstore::{self, CrateStore, InlinedItem};
 use middle::{infer, subst, traits};
 use middle::def::Def;
@@ -323,13 +324,41 @@ impl ConstVal {
     }
 }
 
-pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, span: Span)
+pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, pat_id: ast::NodeId, span: Span)
                          -> Result<P<hir::Pat>, DefId> {
+    let pat_ty = tcx.expr_ty(expr);
+    debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
+    match pat_ty.sty {
+        ty::TyFloat(_) => {
+            tcx.sess.add_lint(
+                lint::builtin::ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
+                pat_id,
+                span,
+                format!("floating point constants cannot be used in patterns"));
+        }
+        ty::TyEnum(adt_def, _) |
+        ty::TyStruct(adt_def, _) => {
+            if !tcx.has_attr(adt_def.did, "structural_match") {
+                tcx.sess.add_lint(
+                    lint::builtin::ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
+                    pat_id,
+                    span,
+                    format!("to use a constant of type `{}` \
+                             in a pattern, \
+                             `{}` must be annotated with `#[derive(Eq)]`",
+                            tcx.item_path_str(adt_def.did),
+                            tcx.item_path_str(adt_def.did)));
+            }
+        }
+        _ => { }
+    }
+
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
             PatKind::Tup(try!(exprs.iter()
-                                   .map(|expr| const_expr_to_pat(tcx, &expr, span))
-                                   .collect())),
+                                  .map(|expr| const_expr_to_pat(tcx, &expr,
+                                                                pat_id, span))
+                                  .collect())),
 
         hir::ExprCall(ref callee, ref args) => {
             let def = *tcx.def_map.borrow().get(&callee.id).unwrap();
@@ -347,7 +376,8 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, span: Span)
                 _ => unreachable!()
             };
             let pats = try!(args.iter()
-                                .map(|expr| const_expr_to_pat(tcx, &**expr, span))
+                                .map(|expr| const_expr_to_pat(tcx, &**expr,
+                                                              pat_id, span))
                                 .collect());
             PatKind::TupleStruct(path, Some(pats))
         }
@@ -359,7 +389,8 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, span: Span)
                                span: codemap::DUMMY_SP,
                                node: hir::FieldPat {
                                    name: field.name.node,
-                                   pat: try!(const_expr_to_pat(tcx, &field.expr, span)),
+                                   pat: try!(const_expr_to_pat(tcx, &field.expr,
+                                                               pat_id, span)),
                                    is_shorthand: false,
                                },
                            }))
@@ -369,7 +400,8 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, span: Span)
 
         hir::ExprVec(ref exprs) => {
             let pats = try!(exprs.iter()
-                                 .map(|expr| const_expr_to_pat(tcx, &expr, span))
+                                 .map(|expr| const_expr_to_pat(tcx, &expr,
+                                                               pat_id, span))
                                  .collect());
             PatKind::Vec(pats, None, hir::HirVec::new())
         }
@@ -383,7 +415,7 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, span: Span)
                 Some(Def::AssociatedConst(def_id)) => {
                     let substs = Some(tcx.node_id_item_substs(expr.id).substs);
                     let (expr, _ty) = lookup_const_by_id(tcx, def_id, substs).unwrap();
-                    return const_expr_to_pat(tcx, expr, span);
+                    return const_expr_to_pat(tcx, expr, pat_id, span);
                 },
                 _ => unreachable!(),
             }
