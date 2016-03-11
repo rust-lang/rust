@@ -59,6 +59,20 @@ impl<'a, 'gcx, 'tcx> LvalueTy<'tcx> {
                 LvalueTy::Ty {
                     ty: self.to_ty(tcx).builtin_index().unwrap()
                 },
+            ProjectionElem::Subslice { from, to } => {
+                let ty = self.to_ty(tcx);
+                LvalueTy::Ty {
+                    ty: match ty.sty {
+                        ty::TyArray(inner, size) => {
+                            tcx.mk_array(inner, size-(from as usize)-(to as usize))
+                        }
+                        ty::TySlice(..) => ty,
+                        _ => {
+                            bug!("cannot subslice non-array type: `{:?}`", self)
+                        }
+                    }
+                }
+            }
             ProjectionElem::Downcast(adt_def1, index) =>
                 match self.to_ty(tcx).sty {
                     ty::TyEnum(adt_def, substs) => {
@@ -219,7 +233,6 @@ impl<'a, 'gcx, 'tcx> Mir<'tcx> {
                     }
                 }
             }
-            Rvalue::Slice { .. } => None,
             Rvalue::InlineAsm { .. } => None
         }
     }

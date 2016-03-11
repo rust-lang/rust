@@ -12,7 +12,36 @@
 
 fn main() {
     match "foo".to_string() {
-        ['f', 'o', ..] => {} //~ ERROR mismatched types
+        ['f', 'o', ..] => {}
+        //~^ ERROR expected an array or slice, found `std::string::String`
         _ => { }
-    }
+    };
+
+    match &[0, 1, 2] {
+        [..] => {} //~ ERROR expected an array or slice, found `&[_; 3]`
+    };
+
+    match &[0, 1, 2] {
+        &[..] => {} // ok
+    };
+
+    match [0, 1, 2] {
+        [0] => {}, //~ ERROR pattern requires
+
+        [0, 1, x..] => {
+            let a: [_; 1] = x;
+        }
+        [0, 1, 2, 3, x..] => {} //~ ERROR pattern requires
+    };
+
+    match does_not_exist { //~ ERROR unresolved name
+        [] => {}
+    };
+}
+
+fn another_fn_to_avoid_suppression() {
+    match Default::default()
+    {
+        [] => {}  //~ ERROR the type of this value
+    };
 }

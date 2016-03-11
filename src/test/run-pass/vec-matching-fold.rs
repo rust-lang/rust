@@ -11,21 +11,28 @@
 
 #![feature(advanced_slice_patterns)]
 #![feature(slice_patterns)]
+#![feature(rustc_attrs)]
 
+use std::fmt::Debug;
+
+#[rustc_mir(graphviz="mir.gv")]
 fn foldl<T, U, F>(values: &[T],
                   initial: U,
                   mut function: F)
                   -> U where
-    U: Clone,
+    U: Clone+Debug, T:Debug,
     F: FnMut(U, &T) -> U,
-{
-    match values {
-        [ref head, tail..] =>
+{    match values {
+        &[ref head, ref tail..] =>
             foldl(tail, function(initial, head), function),
-        [] => initial.clone()
+        &[] => {
+            // FIXME: call guards
+            let res = initial.clone(); res
+        }
     }
 }
 
+#[rustc_mir]
 fn foldr<T, U, F>(values: &[T],
                   initial: U,
                   mut function: F)
@@ -34,9 +41,12 @@ fn foldr<T, U, F>(values: &[T],
     F: FnMut(&T, U) -> U,
 {
     match values {
-        [head.., ref tail] =>
+        &[ref head.., ref tail] =>
             foldr(head, function(tail, initial), function),
-        [] => initial.clone()
+        &[] => {
+            // FIXME: call guards
+            let res = initial.clone(); res
+        }
     }
 }
 

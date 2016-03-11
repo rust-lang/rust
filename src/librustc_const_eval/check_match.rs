@@ -109,7 +109,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub param_env: ParameterEnvironment<'tcx>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
@@ -584,30 +584,18 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
             }
         }
 
-        ty::TyRef(_, ty::TypeAndMut { ty, mutbl }) => {
-            match ty.sty {
-               ty::TyArray(_, n) => match ctor {
-                    &Single => {
-                        assert_eq!(pats_len, n);
-                        PatKind::Vec(pats.collect(), None, hir::HirVec::new())
-                    },
-                    _ => bug!()
-                },
-                ty::TySlice(_) => match ctor {
-                    &Slice(n) => {
-                        assert_eq!(pats_len, n);
-                        PatKind::Vec(pats.collect(), None, hir::HirVec::new())
-                    },
-                    _ => bug!()
-                },
-                ty::TyStr => PatKind::Wild,
-
-                _ => {
-                    assert_eq!(pats_len, 1);
-                    PatKind::Ref(pats.nth(0).unwrap(), mutbl)
-                }
-            }
+        ty::TyRef(_, ty::TypeAndMut { mutbl, .. }) => {
+            assert_eq!(pats_len, 1);
+            PatKind::Ref(pats.nth(0).unwrap(), mutbl)
         }
+
+        ty::TySlice(_) => match ctor {
+            &Slice(n) => {
+                assert_eq!(pats_len, n);
+                PatKind::Vec(pats.collect(), None, hir::HirVec::new())
+            },
+            _ => unreachable!()
+        },
 
         ty::TyArray(_, len) => {
             assert_eq!(pats_len, len);
@@ -660,13 +648,8 @@ fn all_constructors(_cx: &MatchCheckCtxt, left_ty: Ty,
     match left_ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
-
-        ty::TyRef(_, ty::TypeAndMut { ty, .. }) => match ty.sty {
-            ty::TySlice(_) =>
-                (0..max_slice_length+1).map(|length| Slice(length)).collect(),
-            _ => vec![Single]
-        },
-
+        ty::TySlice(_) =>
+            (0..max_slice_length+1).map(|length| Slice(length)).collect(),
         ty::TyEnum(def, _) => def.variants.iter().map(|v| Variant(v.did)).collect(),
         _ => vec![Single]
     }
@@ -818,13 +801,14 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
         PatKind::Vec(ref before, ref slice, ref after) =>
             match left_ty.sty {
                 ty::TyArray(_, _) => vec![Single],
-                _                      => if slice.is_some() {
+                ty::TySlice(_) if slice.is_some() => {
                     (before.len() + after.len()..max_slice_length+1)
                         .map(|length| Slice(length))
                         .collect()
-                } else {
-                    vec![Slice(before.len() + after.len())]
                 }
+                ty::TySlice(_) => vec!(Slice(before.len() + after.len())),
+                _ => span_bug!(pat.span, "pat_constructors: unexpected \
+                                          slice pattern type {:?}", left_ty)
             },
         PatKind::Box(..) | PatKind::Tuple(..) | PatKind::Ref(..) =>
             vec![Single],
@@ -839,18 +823,16 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
+    debug!("constructor_arity({:?}, {:?})", ctor, ty);
     match ty.sty {
         ty::TyTuple(ref fs) => fs.len(),
         ty::TyBox(_) => 1,
-        ty::TyRef(_, ty::TypeAndMut { ty, .. }) => match ty.sty {
-            ty::TySlice(_) => match *ctor {
-                Slice(length) => length,
-                ConstantValue(_) => 0,
-                _ => bug!()
-            },
-            ty::TyStr => 0,
-            _ => 1
+        ty::TySlice(_) => match *ctor {
+            Slice(length) => length,
+            ConstantValue(_) => 0,
+            _ => bug!()
         },
+        ty::TyRef(..) => 1,
         ty::TyEnum(adt, _) | ty::TyStruct(adt, _) => {
             ctor.variant_for_adt(adt).fields.len()
         }
@@ -988,29 +970,34 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         PatKind::Vec(ref before, ref slice, ref after) => {
+            let pat_len = before.len() + after.len();
             match *constructor {
-                // Fixed-length vectors.
                 Single => {
-                    let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.extend(repeat(DUMMY_WILD_PAT).take(arity - before.len() - after.len()));
-                    pats.extend(after.iter().map(|p| &**p));
-                    Some(pats)
+                    // Fixed-length vectors.
+                    Some(
+                        before.iter().map(|p| &**p).chain(
+                        repeat(DUMMY_WILD_PAT).take(arity - pat_len).chain(
+                        after.iter().map(|p| &**p)
+                    )).collect())
                 },
-                Slice(length) if before.len() + after.len() <= length && slice.is_some() => {
-                    let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.extend(repeat(DUMMY_WILD_PAT).take(arity - before.len() - after.len()));
-                    pats.extend(after.iter().map(|p| &**p));
-                    Some(pats)
-                },
-                Slice(length) if before.len() + after.len() == length => {
-                    let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
-                    pats.extend(after.iter().map(|p| &**p));
-                    Some(pats)
-                },
+                Slice(length) if pat_len <= length && slice.is_some() => {
+                    Some(
+                        before.iter().map(|p| &**p).chain(
+                        repeat(DUMMY_WILD_PAT).take(arity - pat_len).chain(
+                        after.iter().map(|p| &**p)
+                    )).collect())
+                }
+                Slice(length) if pat_len == length => {
+                    Some(
+                        before.iter().map(|p| &**p).chain(
+                        after.iter().map(|p| &**p)
+                    ).collect())
+                }
                 SliceWithSubslice(prefix, suffix)
                     if before.len() == prefix
                         && after.len() == suffix
                         && slice.is_some() => {
+                    // this is used by trans::_match only
                     let mut pats: Vec<&Pat> = before.iter().map(|p| &**p).collect();
                     pats.extend(after.iter().map(|p| &**p));
                     Some(pats)

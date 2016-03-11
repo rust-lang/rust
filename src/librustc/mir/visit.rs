@@ -533,15 +533,6 @@ macro_rules! make_mir_visitor {
                         }
                     }
 
-                    Rvalue::Slice { ref $($mutability)* input,
-                                    from_start,
-                                    from_end } => {
-                        self.visit_lvalue(input, LvalueContext::Slice {
-                            from_start: from_start,
-                            from_end: from_end,
-                        });
-                    }
-
                     Rvalue::InlineAsm { ref $($mutability)* outputs,
                                         ref $($mutability)* inputs,
                                         asm: _ } => {
@@ -601,6 +592,8 @@ macro_rules! make_mir_visitor {
                                      _context: LvalueContext) {
                 match *proj {
                     ProjectionElem::Deref => {
+                    }
+                    ProjectionElem::Subslice { from: _, to: _ } => {
                     }
                     ProjectionElem::Field(_field, ref $($mutability)* ty) => {
                         self.visit_ty(ty);
