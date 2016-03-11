@@ -2,7 +2,7 @@
 #![feature(rustc_private, collections)]
 #![feature(iter_arith)]
 #![feature(custom_attribute)]
-#![allow(unknown_lints)]
+#![allow(indexing_slicing, shadow_reuse, unknown_lints)]
 
 // this only exists to allow the "dogfood" integration test to work
 #[allow(dead_code)]

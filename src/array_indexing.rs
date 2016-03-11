@@ -69,34 +69,26 @@ impl LateLintPass for ArrayIndexing {
                 if let Ok(ConstVal::Uint(const_index)) = const_index {
                     if size <= const_index {
                         utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
-                        utils::span_lint(cx, INDEXING_SLICING, e.span, "indexing may panic");
-                    } else {
-                        // Index is within bounds
-                        return;
                     }
+
+                    return;
                 }
 
                 // Index is a constant range
                 if let Some(range) = utils::unsugar_range(index) {
                     let start = range.start.map(|start|
-                        eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None));
+                        eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None)).map(|v| v.ok());
                     let end = range.end.map(|end|
-                        eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None));
+                        eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None)).map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(start, end, range.limits, size) {
-                        if start >= size && end >= size {
+                        if start >= size || end >= size {
                             utils::span_lint(cx,
                                              OUT_OF_BOUNDS_INDEXING,
                                              e.span,
                                              "range is out of bounds");
-                            utils::span_lint(cx,
-                                             INDEXING_SLICING,
-                                             e.span,
-                                             "slicing may panic");
-                        } else {
-                            // Range is within bounds
-                            return;
                         }
+                        return;
                     }
                 }
             }
@@ -120,19 +112,19 @@ impl LateLintPass for ArrayIndexing {
 ///
 /// Note: we assume the start and the end of the range are unsigned, since array slicing
 /// works only on usize
-fn to_const_range<T>(start: Option<Result<ConstVal, T>>,
-                    end: Option<Result<ConstVal, T>>,
+fn to_const_range(start: Option<Option<ConstVal>>,
+                    end: Option<Option<ConstVal>>,
                     limits: RangeLimits,
                     array_size: u64)
                     -> Option<(u64, u64)> {
     let start = match start {
-        Some(Ok(ConstVal::Uint(x))) => x,
+        Some(Some(ConstVal::Uint(x))) => x,
         Some(_) => return None,
         None => 0,
     };
 
     let end = match end {
-        Some(Ok(ConstVal::Uint(x))) => {
+        Some(Some(ConstVal::Uint(x))) => {
             if limits == RangeLimits::Closed {
                 x
             } else {
