@@ -251,7 +251,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // In that case, we check each argument against "error" in order to
             // set up all the node type bindings.
             error_fn_sig = ty::Binder(ty::FnSig {
-                inputs: err_args(fcx.tcx(), arg_exprs.len()),
+                inputs: err_args(fcx, arg_exprs.len()),
                 output: ty::FnConverging(fcx.tcx().types.err),
                 variadic: false
             });

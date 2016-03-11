@@ -338,7 +338,7 @@ pub fn ast_path_substs_for_ty<'tcx>(
         }
     };
 
-    prohibit_projections(this.tcx(), &assoc_bindings);
+    assoc_bindings.first().map(|b| prohibit_projection(this.tcx(), b.span));
 
     create_substs_for_ast_path(this,
                                span,
@@ -580,10 +580,11 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 /// Returns the appropriate lifetime to use for any output lifetimes
 /// (if one exists) and a vector of the (pattern, number of lifetimes)
 /// corresponding to each input type/pattern.
-fn find_implied_output_region<'tcx>(tcx: &TyCtxt<'tcx>,
+fn find_implied_output_region<'tcx>(this: &AstConv<'tcx>,
                                     input_tys: &[Ty<'tcx>],
                                     input_pats: Vec<String>) -> ElidedLifetime
 {
+    let tcx = this.tcx();
     let mut lifetimes_for_params = Vec::new();
     let mut possible_implied_output_region = None;
 
@@ -655,7 +656,7 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
                    .collect::<Vec<Ty<'tcx>>>();
 
     let input_params = vec![String::new(); inputs.len()];
-    let implied_output_region = find_implied_output_region(this.tcx(), &inputs, input_params);
+    let implied_output_region = find_implied_output_region(this, &inputs, input_params);
 
     let input_ty = this.tcx().mk_tup(inputs);
 
@@ -824,7 +825,7 @@ fn ast_path_to_mono_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
                                         trait_def_id,
                                         self_ty,
                                         trait_segment);
-    prohibit_projections(this.tcx(), &assoc_bindings);
+    assoc_bindings.first().map(|b| prohibit_projection(this.tcx(), b.span));
     ty::TraitRef::new(trait_def_id, substs)
 }
 
@@ -960,7 +961,7 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
         }
     }
 
-    let candidate = one_bound_for_assoc_type(tcx,
+    let candidate = one_bound_for_assoc_type(this,
                                              candidates,
                                              &trait_ref.to_string(),
                                              &binding.item_name.as_str(),
@@ -1219,7 +1220,7 @@ fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
         .filter(|b| this.trait_defines_associated_type_named(b.def_id(), assoc_name))
         .collect();
 
-    one_bound_for_assoc_type(tcx,
+    one_bound_for_assoc_type(this,
                              suitable_bounds,
                              &ty_param_name.as_str(),
                              &assoc_name.as_str(),
@@ -1229,7 +1230,7 @@ fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
 
 // Checks that bounds contains exactly one element and reports appropriate
 // errors otherwise.
-fn one_bound_for_assoc_type<'tcx>(tcx: &TyCtxt<'tcx>,
+fn one_bound_for_assoc_type<'tcx>(this: &AstConv<'tcx>,
                                   bounds: Vec<ty::PolyTraitRef<'tcx>>,
                                   ty_param_name: &str,
                                   assoc_name: &str,
@@ -1237,7 +1238,7 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &TyCtxt<'tcx>,
     -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
 {
     if bounds.is_empty() {
-        span_err!(tcx.sess, span, E0220,
+        span_err!(this.tcx().sess, span, E0220,
                   "associated type `{}` not found for `{}`",
                   assoc_name,
                   ty_param_name);
@@ -1245,7 +1246,7 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 
     if bounds.len() > 1 {
-        let mut err = struct_span_err!(tcx.sess, span, E0221,
+        let mut err = struct_span_err!(this.tcx().sess, span, E0221,
                                        "ambiguous associated type `{}` in bounds of `{}`",
                                        assoc_name,
                                        ty_param_name);
@@ -1305,7 +1306,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                                      assoc_name))
                 .collect();
 
-            match one_bound_for_assoc_type(tcx,
+            match one_bound_for_assoc_type(this,
                                            candidates,
                                            "Self",
                                            &assoc_name.as_str(),
@@ -1814,7 +1815,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     // have that lifetime.
     let implied_output_region = match explicit_self_category {
         Some(ty::ExplicitSelfCategory::ByReference(region, _)) => Ok(region),
-        _ => find_implied_output_region(this.tcx(), &arg_tys, arg_pats)
+        _ => find_implied_output_region(this, &arg_tys, arg_pats)
     };
 
     let output_ty = match decl.output {
@@ -2205,14 +2206,6 @@ pub fn partition_bounds<'a>(tcx: &TyCtxt,
         builtin_bounds: builtin_bounds,
         trait_bounds: trait_bounds,
         region_bounds: region_bounds,
-    }
-}
-
-fn prohibit_projections<'tcx>(tcx: &TyCtxt<'tcx>,
-                              bindings: &[ConvertedBinding<'tcx>])
-{
-    for binding in bindings.iter().take(1) {
-        prohibit_projection(tcx, binding.span);
     }
 }
 

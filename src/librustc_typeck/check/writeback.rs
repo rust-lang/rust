@@ -195,7 +195,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
 
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
-        write_ty_to_tcx(self.tcx(), l.id, var_ty);
+        write_ty_to_tcx(self.fcx.ccx, l.id, var_ty);
         intravisit::walk_local(self, l);
     }
 
@@ -203,7 +203,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         match t.node {
             hir::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);
-                write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.usize);
+                write_ty_to_tcx(self.fcx.ccx, count_expr.id, self.tcx().types.usize);
             }
             hir::TyBareFn(ref function_declaration) => {
                 intravisit::walk_fn_decl_nopat(self, &function_declaration.decl);
@@ -263,12 +263,12 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         // Resolve the type of the node with id `id`
         let n_ty = self.fcx.node_ty(id);
         let n_ty = self.resolve(&n_ty, reason);
-        write_ty_to_tcx(self.tcx(), id, n_ty);
+        write_ty_to_tcx(self.fcx.ccx, id, n_ty);
         debug!("Node {} has type {:?}", id, n_ty);
 
         // Resolve any substitutions
         self.fcx.opt_node_ty_substs(id, |item_substs| {
-            write_substs_to_tcx(self.tcx(), id,
+            write_substs_to_tcx(self.fcx.ccx, id,
                                 self.resolve(item_substs, reason));
         });
     }

@@ -414,7 +414,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 
         let _ = ::require_same_types(
-            fcx.tcx(), Some(fcx.infcx()), false, span,
+            fcx.ccx, Some(fcx.infcx()), span,
             sig.inputs[0], rcvr_ty,
             "mismatched method receiver");
     }
@@ -435,8 +435,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                      .map(|p| Parameter::Type(p))
                      .collect();
 
-        identify_constrained_type_params(self.tcx(),
-                                         ty_predicates.predicates.as_slice(),
+        identify_constrained_type_params(ty_predicates.predicates.as_slice(),
                                          None,
                                          &mut constrained_parameters);
 
@@ -494,7 +493,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                          span: Span,
                          param_name: ast::Name)
     {
-        let mut err = error_392(self.tcx(), span, param_name);
+        let mut err = error_392(self.ccx, span, param_name);
 
         let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
@@ -512,9 +511,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 }
 
-fn reject_shadowing_type_parameters<'tcx>(tcx: &TyCtxt<'tcx>,
-                                          span: Span,
-                                          generics: &ty::Generics<'tcx>) {
+fn reject_shadowing_type_parameters(tcx: &TyCtxt, span: Span, generics: &ty::Generics) {
     let impl_params = generics.types.get_slice(subst::TypeSpace).iter()
         .map(|tp| tp.name).collect::<HashSet<_>>();
 
@@ -607,25 +604,25 @@ fn impl_implied_bounds<'fcx,'tcx>(fcx: &FnCtxt<'fcx, 'tcx>,
     }
 }
 
-pub fn error_192<'ccx,'tcx>(ccx: &'ccx CrateCtxt<'ccx, 'tcx>, span: Span) {
+fn error_192(ccx: &CrateCtxt, span: Span) {
     span_err!(ccx.tcx.sess, span, E0192,
               "negative impls are only allowed for traits with \
                default impls (e.g., `Send` and `Sync`)")
 }
 
-pub fn error_380<'ccx,'tcx>(ccx: &'ccx CrateCtxt<'ccx, 'tcx>, span: Span) {
+fn error_380(ccx: &CrateCtxt, span: Span) {
     span_err!(ccx.tcx.sess, span, E0380,
               "traits with default impls (`e.g. unsafe impl \
                Trait for ..`) must have no methods or associated items")
 }
 
-pub fn error_392<'tcx>(tcx: &TyCtxt<'tcx>, span: Span, param_name: ast::Name)
+fn error_392<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, param_name: ast::Name)
                        -> DiagnosticBuilder<'tcx> {
-    struct_span_err!(tcx.sess, span, E0392,
+    struct_span_err!(ccx.tcx.sess, span, E0392,
                      "parameter `{}` is never used", param_name)
 }
 
-pub fn error_194<'tcx>(tcx: &TyCtxt<'tcx>, span: Span, name: ast::Name) {
+fn error_194(tcx: &TyCtxt, span: Span, name: ast::Name) {
     span_err!(tcx.sess, span, E0194,
               "type parameter `{}` shadows another type parameter of the same name",
               name);

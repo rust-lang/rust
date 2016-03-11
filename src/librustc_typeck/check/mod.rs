@@ -413,7 +413,7 @@ pub fn check_drop_impls(ccx: &CrateCtxt) -> CompileResult {
         drop_trait.for_each_impl(ccx.tcx, |drop_impl_did| {
             let _task = ccx.tcx.dep_graph.in_task(DepNode::DropckImpl(drop_impl_did));
             if drop_impl_did.is_local() {
-                match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
+                match dropck::check_drop_impl(ccx, drop_impl_did) {
                     Ok(()) => {}
                     Err(()) => {
                         assert!(ccx.tcx.sess.has_errors());
@@ -947,7 +947,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
                     // Find associated const definition.
                     if let &ty::ConstTraitItem(ref trait_const) = ty_trait_item {
-                        compare_const_impl(ccx.tcx,
+                        compare_const_impl(ccx,
                                            &impl_const,
                                            impl_item.span,
                                            trait_const,
@@ -969,7 +969,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     };
 
                     if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
-                        compare_impl_method(ccx.tcx,
+                        compare_impl_method(ccx,
                                             &impl_method,
                                             impl_item.span,
                                             body.id,
@@ -2116,7 +2116,7 @@ pub fn autoderef<'a, 'b, 'tcx, E, I, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let method_call = MethodCall::autoderef(expr.id, autoderefs as u32);
                 fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
             }
-            make_overloaded_lvalue_return_type(fcx.tcx(), method)
+            make_overloaded_lvalue_return_type(fcx, method)
         } else {
             return (resolved_t, autoderefs, None);
         };
@@ -2167,14 +2167,14 @@ fn try_overloaded_deref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// For the overloaded lvalue expressions (`*x`, `x[3]`), the trait returns a type of `&T`, but the
 /// actual type we assign to the *expression* is `T`. So this function just peels off the return
 /// type by one layer to yield `T`.
-fn make_overloaded_lvalue_return_type<'tcx>(tcx: &TyCtxt<'tcx>,
-                                            method: MethodCallee<'tcx>)
-                                            -> ty::TypeAndMut<'tcx>
+fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                                method: MethodCallee<'tcx>)
+                                                -> ty::TypeAndMut<'tcx>
 {
     // extract method return type, which will be &T;
     // all LB regions should have been instantiated during method lookup
     let ret_ty = method.ty.fn_ret();
-    let ret_ty = tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap();
+    let ret_ty = fcx.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap();
 
     // method returns &T, but the type as visible to user is T, so deref
     ret_ty.builtin_deref(true, NoPreference).unwrap()
@@ -2295,7 +2295,7 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     method.map(|method| {
         debug!("try_index_step: success, using overloaded indexing");
         fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
-        (input_ty, make_overloaded_lvalue_return_type(fcx.tcx(), method).ty)
+        (input_ty, make_overloaded_lvalue_return_type(fcx, method).ty)
     })
 }
 
@@ -2308,7 +2308,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          expected: Expectation<'tcx>)
                                          -> ty::FnOutput<'tcx> {
     if method_fn_ty.references_error() {
-        let err_inputs = err_args(fcx.tcx(), args_no_rcvr.len());
+        let err_inputs = err_args(fcx, args_no_rcvr.len());
 
         let err_inputs = match tuple_arguments {
             DontTupleArguments => err_inputs,
@@ -2387,7 +2387,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         args.len(),
                         if args.len() == 1 {" was"} else {"s were"});
                     expected_arg_tys = &[];
-                    err_args(fcx.tcx(), args.len())
+                    err_args(fcx, args.len())
                 } else {
                     expected_arg_tys = match expected_arg_tys.get(0) {
                         Some(&ty) => match ty.sty {
@@ -2404,7 +2404,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     "cannot use call notation; the first type parameter \
                      for the function trait is neither a tuple nor unit");
                 expected_arg_tys = &[];
-                err_args(fcx.tcx(), args.len())
+                err_args(fcx, args.len())
             }
         }
     } else if expected_arg_count == supplied_arg_count {
@@ -2421,7 +2421,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 supplied_arg_count,
                 if supplied_arg_count == 1 {" was"} else {"s were"});
             expected_arg_tys = &[];
-            err_args(fcx.tcx(), supplied_arg_count)
+            err_args(fcx, supplied_arg_count)
         }
     } else {
         span_err!(tcx.sess, sp, E0061,
@@ -2431,7 +2431,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             supplied_arg_count,
             if supplied_arg_count == 1 {" was"} else {"s were"});
         expected_arg_tys = &[];
-        err_args(fcx.tcx(), supplied_arg_count)
+        err_args(fcx, supplied_arg_count)
     };
 
     debug!("check_argument_types: formal_tys={:?}",
@@ -2490,7 +2490,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
                 let expected = expected_arg_tys.get(i).map(|&ty| {
-                    Expectation::rvalue_hint(fcx.tcx(), ty)
+                    Expectation::rvalue_hint(fcx, ty)
                 });
 
                 check_expr_with_expectation(fcx, &arg,
@@ -2571,9 +2571,8 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-// FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
-fn err_args<'tcx>(tcx: &TyCtxt<'tcx>, len: usize) -> Vec<Ty<'tcx>> {
-    (0..len).map(|_| tcx.types.err).collect()
+fn err_args<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, len: usize) -> Vec<Ty<'tcx>> {
+    (0..len).map(|_| fcx.tcx().types.err).collect()
 }
 
 fn write_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -3241,7 +3240,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       hir::ExprBox(ref subexpr) => {
         let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
             match ty.sty {
-                ty::TyBox(ty) => Expectation::rvalue_hint(tcx, ty),
+                ty::TyBox(ty) => Expectation::rvalue_hint(fcx, ty),
                 _ => NoExpectation
             }
         });
@@ -3286,7 +3285,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         oprnd_t = mt.ty;
                     } else if let Some(method) = try_overloaded_deref(
                             fcx, expr.span, Some(&oprnd), oprnd_t, lvalue_pref) {
-                        oprnd_t = make_overloaded_lvalue_return_type(tcx, method).ty;
+                        oprnd_t = make_overloaded_lvalue_return_type(fcx, method).ty;
                         fcx.inh.tables.borrow_mut().method_map.insert(MethodCall::expr(expr.id),
                                                                       method);
                     } else {
@@ -3329,7 +3328,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         // the last field of a struct can be unsized.
                         ExpectHasType(mt.ty)
                     } else {
-                        Expectation::rvalue_hint(tcx, mt.ty)
+                        Expectation::rvalue_hint(fcx, mt.ty)
                     }
                 }
                 _ => NoExpectation
@@ -3810,8 +3809,8 @@ impl<'tcx> Expectation<'tcx> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
-        match tcx.struct_tail(ty).sty {
+    fn rvalue_hint<'a>(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
+        match fcx.tcx().struct_tail(ty).sty {
             ty::TySlice(_) | ty::TyStr | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
             }

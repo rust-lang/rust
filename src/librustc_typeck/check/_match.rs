@@ -116,7 +116,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             // Check that the types of the end-points can be unified.
             let types_unify = require_same_types(
-                tcx, Some(fcx.infcx()), false, pat.span, rhs_ty, lhs_ty,
+                fcx.ccx, Some(fcx.infcx()), pat.span, rhs_ty, lhs_ty,
                 "mismatched types in range",
             );
 

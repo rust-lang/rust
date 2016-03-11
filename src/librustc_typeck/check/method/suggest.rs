@@ -233,10 +233,10 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 CandidateSource::ImplSource(impl_did) => {
                     // Provide the best span we can. Use the item, if local to crate, else
                     // the impl, if local to crate (item may be defaulted), else nothing.
-                    let item = impl_item(fcx.tcx(), impl_did, item_name)
+                    let item = impl_item(fcx, impl_did, item_name)
                         .or_else(|| {
                             trait_item(
-                                fcx.tcx(),
+                                fcx,
                                 fcx.tcx().impl_trait_ref(impl_did).unwrap().def_id,
                                 item_name
                             )
@@ -268,7 +268,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     }
                 }
                 CandidateSource::TraitSource(trait_did) => {
-                    let item = trait_item(fcx.tcx(), trait_did, item_name).unwrap();
+                    let item = trait_item(fcx, trait_did, item_name).unwrap();
                     let item_span = fcx.tcx().map.def_id_span(item.def_id(), span);
                     span_note!(err, item_span,
                                "candidate #{} is defined in the trait `{}`",
@@ -291,8 +291,6 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       rcvr_expr: Option<&hir::Expr>,
                                       valid_out_of_scope_traits: Vec<DefId>)
 {
-    let tcx = fcx.tcx();
-
     if !valid_out_of_scope_traits.is_empty() {
         let mut candidates = valid_out_of_scope_traits;
         candidates.sort();
@@ -328,7 +326,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             // implementing a trait would be legal but is rejected
             // here).
             (type_is_local || info.def_id.is_local())
-                && trait_item(tcx, info.def_id, item_name).is_some()
+                && trait_item(fcx, info.def_id, item_name).is_some()
         })
         .collect::<Vec<_>>();
 

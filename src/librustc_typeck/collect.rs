@@ -87,9 +87,7 @@ use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 
-use syntax::abi;
-use syntax::ast;
-use syntax::attr;
+use syntax::{abi, ast, attr};
 use syntax::codemap::Span;
 use syntax::parse::token::keywords;
 use syntax::ptr::P;
@@ -565,7 +563,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     });
     ccx.tcx.predicates.borrow_mut().insert(def_id, ty_method.predicates.clone());
 
-    write_ty_to_tcx(ccx.tcx, id, fty);
+    write_ty_to_tcx(ccx, id, fty);
 
     debug!("writing method type: def_id={:?} mty={:?}",
             def_id, ty_method);
@@ -582,7 +580,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 {
     let tt = ccx.icx(struct_predicates).to_ty(&ExplicitRscope, &field.ty);
     ty_f.fulfill_ty(tt);
-    write_ty_to_tcx(ccx.tcx, field.id, tt);
+    write_ty_to_tcx(ccx, field.id, tt);
 
     /* add the field to the tcache */
     ccx.tcx.register_item_type(ccx.tcx.map.local_def_id(field.id),
@@ -606,7 +604,7 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     ccx.tcx.predicates.borrow_mut().insert(ccx.tcx.map.local_def_id(id),
                                            ty::GenericPredicates::empty());
 
-    write_ty_to_tcx(ccx.tcx, id, ty);
+    write_ty_to_tcx(ccx, id, ty);
 
     let associated_const = Rc::new(ty::AssociatedConst {
         name: name,
@@ -684,7 +682,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
         }
         hir::ItemEnum(ref enum_definition, _) => {
             let (scheme, predicates) = convert_typed_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, scheme.ty);
+            write_ty_to_tcx(ccx, it.id, scheme.ty);
             convert_enum_variant_types(ccx,
                                        tcx.lookup_adt_def_master(ccx.tcx.map.local_def_id(it.id)),
                                        scheme,
@@ -717,7 +715,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             debug!("convert: impl_bounds={:?}", ty_predicates);
 
             let selfty = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, &selfty);
-            write_ty_to_tcx(tcx, it.id, selfty);
+            write_ty_to_tcx(ccx, it.id, selfty);
 
             tcx.register_item_type(def_id,
                                    TypeScheme { generics: ty_generics.clone(),
@@ -730,7 +728,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             });
             tcx.impl_trait_refs.borrow_mut().insert(def_id, trait_ref);
 
-            enforce_impl_params_are_constrained(tcx, generics, &mut ty_predicates, def_id);
+            enforce_impl_params_are_constrained(ccx, generics, &mut ty_predicates, def_id);
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
 
 
@@ -807,7 +805,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                 }
             }
 
-            enforce_impl_lifetimes_are_constrained(tcx, generics, def_id, impl_items);
+            enforce_impl_lifetimes_are_constrained(ccx, generics, def_id, impl_items);
         },
         hir::ItemTrait(_, _, _, ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -891,7 +889,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
         },
         hir::ItemStruct(ref struct_def, _) => {
             let (scheme, predicates) = convert_typed_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, scheme.ty);
+            write_ty_to_tcx(ccx, it.id, scheme.ty);
 
             let it_def_id = ccx.tcx.map.local_def_id(it.id);
             let variant = tcx.lookup_adt_def_master(it_def_id).struct_variant();
@@ -907,14 +905,14 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
         hir::ItemTy(_, ref generics) => {
             ensure_no_ty_param_bounds(ccx, it.span, generics, "type");
             let (scheme, _) = convert_typed_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, scheme.ty);
+            write_ty_to_tcx(ccx, it.id, scheme.ty);
         },
         _ => {
             // This call populates the type cache with the converted type
             // of the item in passing. All we have to do here is to write
             // it into the node type table.
             let (scheme, _) = convert_typed_item(ccx, it);
-            write_ty_to_tcx(tcx, it.id, scheme.ty);
+            write_ty_to_tcx(ccx, it.id, scheme.ty);
         },
     }
 }
@@ -946,7 +944,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             })
         }
     };
-    write_ty_to_tcx(tcx, ctor_id, ctor_ty);
+    write_ty_to_tcx(ccx, ctor_id, ctor_ty);
     tcx.predicates.borrow_mut().insert(tcx.map.local_def_id(ctor_id), predicates);
     tcx.register_item_type(tcx.map.local_def_id(ctor_id),
                            TypeScheme {
@@ -978,18 +976,19 @@ fn convert_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn convert_struct_variant<'tcx>(tcx: &TyCtxt<'tcx>,
-                                did: DefId,
-                                name: ast::Name,
-                                disr_val: ty::Disr,
-                                def: &hir::VariantData) -> ty::VariantDefData<'tcx, 'tcx> {
+fn convert_struct_variant<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                    did: DefId,
+                                    name: ast::Name,
+                                    disr_val: ty::Disr,
+                                    def: &hir::VariantData)
+                                    -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
-    let node_id = tcx.map.as_local_node_id(did).unwrap();
+    let node_id = ccx.tcx.map.as_local_node_id(did).unwrap();
     let fields = def.fields().iter().map(|f| {
-        let fid = tcx.map.local_def_id(f.id);
+        let fid = ccx.tcx.map.local_def_id(f.id);
         let dup_span = seen_fields.get(&f.name).cloned();
         if let Some(prev_span) = dup_span {
-            let mut err = struct_span_err!(tcx.sess, f.span, E0124,
+            let mut err = struct_span_err!(ccx.tcx.sess, f.span, E0124,
                                            "field `{}` is already declared",
                                            f.name);
             span_note!(&mut err, prev_span, "previously declared here");
@@ -998,7 +997,8 @@ fn convert_struct_variant<'tcx>(tcx: &TyCtxt<'tcx>,
             seen_fields.insert(f.name, f.span);
         }
 
-        ty::FieldDefData::new(fid, f.name, ty::Visibility::from_hir(&f.vis, node_id, tcx))
+        ty::FieldDefData::new(fid, f.name,
+            ty::Visibility::from_hir(&f.vis, node_id, ccx.tcx))
     }).collect();
     ty::VariantDefData {
         did: did,
@@ -1009,71 +1009,63 @@ fn convert_struct_variant<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 }
 
-fn convert_struct_def<'tcx>(tcx: &TyCtxt<'tcx>,
-                            it: &hir::Item,
-                            def: &hir::VariantData)
-                            -> ty::AdtDefMaster<'tcx>
+fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                it: &hir::Item,
+                                def: &hir::VariantData)
+                                -> ty::AdtDefMaster<'tcx>
 {
 
-    let did = tcx.map.local_def_id(it.id);
+    let did = ccx.tcx.map.local_def_id(it.id);
     let ctor_id = if !def.is_struct() {
-        tcx.map.local_def_id(def.id())
+        ccx.tcx.map.local_def_id(def.id())
     } else {
         did
     };
-    tcx.intern_adt_def(
-        did,
-        ty::AdtKind::Struct,
-        vec![convert_struct_variant(tcx, ctor_id, it.name, ConstInt::Infer(0), def)]
-    )
+    ccx.tcx.intern_adt_def(did, ty::AdtKind::Struct,
+        vec![convert_struct_variant(ccx, ctor_id, it.name, ConstInt::Infer(0), def)])
 }
 
-fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
-                          it: &hir::Item,
-                          def: &hir::EnumDef)
-                          -> ty::AdtDefMaster<'tcx>
-{
-    fn print_err(tcx: &TyCtxt, span: Span, ty: ty::Ty, cv: ConstVal) {
-        struct_span_err!(tcx.sess, span, E0079, "mismatched types")
-            .note_expected_found(&"type", &ty, &format!("{}", cv.description()))
-            .emit();
-    }
-    fn evaluate_disr_expr<'tcx>(tcx: &TyCtxt<'tcx>,
-                                repr_ty: attr::IntType,
-                                e: &hir::Expr) -> Option<ty::Disr> {
+    fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, e: &hir::Expr)
+                          -> Option<ty::Disr> {
         debug!("disr expr, checking {}", pprust::expr_to_string(e));
 
-        let ty_hint = repr_ty.to_ty(tcx);
+        let ty_hint = repr_ty.to_ty(ccx.tcx);
+        let print_err = |cv: ConstVal| {
+            struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
+                .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
+                .emit();
+        };
+
         let hint = UncheckedExprHint(ty_hint);
-        match eval_const_expr_partial(tcx, e, hint, None) {
+        match eval_const_expr_partial(ccx.tcx, e, hint, None) {
             Ok(ConstVal::Integral(i)) => {
                 // FIXME: eval_const_expr_partial should return an error if the hint is wrong
                 match (repr_ty, i) {
-                    (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) => Some(i),
-                    (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) => Some(i),
-                    (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => Some(i),
-                    (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => Some(i),
-                    (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => Some(i),
-                    (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => Some(i),
-                    (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => Some(i),
-                    (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => Some(i),
-                    (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => Some(i),
+                    (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) |
+                    (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |
+                    (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) |
+                    (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) |
+                    (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) |
+                    (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) |
+                    (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) |
+                    (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) |
+                    (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) |
                     (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => Some(i),
                     (_, i) => {
-                        print_err(tcx, e.span, ty_hint, ConstVal::Integral(i));
+                        print_err(ConstVal::Integral(i));
                         None
                     },
                 }
             },
             Ok(cv) => {
-                print_err(tcx, e.span, ty_hint, cv);
+                print_err(cv);
                 None
             },
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error
             Err(ConstEvalErr { kind: ErroneousReferencedConstant(box err), ..}) |
             Err(err) => {
-                let mut diag = struct_span_err!(tcx.sess, err.span, E0080,
+                let mut diag = struct_span_err!(ccx.tcx.sess, err.span, E0080,
                                                 "constant evaluation error: {}",
                                                 err.description());
                 if !e.span.contains(err.span) {
@@ -1085,54 +1077,34 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     }
 
-    fn report_discrim_overflow(tcx: &TyCtxt,
-                               variant_span: Span,
-                               variant_name: &str,
-                               prev_val: ty::Disr) {
-        span_err!(tcx.sess, variant_span, E0370,
-                  "enum discriminant overflowed on value after {}; \
-                   set explicitly via {} = {} if that is desired outcome",
-                  prev_val, variant_name, prev_val.wrap_incr());
-    }
-
-    fn next_disr(tcx: &TyCtxt,
-                 v: &hir::Variant,
-                 repr_type: attr::IntType,
-                 prev_disr_val: Option<ty::Disr>) -> Option<ty::Disr> {
-        if let Some(prev_disr_val) = prev_disr_val {
-            let result = repr_type.disr_incr(prev_disr_val);
-            if let None = result {
-                report_discrim_overflow(tcx, v.span, &v.node.name.as_str(), prev_disr_val);
-            }
-            result
-        } else {
-            Some(repr_type.initial_discriminant(tcx))
-        }
-    }
-    fn convert_enum_variant<'tcx>(tcx: &TyCtxt<'tcx>,
-                                  v: &hir::Variant,
-                                  disr: ty::Disr)
-                                  -> ty::VariantDefData<'tcx, 'tcx>
-    {
-        let did = tcx.map.local_def_id(v.node.data.id());
-        let name = v.node.name;
-        convert_struct_variant(tcx, did, name, disr, &v.node.data)
-    }
+fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                              it: &hir::Item,
+                              def: &hir::EnumDef)
+                              -> ty::AdtDefMaster<'tcx>
+{
+    let tcx = ccx.tcx;
     let did = tcx.map.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);
     let repr_type = tcx.enum_repr_type(repr_hints.get(0));
-    let mut prev_disr = None;
+    let initial = repr_type.initial_discriminant(tcx);
+    let mut prev_disr = None::<ty::Disr>;
     let variants = def.variants.iter().map(|v| {
-        let disr = match v.node.disr_expr {
-            Some(ref e) => evaluate_disr_expr(tcx, repr_type, e),
-            None => next_disr(tcx, v, repr_type, prev_disr)
-        }.unwrap_or_else(|| {
-            prev_disr.map(ty::Disr::wrap_incr)
-                     .unwrap_or(repr_type.initial_discriminant(tcx))
-        });
-
+        let wrapped_disr = prev_disr.map_or(initial, |d| d.wrap_incr());
+        let disr = if let Some(ref e) = v.node.disr_expr {
+            evaluate_disr_expr(ccx, repr_type, e)
+        } else if let Some(disr) = repr_type.disr_incr(tcx, prev_disr) {
+            Some(disr)
+        } else {
+            span_err!(tcx.sess, v.span, E0370,
+                      "enum discriminant overflowed on value after {}; \
+                       set explicitly via {} = {} if that is desired outcome",
+                      prev_disr.unwrap(), v.node.name, wrapped_disr);
+            None
+        }.unwrap_or(wrapped_disr);
         prev_disr = Some(disr);
-        convert_enum_variant(tcx, v, disr)
+
+        let did = tcx.map.local_def_id(v.node.data.id());
+        convert_struct_variant(ccx, did, v.node.name, disr, &v.node.data)
     }).collect();
     tcx.intern_adt_def(tcx.map.local_def_id(it.id), ty::AdtKind::Enum, variants)
 }
@@ -1471,16 +1443,16 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemEnum(ref ei, ref generics) => {
+            let def = convert_enum_def(ccx, it, ei);
             let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let def = convert_enum_def(tcx, it, ei);
             let t = tcx.mk_enum(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         hir::ItemStruct(ref si, ref generics) => {
+            let def = convert_struct_def(ccx, it, si);
             let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let def = convert_struct_def(tcx, it, si);
             let t = tcx.mk_struct(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
@@ -1606,7 +1578,7 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let abi = tcx.map.get_foreign_abi(it.id);
 
     let scheme = type_scheme_of_foreign_item(ccx, it, abi);
-    write_ty_to_tcx(ccx.tcx, it.id, scheme.ty);
+    write_ty_to_tcx(ccx, it.id, scheme.ty);
 
     let predicates = match it.node {
         hir::ForeignItemFn(_, ref generics) => {
@@ -2229,13 +2201,13 @@ fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 /// Checks that all the type parameters on an impl
-fn enforce_impl_params_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
-                                             ast_generics: &hir::Generics,
-                                             impl_predicates: &mut ty::GenericPredicates<'tcx>,
-                                             impl_def_id: DefId)
+fn enforce_impl_params_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                                 ast_generics: &hir::Generics,
+                                                 impl_predicates: &mut ty::GenericPredicates<'tcx>,
+                                                 impl_def_id: DefId)
 {
-    let impl_scheme = tcx.lookup_item_type(impl_def_id);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+    let impl_scheme = ccx.tcx.lookup_item_type(impl_def_id);
+    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
     assert!(impl_predicates.predicates.is_empty_in(FnSpace));
     assert!(impl_predicates.predicates.is_empty_in(SelfSpace));
@@ -2249,8 +2221,7 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
         input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref, false));
     }
 
-    ctp::setup_constraining_predicates(tcx,
-                                       impl_predicates.predicates.get_mut_slice(TypeSpace),
+    ctp::setup_constraining_predicates(impl_predicates.predicates.get_mut_slice(TypeSpace),
                                        impl_trait_ref,
                                        &mut input_parameters);
 
@@ -2259,42 +2230,41 @@ fn enforce_impl_params_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
                                      idx: index as u32,
                                      name: ty_param.name };
         if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
-            report_unused_parameter(tcx, ty_param.span, "type", &param_ty.to_string());
+            report_unused_parameter(ccx, ty_param.span, "type", &param_ty.to_string());
         }
     }
 }
 
-fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
-                                                ast_generics: &hir::Generics,
-                                                impl_def_id: DefId,
-                                                impl_items: &[hir::ImplItem])
+fn enforce_impl_lifetimes_are_constrained<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                                    ast_generics: &hir::Generics,
+                                                    impl_def_id: DefId,
+                                                    impl_items: &[hir::ImplItem])
 {
     // Every lifetime used in an associated type must be constrained.
-    let impl_scheme = tcx.lookup_item_type(impl_def_id);
-    let impl_predicates = tcx.lookup_predicates(impl_def_id);
-    let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
+    let impl_scheme = ccx.tcx.lookup_item_type(impl_def_id);
+    let impl_predicates = ccx.tcx.lookup_predicates(impl_def_id);
+    let impl_trait_ref = ccx.tcx.impl_trait_ref(impl_def_id);
 
     let mut input_parameters: HashSet<_> =
         ctp::parameters_for_type(impl_scheme.ty, false).into_iter().collect();
     if let Some(ref trait_ref) = impl_trait_ref {
         input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref, false));
     }
-    ctp::identify_constrained_type_params(tcx,
+    ctp::identify_constrained_type_params(
         &impl_predicates.predicates.as_slice(), impl_trait_ref, &mut input_parameters);
 
-    let lifetimes_in_associated_types: HashSet<_> =
-        impl_items.iter()
-                  .map(|item| tcx.impl_or_trait_item(tcx.map.local_def_id(item.id)))
-                  .filter_map(|item| match item {
-                      ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
-                      ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
-                  })
-                  .flat_map(|ty| ctp::parameters_for_type(ty, true))
-                  .filter_map(|p| match p {
-                      ctp::Parameter::Type(_) => None,
-                      ctp::Parameter::Region(r) => Some(r),
-                  })
-                  .collect();
+    let lifetimes_in_associated_types: HashSet<_> = impl_items.iter()
+        .map(|item| ccx.tcx.impl_or_trait_item(ccx.tcx.map.local_def_id(item.id)))
+        .filter_map(|item| match item {
+            ty::TypeTraitItem(ref assoc_ty) => assoc_ty.ty,
+            ty::ConstTraitItem(..) | ty::MethodTraitItem(..) => None
+        })
+        .flat_map(|ty| ctp::parameters_for_type(ty, true))
+        .filter_map(|p| match p {
+            ctp::Parameter::Type(_) => None,
+            ctp::Parameter::Region(r) => Some(r),
+        })
+        .collect();
 
     for (index, lifetime_def) in ast_generics.lifetimes.iter().enumerate() {
         let region = ty::EarlyBoundRegion { space: TypeSpace,
@@ -2304,7 +2274,7 @@ fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
             lifetimes_in_associated_types.contains(&region) && // (*)
             !input_parameters.contains(&ctp::Parameter::Region(region))
         {
-            report_unused_parameter(tcx, lifetime_def.lifetime.span,
+            report_unused_parameter(ccx, lifetime_def.lifetime.span,
                                     "lifetime", &region.name.to_string());
         }
     }
@@ -2329,12 +2299,12 @@ fn enforce_impl_lifetimes_are_constrained<'tcx>(tcx: &TyCtxt<'tcx>,
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: &TyCtxt,
+fn report_unused_parameter(ccx: &CrateCtxt,
                            span: Span,
                            kind: &str,
                            name: &str)
 {
-    span_err!(tcx.sess, span, E0207,
+    span_err!(ccx.tcx.sess, span, E0207,
               "the {} parameter `{}` is not constrained by the \
                impl trait, self type, or predicates",
               kind, name);
