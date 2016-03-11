@@ -75,9 +75,9 @@ pub struct Overlap<'a, 'tcx: 'a> {
 /// resolved.
 pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                   source_impl: DefId,
-                                  source_substs: Substs<'tcx>,
+                                  source_substs: &'tcx Substs<'tcx>,
                                   target_node: specialization_graph::Node)
-                                  -> Substs<'tcx> {
+                                  -> &'tcx Substs<'tcx> {
     let source_trait_ref = infcx.tcx
                                 .impl_trait_ref(source_impl)
                                 .unwrap()
@@ -111,7 +111,7 @@ pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     };
 
     // directly inherent the method generics, since those do not vary across impls
-    target_substs.with_method_from_subst(&source_substs)
+    infcx.tcx.mk_substs(target_substs.with_method_from_subst(source_substs))
 }
 
 /// Is impl1 a specialization of impl2?
@@ -164,7 +164,7 @@ pub fn specializes(tcx: &TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> bo
     };
     penv.caller_bounds.extend(normalization_obligations.into_iter().map(|o| o.predicate));
 
-    // Install the parameter environment, which means we take the predicates of impl1 as assumptions:
+    // Install the parameter environment, taking the predicates of impl1 as assumptions:
     infcx.parameter_environment = penv;
 
     // Attempt to prove that impl2 applies, given all of the above.
@@ -217,7 +217,7 @@ fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                    infcx.parameter_environment.caller_bounds);
             Err(())
         } else {
-            debug!("fulfill_implication: an impl for {:?} specializes {:?} (`where` clauses elided)",
+            debug!("fulfill_implication: an impl for {:?} specializes {:?}",
                    source_trait_ref,
                    target_trait_ref);
 

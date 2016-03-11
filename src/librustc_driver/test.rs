@@ -22,6 +22,7 @@ use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
+use rustc_typeck::middle::traits::ProjectionMode;
 use rustc_typeck::middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_typeck::middle::ty::relate::TypeRelation;
 use rustc_typeck::middle::infer::{self, TypeOrigin};
@@ -143,7 +144,10 @@ fn test_env<F>(source_string: &str,
                                lang_items,
                                index,
                                |tcx| {
-                                   let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+                                   let infcx = infer::new_infer_ctxt(tcx,
+                                                                     &tcx.tables,
+                                                                     None,
+                                                                     ProjectionMode::AnyFinal);
                                    body(Env { infcx: &infcx });
                                    let free_regions = FreeRegionMap::new();
                                    infcx.resolve_regions_and_report_errors(&free_regions,

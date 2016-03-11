@@ -11,7 +11,6 @@
 //! See `README.md` for high-level documentation
 
 use super::{SelectionContext, Obligation, ObligationCause};
-use super::util;
 
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;

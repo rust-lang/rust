@@ -13,9 +13,12 @@
 //! constructor provide a method with the same name.
 
 use middle::cstore::CrateStore;
-use middle::traits;
+use middle::def_id::DefId;
+use middle::traits::{self, ProjectionMode};
+use middle::infer;
 use middle::ty::{self, TyCtxt};
 use syntax::ast;
+use syntax::codemap::Span;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use rustc_front::intravisit;
@@ -86,7 +89,10 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i+1)..] {
-                let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
+                let infcx = infer::new_infer_ctxt(self.tcx,
+                                                  &self.tcx.tables,
+                                                  None,
+                                                  ProjectionMode::Topmost);
                 if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
                     self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
                 }
@@ -117,7 +123,8 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                         self.tcx.span_of_impl(impl_def_id).unwrap(), E0519,
                         "redundant default implementations of trait `{}`:",
                         trait_ref);
-                    err.span_note(self.tcx.span_of_impl(self.tcx.map.local_def_id(prev_id)).unwrap(),
+                    err.span_note(self.tcx.span_of_impl(self.tcx.map.local_def_id(prev_id))
+                                      .unwrap(),
                                   "redundant implementation is here:");
                     err.emit();
                 }

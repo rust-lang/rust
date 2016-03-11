@@ -804,7 +804,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
                     convert_method(ccx, ImplContainer(def_id),
                                    impl_item.name, impl_item.id, method_vis,
-                                   sig, impl_item.defaultness, selfty, &ty_generics, &ty_predicates);
+                                   sig, impl_item.defaultness, selfty, &ty_generics,
+                                   &ty_predicates);
                 }
             }
 
