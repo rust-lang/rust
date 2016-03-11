@@ -604,6 +604,25 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         result.push_str(&trait_bound_str);
 
+        let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
+        let where_clause_str = try_opt!(rewrite_where_clause(context,
+                                                             &generics.where_clause,
+                                                             context.config,
+                                                             context.config.item_brace_style,
+                                                             context.block_indent,
+                                                             where_budget,
+                                                             context.config.where_density,
+                                                             "{",
+                                                             None));
+        if !where_clause_str.contains('\n') &&
+           result.len() + where_clause_str.len() + offset.width() > context.config.max_width {
+            result.push('\n');
+            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let where_indent = Indent::new(0, width);
+            result.push_str(&where_indent.to_string(context.config));
+        }
+        result.push_str(&where_clause_str);
+
         if trait_items.len() > 0 {
             result.push_str(" {");
         } else {
