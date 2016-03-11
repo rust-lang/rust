@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,8 +11,8 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::i686_unknown_linux_gnu::target();
+    let mut base = super::i686_pc_windows_msvc::target();
     base.options.cpu = "pentium".to_string();
-    base.llvm_target = "i586-unknown-linux-gnu".to_string();
+    base.llvm_target = "i586-pc-windows-msvc".to_string();
     return base
 }
