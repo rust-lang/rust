@@ -104,9 +104,13 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// Precondition: neither `a` nor `b` are known.
     pub fn relate_vars(&mut self, a: ty::TyVid, dir: RelationDir, b: ty::TyVid) {
         if a != b {
-            self.relations(a).push((dir, b));
-            self.relations(b).push((dir.opposite(), a));
-            self.values.record(Relate(a, b));
+            let new_rel = (dir, b);
+            // Don't add duplicate relations
+            if self.relations(a).iter().all(|rel| *rel != new_rel) {
+                self.relations(a).push(new_rel);
+                self.relations(b).push((dir.opposite(), a));
+                self.values.record(Relate(a, b));
+            }
         }
     }
 
@@ -130,7 +134,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
                                already instantiated")
         };
 
-        for &(dir, vid) in &relations {
+        // Variables which have already been proven to be `ty` does not need to be checked again
+        for &(dir, vid) in relations.iter().filter(|& &(_, vid)| self.probe(vid) != Some(ty)) {
             stack.push((ty, dir, vid));
         }
 
