@@ -61,7 +61,6 @@ use core::iter::FromIterator;
 use core::mem;
 use core::ops::{self, Add, Index, IndexMut};
 use core::ptr;
-use core::slice;
 use core::str::pattern::Pattern;
 use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
@@ -970,22 +969,7 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            ch_len => {
-                let cur_len = self.len();
-                // This may use up to 4 bytes.
-                self.vec.reserve(ch_len);
-
-                unsafe {
-                    // Attempt to not use an intermediate buffer by just pushing bytes
-                    // directly onto this string.
-                    let slice = slice::from_raw_parts_mut(self.vec
-                                                              .as_mut_ptr()
-                                                              .offset(cur_len as isize),
-                                                          ch_len);
-                    let used = ch.encode_utf8(slice).unwrap_or(0);
-                    self.vec.set_len(cur_len + used);
-                }
-            }
+            _ => self.vec.extend_from_slice(ch.encode_utf8().as_slice()),
         }
     }
 
@@ -1136,9 +1120,10 @@ impl String {
         let len = self.len();
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
-        self.vec.reserve(4);
-        let mut bits = [0; 4];
-        let amt = ch.encode_utf8(&mut bits).unwrap();
+        let bits = ch.encode_utf8();
+        let bits = bits.as_slice();
+        let amt = bits.len();
+        self.vec.reserve(amt);
 
         unsafe {
             ptr::copy(self.vec.as_ptr().offset(idx as isize),

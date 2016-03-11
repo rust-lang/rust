@@ -25,7 +25,6 @@
 // unix (it's mostly used on windows), so don't worry about dead code here.
 #![allow(dead_code)]
 
-use core::char::{encode_utf8_raw, encode_utf16_raw};
 use core::str::next_code_point;
 
 use ascii::*;
@@ -206,19 +205,10 @@ impl Wtf8Buf {
     /// Copied from String::push
     /// This does **not** include the WTF-8 concatenation check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
-        let cur_len = self.len();
-        // This may use up to 4 bytes.
-        self.reserve(4);
-
-        unsafe {
-            // Attempt to not use an intermediate buffer by just pushing bytes
-            // directly onto this string.
-            let slice = slice::from_raw_parts_mut(
-                self.bytes.as_mut_ptr().offset(cur_len as isize), 4
-            );
-            let used = encode_utf8_raw(code_point.value, slice).unwrap();
-            self.bytes.set_len(cur_len + used);
-        }
+        let bytes = unsafe {
+            char::from_u32_unchecked(code_point.value).encode_utf8()
+        };
+        self.bytes.extend_from_slice(bytes.as_slice());
     }
 
     #[inline]
@@ -747,12 +737,15 @@ impl<'a> Iterator for EncodeWide<'a> {
             return Some(tmp);
         }
 
-        let mut buf = [0; 2];
         self.code_points.next().map(|code_point| {
-            let n = encode_utf16_raw(code_point.value, &mut buf)
-                .unwrap_or(0);
-            if n == 2 { self.extra = buf[1]; }
-            buf[0]
+            let n = unsafe {
+                char::from_u32_unchecked(code_point.value).encode_utf16()
+            };
+            let n = n.as_slice();
+            if n.len() == 2 {
+                self.extra = n[1];
+            }
+            n[0]
         })
     }
 
