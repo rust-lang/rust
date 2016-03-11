@@ -22,7 +22,7 @@ use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 
-use syntax::{ast, abi};
+use syntax::{ast, abi, ptr};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
 
@@ -569,6 +569,50 @@ pub fn format_struct(context: &RewriteContext,
                                  span,
                                  offset)
         }
+    }
+}
+
+pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
+    if let ast::Item_::ItemTrait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
+           item.node {
+        let mut result = String::new();
+        let header = format!("{}{}trait {}",
+                             format_visibility(item.vis),
+                             format_unsafety(unsafety),
+                             item.ident);
+
+        result.push_str(&header);
+
+        // TODO: Add max_width checking
+        // let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
+        // let indent = offset + result.len();
+
+        let body_lo = span_after(item.span, "{", context.codemap);
+
+        let generics_str = try_opt!(rewrite_generics(context,
+                                                     generics,
+                                                     offset,
+                                                     context.config.max_width,
+                                                     offset + result.len(),
+                                                     mk_sp(item.span.lo, body_lo)));
+        result.push_str(&generics_str);
+
+        let trait_bound_str = try_opt!(rewrite_trait_bounds(context,
+                                                            type_param_bounds,
+                                                            offset,
+                                                            0));
+
+        result.push_str(&trait_bound_str);
+
+        if trait_items.len() > 0 {
+            result.push_str(" {");
+        } else {
+            result.push_str(" {}");
+        }
+
+        Some(result)
+    } else {
+        unreachable!();
     }
 }
 
@@ -1435,6 +1479,28 @@ fn rewrite_generics(context: &RewriteContext,
     let list_str = try_opt!(format_item_list(items, h_budget, offset, context.config));
 
     Some(format!("<{}>", list_str))
+}
+
+fn rewrite_trait_bounds(context: &RewriteContext,
+                      param_bounds: &ast::TyParamBounds,
+                      indent: Indent,
+                      width: usize)
+                      -> Option<String> {
+    let bounds: &[_] = &param_bounds.as_slice();
+
+    if bounds.is_empty() {
+        return Some(String::new());
+    }
+
+    let bound_str = bounds.iter()
+                            .filter_map(|ty_bound| ty_bound.rewrite(&context, 100, indent))
+                            .collect::<Vec<String>>()
+                            .join(" + ");
+
+    let mut result = String::new();
+    result.push_str(" : ");
+    result.push_str(&bound_str);
+    Some(result)
 }
 
 fn rewrite_where_clause(context: &RewriteContext,

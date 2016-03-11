@@ -34,3 +34,5 @@ trait Test {
     fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> Result<T, Self::Error>
         where F: FnOnce(&mut Self) -> Result<T, Self::Error>;
 }
+
+trait T {}

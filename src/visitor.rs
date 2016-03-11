@@ -21,7 +21,7 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
-use items::{rewrite_static, rewrite_type_alias, format_impl};
+use items::{rewrite_static, rewrite_type_alias, format_impl, format_trait};
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
@@ -209,8 +209,14 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
             // FIXME(#78): format traits.
-            ast::Item_::ItemTrait(_, _, _, ref trait_items) => {
+            ast::Item_::ItemTrait(unsafety, ref generics, ref param_bounds, ref trait_items) => {
                 self.format_missing_with_indent(item.span.lo);
+                if let Some(trait_str) = format_trait(&self.get_context(),
+                                                      item,
+                                                      self.block_indent) {
+                    self.buffer.push_str(&trait_str);
+                    self.last_pos = item.span.hi;
+                }
                 self.block_indent = self.block_indent.block_indent(self.config);
                 for item in trait_items {
                     self.visit_trait_item(&item);
