@@ -1389,8 +1389,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 
     /// Returns `FreelyAliasable(_)` if this lvalue represents a freely aliasable pointer type.
-    pub fn freely_aliasable(&self, ctxt: &TyCtxt<'tcx>)
-                            -> Aliasability {
+    pub fn freely_aliasable(&self) -> Aliasability {
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
         // aliased and eventually recused.
@@ -1403,11 +1402,11 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Downcast(ref b, _) |
             Categorization::Interior(ref b, _) => {
                 // Aliasability depends on base cmt
-                b.freely_aliasable(ctxt)
+                b.freely_aliasable()
             }
 
             Categorization::Deref(ref b, _, Unique) => {
-                let sub = b.freely_aliasable(ctxt);
+                let sub = b.freely_aliasable();
                 if b.mutbl.is_mutable() {
                     // Aliasability depends on base cmt alone
                     sub
