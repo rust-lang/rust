@@ -22,4 +22,8 @@ trait Baz<U> {}
 impl<T> Baz<T> for u8 {}
 impl<T> Baz<u8> for T {} //~ ERROR E0119
 
+trait Qux {}
+impl<T: Clone> Qux for T {}
+impl<T: Eq> Qux for T {} //~ ERROR E0119
+
 fn main() {}

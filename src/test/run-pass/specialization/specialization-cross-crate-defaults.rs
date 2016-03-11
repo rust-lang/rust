@@ -16,10 +16,22 @@ extern crate specialization_cross_crate_defaults;
 
 use specialization_cross_crate_defaults::*;
 
+struct LocalDefault;
+struct LocalOverride;
+
+impl Foo for LocalDefault {}
+
+impl Foo for LocalOverride {
+    fn foo(&self) -> bool { true }
+}
+
 fn test_foo() {
     assert!(0i8.foo() == false);
     assert!(0i32.foo() == false);
     assert!(0i64.foo() == true);
+
+    assert!(LocalDefault.foo() == false);
+    assert!(LocalOverride.foo() == true);
 }
 
 fn test_bar() {

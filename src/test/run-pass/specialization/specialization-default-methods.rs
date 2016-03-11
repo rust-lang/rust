@@ -10,6 +10,8 @@
 
 #![feature(specialization)]
 
+// Test that default methods are cascaded correctly
+
 // First, test only use of explicit `default` items:
 
 trait Foo {

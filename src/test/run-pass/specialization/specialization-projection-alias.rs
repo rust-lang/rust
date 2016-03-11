@@ -23,6 +23,10 @@ impl<T> Id_ for T {
     default type Out = T;
 }
 
-fn main() {
+fn test_proection() {
     let x: Id<bool> = panic!();
+}
+
+fn main() {
+
 }
