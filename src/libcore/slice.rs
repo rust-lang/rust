@@ -908,6 +908,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
 /// splitn, splitn_mut etc can be implemented once.
+#[doc(hidden)]
 trait SplitIter: DoubleEndedIterator {
     /// Mark the underlying iterator as complete, extracting the remaining
     /// portion of the slice.

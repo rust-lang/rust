@@ -79,7 +79,7 @@ use boxed::Box;
 /// contents of the string. It has a close relationship with its borrowed
 /// counterpart, the primitive [`str`].
 ///
-/// [`str`]: ../primitive.str.html
+/// [`str`]: ../../std/primitive.str.html
 ///
 /// # Examples
 ///
@@ -99,7 +99,7 @@ use boxed::Box;
 /// hello.push_str("orld!");
 /// ```
 ///
-/// [`char`]: ../primitive.char.html
+/// [`char`]: ../../std/primitive.char.html
 /// [`push()`]: #method.push
 /// [`push_str()`]: #method.push_str
 ///
@@ -131,7 +131,7 @@ use boxed::Box;
 /// println!("The first letter of s is {}", s[0]); // ERROR!!!
 /// ```
 ///
-/// [`OsString`]: ../ffi/struct.OsString.html
+/// [`OsString`]: ../../std/ffi/struct.OsString.html
 ///
 /// Indexing is intended to be a constant-time operation, but UTF-8 encoding
 /// does not allow us to do this. Furtheremore, it's not clear what sort of
@@ -156,8 +156,8 @@ use boxed::Box;
 /// takes_str(&s);
 /// ```
 ///
-/// [`&str`]: ../primitive.str.html
-/// [`Deref`]: ../ops/trait.Deref.html
+/// [`&str`]: ../../std/primitive.str.html
+/// [`Deref`]: ../../std/ops/trait.Deref.html
 ///
 /// This will create a [`&str`] from the `String` and pass it in. This
 /// conversion is very inexpensive, and so generally, functions will accept
@@ -280,10 +280,10 @@ pub struct String {
 /// an analogue to `FromUtf8Error`, and you can get one from a `FromUtf8Error`
 /// through the [`utf8_error()`] method.
 ///
-/// [`Utf8Error`]: ../str/struct.Utf8Error.html
-/// [`std::str`]: ../str/index.html
-/// [`u8`]: ../primitive.u8.html
-/// [`&str`]: ../primitive.str.html
+/// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
+/// [`std::str`]: ../../std/str/index.html
+/// [`u8`]: ../../std/primitive.u8.html
+/// [`&str`]: ../../std/primitive.str.html
 /// [`utf8_error()`]: #method.utf8_error
 ///
 /// # Examples
@@ -414,9 +414,9 @@ impl String {
     /// requires that it is valid UTF-8. `from_utf8()` checks to ensure that
     /// the bytes are valid UTF-8, and then does the conversion.
     ///
-    /// [`&str`]: ../primitive.str.html
-    /// [`u8`]: ../primitive.u8.html
-    /// [`Vec<u8>`]: ../vec/struct.Vec.html
+    /// [`&str`]: ../../std/primitive.str.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [`Vec<u8>`]: ../../std/vec/struct.Vec.html
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the validity check, there is an unsafe version
@@ -431,7 +431,7 @@ impl String {
     /// If you need a `&str` instead of a `String`, consider
     /// [`str::from_utf8()`].
     ///
-    /// [`str::from_utf8()`]: ../str/fn.from_utf8.html
+    /// [`str::from_utf8()`]: ../../std/str/fn.from_utf8.html
     ///
     /// # Errors
     ///
@@ -488,8 +488,8 @@ impl String {
     /// `from_utf8_lossy()` will replace any invalid UTF-8 sequences with
     /// `U+FFFD REPLACEMENT CHARACTER`, which looks like this: �
     ///
-    /// [`u8`]: ../primitive.u8.html
-    /// [byteslice]: ../primitive.slice.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [byteslice]: ../../std/primitive.slice.html
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
@@ -504,7 +504,7 @@ impl String {
     /// it's already valid UTF-8, we don't need a new allocation. This return
     /// type allows us to handle both cases.
     ///
-    /// [`Cow<'a, str>`]: ../borrow/enum.Cow.html
+    /// [`Cow<'a, str>`]: ../../std/borrow/enum.Cow.html
     ///
     /// # Examples
     ///
@@ -1014,7 +1014,7 @@ impl String {
     /// Panics if `new_len` > current length, or if `new_len` does not lie on a
     /// [`char`] boundary.
     ///
-    /// [`char`]: ../primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1076,7 +1076,7 @@ impl String {
     /// Panics if `idx` is larger than or equal to the `String`'s length,
     /// or if it does not lie on a [`char`] boundary.
     ///
-    /// [`char`]: ../primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1116,7 +1116,7 @@ impl String {
     /// Panics if `idx` is larger than the `String`'s length, or if it does not
     /// lie on a [`char`] boundary.
     ///
-    /// [`char`]: ../primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1255,7 +1255,7 @@ impl String {
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
     ///
-    /// [`char`]: ../primitive.char.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// # Examples
     ///
@@ -1353,10 +1353,10 @@ impl FromUtf8Error {
     /// an analogue to `FromUtf8Error`. See its documentation for more details
     /// on using it.
     ///
-    /// [`Utf8Error`]: ../str/struct.Utf8Error.html
-    /// [`std::str`]: ../str/index.html
-    /// [`u8`]: ../primitive.u8.html
-    /// [`&str`]: ../primitive.str.html
+    /// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
+    /// [`std::str`]: ../../std/str/index.html
+    /// [`u8`]: ../../std/primitive.u8.html
+    /// [`&str`]: ../../std/primitive.str.html
     ///
     /// # Examples
     ///
@@ -1695,9 +1695,9 @@ impl ops::DerefMut for String {
 /// [`String`] without error, this type will never actually be returned. As
 /// such, it is only here to satisfy said signature, and is useless otherwise.
 ///
-/// [`FromStr`]: ../str/trait.FromStr.html
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
 /// [`String`]: struct.String.html
-/// [`from_str()`]: ../str/trait.FromStr.html#tymethod.from_str
+/// [`from_str()`]: ../../std/str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 #[derive(Copy)]
 pub enum ParseError {}
@@ -1749,7 +1749,7 @@ impl Eq for ParseError {}
 /// [`Display`] should be implemented instead, and you get the `ToString`
 /// implementation for free.
 ///
-/// [`Display`]: ../fmt/trait.Display.html
+/// [`Display`]: ../../std/fmt/trait.Display.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString {
     /// Converts the given value to a `String`.

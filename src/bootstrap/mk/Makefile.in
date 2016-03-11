@@ -36,3 +36,5 @@ book:
 	$(Q)$(BOOTSTRAP) --step doc-book
 standalone-docs:
 	$(Q)$(BOOTSTRAP) --step doc-standalone
+check:
+	$(Q)$(BOOTSTRAP) --step check

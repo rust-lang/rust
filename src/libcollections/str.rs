@@ -10,7 +10,7 @@
 
 //! Unicode string slices.
 //!
-//! *[See also the `str` primitive type](../primitive.str.html).*
+//! *[See also the `str` primitive type](../../std/primitive.str.html).*
 
 
 #![stable(feature = "rust1", since = "1.0.0")]

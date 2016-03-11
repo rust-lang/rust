@@ -42,8 +42,8 @@ pub mod pattern;
 /// [`str`]'s [`parse()`] method. See [`parse()`]'s documentation for examples.
 ///
 /// [`from_str()`]: #tymethod.from_str
-/// [`str`]: ../primitive.str.html
-/// [`parse()`]: ../primitive.str.html#method.parse
+/// [`str`]: ../../std/primitive.str.html
+/// [`parse()`]: ../../std/primitive.str.html#method.parse
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
@@ -60,7 +60,7 @@ pub trait FromStr: Sized {
     ///
     /// Basic usage with [`i32`][ithirtytwo], a type that implements `FromStr`:
     ///
-    /// [ithirtytwo]: ../primitive.i32.html
+    /// [ithirtytwo]: ../../std/primitive.i32.html
     ///
     /// ```
     /// use std::str::FromStr;
@@ -182,7 +182,7 @@ impl Utf8Error {
 /// If you need a `String` instead of a `&str`, consider
 /// [`String::from_utf8()`][string].
 ///
-/// [string]: ../string/struct.String.html#method.from_utf8
+/// [string]: ../../std/string/struct.String.html#method.from_utf8
 ///
 /// Because you can stack-allocate a `[u8; N]`, and you can take a `&[u8]` of
 /// it, this function is one way to have a stack-allocated string. There is
@@ -322,7 +322,7 @@ Section: Iterators
 ///
 /// Created with the method [`chars()`].
 ///
-/// [`chars()`]: ../primitive.str.html#method.chars
+/// [`chars()`]: ../../std/primitive.str.html#method.chars
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -531,7 +531,7 @@ impl<'a> CharIndices<'a> {
 ///
 /// Created with the method [`bytes()`].
 ///
-/// [`bytes()`]: ../primitive.str.html#method.bytes
+/// [`bytes()`]: ../../std/primitive.str.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
@@ -816,12 +816,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split()`].
         ///
-        /// [`split()`]: ../primitive.str.html#method.split
+        /// [`split()`]: ../../std/primitive.str.html#method.split
         struct Split;
     reverse:
         /// Created with the method [`rsplit()`].
         ///
-        /// [`rsplit()`]: ../primitive.str.html#method.rsplit
+        /// [`rsplit()`]: ../../std/primitive.str.html#method.rsplit
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -834,12 +834,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split_terminator()`].
         ///
-        /// [`split_terminator()`]: ../primitive.str.html#method.split_terminator
+        /// [`split_terminator()`]: ../../std/primitive.str.html#method.split_terminator
         struct SplitTerminator;
     reverse:
         /// Created with the method [`rsplit_terminator()`].
         ///
-        /// [`rsplit_terminator()`]: ../primitive.str.html#method.rsplit_terminator
+        /// [`rsplit_terminator()`]: ../../std/primitive.str.html#method.rsplit_terminator
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -884,12 +884,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`splitn()`].
         ///
-        /// [`splitn()`]: ../primitive.str.html#method.splitn
+        /// [`splitn()`]: ../../std/primitive.str.html#method.splitn
         struct SplitN;
     reverse:
         /// Created with the method [`rsplitn()`].
         ///
-        /// [`rsplitn()`]: ../primitive.str.html#method.rsplitn
+        /// [`rsplitn()`]: ../../std/primitive.str.html#method.rsplitn
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -926,12 +926,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`match_indices()`].
         ///
-        /// [`match_indices()`]: ../primitive.str.html#method.match_indices
+        /// [`match_indices()`]: ../../std/primitive.str.html#method.match_indices
         struct MatchIndices;
     reverse:
         /// Created with the method [`rmatch_indices()`].
         ///
-        /// [`rmatch_indices()`]: ../primitive.str.html#method.rmatch_indices
+        /// [`rmatch_indices()`]: ../../std/primitive.str.html#method.rmatch_indices
         struct RMatchIndices;
     stability:
         #[stable(feature = "str_match_indices", since = "1.5.0")]
@@ -970,12 +970,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`matches()`].
         ///
-        /// [`matches()`]: ../primitive.str.html#method.matches
+        /// [`matches()`]: ../../std/primitive.str.html#method.matches
         struct Matches;
     reverse:
         /// Created with the method [`rmatches()`].
         ///
-        /// [`rmatches()`]: ../primitive.str.html#method.rmatches
+        /// [`rmatches()`]: ../../std/primitive.str.html#method.rmatches
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
@@ -986,7 +986,7 @@ generate_pattern_iterators! {
 
 /// Created with the method [`lines()`].
 ///
-/// [`lines()`]: ../primitive.str.html#method.lines
+/// [`lines()`]: ../../std/primitive.str.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
@@ -1016,7 +1016,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 
 /// Created with the method [`lines_any()`].
 ///
-/// [`lines_any()`]: ../primitive.str.html#method.lines_any
+/// [`lines_any()`]: ../../std/primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone)]

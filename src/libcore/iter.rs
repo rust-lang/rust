@@ -65,7 +65,7 @@
 //!
 //! [`Iterator`]: trait.Iterator.html
 //! [`next()`]: trait.Iterator.html#tymethod.next
-//! [`Option`]: ../option/enum.Option.html
+//! [`Option`]: ../../std/option/enum.Option.html
 //!
 //! # The three forms of iteration
 //!
@@ -804,7 +804,7 @@ pub trait Iterator {
     /// closure returns `None`, it will try again, and call the closure on the
     /// next element, seeing if it will return `Some`.
     ///
-    /// [`Option<T>`]: ../option/enum.Option.html
+    /// [`Option<T>`]: ../../std/option/enum.Option.html
     ///
     /// Why `filter_map()` and not just [`filter()`].[`map()`]? The key is in this
     /// part:
@@ -866,7 +866,7 @@ pub trait Iterator {
     /// different sized integer, the [`zip()`] function provides similar
     /// functionality.
     ///
-    /// [`usize`]: ../primitive.usize.html
+    /// [`usize`]: ../../std/primitive.usize.html
     /// [`zip()`]: #method.zip
     ///
     /// # Overflow Behavior
@@ -875,7 +875,7 @@ pub trait Iterator {
     /// [`usize::MAX`] elements either produces the wrong result or panics. If
     /// debug assertions are enabled, a panic is guaranteed.
     ///
-    /// [`usize::MAX`]: ../usize/constant.MAX.html
+    /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
     ///
     /// # Panics
     ///
@@ -1151,7 +1151,7 @@ pub trait Iterator {
     /// iterator and the return value from the closure, an [`Option`], is
     /// yielded by the iterator.
     ///
-    /// [`Option`]: ../option/enum.Option.html
+    /// [`Option`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
     ///
@@ -1385,9 +1385,9 @@ pub trait Iterator {
     /// be thought of as single `Result<Collection<T>, E>`. See the examples
     /// below for more.
     ///
-    /// [`String`]: ../string/struct.String.html
-    /// [`Result<T, E>`]: ../result/enum.Result.html
-    /// [`char`]: ../primitive.char.html
+    /// [`String`]: ../../std/string/struct.String.html
+    /// [`Result<T, E>`]: ../../std/result/enum.Result.html
+    /// [`char`]: ../../std/primitive.char.html
     ///
     /// Because `collect()` is so general, it can cause problems with type
     /// inference. As such, `collect()` is one of the few times you'll see
@@ -1412,7 +1412,7 @@ pub trait Iterator {
     /// Note that we needed the `: Vec<i32>` on the left-hand side. This is because
     /// we could collect into, for example, a [`VecDeque<T>`] instead:
     ///
-    /// [`VecDeque<T>`]: ../collections/struct.VecDeque.html
+    /// [`VecDeque<T>`]: ../../std/collections/struct.VecDeque.html
     ///
     /// ```
     /// use std::collections::VecDeque;

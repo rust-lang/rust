@@ -11,7 +11,7 @@
 #![allow(deprecated)]
 
 use std::cell::{RefCell, Cell};
-use std::collections::{HashSet, HashMap};
+use std::collections::HashMap;
 use std::dynamic_lib::DynamicLibrary;
 use std::env;
 use std::ffi::OsString;
@@ -114,7 +114,7 @@ pub fn run(input: &str,
         external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
-        populated_crate_impls: RefCell::new(HashSet::new()),
+        all_crate_impls: RefCell::new(HashMap::new()),
         deref_trait_did: Cell::new(None),
     };
 

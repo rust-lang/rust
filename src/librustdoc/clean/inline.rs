@@ -222,7 +222,8 @@ fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
     }, false)
 }
 
-pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
+pub fn build_impls(cx: &DocContext,
+                   tcx: &TyCtxt,
                    did: DefId) -> Vec<clean::Item> {
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
@@ -241,10 +242,12 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
     // Primarily, the impls will be used to populate the documentation for this
     // type being inlined, but impls can also be used when generating
     // documentation for primitives (no way to find those specifically).
-    if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
+    if !cx.all_crate_impls.borrow_mut().contains_key(&did.krate) {
+        let mut impls = Vec::new();
         for item in tcx.sess.cstore.crate_top_level_items(did.krate) {
             populate_impls(cx, tcx, item.def, &mut impls);
         }
+        cx.all_crate_impls.borrow_mut().insert(did.krate, impls);
 
         fn populate_impls(cx: &DocContext, tcx: &TyCtxt,
                           def: cstore::DefLike,
@@ -263,6 +266,20 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
                 }
                 _ => {}
             }
+        }
+    }
+
+    let mut candidates = cx.all_crate_impls.borrow_mut();
+    let candidates = candidates.get_mut(&did.krate).unwrap();
+    for i in (0..candidates.len()).rev() {
+        let remove = match candidates[i].inner {
+            clean::ImplItem(ref i) => {
+                i.for_.def_id() == Some(did) || i.for_.primitive_type().is_some()
+            }
+            _ => continue,
+        };
+        if remove {
+            impls.push(candidates.swap_remove(i));
         }
     }
 
