@@ -2,7 +2,7 @@
 #![feature(rustc_private, collections)]
 #![feature(iter_arith)]
 #![feature(custom_attribute)]
-#![allow(unknown_lints)]
+#![allow(indexing_slicing, shadow_reuse, unknown_lints)]
 
 // this only exists to allow the "dogfood" integration test to work
 #[allow(dead_code)]
@@ -181,6 +181,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
 
     reg.register_lint_group("clippy_pedantic", vec![
+        array_indexing::INDEXING_SLICING,
         enum_glob_use::ENUM_GLOB_USE,
         matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,

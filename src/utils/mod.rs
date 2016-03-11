@@ -681,6 +681,7 @@ pub fn camel_case_from(s: &str) -> usize {
 }
 
 /// Represents a range akin to `ast::ExprKind::Range`.
+#[derive(Debug, Copy, Clone)]
 pub struct UnsugaredRange<'a> {
     pub start: Option<&'a Expr>,
     pub end: Option<&'a Expr>,
@@ -711,24 +712,30 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
         Some(unwrap_unstable(expr))
     }
 
-    if let ExprStruct(ref path, ref fields, None) = unwrap_unstable(&expr).node {
-        if match_path(path, &RANGE_FROM_PATH) {
-            Some(UnsugaredRange { start: get_field("start", fields), end: None, limits: RangeLimits::HalfOpen })
-        } else if match_path(path, &RANGE_FULL_PATH) {
-            Some(UnsugaredRange { start: None, end: None, limits: RangeLimits::HalfOpen })
-        } else if match_path(path, &RANGE_INCLUSIVE_NON_EMPTY_PATH) {
-            Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::Closed })
-        } else if match_path(path, &RANGE_PATH) {
-            Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::HalfOpen })
-        } else if match_path(path, &RANGE_TO_INCLUSIVE_PATH) {
-            Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::Closed })
-        } else if match_path(path, &RANGE_TO_PATH) {
-            Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::HalfOpen })
-        } else {
-            None
+    match unwrap_unstable(&expr).node {
+        ExprPath(None, ref path) => {
+            if match_path(path, &RANGE_FULL_PATH) {
+                Some(UnsugaredRange { start: None, end: None, limits: RangeLimits::HalfOpen })
+            } else {
+                None
+            }
         }
-    } else {
-        None
+        ExprStruct(ref path, ref fields, None) => {
+            if match_path(path, &RANGE_FROM_PATH) {
+                Some(UnsugaredRange { start: get_field("start", fields), end: None, limits: RangeLimits::HalfOpen })
+            } else if match_path(path, &RANGE_INCLUSIVE_NON_EMPTY_PATH) {
+                Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::Closed })
+            } else if match_path(path, &RANGE_PATH) {
+                Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+            } else if match_path(path, &RANGE_TO_INCLUSIVE_PATH) {
+                Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::Closed })
+            } else if match_path(path, &RANGE_TO_PATH) {
+                Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+            } else {
+                None
+            }
+        }
+        _ => None,
     }
 }
 
