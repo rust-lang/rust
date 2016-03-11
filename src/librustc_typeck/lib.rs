@@ -138,11 +138,17 @@ pub struct TypeAndSubsts<'tcx> {
 pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
     pub trait_map: hir::TraitMap,
+
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
     /// error reporting, and so is lazily initialised and generally
     /// shouldn't taint the common path (hence the RefCell).
     pub all_traits: RefCell<Option<check::method::AllTraitsVec>>,
+
+    /// This stack is used to identify cycles in the user's source.
+    /// Note that these cycles can cross multiple items.
+    pub stack: RefCell<Vec<collect::AstConvRequest>>,
+
     pub tcx: &'a TyCtxt<'tcx>,
 }
 
@@ -337,6 +343,7 @@ pub fn check_crate(tcx: &TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
     let ccx = CrateCtxt {
         trait_map: trait_map,
         all_traits: RefCell::new(None),
+        stack: RefCell::new(Vec::new()),
         tcx: tcx
     };
 
@@ -344,7 +351,7 @@ pub fn check_crate(tcx: &TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
     // have valid types and not error
     tcx.sess.track_errors(|| {
         time(time_passes, "type collecting", ||
-             collect::collect_item_types(tcx));
+             collect::collect_item_types(&ccx));
 
     })?;
 
