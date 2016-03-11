@@ -607,6 +607,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                            target_module: Module<'b>,
                            directive: &'b ImportDirective)
                            -> ResolveResult<()> {
+        if let Some(Def::Trait(_)) = target_module.def {
+            self.resolver.session.span_err(directive.span, "items in traits are not importable.");
+        }
+
         if module_.def_id() == target_module.def_id() {
             // This means we are trying to glob import a module into itself, and it is a no-go
             let msg = "Cannot glob-import a module into itself.".into();
