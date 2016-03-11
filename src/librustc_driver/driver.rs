@@ -932,7 +932,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
-                                       mir_map: MirMap<'tcx>,
+                                       mut mir_map: MirMap<'tcx>,
                                        analysis: ty::CrateAnalysis)
                                        -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
@@ -940,6 +940,13 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
     time(time_passes,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
+
+    time(time_passes,
+         "erasing regions from MIR",
+         || mir::transform::erase_regions::erase_regions(tcx, &mut mir_map));
+
+    time(time_passes, "breaking critical edges",
+         || mir::transform::break_critical_edges::break_critical_edges(&mut mir_map));
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes,

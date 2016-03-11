@@ -19,10 +19,11 @@ use common::{self, Block, BlockAndBuilder, FunctionContext};
 use std::ops::Deref;
 use std::rc::Rc;
 
+use rustc_data_structures::bitvec::BitVector;
+
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
 use rustc_mir::traversal;
 
-use self::lvalue::LvalueRef;
 use self::operand::OperandRef;
 
 #[derive(Clone)]
@@ -98,7 +99,7 @@ enum TempRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
+pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let bcx = fcx.init(false, None).build();
     let mir = bcx.mir();
 
@@ -135,8 +136,13 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let block_bcxs: Vec<Block<'blk,'tcx>> =
         mir_blocks.iter()
                   .map(|&bb|{
-                      // FIXME(#30941) this doesn't handle msvc-style exceptions
-                      fcx.new_block(&format!("{:?}", bb), None)
+                      if bb == mir::START_BLOCK {
+                          fcx.new_block("start", None)
+                      } else if bb == mir::END_BLOCK {
+                          fcx.new_block("end", None)
+                      } else {
+                          fcx.new_block(&format!("{:?}", bb), None)
+                      }
                   })
                   .collect();
 
@@ -145,7 +151,7 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     bcx.br(start_bcx.llbb);
 
     let mut mircx = MirContext {
-        mir: mir,
+        mir: mir.clone(),
         fcx: fcx,
         llpersonalityslot: None,
         blocks: block_bcxs,
@@ -155,13 +161,28 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         args: args,
     };
 
-    let rpo = traversal::reverse_postorder(mir);
+    let mut visited = BitVector::new(mir_blocks.len());
+
+    let rpo = traversal::reverse_postorder(&mir);
     // Translate the body of each block using reverse postorder
     for (bb, _) in rpo {
+        visited.insert(bb.index());
         mircx.trans_block(bb);
     }
 
+    // Add unreachable instructions at the end of unreachable blocks
+    // so they're actually terminated.
+    // TODO: Remove the blocks from the function
+    for &bb in &mir_blocks {
+        if !visited.contains(bb.index()) {
+            mircx.blocks[bb.index()].build().unreachable();
+        }
+    }
+
+
     fcx.cleanup();
+
+    debug!("trans_mir: {:?}", ::trans::value::Value(fcx.llfn));
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the
