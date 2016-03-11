@@ -20,6 +20,9 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
+use rustc_mir::traversal;
+
+use self::lvalue::LvalueRef;
 use self::operand::OperandRef;
 
 #[derive(Clone)]
@@ -152,8 +155,9 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         args: args,
     };
 
-    // Translate the body of each block
-    for &bb in &mir_blocks {
+    let rpo = traversal::reverse_postorder(mir);
+    // Translate the body of each block using reverse postorder
+    for (bb, _) in rpo {
         mircx.trans_block(bb);
     }
 
