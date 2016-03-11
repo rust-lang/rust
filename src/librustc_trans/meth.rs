@@ -14,7 +14,7 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer::{self, InferCtxt};
+use rustc::infer::InferCtxt;
 use rustc::ty::subst::{FnSpace, Subst, Substs};
 use rustc::ty::subst;
 use rustc::traits::{self, ProjectionMode};
@@ -86,7 +86,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
            method_ty);
 
     let sig = tcx.erase_late_bound_regions(&method_ty.fn_sig());
-    let sig = infer::normalize_associated_type(tcx, &sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, method_ty.fn_abi(), &sig, &[]);
 
     let function_name =

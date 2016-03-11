@@ -36,7 +36,6 @@ use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::cfg;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use rustc::hir::pat_util::simple_name;
@@ -1923,7 +1922,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_ty = ccx.tcx().lookup_item_type(def_id).ty;
     let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let abi = fn_ty.fn_abi();
     trans_closure(ccx,
                   decl,
@@ -1947,7 +1946,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ccx = bcx.fcx.ccx;
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let result_ty = sig.output.unwrap();
 
     // Get location to store the result. If the user does not care about
@@ -2017,7 +2016,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let ctor_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &ctor_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions(&ctor_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);

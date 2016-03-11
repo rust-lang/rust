@@ -523,34 +523,36 @@ pub struct CombinedSnapshot {
 }
 
 // NOTE: Callable from trans only!
-pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
-    where T : TypeFoldable<'tcx>
-{
-    debug!("normalize_associated_type(t={:?})", value);
+impl<'tcx> TyCtxt<'tcx> {
+    pub fn normalize_associated_type<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx>
+    {
+        debug!("normalize_associated_type(t={:?})", value);
 
-    let value = tcx.erase_regions(value);
+        let value = self.erase_regions(value);
 
-    if !value.has_projection_types() {
-        return value;
+        if !value.has_projection_types() {
+            return value;
+        }
+
+        let infcx = InferCtxt::new(self, &self.tables, None, ProjectionMode::Any);
+        let mut selcx = traits::SelectionContext::new(&infcx);
+        let cause = traits::ObligationCause::dummy();
+        let traits::Normalized { value: result, obligations } =
+            traits::normalize(&mut selcx, cause, &value);
+
+        debug!("normalize_associated_type: result={:?} obligations={:?}",
+            result,
+            obligations);
+
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+
+        drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result)
     }
-
-    let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::Any);
-    let mut selcx = traits::SelectionContext::new(&infcx);
-    let cause = traits::ObligationCause::dummy();
-    let traits::Normalized { value: result, obligations } =
-        traits::normalize(&mut selcx, cause, &value);
-
-    debug!("normalize_associated_type: result={:?} obligations={:?}",
-           result,
-           obligations);
-
-    let mut fulfill_cx = traits::FulfillmentContext::new();
-
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(&infcx, obligation);
-    }
-
-    drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result)
 }
 
 pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
@@ -1617,7 +1619,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      substs);
 
         if self.normalize {
-            normalize_associated_type(&self.tcx, &closure_ty)
+            self.tcx.normalize_associated_type(&closure_ty)
         } else {
             closure_ty
         }

@@ -22,7 +22,6 @@ use back::symbol_names;
 use llvm::{self, ValueRef, get_params};
 use middle::cstore::LOCAL_CRATE;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
 use rustc::ty::subst;
 use rustc::traits;
 use rustc::hir::map as hir_map;
@@ -221,7 +220,7 @@ impl<'tcx> Callee<'tcx> {
                               extra_args: &[Ty<'tcx>]) -> FnType {
         let abi = self.ty.fn_abi();
         let sig = ccx.tcx().erase_late_bound_regions(self.ty.fn_sig());
-        let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+        let sig = ccx.tcx().normalize_associated_type(&sig);
         let mut fn_ty = FnType::unadjusted(ccx, abi, &sig, extra_args);
         if let Virtual(_) = self.data {
             // Don't pass the vtable, it's not an argument of the virtual fn.
@@ -361,7 +360,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         }
     };
     let sig = tcx.erase_late_bound_regions(sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let sig = ccx.tcx().normalize_associated_type(&sig);
     let tuple_input_ty = tcx.mk_tup(sig.inputs.to_vec());
     let sig = ty::FnSig {
         inputs: vec![bare_fn_ty_maybe_ref,
@@ -491,7 +490,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_ptr_ty = match ty.sty {
         ty::TyFnDef(_, _, fty) => {
             // Create a fn pointer with the normalized signature.
-            tcx.mk_fn_ptr(infer::normalize_associated_type(tcx, fty))
+            tcx.mk_fn_ptr(tcx.normalize_associated_type(fty))
         }
         _ => bug!("expected fn item type, found {}", ty)
     };
@@ -623,7 +622,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let abi = callee.ty.fn_abi();
     let sig = callee.ty.fn_sig();
     let output = bcx.tcx().erase_late_bound_regions(&sig.output());
-    let output = infer::normalize_associated_type(bcx.tcx(), &output);
+    let output = bcx.tcx().normalize_associated_type(&output);
 
     let extra_args = match args {
         ArgExprs(args) if abi != Abi::RustCall => {
