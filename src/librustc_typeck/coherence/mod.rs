@@ -31,7 +31,7 @@ use rustc::ty::TyProjection;
 use rustc::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
 use CrateCtxt;
-use rustc::infer::{self, InferCtxt, TypeOrigin, new_infer_ctxt};
+use rustc::infer::{self, InferCtxt, TypeOrigin};
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::codemap::Span;
@@ -379,7 +379,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env), ProjectionMode::Topmost);
+            let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env), ProjectionMode::Topmost);
 
             let origin = TypeOrigin::Misc(span);
             let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
@@ -516,7 +516,7 @@ fn enforce_trait_manually_implementable(tcx: &TyCtxt, sp: Span, trait_def_id: De
 
 pub fn check_coherence(crate_context: &CrateCtxt) {
     let _task = crate_context.tcx.dep_graph.in_task(DepNode::Coherence);
-    let infcx = new_infer_ctxt(crate_context.tcx,
+    let infcx = InferCtxt::new(crate_context.tcx,
                                &crate_context.tcx.tables,
                                None,
                                ProjectionMode::Topmost);

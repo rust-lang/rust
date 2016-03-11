@@ -11,7 +11,7 @@
 #![allow(non_camel_case_types)]
 
 use rustc::hir::def_id::DefId;
-use rustc::infer;
+use rustc::infer::{self, InferCtxt};
 use rustc::ty::subst;
 use abi::FnType;
 use adt;
@@ -124,7 +124,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
-    let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables, ProjectionMode::Any);
+    let infcx = InferCtxt::normalizing(cx.tcx(), &cx.tcx().tables, ProjectionMode::Any);
     match t.layout(&infcx) {
         Ok(layout) => {
             if !type_is_sized(cx.tcx(), t) {

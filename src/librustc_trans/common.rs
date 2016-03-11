@@ -19,7 +19,7 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::cfg;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::infer;
+use rustc::infer::{self, InferCtxt};
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
@@ -1066,9 +1066,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        let infcx = infer::normalizing_infer_ctxt(tcx,
-                                                  &tcx.tables,
-                                                  ProjectionMode::Any);
+        let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
         let mut selcx = SelectionContext::new(&infcx);
 
         let obligation_cause = traits::ObligationCause::misc(span,
@@ -1130,7 +1128,7 @@ pub fn normalize_and_test_predicates<'tcx>(tcx: &TyCtxt<'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+    let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
     let mut selcx = SelectionContext::new(&infcx);
     let mut fulfill_cx = traits::FulfillmentContext::new();
     let cause = traits::ObligationCause::dummy();

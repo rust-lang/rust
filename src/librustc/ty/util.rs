@@ -13,7 +13,7 @@
 use hir::svh::Svh;
 use hir::def_id::DefId;
 use ty::subst;
-use infer;
+use infer::InferCtxt;
 use hir::pat_util;
 use traits::{self, ProjectionMode};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
@@ -129,10 +129,8 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         let tcx = self.tcx;
 
         // FIXME: (@jroesch) float this code up
-        let infcx = infer::new_infer_ctxt(tcx,
-                                          &tcx.tables,
-                                          Some(self.clone()),
-                                          ProjectionMode::Topmost);
+        let infcx = InferCtxt::new(tcx, &tcx.tables, Some(self.clone()),
+                                   ProjectionMode::Topmost);
 
         let adt = match self_type.sty {
             ty::TyStruct(struct_def, substs) => {
@@ -511,10 +509,8 @@ impl<'tcx> ty::TyS<'tcx> {
                        -> bool
     {
         let tcx = param_env.tcx;
-        let infcx = infer::new_infer_ctxt(tcx,
-                                          &tcx.tables,
-                                          Some(param_env.clone()),
-                                          ProjectionMode::Topmost);
+        let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env.clone()),
+                                   ProjectionMode::Topmost);
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
                                                                 self, bound, span);
@@ -600,7 +596,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     #[inline]
-    pub fn layout<'a>(&'tcx self, infcx: &infer::InferCtxt<'a, 'tcx>)
+    pub fn layout<'a>(&'tcx self, infcx: &InferCtxt<'a, 'tcx>)
                       -> Result<&'tcx Layout, LayoutError<'tcx>> {
         let can_cache = !self.has_param_types() && !self.has_self_ty();
         if can_cache {

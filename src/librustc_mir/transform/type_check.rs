@@ -585,10 +585,8 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        let infcx = infer::new_infer_ctxt(tcx,
-                                          &tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
+        let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env),
+                                   ProjectionMode::AnyFinal);
         let mut checker = TypeChecker::new(&infcx);
         {
             let mut verifier = TypeVerifier::new(&mut checker, mir);

@@ -14,7 +14,7 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer;
+use rustc::infer::{self, InferCtxt};
 use rustc::ty::subst::{FnSpace, Subst, Substs};
 use rustc::ty::subst;
 use rustc::traits::{self, ProjectionMode};
@@ -314,7 +314,7 @@ pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+    let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {

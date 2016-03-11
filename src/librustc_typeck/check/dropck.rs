@@ -12,7 +12,7 @@ use check::regionck::{self, Rcx};
 
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
-use rustc::infer;
+use rustc::infer::{self, InferCtxt};
 use middle::region;
 use rustc::ty::subst::{self, Subst};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -82,10 +82,8 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    let infcx = infer::new_infer_ctxt(tcx,
-                                      &tcx.tables,
-                                      Some(impl_param_env),
-                                      ProjectionMode::AnyFinal);
+    let infcx = InferCtxt::new(tcx, &tcx.tables, Some(impl_param_env),
+                               ProjectionMode::AnyFinal);
     let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     let named_type = tcx.lookup_item_type(self_type_did).ty;

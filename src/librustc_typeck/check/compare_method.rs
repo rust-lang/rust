@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use rustc::infer::{self, InferOk, TypeOrigin};
+use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin};
 use rustc::ty::{self, TyCtxt};
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
@@ -42,7 +42,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
     debug!("compare_impl_method: impl_trait_ref (liberated) = {:?}",
            impl_trait_ref);
 
-    let mut infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
+    let mut infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
     let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     let trait_to_impl_substs = &impl_trait_ref.substs;
@@ -416,7 +416,7 @@ pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})",
            impl_trait_ref);
 
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
+    let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
     let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     // The below is for the most part highly similar to the procedure

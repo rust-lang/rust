@@ -88,7 +88,7 @@ use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::{self, Def};
 use hir::def_id::DefId;
-use rustc::infer::{self, InferOk, TypeOrigin, TypeTrace, type_variable};
+use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use hir::pat_util::{self, pat_id_map};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
@@ -156,7 +156,7 @@ mod op;
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
 pub struct Inherited<'a, 'tcx: 'a> {
-    infcx: infer::InferCtxt<'a, 'tcx>,
+    infcx: InferCtxt<'a, 'tcx>,
     locals: RefCell<NodeMap<Ty<'tcx>>>,
 
     fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
@@ -305,7 +305,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
            -> Inherited<'a, 'tcx> {
 
         Inherited {
-            infcx: infer::new_infer_ctxt(tcx, tables, Some(param_env), ProjectionMode::AnyFinal),
+            infcx: InferCtxt::new(tcx, tables, Some(param_env), ProjectionMode::AnyFinal),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             locals: RefCell::new(NodeMap()),
             tables: tables,
@@ -1190,7 +1190,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &TyCtxt<'tcx> { self.ccx.tcx }
 
-    pub fn infcx(&self) -> &infer::InferCtxt<'a,'tcx> {
+    pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
         &self.inh.infcx
     }
 

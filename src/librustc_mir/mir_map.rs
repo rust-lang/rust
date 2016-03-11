@@ -24,7 +24,7 @@ use pretty;
 use hair::cx::Cx;
 
 use rustc::mir::mir_map::MirMap;
-use rustc::infer;
+use rustc::infer::InferCtxt;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::NodeMap;
@@ -75,10 +75,9 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
         };
 
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, src.item_id());
-        let infcx = infer::new_infer_ctxt(self.tcx,
-                                          &self.tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
+
+        let infcx = InferCtxt::new(self.tcx, &self.tcx.tables, Some(param_env),
+                                   ProjectionMode::AnyFinal);
 
         let (mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
 

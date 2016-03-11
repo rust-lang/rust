@@ -19,7 +19,7 @@ use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst;
 use ty::{self, Ty, TypeFoldable};
-use infer::{self, fixup_err_to_string, InferCtxt};
+use infer::{fixup_err_to_string, InferCtxt};
 
 use std::rc::Rc;
 use syntax::ast;
@@ -437,10 +437,8 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    let infcx = infer::new_infer_ctxt(tcx,
-                                      &tcx.tables,
-                                      Some(elaborated_env),
-                                      ProjectionMode::AnyFinal);
+    let infcx = InferCtxt::new(tcx, &tcx.tables, Some(elaborated_env),
+                               ProjectionMode::AnyFinal);
     let predicates = match fully_normalize(&infcx,
                                            cause,
                                            &infcx.parameter_environment.caller_bounds) {

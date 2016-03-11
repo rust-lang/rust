@@ -14,7 +14,7 @@ use std::rc::Rc;
 use super::{Overlap, specializes};
 
 use hir::def_id::DefId;
-use infer;
+use infer::InferCtxt;
 use traits::{self, ProjectionMode};
 use ty::{self, TyCtxt, ImplOrTraitItem, TraitDef, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
@@ -113,7 +113,7 @@ impl Children {
         } {
             let possible_sibling = *slot;
 
-            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Topmost);
+            let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::Topmost);
             let overlap = traits::overlapping_impls(&infcx, possible_sibling, impl_def_id);
 
             if let Some(impl_header) = overlap {

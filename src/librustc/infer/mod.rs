@@ -382,34 +382,36 @@ pub fn fixup_err_to_string(f: FixupError) -> String {
     }
 }
 
-pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
-                                tables: &'a RefCell<ty::Tables<'tcx>>,
-                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
-                                projection_mode: ProjectionMode)
-                                -> InferCtxt<'a, 'tcx> {
-    InferCtxt {
-        tcx: tcx,
-        tables: tables,
-        type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
-        int_unification_table: RefCell::new(UnificationTable::new()),
-        float_unification_table: RefCell::new(UnificationTable::new()),
-        region_vars: RegionVarBindings::new(tcx),
-        parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
-        reported_trait_errors: RefCell::new(FnvHashSet()),
-        normalize: false,
-        projection_mode: projection_mode,
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn new(tcx: &'a TyCtxt<'tcx>,
+               tables: &'a RefCell<ty::Tables<'tcx>>,
+               param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
+               projection_mode: ProjectionMode)
+               -> Self {
+        InferCtxt {
+            tcx: tcx,
+            tables: tables,
+            type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
+            int_unification_table: RefCell::new(UnificationTable::new()),
+            float_unification_table: RefCell::new(UnificationTable::new()),
+            region_vars: RegionVarBindings::new(tcx),
+            parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
+            reported_trait_errors: RefCell::new(FnvHashSet()),
+            normalize: false,
+            projection_mode: projection_mode,
         tainted_by_errors_flag: Cell::new(false),
-        err_count_on_creation: tcx.sess.err_count()
+            err_count_on_creation: tcx.sess.err_count()
+        }
     }
-}
 
-pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
-                                        tables: &'a RefCell<ty::Tables<'tcx>>,
-                                        projection_mode: ProjectionMode)
-                                        -> InferCtxt<'a, 'tcx> {
-    let mut infcx = new_infer_ctxt(tcx, tables, None, projection_mode);
-    infcx.normalize = true;
-    infcx
+    pub fn normalizing(tcx: &'a TyCtxt<'tcx>,
+                       tables: &'a RefCell<ty::Tables<'tcx>>,
+                       projection_mode: ProjectionMode)
+                       -> Self {
+        let mut infcx = InferCtxt::new(tcx, tables, None, projection_mode);
+        infcx.normalize = true;
+        infcx
+    }
 }
 
 pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -532,7 +534,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
         return value;
     }
 
-    let infcx = new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Any);
+    let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::Any);
     let mut selcx = traits::SelectionContext::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =

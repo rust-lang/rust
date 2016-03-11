@@ -36,7 +36,7 @@ use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::infer;
+use rustc::infer::InferCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -95,10 +95,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             None => self.tcx.empty_parameter_environment()
         };
 
-        let infcx = infer::new_infer_ctxt(self.tcx,
-                                          &self.tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
+        let infcx = InferCtxt::new(self.tcx, &self.tcx.tables, Some(param_env),
+                                   ProjectionMode::AnyFinal);
 
         f(&mut euv::ExprUseVisitor::new(self, &infcx))
     }
