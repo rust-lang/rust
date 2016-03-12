@@ -156,14 +156,14 @@
 //!
 //! ```{.text}
 //! EnumNonMatchingCollapsed(
-//!     vec![<ident of self>, <ident of __arg_1>],
+//!     vec![<ident of self>, <ident of arg_1>],
 //!     &[<ast::Variant for C0>, <ast::Variant for C1>],
-//!     &[<ident for self index value>, <ident of __arg_1 index value>])
+//!     &[<ident for self index value>, <ident of arg_1 index value>])
 //! ```
 //!
 //! It is the same for when the arguments are flipped to `C1 {x}` and
 //! `C0(a)`; the only difference is what the values of the identifiers
-//! <ident for self index value> and <ident of __arg_1 index value> will
+//! <ident for self index value> and <ident of arg_1 index value> will
 //! be in the generated code.
 //!
 //! `EnumNonMatchingCollapsed` deliberately provides far less information
@@ -208,6 +208,8 @@ use syntax::parse::token::special_idents;
 use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
+
+use deriving;
 
 pub mod ty;
 
@@ -741,7 +743,7 @@ impl<'a> TraitDef<'a> {
 
 fn find_repr_type_name(diagnostic: &Handler,
                        type_attrs: &[ast::Attribute]) -> &'static str {
-    let mut repr_type_name = "i32";
+    let mut repr_type_name = "i64";
     for a in type_attrs {
         for r in &attr::find_repr_attrs(diagnostic, a) {
             repr_type_name = match *r {
@@ -826,7 +828,7 @@ impl<'a> MethodDef<'a> {
 
         for (i, ty) in self.args.iter().enumerate() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(&format!("__arg_{}", i));
+            let ident = cx.ident_of(&format!("arg_{}", i));
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -911,12 +913,12 @@ impl<'a> MethodDef<'a> {
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> bool {
+    ///     fn eq(&self, arg_1: &A) -> bool {
     ///         match *self {
-    ///             A {x: ref __self_0_0, y: ref __self_0_1} => {
-    ///                 match *__arg_1 {
-    ///                     A {x: ref __self_1_0, y: ref __self_1_1} => {
-    ///                         __self_0_0.eq(__self_1_0) && __self_0_1.eq(__self_1_1)
+    ///             A {x: ref self_0_0, y: ref self_0_1} => {
+    ///                 match *arg_1 {
+    ///                     A {x: ref self_1_0, y: ref self_1_1} => {
+    ///                         self_0_0.eq(self_1_0) && self_0_1.eq(self_1_1)
     ///                     }
     ///                 }
     ///             }
@@ -942,7 +944,7 @@ impl<'a> MethodDef<'a> {
                 trait_.create_struct_pattern(cx,
                                              struct_path,
                                              struct_def,
-                                             &format!("__self_{}",
+                                             &format!("self_{}",
                                                      i),
                                              ast::Mutability::Immutable);
             patterns.push(pat);
@@ -1020,14 +1022,14 @@ impl<'a> MethodDef<'a> {
     /// // is equivalent to
     ///
     /// impl PartialEq for A {
-    ///     fn eq(&self, __arg_1: &A) -> ::bool {
-    ///         match (&*self, &*__arg_1) {
+    ///     fn eq(&self, arg_1: &A) -> ::bool {
+    ///         match (&*self, &*arg_1) {
     ///             (&A1, &A1) => true,
-    ///             (&A2(ref __self_0),
-    ///              &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
+    ///             (&A2(ref self_0),
+    ///              &A2(ref arg_1_0)) => (*self_0).eq(&(*arg_1_0)),
     ///             _ => {
-    ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
-    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0, A2(..) => 1 };
+    ///                 let self_vi = match *self { A1(..) => 0, A2(..) => 1 };
+    ///                 let arg_1_vi = match *arg_1 { A1(..) => 0, A2(..) => 1 };
     ///                 false
     ///             }
     ///         }
@@ -1035,10 +1037,10 @@ impl<'a> MethodDef<'a> {
     /// }
     /// ```
     ///
-    /// (Of course `__self_vi` and `__arg_1_vi` are unused for
+    /// (Of course `self_vi` and `arg_1_vi` are unused for
     /// `PartialEq`, and those subcomputations will hopefully be removed
-    /// as their results are unused.  The point of `__self_vi` and
-    /// `__arg_1_vi` is for `PartialOrd`; see #15503.)
+    /// as their results are unused.  The point of `self_vi` and
+    /// `arg_1_vi` is for `PartialOrd`; see #15503.)
     fn expand_enum_method_body<'b>(&self,
                                cx: &mut ExtCtxt,
                                trait_: &TraitDef<'b>,
@@ -1069,14 +1071,14 @@ impl<'a> MethodDef<'a> {
     /// for each of the self-args, carried in precomputed variables.
 
     /// ```{.text}
-    /// let __self0_vi = unsafe {
+    /// let self0_vi = unsafe {
     ///     std::intrinsics::discriminant_value(&self) } as i32;
-    /// let __self1_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&__arg1) } as i32;
-    /// let __self2_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&__arg2) } as i32;
+    /// let self1_vi = unsafe {
+    ///     std::intrinsics::discriminant_value(&arg1) } as i32;
+    /// let self2_vi = unsafe {
+    ///     std::intrinsics::discriminant_value(&arg2) } as i32;
     ///
-    /// if __self0_vi == __self1_vi && __self0_vi == __self2_vi && ... {
+    /// if self0_vi == self1_vi && self0_vi == self2_vi && ... {
     ///     match (...) {
     ///         (Variant1, Variant1, ...) => Body1
     ///         (Variant2, Variant2, ...) => Body2,
@@ -1104,9 +1106,9 @@ impl<'a> MethodDef<'a> {
         let self_arg_names = self_args.iter().enumerate()
             .map(|(arg_count, _self_arg)| {
                 if arg_count == 0 {
-                    "__self".to_string()
+                    "self".to_string()
                 } else {
-                    format!("__arg_{}", arg_count)
+                    format!("arg_{}", arg_count)
                 }
             })
             .collect::<Vec<String>>();
@@ -1243,17 +1245,17 @@ impl<'a> MethodDef<'a> {
             // with three Self args, builds three statements:
             //
             // ```
-            // let __self0_vi = unsafe {
+            // let self0_vi = unsafe {
             //     std::intrinsics::discriminant_value(&self) } as i32;
-            // let __self1_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&__arg1) } as i32;
-            // let __self2_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&__arg2) } as i32;
+            // let self1_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&arg1) } as i32;
+            // let self2_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&arg2) } as i32;
             // ```
             let mut index_let_stmts: Vec<ast::Stmt> = Vec::new();
 
             //We also build an expression which checks whether all discriminants are equal
-            // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
+            // discriminant_test = self0_vi == self1_vi && self0_vi == self2_vi && ...
             let mut discriminant_test = cx.expr_bool(sp, true);
 
             let target_type_name =
@@ -1261,15 +1263,11 @@ impl<'a> MethodDef<'a> {
 
             let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
-                let path = cx.std_path(&["intrinsics", "discriminant_value"]);
-                let call = cx.expr_call_global(
-                    sp, path, vec![cx.expr_addr_of(sp, self_arg.clone())]);
-                let variant_value = cx.expr_block(P(ast::Block {
-                    stmts: vec![],
-                    expr: Some(call),
-                    id: ast::DUMMY_NODE_ID,
-                    rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-                    span: sp }));
+                let self_addr = cx.expr_addr_of(sp, self_arg.clone());
+                let variant_value = deriving::call_intrinsic(cx,
+                                                             sp,
+                                                             "discriminant_value",
+                                                             vec![self_addr]);
 
                 let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
                 let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
@@ -1297,22 +1295,15 @@ impl<'a> MethodDef<'a> {
             //Since we know that all the arguments will match if we reach the match expression we
             //add the unreachable intrinsics as the result of the catch all which should help llvm
             //in optimizing it
-            let path = cx.std_path(&["intrinsics", "unreachable"]);
-            let call = cx.expr_call_global(
-                sp, path, vec![]);
-            let unreachable = cx.expr_block(P(ast::Block {
-                stmts: vec![],
-                expr: Some(call),
-                id: ast::DUMMY_NODE_ID,
-                rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-                span: sp }));
-            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], unreachable));
+            match_arms.push(cx.arm(sp,
+                                   vec![cx.pat_wild(sp)],
+                                   deriving::call_intrinsic(cx, sp, "unreachable", vec![])));
 
             // Final wrinkle: the self_args are expressions that deref
             // down to desired l-values, but we cannot actually deref
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
-            // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
+            // `(*self, *arg_0, ...)` into `(&*self, &*arg_0, ...)`.
             let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
             let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
 
@@ -1326,7 +1317,7 @@ impl<'a> MethodDef<'a> {
             //      }
             //  }
             //  else {
-            //      <delegated expression referring to __self0_vi, et al.>
+            //      <delegated expression referring to self0_vi, et al.>
             //  }
             let all_match = cx.expr_match(sp, match_arg, match_arms);
             let arm_expr = cx.expr_if(sp, discriminant_test, all_match, Some(arm_expr));
@@ -1350,8 +1341,8 @@ impl<'a> MethodDef<'a> {
             // error-prone, since the catch-all as defined above would
             // generate code like this:
             //
-            //     _ => { let __self0 = match *self { };
-            //            let __self1 = match *__arg_0 { };
+            //     _ => { let self0 = match *self { };
+            //            let self1 = match *arg_0 { };
             //            <catch-all-expr> }
             //
             // Which is yields bindings for variables which type
@@ -1382,7 +1373,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            cx.expr_unreachable(sp)
+            deriving::call_intrinsic(cx, sp, "unreachable", vec![])
         }
         else {
 
@@ -1390,7 +1381,7 @@ impl<'a> MethodDef<'a> {
             // down to desired l-values, but we cannot actually deref
             // them when they are fed as r-values into a tuple
             // expression; here add a layer of borrowing, turning
-            // `(*self, *__arg_0, ...)` into `(&*self, &*__arg_0, ...)`.
+            // `(*self, *arg_0, ...)` into `(&*self, &*arg_0, ...)`.
             let borrowed_self_args = self_args.move_map(|self_arg| cx.expr_addr_of(sp, self_arg));
             let match_arg = cx.expr(sp, ast::ExprKind::Tup(borrowed_self_args));
             cx.expr_match(sp, match_arg, match_arms)
@@ -1604,8 +1595,8 @@ pub fn cs_fold<F>(use_foldl: bool,
 /// process the collected results. i.e.
 ///
 /// ```ignore
-/// f(cx, span, vec![self_1.method(__arg_1_1, __arg_2_1),
-///                  self_2.method(__arg_1_2, __arg_2_2)])
+/// f(cx, span, vec![self_1.method(arg_1_1, arg_2_1),
+///                  self_2.method(arg_1_2, arg_2_2)])
 /// ```
 #[inline]
 pub fn cs_same_method<F>(f: F,

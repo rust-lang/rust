@@ -10,6 +10,7 @@
 
 //! The compiler code necessary for `#[derive(Decodable)]`. See encodable.rs for more.
 
+use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -54,6 +55,8 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
         return
     }
 
+    let typaram = &*deriving::hygienic_type_parameter(item, "__D");
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -66,18 +69,17 @@ fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
                 name: "decode",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
-                    bounds: vec!(("__D", vec!(Path::new_(
-                                    vec!(krate, "Decoder"), None,
-                                    vec!(), true))))
+                    bounds: vec![(typaram,
+                                  vec![Path::new_(vec!(krate, "Decoder"), None, vec!(), true)])]
                 },
                 explicit_self: None,
-                args: vec!(Ptr(Box::new(Literal(Path::new_local("__D"))),
+                args: vec!(Ptr(Box::new(Literal(Path::new_local(typaram))),
                             Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
                     vec!(Box::new(Self_), Box::new(Literal(Path::new_(
-                        vec!["__D", "Error"], None, vec![], false
+                        vec![typaram, "Error"], None, vec![], false
                     )))),
                     true
                 )),
