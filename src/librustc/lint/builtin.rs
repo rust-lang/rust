@@ -160,6 +160,12 @@ declare_lint! {
     "two overlapping inherent impls define an item with the same name were erroneously allowed"
 }
 
+declare_lint! {
+    pub RENAMED_AND_REMOVED_LINTS,
+    Warn,
+    "lints that have been renamed or removed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -191,7 +197,8 @@ impl LintPass for HardwiredLints {
             CONST_ERR,
             RAW_POINTER_DERIVE,
             TRANSMUTE_FROM_FN_ITEM_TYPES,
-            OVERLAPPING_INHERENT_IMPLS
+            OVERLAPPING_INHERENT_IMPLS,
+            RENAMED_AND_REMOVED_LINTS
         )
     }
 }
