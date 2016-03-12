@@ -1,5 +1,4 @@
 use byteorder::{self, ByteOrder};
-use rustc::middle::ty;
 use std::collections::HashMap;
 use std::mem;
 use std::ptr;
@@ -141,28 +140,6 @@ impl Pointer {
 }
 
 impl Repr {
-    // TODO(tsion): Cache these outputs.
-    pub fn from_ty(ty: ty::Ty) -> Self {
-        match ty.sty {
-            ty::TyBool => Repr::Bool,
-
-            ty::TyInt(_) => Repr::Int,
-
-            ty::TyTuple(ref fields) => {
-                let mut size = 0;
-                let fields = fields.iter().map(|ty| {
-                    let repr = Repr::from_ty(ty);
-                    let old_size = size;
-                    size += repr.size();
-                    FieldRepr { offset: old_size, repr: repr }
-                }).collect();
-                Repr::Aggregate { size: size, fields: fields }
-            },
-
-            ref t => panic!("can't convert type to repr: {:?}", t),
-        }
-    }
-
     pub fn size(&self) -> usize {
         match *self {
             Repr::Bool => 1,

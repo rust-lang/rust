@@ -61,6 +61,13 @@ fn if_true() -> i32 {
     if true { 1 } else { 0 }
 }
 
+struct Pair { x: i64, y: i64 }
+
+#[miri_run]
+fn pair() -> Pair {
+    Pair { x: 10, y: 20 }
+}
+
 // #[miri_run(expected = "Int(2)")]
 // fn call() -> i32 {
 //     fn increment(x: i32) -> i32 {

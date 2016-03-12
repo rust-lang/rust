@@ -5,7 +5,7 @@ use rustc::mir::repr as mir;
 use std::error::Error;
 use std::fmt;
 
-use memory::{Memory, Pointer, Repr};
+use memory::{FieldRepr, Memory, Pointer, Repr};
 
 const TRACE_EXECUTION: bool = true;
 
@@ -107,7 +107,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         let mut locals = Vec::with_capacity(num_args + num_vars + num_temps);
 
         for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
-            let repr = Repr::from_ty(arg_decl.ty);
+            let repr = self.ty_to_repr(arg_decl.ty);
             let dest = self.memory.allocate(repr.size());
             let src = try!(self.operand_to_ptr(arg_operand));
             try!(self.memory.copy(src, dest, repr.size()));
@@ -117,7 +117,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
         locals.extend(var_tys.chain(temp_tys).map(|ty| {
-            self.memory.allocate(Repr::from_ty(ty).size())
+            let repr = self.ty_to_repr(ty).size();
+            self.memory.allocate(repr)
         }));
 
         self.stack.push(Frame {
@@ -273,7 +274,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     {
         let dest = try!(self.lvalue_to_ptr(lvalue));
         let dest_ty = self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
-        let dest_repr = Repr::from_ty(dest_ty);
+        let dest_repr = self.ty_to_repr(dest_ty);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
@@ -297,7 +298,21 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.memory.write_int(dest, n)
             }
 
-            Aggregate(mir::AggregateKind::Tuple, ref operands) => {
+            Aggregate(ref _kind, ref operands) => {
+                // TODO(tsion): Handle different `kind` variants.
+
+                // let max_fields = adt_def.variants
+                //     .iter()
+                //     .map(|v| v.fields.len())
+                //     .max()
+                //     .unwrap_or(0);
+                // let ptr = self.allocate_aggregate(max_fields);
+                // for (i, operand) in operands.iter().enumerate() {
+                //     let val = self.operand_to_ptr(operand);
+                //     self.write_pointer(ptr.offset(i), val);
+                // }
+                // Value::Adt { variant: variant, data_ptr: ptr }
+
                 match dest_repr {
                     Repr::Aggregate { ref fields, .. } => {
                         for (field, operand) in fields.iter().zip(operands) {
@@ -314,24 +329,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
             // Ref(_region, _kind, ref lvalue) => {
             //     Value::Pointer(self.lvalue_to_ptr(lvalue))
-            // }
-
-            // Aggregate(mir::AggregateKind::Adt(ref adt_def, variant, _substs),
-            //                        ref operands) => {
-            //     let max_fields = adt_def.variants
-            //         .iter()
-            //         .map(|v| v.fields.len())
-            //         .max()
-            //         .unwrap_or(0);
-
-            //     let ptr = self.allocate_aggregate(max_fields);
-
-            //     for (i, operand) in operands.iter().enumerate() {
-            //         let val = self.operand_to_ptr(operand);
-            //         self.write_pointer(ptr.offset(i), val);
-            //     }
-
-            //     Value::Adt { variant: variant, data_ptr: ptr }
             // }
 
             ref r => panic!("can't handle rvalue: {:?}", r),
@@ -433,6 +430,36 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
+    fn make_aggregate_repr<I>(&self, iter: I) -> Repr where I: IntoIterator<Item = ty::Ty<'tcx>> {
+        let mut size = 0;
+        let fields = iter.into_iter().map(|ty| {
+            let repr = self.ty_to_repr(ty);
+            let old_size = size;
+            size += repr.size();
+            FieldRepr { offset: old_size, repr: repr }
+        }).collect();
+        Repr::Aggregate { size: size, fields: fields }
+    }
+
+    // TODO(tsion): Cache these outputs.
+    fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
+        match ty.sty {
+            ty::TyBool => Repr::Bool,
+            ty::TyInt(_) => Repr::Int,
+            ty::TyTuple(ref fields) => self.make_aggregate_repr(fields.iter().cloned()),
+
+            ty::TyEnum(adt_def, ref subst) | ty::TyStruct(adt_def, ref subst) => {
+                // TODO(tsion): Support multi-variant enums.
+                assert!(adt_def.variants.len() == 1);
+                let field_tys = adt_def.variants[0].fields.iter().map(|f| f.ty(self.tcx, subst));
+                self.make_aggregate_repr(field_tys)
+            }
+
+            ref t => panic!("can't convert type to repr: {:?}", t),
+        }
+    }
+
+
     fn current_frame(&self) -> &Frame<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
@@ -449,7 +476,10 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
 
                 let mut miri = Interpreter::new(tcx, mir_map);
                 let return_ptr = match mir.return_ty {
-                    ty::FnConverging(ty) => Some(miri.memory.allocate(Repr::from_ty(ty).size())),
+                    ty::FnConverging(ty) => {
+                        let repr = miri.ty_to_repr(ty).size();
+                        Some(miri.memory.allocate(repr))
+                    }
                     ty::FnDiverging => None,
                 };
                 miri.call(mir, &[], return_ptr).unwrap();
