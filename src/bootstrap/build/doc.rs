@@ -143,7 +143,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
 pub fn error_index(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} error index ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let mut index = Command::new(build.tool(&compiler, "error_index_generator"));
+    let mut index = build.tool_cmd(&compiler, "error_index_generator");
     index.arg("html");
     index.arg(out.join("error-index.html"));
 
