@@ -13,6 +13,7 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use cmp;
 use io::{self, Cursor};
 use ptr;
 use str;
@@ -69,19 +70,13 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     // [1]: https://tahoe-lafs.org/trac/tahoe-lafs/ticket/1232
     // [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
     const OUT_MAX: usize = 8192;
-    let (utf16, data_len) = match str::from_utf8(data).ok() {
-        Some(mut utf8) => {
-            if utf8.len() > OUT_MAX {
-                let mut new_len = OUT_MAX;
-                while !utf8.is_char_boundary(new_len) {
-                    new_len -= 1;
-                }
-                utf8 = &utf8[..new_len];
-            }
-            (utf8.encode_utf16().collect::<Vec<u16>>(), utf8.len())
-        }
-        None => return Err(invalid_encoding()),
+    let len = cmp::min(data.len(), OUT_MAX);
+    let utf8 = match str::from_utf8(&data[..len]) {
+        Ok(s) => s,
+        Err(ref e) if e.valid_up_to() == 0 => return Err(invalid_encoding()),
+        Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
     };
+    let utf16 = utf8.encode_utf16().collect::<Vec<u16>>();
     let mut written = 0;
     try!(cvt(unsafe {
         c::WriteConsoleW(handle,
@@ -94,7 +89,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     // FIXME if this only partially writes the utf16 buffer then we need to
     //       figure out how many bytes of `data` were actually written
     assert_eq!(written as usize, utf16.len());
-    Ok(data_len)
+    Ok(utf8.len())
 }
 
 impl Stdin {
