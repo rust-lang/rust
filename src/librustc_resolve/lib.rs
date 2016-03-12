@@ -51,7 +51,7 @@ use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::middle::cstore::{CrateStore, DefLike, DlDef};
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
@@ -756,7 +756,7 @@ enum BareIdentifierPatternResolution {
 /// One local scope.
 #[derive(Debug)]
 struct Rib<'a> {
-    bindings: HashMap<Name, DefLike>,
+    bindings: HashMap<Name, Def>,
     kind: RibKind<'a>,
 }
 
@@ -1594,7 +1594,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Searches the current set of local scopes for labels.
     /// Stops after meeting a closure.
-    fn search_label(&self, name: Name) -> Option<DefLike> {
+    fn search_label(&self, name: Name) -> Option<Def> {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
                 NormalRibKind => {
@@ -1753,13 +1753,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     seen_bindings.insert(name);
 
                     // plain insert (no renaming)
-                    function_type_rib.bindings
-                                     .insert(name,
-                                             DlDef(Def::TyParam(space,
-                                                              index as u32,
-                                                              self.ast_map
-                                                                  .local_def_id(type_parameter.id),
-                                                              name)));
+                    let def_id = self.ast_map.local_def_id(type_parameter.id);
+                    let def = Def::TyParam(space, index as u32, def_id, name);
+                    function_type_rib.bindings.insert(name, def);
                 }
                 self.type_ribs.push(function_type_rib);
             }
@@ -1948,7 +1944,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // plain insert (no renaming, types are not currently hygienic....)
         let name = special_names::type_self;
-        self_type_rib.bindings.insert(name, DlDef(self_def));
+        self_type_rib.bindings.insert(name, self_def);
         self.type_ribs.push(self_type_rib);
         f(self);
         if !self.resolved {
@@ -2328,7 +2324,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             if !bindings_list.contains_key(&renamed) {
                                 let this = &mut *self;
                                 let last_rib = this.value_ribs.last_mut().unwrap();
-                                last_rib.bindings.insert(renamed, DlDef(def));
+                                last_rib.bindings.insert(renamed, def);
                                 bindings_list.insert(renamed, pat_id);
                             } else if mode == ArgumentIrrefutableMode &&
                                bindings_list.contains_key(&renamed) {
@@ -2869,25 +2865,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let name = match namespace { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
 
         for i in (0 .. self.get_ribs(namespace).len()).rev() {
-            if let Some(def_like) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
-                match def_like {
-                    DlDef(def) => {
-                        debug!("(resolving path in local ribs) resolved `{}` to {:?} at {}",
-                               name,
-                               def,
-                               i);
-                        return Some(LocalDef {
-                            ribs: Some((namespace, i)),
-                            def: def,
-                        });
-                    }
-                    def_like => {
-                        debug!("(resolving path in local ribs) resolved `{}` to pseudo-def {:?}",
-                               name,
-                               def_like);
-                        return None;
-                    }
-                }
+            if let Some(def) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
+                return Some(LocalDef {
+                    ribs: Some((namespace, i)),
+                    def: def,
+                });
             }
 
             if let ModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
@@ -3230,11 +3212,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ExprLoop(_, Some(label)) | ExprWhile(_, _, Some(label)) => {
                 self.with_label_rib(|this| {
-                    let def_like = DlDef(Def::Label(expr.id));
+                    let def = Def::Label(expr.id);
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
-                        rib.bindings.insert(label.name, def_like);
+                        rib.bindings.insert(label.name, def);
                     }
 
                     intravisit::walk_expr(this, expr);
@@ -3249,7 +3231,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                       label.span,
                                       ResolutionError::UndeclaredLabel(&label.node.name.as_str()))
                     }
-                    Some(DlDef(def @ Def::Label(_))) => {
+                    Some(def @ Def::Label(_)) => {
                         // Since this def is a label, it is never read.
                         self.record_def(expr.id,
                                         PathResolution {
