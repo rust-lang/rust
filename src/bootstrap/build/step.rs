@@ -29,18 +29,16 @@ macro_rules! targets {
             // and one for the compiler itself. These are parameterized over the
             // stage output they're going to be placed in along with the
             // compiler which is producing the copy of libstd or librustc
-            (libstd, Libstd { stage: u32, compiler: Compiler<'a> }),
-            (librustc, Librustc { stage: u32, compiler: Compiler<'a> }),
+            (libstd, Libstd { compiler: Compiler<'a> }),
+            (librustc, Librustc { compiler: Compiler<'a> }),
 
             // Links the standard library/librustc produced by the compiler
             // provided into the host's directory also provided.
             (libstd_link, LibstdLink {
-                stage: u32,
                 compiler: Compiler<'a>,
                 host: &'a str
             }),
             (librustc_link, LibrustcLink {
-                stage: u32,
                 compiler: Compiler<'a>,
                 host: &'a str
             }),
@@ -144,10 +142,9 @@ fn top_level(build: &Build) -> Vec<Step> {
             }
             let host = t.target(host);
             if host.target == build.config.build {
-                targets.push(host.librustc(stage, host.compiler(stage)));
+                targets.push(host.librustc(host.compiler(stage)));
             } else {
-                targets.push(host.librustc_link(stage, t.compiler(stage),
-                                                host.target));
+                targets.push(host.librustc_link(t.compiler(stage), host.target));
             }
             for target in build.config.target.iter() {
                 if !build.flags.target.contains(target) {
@@ -156,11 +153,10 @@ fn top_level(build: &Build) -> Vec<Step> {
 
                 if host.target == build.config.build {
                     targets.push(host.target(target)
-                                     .libstd(stage, host.compiler(stage)));
+                                     .libstd(host.compiler(stage)));
                 } else {
                     targets.push(host.target(target)
-                                     .libstd_link(stage, t.compiler(stage),
-                                                  host.target));
+                                     .libstd_link(t.compiler(stage), host.target));
                 }
             }
         }
@@ -238,29 +234,29 @@ impl<'a> Step<'a> {
             }
             Source::Rustc { stage } => {
                 let compiler = Compiler::new(stage - 1, &build.config.build);
-                vec![self.librustc(stage - 1, compiler)]
+                vec![self.librustc(compiler)]
             }
-            Source::Librustc { stage, compiler } => {
-                vec![self.libstd(stage, compiler), self.llvm(())]
+            Source::Librustc { compiler } => {
+                vec![self.libstd(compiler), self.llvm(())]
             }
-            Source::Libstd { stage: _, compiler } => {
+            Source::Libstd { compiler } => {
                 vec![self.compiler_rt(()),
                      self.rustc(compiler.stage).target(compiler.host)]
             }
-            Source::LibrustcLink { stage, compiler, host } => {
-                vec![self.librustc(stage, compiler),
-                     self.libstd_link(stage, compiler, host)]
+            Source::LibrustcLink { compiler, host } => {
+                vec![self.librustc(compiler),
+                     self.libstd_link(compiler, host)]
             }
-            Source::LibstdLink { stage, compiler, host } => {
-                vec![self.libstd(stage, compiler),
-                     self.target(host).rustc(stage)]
+            Source::LibstdLink { compiler, host } => {
+                vec![self.libstd(compiler),
+                     self.target(host).rustc(compiler.stage)]
             }
             Source::CompilerRt { _dummy } => {
                 vec![self.llvm(()).target(&build.config.build)]
             }
             Source::Llvm { _dummy } => Vec::new(),
             Source::DocStd { stage } => {
-                vec![self.libstd(stage, self.compiler(stage))]
+                vec![self.libstd(self.compiler(stage))]
             }
             Source::DocBook { stage } |
             Source::DocNomicon { stage } |
@@ -290,11 +286,11 @@ impl<'a> Step<'a> {
             }
 
             Source::ToolLinkchecker { stage } => {
-                vec![self.libstd(stage, self.compiler(stage))]
+                vec![self.libstd(self.compiler(stage))]
             }
             Source::ToolErrorIndex { stage } |
             Source::ToolRustbook { stage } => {
-                vec![self.librustc(stage, self.compiler(stage))]
+                vec![self.librustc(self.compiler(stage))]
             }
         }
     }
