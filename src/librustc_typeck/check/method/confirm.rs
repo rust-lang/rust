@@ -10,7 +10,7 @@
 
 use super::probe;
 
-use check::{self, FnCtxt, callee, demand};
+use check::{FnCtxt, callee};
 use check::UnresolvedTypeAction;
 use hir::def_id::DefId;
 use rustc::ty::subst::{self};
@@ -44,22 +44,24 @@ struct InstantiatedMethodSig<'tcx> {
     method_predicates: ty::InstantiatedPredicates<'tcx>,
 }
 
-pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                         span: Span,
-                         self_expr: &'tcx hir::Expr,
-                         call_expr: &'tcx hir::Expr,
-                         unadjusted_self_ty: Ty<'tcx>,
-                         pick: probe::Pick<'tcx>,
-                         supplied_method_types: Vec<Ty<'tcx>>)
-                         -> ty::MethodCallee<'tcx>
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+pub fn confirm_method(&self,
+                      span: Span,
+                      self_expr: &'tcx hir::Expr,
+                      call_expr: &'tcx hir::Expr,
+                      unadjusted_self_ty: Ty<'tcx>,
+                      pick: probe::Pick<'tcx>,
+                      supplied_method_types: Vec<Ty<'tcx>>)
+                      -> ty::MethodCallee<'tcx>
 {
     debug!("confirm(unadjusted_self_ty={:?}, pick={:?}, supplied_method_types={:?})",
            unadjusted_self_ty,
            pick,
            supplied_method_types);
 
-    let mut confirm_cx = ConfirmContext::new(fcx, span, self_expr, call_expr);
+    let mut confirm_cx = ConfirmContext::new(self, span, self_expr, call_expr);
     confirm_cx.confirm(unadjusted_self_ty, pick, supplied_method_types)
+}
 }
 
 impl<'a,'tcx> ConfirmContext<'a,'tcx> {
@@ -155,13 +157,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Commit the autoderefs by calling `autoderef again, but this
         // time writing the results into the various tables.
-        let (autoderefd_ty, n, result) = check::autoderef(self.fcx,
-                                                          self.span,
-                                                          unadjusted_self_ty,
-                                                          || Some(self.self_expr),
-                                                          UnresolvedTypeAction::Error,
-                                                          NoPreference,
-                                                          |_, n| {
+        let (autoderefd_ty, n, result) = self.fcx.autoderef(self.span,
+                                                            unadjusted_self_ty,
+                                                            || Some(self.self_expr),
+                                                            UnresolvedTypeAction::Error,
+                                                            NoPreference,
+                                                            |_, n| {
             if n == pick.autoderefs {
                 Some(())
             } else {
@@ -205,7 +206,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 let impl_def_id = pick.item.container().id();
                 assert!(self.tcx().impl_trait_ref(impl_def_id).is_none(),
                         "impl {:?} is not an inherent impl", impl_def_id);
-                check::impl_self_ty(self.fcx, self.span, impl_def_id).substs
+                self.fcx.impl_self_ty(self.span, impl_def_id).substs
             }
 
             probe::ObjectPick => {
@@ -245,7 +246,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 // respectively, then we want to return the type
                 // parameters from the trait ([$A,$B]), not those from
                 // the impl ([$A,$B,$C]) not the receiver type ([$C]).
-                let impl_polytype = check::impl_self_ty(self.fcx, self.span, impl_def_id);
+                let impl_polytype = self.fcx.impl_self_ty(self.span, impl_def_id);
                 let impl_trait_ref =
                     self.fcx.instantiate_type_scheme(
                         self.span,
@@ -284,13 +285,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        let (_, _, result) = check::autoderef(self.fcx,
-                                              self.span,
-                                              self_ty,
-                                              || None,
-                                              UnresolvedTypeAction::Error,
-                                              NoPreference,
-                                              |ty, _| {
+        let (_, _, result) = self.fcx.autoderef(self.span,
+                                                self_ty,
+                                                || None,
+                                                UnresolvedTypeAction::Error,
+                                                NoPreference,
+                                                |ty, _| {
             match ty.sty {
                 ty::TyTrait(ref data) => Some(closure(self, ty, &data)),
                 _ => None,
@@ -506,19 +506,18 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                    i, expr, autoderef_count);
 
             if autoderef_count > 0 {
-                check::autoderef(self.fcx,
-                                 expr.span,
-                                 self.fcx.expr_ty(expr),
-                                 || Some(expr),
-                                 UnresolvedTypeAction::Error,
-                                 PreferMutLvalue,
-                                 |_, autoderefs| {
-                                     if autoderefs == autoderef_count + 1 {
-                                         Some(())
-                                     } else {
-                                         None
-                                     }
-                                 });
+                self.fcx.autoderef(expr.span,
+                                   self.fcx.expr_ty(expr),
+                                   || Some(expr),
+                                   UnresolvedTypeAction::Error,
+                                   PreferMutLvalue,
+                                   |_, autoderefs| {
+                    if autoderefs == autoderef_count + 1 {
+                        Some(())
+                    } else {
+                        None
+                    }
+                });
             }
 
             // Don't retry the first one or we might infinite loop!
@@ -576,8 +575,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     };
                     let index_expr_ty = self.fcx.expr_ty(&index_expr);
 
-                    let result = check::try_index_step(
-                        self.fcx,
+                    let result = self.fcx.try_index_step(
                         ty::MethodCall::expr(expr.id),
                         expr,
                         &base_expr,
@@ -588,10 +586,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         index_expr_ty);
 
                     if let Some((input_ty, return_ty)) = result {
-                        demand::suptype(self.fcx, index_expr.span, input_ty, index_expr_ty);
+                        self.fcx.demand_suptype(index_expr.span, input_ty, index_expr_ty);
 
                         let expr_ty = self.fcx.expr_ty(&expr);
-                        demand::suptype(self.fcx, expr.span, expr_ty, return_ty);
+                        self.fcx.demand_suptype(expr.span, expr_ty, return_ty);
                     }
                 }
                 hir::ExprUnary(hir::UnDeref, ref base_expr) => {
@@ -599,9 +597,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     // a preference for mut
                     let method_call = ty::MethodCall::expr(expr.id);
                     if self.fcx.inh.tables.borrow().method_map.contains_key(&method_call) {
-                        let method = check::try_overloaded_deref(
-                            self.fcx,
-                            expr.span,
+                        let method = self.fcx.try_overloaded_deref(expr.span,
                             Some(&base_expr),
                             self.fcx.expr_ty(&base_expr),
                             PreferMutLvalue);

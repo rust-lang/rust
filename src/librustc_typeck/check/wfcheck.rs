@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
+use check::{FnCtxt, Inherited};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use hir::def_id::DefId;
@@ -108,14 +108,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
             hir::ItemStruct(ref struct_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
-                    vec![struct_variant(fcx, struct_def)]
+                    vec![fcx.struct_variant(struct_def)]
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
             hir::ItemEnum(ref enum_def, ref ast_generics) => {
                 self.check_type_defn(item, |fcx| {
-                    enum_variants(fcx, enum_def)
+                    fcx.enum_variants(enum_def)
                 });
 
                 self.check_variances_for_type_defn(item, ast_generics);
@@ -137,7 +137,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             let (mut implied_bounds, self_ty) = match item.container() {
                 ty::TraitContainer(_) => (vec![], fcx.tcx().mk_self_type()),
-                ty::ImplContainer(def_id) => (impl_implied_bounds(fcx, def_id, span),
+                ty::ImplContainer(def_id) => (fcx.impl_implied_bounds(def_id, span),
                                               fcx.tcx().lookup_item_type(def_id).ty)
             };
 
@@ -182,10 +182,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let param_env = ty::ParameterEnvironment::for_item(ccx.tcx, id);
         let tables = RefCell::new(ty::Tables::empty());
         let inh = Inherited::new(ccx.tcx, &tables, param_env);
-        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnDiverging, id);
+        let fcx = FnCtxt::new(ccx, &inh, ty::FnDiverging, id);
         let wf_tys = f(&fcx, self);
         fcx.select_all_obligations_or_error();
-        regionck::regionck_item(&fcx, id, span, &wf_tys);
+        fcx.regionck_item(id, span, &wf_tys);
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
@@ -229,7 +229,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         let trait_def_id = self.tcx().map.local_def_id(item.id);
 
-        if self.ccx.tcx.trait_has_default_impl(trait_def_id) {
+        if self.tcx().trait_has_default_impl(trait_def_id) {
             if !items.is_empty() {
                 error_380(self.ccx, item.span);
             }
@@ -327,7 +327,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let predicates = fcx.instantiate_bounds(item.span, free_substs, &predicates);
             this.check_where_clauses(fcx, item.span, &predicates);
 
-            impl_implied_bounds(fcx, fcx.tcx().map.local_def_id(item.id), item.span)
+            fcx.impl_implied_bounds(fcx.tcx().map.local_def_id(item.id), item.span)
         });
     }
 
@@ -554,54 +554,47 @@ struct AdtField<'tcx> {
     span: Span,
 }
 
-fn struct_variant<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                            struct_def: &hir::VariantData)
-                            -> AdtVariant<'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
     let fields =
         struct_def.fields().iter()
         .map(|field| {
-            let field_ty = fcx.tcx().node_id_to_type(field.id);
-            let field_ty = fcx.instantiate_type_scheme(field.span,
-                                                       &fcx.inh
-                                                           .infcx
-                                                           .parameter_environment
-                                                           .free_substs,
-                                                       &field_ty);
+            let field_ty = self.tcx().node_id_to_type(field.id);
+            let field_ty = self.instantiate_type_scheme(field.span,
+                                                        &self.infcx()
+                                                             .parameter_environment
+                                                             .free_substs,
+                                                        &field_ty);
             AdtField { ty: field_ty, span: field.span }
         })
         .collect();
     AdtVariant { fields: fields }
 }
 
-fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                           enum_def: &hir::EnumDef)
-                           -> Vec<AdtVariant<'tcx>> {
+fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
     enum_def.variants.iter()
-        .map(|variant| struct_variant(fcx, &variant.node.data))
+        .map(|variant| self.struct_variant(&variant.node.data))
         .collect()
 }
 
-fn impl_implied_bounds<'fcx,'tcx>(fcx: &FnCtxt<'fcx, 'tcx>,
-                                  impl_def_id: DefId,
-                                  span: Span)
-                                  -> Vec<Ty<'tcx>>
-{
-    let free_substs = &fcx.inh.infcx.parameter_environment.free_substs;
-    match fcx.tcx().impl_trait_ref(impl_def_id) {
+fn impl_implied_bounds(&self, impl_def_id: DefId, span: Span) -> Vec<Ty<'tcx>> {
+    let free_substs = &self.inh.infcx.parameter_environment.free_substs;
+    match self.tcx().impl_trait_ref(impl_def_id) {
         Some(ref trait_ref) => {
             // Trait impl: take implied bounds from all types that
             // appear in the trait reference.
-            let trait_ref = fcx.instantiate_type_scheme(span, free_substs, trait_ref);
+            let trait_ref = self.instantiate_type_scheme(span, free_substs, trait_ref);
             trait_ref.substs.types.as_slice().to_vec()
         }
 
         None => {
             // Inherent impl: take implied bounds from the self type.
-            let self_ty = fcx.tcx().lookup_item_type(impl_def_id).ty;
-            let self_ty = fcx.instantiate_type_scheme(span, free_substs, &self_ty);
+            let self_ty = self.tcx().lookup_item_type(impl_def_id).ty;
+            let self_ty = self.instantiate_type_scheme(span, free_substs, &self_ty);
             vec![self_ty]
         }
     }
+}
 }
 
 fn error_192(ccx: &CrateCtxt, span: Span) {

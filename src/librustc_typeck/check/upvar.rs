@@ -42,7 +42,6 @@
 
 use super::FnCtxt;
 
-use check::demand;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
@@ -57,34 +56,30 @@ use rustc::hir::intravisit::{self, Visitor};
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-pub fn closure_analyze_fn(fcx: &FnCtxt,
-                          _id: ast::NodeId,
-                          _decl: &hir::FnDecl,
-                          body: &hir::Block)
-{
-    let mut seed = SeedBorrowKind::new(fcx);
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+pub fn closure_analyze_fn(&self, body: &hir::Block) {
+    let mut seed = SeedBorrowKind::new(self);
     seed.visit_block(body);
     let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-    let mut adjust = AdjustBorrowKind::new(fcx, &closures_with_inferred_kinds);
+    let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
     adjust.visit_block(body);
 
     // it's our job to process these.
-    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
+    assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
 }
 
-pub fn closure_analyze_const(fcx: &FnCtxt,
-                             body: &hir::Expr)
-{
-    let mut seed = SeedBorrowKind::new(fcx);
+pub fn closure_analyze_const(&self, body: &hir::Expr) {
+    let mut seed = SeedBorrowKind::new(self);
     seed.visit_expr(body);
     let closures_with_inferred_kinds = seed.closures_with_inferred_kinds;
 
-    let mut adjust = AdjustBorrowKind::new(fcx, &closures_with_inferred_kinds);
+    let mut adjust = AdjustBorrowKind::new(self, &closures_with_inferred_kinds);
     adjust.visit_expr(body);
 
     // it's our job to process these.
-    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
+    assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
+}
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -221,7 +216,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         debug!("analyze_closure: id={:?} closure_substs={:?} final_upvar_tys={:?}",
                id, closure_substs, final_upvar_tys);
         for (&upvar_ty, final_upvar_ty) in closure_substs.upvar_tys.iter().zip(final_upvar_tys) {
-            demand::eqtype(self.fcx, span, final_upvar_ty, upvar_ty);
+            self.fcx.demand_eqtype(span, final_upvar_ty, upvar_ty);
         }
 
         // Now we must process and remove any deferred resolutions,

@@ -112,9 +112,10 @@ macro_rules! ignore_err {
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-pub fn regionck_expr(fcx: &FnCtxt, e: &hir::Expr) {
-    let mut rcx = Rcx::new(fcx, RepeatingScope(e.id), e.id, Subject(e.id));
-    if fcx.err_count_since_creation() == 0 {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+pub fn regionck_expr(&self, e: &hir::Expr) {
+    let mut rcx = Rcx::new(self, RepeatingScope(e.id), e.id, Subject(e.id));
+    if self.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         rcx.visit_expr(e);
         rcx.visit_region_obligations(e.id);
@@ -124,43 +125,44 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &hir::Expr) {
 
 /// Region checking during the WF phase for items. `wf_tys` are the
 /// types from which we should derive implied bounds, if any.
-pub fn regionck_item<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                              item_id: ast::NodeId,
-                              span: Span,
-                              wf_tys: &[Ty<'tcx>]) {
+pub fn regionck_item(&self,
+                     item_id: ast::NodeId,
+                     span: Span,
+                     wf_tys: &[Ty<'tcx>]) {
     debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
-    let mut rcx = Rcx::new(fcx, RepeatingScope(item_id), item_id, Subject(item_id));
-    let tcx = fcx.tcx();
-    rcx.free_region_map
-       .relate_free_regions_from_predicates(tcx, &fcx.infcx().parameter_environment.caller_bounds);
+    let mut rcx = Rcx::new(self, RepeatingScope(item_id), item_id, Subject(item_id));
+    let tcx = self.tcx();
+    rcx.free_region_map.relate_free_regions_from_predicates(tcx,
+        &self.infcx().parameter_environment.caller_bounds);
     rcx.relate_free_regions(wf_tys, item_id, span);
     rcx.visit_region_obligations(item_id);
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_fn(fcx: &FnCtxt,
+pub fn regionck_fn(&self,
                    fn_id: ast::NodeId,
                    fn_span: Span,
                    decl: &hir::FnDecl,
                    blk: &hir::Block) {
     debug!("regionck_fn(id={})", fn_id);
-    let mut rcx = Rcx::new(fcx, RepeatingScope(blk.id), blk.id, Subject(fn_id));
+    let mut rcx = Rcx::new(self, RepeatingScope(blk.id), blk.id, Subject(fn_id));
 
-    if fcx.err_count_since_creation() == 0 {
+    if self.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         rcx.visit_fn_body(fn_id, decl, blk, fn_span);
     }
 
-    let tcx = fcx.tcx();
-    rcx.free_region_map
-       .relate_free_regions_from_predicates(tcx, &fcx.infcx().parameter_environment.caller_bounds);
+    let tcx = self.tcx();
+    rcx.free_region_map.relate_free_regions_from_predicates(tcx,
+        &self.infcx().parameter_environment.caller_bounds);
 
     rcx.resolve_regions_and_report_errors();
 
     // For the top-level fn, store the free-region-map. We don't store
     // any map for closures; they just share the same map as the
     // function that created them.
-    fcx.tcx().store_free_region_map(fn_id, rcx.free_region_map);
+    self.tcx().store_free_region_map(fn_id, rcx.free_region_map);
+}
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -207,7 +209,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     }
 
     pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
-        self.fcx.ccx.tcx
+        self.fcx.tcx()
     }
 
     pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
