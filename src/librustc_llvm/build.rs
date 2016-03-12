@@ -47,14 +47,20 @@ fn main() {
     // the host platform. This only really works if the host LLVM and target
     // LLVM are compiled the same way, but for us that's typically the case.
     //
-    // We detect this cross compiling situation by asking llvm-config what it's
-    // host-target is. If that's not the TARGET, then we're cross compiling.
-    // This generally just means that we can't trust all the output of
-    // llvm-config becaues it might be targeted for the host rather than the
-    // target.
+    // We *want* detect this cross compiling situation by asking llvm-config
+    // what it's host-target is. If that's not the TARGET, then we're cross
+    // compiling. Unfortunately `llvm-config` seems either be buggy, or we're
+    // misconfiguring it, because the `i686-pc-windows-gnu` build of LLVM will
+    // report itself with a `--host-target` of `x86_64-pc-windows-gnu`. This
+    // tricks us into thinking we're doing a cross build when we aren't, so
+    // havoc ensues.
+    //
+    // In any case, if we're cross compiling, this generally just means that we
+    // can't trust all the output of llvm-config becaues it might be targeted
+    // for the host rather than the target. As a result a bunch of blocks below
+    // are gated on `if !is_crossed`
     let target = env::var("TARGET").unwrap();
-    let host = output(Command::new(&llvm_config).arg("--host-target"));
-    let host = host.trim();
+    let host = env::var("HOST").unwrap();
     let is_crossed = target != host;
 
     let optional_components = ["x86", "arm", "aarch64", "mips", "powerpc",
