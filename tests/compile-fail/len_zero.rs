@@ -76,6 +76,12 @@ fn main() {
         println!("This should not happen!");
     }
 
+    if "".len() == 0 {
+        //~^ERROR length comparison to zero
+        //~|HELP consider using `is_empty`
+        //~|SUGGESTION "".is_empty()
+    }
+
     let y = One;
     if y.len()  == 0 { //no error because One does not have .is_empty()
         println!("This should not happen either!");

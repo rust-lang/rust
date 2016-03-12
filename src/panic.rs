@@ -37,7 +37,8 @@ impl LateLintPass for PanicPass {
             match_path(path, &BEGIN_UNWIND),
             let ExprLit(ref lit) = params[0].node,
             let LitKind::Str(ref string, _) = lit.node,
-            string.contains('{'),
+            let Some(par) = string.find('{'),
+            string[par..].contains('}'),
             let Some(sp) = cx.sess().codemap()
                              .with_expn_info(expr.span.expn_id,
                                              |info| info.map(|i| i.call_site))
