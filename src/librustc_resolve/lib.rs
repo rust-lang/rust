@@ -1166,8 +1166,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             unresolved_imports: 0,
 
             current_module: graph_root,
-            value_ribs: Vec::new(),
-            type_ribs: Vec::new(),
+            value_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
+            type_ribs: vec![Rib::new(ModuleRibKind(graph_root))],
             label_ribs: Vec::new(),
 
             current_trait_ref: None,
@@ -1354,7 +1354,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// On success, returns the resolved module, and the closest *private*
     /// module found to the destination when resolving this path.
     fn resolve_module_path(&mut self,
-                           module_: Module<'a>,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
                            span: Span)
@@ -1365,10 +1364,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving module path for import) processing `{}` rooted at `{}`",
                names_to_string(module_path),
-               module_to_string(&module_));
+               module_to_string(self.current_module));
 
         // Resolve the module prefix, if any.
-        let module_prefix_result = self.resolve_module_prefix(module_, module_path);
+        let module_prefix_result = self.resolve_module_prefix(module_path);
 
         let search_module;
         let start_index;
@@ -1410,8 +1409,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        match self.resolve_item_in_lexical_scope(module_,
-                                                                 module_path[0],
+                        match self.resolve_item_in_lexical_scope(module_path[0],
                                                                  TypeNS,
                                                                  true) {
                             Failed(err) => return Failed(err),
@@ -1442,64 +1440,40 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            span)
     }
 
+    /// This function resolves `name` in `namespace` in the current lexical scope, returning
+    /// Success(binding) if `name` resolves to an item, or Failed(None) if `name` does not resolve
+    /// or resolves to a type parameter or local variable.
+    /// n.b. `resolve_identifier_in_local_ribs` also resolves names in the current lexical scope.
+    ///
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
     fn resolve_item_in_lexical_scope(&mut self,
-                                     module_: Module<'a>,
                                      name: Name,
                                      namespace: Namespace,
                                      record_used: bool)
                                      -> ResolveResult<&'a NameBinding<'a>> {
-        debug!("(resolving item in lexical scope) resolving `{}` in namespace {:?} in `{}`",
-               name,
-               namespace,
-               module_to_string(&module_));
+        // Walk backwards up the ribs in scope.
+        for i in (0 .. self.get_ribs(namespace).len()).rev() {
+            if let Some(_) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
+                // The name resolves to a type parameter or local variable, so return Failed(None).
+                return Failed(None);
+            }
 
-        // Proceed up the scope chain looking for parent modules.
-        let mut search_module = module_;
-        loop {
-            // Resolve the name in the parent module.
-            match self.resolve_name_in_module(search_module, name, namespace, true, record_used) {
-                Failed(Some((span, msg))) => {
-                    resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                }
-                Failed(None) => (), // Continue up the search chain.
-                Indeterminate => {
-                    // We couldn't see through the higher scope because of an
-                    // unresolved import higher up. Bail.
-
-                    debug!("(resolving item in lexical scope) indeterminate higher scope; bailing");
-                    return Indeterminate;
-                }
-                Success(binding) => {
-                    // We found the module.
-                    debug!("(resolving item in lexical scope) found name in module, done");
+            if let ModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
+                if let Success(binding) = self.resolve_name_in_module(module,
+                                                                      name,
+                                                                      namespace,
+                                                                      true,
+                                                                      record_used) {
+                    // The name resolves to an item.
                     return Success(binding);
                 }
-            }
-
-            // Go to the next parent.
-            match search_module.parent_link {
-                NoParentLink => {
-                    // No more parents. This module was unresolved.
-                    debug!("(resolving item in lexical scope) unresolved module: no parent module");
-                    return Failed(None);
-                }
-                ModuleParentLink(parent_module_node, _) => {
-                    if search_module.is_normal() {
-                        // We stop the search here.
-                        debug!("(resolving item in lexical scope) unresolved module: not \
-                                searching through module parents");
-                            return Failed(None);
-                    } else {
-                        search_module = parent_module_node;
-                    }
-                }
-                BlockParentLink(parent_module_node, _) => {
-                    search_module = parent_module_node;
-                }
+                // We can only see through anonymous modules
+                if module.def.is_some() { return Failed(None); }
             }
         }
+
+        Failed(None)
     }
 
     /// Returns the nearest normal module parent of the given module.
@@ -1535,9 +1509,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
-    fn resolve_module_prefix(&mut self,
-                             module_: Module<'a>,
-                             module_path: &[Name])
+    fn resolve_module_prefix(&mut self, module_path: &[Name])
                              -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -1546,6 +1518,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             "super" => 0,
             _ => return Success(NoPrefixFound),
         };
+        let module_ = self.current_module;
         let mut containing_module = self.get_nearest_normal_module_parent_or_self(module_);
 
         // Now loop through all the `super`s we find.
@@ -1905,7 +1878,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                trait_path: &Path,
                                path_depth: usize)
                                -> Result<PathResolution, ()> {
-        if let Some(path_res) = self.resolve_path(id, trait_path, path_depth, TypeNS, true) {
+        if let Some(path_res) = self.resolve_path(id, trait_path, path_depth, TypeNS) {
             if let Def::Trait(_) = path_res.base_def {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
@@ -1963,7 +1936,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &hir::WherePredicate::BoundPredicate(_) |
                 &hir::WherePredicate::RegionPredicate(_) => {}
                 &hir::WherePredicate::EqPredicate(ref eq_pred) => {
-                    let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS, true);
+                    let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS);
                     if let Some(PathResolution { base_def: Def::TyParam(..), .. }) = path_res {
                         self.record_def(eq_pred.id, path_res.unwrap());
                     } else {
@@ -2229,8 +2202,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let resolution = match self.resolve_possibly_assoc_item(ty.id,
                                                                         maybe_qself.as_ref(),
                                                                         path,
-                                                                        TypeNS,
-                                                                        true) {
+                                                                        TypeNS) {
                     // `<T>::a::b::c` is resolved by typeck alone.
                     TypecheckRequired => {
                         // Resolve embedded types.
@@ -2255,7 +2227,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(ty.id, err_path_resolution());
 
                         // Keep reporting some errors even if they're ignored above.
-                        self.resolve_path(ty.id, path, 0, TypeNS, true);
+                        self.resolve_path(ty.id, path, 0, TypeNS);
 
                         let kind = if maybe_qself.is_some() {
                             "associated type"
@@ -2433,8 +2405,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             None,
                                                                             path,
-                                                                            ValueNS,
-                                                                            false) {
+                                                                            ValueNS) {
                         // The below shouldn't happen because all
                         // qualified paths should be in PatKind::QPath.
                         TypecheckRequired =>
@@ -2506,8 +2477,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let resolution = match self.resolve_possibly_assoc_item(pat_id,
                                                                             Some(qself),
                                                                             path,
-                                                                            ValueNS,
-                                                                            false) {
+                                                                            ValueNS) {
                         TypecheckRequired => {
                             // All `<T>::CONST` should end up here, and will
                             // require use of the trait map to resolve
@@ -2557,7 +2527,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
 
                 PatKind::Struct(ref path, _, _) => {
-                    match self.resolve_path(pat_id, path, 0, TypeNS, false) {
+                    match self.resolve_path(pat_id, path, 0, TypeNS) {
                         Some(definition) => {
                             self.record_def(pattern.id, definition);
                         }
@@ -2591,8 +2561,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        name: Name,
                                        span: Span)
                                        -> BareIdentifierPatternResolution {
-        let module = self.current_module;
-        match self.resolve_item_in_lexical_scope(module, name, ValueNS, true) {
+        match self.resolve_item_in_lexical_scope(name, ValueNS, true) {
             Success(binding) => {
                 debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
                        name,
@@ -2639,8 +2608,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    id: NodeId,
                                    maybe_qself: Option<&hir::QSelf>,
                                    path: &Path,
-                                   namespace: Namespace,
-                                   check_ribs: bool)
+                                   namespace: Namespace)
                                    -> AssocItemResolveResult {
         let max_assoc_types;
 
@@ -2659,14 +2627,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut resolution = self.with_no_errors(|this| {
-            this.resolve_path(id, path, 0, namespace, check_ribs)
+            this.resolve_path(id, path, 0, namespace)
         });
         for depth in 1..max_assoc_types {
             if resolution.is_some() {
                 break;
             }
             self.with_no_errors(|this| {
-                resolution = this.resolve_path(id, path, depth, TypeNS, true);
+                resolution = this.resolve_path(id, path, depth, TypeNS);
             });
         }
         if let Some(Def::Mod(_)) = resolution.map(|r| r.base_def) {
@@ -2676,16 +2644,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ResolveAttempt(resolution)
     }
 
-    /// If `check_ribs` is true, checks the local definitions first; i.e.
-    /// doesn't skip straight to the containing module.
     /// Skips `path_depth` trailing segments, which is also reflected in the
     /// returned value. See `middle::def::PathResolution` for more info.
     pub fn resolve_path(&mut self,
                         id: NodeId,
                         path: &Path,
                         path_depth: usize,
-                        namespace: Namespace,
-                        check_ribs: bool)
+                        namespace: Namespace)
                         -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
@@ -2700,14 +2665,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Try to find a path to an item in a module.
         let last_ident = segments.last().unwrap().identifier;
         if segments.len() <= 1 {
-            let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, true);
+            let unqualified_def = self.resolve_identifier(last_ident, namespace, true);
             return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
                                   .map(|def| {
                                       PathResolution::new(def, path_depth)
                                   });
         }
 
-        let unqualified_def = self.resolve_identifier(last_ident, namespace, check_ribs, false);
+        let unqualified_def = self.resolve_identifier(last_ident, namespace, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
             (Some(d), Some(ref ud)) if d == ud.def => {
@@ -2727,7 +2692,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_identifier(&mut self,
                           identifier: hir::Ident,
                           namespace: Namespace,
-                          check_ribs: bool,
                           record_used: bool)
                           -> Option<LocalDef> {
         if identifier.name == special_idents::invalid.name {
@@ -2743,24 +2707,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        if check_ribs {
-            match self.resolve_identifier_in_local_ribs(identifier, namespace, record_used) {
-                Some(def) => return Some(def),
-                None => {}
-            }
-        }
-
-        // Check the items.
-        let module = self.current_module;
-        let name = identifier.unhygienic_name;
-        match self.resolve_item_in_lexical_scope(module, name, namespace, record_used) {
-            Success(binding) => binding.def().map(LocalDef::from_def),
-            Failed(Some((span, msg))) => {
-                resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                None
-            }
-            _ => None,
-        }
+        self.resolve_identifier_in_local_ribs(identifier, namespace, record_used)
     }
 
     // Resolve a local definition, potentially adjusting for closures.
@@ -2866,8 +2813,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                   .collect::<Vec<_>>();
 
         let containing_module;
-        let current_module = self.current_module;
-        match self.resolve_module_path(current_module, &module_path, UseLexicalScope, span) {
+        match self.resolve_module_path(&module_path, UseLexicalScope, span) {
             Failed(err) => {
                 let (span, msg) = match err {
                     Some((span, msg)) => (span, msg),
@@ -3021,7 +2967,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span: Span,
                                 name_path: &[ast::Name])
                                 -> Option<Module<'a>> {
-            let root = this.current_module;
             let last_name = name_path.last().unwrap();
 
             if name_path.len() == 1 {
@@ -3031,7 +2976,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                .and_then(NameBinding::module)
                 }
             } else {
-                this.resolve_module_path(root, &name_path, UseLexicalScope, span).success()
+                this.resolve_module_path(&name_path, UseLexicalScope, span).success()
             }
         }
 
@@ -3142,8 +3087,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let resolution = match self.resolve_possibly_assoc_item(expr.id,
                                                                         maybe_qself.as_ref(),
                                                                         path,
-                                                                        ValueNS,
-                                                                        true) {
+                                                                        ValueNS) {
                     // `<T>::a::b::c` is resolved by typeck alone.
                     TypecheckRequired => {
                         let method_name = path.segments.last().unwrap().identifier.name;
@@ -3203,7 +3147,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // structs, which wouldn't result in this error.)
                     let path_name = path_names_to_string(path, 0);
                     let type_res = self.with_no_errors(|this| {
-                        this.resolve_path(expr.id, path, 0, TypeNS, false)
+                        this.resolve_path(expr.id, path, 0, TypeNS)
                     });
 
                     self.record_def(expr.id, err_path_resolution());
@@ -3224,7 +3168,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         _ => {
                             // Keep reporting some errors even if they're ignored above.
-                            self.resolve_path(expr.id, path, 0, ValueNS, true);
+                            self.resolve_path(expr.id, path, 0, ValueNS);
 
                             let mut method_scope = false;
                             self.value_ribs.iter().rev().all(|rib| {
@@ -3271,10 +3215,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     let name_path = path.segments.iter()
                                                         .map(|seg| seg.identifier.name)
                                                         .collect::<Vec<_>>();
-                                    let current_module = self.current_module;
 
-                                    match self.resolve_module_path(current_module,
-                                                                   &name_path[..],
+                                    match self.resolve_module_path(&name_path[..],
                                                                    UseLexicalScope,
                                                                    expr.span) {
                                         Success(_) => {
@@ -3300,7 +3242,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // Resolve the path to the structure it goes to. We don't
                 // check to ensure that the path is actually a structure; that
                 // is checked later during typeck.
-                match self.resolve_path(expr.id, path, 0, TypeNS, false) {
+                match self.resolve_path(expr.id, path, 0, TypeNS) {
                     Some(definition) => self.record_def(expr.id, definition),
                     None => {
                         debug!("(resolving expression) didn't find struct def",);
