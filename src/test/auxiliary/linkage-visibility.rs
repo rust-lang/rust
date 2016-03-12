@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dynamic_lib)]
+#![feature(rustc_private)]
 
 // We're testing linkage visibility; the compiler warns us, but we want to
 // do the runtime check that these functions aren't exported.
 #![allow(private_no_mangle_fns)]
 
-use std::dynamic_lib::DynamicLibrary;
+extern crate rustc_back;
+
+use rustc_back::dynamic_lib::DynamicLibrary;
 
 #[no_mangle]
 pub fn foo() { bar(); }

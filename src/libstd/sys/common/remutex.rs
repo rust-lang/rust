@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "reentrant_mutex", reason = "new API",
-            issue = "27738")]
-
 use prelude::v1::*;
 
 use fmt;

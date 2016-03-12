@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(fs, net, fs_walk)]
+#![feature(fs, net)]
 
 use std::{fs, net};
 
@@ -22,7 +22,6 @@ fn main() {
     assert_both::<fs::Metadata>();
     assert_both::<fs::ReadDir>();
     assert_both::<fs::DirEntry>();
-    assert_send::<fs::WalkDir>();
     assert_both::<fs::OpenOptions>();
     assert_both::<fs::Permissions>();
 

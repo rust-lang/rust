@@ -66,8 +66,7 @@ use core::str::pattern::Pattern;
 use rustc_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use rustc_unicode::str as unicode_str;
 
-#[allow(deprecated)]
-use borrow::{Cow, IntoCow};
+use borrow::Cow;
 use range::RangeArgument;
 use str::{self, FromStr, Utf8Error, Chars};
 use vec::Vec;
@@ -1835,26 +1834,6 @@ impl<'a> From<String> for Cow<'a, str> {
 impl Into<Vec<u8>> for String {
     fn into(self) -> Vec<u8> {
         self.into_bytes()
-    }
-}
-
-#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
-           issue= "27735")]
-#[allow(deprecated)]
-impl IntoCow<'static, str> for String {
-    #[inline]
-    fn into_cow(self) -> Cow<'static, str> {
-        Cow::Owned(self)
-    }
-}
-
-#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`",
-           issue = "27735")]
-#[allow(deprecated)]
-impl<'a> IntoCow<'a, str> for &'a str {
-    #[inline]
-    fn into_cow(self) -> Cow<'a, str> {
-        Cow::Borrowed(self)
     }
 }
 

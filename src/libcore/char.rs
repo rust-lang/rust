@@ -255,7 +255,7 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
 #[doc(hidden)]
 #[unstable(feature = "core_char_ext",
            reason = "the stable interface is `impl char` in later crate",
-           issue = "27701")]
+           issue = "32110")]
 pub trait CharExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn is_digit(self, radix: u32) -> bool;

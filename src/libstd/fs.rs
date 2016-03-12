@@ -85,19 +85,6 @@ pub struct ReadDir(fs_imp::ReadDir);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct DirEntry(fs_imp::DirEntry);
 
-/// An iterator that recursively walks over the contents of a directory.
-#[unstable(feature = "fs_walk",
-           reason = "the precise semantics and defaults for a recursive walk \
-                     may change and this may end up accounting for files such \
-                     as symlinks differently",
-           issue = "27707")]
-#[rustc_deprecated(reason = "superceded by the walkdir crate",
-                   since = "1.6.0")]
-pub struct WalkDir {
-    cur: Option<ReadDir>,
-    stack: Vec<io::Result<ReadDir>>,
-}
-
 /// Options and flags which can be used to configure how a file is opened.
 ///
 /// This builder exposes the ability to configure how a `File` is opened and
@@ -1345,7 +1332,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// use std::fs::{self, DirEntry};
 /// use std::path::Path;
 ///
-/// // one possible implementation of fs::walk_dir only visiting files
+/// // one possible implementation of walking a directory only visiting files
 /// fn visit_dirs(dir: &Path, cb: &Fn(&DirEntry)) -> io::Result<()> {
 ///     if try!(fs::metadata(dir)).is_dir() {
 ///         for entry in try!(fs::read_dir(dir)) {
@@ -1363,64 +1350,6 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
     fs_imp::readdir(path.as_ref()).map(ReadDir)
-}
-
-/// Returns an iterator that will recursively walk the directory structure
-/// rooted at `path`.
-///
-/// The path given will not be iterated over, and this will perform iteration in
-/// some top-down order.  The contents of unreadable subdirectories are ignored.
-///
-/// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
-/// be encountered after an iterator is initially constructed.
-#[unstable(feature = "fs_walk",
-           reason = "the precise semantics and defaults for a recursive walk \
-                     may change and this may end up accounting for files such \
-                     as symlinks differently",
-           issue = "27707")]
-#[rustc_deprecated(reason = "superceded by the walkdir crate",
-                   since = "1.6.0")]
-#[allow(deprecated)]
-pub fn walk_dir<P: AsRef<Path>>(path: P) -> io::Result<WalkDir> {
-    _walk_dir(path.as_ref())
-}
-
-#[allow(deprecated)]
-fn _walk_dir(path: &Path) -> io::Result<WalkDir> {
-    let start = try!(read_dir(path));
-    Ok(WalkDir { cur: Some(start), stack: Vec::new() })
-}
-
-#[unstable(feature = "fs_walk", issue = "27707")]
-#[rustc_deprecated(reason = "superceded by the walkdir crate",
-                   since = "1.6.0")]
-#[allow(deprecated)]
-impl Iterator for WalkDir {
-    type Item = io::Result<DirEntry>;
-
-    fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        loop {
-            if let Some(ref mut cur) = self.cur {
-                match cur.next() {
-                    Some(Err(e)) => return Some(Err(e)),
-                    Some(Ok(next)) => {
-                        let path = next.path();
-                        if path.is_dir() {
-                            self.stack.push(read_dir(&*path));
-                        }
-                        return Some(Ok(next))
-                    }
-                    None => {}
-                }
-            }
-            self.cur = None;
-            match self.stack.pop() {
-                Some(Err(e)) => return Some(Err(e)),
-                Some(Ok(next)) => self.cur = Some(next),
-                None => return None,
-            }
-        }
-    }
 }
 
 /// Changes the permissions found on a file or a directory.
@@ -1863,35 +1792,6 @@ mod tests {
             check!(fs::remove_file(&f));
         }
         check!(fs::remove_dir(dir));
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn file_test_walk_dir() {
-        let tmpdir = tmpdir();
-        let dir = &tmpdir.join("walk_dir");
-        check!(fs::create_dir(dir));
-
-        let dir1 = &dir.join("01/02/03");
-        check!(fs::create_dir_all(dir1));
-        check!(File::create(&dir1.join("04")));
-
-        let dir2 = &dir.join("11/12/13");
-        check!(fs::create_dir_all(dir2));
-        check!(File::create(&dir2.join("14")));
-
-        let files = check!(fs::walk_dir(dir));
-        let mut cur = [0; 2];
-        for f in files {
-            let f = f.unwrap().path();
-            let stem = f.file_stem().unwrap().to_str().unwrap();
-            let root = stem.as_bytes()[0] - b'0';
-            let name = stem.as_bytes()[1] - b'0';
-            assert!(cur[root as usize] < name);
-            cur[root as usize] = name;
-        }
-
-        check!(fs::remove_dir_all(dir));
     }
 
     #[test]

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(into_cow)]
-
-use std::borrow::{Cow, IntoCow};
+use std::borrow::{Cow, ToOwned};
 use std::default::Default;
 use std::iter::FromIterator;
 use std::ops::Add;
@@ -24,6 +22,16 @@ pub trait Rand: Default + Sized {
     fn rand<R: Rng>(_rng: &mut R) -> Self { Default::default() }
 }
 impl Rand for i32 { }
+
+pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
+    fn into_cow(self) -> Cow<'a, B>;
+}
+
+impl<'a> IntoCow<'a, str> for String {
+    fn into_cow(self) -> Cow<'a, str> {
+        Cow::Owned(self)
+    }
+}
 
 #[derive(PartialEq, Eq)]
 struct Newt<T>(T);

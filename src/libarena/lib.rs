@@ -32,7 +32,6 @@
 #![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(heap_api)]
-#![feature(raw)]
 #![feature(heap_api)]
 #![feature(staged_api)]
 #![feature(dropck_parametricity)]
@@ -48,325 +47,9 @@ use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
-use std::slice;
 
 use alloc::heap;
 use alloc::raw_vec::RawVec;
-
-struct Chunk {
-    data: RawVec<u8>,
-    /// Index of the first unused byte.
-    fill: Cell<usize>,
-    /// Indicates whether objects with destructors are stored in this chunk.
-    is_copy: Cell<bool>,
-}
-
-impl Chunk {
-    fn new(size: usize, is_copy: bool) -> Chunk {
-        Chunk {
-            data: RawVec::with_capacity(size),
-            fill: Cell::new(0),
-            is_copy: Cell::new(is_copy),
-        }
-    }
-
-    fn capacity(&self) -> usize {
-        self.data.cap()
-    }
-
-    unsafe fn as_ptr(&self) -> *const u8 {
-        self.data.ptr()
-    }
-
-    // Walk down a chunk, running the destructors for any objects stored
-    // in it.
-    unsafe fn destroy(&self) {
-        let mut idx = 0;
-        let buf = self.as_ptr();
-        let fill = self.fill.get();
-
-        while idx < fill {
-            let tydesc_data = buf.offset(idx as isize) as *const usize;
-            let (tydesc, is_done) = un_bitpack_tydesc_ptr(*tydesc_data);
-            let (size, align) = ((*tydesc).size, (*tydesc).align);
-
-            let after_tydesc = idx + mem::size_of::<*const TyDesc>();
-
-            let start = round_up(after_tydesc, align);
-
-            if is_done {
-                ((*tydesc).drop_glue)(buf.offset(start as isize) as *const i8);
-            }
-
-            // Find where the next tydesc lives
-            idx = round_up(start + size, mem::align_of::<*const TyDesc>());
-        }
-    }
-}
-
-/// A slower reflection-based arena that can allocate objects of any type.
-///
-/// This arena uses `RawVec<u8>` as a backing store to allocate objects from.
-/// For each allocated object, the arena stores a pointer to the type descriptor
-/// followed by the object (potentially with alignment padding after each
-/// element). When the arena is destroyed, it iterates through all of its
-/// chunks, and uses the tydesc information to trace through the objects,
-/// calling the destructors on them. One subtle point that needs to be
-/// addressed is how to handle panics while running the user provided
-/// initializer function. It is important to not run the destructor on
-/// uninitialized objects, but how to detect them is somewhat subtle. Since
-/// `alloc()` can be invoked recursively, it is not sufficient to simply exclude
-/// the most recent object. To solve this without requiring extra space, we
-/// use the low order bit of the tydesc pointer to encode whether the object
-/// it describes has been fully initialized.
-///
-/// As an optimization, objects with destructors are stored in different chunks
-/// than objects without destructors. This reduces overhead when initializing
-/// plain-old-data (`Copy` types) and means we don't need to waste time running
-/// their destructors.
-#[unstable(feature = "rustc_private",
-           reason = "Private to rustc", issue = "0")]
-#[rustc_deprecated(since = "1.6.0-dev", reason =
-"The reflection-based arena is superseded by the any-arena crate")]
-pub struct Arena<'longer_than_self> {
-    // The heads are separated out from the list as a unbenchmarked
-    // microoptimization, to avoid needing to case on the list to access a head.
-    head: RefCell<Chunk>,
-    copy_head: RefCell<Chunk>,
-    chunks: RefCell<Vec<Chunk>>,
-    _marker: PhantomData<*mut &'longer_than_self ()>,
-}
-
-impl<'a> Arena<'a> {
-    /// Allocates a new Arena with 32 bytes preallocated.
-    pub fn new() -> Arena<'a> {
-        Arena::new_with_size(32)
-    }
-
-    /// Allocates a new Arena with `initial_size` bytes preallocated.
-    pub fn new_with_size(initial_size: usize) -> Arena<'a> {
-        Arena {
-            head: RefCell::new(Chunk::new(initial_size, false)),
-            copy_head: RefCell::new(Chunk::new(initial_size, true)),
-            chunks: RefCell::new(Vec::new()),
-            _marker: PhantomData,
-        }
-    }
-}
-
-impl<'longer_than_self> Drop for Arena<'longer_than_self> {
-    fn drop(&mut self) {
-        unsafe {
-            self.head.borrow().destroy();
-            for chunk in self.chunks.borrow().iter() {
-                if !chunk.is_copy.get() {
-                    chunk.destroy();
-                }
-            }
-        }
-    }
-}
-
-#[inline]
-fn round_up(base: usize, align: usize) -> usize {
-    (base.checked_add(align - 1)).unwrap() & !(align - 1)
-}
-
-// We encode whether the object a tydesc describes has been
-// initialized in the arena in the low bit of the tydesc pointer. This
-// is necessary in order to properly do cleanup if a panic occurs
-// during an initializer.
-#[inline]
-fn bitpack_tydesc_ptr(p: *const TyDesc, is_done: bool) -> usize {
-    p as usize | (is_done as usize)
-}
-#[inline]
-fn un_bitpack_tydesc_ptr(p: usize) -> (*const TyDesc, bool) {
-    ((p & !1) as *const TyDesc, p & 1 == 1)
-}
-
-// HACK(eddyb) TyDesc replacement using a trait object vtable.
-// This could be replaced in the future with a custom DST layout,
-// or `&'static (drop_glue, size, align)` created by a `const fn`.
-// Requirements:
-// * rvalue promotion (issue #1056)
-// * mem::{size_of, align_of} must be const fns
-struct TyDesc {
-    drop_glue: fn(*const i8),
-    size: usize,
-    align: usize,
-}
-
-trait AllTypes {
-    fn dummy(&self) {}
-}
-
-impl<T: ?Sized> AllTypes for T {}
-
-unsafe fn get_tydesc<T>() -> *const TyDesc {
-    use std::raw::TraitObject;
-
-    let ptr = &*(heap::EMPTY as *const T);
-
-    // Can use any trait that is implemented for all types.
-    let obj = mem::transmute::<&AllTypes, TraitObject>(ptr);
-    obj.vtable as *const TyDesc
-}
-
-impl<'longer_than_self> Arena<'longer_than_self> {
-    // Grows a given chunk and returns `false`, or replaces it with a bigger
-    // chunk and returns `true`.
-    // This method is shared by both parts of the arena.
-    #[cold]
-    fn alloc_grow(&self, head: &mut Chunk, used_cap: usize, n_bytes: usize) -> bool {
-        if head.data.reserve_in_place(used_cap, n_bytes) {
-            // In-place reallocation succeeded.
-            false
-        } else {
-            // Allocate a new chunk.
-            let new_min_chunk_size = cmp::max(n_bytes, head.capacity());
-            let new_chunk = Chunk::new((new_min_chunk_size + 1).next_power_of_two(), false);
-            let old_chunk = mem::replace(head, new_chunk);
-            if old_chunk.fill.get() != 0 {
-                self.chunks.borrow_mut().push(old_chunk);
-            }
-            true
-        }
-    }
-
-    // Functions for the copyable part of the arena.
-
-    #[inline]
-    fn alloc_copy_inner(&self, n_bytes: usize, align: usize) -> *const u8 {
-        let mut copy_head = self.copy_head.borrow_mut();
-        let fill = copy_head.fill.get();
-        let mut start = round_up(fill, align);
-        let mut end = start + n_bytes;
-
-        if end > copy_head.capacity() {
-            if self.alloc_grow(&mut *copy_head, fill, end - fill) {
-                // Continuing with a newly allocated chunk
-                start = 0;
-                end = n_bytes;
-                copy_head.is_copy.set(true);
-            }
-        }
-
-        copy_head.fill.set(end);
-
-        unsafe { copy_head.as_ptr().offset(start as isize) }
-    }
-
-    #[inline]
-    fn alloc_copy<T, F>(&self, op: F) -> &mut T
-        where F: FnOnce() -> T
-    {
-        unsafe {
-            let ptr = self.alloc_copy_inner(mem::size_of::<T>(), mem::align_of::<T>());
-            let ptr = ptr as *mut T;
-            ptr::write(&mut (*ptr), op());
-            &mut *ptr
-        }
-    }
-
-    // Functions for the non-copyable part of the arena.
-
-    #[inline]
-    fn alloc_noncopy_inner(&self, n_bytes: usize, align: usize) -> (*const u8, *const u8) {
-        let mut head = self.head.borrow_mut();
-        let fill = head.fill.get();
-
-        let mut tydesc_start = fill;
-        let after_tydesc = fill + mem::size_of::<*const TyDesc>();
-        let mut start = round_up(after_tydesc, align);
-        let mut end = round_up(start + n_bytes, mem::align_of::<*const TyDesc>());
-
-        if end > head.capacity() {
-            if self.alloc_grow(&mut *head, tydesc_start, end - tydesc_start) {
-                // Continuing with a newly allocated chunk
-                tydesc_start = 0;
-                start = round_up(mem::size_of::<*const TyDesc>(), align);
-                end = round_up(start + n_bytes, mem::align_of::<*const TyDesc>());
-            }
-        }
-
-        head.fill.set(end);
-
-        unsafe {
-            let buf = head.as_ptr();
-            (buf.offset(tydesc_start as isize),
-             buf.offset(start as isize))
-        }
-    }
-
-    #[inline]
-    fn alloc_noncopy<T, F>(&self, op: F) -> &mut T
-        where F: FnOnce() -> T
-    {
-        unsafe {
-            let tydesc = get_tydesc::<T>();
-            let (ty_ptr, ptr) = self.alloc_noncopy_inner(mem::size_of::<T>(), mem::align_of::<T>());
-            let ty_ptr = ty_ptr as *mut usize;
-            let ptr = ptr as *mut T;
-            // Write in our tydesc along with a bit indicating that it
-            // has *not* been initialized yet.
-            *ty_ptr = bitpack_tydesc_ptr(tydesc, false);
-            // Actually initialize it
-            ptr::write(&mut (*ptr), op());
-            // Now that we are done, update the tydesc to indicate that
-            // the object is there.
-            *ty_ptr = bitpack_tydesc_ptr(tydesc, true);
-
-            &mut *ptr
-        }
-    }
-
-    /// Allocates a new item in the arena, using `op` to initialize the value,
-    /// and returns a reference to it.
-    #[inline]
-    pub fn alloc<T: 'longer_than_self, F>(&self, op: F) -> &mut T
-        where F: FnOnce() -> T
-    {
-        unsafe {
-            if intrinsics::needs_drop::<T>() {
-                self.alloc_noncopy(op)
-            } else {
-                self.alloc_copy(op)
-            }
-        }
-    }
-
-    /// Allocates a slice of bytes of requested length. The bytes are not guaranteed to be zero
-    /// if the arena has previously been cleared.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the requested length is too large and causes overflow.
-    pub fn alloc_bytes(&self, len: usize) -> &mut [u8] {
-        unsafe {
-            // Check for overflow.
-            self.copy_head.borrow().fill.get().checked_add(len).expect("length overflow");
-            let ptr = self.alloc_copy_inner(len, 1);
-            intrinsics::assume(!ptr.is_null());
-            slice::from_raw_parts_mut(ptr as *mut _, len)
-        }
-    }
-
-    /// Clears the arena. Deallocates all but the longest chunk which may be reused.
-    pub fn clear(&mut self) {
-        unsafe {
-            self.head.borrow().destroy();
-            self.head.borrow().fill.set(0);
-            self.copy_head.borrow().fill.set(0);
-            for chunk in self.chunks.borrow().iter() {
-                if !chunk.is_copy.get() {
-                    chunk.destroy();
-                }
-            }
-            self.chunks.borrow_mut().clear();
-        }
-    }
-}
 
 /// A faster arena that can hold objects of only one type.
 pub struct TypedArena<T> {
@@ -566,9 +249,8 @@ unsafe impl<T: Send> Send for TypedArena<T> {}
 mod tests {
     extern crate test;
     use self::test::Bencher;
-    use super::{Arena, TypedArena};
+    use super::TypedArena;
     use std::cell::Cell;
-    use std::rc::Rc;
 
     #[allow(dead_code)]
     #[derive(Debug, Eq, PartialEq)]
@@ -642,12 +324,6 @@ mod tests {
         })
     }
 
-    #[bench]
-    pub fn bench_copy_old_arena(b: &mut Bencher) {
-        let arena = Arena::new();
-        b.iter(|| arena.alloc(|| Point { x: 1, y: 2, z: 3 }))
-    }
-
     #[allow(dead_code)]
     struct Noncopy {
         string: String,
@@ -674,22 +350,6 @@ mod tests {
     }
 
     #[test]
-    pub fn test_arena_zero_sized() {
-        let arena = Arena::new();
-        let mut points = vec![];
-        for _ in 0..1000 {
-            for _ in 0..100 {
-                arena.alloc(|| ());
-            }
-            let point = arena.alloc(|| Point { x: 1, y: 2, z: 3 });
-            points.push(point);
-        }
-        for point in &points {
-            assert_eq!(**point, Point { x: 1, y: 2, z: 3 });
-        }
-    }
-
-    #[test]
     pub fn test_typed_arena_clear() {
         let mut arena = TypedArena::new();
         for _ in 0..10 {
@@ -698,66 +358,6 @@ mod tests {
                 arena.alloc(Point { x: 1, y: 2, z: 3 });
             }
         }
-    }
-
-    #[test]
-    pub fn test_arena_clear() {
-        let mut arena = Arena::new();
-        for _ in 0..10 {
-            arena.clear();
-            for _ in 0..10000 {
-                arena.alloc(|| Point { x: 1, y: 2, z: 3 });
-                arena.alloc(|| {
-                    Noncopy {
-                        string: "hello world".to_string(),
-                        array: vec![],
-                    }
-                });
-            }
-        }
-    }
-
-    #[test]
-    pub fn test_arena_alloc_bytes() {
-        let arena = Arena::new();
-        for i in 0..10000 {
-            arena.alloc(|| Point { x: 1, y: 2, z: 3 });
-            for byte in arena.alloc_bytes(i % 42).iter_mut() {
-                *byte = i as u8;
-            }
-        }
-    }
-
-    #[test]
-    fn test_arena_destructors() {
-        let arena = Arena::new();
-        for i in 0..10 {
-            // Arena allocate something with drop glue to make sure it
-            // doesn't leak.
-            arena.alloc(|| Rc::new(i));
-            // Allocate something with funny size and alignment, to keep
-            // things interesting.
-            arena.alloc(|| [0u8, 1u8, 2u8]);
-        }
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_arena_destructors_fail() {
-        let arena = Arena::new();
-        // Put some stuff in the arena.
-        for i in 0..10 {
-            // Arena allocate something with drop glue to make sure it
-            // doesn't leak.
-            arena.alloc(|| Rc::new(i));
-            // Allocate something with funny size and alignment, to keep
-            // things interesting.
-            arena.alloc(|| [0u8, 1, 2]);
-        }
-        // Now, panic while allocating
-        arena.alloc::<Rc<i32>, _>(|| {
-            panic!();
-        });
     }
 
     // Drop tests
@@ -769,40 +369,6 @@ mod tests {
     impl<'a> Drop for DropCounter<'a> {
         fn drop(&mut self) {
             self.count.set(self.count.get() + 1);
-        }
-    }
-
-    #[test]
-    fn test_arena_drop_count() {
-        let counter = Cell::new(0);
-        {
-            let arena = Arena::new();
-            for _ in 0..100 {
-                // Allocate something with drop glue to make sure it doesn't leak.
-                arena.alloc(|| DropCounter { count: &counter });
-                // Allocate something with funny size and alignment, to keep
-                // things interesting.
-                arena.alloc(|| [0u8, 1u8, 2u8]);
-            }
-            // dropping
-        };
-        assert_eq!(counter.get(), 100);
-    }
-
-    #[test]
-    fn test_arena_drop_on_clear() {
-        let counter = Cell::new(0);
-        for i in 0..10 {
-            let mut arena = Arena::new();
-            for _ in 0..100 {
-                // Allocate something with drop glue to make sure it doesn't leak.
-                arena.alloc(|| DropCounter { count: &counter });
-                // Allocate something with funny size and alignment, to keep
-                // things interesting.
-                arena.alloc(|| [0u8, 1u8, 2u8]);
-            }
-            arena.clear();
-            assert_eq!(counter.get(), i * 100 + 100);
         }
     }
 
@@ -846,25 +412,6 @@ mod tests {
     }
 
     #[test]
-    fn test_arena_drop_small_count() {
-        DROP_COUNTER.with(|c| c.set(0));
-        {
-            let arena = Arena::new();
-            for _ in 0..10 {
-                for _ in 0..10 {
-                    // Allocate something with drop glue to make sure it doesn't leak.
-                    arena.alloc(|| SmallDroppable);
-                }
-                // Allocate something with funny size and alignment, to keep
-                // things interesting.
-                arena.alloc(|| [0u8, 1u8, 2u8]);
-            }
-            // dropping
-        };
-        assert_eq!(DROP_COUNTER.with(|c| c.get()), 100);
-    }
-
-    #[test]
     fn test_typed_arena_drop_small_count() {
         DROP_COUNTER.with(|c| c.set(0));
         {
@@ -896,19 +443,6 @@ mod tests {
                 string: "hello world".to_string(),
                 array: vec![1, 2, 3, 4, 5],
             });
-        })
-    }
-
-    #[bench]
-    pub fn bench_noncopy_old_arena(b: &mut Bencher) {
-        let arena = Arena::new();
-        b.iter(|| {
-            arena.alloc(|| {
-                Noncopy {
-                    string: "hello world".to_string(),
-                    array: vec![1, 2, 3, 4, 5],
-                }
-            })
         })
     }
 }

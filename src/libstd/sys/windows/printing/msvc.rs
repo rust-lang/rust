@@ -8,60 +8,66 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
-
-use dynamic_lib::DynamicLibrary;
 use ffi::CStr;
 use io::prelude::*;
 use io;
 use libc::{c_ulong, c_int, c_char, c_void};
 use mem;
 use sys::c;
+use sys::dynamic_lib::DynamicLibrary;
 use sys_common::backtrace::{output, output_fileline};
 
 type SymFromAddrFn =
-    extern "system" fn(c::HANDLE, u64, *mut u64,
-                       *mut c::SYMBOL_INFO) -> c::BOOL;
+    unsafe extern "system" fn(c::HANDLE, u64, *mut u64,
+                              *mut c::SYMBOL_INFO) -> c::BOOL;
 type SymGetLineFromAddr64Fn =
-    extern "system" fn(c::HANDLE, u64, *mut u32,
-                       *mut c::IMAGEHLP_LINE64) -> c::BOOL;
+    unsafe extern "system" fn(c::HANDLE, u64, *mut u32,
+                              *mut c::IMAGEHLP_LINE64) -> c::BOOL;
 
-pub fn print(w: &mut Write, i: isize, addr: u64, dbghelp: &DynamicLibrary,
-             process: c::HANDLE) -> io::Result<()> {
-    let SymFromAddr = sym!(dbghelp, "SymFromAddr", SymFromAddrFn);
-    let SymGetLineFromAddr64 = sym!(dbghelp, "SymGetLineFromAddr64", SymGetLineFromAddr64Fn);
+pub fn print(w: &mut Write,
+             i: isize,
+             addr: u64,
+             process: c::HANDLE,
+             dbghelp: &DynamicLibrary)
+              -> io::Result<()> {
+    unsafe {
+        let SymFromAddr = sym!(dbghelp, "SymFromAddr", SymFromAddrFn);
+        let SymGetLineFromAddr64 = sym!(dbghelp,
+                                        "SymGetLineFromAddr64",
+                                        SymGetLineFromAddr64Fn);
 
-    let mut info: c::SYMBOL_INFO = unsafe { mem::zeroed() };
-    info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
-    // the struct size in C.  the value is different to
-    // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
-    // due to struct alignment.
-    info.SizeOfStruct = 88;
+        let mut info: c::SYMBOL_INFO = mem::zeroed();
+        info.MaxNameLen = c::MAX_SYM_NAME as c_ulong;
+        // the struct size in C.  the value is different to
+        // `size_of::<SYMBOL_INFO>() - MAX_SYM_NAME + 1` (== 81)
+        // due to struct alignment.
+        info.SizeOfStruct = 88;
 
-    let mut displacement = 0u64;
-    let ret = SymFromAddr(process, addr, &mut displacement, &mut info);
+        let mut displacement = 0u64;
+        let ret = SymFromAddr(process, addr, &mut displacement, &mut info);
 
-    let name = if ret == c::TRUE {
-        let ptr = info.Name.as_ptr() as *const c_char;
-        Some(unsafe { CStr::from_ptr(ptr).to_bytes() })
-    } else {
-        None
-    };
+        let name = if ret == c::TRUE {
+            let ptr = info.Name.as_ptr() as *const c_char;
+            Some(CStr::from_ptr(ptr).to_bytes())
+        } else {
+            None
+        };
 
-    try!(output(w, i, addr as usize as *mut c_void, name));
+        try!(output(w, i, addr as usize as *mut c_void, name));
 
-    // Now find out the filename and line number
-    let mut line: c::IMAGEHLP_LINE64 = unsafe { mem::zeroed() };
-    line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
+        // Now find out the filename and line number
+        let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();
+        line.SizeOfStruct = ::mem::size_of::<c::IMAGEHLP_LINE64>() as u32;
 
-    let mut displacement = 0u32;
-    let ret = SymGetLineFromAddr64(process, addr, &mut displacement, &mut line);
-    if ret == c::TRUE {
-        output_fileline(w,
-                        unsafe { CStr::from_ptr(line.Filename).to_bytes() },
-                        line.LineNumber as c_int,
-                        false)
-    } else {
-        Ok(())
+        let mut displacement = 0u32;
+        let ret = SymGetLineFromAddr64(process, addr, &mut displacement, &mut line);
+        if ret == c::TRUE {
+            output_fileline(w,
+                            CStr::from_ptr(line.Filename).to_bytes(),
+                            line.LineNumber as c_int,
+                            false)
+        } else {
+            Ok(())
+        }
     }
 }
