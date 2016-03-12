@@ -209,7 +209,7 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
             // FIXME(#78): format traits.
-            ast::Item_::ItemTrait(unsafety, ref generics, ref param_bounds, ref trait_items) => {
+            ast::Item_::ItemTrait(..) => {
                 self.format_missing_with_indent(item.span.lo);
                 if let Some(trait_str) = format_trait(&self.get_context(),
                                                       item,
