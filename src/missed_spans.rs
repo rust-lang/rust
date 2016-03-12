@@ -47,10 +47,10 @@ impl<'a> FmtVisitor<'a> {
             return;
         }
 
-        // assert!(start < end,
-        //         "Request to format inverted span: {:?} to {:?}",
-        //         self.codemap.lookup_char_pos(start),
-        //         self.codemap.lookup_char_pos(end));
+        assert!(start < end,
+                "Request to format inverted span: {:?} to {:?}",
+                self.codemap.lookup_char_pos(start),
+                self.codemap.lookup_char_pos(end));
 
         self.last_pos = end;
         let span = codemap::mk_sp(start, end);
