@@ -789,6 +789,26 @@ enum LexicalScopeBinding<'a> {
     LocalDef(LocalDef),
 }
 
+impl<'a> LexicalScopeBinding<'a> {
+    fn local_def(self) -> LocalDef {
+        match self {
+            LexicalScopeBinding::LocalDef(local_def) => local_def,
+            LexicalScopeBinding::Item(binding) => LocalDef::from_def(binding.def().unwrap()),
+        }
+    }
+
+    fn def(self) -> Def {
+        self.local_def().def
+    }
+
+    fn module(self) -> Option<Module<'a>> {
+        match self {
+            LexicalScopeBinding::Item(binding) => binding.module(),
+            _ => None,
+        }
+    }
+}
+
 /// The link from a module up to its nearest parent node.
 #[derive(Clone,Debug)]
 enum ParentLink<'a> {
@@ -1404,20 +1424,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // This is not a crate-relative path. We resolve the
                         // first component of the path in the current lexical
                         // scope and then proceed to resolve below that.
-                        match self.resolve_item_in_lexical_scope(module_path[0],
-                                                                 TypeNS,
-                                                                 true) {
-                            Failed(err) => return Failed(err),
-                            Indeterminate => {
-                                debug!("(resolving module path for import) indeterminate; bailing");
-                                return Indeterminate;
-                            }
-                            Success(binding) => match binding.module() {
-                                Some(containing_module) => {
-                                    search_module = containing_module;
-                                    start_index = 1;
-                                }
-                                None => return Failed(None),
+                        let ident = hir::Ident::from_name(module_path[0]);
+                        match self.resolve_ident_in_lexical_scope(ident, TypeNS, true)
+                                  .and_then(LexicalScopeBinding::module) {
+                            None => return Failed(None),
+                            Some(containing_module) => {
+                                search_module = containing_module;
+                                start_index = 1;
                             }
                         }
                     }
@@ -1483,18 +1496,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         None
-    }
-
-    fn resolve_item_in_lexical_scope(&mut self,
-                                     name: Name,
-                                     namespace: Namespace,
-                                     record_used: bool)
-                                     -> ResolveResult<&'a NameBinding<'a>> {
-        let ident = hir::Ident::from_name(name);
-        match self.resolve_ident_in_lexical_scope(ident, namespace, record_used) {
-            Some(LexicalScopeBinding::Item(binding)) => Success(binding),
-            _ => Failed(None),
-        }
     }
 
     /// Returns the nearest normal module parent of the given module.
@@ -2288,8 +2289,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let ident = path1.node;
                     let renamed = ident.name;
 
-                    match self.resolve_bare_identifier_pattern(ident.unhygienic_name,
-                                                               pattern.span) {
+                    match self.resolve_bare_identifier_pattern(ident, pattern.span) {
                         FoundStructOrEnumVariant(def) if const_ok => {
                             debug!("(resolving pattern) resolving `{}` to struct or enum variant",
                                    renamed);
@@ -2540,49 +2540,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         });
     }
 
-    fn resolve_bare_identifier_pattern(&mut self,
-                                       name: Name,
-                                       span: Span)
+    fn resolve_bare_identifier_pattern(&mut self, ident: hir::Ident, span: Span)
                                        -> BareIdentifierPatternResolution {
-        match self.resolve_item_in_lexical_scope(name, ValueNS, true) {
-            Success(binding) => {
-                debug!("(resolve bare identifier pattern) succeeded in finding {} at {:?}",
-                       name,
-                       binding);
-                match binding.def() {
-                    None => {
-                        panic!("resolved name in the value namespace to a set of name bindings \
-                                with no def?!");
-                    }
-                    // For the two success cases, this lookup can be
-                    // considered as not having a private component because
-                    // the lookup happened only within the current module.
-                    Some(def @ Def::Variant(..)) | Some(def @ Def::Struct(..)) => {
-                        return FoundStructOrEnumVariant(def);
-                    }
-                    Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
-                        return FoundConst(def, name);
-                    }
-                    Some(Def::Static(..)) => {
-                        resolve_error(self, span, ResolutionError::StaticVariableReference);
-                        return BareIdentifierPatternUnresolved;
-                    }
-                    _ => return BareIdentifierPatternUnresolved
-                }
+        match self.resolve_ident_in_lexical_scope(ident, ValueNS, true)
+                  .map(LexicalScopeBinding::def) {
+            Some(def @ Def::Variant(..)) | Some(def @ Def::Struct(..)) => {
+                FoundStructOrEnumVariant(def)
             }
-
-            Indeterminate => return BareIdentifierPatternUnresolved,
-            Failed(err) => {
-                match err {
-                    Some((span, msg)) => {
-                        resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                    }
-                    None => (),
-                }
-
-                debug!("(resolve bare identifier pattern) failed to find {}", name);
-                return BareIdentifierPatternUnresolved;
+            Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
+                FoundConst(def, ident.unhygienic_name)
             }
+            Some(Def::Static(..)) => {
+                resolve_error(self, span, ResolutionError::StaticVariableReference);
+                BareIdentifierPatternUnresolved
+            }
+            _ => BareIdentifierPatternUnresolved,
         }
     }
 
@@ -2703,7 +2675,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return Some(LocalDef::from_def(Def::Err));
         }
 
-        self.resolve_identifier_in_local_ribs(identifier, namespace, record_used)
+        self.resolve_ident_in_lexical_scope(identifier, namespace, record_used)
+            .map(LexicalScopeBinding::local_def)
     }
 
     // Resolve a local definition, potentially adjusting for closures.
@@ -2884,18 +2857,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         result.success().map(|binding| {
             self.check_privacy(containing_module, name, binding, span);
             binding.def().unwrap()
-        })
-    }
-
-    fn resolve_identifier_in_local_ribs(&mut self,
-                                        ident: hir::Ident,
-                                        namespace: Namespace,
-                                        record_used: bool)
-                                        -> Option<LocalDef> {
-        Some(match self.resolve_ident_in_lexical_scope(ident, namespace, record_used) {
-            Some(LexicalScopeBinding::LocalDef(local_def)) => local_def,
-            Some(LexicalScopeBinding::Item(binding)) => LocalDef::from_def(binding.def().unwrap()),
-            None => return None,
         })
     }
 
