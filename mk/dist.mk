@@ -54,7 +54,6 @@ PKG_FILES := \
       doc                                      \
       driver                                   \
       etc                                      \
-      error_index_generator                    \
       $(foreach crate,$(CRATES),lib$(crate))   \
       libcollectionstest                       \
       libcoretest                              \
@@ -65,7 +64,7 @@ PKG_FILES := \
       rustc                                    \
       snapshots.txt                            \
       rust-installer                           \
-      rustbook                                 \
+      tools                                    \
       test)                                    \
     $(PKG_GITMODULES)                          \
     $(filter-out config.stamp, \
