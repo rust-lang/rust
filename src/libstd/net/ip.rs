@@ -363,6 +363,12 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
 
+    /// Returns true if this is an address reserved for documentation
+    /// This is defined to be 2001:db8::/32 in RFC RFC 3849
+    pub fn is_documentation(&self) -> bool {
+        (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
+    }
+
     /// Returns true if the address is a globally routable unicast address.
     ///
     /// The following return false:
@@ -372,11 +378,12 @@ impl Ipv6Addr {
     /// - the (deprecated) site-local addresses
     /// - unique local addresses
     /// - the unspecified address
+    /// - the address range reserved for documentation
     pub fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
             && !self.is_loopback() && !self.is_unicast_link_local()
             && !self.is_unicast_site_local() && !self.is_unique_local()
-            && !self.is_unspecified()
+            && !self.is_unspecified() && !self.is_documentation()
     }
 
     /// Returns the address's multicast scope if the address is multicast.
@@ -752,7 +759,7 @@ mod tests {
     fn ipv6_properties() {
         fn check(str_addr: &str, unspec: bool, loopback: bool,
                  unique_local: bool, global: bool,
-                 u_link_local: bool, u_site_local: bool, u_global: bool,
+                 u_link_local: bool, u_site_local: bool, u_global: bool, u_doc: bool,
                  m_scope: Option<Ipv6MulticastScope>) {
             let ip: Ipv6Addr = str_addr.parse().unwrap();
             assert_eq!(str_addr, ip.to_string());
@@ -764,43 +771,46 @@ mod tests {
             assert_eq!(ip.is_unicast_link_local(), u_link_local);
             assert_eq!(ip.is_unicast_site_local(), u_site_local);
             assert_eq!(ip.is_unicast_global(), u_global);
+            assert_eq!(ip.is_documentation(), u_doc);
             assert_eq!(ip.multicast_scope(), m_scope);
             assert_eq!(ip.is_multicast(), m_scope.is_some());
         }
 
-        //    unspec loopbk uniqlo global unill  unisl  uniglo mscope
+        //    unspec loopbk uniqlo global unill  unisl  uniglo  doc    mscope
         check("::",
-              true,  false, false, false,  false, false, false,  None);
+              true,  false, false, false,  false, false, false, false, None);
         check("::1",
-              false, true,  false, false, false, false, false, None);
+              false, true,  false, false, false, false,  false, false, None);
         check("::0.0.0.2",
-              false, false, false, true,  false, false, true,  None);
+              false, false, false, true,  false, false, true,  false, None);
         check("1::",
-              false, false, false, true,  false, false, true,  None);
+              false, false, false, true,  false, false, true,  false, None);
         check("fc00::",
-              false, false, true,  false, false, false, false, None);
+              false, false, true,  false, false, false, false, false, None);
         check("fdff:ffff::",
-              false, false, true,  false, false, false, false, None);
+              false, false, true,  false, false, false, false, false, None);
         check("fe80:ffff::",
-              false, false, false, false, true,  false, false, None);
+              false, false, false, false, true,  false, false, false, None);
         check("febf:ffff::",
-              false, false, false, false, true,  false, false, None);
+              false, false, false, false, true,  false, false, false, None);
         check("fec0::",
-              false, false, false, false, false, true,  false, None);
+              false, false, false, false, false, true,  false, false, None);
         check("ff01::",
-              false, false, false, false, false, false, false, Some(InterfaceLocal));
+              false, false, false, false, false, false, false, false, Some(InterfaceLocal));
         check("ff02::",
-              false, false, false, false, false, false, false, Some(LinkLocal));
+              false, false, false, false, false, false, false, false, Some(LinkLocal));
         check("ff03::",
-              false, false, false, false, false, false, false, Some(RealmLocal));
+              false, false, false, false, false, false, false, false, Some(RealmLocal));
         check("ff04::",
-              false, false, false, false, false, false, false, Some(AdminLocal));
+              false, false, false, false, false, false, false, false, Some(AdminLocal));
         check("ff05::",
-              false, false, false, false, false, false, false, Some(SiteLocal));
+              false, false, false, false, false, false, false, false, Some(SiteLocal));
         check("ff08::",
-              false, false, false, false, false, false, false, Some(OrganizationLocal));
+              false, false, false, false, false, false, false, false, Some(OrganizationLocal));
         check("ff0e::",
-              false, false, false, true,  false, false, false, Some(Global));
+              false, false, false, true,  false, false, false, false, Some(Global));
+        check("2001:db8:85a3::8a2e:370:7334",
+              false, false, false, false, false, false, false, true, None);
     }
 
     #[test]
