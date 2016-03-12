@@ -383,14 +383,14 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
     let x = s.lines()
              .skip(ignore_first as usize)
              .filter_map(|l| {
-                 if l.len() > 0 {
+                 if l.is_empty() {
+                     None
+                 } else {
                      // ignore empty lines
                      Some(l.char_indices()
                            .find(|&(_, x)| x != ch)
                            .unwrap_or((l.len(), ch))
                            .0)
-                 } else {
-                     None
                  }
              })
              .min()
@@ -399,7 +399,7 @@ fn trim_multiline_inner(s: Cow<str>, ignore_first: bool, ch: char) -> Cow<str> {
         Cow::Owned(s.lines()
                     .enumerate()
                     .map(|(i, l)| {
-                        if (ignore_first && i == 0) || l.len() == 0 {
+                        if (ignore_first && i == 0) || l.is_empty() {
                             l
                         } else {
                             l.split_at(x).1
