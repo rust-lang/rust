@@ -22,7 +22,7 @@ use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};
 
 /// A type that can represent owned, mutable platform-native strings, but is
-/// cheaply interconvertable with Rust strings.
+/// cheaply inter-convertible with Rust strings.
 ///
 /// The need for this type arises from the fact that:
 ///
@@ -272,7 +272,7 @@ impl OsStr {
         unsafe { mem::transmute(inner) }
     }
 
-    /// Yields a `&str` slice if the `OsStr` is valid unicode.
+    /// Yields a `&str` slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -301,7 +301,7 @@ impl OsStr {
     /// On Unix systems, this is a no-op.
     ///
     /// On Windows systems, this returns `None` unless the `OsStr` is
-    /// valid unicode, in which case it produces UTF-8-encoded
+    /// valid Unicode, in which case it produces UTF-8-encoded
     /// data. This may entail checking validity.
     #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
     #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
