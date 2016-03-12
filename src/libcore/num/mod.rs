@@ -41,7 +41,7 @@ use slice::SliceExt;
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Default)]
 pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
-pub mod wrapping;
+mod wrapping;
 
 // All these modules are technically private and only exposed for libcoretest:
 pub mod flt2dec;
@@ -2209,7 +2209,7 @@ pub enum FpCategory {
 #[doc(hidden)]
 #[unstable(feature = "core_float",
            reason = "stable interface is via `impl f{32,64}` in later crates",
-           issue = "27702")]
+           issue = "32110")]
 pub trait Float: Sized {
     /// Returns the NaN value.
     #[unstable(feature = "float_extras", reason = "needs removal",

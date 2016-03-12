@@ -197,31 +197,4 @@ mod tests {
         assert_eq!(repeat(4).take(100).bytes().next().unwrap().unwrap(), 4);
         assert_eq!(repeat(1).take(10).chain(repeat(2).take(10)).bytes().count(), 20);
     }
-
-    #[test]
-    #[allow(deprecated)]
-    fn tee() {
-        let mut buf = [0; 10];
-        {
-            let mut ptr: &mut [u8] = &mut buf;
-            assert_eq!(repeat(4).tee(&mut ptr).take(5).read(&mut [0; 10]).unwrap(), 5);
-        }
-        assert_eq!(buf, [4, 4, 4, 4, 4, 0, 0, 0, 0, 0]);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn broadcast() {
-        let mut buf1 = [0; 10];
-        let mut buf2 = [0; 10];
-        {
-            let mut ptr1: &mut [u8] = &mut buf1;
-            let mut ptr2: &mut [u8] = &mut buf2;
-
-            assert_eq!((&mut ptr1).broadcast(&mut ptr2)
-                                  .write(&[1, 2, 3]).unwrap(), 3);
-        }
-        assert_eq!(buf1, buf2);
-        assert_eq!(buf1, [1, 2, 3, 0, 0, 0, 0, 0, 0, 0]);
-    }
 }

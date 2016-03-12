@@ -1,16 +1,18 @@
 -include ../tools.mk
 
+OUT := $(TMPDIR)/out
+
 ifndef IS_WINDOWS
 all: time
 
 time: libc
-	mkdir -p out/time out/time/deps
-	ln -sf out/libc/liblibc.rlib out/time/deps/
-	$(RUSTC) in/time/lib.rs -Ldependency=out/time/deps/
+	mkdir -p $(OUT)/time $(OUT)/time/deps
+	ln -sf $(OUT)/libc/liblibc.rlib $(OUT)/time/deps/
+	$(RUSTC) in/time/lib.rs -Ldependency=$(OUT)/time/deps/
 
 libc:
-	mkdir -p out/libc
-	$(RUSTC) in/libc/lib.rs --crate-name=libc -o out/libc/liblibc.rlib
+	mkdir -p $(OUT)/libc
+	$(RUSTC) in/libc/lib.rs --crate-name=libc -o $(OUT)/libc/liblibc.rlib
 else
 all:
 endif

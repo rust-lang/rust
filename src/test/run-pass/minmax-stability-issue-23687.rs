@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(iter_min_max, cmp_partial, iter_cmp)]
-
 use std::fmt::Debug;
 use std::cmp::{self, PartialOrd, Ordering};
 
@@ -43,13 +41,13 @@ fn main() {
 
     // `min` should return the left when the values are equal
     assert_eq!(data.iter().min(), Some(&a));
-    assert_eq!(data.iter().min_by(|a| a.n), Some(&a));
+    assert_eq!(data.iter().min_by_key(|a| a.n), Some(&a));
     assert_eq!(cmp::min(a, b), a);
     assert_eq!(cmp::min(b, a), b);
 
     // `max` should return the right when the values are equal
     assert_eq!(data.iter().max(), Some(&f));
-    assert_eq!(data.iter().max_by(|a| a.n), Some(&f));
+    assert_eq!(data.iter().max_by_key(|a| a.n), Some(&f));
     assert_eq!(cmp::max(e, f), f);
     assert_eq!(cmp::max(f, e), e);
 

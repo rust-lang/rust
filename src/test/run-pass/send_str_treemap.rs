@@ -8,61 +8,58 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::BTreeMap;
+use std::borrow::Cow;
 
-#![feature(collections, into_cow)]
-
-extern crate collections;
-
-use self::collections::BTreeMap;
-use std::borrow::{Cow, IntoCow};
+use std::borrow::Cow::{Owned as O, Borrowed as B};
 
 type SendStr = Cow<'static, str>;
 
-pub fn main() {
+fn main() {
     let mut map: BTreeMap<SendStr, usize> = BTreeMap::new();
-    assert!(map.insert("foo".into_cow(), 42).is_none());
-    assert!(map.insert("foo".to_string().into_cow(), 42).is_some());
-    assert!(map.insert("foo".into_cow(), 42).is_some());
-    assert!(map.insert("foo".to_string().into_cow(), 42).is_some());
+    assert!(map.insert(B("foo"), 42).is_none());
+    assert!(map.insert(O("foo".to_string()), 42).is_some());
+    assert!(map.insert(B("foo"), 42).is_some());
+    assert!(map.insert(O("foo".to_string()), 42).is_some());
 
-    assert!(map.insert("foo".into_cow(), 43).is_some());
-    assert!(map.insert("foo".to_string().into_cow(), 44).is_some());
-    assert!(map.insert("foo".into_cow(), 45).is_some());
-    assert!(map.insert("foo".to_string().into_cow(), 46).is_some());
+    assert!(map.insert(B("foo"), 43).is_some());
+    assert!(map.insert(O("foo".to_string()), 44).is_some());
+    assert!(map.insert(B("foo"), 45).is_some());
+    assert!(map.insert(O("foo".to_string()), 46).is_some());
 
     let v = 46;
 
-    assert_eq!(map.get(&"foo".to_string().into_cow()), Some(&v));
-    assert_eq!(map.get(&"foo".into_cow()), Some(&v));
+    assert_eq!(map.get(&O("foo".to_string())), Some(&v));
+    assert_eq!(map.get(&B("foo")), Some(&v));
 
     let (a, b, c, d) = (50, 51, 52, 53);
 
-    assert!(map.insert("abc".into_cow(), a).is_none());
-    assert!(map.insert("bcd".to_string().into_cow(), b).is_none());
-    assert!(map.insert("cde".into_cow(), c).is_none());
-    assert!(map.insert("def".to_string().into_cow(), d).is_none());
+    assert!(map.insert(B("abc"), a).is_none());
+    assert!(map.insert(O("bcd".to_string()), b).is_none());
+    assert!(map.insert(B("cde"), c).is_none());
+    assert!(map.insert(O("def".to_string()), d).is_none());
 
-    assert!(map.insert("abc".into_cow(), a).is_some());
-    assert!(map.insert("bcd".to_string().into_cow(), b).is_some());
-    assert!(map.insert("cde".into_cow(), c).is_some());
-    assert!(map.insert("def".to_string().into_cow(), d).is_some());
+    assert!(map.insert(B("abc"), a).is_some());
+    assert!(map.insert(O("bcd".to_string()), b).is_some());
+    assert!(map.insert(B("cde"), c).is_some());
+    assert!(map.insert(O("def".to_string()), d).is_some());
 
-    assert!(map.insert("abc".to_string().into_cow(), a).is_some());
-    assert!(map.insert("bcd".into_cow(), b).is_some());
-    assert!(map.insert("cde".to_string().into_cow(), c).is_some());
-    assert!(map.insert("def".into_cow(), d).is_some());
+    assert!(map.insert(O("abc".to_string()), a).is_some());
+    assert!(map.insert(B("bcd"), b).is_some());
+    assert!(map.insert(O("cde".to_string()), c).is_some());
+    assert!(map.insert(B("def"), d).is_some());
 
-    assert_eq!(map.get(&"abc".into_cow()), Some(&a));
-    assert_eq!(map.get(&"bcd".into_cow()), Some(&b));
-    assert_eq!(map.get(&"cde".into_cow()), Some(&c));
-    assert_eq!(map.get(&"def".into_cow()), Some(&d));
+    assert_eq!(map.get(&B("abc")), Some(&a));
+    assert_eq!(map.get(&B("bcd")), Some(&b));
+    assert_eq!(map.get(&B("cde")), Some(&c));
+    assert_eq!(map.get(&B("def")), Some(&d));
 
-    assert_eq!(map.get(&"abc".to_string().into_cow()), Some(&a));
-    assert_eq!(map.get(&"bcd".to_string().into_cow()), Some(&b));
-    assert_eq!(map.get(&"cde".to_string().into_cow()), Some(&c));
-    assert_eq!(map.get(&"def".to_string().into_cow()), Some(&d));
+    assert_eq!(map.get(&O("abc".to_string())), Some(&a));
+    assert_eq!(map.get(&O("bcd".to_string())), Some(&b));
+    assert_eq!(map.get(&O("cde".to_string())), Some(&c));
+    assert_eq!(map.get(&O("def".to_string())), Some(&d));
 
-    assert!(map.remove(&"foo".into_cow()).is_some());
+    assert!(map.remove(&B("foo")).is_some());
     assert_eq!(map.into_iter().map(|(k, v)| format!("{}{}", k, v))
                               .collect::<Vec<String>>()
                               .concat(),

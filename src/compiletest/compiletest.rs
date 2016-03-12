@@ -11,7 +11,6 @@
 #![crate_type = "bin"]
 
 #![feature(box_syntax)]
-#![feature(dynamic_lib)]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(str_char)]

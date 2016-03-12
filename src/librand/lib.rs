@@ -30,7 +30,6 @@
             issue = "27703")]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(custom_attribute)]

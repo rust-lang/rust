@@ -811,49 +811,6 @@ pub trait Read {
     fn take(self, limit: u64) -> Take<Self> where Self: Sized {
         Take { inner: self, limit: limit }
     }
-
-    /// Creates a reader adaptor which will write all read data into the given
-    /// output stream.
-    ///
-    /// Whenever the returned `Read` instance is read it will write the read
-    /// data to `out`. The current semantics of this implementation imply that
-    /// a `write` error will not report how much data was initially read.
-    ///
-    /// # Examples
-    ///
-    /// [`File`][file]s implement `Read`:
-    ///
-    /// [file]: ../fs/struct.File.html
-    ///
-    /// ```
-    /// #![feature(io)]
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// # fn foo() -> io::Result<()> {
-    /// let mut f = try!(File::open("foo.txt"));
-    /// let mut buffer1 = Vec::with_capacity(10);
-    /// let mut buffer2 = Vec::with_capacity(10);
-    ///
-    /// // write the output to buffer1 as we read
-    /// let mut handle = f.tee(&mut buffer1);
-    ///
-    /// try!(handle.read(&mut buffer2));
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
-                                         of where errors happen is currently \
-                                         unclear and may change",
-               issue = "27802")]
-    #[rustc_deprecated(reason = "error handling semantics unclear and \
-                                 don't seem to have an ergonomic resolution",
-                       since = "1.6.0")]
-    #[allow(deprecated)]
-    fn tee<W: Write>(self, out: W) -> Tee<Self, W> where Self: Sized {
-        Tee { reader: self, writer: out }
-    }
 }
 
 /// A trait for objects which are byte-oriented sinks.
@@ -1089,47 +1046,6 @@ pub trait Write {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
-
-    /// Creates a new writer which will write all data to both this writer and
-    /// another writer.
-    ///
-    /// All data written to the returned writer will both be written to `self`
-    /// as well as `other`. Note that the error semantics of the current
-    /// implementation do not precisely track where errors happen. For example
-    /// an error on the second call to `write` will not report that the first
-    /// call to `write` succeeded.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(io)]
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
-    ///
-    /// # fn foo() -> std::io::Result<()> {
-    /// let mut buffer1 = try!(File::create("foo.txt"));
-    /// let mut buffer2 = Vec::new();
-    ///
-    /// // write the output to buffer1 as we read
-    /// let mut handle = buffer1.broadcast(&mut buffer2);
-    ///
-    /// try!(handle.write(b"some bytes"));
-    /// # Ok(())
-    /// # }
-    /// ```
-    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
-                                         of where errors happen is currently \
-                                         unclear and may change",
-               issue = "27802")]
-    #[rustc_deprecated(reason = "error handling semantics unclear and \
-                                 don't seem to have an ergonomic resolution",
-                       since = "1.6.0")]
-    #[allow(deprecated)]
-    fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W>
-        where Self: Sized
-    {
-        Broadcast { first: self, second: other }
-    }
 }
 
 /// The `Seek` trait provides a cursor which can be moved within a stream of
@@ -1500,41 +1416,6 @@ pub trait BufRead: Read {
     }
 }
 
-/// A `Write` adaptor which will write data to multiple locations.
-///
-/// This struct is generally created by calling [`broadcast()`][broadcast] on a
-/// writer. Please see the documentation of `broadcast()` for more details.
-///
-/// [broadcast]: trait.Write.html#method.broadcast
-#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast",
-           issue = "27802")]
-#[rustc_deprecated(reason = "error handling semantics unclear and \
-                             don't seem to have an ergonomic resolution",
-                   since = "1.6.0")]
-pub struct Broadcast<T, U> {
-    first: T,
-    second: U,
-}
-
-#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast",
-           issue = "27802")]
-#[rustc_deprecated(reason = "error handling semantics unclear and \
-                             don't seem to have an ergonomic resolution",
-                   since = "1.6.0")]
-#[allow(deprecated)]
-impl<T: Write, U: Write> Write for Broadcast<T, U> {
-    fn write(&mut self, data: &[u8]) -> Result<usize> {
-        let n = try!(self.first.write(data));
-        // FIXME: what if the write fails? (we wrote something)
-        try!(self.second.write_all(&data[..n]));
-        Ok(n)
-    }
-
-    fn flush(&mut self) -> Result<()> {
-        self.first.flush().and(self.second.flush())
-    }
-}
-
 /// Adaptor to chain together two readers.
 ///
 /// This struct is generally created by calling [`chain()`][chain] on a reader.
@@ -1613,37 +1494,6 @@ impl<T: BufRead> BufRead for Take<T> {
         let amt = cmp::min(amt as u64, self.limit) as usize;
         self.limit -= amt as u64;
         self.inner.consume(amt);
-    }
-}
-
-/// An adaptor which will emit all read data to a specified writer as well.
-///
-/// This struct is generally created by calling [`tee()`][tee] on a reader.
-/// Please see the documentation of `tee()` for more details.
-///
-/// [tee]: trait.Read.html#method.tee
-#[unstable(feature = "io", reason = "awaiting stability of Read::tee",
-           issue = "27802")]
-#[rustc_deprecated(reason = "error handling semantics unclear and \
-                             don't seem to have an ergonomic resolution",
-                   since = "1.6.0")]
-pub struct Tee<R, W> {
-    reader: R,
-    writer: W,
-}
-
-#[unstable(feature = "io", reason = "awaiting stability of Read::tee",
-           issue = "27802")]
-#[rustc_deprecated(reason = "error handling semantics unclear and \
-                             don't seem to have an ergonomic resolution",
-                   since = "1.6.0")]
-#[allow(deprecated)]
-impl<R: Read, W: Write> Read for Tee<R, W> {
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let n = try!(self.reader.read(buf));
-        // FIXME: what if the write fails? (we read something)
-        try!(self.writer.write_all(&buf[..n]));
-        Ok(n)
     }
 }
 

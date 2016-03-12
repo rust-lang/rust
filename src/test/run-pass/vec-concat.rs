@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(vec_push_all)]
-
 use std::vec;
 
 pub fn main() {
     let a: Vec<isize> = vec!(1, 2, 3, 4, 5);
     let b: Vec<isize> = vec!(6, 7, 8, 9, 0);
     let mut v: Vec<isize> = a;
-    v.push_all(&b);
+    v.extend_from_slice(&b);
     println!("{}", v[9]);
     assert_eq!(v[0], 1);
     assert_eq!(v[7], 8);

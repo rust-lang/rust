@@ -61,7 +61,7 @@ use raw::Slice as RawSlice;
 /// Extension methods for slices.
 #[unstable(feature = "core_slice_ext",
            reason = "stable interface provided by `impl [T]` in later crates",
-           issue = "27701")]
+           issue = "32110")]
 #[allow(missing_docs)] // documented elsewhere
 pub trait SliceExt {
     type Item;
@@ -182,7 +182,7 @@ macro_rules! slice_ref {
 
 #[unstable(feature = "core_slice_ext",
            reason = "stable interface provided by `impl [T]` in later crates",
-           issue = "27701")]
+           issue = "32110")]
 impl<T> SliceExt for [T] {
     type Item = T;
 
@@ -1551,52 +1551,6 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
     mem::transmute(RawSlice { data: p, len: len })
 }
-
-//
-// Submodules
-//
-
-/// Operations on `[u8]`.
-#[unstable(feature = "slice_bytes", reason = "needs review",
-           issue = "27740")]
-#[rustc_deprecated(reason = "unidiomatic functions not pulling their weight",
-                   since = "1.6.0")]
-#[allow(deprecated)]
-pub mod bytes {
-    use ptr;
-    use slice::SliceExt;
-
-    /// A trait for operations on mutable `[u8]`s.
-    pub trait MutableByteVector {
-        /// Sets all bytes of the receiver to the given value.
-        fn set_memory(&mut self, value: u8);
-    }
-
-    impl MutableByteVector for [u8] {
-        #[inline]
-        fn set_memory(&mut self, value: u8) {
-            unsafe { ptr::write_bytes(self.as_mut_ptr(), value, self.len()) };
-        }
-    }
-
-    /// Copies data from `src` to `dst`
-    ///
-    /// Panics if the length of `dst` is less than the length of `src`.
-    #[inline]
-    pub fn copy_memory(src: &[u8], dst: &mut [u8]) {
-        let len_src = src.len();
-        assert!(dst.len() >= len_src);
-        // `dst` is unaliasable, so we know statically it doesn't overlap
-        // with `src`.
-        unsafe {
-            ptr::copy_nonoverlapping(src.as_ptr(),
-                                     dst.as_mut_ptr(),
-                                     len_src);
-        }
-    }
-}
-
-
 
 //
 // Boilerplate traits
