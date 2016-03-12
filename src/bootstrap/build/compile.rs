@@ -23,15 +23,13 @@ use build::{Build, Compiler, Mode};
 /// This will build the standard library for a particular stage of the build
 /// using the `compiler` targeting the `target` architecture. The artifacts
 /// created will also be linked into the sysroot directory.
-pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
-               compiler: &Compiler<'a>) {
-    let host = compiler.host;
-    println!("Building stage{} std artifacts ({} -> {})", stage,
-             host, target);
+pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
+    println!("Building stage{} std artifacts ({} -> {})", compiler.stage,
+             compiler.host, target);
 
     // Move compiler-rt into place as it'll be required by the compiler when
     // building the standard library to link the dylib of libstd
-    let libdir = build.sysroot_libdir(stage, &host, target);
+    let libdir = build.sysroot_libdir(compiler, target);
     let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
     t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
@@ -39,10 +37,9 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
 
     build_startup_objects(build, target, &libdir);
 
-    let out_dir = build.cargo_out(stage, &host, Mode::Libstd, target);
+    let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
-    let mut cargo = build.cargo(stage, compiler, Mode::Libstd, Some(target),
-                                "build");
+    let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
     cargo.arg("--features").arg(build.std_features())
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
@@ -59,7 +56,7 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
     }
 
     build.run(&mut cargo);
-    std_link(build, stage, target, compiler, host);
+    std_link(build, target, compiler, compiler.host);
 }
 
 /// Link all libstd rlibs/dylibs into the sysroot location.
@@ -67,12 +64,12 @@ pub fn std<'a>(build: &'a Build, stage: u32, target: &str,
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
 pub fn std_link(build: &Build,
-                stage: u32,
                 target: &str,
                 compiler: &Compiler,
                 host: &str) {
-    let libdir = build.sysroot_libdir(stage, host, target);
-    let out_dir = build.cargo_out(stage, compiler.host, Mode::Libstd, target);
+    let target_compiler = Compiler::new(compiler.stage, host);
+    let libdir = build.sysroot_libdir(&target_compiler, target);
+    let out_dir = build.cargo_out(compiler, Mode::Libstd, target);
 
     // If we're linking one compiler host's output into another, then we weren't
     // called from the `std` method above. In that case we clean out what's
@@ -85,7 +82,8 @@ pub fn std_link(build: &Build,
     }
     add_to_sysroot(&out_dir, &libdir);
 
-    if target.contains("musl") && (target.contains("x86_64") || target.contains("i686")) {
+    if target.contains("musl") &&
+       (target.contains("x86_64") || target.contains("i686")) {
         copy_third_party_objects(build, target, &libdir);
     }
 }
@@ -130,17 +128,14 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
 /// This will build the compiler for a particular stage of the build using
 /// the `compiler` targeting the `target` architecture. The artifacts
 /// created will also be linked into the sysroot directory.
-pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
-                 compiler: &Compiler<'a>) {
-    let host = compiler.host;
-    println!("Building stage{} compiler artifacts ({} -> {})", stage,
-             host, target);
+pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
+    println!("Building stage{} compiler artifacts ({} -> {})",
+             compiler.stage, compiler.host, target);
 
-    let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
-    build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
+    let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
+    build.clear_if_dirty(&out_dir, &libstd_shim(build, compiler, target));
 
-    let mut cargo = build.cargo(stage, compiler, Mode::Librustc, Some(target),
-                                "build");
+    let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
     cargo.arg("--features").arg(build.rustc_features())
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"));
@@ -184,7 +179,7 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
     }
     build.run(&mut cargo);
 
-    rustc_link(build, stage, target, compiler, compiler.host);
+    rustc_link(build, target, compiler, compiler.host);
 }
 
 /// Link all librustc rlibs/dylibs into the sysroot location.
@@ -192,19 +187,19 @@ pub fn rustc<'a>(build: &'a Build, stage: u32, target: &str,
 /// Links those artifacts generated in the given `stage` for `target` produced
 /// by `compiler` into `host`'s sysroot.
 pub fn rustc_link(build: &Build,
-                  stage: u32,
                   target: &str,
                   compiler: &Compiler,
                   host: &str) {
-    let libdir = build.sysroot_libdir(stage, host, target);
-    let out_dir = build.cargo_out(stage, compiler.host, Mode::Librustc, target);
+    let target_compiler = Compiler::new(compiler.stage, host);
+    let libdir = build.sysroot_libdir(&target_compiler, target);
+    let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
     add_to_sysroot(&out_dir, &libdir);
 }
 
 /// Cargo's output path for the standard library in a given stage, compiled
 /// by a particular compiler for the specified target.
-fn libstd_shim(build: &Build, stage: u32, host: &str, target: &str) -> PathBuf {
-    build.cargo_out(stage, host, Mode::Libstd, target).join("libstd_shim.rlib")
+fn libstd_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Libstd, target).join("libstd_shim.rlib")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> String {
@@ -219,16 +214,21 @@ fn compiler_file(compiler: &Path, file: &str) -> String {
 /// compiler.
 pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     assert!(stage > 0, "the stage0 compiler isn't assembled, it's downloaded");
+    // The compiler that we're assembling
+    let target_compiler = Compiler::new(stage, host);
+
+    // The compiler that compiled the compiler we're assembling
+    let build_compiler = Compiler::new(stage - 1, &build.config.build);
 
     // Clear out old files
-    let sysroot = build.sysroot(stage, host);
+    let sysroot = build.sysroot(&target_compiler);
     let _ = fs::remove_dir_all(&sysroot);
     t!(fs::create_dir_all(&sysroot));
 
     // Link in all dylibs to the libdir
     let sysroot_libdir = sysroot.join(libdir(host));
     t!(fs::create_dir_all(&sysroot_libdir));
-    let src_libdir = build.sysroot_libdir(stage - 1, &build.config.build, host);
+    let src_libdir = build.sysroot_libdir(&build_compiler, host);
     for f in t!(fs::read_dir(&src_libdir)).map(|f| t!(f)) {
         let filename = f.file_name().into_string().unwrap();
         if is_dylib(&filename) {
@@ -236,8 +236,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
         }
     }
 
-    let out_dir = build.cargo_out(stage - 1, &build.config.build,
-                                  Mode::Librustc, host);
+    let out_dir = build.cargo_out(&build_compiler, Mode::Librustc, host);
 
     // Link the compiler binary itself into place
     let rustc = out_dir.join(exe("rustc", host));
@@ -315,7 +314,7 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
     // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
     // build.clear_if_dirty(&out_dir, &libstd_shim(build, stage, &host, target));
 
-    let mut cargo = build.cargo(stage, &compiler, Mode::Tool, None, "build");
+    let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
     build.run(&mut cargo);
