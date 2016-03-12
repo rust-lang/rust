@@ -784,6 +784,11 @@ impl LocalDef {
     }
 }
 
+enum LexicalScopeBinding<'a> {
+    Item(&'a NameBinding<'a>),
+    LocalDef(LocalDef),
+}
+
 /// The link from a module up to its nearest parent node.
 #[derive(Clone,Debug)]
 enum ParentLink<'a> {
@@ -1430,40 +1435,66 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            span)
     }
 
-    /// This function resolves `name` in `namespace` in the current lexical scope, returning
-    /// Success(binding) if `name` resolves to an item, or Failed(None) if `name` does not resolve
-    /// or resolves to a type parameter or local variable.
-    /// n.b. `resolve_identifier_in_local_ribs` also resolves names in the current lexical scope.
+    /// This resolves the identifier `ident` in the namespace `ns` in the current lexical scope.
+    /// More specifically, we proceed up the hierarchy of scopes and return the binding for
+    /// `ident` in the first scope that defines it (or None if no scopes define it).
+    ///
+    /// A block's items are above its local variables in the scope hierarchy, regardless of where
+    /// the items are defined in the block. For example,
+    /// ```rust
+    /// fn f() {
+    ///    g(); // Since there are no local variables in scope yet, this resolves to the item.
+    ///    let g = || {};
+    ///    fn g() {}
+    ///    g(); // This resolves to the local variable `g` since it shadows the item.
+    /// }
+    /// ```
     ///
     /// Invariant: This must only be called during main resolution, not during
     /// import resolution.
+    fn resolve_ident_in_lexical_scope(&mut self,
+                                      ident: hir::Ident,
+                                      ns: Namespace,
+                                      record_used: bool)
+                                      -> Option<LexicalScopeBinding<'a>> {
+        let name = match ns { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
+
+        // Walk backwards up the ribs in scope.
+        for i in (0 .. self.get_ribs(ns).len()).rev() {
+            if let Some(def) = self.get_ribs(ns)[i].bindings.get(&name).cloned() {
+                // The ident resolves to a type parameter or local variable.
+                return Some(LexicalScopeBinding::LocalDef(LocalDef {
+                    ribs: Some((ns, i)),
+                    def: def,
+                }));
+            }
+
+            if let ModuleRibKind(module) = self.get_ribs(ns)[i].kind {
+                let name = ident.unhygienic_name;
+                let item = self.resolve_name_in_module(module, name, ns, true, record_used);
+                if let Success(binding) = item {
+                    // The ident resolves to an item.
+                    return Some(LexicalScopeBinding::Item(binding));
+                }
+
+                // We can only see through anonymous modules
+                if module.def.is_some() { return None; }
+            }
+        }
+
+        None
+    }
+
     fn resolve_item_in_lexical_scope(&mut self,
                                      name: Name,
                                      namespace: Namespace,
                                      record_used: bool)
                                      -> ResolveResult<&'a NameBinding<'a>> {
-        // Walk backwards up the ribs in scope.
-        for i in (0 .. self.get_ribs(namespace).len()).rev() {
-            if let Some(_) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
-                // The name resolves to a type parameter or local variable, so return Failed(None).
-                return Failed(None);
-            }
-
-            if let ModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
-                if let Success(binding) = self.resolve_name_in_module(module,
-                                                                      name,
-                                                                      namespace,
-                                                                      true,
-                                                                      record_used) {
-                    // The name resolves to an item.
-                    return Success(binding);
-                }
-                // We can only see through anonymous modules
-                if module.def.is_some() { return Failed(None); }
-            }
+        let ident = hir::Ident::from_name(name);
+        match self.resolve_ident_in_lexical_scope(ident, namespace, record_used) {
+            Some(LexicalScopeBinding::Item(binding)) => Success(binding),
+            _ => Failed(None),
         }
-
-        Failed(None)
     }
 
     /// Returns the nearest normal module parent of the given module.
@@ -2861,33 +2892,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         namespace: Namespace,
                                         record_used: bool)
                                         -> Option<LocalDef> {
-        // Check the local set of ribs.
-        let name = match namespace { ValueNS => ident.name, TypeNS => ident.unhygienic_name };
-
-        for i in (0 .. self.get_ribs(namespace).len()).rev() {
-            if let Some(def) = self.get_ribs(namespace)[i].bindings.get(&name).cloned() {
-                return Some(LocalDef {
-                    ribs: Some((namespace, i)),
-                    def: def,
-                });
-            }
-
-            if let ModuleRibKind(module) = self.get_ribs(namespace)[i].kind {
-                if let Success(binding) = self.resolve_name_in_module(module,
-                                                                      ident.unhygienic_name,
-                                                                      namespace,
-                                                                      true,
-                                                                      record_used) {
-                    if let Some(def) = binding.def() {
-                        return Some(LocalDef::from_def(def));
-                    }
-                }
-                // We can only see through anonymous modules
-                if module.def.is_some() { return None; }
-            }
-        }
-
-        None
+        Some(match self.resolve_ident_in_lexical_scope(ident, namespace, record_used) {
+            Some(LexicalScopeBinding::LocalDef(local_def)) => local_def,
+            Some(LexicalScopeBinding::Item(binding)) => LocalDef::from_def(binding.def().unwrap()),
+            None => return None,
+        })
     }
 
     fn with_no_errors<T, F>(&mut self, f: F) -> T
