@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::process::Command;
-
 use build::{Build, Compiler};
 
 pub fn linkcheck(build: &Build, stage: u32, host: &str) {
     println!("Linkcheck stage{} ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let linkchecker = build.tool(&compiler, "linkchecker");
-    build.run(Command::new(&linkchecker)
-                     .arg(build.out.join(host).join("doc")));
+    build.run(build.tool_cmd(&compiler, "linkchecker")
+                   .arg(build.out.join(host).join("doc")));
 }
