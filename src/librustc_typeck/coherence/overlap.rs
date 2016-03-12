@@ -9,7 +9,8 @@
 // except according to those terms.
 
 //! Overlap: No two impls for the same trait are implemented for the
-//! same type.
+//! same type. Likewise, no two inherent impls for a given type
+//! constructor provide a method with the same name.
 
 use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def_id::DefId;
@@ -115,7 +116,6 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         }
     }
 
-
     fn check_if_impls_overlap(&self,
                               impl1_def_id: DefId,
                               impl2_def_id: DefId)
@@ -128,8 +128,8 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
                    impl2_def_id);
 
             let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
-            if let Some(trait_ref) = traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
-                self.report_overlap_error(impl1_def_id, impl2_def_id, trait_ref);
+            if let Some(header) = traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id) {
+                self.report_overlap_error(impl1_def_id, impl2_def_id, header.trait_ref.unwrap());
             }
         }
     }
@@ -150,13 +150,13 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             }).unwrap_or(String::new())
         };
 
-        let mut err = struct_span_err!(self.tcx.sess, self.span_of_impl(impl1), E0119,
+        let mut err = struct_span_err!(self.tcx.sess, self.span_of_def_id(impl1), E0119,
                                        "conflicting implementations of trait `{}`{}:",
                                        trait_ref,
                                        self_type);
 
         if impl2.is_local() {
-            span_note!(&mut err, self.span_of_impl(impl2),
+            span_note!(&mut err, self.span_of_def_id(impl2),
                        "conflicting implementation is here:");
         } else {
             let cname = self.tcx.sess.cstore.crate_name(impl2.krate);
@@ -165,9 +165,60 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         err.emit();
     }
 
-    fn span_of_impl(&self, impl_did: DefId) -> Span {
-        let node_id = self.tcx.map.as_local_node_id(impl_did).unwrap();
+    fn span_of_def_id(&self, did: DefId) -> Span {
+        let node_id = self.tcx.map.as_local_node_id(did).unwrap();
         self.tcx.map.span(node_id)
+    }
+
+    fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId) {
+        #[derive(Copy, Clone, PartialEq)]
+        enum Namespace { Type, Value }
+
+        fn name_and_namespace(tcx: &TyCtxt, item: &ty::ImplOrTraitItemId)
+                              -> (ast::Name, Namespace)
+        {
+            let name = tcx.impl_or_trait_item(item.def_id()).name();
+            (name, match *item {
+                ty::TypeTraitItemId(..) => Namespace::Type,
+                ty::ConstTraitItemId(..) => Namespace::Value,
+                ty::MethodTraitItemId(..) => Namespace::Value,
+            })
+        }
+
+        let impl_items = self.tcx.impl_items.borrow();
+
+        for item1 in &impl_items[&impl1] {
+            let (name, namespace) = name_and_namespace(&self.tcx, item1);
+
+            for item2 in &impl_items[&impl2] {
+                if (name, namespace) == name_and_namespace(&self.tcx, item2) {
+                    let mut err = super::report_duplicate_item(
+                        &self.tcx, self.span_of_def_id(item1.def_id()), name);
+                    span_note!(&mut err, self.span_of_def_id(item2.def_id()),
+                               "conflicting definition is here:");
+                    err.emit();
+                }
+            }
+        }
+    }
+
+    fn check_for_overlapping_inherent_impls(&self, ty_def_id: DefId) {
+        let _task = self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapInherentCheck(ty_def_id));
+
+        let inherent_impls = self.tcx.inherent_impls.borrow();
+        let impls = match inherent_impls.get(&ty_def_id) {
+            Some(impls) => impls,
+            None => return
+        };
+
+        for (i, &impl1_def_id) in impls.iter().enumerate() {
+            for &impl2_def_id in &impls[(i+1)..] {
+                let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
+                if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
+                    self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
+                }
+            }
+        }
     }
 }
 
@@ -178,6 +229,11 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
             hir::ItemTrait(..) => {
                 let trait_def_id = self.tcx.map.local_def_id(item.id);
                 self.check_for_overlapping_impls_of_trait(trait_def_id);
+            }
+
+            hir::ItemEnum(..) | hir::ItemStruct(..) => {
+                let type_def_id = self.tcx.map.local_def_id(item.id);
+                self.check_for_overlapping_inherent_impls(type_def_id);
             }
 
             hir::ItemDefaultImpl(..) => {

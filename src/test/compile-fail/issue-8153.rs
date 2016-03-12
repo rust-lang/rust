@@ -18,7 +18,7 @@ trait Bar {
 
 impl Bar for Foo {
     fn bar(&self) -> isize {1}
-    fn bar(&self) -> isize {2} //~ ERROR duplicate method
+    fn bar(&self) -> isize {2} //~ ERROR duplicate definitions
 }
 
 fn main() {
