@@ -633,7 +633,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             BraceStyle::AlwaysNextLine => {
                 result.push('\n');
                 result.push_str(&offset.to_string(context.config));
-            },
+            }
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
                 if !where_clause_str.is_empty() {
@@ -1543,10 +1543,10 @@ fn rewrite_generics(context: &RewriteContext,
 }
 
 fn rewrite_trait_bounds(context: &RewriteContext,
-                      type_param_bounds: &ast::TyParamBounds,
-                      indent: Indent,
-                      width: usize)
-                      -> Option<String> {
+                        type_param_bounds: &ast::TyParamBounds,
+                        indent: Indent,
+                        width: usize)
+                        -> Option<String> {
     let bounds: &[_] = &type_param_bounds.as_slice();
 
     if bounds.is_empty() {
@@ -1554,9 +1554,9 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     }
 
     let bound_str = bounds.iter()
-                            .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
-                            .collect::<Vec<String>>()
-                            .join(" + ");
+                          .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
+                          .collect::<Vec<String>>()
+                          .join(" + ");
 
     let mut result = String::new();
     result.push_str(" : ");

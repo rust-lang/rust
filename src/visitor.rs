@@ -347,9 +347,13 @@ impl<'a> FmtVisitor<'a> {
 
                 let bounds: &[_] = &type_param_bounds.as_slice();
                 let bound_str = bounds.iter()
-                                        .filter_map(|ty_bound| ty_bound.rewrite(&self.get_context(), self.config.max_width, indent))
-                                        .collect::<Vec<String>>()
-                                        .join(" + ");
+                                      .filter_map(|ty_bound| {
+                                          ty_bound.rewrite(&self.get_context(),
+                                                           self.config.max_width,
+                                                           indent)
+                                      })
+                                      .collect::<Vec<String>>()
+                                      .join(" + ");
                 if bounds.len() > 0 {
                     result.push_str(&format!(": {}", bound_str));
                 }
