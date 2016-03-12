@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::{autoderef, FnCtxt, UnresolvedTypeAction};
+use check::{FnCtxt, UnresolvedTypeAction};
 
 use rustc::infer::{Coercion, InferOk, TypeOrigin, TypeTrace};
 use rustc::traits::{self, ObligationCause};
@@ -241,10 +241,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let lvalue_pref = LvaluePreference::from_mutbl(mt_b.mutbl);
         let mut first_error = None;
         let mut r_borrow_var = None;
-        let (_, autoderefs, success) = autoderef(self.fcx, span, a, exprs,
-                                                 UnresolvedTypeAction::Ignore,
-                                                 lvalue_pref,
-                                                 |referent_ty, autoderef|
+        let (_, autoderefs, success) = self.fcx.autoderef(span, a, exprs,
+                                                          UnresolvedTypeAction::Ignore,
+                                                          lvalue_pref,
+                                                          |referent_ty, autoderef|
         {
             if autoderef == 0 {
                 // Don't let this pass, otherwise it would cause
@@ -616,25 +616,26 @@ fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx>,
     Ok((ty, adjustment))
 }
 
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Attempt to coerce an expression to a type, and return the
 /// adjusted type of the expression, if successful.
 /// Adjustments are only recorded if the coercion succeeded.
 /// The expressions *must not* have any pre-existing adjustments.
-pub fn try<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                     expr: &hir::Expr,
-                     target: Ty<'tcx>)
-                     -> RelateResult<'tcx, Ty<'tcx>> {
-    let source = fcx.resolve_type_vars_if_possible(fcx.expr_ty(expr));
+pub fn try_coerce(&self,
+                  expr: &hir::Expr,
+                  target: Ty<'tcx>)
+                  -> RelateResult<'tcx, Ty<'tcx>> {
+    let source = self.resolve_type_vars_if_possible(self.expr_ty(expr));
     debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
-    let mut coerce = Coerce::new(fcx, TypeOrigin::ExprAssignable(expr.span));
-    fcx.infcx().commit_if_ok(|_| {
+    let mut coerce = Coerce::new(self, TypeOrigin::ExprAssignable(expr.span));
+    self.infcx().commit_if_ok(|_| {
         let (ty, adjustment) =
             apply(&mut coerce, &|| Some(expr), source, target)?;
         if !adjustment.is_identity() {
             debug!("Success, coerced with {:?}", adjustment);
-            assert!(!fcx.inh.tables.borrow().adjustments.contains_key(&expr.id));
-            fcx.write_adjustment(expr.id, adjustment);
+            assert!(!self.inh.tables.borrow().adjustments.contains_key(&expr.id));
+            self.write_adjustment(expr.id, adjustment);
         }
         Ok(ty)
     })
@@ -643,18 +644,18 @@ pub fn try<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// Given some expressions, their known unified type and another expression,
 /// tries to unify the types, potentially inserting coercions on any of the
 /// provided expressions and returns their LUB (aka "common supertype").
-pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
-                                        origin: TypeOrigin,
-                                        exprs: E,
-                                        prev_ty: Ty<'tcx>,
-                                        new: &'b hir::Expr)
-                                        -> RelateResult<'tcx, Ty<'tcx>>
+pub fn try_find_coercion_lub<'b, E, I>(&self,
+                                       origin: TypeOrigin,
+                                       exprs: E,
+                                       prev_ty: Ty<'tcx>,
+                                       new: &'b hir::Expr)
+                                       -> RelateResult<'tcx, Ty<'tcx>>
     // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
     where E: Fn() -> I,
           I: IntoIterator<Item=&'b hir::Expr> {
 
-    let prev_ty = fcx.resolve_type_vars_if_possible(prev_ty);
-    let new_ty = fcx.resolve_type_vars_if_possible(fcx.expr_ty(new));
+    let prev_ty = self.resolve_type_vars_if_possible(prev_ty);
+    let new_ty = self.resolve_type_vars_if_possible(self.expr_ty(new));
     debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
 
     let trace = TypeTrace::types(origin, true, prev_ty, new_ty);
@@ -665,7 +666,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         (&ty::TyFnDef(a_def_id, a_substs, a_fty),
          &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
             // The signature must always match.
-            let fty = fcx.infcx().lub(true, trace.clone(), a_fty, b_fty)
+            let fty = self.infcx().lub(true, trace.clone(), a_fty, b_fty)
                 .map(|InferOk { value, obligations }| {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
@@ -674,46 +675,46 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
 
             if a_def_id == b_def_id {
                 // Same function, maybe the parameters match.
-                let substs = fcx.infcx().commit_if_ok(|_| {
-                    fcx.infcx().lub(true, trace.clone(), a_substs, b_substs)
+                let substs = self.infcx().commit_if_ok(|_| {
+                    self.infcx().lub(true, trace.clone(), a_substs, b_substs)
                         .map(|InferOk { value, obligations }| {
                             // FIXME(#32730) propagate obligations
                             assert!(obligations.is_empty());
                             value
                         })
-                }).map(|s| fcx.tcx().mk_substs(s));
+                }).map(|s| self.tcx().mk_substs(s));
 
                 if let Ok(substs) = substs {
                     // We have a LUB of prev_ty and new_ty, just return it.
-                    return Ok(fcx.tcx().mk_fn_def(a_def_id, substs, fty));
+                    return Ok(self.tcx().mk_fn_def(a_def_id, substs, fty));
                 }
             }
 
             // Reify both sides and return the reified fn pointer type.
             for expr in exprs().into_iter().chain(Some(new)) {
                 // No adjustments can produce a fn item, so this should never trip.
-                assert!(!fcx.inh.tables.borrow().adjustments.contains_key(&expr.id));
-                fcx.write_adjustment(expr.id, AdjustReifyFnPointer);
+                assert!(!self.inh.tables.borrow().adjustments.contains_key(&expr.id));
+                self.write_adjustment(expr.id, AdjustReifyFnPointer);
             }
-            return Ok(fcx.tcx().mk_fn_ptr(fty));
+            return Ok(self.tcx().mk_fn_ptr(fty));
         }
         _ => {}
     }
 
-    let mut coerce = Coerce::new(fcx, origin);
+    let mut coerce = Coerce::new(self, origin);
     coerce.use_lub = true;
 
     // First try to coerce the new expression to the type of the previous ones,
     // but only if the new expression has no coercion already applied to it.
     let mut first_error = None;
-    if !fcx.inh.tables.borrow().adjustments.contains_key(&new.id) {
-        let result = fcx.infcx().commit_if_ok(|_| {
+    if !self.inh.tables.borrow().adjustments.contains_key(&new.id) {
+        let result = self.infcx().commit_if_ok(|_| {
             apply(&mut coerce, &|| Some(new), new_ty, prev_ty)
         });
         match result {
             Ok((ty, adjustment)) => {
                 if !adjustment.is_identity() {
-                    fcx.write_adjustment(new.id, adjustment);
+                    self.write_adjustment(new.id, adjustment);
                 }
                 return Ok(ty);
             }
@@ -725,12 +726,12 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
     // This requires ensuring there are no coercions applied to *any* of the
     // previous expressions, other than noop reborrows (ignoring lifetimes).
     for expr in exprs() {
-        let noop = match fcx.inh.tables.borrow().adjustments.get(&expr.id) {
+        let noop = match self.inh.tables.borrow().adjustments.get(&expr.id) {
             Some(&AdjustDerefRef(AutoDerefRef {
                 autoderefs: 1,
                 autoref: Some(AutoPtr(_, mutbl_adj)),
                 unsize: None
-            })) => match fcx.expr_ty(expr).sty {
+            })) => match self.expr_ty(expr).sty {
                 ty::TyRef(_, mt_orig) => {
                     // Reborrow that we can safely ignore.
                     mutbl_adj == mt_orig.mutbl
@@ -742,8 +743,8 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         if !noop {
-            return fcx.infcx().commit_if_ok(|_| {
-                fcx.infcx().lub(true, trace.clone(), &prev_ty, &new_ty)
+            return self.infcx().commit_if_ok(|_| {
+                self.infcx().lub(true, trace.clone(), &prev_ty, &new_ty)
                     .map(|InferOk { value, obligations }| {
                         // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
@@ -753,14 +754,14 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
 
-    match fcx.infcx().commit_if_ok(|_| apply(&mut coerce, &exprs, prev_ty, new_ty)) {
+    match self.infcx().commit_if_ok(|_| apply(&mut coerce, &exprs, prev_ty, new_ty)) {
         Err(_) => {
             // Avoid giving strange errors on failed attempts.
             if let Some(e) = first_error {
                 Err(e)
             } else {
-                fcx.infcx().commit_if_ok(|_| {
-                    fcx.infcx().lub(true, trace, &prev_ty, &new_ty)
+                self.infcx().commit_if_ok(|_| {
+                    self.infcx().lub(true, trace, &prev_ty, &new_ty)
                         .map(|InferOk { value, obligations }| {
                             // FIXME(#32730) propagate obligations
                             assert!(obligations.is_empty());
@@ -772,10 +773,11 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         Ok((ty, adjustment)) => {
             if !adjustment.is_identity() {
                 for expr in exprs() {
-                    fcx.write_adjustment(expr.id, adjustment);
+                    self.write_adjustment(expr.id, adjustment);
                 }
             }
             Ok(ty)
         }
     }
+}
 }

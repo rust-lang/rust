@@ -34,9 +34,10 @@ use rustc::hir;
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
-pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &hir::Expr) {
-    assert_eq!(fcx.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(fcx);
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
+    assert_eq!(self.writeback_errors.get(), false);
+    let mut wbcx = WritebackCx::new(self);
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
     wbcx.visit_closures();
@@ -44,18 +45,16 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &hir::Expr) {
     wbcx.visit_fru_field_types();
 }
 
-pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
-                               decl: &hir::FnDecl,
-                               blk: &hir::Block) {
-    assert_eq!(fcx.writeback_errors.get(), false);
-    let mut wbcx = WritebackCx::new(fcx);
+pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
+    assert_eq!(self.writeback_errors.get(), false);
+    let mut wbcx = WritebackCx::new(self);
     wbcx.visit_block(blk);
     for arg in &decl.inputs {
         wbcx.visit_node_id(ResolvingPattern(arg.pat.span), arg.id);
         wbcx.visit_pat(&arg.pat);
 
         // Privacy needs the type for the whole pattern, not just each binding
-        if !pat_util::pat_is_binding(&fcx.tcx().def_map.borrow(), &arg.pat) {
+        if !pat_util::pat_is_binding(&self.tcx().def_map.borrow(), &arg.pat) {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
                                arg.pat.id);
         }
@@ -64,6 +63,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
     wbcx.visit_closures();
     wbcx.visit_liberated_fn_sigs();
     wbcx.visit_fru_field_types();
+}
 }
 
 ///////////////////////////////////////////////////////////////////////////

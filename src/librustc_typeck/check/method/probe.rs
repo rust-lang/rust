@@ -13,7 +13,6 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
-use check;
 use check::{FnCtxt, UnresolvedTypeAction};
 use hir::def_id::DefId;
 use hir::def::Def;
@@ -129,13 +128,14 @@ pub enum Mode {
     Path
 }
 
-pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                       span: Span,
-                       mode: Mode,
-                       item_name: ast::Name,
-                       self_ty: Ty<'tcx>,
-                       scope_expr_id: ast::NodeId)
-                       -> PickResult<'tcx>
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+pub fn probe_method(&self,
+                    span: Span,
+                    mode: Mode,
+                    item_name: ast::Name,
+                    self_ty: Ty<'tcx>,
+                    scope_expr_id: ast::NodeId)
+                    -> PickResult<'tcx>
 {
     debug!("probe(self_ty={:?}, item_name={}, scope_expr_id={})",
            self_ty,
@@ -148,9 +148,9 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // side-effects. This is a bit of a pain to refactor. So just let
     // it ride, although it's really not great, and in fact could I
     // think cause spurious errors. Really though this part should
-    // take place in the `fcx.infcx().probe` below.
+    // take place in the `self.infcx().probe` below.
     let steps = if mode == Mode::MethodCall {
-        match create_steps(fcx, span, self_ty) {
+        match self.create_steps(span, self_ty) {
             Some(steps) => steps,
             None =>return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(), Vec::new(),
                                                                     Vec::new(), mode))),
@@ -166,7 +166,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Create a list of simplified self types, if we can.
     let mut simplified_steps = Vec::new();
     for step in &steps {
-        match ty::fast_reject::simplify_type(fcx.tcx(), step.self_ty, true) {
+        match ty::fast_reject::simplify_type(self.tcx(), step.self_ty, true) {
             None => { break; }
             Some(simplified_type) => { simplified_steps.push(simplified_type); }
         }
@@ -184,8 +184,8 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // this creates one big transaction so that all type variables etc
     // that we create during the probe process are removed later
-    fcx.infcx().probe(|_| {
-        let mut probe_cx = ProbeContext::new(fcx,
+    self.infcx().probe(|_| {
+        let mut probe_cx = ProbeContext::new(self,
                                              span,
                                              mode,
                                              item_name,
@@ -197,19 +197,18 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     })
 }
 
-fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                          span: Span,
-                          self_ty: Ty<'tcx>)
-                          -> Option<Vec<CandidateStep<'tcx>>> {
+fn create_steps(&self,
+                span: Span,
+                self_ty: Ty<'tcx>)
+                -> Option<Vec<CandidateStep<'tcx>>> {
     let mut steps = Vec::new();
 
-    let (final_ty, dereferences, _) = check::autoderef(fcx,
-                                                       span,
-                                                       self_ty,
-                                                       || None,
-                                                       UnresolvedTypeAction::Error,
-                                                       NoPreference,
-                                                       |t, d| {
+    let (final_ty, dereferences, _) = self.autoderef(span,
+                                                     self_ty,
+                                                     || None,
+                                                     UnresolvedTypeAction::Error,
+                                                     NoPreference,
+                                                     |t, d| {
         steps.push(CandidateStep {
             self_ty: t,
             autoderefs: d,
@@ -221,7 +220,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match final_ty.sty {
         ty::TyArray(elem_ty, _) => {
             steps.push(CandidateStep {
-                self_ty: fcx.tcx().mk_slice(elem_ty),
+                self_ty: self.tcx().mk_slice(elem_ty),
                 autoderefs: dereferences,
                 unsize: true
             });
@@ -231,6 +230,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 
     Some(steps)
+}
 }
 
 impl<'a,'tcx> ProbeContext<'a,'tcx> {
@@ -1313,7 +1313,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn impl_item(&self, impl_def_id: DefId)
                  -> Option<ty::ImplOrTraitItem<'tcx>>
     {
-        super::impl_item(self.fcx, impl_def_id, self.item_name)
+        self.fcx.impl_item(impl_def_id, self.item_name)
     }
 
     /// Find item with name `item_name` defined in `trait_def_id`
@@ -1321,7 +1321,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn trait_item(&self, trait_def_id: DefId)
                   -> Option<ty::ImplOrTraitItem<'tcx>>
     {
-        super::trait_item(self.fcx, trait_def_id, self.item_name)
+        self.fcx.trait_item(trait_def_id, self.item_name)
     }
 }
 
