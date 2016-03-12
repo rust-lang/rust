@@ -9,11 +9,8 @@
 // except according to those terms.
 
 //! The compiler code necessary to implement the `#[derive]` extensions.
-//!
-//! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
-//! the standard library, and "std" is the core library.
 
-use syntax::ast::{MetaItem, MetaItemKind};
+use syntax::ast::{MetaItem, MetaItemKind, self};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{ExtCtxt, SyntaxEnv, Annotatable};
 use syntax::ext::base::{MultiDecorator, MultiItemDecorator, MultiModifier};
@@ -21,6 +18,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::codemap::Span;
 use syntax::parse::token::{intern, intern_and_get_ident};
+use syntax::ptr::P;
 
 macro_rules! pathvec {
     ($($x:ident)::+) => (
@@ -197,3 +195,43 @@ fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
                                    name, replacement));
     }
 }
+
+/// Construct a name for the inner type parameter that can't collide with any type parameters of
+/// the item. This is achieved by starting with a base and then concatenating the names of all
+/// other type parameters.
+// FIXME(aburka): use real hygiene when that becomes possible
+fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
+    let mut typaram = String::from(base);
+    if let Annotatable::Item(ref item) = *item {
+        match item.node {
+            ast::ItemKind::Struct(_, ast::Generics { ref ty_params, .. }) |
+                ast::ItemKind::Enum(_, ast::Generics { ref ty_params, .. }) => {
+
+                for ty in ty_params.iter() {
+                    typaram.push_str(&ty.ident.name.as_str());
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    typaram
+}
+
+/// Constructs an expression that calls an intrinsic
+fn call_intrinsic(cx: &ExtCtxt,
+                  span: Span,
+                  intrinsic: &str,
+                  args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+    let path = cx.std_path(&["intrinsics", intrinsic]);
+    let call = cx.expr_call_global(span, path, args);
+
+    cx.expr_block(P(ast::Block {
+        stmts: vec![],
+        expr: Some(call),
+        id: ast::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
+        span: span }))
+}
+

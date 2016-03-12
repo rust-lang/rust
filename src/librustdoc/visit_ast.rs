@@ -26,6 +26,7 @@ use rustc::middle::stability;
 use rustc_front::hir;
 
 use core;
+use clean::{Clean, Attributes};
 use doctree::*;
 
 // looks to me like the first two of these are actually
@@ -182,7 +183,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                        please_inline: bool) -> Option<hir::ViewPath_> {
         match path {
             hir::ViewPathSimple(dst, base) => {
-                if self.resolve_id(id, Some(dst), false, om, please_inline) {
+                if self.maybe_inline_local(id, Some(dst), false, om, please_inline) {
                     None
                 } else {
                     Some(hir::ViewPathSimple(dst, base))
@@ -190,7 +191,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             hir::ViewPathList(p, paths) => {
                 let mine = paths.into_iter().filter(|path| {
-                    !self.resolve_id(path.node.id(), None, false, om,
+                    !self.maybe_inline_local(path.node.id(), None, false, om,
                                      please_inline)
                 }).collect::<hir::HirVec<hir::PathListItem>>();
 
@@ -201,9 +202,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 }
             }
 
-            // these are feature gated anyway
             hir::ViewPathGlob(base) => {
-                if self.resolve_id(id, None, true, om, please_inline) {
+                if self.maybe_inline_local(id, None, true, om, please_inline) {
                     None
                 } else {
                     Some(hir::ViewPathGlob(base))
@@ -213,8 +213,32 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     }
 
-    fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
+    /// Tries to resolve the target of a `pub use` statement and inlines the
+    /// target if it is defined locally and would not be documented otherwise,
+    /// or when it is specifically requested with `please_inline`.
+    /// (the latter is the case when the import is marked `doc(inline)`)
+    ///
+    /// Cross-crate inlining occurs later on during crate cleaning
+    /// and follows different rules.
+    ///
+    /// Returns true if the target has been inlined.
+    fn maybe_inline_local(&mut self, id: ast::NodeId, renamed: Option<ast::Name>,
                   glob: bool, om: &mut Module, please_inline: bool) -> bool {
+
+        fn inherits_doc_hidden(cx: &core::DocContext, mut node: ast::NodeId) -> bool {
+            while let Some(id) = cx.map.get_enclosing_scope(node) {
+                node = id;
+                let attrs = cx.map.attrs(node).clean(cx);
+                if attrs.list_def("doc").has_word("hidden") {
+                    return true;
+                }
+                if node == ast::CRATE_NODE_ID {
+                    break;
+                }
+            }
+            false
+        }
+
         let tcx = match self.cx.tcx_opt() {
             Some(tcx) => tcx,
             None => return false
@@ -226,9 +250,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let analysis = match self.analysis {
             Some(analysis) => analysis, None => return false
         };
-        if !please_inline && analysis.access_levels.is_public(def) {
+
+        let is_private = !analysis.access_levels.is_public(def);
+        let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
+
+        // Only inline if requested or if the item would otherwise be stripped
+        if !please_inline && !is_private && !is_hidden {
             return false
         }
+
         if !self.view_item_stack.insert(def_node_id) { return false }
 
         let ret = match tcx.map.get(def_node_id) {
@@ -276,10 +306,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let node = if item.vis == hir::Public {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
-                            Some(list) => {
+                            Some(list) if &item.name()[..] == "doc" => {
                                 list.iter().any(|i| &i.name()[..] == "inline")
                             }
-                            None => false,
+                            _ => false,
                         }
                     });
                     match self.visit_view_path(node, om, item.id, please_inline) {
