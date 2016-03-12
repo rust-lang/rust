@@ -16,7 +16,7 @@ use strings::string_buffer::StringBuffer;
 
 use Indent;
 use utils;
-use codemap::SpanUtils;
+use codemap::{LineRangeUtils, SpanUtils};
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
@@ -46,6 +46,11 @@ impl<'a> FmtVisitor<'a> {
         debug!("visit_stmt: {:?} {:?}",
                self.codemap.lookup_char_pos(stmt.span.lo),
                self.codemap.lookup_char_pos(stmt.span.hi));
+
+        // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
+        if !self.config.file_lines.contains(&self.codemap.lookup_line_range(stmt.span)) {
+            return;
+        }
 
         match stmt.node {
             ast::StmtKind::Decl(ref decl, _) => {
