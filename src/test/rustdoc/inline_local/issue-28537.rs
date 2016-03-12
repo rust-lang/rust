@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "lib"]
+#[doc(hidden)]
+pub mod foo {
+    pub struct Foo;
+}
 
-mod m {
-    pub use self::a::Foo;
-
-    mod a {
-        pub struct Foo;
-    }
-
-    mod b {
-        pub use super::*;
+mod bar {
+    pub use self::bar::Bar;
+    mod bar {
+        pub struct Bar;
     }
 }
+
+// @has issue_28537/struct.Foo.html
+pub use foo::Foo;
+
+// @has issue_28537/struct.Bar.html
+pub use self::bar::Bar;
