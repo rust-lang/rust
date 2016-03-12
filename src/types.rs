@@ -21,6 +21,7 @@ use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{extra_offset, span_after, format_mutability, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
+use config::TypeDensity;
 
 // Does not wrap on simple segments.
 pub fn rewrite_path(context: &RewriteContext,
@@ -52,7 +53,7 @@ pub fn rewrite_path(context: &RewriteContext,
             // 3 = ">::".len()
             let budget = try_opt!(width.checked_sub(extra_offset + 3));
 
-            result = try_opt!(rewrite_path_segments(expr_context,
+            result = try_opt!(rewrite_path_segments(false,
                                                     result,
                                                     path.segments.iter().take(skip_count),
                                                     span_lo,
@@ -171,9 +172,9 @@ fn rewrite_segment(expr_context: bool,
     let offset = offset + ident_len;
 
     let params = match segment.parameters {
-        ast::PathParameters::AngleBracketedParameters(ref data) if !data.lifetimes.is_empty() ||
-                                                                   !data.types.is_empty() ||
-                                                                   !data.bindings.is_empty() => {
+        ast::PathParameters::AngleBracketed(ref data) if !data.lifetimes.is_empty() ||
+                                                         !data.types.is_empty() ||
+                                                         !data.bindings.is_empty() => {
             let param_list = data.lifetimes
                                  .iter()
                                  .map(SegmentParam::LifeTime)
@@ -212,10 +213,10 @@ fn rewrite_segment(expr_context: bool,
 
             format!("{}<{}>", separator, list_str)
         }
-        ast::PathParameters::ParenthesizedParameters(ref data) => {
+        ast::PathParameters::Parenthesized(ref data) => {
             let output = match data.output {
-                Some(ref ty) => FunctionRetTy::Return(ty.clone()),
-                None => FunctionRetTy::DefaultReturn(codemap::DUMMY_SP),
+                Some(ref ty) => FunctionRetTy::Ty(ty.clone()),
+                None => FunctionRetTy::Default(codemap::DUMMY_SP),
             };
             try_opt!(format_function_type(data.inputs.iter().map(|x| &**x),
                                           &output,
@@ -258,13 +259,13 @@ fn format_function_type<'a, I>(inputs: I,
     let list_str = try_opt!(format_fn_args(items, budget, offset, context.config));
 
     let output = match *output {
-        FunctionRetTy::Return(ref ty) => {
+        FunctionRetTy::Ty(ref ty) => {
             let budget = try_opt!(width.checked_sub(4));
             let type_str = try_opt!(ty.rewrite(context, budget, offset + 4));
             format!(" -> {}", type_str)
         }
-        FunctionRetTy::NoReturn(..) => " -> !".to_owned(),
-        FunctionRetTy::DefaultReturn(..) => String::new(),
+        FunctionRetTy::None(..) => " -> !".to_owned(),
+        FunctionRetTy::Default(..) => String::new(),
     };
 
     let infix = if output.len() + list_str.len() > width {
@@ -424,7 +425,12 @@ impl Rewrite for ast::TyParam {
             result.push_str(&bounds);
         }
         if let Some(ref def) = self.default {
-            result.push_str(" = ");
+
+            let eq_str = match context.config.type_punctuation_density {
+                TypeDensity::Compressed => "=",
+                TypeDensity::Wide => " = ",
+            };
+            result.push_str(eq_str);
             let budget = try_opt!(width.checked_sub(result.len()));
             let rewrite = try_opt!(def.rewrite(context, budget, offset + result.len()));
             result.push_str(&rewrite);
@@ -464,24 +470,29 @@ impl Rewrite for ast::TraitRef {
 impl Rewrite for ast::Ty {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match self.node {
-            ast::TyObjectSum(ref ty, ref bounds) => {
+            ast::TyKind::ObjectSum(ref ty, ref bounds) => {
                 let ty_str = try_opt!(ty.rewrite(context, width, offset));
                 let overhead = ty_str.len() + 3;
-                Some(format!("{} + {}",
+                let plus_str = match context.config.type_punctuation_density {
+                    TypeDensity::Compressed => "+",
+                    TypeDensity::Wide => " + ",
+                };
+                Some(format!("{}{}{}",
                              ty_str,
+                             plus_str,
                              try_opt!(bounds.rewrite(context,
                                                      try_opt!(width.checked_sub(overhead)),
                                                      offset + overhead))))
             }
-            ast::TyPtr(ref mt) => {
+            ast::TyKind::Ptr(ref mt) => {
                 let prefix = match mt.mutbl {
-                    Mutability::MutMutable => "*mut ",
-                    Mutability::MutImmutable => "*const ",
+                    Mutability::Mutable => "*mut ",
+                    Mutability::Immutable => "*const ",
                 };
 
                 rewrite_unary_prefix(context, prefix, &*mt.ty, width, offset)
             }
-            ast::TyRptr(ref lifetime, ref mt) => {
+            ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
                 let mut_len = mut_str.len();
                 Some(match *lifetime {
@@ -509,39 +520,39 @@ impl Rewrite for ast::Ty {
             }
             // FIXME: we drop any comments here, even though it's a silly place to put
             // comments.
-            ast::TyParen(ref ty) => {
+            ast::TyKind::Paren(ref ty) => {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("({})", ty_str))
             }
-            ast::TyVec(ref ty) => {
+            ast::TyKind::Vec(ref ty) => {
                 let budget = try_opt!(width.checked_sub(2));
                 ty.rewrite(context, budget, offset + 1).map(|ty_str| format!("[{}]", ty_str))
             }
-            ast::TyTup(ref items) => {
+            ast::TyKind::Tup(ref items) => {
                 rewrite_tuple(context,
                               items.iter().map(|x| &**x),
                               self.span,
                               width,
                               offset)
             }
-            ast::TyPolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
-            ast::TyPath(ref q_self, ref path) => {
+            ast::TyKind::PolyTraitRef(ref trait_ref) => trait_ref.rewrite(context, width, offset),
+            ast::TyKind::Path(ref q_self, ref path) => {
                 rewrite_path(context, false, q_self.as_ref(), path, width, offset)
             }
-            ast::TyFixedLengthVec(ref ty, ref repeats) => {
+            ast::TyKind::FixedLengthVec(ref ty, ref repeats) => {
                 rewrite_pair(&**ty, &**repeats, "[", "; ", "]", context, width, offset)
             }
-            ast::TyInfer => {
+            ast::TyKind::Infer => {
                 if width >= 1 {
                     Some("_".to_owned())
                 } else {
                     None
                 }
             }
-            ast::TyBareFn(ref bare_fn) => {
+            ast::TyKind::BareFn(ref bare_fn) => {
                 rewrite_bare_fn(bare_fn, self.span, context, width, offset)
             }
-            ast::TyMac(..) | ast::TyTypeof(..) => unreachable!(),
+            ast::TyKind::Mac(..) | ast::TyKind::Typeof(..) => unreachable!(),
         }
     }
 }
@@ -556,7 +567,7 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
 
     result.push_str(&::utils::format_unsafety(bare_fn.unsafety));
 
-    if bare_fn.abi != abi::Rust {
+    if bare_fn.abi != abi::Abi::Rust {
         result.push_str(&::utils::format_abi(bare_fn.abi));
     }
 

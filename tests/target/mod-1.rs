@@ -2,8 +2,7 @@
 
 mod foo {
     mod bar {
-        mod baz {
-        }
+        mod baz {}
     }
 }
 
@@ -16,9 +15,7 @@ mod foo {
         }
     }
 
-    mod qux {
-
-    }
+    mod qux {}
 }
 
 mod boxed {

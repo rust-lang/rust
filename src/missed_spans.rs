@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use WriteMode;
+use config::WriteMode;
 use visitor::FmtVisitor;
 use syntax::codemap::{self, BytePos, Span, Pos};
 use comment::{CodeCharKind, CommentCodeSlices, rewrite_comment};
@@ -103,14 +103,9 @@ impl<'a> FmtVisitor<'a> {
                   .collect()
         }
 
-        let replaced = match self.write_mode {
-            Some(mode) => {
-                match mode {
-                    WriteMode::Coverage => replace_chars(old_snippet),
-                    _ => old_snippet.to_owned(),
-                }
-            }
-            None => old_snippet.to_owned(),
+        let replaced = match self.config.write_mode {
+            WriteMode::Coverage => replace_chars(old_snippet),
+            _ => old_snippet.to_owned(),
         };
         let snippet = &*replaced;
 
@@ -147,11 +142,11 @@ impl<'a> FmtVisitor<'a> {
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // Add a newline after line comments
                         self.buffer.push_str("\n");
-                    } else if line_start < snippet.len() {
+                    } else if line_start <= snippet.len() {
                         // For other comments add a newline if there isn't one at the end already
-                        let c = snippet[line_start..].chars().next().unwrap();
-                        if c != '\n' && c != '\r' {
-                            self.buffer.push_str("\n");
+                        match snippet[line_start..].chars().next() {
+                            Some('\n') | Some('\r') => (),
+                            _ => self.buffer.push_str("\n"),
                         }
                     }
 

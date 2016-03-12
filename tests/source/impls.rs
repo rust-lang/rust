@@ -22,6 +22,12 @@ impl<'a, 'b, X, Y: Foo<Bar>> Foo<'a, X> for Bar<'b, Y> where X: Fooooooooooooooo
     fn foo() { "hi" }    
 }
 
+impl<T> Foo for Bar<T> where T: Baz 
+{
+}
+
+impl<T> Foo for Bar<T> where T: Baz { /* Comment */ }
+
 impl Foo {
     fn foo() {}
 }
@@ -64,3 +70,10 @@ impl X { fn do_parse(  mut  self : X ) {} }
 impl Y5000 {
     fn bar(self: X< 'a ,  'b >, y: Y) {}
 }
+
+pub impl<T> Foo for Bar<T> where T: Foo
+{
+    fn foo() { "hi" }
+}
+
+pub impl<T, Z> Foo for Bar<T, Z> where T: Foo, Z: Baz {}

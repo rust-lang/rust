@@ -1,7 +1,7 @@
 [package]
 
 name = "rustfmt"
-version = "0.2.1"
+version = "0.3.0"
 authors = ["Nicholas Cameron <ncameron@mozilla.com>", "Marcus Klaas <mail@marcusklaas.nl>", "The Rustfmt contributors"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
@@ -21,7 +21,7 @@ regex = "0.1.41"
 term = "0.2.11"
 strings = "0.0.1"
 diff = "0.1.8"
-syntex_syntax = "0.23.0"
+syntex_syntax = "0.29.1"
 log = "0.3.2"
 env_logger = "0.3.1"
 getopts = "0.2"

@@ -28,12 +28,6 @@ fn foo() -> Vec<i32> {
         .collect()
 }
 
-fn d() {
-    if true /* and ... */ {
-        a();
-    }
-}
-
 fn calc_page_len(prefix_len: usize, sofar: usize) -> usize {
     2 // page type and flags
     + 1 // stored depth

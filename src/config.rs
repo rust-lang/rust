@@ -73,6 +73,13 @@ configuration_option_enum! { Density:
     CompressedIfEmpty,
 }
 
+configuration_option_enum! { TypeDensity:
+    // No spaces around "=" and "+"
+    Compressed,
+    // Spaces around " = " and " + "
+    Wide,
+}
+
 impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {
@@ -111,6 +118,23 @@ configuration_option_enum! { ReportTactic:
     Always,
     Unnumbered,
     Never,
+}
+
+configuration_option_enum! { WriteMode:
+    // Backsup the original file and overwrites the orignal.
+    Replace,
+    // Overwrites original file without backup.
+    Overwrite,
+    // Write the output to stdout.
+    Display,
+    // Write the diff to stdout.
+    Diff,
+    // Display how much of the input file was processed
+    Coverage,
+    // Unfancy stdout
+    Plain,
+    // Output a checkstyle XML file.
+    Checkstyle,
 }
 
 // This trait and the following impl blocks are there so that we an use
@@ -191,12 +215,12 @@ macro_rules! create_config {
             }
 
             pub fn from_toml(toml: &str) -> Config {
-                let parsed = toml.parse().unwrap();
+                let parsed = toml.parse().expect("Could not parse TOML");
                 let parsed_config:ParsedConfig = match toml::decode(parsed) {
                     Some(decoded) => decoded,
                     None => {
                         println!("Decoding config file failed. Config:\n{}", toml);
-                        let parsed: toml::Value = toml.parse().unwrap();
+                        let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
                         println!("\n\nParsed:\n{:?}", parsed);
                         panic!();
                     }
@@ -208,10 +232,14 @@ macro_rules! create_config {
                 match key {
                     $(
                         stringify!($i) => {
-                            self.$i = val.parse::<$ty>().unwrap();
+                            self.$i = val.parse::<$ty>()
+                                .expect(&format!("Failed to parse override for {} (\"{}\") as a {}",
+                                                 stringify!($i),
+                                                 val,
+                                                 stringify!($ty)));
                         }
                     )+
-                    _ => panic!("Bad config key!")
+                    _ => panic!("Unknown config key in override: {}", key)
                 }
             }
 
@@ -270,6 +298,7 @@ create_config! {
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
+    impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
     fn_empty_single_line: bool, true, "Put empty-body functions on a single line";
     fn_single_line: bool, false, "Put single-expression functions on a single line";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,
@@ -278,6 +307,8 @@ create_config! {
     fn_args_density: Density, Density::Tall, "Argument density in functions";
     fn_args_layout: StructLitStyle, StructLitStyle::Visual, "Layout of function arguments";
     fn_arg_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on function arguments";
+    type_punctuation_density: TypeDensity, TypeDensity::Wide,
+        "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     // Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
     where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
@@ -286,6 +317,7 @@ create_config! {
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: BlockIndentStyle, BlockIndentStyle::Visual,
         "Indentation style of a where predicate";
+    where_trailing_comma: bool, false, "Put a trailing comma on where clauses";
     generics_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of generics";
     struct_trailing_comma: SeparatorTactic, SeparatorTactic::Vertical,
         "If there is a trailing comma on structs";
@@ -295,7 +327,7 @@ create_config! {
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
         "Multiline style on literal structs";
     enum_trailing_comma: bool, true, "Put a trailing comma on enum declarations";
-    report_todo: ReportTactic, ReportTactic::Always,
+    report_todo: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
@@ -303,7 +335,8 @@ create_config! {
     chain_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of chain";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     single_line_if_else: bool, false, "Put else on same line as closing brace for if statements";
-    format_strings: bool, true, "Format string literals, or leave as is";
+    format_strings: bool, true, "Format string literals where necessary";
+    force_format_strings: bool, false, "Always format string literals";
     chains_overflow_last: bool, true, "Allow last call in method chain to break the line";
     take_source_hints: bool, true, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
@@ -313,4 +346,6 @@ create_config! {
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     match_wildcard_trailing_comma: bool, true, "Put a trailing comma after a wildcard arm";
+    write_mode: WriteMode, WriteMode::Replace,
+        "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
 }

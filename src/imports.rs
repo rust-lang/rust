@@ -51,7 +51,7 @@ impl Rewrite for ast::ViewPath {
 }
 
 fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String {
-    let path_item_str = if let ast::PathListItem_::PathListIdent{ name, .. } = vpi.node {
+    let path_item_str = if let ast::PathListItemKind::Ident { name, .. } = vpi.node {
         // A name.
         if path_str.is_empty() {
             name.to_string()
@@ -74,8 +74,8 @@ fn rewrite_single_use_list(path_str: String, vpi: &ast::PathListItem) -> String 
 
 fn rewrite_path_item(vpi: &&ast::PathListItem) -> Option<String> {
     let path_item_str = match vpi.node {
-        ast::PathListItem_::PathListIdent{ name, .. } => name.to_string(),
-        ast::PathListItem_::PathListMod{ .. } => "self".to_owned(),
+        ast::PathListItemKind::Ident { name, .. } => name.to_string(),
+        ast::PathListItemKind::Mod { .. } => "self".to_owned(),
     };
 
     Some(append_alias(path_item_str, vpi))
@@ -83,8 +83,8 @@ fn rewrite_path_item(vpi: &&ast::PathListItem) -> Option<String> {
 
 fn append_alias(path_item_str: String, vpi: &ast::PathListItem) -> String {
     match vpi.node {
-        ast::PathListItem_::PathListIdent{ rename: Some(rename), .. } |
-        ast::PathListItem_::PathListMod{ rename: Some(rename), .. } => {
+        ast::PathListItemKind::Ident { rename: Some(rename), .. } |
+        ast::PathListItemKind::Mod { rename: Some(rename), .. } => {
             format!("{} as {}", path_item_str, rename)
         }
         _ => path_item_str,

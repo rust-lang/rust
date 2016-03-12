@@ -21,10 +21,12 @@ use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
+use syntax::codemap;
 
 use syntax::{ast, abi};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
+use syntax::ast::ImplItem;
 
 // Statements of the form
 // let pat: ty = init;
@@ -107,7 +109,7 @@ impl<'a> FmtVisitor<'a> {
         let span = mk_sp(item.span.lo, item.span.hi - BytePos(1));
 
         match item.node {
-            ast::ForeignItem_::ForeignItemFn(ref fn_decl, ref generics) => {
+            ast::ForeignItemKind::Fn(ref fn_decl, ref generics) => {
                 let indent = self.block_indent;
                 let rewrite = rewrite_fn_base(&self.get_context(),
                                               indent,
@@ -133,7 +135,7 @@ impl<'a> FmtVisitor<'a> {
                     None => self.format_missing(item.span.hi),
                 }
             }
-            ast::ForeignItem_::ForeignItemStatic(ref ty, is_mutable) => {
+            ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
                 let mut_str = if is_mutable {
@@ -180,6 +182,10 @@ impl<'a> FmtVisitor<'a> {
         let mut newline_brace = newline_for_brace(self.config, &generics.where_clause);
         let context = self.get_context();
 
+        let block_snippet = self.snippet(codemap::mk_sp(block.span.lo, block.span.hi));
+        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
+                       !context.config.fn_empty_single_line;
+
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(&context,
                                                                          indent,
                                                                          ident,
@@ -192,7 +198,7 @@ impl<'a> FmtVisitor<'a> {
                                                                          vis,
                                                                          span,
                                                                          newline_brace,
-                                                                         true));
+                                                                         has_body));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
@@ -434,12 +440,12 @@ impl<'a> FmtVisitor<'a> {
 }
 
 pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
-    if let ast::Item_::ItemImpl(unsafety,
-                                polarity,
-                                ref generics,
-                                ref trait_ref,
-                                ref self_ty,
-                                ref items) = item.node {
+    if let ast::ItemKind::Impl(unsafety,
+                               polarity,
+                               ref generics,
+                               ref trait_ref,
+                               ref self_ty,
+                               ref items) = item.node {
         let mut result = String::new();
         result.push_str(format_visibility(item.vis));
         result.push_str(format_unsafety(unsafety));
@@ -484,9 +490,20 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                              where_budget,
                                                              context.config.where_density,
                                                              "{",
+                                                             true,
                                                              None));
-        if !where_clause_str.contains('\n') &&
-           result.len() + where_clause_str.len() + offset.width() > context.config.max_width {
+
+        if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
+            result.push_str(&where_clause_str);
+            if where_clause_str.contains('\n') {
+                result.push_str("\n{\n}");
+            } else {
+                result.push_str(" {}");
+            }
+            return Some(result);
+        }
+
+        if !where_clause_str.is_empty() && !where_clause_str.contains('\n') {
             result.push('\n');
             let width = context.block_indent.width() + context.config.tab_spaces - 1;
             let where_indent = Indent::new(0, width);
@@ -505,13 +522,14 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                 }
             }
         }
+
         result.push('{');
 
         let snippet = context.snippet(item.span);
         let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
+            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
             visitor.block_indent = context.block_indent.block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
@@ -531,11 +549,29 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
             result.push_str(&outer_indent_str);
         }
 
+        if result.chars().last().unwrap() == '{' {
+            result.push('\n');
+        }
         result.push('}');
+
         Some(result)
     } else {
         unreachable!();
     }
+}
+
+fn is_impl_single_line(context: &RewriteContext,
+                       items: &Vec<ImplItem>,
+                       result: &str,
+                       where_clause_str: &str,
+                       item: &ast::Item)
+                       -> Option<bool> {
+    let snippet = context.snippet(item.span);
+    let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
+
+    Some(context.config.impl_empty_single_line && items.is_empty() &&
+         result.len() + where_clause_str.len() <= context.config.max_width &&
+         !contains_comment(&snippet[open_pos..]))
 }
 
 pub fn format_struct(context: &RewriteContext,
@@ -573,7 +609,7 @@ pub fn format_struct(context: &RewriteContext,
 }
 
 pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
-    if let ast::Item_::ItemTrait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
+    if let ast::ItemKind::Trait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
            item.node {
         let mut result = String::new();
         let header = format!("{}{}trait {}",
@@ -619,6 +655,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                              where_budget,
                                                              context.config.where_density,
                                                              "{",
+                                                             context.config.where_trailing_comma,
                                                              None));
         if !where_clause_str.contains('\n') &&
            result.len() + where_clause_str.len() + offset.width() > context.config.max_width {
@@ -650,7 +687,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
-            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
+            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
             visitor.block_indent = context.block_indent.block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
@@ -732,7 +769,7 @@ fn format_struct_struct(context: &RewriteContext,
     }
 
     let item_indent = offset.block_indent(context.config);
-    // 2 = ","
+    // 1 = ","
     let item_budget = try_opt!(context.config.max_width.checked_sub(item_indent.width() + 1));
 
     let items = itemize_list(context.codemap,
@@ -806,6 +843,7 @@ fn format_tuple_struct(context: &RewriteContext,
                                           where_budget,
                                           Density::Compressed,
                                           ";",
+                                          false,
                                           None))
         }
         None => "".to_owned(),
@@ -887,6 +925,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                                                          where_budget,
                                                          context.config.where_density,
                                                          "=",
+                                                         false,
                                                          Some(span.hi)));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -985,15 +1024,15 @@ pub fn rewrite_static(prefix: &str,
 impl Rewrite for ast::FunctionRetTy {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         match *self {
-            ast::FunctionRetTy::DefaultReturn(_) => Some(String::new()),
-            ast::FunctionRetTy::NoReturn(_) => {
+            ast::FunctionRetTy::Default(_) => Some(String::new()),
+            ast::FunctionRetTy::None(_) => {
                 if width >= 4 {
                     Some("-> !".to_owned())
                 } else {
                     None
                 }
             }
-            ast::FunctionRetTy::Return(ref ty) => {
+            ast::FunctionRetTy::Ty(ref ty) => {
                 let inner_width = try_opt!(width.checked_sub(3));
                 ty.rewrite(context, inner_width, offset + 3).map(|r| format!("-> {}", r))
             }
@@ -1006,7 +1045,7 @@ impl Rewrite for ast::Arg {
         if is_named_arg(self) {
             let mut result = try_opt!(self.pat.rewrite(context, width, offset));
 
-            if self.ty.node != ast::Ty_::TyInfer {
+            if self.ty.node != ast::TyKind::Infer {
                 result.push_str(": ");
                 let max_width = try_opt!(width.checked_sub(result.len()));
                 let ty_str = try_opt!(self.ty.rewrite(context, max_width, offset + result.len()));
@@ -1025,7 +1064,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
                          context: &RewriteContext)
                          -> Option<String> {
     match explicit_self.node {
-        ast::ExplicitSelf_::SelfRegion(lt, m, _) => {
+        ast::SelfKind::Region(lt, m, _) => {
             let mut_str = format_mutability(m);
             match lt {
                 Some(ref l) => {
@@ -1037,7 +1076,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
                 None => Some(format!("&{}self", mut_str)),
             }
         }
-        ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
+        ast::SelfKind::Explicit(ref ty, _) => {
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
             let mutability = explicit_self_mutability(&args[0]);
@@ -1045,7 +1084,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
 
             Some(format!("{}self: {}", format_mutability(mutability), type_str))
         }
-        ast::ExplicitSelf_::SelfValue(_) => {
+        ast::SelfKind::Value(_) => {
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
             let mutability = explicit_self_mutability(&args[0]);
@@ -1059,7 +1098,7 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
 // Hacky solution caused by absence of `Mutability` in `SelfValue` and
 // `SelfExplicit` variants of `ast::ExplicitSelf_`.
 fn explicit_self_mutability(arg: &ast::Arg) -> ast::Mutability {
-    if let ast::Pat_::PatIdent(ast::BindingMode::BindByValue(mutability), _, _) = arg.pat.node {
+    if let ast::PatKind::Ident(ast::BindingMode::ByValue(mutability), _, _) = arg.pat.node {
         mutability
     } else {
         unreachable!()
@@ -1076,13 +1115,13 @@ pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
 
 pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
     match arg.ty.node {
-        ast::Ty_::TyInfer if is_named_arg(arg) => arg.pat.span.hi,
+        ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi,
         _ => arg.ty.span.hi,
     }
 }
 
 pub fn is_named_arg(arg: &ast::Arg) -> bool {
-    if let ast::Pat_::PatIdent(_, ident, _) = arg.pat.node {
+    if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
         ident.node != token::special_idents::invalid
     } else {
         true
@@ -1091,9 +1130,9 @@ pub fn is_named_arg(arg: &ast::Arg) -> bool {
 
 fn span_for_return(ret: &ast::FunctionRetTy) -> Span {
     match *ret {
-        ast::FunctionRetTy::NoReturn(ref span) |
-        ast::FunctionRetTy::DefaultReturn(ref span) => span.clone(),
-        ast::FunctionRetTy::Return(ref ty) => ty.span,
+        ast::FunctionRetTy::None(ref span) |
+        ast::FunctionRetTy::Default(ref span) => span.clone(),
+        ast::FunctionRetTy::Ty(ref ty) => ty.span,
     }
 }
 
@@ -1145,13 +1184,14 @@ fn rewrite_fn_base(context: &RewriteContext,
     let mut result = String::with_capacity(1024);
     // Vis unsafety abi.
     result.push_str(format_visibility(vis));
-    result.push_str(::utils::format_unsafety(unsafety));
 
     if let ast::Constness::Const = constness {
         result.push_str("const ");
     }
 
-    if abi != abi::Rust {
+    result.push_str(::utils::format_unsafety(unsafety));
+
+    if abi != abi::Abi::Rust {
         result.push_str(&::utils::format_abi(abi));
     }
 
@@ -1301,7 +1341,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                            (context.config.fn_args_layout == StructLitStyle::Block &&
                             ret_str.is_empty()) ||
                            (context.config.where_density == Density::CompressedIfEmpty &&
-                            !has_body) {
+                            !has_body && !result.contains('\n')) {
         Density::Compressed
     } else {
         Density::Tall
@@ -1317,7 +1357,14 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                          where_budget,
                                                          where_density,
                                                          "{",
+                                                         has_body,
                                                          Some(span.hi)));
+
+    if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
+       !where_clause_str.contains('\n') {
+        result.push('\n');
+    }
+
     result.push_str(&where_clause_str);
 
     Some((result, force_new_line_for_brace))
@@ -1559,7 +1606,7 @@ fn rewrite_trait_bounds(context: &RewriteContext,
                           .join(" + ");
 
     let mut result = String::new();
-    result.push_str(" : ");
+    result.push_str(": ");
     result.push_str(&bound_str);
     Some(result)
 }
@@ -1572,6 +1619,7 @@ fn rewrite_where_clause(context: &RewriteContext,
                         width: usize,
                         density: Density,
                         terminator: &str,
+                        allow_trailing_comma: bool,
                         span_end: Option<BytePos>)
                         -> Option<String> {
     if where_clause.predicates.is_empty() {
@@ -1611,11 +1659,12 @@ fn rewrite_where_clause(context: &RewriteContext,
     // FIXME: we don't need to collect here if the where_layout isn't
     // HorizontalVertical.
     let tactic = definitive_tactic(&item_vec, context.config.where_layout, budget);
+    let use_trailing_comma = allow_trailing_comma && context.config.where_trailing_comma;
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::Never,
+        trailing_separator: SeparatorTactic::from_bool(use_trailing_comma),
         indent: offset,
         width: budget,
         ends_with_newline: true,
@@ -1677,6 +1726,7 @@ fn format_generics(context: &RewriteContext,
                                                              budget,
                                                              Density::Tall,
                                                              terminator,
+                                                             true,
                                                              Some(span.hi)));
         result.push_str(&where_clause_str);
         if !force_same_line_brace &&

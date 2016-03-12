@@ -15,7 +15,7 @@ use syntax::visit;
 
 use strings::string_buffer::StringBuffer;
 
-use {Indent, WriteMode};
+use Indent;
 use utils;
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
@@ -31,14 +31,13 @@ pub struct FmtVisitor<'a> {
     // FIXME: use an RAII util or closure for indenting
     pub block_indent: Indent,
     pub config: &'a Config,
-    pub write_mode: Option<WriteMode>,
 }
 
 impl<'a> FmtVisitor<'a> {
     fn visit_stmt(&mut self, stmt: &ast::Stmt) {
         match stmt.node {
-            ast::Stmt_::StmtDecl(ref decl, _) => {
-                if let ast::Decl_::DeclItem(ref item) = decl.node {
+            ast::StmtKind::Decl(ref decl, _) => {
+                if let ast::DeclKind::Item(ref item) = decl.node {
                     self.visit_item(item);
                 } else {
                     let rewrite = stmt.rewrite(&self.get_context(),
@@ -48,14 +47,14 @@ impl<'a> FmtVisitor<'a> {
                     self.push_rewrite(stmt.span, rewrite);
                 }
             }
-            ast::Stmt_::StmtExpr(..) | ast::Stmt_::StmtSemi(..) => {
+            ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
                 let rewrite = stmt.rewrite(&self.get_context(),
                                            self.config.max_width - self.block_indent.width(),
                                            self.block_indent);
 
                 self.push_rewrite(stmt.span, rewrite);
             }
-            ast::Stmt_::StmtMac(ref mac, _macro_style, _) => {
+            ast::StmtKind::Mac(ref mac, _macro_style, _) => {
                 self.format_missing_with_indent(stmt.span.lo);
                 self.visit_mac(mac);
             }
@@ -184,7 +183,7 @@ impl<'a> FmtVisitor<'a> {
         // FIXME This is overly conservative and means we miss attributes on
         // inline modules.
         match item.node {
-            ast::Item_::ItemMod(_) => {
+            ast::ItemKind::Mod(_) => {
                 if utils::contains_skip(&item.attrs) {
                     return;
                 }
@@ -198,10 +197,10 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match item.node {
-            ast::Item_::ItemUse(ref vp) => {
+            ast::ItemKind::Use(ref vp) => {
                 self.format_import(item.vis, vp, item.span);
             }
-            ast::Item_::ItemImpl(..) => {
+            ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(item.span.lo);
                 if let Some(impl_str) = format_impl(&self.get_context(), item, self.block_indent) {
                     self.buffer.push_str(&impl_str);
@@ -209,7 +208,7 @@ impl<'a> FmtVisitor<'a> {
                 }
             }
             // FIXME(#78): format traits.
-            ast::Item_::ItemTrait(..) => {
+            ast::ItemKind::Trait(..) => {
                 self.format_missing_with_indent(item.span.lo);
                 if let Some(trait_str) = format_trait(&self.get_context(),
                                                       item,
@@ -223,13 +222,13 @@ impl<'a> FmtVisitor<'a> {
                 // }
                 // self.block_indent = self.block_indent.block_unindent(self.config);
             }
-            ast::Item_::ItemExternCrate(_) => {
+            ast::ItemKind::ExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo);
                 let new_str = self.snippet(item.span);
                 self.buffer.push_str(&new_str);
                 self.last_pos = item.span.hi;
             }
-            ast::Item_::ItemStruct(ref def, ref generics) => {
+            ast::ItemKind::Struct(ref def, ref generics) => {
                 let rewrite = {
                     let indent = self.block_indent;
                     let context = self.get_context();
@@ -250,28 +249,24 @@ impl<'a> FmtVisitor<'a> {
                 };
                 self.push_rewrite(item.span, rewrite);
             }
-            ast::Item_::ItemEnum(ref def, ref generics) => {
+            ast::ItemKind::Enum(ref def, ref generics) => {
                 self.format_missing_with_indent(item.span.lo);
                 self.visit_enum(item.ident, item.vis, def, generics, item.span);
                 self.last_pos = item.span.hi;
             }
-            ast::Item_::ItemMod(ref module) => {
+            ast::ItemKind::Mod(ref module) => {
                 self.format_missing_with_indent(item.span.lo);
                 self.format_mod(module, item.vis, item.span, item.ident);
             }
-            ast::Item_::ItemMac(..) => {
+            ast::ItemKind::Mac(ref mac) => {
                 self.format_missing_with_indent(item.span.lo);
-                let snippet = self.snippet(item.span);
-                self.buffer.push_str(&snippet);
-                self.last_pos = item.span.hi;
-                // FIXME: we cannot format these yet, because of a bad span.
-                // See rust lang issue #28424.
+                self.visit_mac(mac);
             }
-            ast::Item_::ItemForeignMod(ref foreign_mod) => {
+            ast::ItemKind::ForeignMod(ref foreign_mod) => {
                 self.format_missing_with_indent(item.span.lo);
                 self.format_foreign_mod(foreign_mod, item.span);
             }
-            ast::Item_::ItemStatic(ref ty, mutability, ref expr) => {
+            ast::ItemKind::Static(ref ty, mutability, ref expr) => {
                 let rewrite = rewrite_static("static",
                                              item.vis,
                                              item.ident,
@@ -281,32 +276,32 @@ impl<'a> FmtVisitor<'a> {
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
-            ast::Item_::ItemConst(ref ty, ref expr) => {
+            ast::ItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static("const",
                                              item.vis,
                                              item.ident,
                                              ty,
-                                             ast::Mutability::MutImmutable,
+                                             ast::Mutability::Immutable,
                                              expr,
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
-            ast::Item_::ItemDefaultImpl(..) => {
+            ast::ItemKind::DefaultImpl(..) => {
                 // FIXME(#78): format impl definitions.
             }
-            ast::ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
+            ast::ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.visit_fn(visit::FnKind::ItemFn(item.ident,
                                                     generics,
                                                     unsafety,
                                                     constness,
                                                     abi,
                                                     item.vis),
-                              declaration,
+                              decl,
                               body,
                               item.span,
                               item.id)
             }
-            ast::Item_::ItemTy(ref ty, ref generics) => {
+            ast::ItemKind::Ty(ref ty, ref generics) => {
                 let rewrite = rewrite_type_alias(&self.get_context(),
                                                  self.block_indent,
                                                  item.ident,
@@ -325,22 +320,22 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match ti.node {
-            ast::ConstTraitItem(..) => {
+            ast::TraitItemKind::Const(..) => {
                 // FIXME: Implement
             }
-            ast::MethodTraitItem(ref sig, None) => {
+            ast::TraitItemKind::Method(ref sig, None) => {
                 let indent = self.block_indent;
                 let rewrite = self.rewrite_required_fn(indent, ti.ident, sig, ti.span);
                 self.push_rewrite(ti.span, rewrite);
             }
-            ast::MethodTraitItem(ref sig, Some(ref body)) => {
+            ast::TraitItemKind::Method(ref sig, Some(ref body)) => {
                 self.visit_fn(visit::FnKind::Method(ti.ident, sig, None),
                               &sig.decl,
                               &body,
                               ti.span,
                               ti.id);
             }
-            ast::TypeTraitItem(ref type_param_bounds, _) => {
+            ast::TraitItemKind::Type(ref type_param_bounds, _) => {
                 let indent = self.block_indent;
                 let mut result = String::new();
                 result.push_str(&format!("type {}", ti.ident));
@@ -408,10 +403,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = span.hi;
     }
 
-    pub fn from_codemap(parse_session: &'a ParseSess,
-                        config: &'a Config,
-                        mode: Option<WriteMode>)
-                        -> FmtVisitor<'a> {
+    pub fn from_codemap(parse_session: &'a ParseSess, config: &'a Config) -> FmtVisitor<'a> {
         FmtVisitor {
             parse_session: parse_session,
             codemap: parse_session.codemap(),
@@ -422,7 +414,6 @@ impl<'a> FmtVisitor<'a> {
                 alignment: 0,
             },
             config: config,
-            write_mode: mode,
         }
     }
 
@@ -482,11 +473,19 @@ impl<'a> FmtVisitor<'a> {
 
         if is_internal {
             self.buffer.push_str(" {");
-            self.last_pos = ::utils::span_after(s, "{", self.codemap);
-            self.block_indent = self.block_indent.block_indent(self.config);
-            self.walk_mod_items(m);
-            self.format_missing_with_indent(m.inner.hi - BytePos(1));
-            self.close_block();
+            // Hackery to account for the closing }.
+            let mod_lo = ::utils::span_after(s, "{", self.codemap);
+            let body_snippet = self.snippet(codemap::mk_sp(mod_lo, m.inner.hi - BytePos(1)));
+            let body_snippet = body_snippet.trim();
+            if body_snippet.is_empty() {
+                self.buffer.push_str("}");
+            } else {
+                self.last_pos = mod_lo;
+                self.block_indent = self.block_indent.block_indent(self.config);
+                self.walk_mod_items(m);
+                self.format_missing_with_indent(m.inner.hi - BytePos(1));
+                self.close_block();
+            }
             self.last_pos = m.inner.hi;
         } else {
             self.buffer.push_str(";");

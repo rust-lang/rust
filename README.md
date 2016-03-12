@@ -51,14 +51,17 @@ read data from stdin. Alternatively, you can use `cargo fmt` to format all
 binary and library targets of your crate.
 
 You'll probably want to specify the write mode. Currently, there are modes for
-replace, overwrite, display, and coverage. The replace mode is the default
-and overwrites the original files after renaming them. In overwrite mode,
-rustfmt does not backup the source files. To print the output to stdout, use the
-display mode. The write mode can be set by passing the `--write-mode` flag on
-the command line.
+diff, replace, overwrite, display, coverage, and checkstyle.
 
-`rustfmt filename --write-mode=display` prints the output of rustfmt to the
-screen, for example.
+* `replace` Is the default and overwrites the original files after creating backups of the files.
+* `overwrite` Overwrites the original files _without_ creating backups.
+* `display` Will print the formatted files to stdout.
+* `diff` Will print a diff between the original files and formatted files to stdout.
+* `checkstyle` Will output the lines that need to be corrected as a checkstyle XML file,
+  that can be used by tools like Jenkins.
+
+The write mode can be set by passing the `--write-mode` flag on
+the command line. For example `rustfmt --write-mode=display src/filename.rs`
 
 You can run `rustfmt --help` for more information.
 
@@ -75,8 +78,6 @@ You can run `rustfmt --help` for more information.
 
 ## How to build and test
 
-First make sure you've got Rust **1.4.0** or greater available, then:
-
 `cargo build` to build.
 
 `cargo test` to run all tests.
@@ -85,12 +86,12 @@ To run rustfmt after this, use `cargo run --bin rustfmt -- filename`. See the
 notes above on running rustfmt.
 
 
-## What style does Rustfmt use?
+## Configuring Rustfmt
 
 Rustfmt is designed to be very configurable. You can create a TOML file called
 rustfmt.toml, place it in the project directory and it will apply the options
-in that file. See `cargo run -- --config-help` for the options which are available,
-or if you prefer to see source code, [src/config.rs].
+in that file. See `rustfmt --config-help` for the options which are available,
+or if you prefer to see source code, [src/config.rs](src/config.rs).
 
 By default, Rustfmt uses a style which (mostly) conforms to the
 [Rust style guidelines](https://github.com/rust-lang/rust/tree/master/src/doc/style).

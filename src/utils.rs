@@ -10,7 +10,7 @@
 
 use std::cmp::Ordering;
 
-use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItem_};
+use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind};
 use syntax::codemap::{CodeMap, Span, BytePos};
 use syntax::abi;
 
@@ -34,6 +34,14 @@ pub fn extra_offset(text: &str, offset: Indent) -> usize {
 pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
     let snippet = codemap.span_to_snippet(original).unwrap();
     let offset = snippet.find_uncommented(needle).unwrap() + needle.len();
+
+    original.lo + BytePos(offset as u32)
+}
+
+#[inline]
+pub fn span_before(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
+    let snippet = codemap.span_to_snippet(original).unwrap();
+    let offset = snippet.find_uncommented(needle).unwrap();
 
     original.lo + BytePos(offset as u32)
 }
@@ -69,8 +77,8 @@ pub fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
 #[inline]
 pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
-        ast::Mutability::MutMutable => "mut ",
-        ast::Mutability::MutImmutable => "",
+        ast::Mutability::Mutable => "mut ",
+        ast::Mutability::Immutable => "",
     }
 }
 
@@ -101,8 +109,8 @@ pub fn last_line_width(s: &str) -> usize {
 #[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.node {
-        MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
-        MetaItem_::MetaList(ref s, ref l) => *s == "cfg_attr" && l.len() == 2 && is_skip(&l[1]),
+        MetaItemKind::Word(ref s) => *s == SKIP_ANNOTATION,
+        MetaItemKind::List(ref s, ref l) => *s == "cfg_attr" && l.len() == 2 && is_skip(&l[1]),
         _ => false,
     }
 }
@@ -129,9 +137,9 @@ pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
 #[inline]
 pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
     match expr.node {
-        ast::Expr_::ExprRet(..) |
-        ast::Expr_::ExprAgain(..) |
-        ast::Expr_::ExprBreak(..) => true,
+        ast::ExprKind::Ret(..) |
+        ast::ExprKind::Again(..) |
+        ast::ExprKind::Break(..) => true,
         _ => false,
     }
 }
@@ -139,16 +147,16 @@ pub fn semicolon_for_expr(expr: &ast::Expr) -> bool {
 #[inline]
 pub fn semicolon_for_stmt(stmt: &ast::Stmt) -> bool {
     match stmt.node {
-        ast::Stmt_::StmtSemi(ref expr, _) => {
+        ast::StmtKind::Semi(ref expr, _) => {
             match expr.node {
-                ast::Expr_::ExprWhile(..) |
-                ast::Expr_::ExprWhileLet(..) |
-                ast::Expr_::ExprLoop(..) |
-                ast::Expr_::ExprForLoop(..) => false,
+                ast::ExprKind::While(..) |
+                ast::ExprKind::WhileLet(..) |
+                ast::ExprKind::Loop(..) |
+                ast::ExprKind::ForLoop(..) => false,
                 _ => true,
             }
         }
-        ast::Stmt_::StmtExpr(..) => false,
+        ast::StmtKind::Expr(..) => false,
         _ => true,
     }
 }

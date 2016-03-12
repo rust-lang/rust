@@ -26,15 +26,17 @@ extern crate diff;
 extern crate term;
 
 use syntax::ast;
-use syntax::codemap::{mk_sp, Span};
-use syntax::diagnostic::{EmitterWriter, Handler};
+use syntax::codemap::{mk_sp, CodeMap, Span};
+use syntax::errors::Handler;
+use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::parse::{self, ParseSess};
 
+use std::io::stdout;
 use std::ops::{Add, Sub};
 use std::path::Path;
+use std::rc::Rc;
 use std::collections::HashMap;
 use std::fmt;
-use std::str::FromStr;
 
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
@@ -46,6 +48,7 @@ mod utils;
 pub mod config;
 pub mod filemap;
 mod visitor;
+mod checkstyle;
 mod items;
 mod missed_spans;
 mod lists;
@@ -187,42 +190,6 @@ impl Sub<usize> for Indent {
     }
 }
 
-#[derive(Copy, Clone)]
-pub enum WriteMode {
-    // Backsup the original file and overwrites the orignal.
-    Replace,
-    // Overwrites original file without backup.
-    Overwrite,
-    // str is the extension of the new file.
-    NewFile(&'static str),
-    // Write the output to stdout.
-    Display,
-    // Write the diff to stdout.
-    Diff,
-    // Return the result as a mapping from filenames to Strings.
-    Return,
-    // Display how much of the input file was processed
-    Coverage,
-    // Unfancy stdout
-    Plain,
-}
-
-impl FromStr for WriteMode {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "replace" => Ok(WriteMode::Replace),
-            "display" => Ok(WriteMode::Display),
-            "overwrite" => Ok(WriteMode::Overwrite),
-            "diff" => Ok(WriteMode::Diff),
-            "coverage" => Ok(WriteMode::Coverage),
-            "plain" => Ok(WriteMode::Plain),
-            _ => Err(()),
-        }
-    }
-}
-
 pub enum ErrorKind {
     // Line has exceeded character limit
     LineOverflow,
@@ -299,8 +266,7 @@ impl fmt::Display for FormatReport {
 fn fmt_ast(krate: &ast::Crate,
            parse_session: &ParseSess,
            main_file: &Path,
-           config: &Config,
-           mode: WriteMode)
+           config: &Config)
            -> FileMap {
     let mut file_map = FileMap::new();
     for (path, module) in modules::list_files(krate, parse_session.codemap()) {
@@ -311,7 +277,7 @@ fn fmt_ast(krate: &ast::Crate,
         if config.verbose {
             println!("Formatting {}", path);
         }
-        let mut visitor = FmtVisitor::from_codemap(parse_session, config, Some(mode));
+        let mut visitor = FmtVisitor::from_codemap(parse_session, config);
         visitor.format_separate_mod(module);
         file_map.insert(path.to_owned(), visitor.buffer);
     }
@@ -401,24 +367,32 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap {
+pub fn format_string(input: String, config: &Config) -> FileMap {
     let path = "stdin";
-    let mut parse_session = ParseSess::new();
+    let codemap = Rc::new(CodeMap::new());
+
+    let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
+                                                None,
+                                                true,
+                                                false,
+                                                codemap.clone());
+    let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
+
     let krate = parse::parse_crate_from_source_str(path.to_owned(),
                                                    input,
                                                    Vec::new(),
                                                    &parse_session);
 
     // Suppress error output after parsing.
-    let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
-    parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
+    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
+    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
     // FIXME: we still use a FileMap even though we only have
     // one file, because fmt_lines requires a FileMap
     let mut file_map = FileMap::new();
 
     // do the actual formatting
-    let mut visitor = FmtVisitor::from_codemap(&parse_session, config, Some(mode));
+    let mut visitor = FmtVisitor::from_codemap(&parse_session, config);
     visitor.format_separate_mod(&krate.module);
 
     // append final newline
@@ -428,15 +402,23 @@ pub fn format_string(input: String, config: &Config, mode: WriteMode) -> FileMap
     file_map
 }
 
-pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
-    let mut parse_session = ParseSess::new();
+pub fn format(file: &Path, config: &Config) -> FileMap {
+    let codemap = Rc::new(CodeMap::new());
+
+    let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
+                                                None,
+                                                true,
+                                                false,
+                                                codemap.clone());
+    let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
+
     let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
 
     // Suppress error output after parsing.
-    let emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None));
-    parse_session.span_diagnostic.handler = Handler::with_emitter(false, emitter);
+    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
+    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
-    let mut file_map = fmt_ast(&krate, &parse_session, file, config, mode);
+    let mut file_map = fmt_ast(&krate, &parse_session, file, config);
 
     // For some reason, the codemap does not include terminating
     // newlines so we must add one on for each file. This is sad.
@@ -445,16 +427,12 @@ pub fn format(file: &Path, config: &Config, mode: WriteMode) -> FileMap {
     file_map
 }
 
-// args are the arguments passed on the command line, generally passed through
-// to the compiler.
-// write_mode determines what happens to the result of running rustfmt, see
-// WriteMode.
-pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
-    let mut result = format(file, config, write_mode);
+pub fn run(file: &Path, config: &Config) {
+    let mut result = format(file, config);
 
     print!("{}", fmt_lines(&mut result, config));
-
-    let write_result = filemap::write_all_files(&result, write_mode, config);
+    let out = stdout();
+    let write_result = filemap::write_all_files(&result, out, config);
 
     if let Err(msg) = write_result {
         println!("Error writing files: {}", msg);
@@ -462,11 +440,12 @@ pub fn run(file: &Path, write_mode: WriteMode, config: &Config) {
 }
 
 // Similar to run, but takes an input String instead of a file to format
-pub fn run_from_stdin(input: String, mode: WriteMode, config: &Config) {
-    let mut result = format_string(input, config, mode);
+pub fn run_from_stdin(input: String, config: &Config) {
+    let mut result = format_string(input, config);
     fmt_lines(&mut result, config);
 
-    let write_result = filemap::write_file(&result["stdin"], "stdin", mode, config);
+    let mut out = stdout();
+    let write_result = filemap::write_file(&result["stdin"], "stdin", &mut out, config);
 
     if let Err(msg) = write_result {
         panic!("Error writing to stdout: {}", msg);

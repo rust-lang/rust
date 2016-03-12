@@ -134,25 +134,34 @@ not worthwhile due to uniformity being desirable, but it is a useful goal).
 
 ### Architecture details
 
-We use the AST from libsyntax. We use libsyntax's visit module to walk the AST
-to find starting points for reformatting. Eventually, we should reformat everything
-and we shouldn't need the visit module. We keep track of the last formatted
-position in the code, and when we reformat the next piece of code we make sure
-to output the span for all the code in between (handled by missed_spans.rs).
+We use the AST from [syntex_syntax], an export of rustc's libsyntax. We use
+syntex_syntax's visit module to walk the AST to find starting points for
+reformatting. Eventually, we should reformat everything and we shouldn't need
+the visit module. We keep track of the last formatted position in the code, and
+when we reformat the next piece of code we make sure to output the span for all
+the code in between (handled by missed_spans.rs).
+
+[syntex_syntax]: https://crates.io/crates/syntex_syntax
+
+We read in formatting configuration from a `rustfmt.toml` file if there is one.
+The options and their defaults are defined in `config.rs`. A `Config` object is
+passed throughout the formatting code, and each formatting routine looks there
+for its configuration.
 
 Our visitor keeps track of the desired current indent due to blocks (
-`block_indent`). Each `visit_*` method reformats code according to this indent
-and `IDEAL_WIDTH` and `MAX_WIDTH` (which should one day be supplied from a
-config file). Most reformatting done in the `visit_*` methods is a bit hackey
-and is meant to be temporary until it can be done properly.
+`block_indent`). Each `visit_*` method reformats code according to this indent,
+`config.ideal_width` and `config.max_width`. Most reformatting done in the
+`visit_*` methods is a bit hackey and is meant to be temporary until it can be
+done properly.
 
 There are a bunch of methods called `rewrite_*`. There do the bulk of the
 reformatting. These take the AST node to be reformatted (this may not literally
-be an AST node from libsyntax, there might be multiple parameters describing a
-logical node), the current indent, and the current width budget. They return a
-`String` (or sometimes an `Option<String>`) which formats the code in the box
-given by the indent and width budget. If the method fails, it returns `None` and
-the calling method then has to fallback in some way to give the callee more space.
+be an AST node from syntex_syntax: there might be multiple parameters
+describing a logical node), the current indent, and the current width budget.
+They return a `String` (or sometimes an `Option<String>`) which formats the
+code in the box given by the indent and width budget. If the method fails, it
+returns `None` and the calling method then has to fallback in some way to give
+the callee more space.
 
 So, in summary to format a node, we calculate the width budget and then walk down
 the tree from the node. At a leaf, we generate an actual string and then unwind,

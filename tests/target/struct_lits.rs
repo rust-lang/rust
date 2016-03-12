@@ -149,3 +149,13 @@ fn issue491() {
         e: eeeeeeeee,
     };
 }
+
+fn issue698() {
+    Record {
+        ffffffffffffffffffffffffffields: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+    };
+    Record {
+        ffffffffffffffffffffffffffields:
+            aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+    }
+}

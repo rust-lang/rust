@@ -46,3 +46,7 @@ fn chains() {
 }
 
 // random comment
+
+fn main() {
+    // Test
+}

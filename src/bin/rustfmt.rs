@@ -17,69 +17,120 @@ extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{WriteMode, run, run_from_stdin};
-use rustfmt::config::Config;
+use rustfmt::{run, run_from_stdin};
+use rustfmt::config::{Config, WriteMode};
 
 use std::env;
 use std::fs::{self, File};
-use std::io::{self, Read, Write};
+use std::io::{self, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
 /// Rustfmt operations.
 enum Operation {
     /// Format files and their child modules.
-    Format(Vec<PathBuf>, WriteMode),
+    Format {
+        files: Vec<PathBuf>,
+        config_path: Option<PathBuf>,
+    },
     /// Print the help message.
     Help,
     // Print version information
     Version,
     /// Print detailed configuration help.
     ConfigHelp,
-    /// Invalid program input, including reason.
-    InvalidInput(String),
+    /// Invalid program input.
+    InvalidInput {
+        reason: String,
+    },
     /// No file specified, read from stdin
-    Stdin(String, WriteMode),
+    Stdin {
+        input: String,
+        config_path: Option<PathBuf>,
+    },
 }
 
-/// Try to find a project file in the input file directory and its parents.
-fn lookup_project_file(input_file: &Path) -> io::Result<PathBuf> {
-    let mut current = if input_file.is_relative() {
-        try!(env::current_dir()).join(input_file)
+/// Try to find a project file in the given directory and its parents. Returns the path of a the
+/// nearest project file if one exists, or `None` if no project file was found.
+fn lookup_project_file(dir: &Path) -> io::Result<Option<PathBuf>> {
+    let mut current = if dir.is_relative() {
+        try!(env::current_dir()).join(dir)
     } else {
-        input_file.to_path_buf()
+        dir.to_path_buf()
     };
 
-    // FIXME: We should canonize path to properly handle its parents,
-    // but `canonicalize` function is unstable now (recently added API)
-    // current = try!(fs::canonicalize(current));
+    current = try!(fs::canonicalize(current));
 
     loop {
         let config_file = current.join("rustfmt.toml");
-        if fs::metadata(&config_file).is_ok() {
-            return Ok(config_file);
+        match fs::metadata(&config_file) {
+            Ok(md) => {
+                // Properly handle unlikely situation of a directory named `rustfmt.toml`.
+                if md.is_file() {
+                    return Ok(Some(config_file));
+                }
+            }
+            // If it's not found, we continue searching; otherwise something went wrong and we
+            // return the error.
+            Err(e) => {
+                if e.kind() != ErrorKind::NotFound {
+                    return Err(e);
+                }
+            }
         }
 
         // If the current directory has no parent, we're done searching.
         if !current.pop() {
-            return Err(io::Error::new(io::ErrorKind::NotFound, "Config not found"));
+            return Ok(None);
         }
     }
 }
 
-/// Try to find a project file. If it's found, read it.
-fn lookup_and_read_project_file(input_file: &Path) -> io::Result<(PathBuf, String)> {
-    let path = try!(lookup_project_file(input_file));
+/// Resolve the config for input in `dir`.
+///
+/// Returns the `Config` to use, and the path of the project file if there was
+/// one.
+fn resolve_config(dir: &Path) -> io::Result<(Config, Option<PathBuf>)> {
+    let path = try!(lookup_project_file(dir));
+    if path.is_none() {
+        return Ok((Config::default(), None));
+    }
+    let path = path.unwrap();
     let mut file = try!(File::open(&path));
     let mut toml = String::new();
     try!(file.read_to_string(&mut toml));
-    Ok((path, toml))
+    Ok((Config::from_toml(&toml), Some(path)))
 }
 
-fn update_config(config: &mut Config, matches: &Matches) {
+/// read the given config file path recursively if present else read the project file path
+fn match_cli_path_or_file(config_path: Option<PathBuf>,
+                          input_file: &Path)
+                          -> io::Result<(Config, Option<PathBuf>)> {
+
+    if let Some(config_file) = config_path {
+        let (toml, path) = try!(resolve_config(config_file.as_ref()));
+        if path.is_some() {
+            return Ok((toml, path));
+        }
+    }
+    resolve_config(input_file)
+}
+
+fn update_config(config: &mut Config, matches: &Matches) -> Result<(), String> {
     config.verbose = matches.opt_present("verbose");
     config.skip_children = matches.opt_present("skip-children");
+
+    let write_mode = matches.opt_str("write-mode");
+    match matches.opt_str("write-mode").map(|wm| WriteMode::from_str(&wm)) {
+        None => Ok(()),
+        Some(Ok(write_mode)) => {
+            config.write_mode = write_mode;
+            Ok(())
+        }
+        Some(Err(_)) => Err(format!("Invalid write-mode: {}", write_mode.expect("cannot happen"))),
+    }
 }
 
 fn execute() -> i32 {
@@ -90,12 +141,17 @@ fn execute() -> i32 {
     opts.optopt("",
                 "write-mode",
                 "mode to write in (not usable when piping from stdin)",
-                "[replace|overwrite|display|diff|coverage]");
+                "[replace|overwrite|display|diff|coverage|checkstyle]");
     opts.optflag("", "skip-children", "don't reformat child modules");
 
     opts.optflag("",
                  "config-help",
                  "show details of rustfmt configuration options");
+    opts.optopt("",
+                "config-path",
+                "Recursively searches the given path for the rustfmt.toml config file. If not \
+                 found reverts to the input file path",
+                "[Path for the configuration file]");
 
     let matches = match opts.parse(env::args().skip(1)) {
         Ok(m) => m,
@@ -108,7 +164,7 @@ fn execute() -> i32 {
     let operation = determine_operation(&matches);
 
     match operation {
-        Operation::InvalidInput(reason) => {
+        Operation::InvalidInput { reason } => {
             print_usage(&opts, &reason);
             1
         }
@@ -124,30 +180,51 @@ fn execute() -> i32 {
             Config::print_docs();
             0
         }
-        Operation::Stdin(input, write_mode) => {
+        Operation::Stdin { input, config_path } => {
             // try to read config from local directory
-            let config = match lookup_and_read_project_file(&Path::new(".")) {
-                Ok((_, toml)) => Config::from_toml(&toml),
-                Err(_) => Default::default(),
-            };
+            let (mut config, _) = match_cli_path_or_file(config_path, &env::current_dir().unwrap())
+                                      .expect("Error resolving config");
 
-            run_from_stdin(input, write_mode, &config);
+            // write_mode is always Plain for Stdin.
+            config.write_mode = WriteMode::Plain;
+
+            run_from_stdin(input, &config);
             0
         }
-        Operation::Format(files, write_mode) => {
+        Operation::Format { files, config_path } => {
+            let mut config = Config::default();
+            let mut path = None;
+            // Load the config path file if provided
+            if let Some(config_file) = config_path {
+                let (cfg_tmp, path_tmp) = resolve_config(config_file.as_ref())
+                                              .expect(&format!("Error resolving config for {:?}",
+                                                               config_file));
+                config = cfg_tmp;
+                path = path_tmp;
+            };
+            if let Some(path) = path.as_ref() {
+                println!("Using rustfmt config file {}", path.display());
+            }
             for file in files {
-                let mut config = match lookup_and_read_project_file(&file) {
-                    Ok((path, toml)) => {
+                // Check the file directory if the config-path could not be read or not provided
+                if path.is_none() {
+                    let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())
+                                                     .expect(&format!("Error resolving config \
+                                                                       for {}",
+                                                                      file.display()));
+                    if let Some(path) = path_tmp.as_ref() {
                         println!("Using rustfmt config file {} for {}",
                                  path.display(),
                                  file.display());
-                        Config::from_toml(&toml)
                     }
-                    Err(_) => Default::default(),
-                };
+                    config = config_tmp;
+                }
 
-                update_config(&mut config, &matches);
-                run(&file, write_mode, &config);
+                if let Err(e) = update_config(&mut config, &matches) {
+                    print_usage(&opts, &e);
+                    return 1;
+                }
+                run(&file, &config);
             }
             0
         }
@@ -196,30 +273,35 @@ fn determine_operation(matches: &Matches) -> Operation {
         return Operation::Version;
     }
 
+    // Read the config_path and convert to parent dir if a file is provided.
+    let config_path: Option<PathBuf> = matches.opt_str("config-path")
+                                              .map(PathBuf::from)
+                                              .and_then(|dir| {
+                                                  if dir.is_file() {
+                                                      return dir.parent().map(|v| v.into());
+                                                  }
+                                                  Some(dir)
+                                              });
+
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {
 
         let mut buffer = String::new();
         match io::stdin().read_to_string(&mut buffer) {
             Ok(..) => (),
-            Err(e) => return Operation::InvalidInput(e.to_string()),
+            Err(e) => return Operation::InvalidInput { reason: e.to_string() },
         }
 
-        // WriteMode is always plain for Stdin
-        return Operation::Stdin(buffer, WriteMode::Plain);
+        return Operation::Stdin {
+            input: buffer,
+            config_path: config_path,
+        };
     }
-
-    let write_mode = match matches.opt_str("write-mode") {
-        Some(mode) => {
-            match mode.parse() {
-                Ok(mode) => mode,
-                Err(..) => return Operation::InvalidInput("Unrecognized write mode".into()),
-            }
-        }
-        None => WriteMode::Replace,
-    };
 
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
-    Operation::Format(files, write_mode)
+    Operation::Format {
+        files: files,
+        config_path: config_path,
+    }
 }

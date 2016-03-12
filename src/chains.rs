@@ -94,7 +94,7 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
 
     let fits_single_line = !veto_single_line &&
                            match subexpr_list[0].node {
-        ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions)
+        ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions)
             if context.config.chains_overflow_last => {
             let len = rewrites.len();
             let (init, last) = rewrites.split_at_mut(len - 1);
@@ -150,28 +150,28 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
 // parens, braces and brackets in its idiomatic formatting.
 fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
-        ast::Expr_::ExprStruct(..) |
-        ast::Expr_::ExprWhile(..) |
-        ast::Expr_::ExprWhileLet(..) |
-        ast::Expr_::ExprIf(..) |
-        ast::Expr_::ExprIfLet(..) |
-        ast::Expr_::ExprBlock(..) |
-        ast::Expr_::ExprLoop(..) |
-        ast::Expr_::ExprForLoop(..) |
-        ast::Expr_::ExprMatch(..) => repr.contains('\n'),
-        ast::Expr_::ExprParen(ref expr) |
-        ast::Expr_::ExprBinary(_, _, ref expr) |
-        ast::Expr_::ExprIndex(_, ref expr) |
-        ast::Expr_::ExprUnary(_, ref expr) => is_block_expr(expr, repr),
+        ast::ExprKind::Struct(..) |
+        ast::ExprKind::While(..) |
+        ast::ExprKind::WhileLet(..) |
+        ast::ExprKind::If(..) |
+        ast::ExprKind::IfLet(..) |
+        ast::ExprKind::Block(..) |
+        ast::ExprKind::Loop(..) |
+        ast::ExprKind::ForLoop(..) |
+        ast::ExprKind::Match(..) => repr.contains('\n'),
+        ast::ExprKind::Paren(ref expr) |
+        ast::ExprKind::Binary(_, _, ref expr) |
+        ast::ExprKind::Index(_, ref expr) |
+        ast::ExprKind::Unary(_, ref expr) => is_block_expr(expr, repr),
         _ => false,
     }
 }
 
 fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
     match expr.node {
-        ast::Expr_::ExprMethodCall(_, _, ref expressions) => Some(&expressions[0]),
-        ast::Expr_::ExprTupField(ref subexpr, _) |
-        ast::Expr_::ExprField(ref subexpr, _) => Some(subexpr),
+        ast::ExprKind::MethodCall(_, _, ref expressions) => Some(&expressions[0]),
+        ast::ExprKind::TupField(ref subexpr, _) |
+        ast::ExprKind::Field(ref subexpr, _) => Some(subexpr),
         _ => None,
     }
 }
@@ -183,7 +183,7 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                       offset: Indent)
                       -> Option<String> {
     match expr.node {
-        ast::Expr_::ExprMethodCall(ref method_name, ref types, ref expressions) => {
+        ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) => {
             let inner = &RewriteContext { block_indent: offset, ..*context };
             rewrite_method_call(method_name.node,
                                 types,
@@ -193,7 +193,7 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                                 width,
                                 offset)
         }
-        ast::Expr_::ExprField(_, ref field) => {
+        ast::ExprKind::Field(_, ref field) => {
             let s = format!(".{}", field.node);
             if s.len() <= width {
                 Some(s)
@@ -201,7 +201,7 @@ fn rewrite_chain_expr(expr: &ast::Expr,
                 None
             }
         }
-        ast::Expr_::ExprTupField(_, ref field) => {
+        ast::ExprKind::TupField(_, ref field) => {
             let s = format!(".{}", field.node);
             if s.len() <= width {
                 Some(s)
@@ -216,7 +216,7 @@ fn rewrite_chain_expr(expr: &ast::Expr,
 // Determines we can continue formatting a given expression on the same line.
 fn is_continuable(expr: &ast::Expr) -> bool {
     match expr.node {
-        ast::Expr_::ExprPath(..) => true,
+        ast::ExprKind::Path(..) => true,
         _ => false,
     }
 }
