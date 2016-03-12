@@ -63,6 +63,7 @@ use lint;
 use middle::def::Def;
 use middle::def_id::DefId;
 use constrained_type_params as ctp;
+use coherence;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
 use middle::const_eval::{self, ConstVal};
@@ -750,17 +751,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     _                    => &mut seen_value_items,
                 };
                 if !seen_items.insert(impl_item.name) {
-                    let desc = match impl_item.node {
-                        hir::ImplItemKind::Const(_, _) => "associated constant",
-                        hir::ImplItemKind::Type(_) => "associated type",
-                        hir::ImplItemKind::Method(ref sig, _) =>
-                            match sig.explicit_self.node {
-                                hir::SelfStatic => "associated function",
-                                _ => "method",
-                            },
-                    };
-
-                    span_err!(tcx.sess, impl_item.span, E0201, "duplicate {}", desc);
+                    coherence::report_duplicate_item(tcx, impl_item.span, impl_item.name).emit();
                 }
 
                 if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {

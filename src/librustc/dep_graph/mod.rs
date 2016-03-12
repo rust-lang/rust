@@ -58,6 +58,7 @@ pub enum DepNode {
     CoherenceCheckImpl(DefId),
     CoherenceOverlapCheck(DefId),
     CoherenceOverlapCheckSpecial(DefId),
+    CoherenceOverlapInherentCheck(DefId),
     CoherenceOrphanCheck(DefId),
     Variance,
     WfCheck(DefId),

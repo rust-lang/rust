@@ -458,14 +458,13 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 }
 
 pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                   a_is_expected: bool,
-                                   origin: TypeOrigin,
-                                   a: ty::TraitRef<'tcx>,
-                                   b: ty::TraitRef<'tcx>)
-                                   -> UnitResult<'tcx>
+                                  a_is_expected: bool,
+                                  origin: TypeOrigin,
+                                  a: ty::TraitRef<'tcx>,
+                                  b: ty::TraitRef<'tcx>)
+                                  -> UnitResult<'tcx>
 {
-    debug!("mk_eq_trait_refs({:?} <: {:?})",
-           a, b);
+    debug!("mk_eq_trait_refs({:?} = {:?})", a, b);
     cx.eq_trait_refs(a_is_expected, origin, a, b)
 }
 
@@ -476,9 +475,23 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                         b: ty::PolyTraitRef<'tcx>)
                                         -> UnitResult<'tcx>
 {
-    debug!("mk_sub_poly_trait_refs({:?} <: {:?})",
-           a, b);
+    debug!("mk_sub_poly_trait_refs({:?} <: {:?})", a, b);
     cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
+}
+
+pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+                                    a_is_expected: bool,
+                                    origin: TypeOrigin,
+                                    a: &ty::ImplHeader<'tcx>,
+                                    b: &ty::ImplHeader<'tcx>)
+                                    -> UnitResult<'tcx>
+{
+    debug!("mk_eq_impl_header({:?} = {:?})", a, b);
+    match (a.trait_ref, b.trait_ref) {
+        (Some(a_ref), Some(b_ref)) => mk_eq_trait_refs(cx, a_is_expected, origin, a_ref, b_ref),
+        (None, None) => mk_eqty(cx, a_is_expected, origin, a.self_ty, b.self_ty),
+        _ => cx.tcx.sess.bug("mk_eq_impl_headers given mismatched impl kinds"),
+    }
 }
 
 fn expected_found<T>(a_is_expected: bool,

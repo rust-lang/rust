@@ -152,6 +152,41 @@ impl ImplOrTraitItemContainer {
     }
 }
 
+/// The "header" of an impl is everything outside the body: a Self type, a trait
+/// ref (in the case of a trait impl), and a set of predicates (from the
+/// bounds/where clauses).
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct ImplHeader<'tcx> {
+    pub impl_def_id: DefId,
+    pub self_ty: Ty<'tcx>,
+    pub trait_ref: Option<TraitRef<'tcx>>,
+    pub predicates: Vec<Predicate<'tcx>>,
+}
+
+impl<'tcx> ImplHeader<'tcx> {
+    pub fn with_fresh_ty_vars<'a>(selcx: &mut traits::SelectionContext<'a, 'tcx>,
+                                  impl_def_id: DefId)
+                                  -> ImplHeader<'tcx>
+    {
+        let tcx = selcx.tcx();
+        let impl_generics = tcx.lookup_item_type(impl_def_id).generics;
+        let impl_substs = selcx.infcx().fresh_substs_for_generics(DUMMY_SP, &impl_generics);
+
+        let header = ImplHeader {
+            impl_def_id: impl_def_id,
+            self_ty: tcx.lookup_item_type(impl_def_id).ty,
+            trait_ref: tcx.impl_trait_ref(impl_def_id),
+            predicates: tcx.lookup_predicates(impl_def_id).predicates.into_vec(),
+        }.subst(tcx, &impl_substs);
+
+        let traits::Normalized { value: mut header, obligations } =
+            traits::normalize(selcx, traits::ObligationCause::dummy(), &header);
+
+        header.predicates.extend(obligations.into_iter().map(|o| o.predicate));
+        header
+    }
+}
+
 #[derive(Clone)]
 pub enum ImplOrTraitItem<'tcx> {
     ConstTraitItem(Rc<AssociatedConst<'tcx>>),

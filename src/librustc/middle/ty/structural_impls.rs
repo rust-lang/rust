@@ -446,6 +446,27 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        ty::ImplHeader {
+            impl_def_id: self.impl_def_id,
+            self_ty: self.self_ty.fold_with(folder),
+            trait_ref: self.trait_ref.map(|t| t.fold_with(folder)),
+            predicates: self.predicates.iter().map(|p| p.fold_with(folder)).collect(),
+        }
+    }
+
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        folder.fold_impl_header(self)
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.self_ty.visit_with(visitor) ||
+            self.trait_ref.map(|r| r.visit_with(visitor)).unwrap_or(false) ||
+            self.predicates.iter().any(|p| p.visit_with(visitor))
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for ty::Region {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
         *self
