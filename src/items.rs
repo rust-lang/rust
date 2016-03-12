@@ -22,7 +22,7 @@ use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 
-use syntax::{ast, abi, ptr};
+use syntax::{ast, abi};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
 
@@ -600,8 +600,14 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let trait_bound_str = try_opt!(rewrite_trait_bounds(context,
                                                             type_param_bounds,
                                                             offset,
-                                                            0));
+                                                            context.config.max_width));
 
+        if offset.width() + result.len() + trait_bound_str.len() > context.config.max_width {
+            result.push('\n');
+            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let trait_indent = Indent::new(0, width);
+            result.push_str(&trait_indent.to_string(context.config));
+        }
         result.push_str(&trait_bound_str);
 
         let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
@@ -623,12 +629,48 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
         result.push_str(&where_clause_str);
 
-        if trait_items.len() > 0 {
-            result.push_str(" {");
-        } else {
-            result.push_str(" {}");
+        match context.config.item_brace_style {
+            BraceStyle::AlwaysNextLine => {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            },
+            BraceStyle::PreferSameLine => result.push(' '),
+            BraceStyle::SameLineWhere => {
+                if !where_clause_str.is_empty() {
+                    result.push('\n');
+                    result.push_str(&offset.to_string(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
+        }
+        result.push('{');
+
+        let snippet = context.snippet(item.span);
+        let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
+
+        if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
+            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config, None);
+            visitor.block_indent = context.block_indent.block_indent(context.config);
+            visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
+
+            for item in trait_items {
+                visitor.visit_trait_item(&item);
+            }
+
+            visitor.format_missing(item.span.hi - BytePos(1));
+
+            let inner_indent_str = visitor.block_indent.to_string(context.config);
+            let outer_indent_str = context.block_indent.to_string(context.config);
+
+            result.push('\n');
+            result.push_str(&inner_indent_str);
+            result.push_str(&trim_newlines(&visitor.buffer.to_string().trim()));
+            result.push('\n');
+            result.push_str(&outer_indent_str);
         }
 
+        result.push('}');
         Some(result)
     } else {
         unreachable!();
@@ -1501,18 +1543,18 @@ fn rewrite_generics(context: &RewriteContext,
 }
 
 fn rewrite_trait_bounds(context: &RewriteContext,
-                      param_bounds: &ast::TyParamBounds,
+                      type_param_bounds: &ast::TyParamBounds,
                       indent: Indent,
                       width: usize)
                       -> Option<String> {
-    let bounds: &[_] = &param_bounds.as_slice();
+    let bounds: &[_] = &type_param_bounds.as_slice();
 
     if bounds.is_empty() {
         return Some(String::new());
     }
 
     let bound_str = bounds.iter()
-                            .filter_map(|ty_bound| ty_bound.rewrite(&context, 100, indent))
+                            .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
                             .collect::<Vec<String>>()
                             .join(" + ");
 

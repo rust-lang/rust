@@ -217,11 +217,11 @@ impl<'a> FmtVisitor<'a> {
                     self.buffer.push_str(&trait_str);
                     self.last_pos = item.span.hi;
                 }
-                self.block_indent = self.block_indent.block_indent(self.config);
-                for item in trait_items {
-                    self.visit_trait_item(&item);
-                }
-                self.block_indent = self.block_indent.block_unindent(self.config);
+                // self.block_indent = self.block_indent.block_indent(self.config);
+                // for item in trait_items {
+                //     self.visit_trait_item(&item);
+                // }
+                // self.block_indent = self.block_indent.block_unindent(self.config);
             }
             ast::Item_::ItemExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -319,7 +319,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+    pub fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
         if self.visit_attrs(&ti.attrs) {
             return;
         }
@@ -340,8 +340,22 @@ impl<'a> FmtVisitor<'a> {
                               ti.span,
                               ti.id);
             }
-            ast::TypeTraitItem(..) => {
-                // FIXME: Implement
+            ast::TypeTraitItem(ref type_param_bounds, _) => {
+                let indent = self.block_indent;
+                let mut result = String::new();
+                result.push_str(&format!("type {}", ti.ident));
+
+                let bounds: &[_] = &type_param_bounds.as_slice();
+                let bound_str = bounds.iter()
+                                        .filter_map(|ty_bound| ty_bound.rewrite(&self.get_context(), self.config.max_width, indent))
+                                        .collect::<Vec<String>>()
+                                        .join(" + ");
+                if bounds.len() > 0 {
+                    result.push_str(&format!(": {}", bound_str));
+                }
+
+                result.push(';');
+                self.push_rewrite(ti.span, Some(result));
             }
         }
     }
