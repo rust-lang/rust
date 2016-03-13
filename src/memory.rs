@@ -2,7 +2,7 @@ use byteorder::{self, ByteOrder};
 use std::collections::HashMap;
 use std::ptr;
 
-use interpreter::{EvalError, EvalResult};
+use interpreter::{EvalError, EvalResult, PrimVal};
 
 pub struct Memory {
     next_id: u64,
@@ -119,14 +119,25 @@ impl Memory {
         Ok(())
     }
 
-    pub fn read_int(&self, ptr: Pointer) -> EvalResult<i64> {
-        self.get_bytes(ptr, 8).map(byteorder::NativeEndian::read_i64)
+    pub fn read_primval(&self, ptr: Pointer, repr: &Repr) -> EvalResult<PrimVal> {
+        match *repr {
+            Repr::Bool => self.read_bool(ptr).map(PrimVal::Bool),
+            Repr::Int(IntRepr::I8) => self.read_i8(ptr).map(PrimVal::I8),
+            Repr::Int(IntRepr::I16) => self.read_i16(ptr).map(PrimVal::I16),
+            Repr::Int(IntRepr::I32) => self.read_i32(ptr).map(PrimVal::I32),
+            Repr::Int(IntRepr::I64) => self.read_i64(ptr).map(PrimVal::I64),
+            _ => panic!("primitive read of non-primitive: {:?}", repr),
+        }
     }
 
-    pub fn write_int(&mut self, ptr: Pointer, n: i64) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 8));
-        byteorder::NativeEndian::write_i64(bytes, n);
-        Ok(())
+    pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<()> {
+        match val {
+            PrimVal::Bool(b) => self.write_bool(ptr, b),
+            PrimVal::I8(n) => self.write_i8(ptr, n),
+            PrimVal::I16(n) => self.write_i16(ptr, n),
+            PrimVal::I32(n) => self.write_i32(ptr, n),
+            PrimVal::I64(n) => self.write_i64(ptr, n),
+        }
     }
 
     pub fn read_bool(&self, ptr: Pointer) -> EvalResult<bool> {
@@ -141,6 +152,44 @@ impl Memory {
     pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<()> {
         let bytes = try!(self.get_bytes_mut(ptr, 1));
         bytes[0] = b as u8;
+        Ok(())
+    }
+
+    pub fn read_i8(&self, ptr: Pointer) -> EvalResult<i8> {
+        self.get_bytes(ptr, 1).map(|b| b[0] as i8)
+    }
+
+    pub fn write_i8(&mut self, ptr: Pointer, n: i8) -> EvalResult<()> {
+        self.get_bytes_mut(ptr, 1).map(|b| b[0] = n as u8)
+    }
+
+    pub fn read_i16(&self, ptr: Pointer) -> EvalResult<i16> {
+        self.get_bytes(ptr, 2).map(byteorder::NativeEndian::read_i16)
+    }
+
+    pub fn write_i16(&mut self, ptr: Pointer, n: i16) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 2));
+        byteorder::NativeEndian::write_i16(bytes, n);
+        Ok(())
+    }
+
+    pub fn read_i32(&self, ptr: Pointer) -> EvalResult<i32> {
+        self.get_bytes(ptr, 4).map(byteorder::NativeEndian::read_i32)
+    }
+
+    pub fn write_i32(&mut self, ptr: Pointer, n: i32) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 4));
+        byteorder::NativeEndian::write_i32(bytes, n);
+        Ok(())
+    }
+
+    pub fn read_i64(&self, ptr: Pointer) -> EvalResult<i64> {
+        self.get_bytes(ptr, 8).map(byteorder::NativeEndian::read_i64)
+    }
+
+    pub fn write_i64(&mut self, ptr: Pointer, n: i64) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 8));
+        byteorder::NativeEndian::write_i64(bytes, n);
         Ok(())
     }
 }

@@ -36,16 +36,6 @@ impl fmt::Display for EvalError {
     }
 }
 
-// #[derive(Clone, Debug, PartialEq)]
-// enum Value {
-//     Uninit,
-//     Bool(bool),
-//     Int(i64), // FIXME(tsion): Should be bit-width aware.
-//     Pointer(Pointer),
-//     Adt { variant: usize, data_ptr: Pointer },
-//     Func(def_id::DefId),
-// }
-
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
     /// The MIR for the fucntion called on this frame.
@@ -87,6 +77,15 @@ struct Interpreter<'a, 'tcx: 'a> {
     stack: Vec<Frame<'a, 'tcx>>,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PrimVal {
+    Bool(bool),
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    I64(i64),
+}
+
 impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         Interpreter {
@@ -109,7 +108,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
             let repr = self.ty_to_repr(arg_decl.ty);
             let dest = self.memory.allocate(repr.size());
-            let src = try!(self.operand_to_ptr(arg_operand));
+            let (src, _) = try!(self.eval_operand(arg_operand));
             try!(self.memory.copy(src, dest, repr.size()));
             locals.push(dest);
         }
@@ -161,22 +160,22 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 Goto { target } => current_block = target,
 
                 If { ref cond, targets: (then_target, else_target) } => {
-                    let cond_ptr = try!(self.operand_to_ptr(cond));
+                    let (cond_ptr, _) = try!(self.eval_operand(cond));
                     let cond_val = try!(self.memory.read_bool(cond_ptr));
                     current_block = if cond_val { then_target } else { else_target };
                 }
 
                 SwitchInt { ref discr, ref values, ref targets, .. } => {
                     // FIXME(tsion): Handle non-integer switch types.
-                    let discr_ptr = try!(self.lvalue_to_ptr(discr));
-                    let discr_val = try!(self.memory.read_int(discr_ptr));
+                    let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
+                    let discr_val = try!(self.memory.read_i64(discr_ptr));
 
                     // Branch to the `otherwise` case by default, if no match is found.
                     current_block = targets[targets.len() - 1];
 
                     for (index, val_const) in values.iter().enumerate() {
                         let ptr = try!(self.const_to_ptr(val_const));
-                        let val = try!(self.memory.read_int(ptr));
+                        let val = try!(self.memory.read_i64(ptr));
                         if discr_val == val {
                             current_block = targets[index];
                             break;
@@ -241,32 +240,35 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                       right_operand: &mir::Operand<'tcx>, dest: Pointer) -> EvalResult<()>
     {
         // FIXME(tsion): Check for non-integer binary operations.
-        let left = try!(self.operand_to_ptr(left_operand));
-        let right = try!(self.operand_to_ptr(right_operand));
-        let l = try!(self.memory.read_int(left));
-        let r = try!(self.memory.read_int(right));
+        let (left, left_repr) = try!(self.eval_operand(left_operand));
+        let (right, right_repr) = try!(self.eval_operand(right_operand));
+
+        let left_val = try!(self.memory.read_primval(left, &left_repr));
+        let right_val = try!(self.memory.read_primval(right, &right_repr));
 
         use rustc::mir::repr::BinOp::*;
-        let n = match bin_op {
-            Add    => l + r,
-            Sub    => l - r,
-            Mul    => l * r,
-            Div    => l / r,
-            Rem    => l % r,
-            BitXor => l ^ r,
-            BitAnd => l & r,
-            BitOr  => l | r,
-            Shl    => l << r,
-            Shr    => l >> r,
-            _      => unimplemented!(),
-            // Eq     => Value::Bool(l == r),
-            // Lt     => Value::Bool(l < r),
-            // Le     => Value::Bool(l <= r),
-            // Ne     => Value::Bool(l != r),
-            // Ge     => Value::Bool(l >= r),
-            // Gt     => Value::Bool(l > r),
+        use self::PrimVal::*;
+        let result_val = match (bin_op, left_val, right_val) {
+            (Add,    I64(l), I64(r)) => I64(l + r),
+            (Sub,    I64(l), I64(r)) => I64(l - r),
+            (Mul,    I64(l), I64(r)) => I64(l * r),
+            (Div,    I64(l), I64(r)) => I64(l / r),
+            (Rem,    I64(l), I64(r)) => I64(l % r),
+            (BitXor, I64(l), I64(r)) => I64(l ^ r),
+            (BitAnd, I64(l), I64(r)) => I64(l & r),
+            (BitOr,  I64(l), I64(r)) => I64(l | r),
+            (Shl,    I64(l), I64(r)) => I64(l << r),
+            (Shr,    I64(l), I64(r)) => I64(l >> r),
+            (Eq,     I64(l), I64(r)) => Bool(l == r),
+            (Lt,     I64(l), I64(r)) => Bool(l < r),
+            (Le,     I64(l), I64(r)) => Bool(l <= r),
+            (Ne,     I64(l), I64(r)) => Bool(l != r),
+            (Ge,     I64(l), I64(r)) => Bool(l >= r),
+            (Gt,     I64(l), I64(r)) => Bool(l > r),
+            _ => unimplemented!(),
         };
-        self.memory.write_int(dest, n)
+
+        self.memory.write_primval(dest, result_val)
     }
 
     fn assign_to_product(&mut self, dest: Pointer, dest_repr: &Repr,
@@ -274,7 +276,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match *dest_repr {
             Repr::Product { ref fields, .. } => {
                 for (field, operand) in fields.iter().zip(operands) {
-                    let src = try!(self.operand_to_ptr(operand));
+                    let (src, _) = try!(self.eval_operand(operand));
                     try!(self.memory.copy(src, dest.offset(field.offset), field.repr.size()));
                 }
             }
@@ -286,14 +288,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
     {
-        let dest = try!(self.lvalue_to_ptr(lvalue));
-        let dest_ty = self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
-        let dest_repr = self.ty_to_repr(dest_ty);
+        let (dest, dest_repr) = try!(self.eval_lvalue(lvalue));
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let src = try!(self.operand_to_ptr(operand));
+                let (src, _) = try!(self.eval_operand(operand));
                 self.memory.copy(src, dest, dest_repr.size())
             }
 
@@ -301,15 +301,19 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.eval_binary_op(bin_op, left, right, dest),
 
             UnaryOp(un_op, ref operand) => {
-                // FIXME(tsion): Check for non-integer operations.
-                let ptr = try!(self.operand_to_ptr(operand));
-                let m = try!(self.memory.read_int(ptr));
+                let (src, src_repr) = try!(self.eval_operand(operand));
+                let src_val = try!(self.memory.read_primval(src, &src_repr));
+
                 use rustc::mir::repr::UnOp::*;
-                let n = match un_op {
-                    Not => !m,
-                    Neg => -m,
+                use self::PrimVal::*;
+                let result_val = match (un_op, src_val) {
+                    (Not, Bool(b)) => Bool(!b),
+                    (Not, I64(n)) => I64(!n),
+                    (Neg, I64(n)) => I64(-n),
+                    _ => unimplemented!(),
                 };
-                self.memory.write_int(dest, n)
+
+                self.memory.write_primval(dest, result_val)
             }
 
             Aggregate(ref kind, ref operands) => {
@@ -346,22 +350,25 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn operand_to_ptr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
+    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<(Pointer, Repr)> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => self.lvalue_to_ptr(lvalue),
+            Consume(ref lvalue) => self.eval_lvalue(lvalue),
 
-            Constant(ref constant) => {
+            Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
-                match constant.literal {
-                    Value { ref value } => self.const_to_ptr(value),
+                match *literal {
+                    Value { ref value } => Ok((
+                        try!(self.const_to_ptr(value)),
+                        self.ty_to_repr(ty),
+                    )),
                     ref l => panic!("can't handle item literal: {:?}", l),
                 }
             }
         }
     }
 
-    fn lvalue_to_ptr(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
+    fn eval_lvalue(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<(Pointer, Repr)> {
         let frame = self.current_frame();
 
         use rustc::mir::repr::Lvalue::*;
@@ -374,7 +381,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
-        Ok(ptr)
+        let ty = self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
+        Ok((ptr, self.ty_to_repr(ty)))
 
         //     mir::Lvalue::Projection(ref proj) => {
         //         let base_ptr = self.lvalue_to_ptr(&proj.base);
@@ -419,7 +427,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Int(n) => {
                 // TODO(tsion): Check int constant type.
                 let ptr = self.memory.allocate(8);
-                try!(self.memory.write_int(ptr, n));
+                try!(self.memory.write_i64(ptr, n));
                 Ok(ptr)
             }
             Uint(_u)          => unimplemented!(),
