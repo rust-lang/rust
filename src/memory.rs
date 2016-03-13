@@ -124,7 +124,7 @@ impl Memory {
 
 impl Allocation {
     fn check_bytes(&self, start: usize, end: usize) -> EvalResult<()> {
-        if start < self.bytes.len() && end <= self.bytes.len() {
+        if start <= self.bytes.len() && end <= self.bytes.len() {
             Ok(())
         } else {
             Err(EvalError::PointerOutOfBounds)
