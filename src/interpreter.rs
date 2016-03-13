@@ -43,7 +43,7 @@ impl fmt::Display for EvalError {
 
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
-    /// The MIR for the fucntion called on this frame.
+    /// The MIR for the function called on this frame.
     mir: &'a mir::Mir<'tcx>,
 
     /// A pointer for writing the return value of the current call, if it's not a diverging call.
