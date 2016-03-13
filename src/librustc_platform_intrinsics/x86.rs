@@ -498,6 +498,56 @@ pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(64), 4),
             definition: Named("llvm.x86.avx.addsub.pd.256")
         },
+        "256_broadcast_ps" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.avx.vbroadcastf128.ps.256")
+        },
+        "256_broadcast_pd" => Intrinsic {
+            inputs: vec![p(true, i(8), None)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx.vbroadcastf128.pd.256")
+        },
+        "256_cvtepi32_pd" => Intrinsic {
+            inputs: vec![v(i(32), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx.cvtdq2.pd.256")
+        },
+        "256_cvtepi32_ps" => Intrinsic {
+            inputs: vec![v(i(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.avx.cvtdq2.ps.256")
+        },
+        "256_cvtpd_epi32" => Intrinsic {
+            inputs: vec![v(f(64), 4)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.avx.cvt.pd2dq.256")
+        },
+        "256_cvtpd_ps" => Intrinsic {
+            inputs: vec![v(f(64), 4)],
+            output: v(f(32), 4),
+            definition: Named("llvm.x86.avx.cvt.pd2.ps.256")
+        },
+        "256_cvtps_epi32" => Intrinsic {
+            inputs: vec![v(f(32), 8)],
+            output: v(i(32), 8),
+            definition: Named("llvm.x86.avx.cvt.ps2dq.256")
+        },
+        "256_cvtps_pd" => Intrinsic {
+            inputs: vec![v(f(32), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx.cvt.ps2.pd.256")
+        },
+        "256_cvttpd_epi32" => Intrinsic {
+            inputs: vec![v(f(64), 4)],
+            output: v(i(32), 4),
+            definition: Named("llvm.x86.avx.cvtt.pd2dq.256")
+        },
+        "256_cvttps_epi32" => Intrinsic {
+            inputs: vec![v(f(32), 8)],
+            output: v(i(32), 8),
+            definition: Named("llvm.x86.avx.cvtt.ps2dq.256")
+        },
         "256_dp_ps" => Intrinsic {
             inputs: vec![v(f(32), 8), v(f(32), 8), i_(32, 8)],
             output: v(f(32), 8),
