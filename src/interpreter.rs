@@ -5,7 +5,7 @@ use rustc::mir::repr as mir;
 use std::error::Error;
 use std::fmt;
 
-use memory::{FieldRepr, Memory, Pointer, Repr};
+use memory::{FieldRepr, IntRepr, Memory, Pointer, Repr};
 
 const TRACE_EXECUTION: bool = true;
 
@@ -321,13 +321,14 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         ty::AdtKind::Struct => self.assign_to_product(dest, &dest_repr, operands),
 
                         ty::AdtKind::Enum => match dest_repr {
-                            Repr::Sum { discr_size, ref variants, .. } =>
+                            Repr::Sum { discr_size, ref variants, .. } => {
                                 // TODO(tsion): Write the discriminant value.
                                 self.assign_to_product(
                                     dest.offset(discr_size),
                                     &variants[variant_idx],
                                     operands
-                                ),
+                                )
+                            }
                             _ => panic!("expected Repr::Sum target"),
                         }
                     },
@@ -416,7 +417,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match *const_val {
             Float(_f) => unimplemented!(),
             Int(n) => {
-                let ptr = self.memory.allocate(Repr::Int.size());
+                // TODO(tsion): Check int constant type.
+                let ptr = self.memory.allocate(8);
                 try!(self.memory.write_int(ptr, n));
                 Ok(ptr)
             }
@@ -449,9 +451,16 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
     // TODO(tsion): Cache these outputs.
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
+        use syntax::ast::IntTy;
         match ty.sty {
             ty::TyBool => Repr::Bool,
-            ty::TyInt(_) => Repr::Int,
+
+            ty::TyInt(IntTy::Is) => unimplemented!(),
+            ty::TyInt(IntTy::I8) => Repr::Int(IntRepr::I8),
+            ty::TyInt(IntTy::I16) => Repr::Int(IntRepr::I16),
+            ty::TyInt(IntTy::I32) => Repr::Int(IntRepr::I32),
+            ty::TyInt(IntTy::I64) => Repr::Int(IntRepr::I64),
+
             ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
 
             ty::TyEnum(adt_def, ref subst) => {

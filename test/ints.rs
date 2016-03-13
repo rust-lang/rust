@@ -30,7 +30,7 @@ fn arith() -> i64 {
 
 #[miri_run]
 fn match_int() -> i64 {
-    let n = 2;
+    let n = 2i64;
     match n {
         0 => 0,
         1 => 10,

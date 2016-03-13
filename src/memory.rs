@@ -1,6 +1,5 @@
 use byteorder::{self, ByteOrder};
 use std::collections::HashMap;
-use std::mem;
 use std::ptr;
 
 use interpreter::{EvalError, EvalResult};
@@ -27,6 +26,9 @@ pub struct Pointer {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub enum IntRepr { I8, I16, I32, I64 }
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldRepr {
     pub offset: usize,
     pub repr: Repr,
@@ -35,7 +37,7 @@ pub struct FieldRepr {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repr {
     Bool,
-    Int,
+    Int(IntRepr),
 
     /// The representation for product types including tuples, structs, and the contents of enum
     /// variants.
@@ -118,11 +120,11 @@ impl Memory {
     }
 
     pub fn read_int(&self, ptr: Pointer) -> EvalResult<i64> {
-        self.get_bytes(ptr, Repr::Int.size()).map(byteorder::NativeEndian::read_i64)
+        self.get_bytes(ptr, 8).map(byteorder::NativeEndian::read_i64)
     }
 
     pub fn write_int(&mut self, ptr: Pointer, n: i64) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, Repr::Int.size()));
+        let bytes = try!(self.get_bytes_mut(ptr, 8));
         byteorder::NativeEndian::write_i64(bytes, n);
         Ok(())
     }
@@ -164,7 +166,10 @@ impl Repr {
     pub fn size(&self) -> usize {
         match *self {
             Repr::Bool => 1,
-            Repr::Int => mem::size_of::<i64>(),
+            Repr::Int(IntRepr::I8) => 1,
+            Repr::Int(IntRepr::I16) => 2,
+            Repr::Int(IntRepr::I32) => 4,
+            Repr::Int(IntRepr::I64) => 8,
             Repr::Product { size, .. } => size,
             Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
         }
