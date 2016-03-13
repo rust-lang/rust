@@ -32,50 +32,56 @@
 //! this pass just replaces the blocks with empty "return" blocks
 //! and does not renumber anything.
 
-use rustc::middle::infer;
+use rustc_data_structures::bitvec::BitVector;
+use rustc::middle::ty::TyCtxt;
 use rustc::mir::repr::*;
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{Pass, MirPass};
+use syntax::ast::NodeId;
 
-pub struct ClearDeadBlocks;
+pub struct RemoveDeadBlocks;
 
-impl ClearDeadBlocks {
-    pub fn new() -> ClearDeadBlocks {
-        ClearDeadBlocks
-    }
-
-    fn clear_dead_blocks(&self, mir: &mut Mir) {
-        let mut seen = vec![false; mir.basic_blocks.len()];
-
+impl<'tcx> MirPass<'tcx> for RemoveDeadBlocks {
+    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+        let mut seen = BitVector::new(mir.basic_blocks.len());
         // These blocks are always required.
-        seen[START_BLOCK.index()] = true;
-        seen[END_BLOCK.index()] = true;
+        seen.insert(START_BLOCK.index());
+        seen.insert(END_BLOCK.index());
 
-        let mut worklist = vec![START_BLOCK];
+        let mut worklist = Vec::with_capacity(4);
+        worklist.push(START_BLOCK);
         while let Some(bb) = worklist.pop() {
             for succ in mir.basic_block_data(bb).terminator().successors().iter() {
-                if !seen[succ.index()] {
-                    seen[succ.index()] = true;
+                if seen.insert(succ.index()) {
                     worklist.push(*succ);
                 }
             }
         }
-
-        for (n, (block, seen)) in mir.basic_blocks.iter_mut().zip(seen).enumerate() {
-            if !seen {
-                info!("clearing block #{}: {:?}", n, block);
-                *block = BasicBlockData {
-                    statements: vec![],
-                    terminator: Some(Terminator::Return),
-                    is_cleanup: false
-                };
-            }
-        }
+        retain_basic_blocks(mir, &seen);
     }
 }
 
-impl MirPass for ClearDeadBlocks {
-    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &infer::InferCtxt<'a, 'tcx>)
-    {
-        self.clear_dead_blocks(mir);
+impl Pass for RemoveDeadBlocks {}
+
+/// Mass removal of basic blocks to keep the ID-remapping cheap.
+fn retain_basic_blocks(mir: &mut Mir, keep: &BitVector) {
+    let num_blocks = mir.basic_blocks.len();
+
+    let mut replacements: Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
+    let mut used_blocks = 0;
+    for alive_index in keep.iter() {
+        replacements[alive_index] = BasicBlock::new(used_blocks);
+        if alive_index != used_blocks {
+            // Swap the next alive block data with the current available slot. Since alive_index is
+            // non-decreasing this is a valid operation.
+            mir.basic_blocks.swap(alive_index, used_blocks);
+        }
+        used_blocks += 1;
+    }
+    mir.basic_blocks.truncate(used_blocks);
+
+    for bb in mir.all_basic_blocks() {
+        for target in mir.basic_block_data_mut(bb).terminator_mut().successors_mut() {
+            *target = replacements[target.index()];
+        }
     }
 }
