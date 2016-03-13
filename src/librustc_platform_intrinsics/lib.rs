@@ -14,6 +14,7 @@
 #![crate_type = "rlib"]
 #![feature(staged_api, rustc_private)]
 #![cfg_attr(not(stage0), deny(warnings))]
+#![allow(bad_style)]
 
 extern crate rustc_llvm as llvm;
 extern crate rustc;
@@ -21,8 +22,8 @@ extern crate rustc;
 use rustc::middle::ty::TyCtxt;
 
 pub struct Intrinsic {
-    pub inputs: Vec<Type>,
-    pub output: Type,
+    pub inputs: &'static [&'static Type],
+    pub output: &'static Type,
 
     pub definition: IntrinsicDef,
 }
@@ -32,34 +33,69 @@ pub enum Type {
     Void,
     Integer(/* signed */ bool, u8, /* llvm width */ u8),
     Float(u8),
-    Pointer(Box<Type>, Option<Box<Type>>, /* const */ bool),
-    Vector(Box<Type>, Option<Box<Type>>, u8),
-    Aggregate(bool, Vec<Type>),
+    Pointer(&'static Type, Option<&'static Type>, /* const */ bool),
+    Vector(&'static Type, Option<&'static Type>, u8),
+    Aggregate(bool, &'static [&'static Type]),
 }
 
 pub enum IntrinsicDef {
     Named(&'static str),
 }
 
-fn i(width: u8) -> Type { Type::Integer(true, width, width) }
-fn i_(width: u8, llvm_width: u8) -> Type { Type::Integer(true, width, llvm_width) }
-fn u(width: u8) -> Type { Type::Integer(false, width, width) }
-#[allow(dead_code)]
-fn u_(width: u8, llvm_width: u8) -> Type { Type::Integer(false, width, llvm_width) }
-fn f(width: u8) -> Type { Type::Float(width) }
-fn v(x: Type, length: u8) -> Type { Type::Vector(Box::new(x), None, length) }
-fn v_(x: Type, bitcast: Type, length: u8) -> Type {
-    Type::Vector(Box::new(x), Some(Box::new(bitcast)), length)
-}
-fn agg(flatten: bool, types: Vec<Type>) -> Type {
-    Type::Aggregate(flatten, types)
-}
-fn p(const_: bool, elem: Type, llvm_elem: Option<Type>) -> Type {
-    Type::Pointer(Box::new(elem), llvm_elem.map(Box::new), const_)
-}
-fn void() -> Type {
-    Type::Void
-}
+static I8: Type = Type::Integer(true, 8, 8);
+static I16: Type = Type::Integer(true, 16, 16);
+static I32: Type = Type::Integer(true, 32, 32);
+static I64: Type = Type::Integer(true, 64, 64);
+static U8: Type = Type::Integer(false, 8, 8);
+static U16: Type = Type::Integer(false, 16, 16);
+static U32: Type = Type::Integer(false, 32, 32);
+static U64: Type = Type::Integer(false, 64, 64);
+static F32: Type = Type::Float(32);
+static F64: Type = Type::Float(64);
+
+static I32_8: Type = Type::Integer(true, 32, 8);
+
+static I8x8: Type = Type::Vector(&I8, None, 8);
+static U8x8: Type = Type::Vector(&U8, None, 8);
+static I8x16: Type = Type::Vector(&I8, None, 16);
+static U8x16: Type = Type::Vector(&U8, None, 16);
+static I8x32: Type = Type::Vector(&I8, None, 32);
+static U8x32: Type = Type::Vector(&U8, None, 32);
+
+static I16x4: Type = Type::Vector(&I16, None, 4);
+static U16x4: Type = Type::Vector(&U16, None, 4);
+static I16x8: Type = Type::Vector(&I16, None, 8);
+static U16x8: Type = Type::Vector(&U16, None, 8);
+static I16x16: Type = Type::Vector(&I16, None, 16);
+static U16x16: Type = Type::Vector(&U16, None, 16);
+
+static I32x2: Type = Type::Vector(&I32, None, 2);
+static U32x2: Type = Type::Vector(&U32, None, 2);
+static I32x4: Type = Type::Vector(&I32, None, 4);
+static U32x4: Type = Type::Vector(&U32, None, 4);
+static I32x8: Type = Type::Vector(&I32, None, 8);
+static U32x8: Type = Type::Vector(&U32, None, 8);
+
+static I64x1: Type = Type::Vector(&I64, None, 1);
+static U64x1: Type = Type::Vector(&U64, None, 1);
+static I64x2: Type = Type::Vector(&I64, None, 2);
+static U64x2: Type = Type::Vector(&U64, None, 2);
+static I64x4: Type = Type::Vector(&I64, None, 4);
+static U64x4: Type = Type::Vector(&U64, None, 4);
+
+static F32x2: Type = Type::Vector(&F32, None, 2);
+static F32x4: Type = Type::Vector(&F32, None, 4);
+static F32x8: Type = Type::Vector(&F32, None, 8);
+static F64x1: Type = Type::Vector(&F64, None, 1);
+static F64x2: Type = Type::Vector(&F64, None, 2);
+static F64x4: Type = Type::Vector(&F64, None, 4);
+
+static I32x4_F32: Type = Type::Vector(&I32, Some(&F32), 4);
+static I32x8_F32: Type = Type::Vector(&I32, Some(&F32), 8);
+static I64x2_F64: Type = Type::Vector(&I64, Some(&F64), 2);
+static I64x4_F64: Type = Type::Vector(&I64, Some(&F64), 4);
+
+static VOID: Type = Type::Void;
 
 mod x86;
 mod arm;
