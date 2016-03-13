@@ -28,8 +28,8 @@ patterns][patterns] that covers all the patterns that are possible here.
 
 [patterns]: patterns.html
 
-One of the many advantages of `match` is it enforces ‘exhaustiveness checking’. 
-For example if we remove the last arm with the underscore `_`, the compiler will 
+One of the many advantages of `match` is it enforces ‘exhaustiveness checking’.
+For example if we remove the last arm with the underscore `_`, the compiler will
 give us an error:
 
 ```text
@@ -58,7 +58,7 @@ let number = match x {
 };
 ```
 
-Sometimes it’s a nice way of converting something from one type to another; in 
+Sometimes it’s a nice way of converting something from one type to another; in
 this example the integers are converted to `String`.
 
 # Matching on enums
@@ -90,7 +90,7 @@ fn process_message(msg: Message) {
 
 Again, the Rust compiler checks exhaustiveness, so it demands that you
 have a match arm for every variant of the enum. If you leave one off, it
-will give you a compile-time error unless you use `_` or provide all possible 
+will give you a compile-time error unless you use `_` or provide all possible
 arms.
 
 Unlike the previous uses of `match`, you can’t use the normal `if`
