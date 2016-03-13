@@ -1,5 +1,6 @@
 use rustc::middle::const_eval;
 use rustc::middle::ty::{self, TyCtxt};
+use rustc::middle::subst::Substs;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use std::error::Error;
@@ -340,7 +341,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     Field(field, _) => match base_repr {
                         Repr::Product { ref fields, .. } =>
                             base_ptr.offset(fields[field.index()].offset),
-                        _ => panic!("field access on non-product type"),
+                        _ => panic!("field access on non-product type: {:?}", base_repr),
+                    },
+
+                    Downcast(_, variant) => match base_repr {
+                        Repr::Sum { ref discr, .. } => base_ptr.offset(discr.size()),
+                        _ => panic!("variant downcast on non-sum type"),
                     },
 
                     _ => unimplemented!(),
@@ -350,8 +356,13 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
-        let ty = self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx);
-        Ok((ptr, self.ty_to_repr(ty)))
+        use rustc::mir::tcx::LvalueTy;
+        let repr = match self.current_frame().mir.lvalue_ty(self.tcx, lvalue) {
+            LvalueTy::Ty { ty } => self.ty_to_repr(ty),
+            LvalueTy::Downcast { ref adt_def, substs, variant_index } =>
+                self.make_variant_repr(&adt_def.variants[variant_index], substs),
+        };
+        Ok((ptr, repr))
 
         //     mir::Lvalue::Projection(ref proj) => {
         //         let base_ptr = self.lvalue_to_ptr(&proj.base);
@@ -426,6 +437,11 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Repr::Product { size: size, fields: fields }
     }
 
+    fn make_variant_repr(&self, v: ty::VariantDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Repr {
+        let field_tys = v.fields.iter().map(|f| f.ty(self.tcx, substs));
+        self.make_product_repr(field_tys)
+    }
+
     // TODO(tsion): Cache these outputs.
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
         use syntax::ast::IntTy;
@@ -440,7 +456,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
             ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
 
-            ty::TyEnum(adt_def, ref subst) => {
+            ty::TyEnum(adt_def, substs) => {
                 let num_variants = adt_def.variants.len();
 
                 let discr = if num_variants <= 1 {
@@ -456,8 +472,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 };
 
                 let variants: Vec<Repr> = adt_def.variants.iter().map(|v| {
-                    let field_tys = v.fields.iter().map(|f| f.ty(self.tcx, subst));
-                    self.make_product_repr(field_tys)
+                    self.make_variant_repr(v, substs)
                 }).collect();
 
                 Repr::Sum {
@@ -467,16 +482,14 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }
             }
 
-            ty::TyStruct(adt_def, ref subst) => {
+            ty::TyStruct(adt_def, substs) => {
                 assert_eq!(adt_def.variants.len(), 1);
-                let field_tys = adt_def.variants[0].fields.iter().map(|f| f.ty(self.tcx, subst));
-                self.make_product_repr(field_tys)
+                self.make_variant_repr(&adt_def.variants[0], substs)
             }
 
             ref t => panic!("can't convert type to repr: {:?}", t),
         }
     }
-
 
     fn current_frame(&self) -> &Frame<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")

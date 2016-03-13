@@ -32,10 +32,10 @@ fn return_some() -> Option<i64> {
 
 #[miri_run]
 fn match_opt_none() -> i8 {
-    let x = None::<i32>;
+    let x = None;
     match x {
-        Some(_) => 10,
-        None => 20,
+        Some(data) => data,
+        None => 42,
     }
 }
 
@@ -43,7 +43,7 @@ fn match_opt_none() -> i8 {
 fn match_opt_some() -> i8 {
     let x = Some(13);
     match x {
-        Some(_) => 10,
+        Some(data) => data,
         None => 20,
     }
 }
