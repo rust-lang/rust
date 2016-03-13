@@ -6,12 +6,15 @@
 
 A collection of lints to catch common mistakes and improve your Rust code.
 
-[Jump to usage instructions](#usage)
-
-[Jump to link with clippy-service](#link-with-clippy-service)
+Table of contents:
+* [Lint list](#lints)
+* [Usage instructions](#usage)
+* [Configuration](#configuration)
+* [*clippy-service*](#link-with-clippy-service)
+* [License](#license)
 
 ##Lints
-There are 134 lints included in this crate:
+There are 136 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -19,6 +22,7 @@ name                                                                            
 [almost_swapped](https://github.com/Manishearth/rust-clippy/wiki#almost_swapped)                                     | warn    | `foo = bar; bar = foo` sequence
 [approx_constant](https://github.com/Manishearth/rust-clippy/wiki#approx_constant)                                   | warn    | the approximate of a known float constant (in `std::f64::consts` or `std::f32::consts`) is found; suggests to use the constant
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                         | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false` (because in the example `select` containing bits that `mask` doesn't have)
+[blacklisted_name](https://github.com/Manishearth/rust-clippy/wiki#blacklisted_name)                                 | warn    | usage of a blacklisted/placeholder name
 [block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)             | warn    | braces can be eliminated in conditions that are expressions, e.g `if { true } ...`
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt)             | warn    | avoid complex blocks in conditions, instead move the block higher and bind it with 'let'; e.g: `if { let x = true; x } ...`
 [bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                                   | warn    | comparing a variable to a boolean, e.g. `if x == true`
@@ -126,6 +130,7 @@ name                                                                            
 [suspicious_assignment_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_assignment_formatting) | warn    | suspicious formatting of `*=`, `-=` or `!=`
 [suspicious_else_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_else_formatting)             | warn    | suspicious formatting of `else if`
 [temporary_assignment](https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment)                         | warn    | assignments to temporaries
+[too_many_arguments](https://github.com/Manishearth/rust-clippy/wiki#too_many_arguments)                             | warn    | functions with too many arguments
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                                 | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
 [trivial_regex](https://github.com/Manishearth/rust-clippy/wiki#trivial_regex)                                       | warn    | finds trivial regular expressions in `Regex::new(_)` invocations
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                   | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
@@ -228,6 +233,22 @@ And, in your `main.rs` or `lib.rs`:
 #![cfg_attr(feature="clippy", feature(plugin))]
 
 #![cfg_attr(feature="clippy", plugin(clippy))]
+```
+
+## Configuration
+Some lints can be configured in a `clippy.toml` file. It contains basic `variable = value` mapping eg.
+
+```toml
+blacklisted-names = ["toto", "tata", "titi"]
+cyclomatic-complexity-threshold = 30
+```
+
+See the wiki for more information about which lints can be configured and the
+meaning of the variables.
+
+You can also specify the path to the configuration file with:
+```rust
+#![plugin(clippy(conf_file="path/to/clippy's/configuration"))]
 ```
 
 ##Link with clippy service

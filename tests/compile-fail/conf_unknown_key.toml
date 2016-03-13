@@ -1,0 +1,6 @@
+# that one is an error
+foobar = 42
+
+# that one is white-listed
+[third-party]
+clippy-feature = "nightly"

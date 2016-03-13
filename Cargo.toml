@@ -21,6 +21,7 @@ plugin = true
 regex-syntax = "0.2.2"
 regex_macros = { version = "0.1.28", optional = true }
 semver = "0.2.1"
+toml = "0.1"
 unicode-normalization = "0.1"
 
 [dev-dependencies]

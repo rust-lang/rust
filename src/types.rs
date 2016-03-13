@@ -417,7 +417,15 @@ declare_lint! {
 }
 
 #[allow(missing_copy_implementations)]
-pub struct TypeComplexityPass;
+pub struct TypeComplexityPass {
+    threshold: u64,
+}
+
+impl TypeComplexityPass {
+    pub fn new(threshold: u64) -> Self {
+        TypeComplexityPass { threshold: threshold }
+    }
+}
 
 impl LintPass for TypeComplexityPass {
     fn get_lints(&self) -> LintArray {
@@ -427,18 +435,18 @@ impl LintPass for TypeComplexityPass {
 
 impl LateLintPass for TypeComplexityPass {
     fn check_fn(&mut self, cx: &LateContext, _: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
-        check_fndecl(cx, decl);
+        self.check_fndecl(cx, decl);
     }
 
     fn check_struct_field(&mut self, cx: &LateContext, field: &StructField) {
         // enum variants are also struct fields now
-        check_type(cx, &field.ty);
+        self.check_type(cx, &field.ty);
     }
 
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         match item.node {
             ItemStatic(ref ty, _, _) |
-            ItemConst(ref ty, _) => check_type(cx, ty),
+            ItemConst(ref ty, _) => self.check_type(cx, ty),
             // functions, enums, structs, impls and traits are covered
             _ => (),
         }
@@ -447,8 +455,8 @@ impl LateLintPass for TypeComplexityPass {
     fn check_trait_item(&mut self, cx: &LateContext, item: &TraitItem) {
         match item.node {
             ConstTraitItem(ref ty, _) |
-            TypeTraitItem(_, Some(ref ty)) => check_type(cx, ty),
-            MethodTraitItem(MethodSig { ref decl, .. }, None) => check_fndecl(cx, decl),
+            TypeTraitItem(_, Some(ref ty)) => self.check_type(cx, ty),
+            MethodTraitItem(MethodSig { ref decl, .. }, None) => self.check_fndecl(cx, decl),
             // methods with default impl are covered by check_fn
             _ => (),
         }
@@ -457,7 +465,7 @@ impl LateLintPass for TypeComplexityPass {
     fn check_impl_item(&mut self, cx: &LateContext, item: &ImplItem) {
         match item.node {
             ImplItemKind::Const(ref ty, _) |
-            ImplItemKind::Type(ref ty) => check_type(cx, ty),
+            ImplItemKind::Type(ref ty) => self.check_type(cx, ty),
             // methods are covered by check_fn
             _ => (),
         }
@@ -465,47 +473,49 @@ impl LateLintPass for TypeComplexityPass {
 
     fn check_local(&mut self, cx: &LateContext, local: &Local) {
         if let Some(ref ty) = local.ty {
-            check_type(cx, ty);
+            self.check_type(cx, ty);
         }
     }
 }
 
-fn check_fndecl(cx: &LateContext, decl: &FnDecl) {
-    for arg in &decl.inputs {
-        check_type(cx, &arg.ty);
+impl TypeComplexityPass {
+    fn check_fndecl(&self, cx: &LateContext, decl: &FnDecl) {
+        for arg in &decl.inputs {
+            self.check_type(cx, &arg.ty);
+        }
+        if let Return(ref ty) = decl.output {
+            self.check_type(cx, ty);
+        }
     }
-    if let Return(ref ty) = decl.output {
-        check_type(cx, ty);
-    }
-}
 
-fn check_type(cx: &LateContext, ty: &Ty) {
-    if in_macro(cx, ty.span) {
-        return;
-    }
-    let score = {
-        let mut visitor = TypeComplexityVisitor {
-            score: 0,
-            nest: 1,
+    fn check_type(&self, cx: &LateContext, ty: &Ty) {
+        if in_macro(cx, ty.span) {
+            return;
+        }
+        let score = {
+            let mut visitor = TypeComplexityVisitor {
+                score: 0,
+                nest: 1,
+            };
+            visitor.visit_ty(ty);
+            visitor.score
         };
-        visitor.visit_ty(ty);
-        visitor.score
-    };
 
-    if score > 250 {
-        span_lint(cx,
-                  TYPE_COMPLEXITY,
-                  ty.span,
-                  "very complex type used. Consider factoring parts into `type` definitions");
+        if score > self.threshold {
+            span_lint(cx,
+                      TYPE_COMPLEXITY,
+                      ty.span,
+                      "very complex type used. Consider factoring parts into `type` definitions");
+        }
     }
 }
 
 /// Walks a type and assigns a complexity score to it.
 struct TypeComplexityVisitor {
     /// total complexity score of the type
-    score: u32,
+    score: u64,
     /// current nesting level
-    nest: u32,
+    nest: u64,
 }
 
 impl<'v> Visitor<'v> for TypeComplexityVisitor {

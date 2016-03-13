@@ -9,6 +9,8 @@ import sys
 
 
 level_re = re.compile(r'''(Forbid|Deny|Warn|Allow)''')
+conf_re = re.compile(r'''define_Conf! {\n([^}]*)\n}''', re.MULTILINE)
+confvar_re = re.compile(r'''/// Lint: (\w+). (.*).*\n *\("([^"]*)", (?:[^,]*), (.*) => (.*)\),''')
 
 
 def parse_path(p="src"):
@@ -16,10 +18,23 @@ def parse_path(p="src"):
     for f in os.listdir(p):
         if f.endswith(".rs"):
             parse_file(d, os.path.join(p, f))
-    return d
+    return (d, parse_conf(p))
 
-START = 0
-LINT = 1
+
+def parse_conf(p):
+    c = {}
+    with open(p + '/conf.rs') as f:
+        f = f.read()
+
+        m = re.search(conf_re, f)
+        m = m.groups()[0]
+
+        m = re.findall(confvar_re, m)
+
+        for (lint, doc, name, default, ty) in m:
+            c[lint.lower()] = (name, ty, doc, default)
+
+    return c
 
 
 def parse_file(d, f):
@@ -85,8 +100,14 @@ template = """\n# `%s`
 
 %s"""
 
+conf_template = """
+**Configuration:** This lint has the following configuration variables:
 
-def write_wiki_page(d, f):
+* `%s: %s`: %s (defaults to `%s`).
+"""
+
+
+def write_wiki_page(d, c, f):
     keys = list(d.keys())
     keys.sort()
     with open(f, "w") as w:
@@ -102,8 +123,11 @@ def write_wiki_page(d, f):
         for k in keys:
             w.write(template % (k, d[k][0], "".join(d[k][1])))
 
+            if k in c:
+                w.write(conf_template % c[k])
 
-def check_wiki_page(d, f):
+
+def check_wiki_page(d, c, f):
     errors = []
     with open(f) as w:
         for line in w:
@@ -122,11 +146,11 @@ def check_wiki_page(d, f):
 
 
 def main():
-    d = parse_path()
+    (d, c) = parse_path()
     if "-c" in sys.argv:
-        check_wiki_page(d, "../rust-clippy.wiki/Home.md")
+        check_wiki_page(d, c, "../rust-clippy.wiki/Home.md")
     else:
-        write_wiki_page(d, "../rust-clippy.wiki/Home.md")
+        write_wiki_page(d, c, "../rust-clippy.wiki/Home.md")
 
 if __name__ == "__main__":
     main()

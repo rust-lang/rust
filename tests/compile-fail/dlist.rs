@@ -6,8 +6,7 @@
 extern crate collections;
 use collections::linked_list::LinkedList;
 
-pub fn test(foo: LinkedList<u8>) {  //~ ERROR I see you're using a LinkedList!
-    println!("{:?}", foo)
+pub fn test(_: LinkedList<u8>) {  //~ ERROR I see you're using a LinkedList!
 }
 
 fn main(){

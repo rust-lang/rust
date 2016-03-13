@@ -1,3 +1,4 @@
+#![feature(type_macros)]
 #![feature(plugin_registrar, box_syntax)]
 #![feature(rustc_private, collections)]
 #![feature(iter_arith)]
@@ -17,6 +18,8 @@ extern crate syntax;
 extern crate rustc;
 #[macro_use]
 extern crate rustc_front;
+
+extern crate toml;
 
 // Only for the compile time checking of paths
 extern crate core;
@@ -44,6 +47,7 @@ pub mod approx_const;
 pub mod array_indexing;
 pub mod attrs;
 pub mod bit_mask;
+pub mod blacklisted_name;
 pub mod block_in_if_condition;
 pub mod collapsible_if;
 pub mod copies;
@@ -59,6 +63,7 @@ pub mod escape;
 pub mod eta_reduction;
 pub mod format;
 pub mod formatting;
+pub mod functions;
 pub mod identity_op;
 pub mod if_not_else;
 pub mod items_after_statements;
@@ -107,6 +112,33 @@ mod reexport {
 #[plugin_registrar]
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn plugin_registrar(reg: &mut Registry) {
+    let conf = match utils::conf::conf_file(reg.args()) {
+        Ok(file_name) => {
+            // if the user specified a file, it must exist, otherwise default to `clippy.toml` but
+            // do not require the file to exist
+            let (ref file_name, must_exist) = if let Some(ref file_name) = file_name {
+                (&**file_name, true)
+            } else {
+                ("clippy.toml", false)
+            };
+
+            let (conf, errors) = utils::conf::read_conf(&file_name, must_exist);
+
+            // all conf errors are non-fatal, we just use the default conf in case of error
+            for error in errors {
+                reg.sess.struct_err(&format!("error reading Clippy's configuration file: {}", error)).emit();
+            }
+
+            conf
+        }
+        Err((err, span)) => {
+            reg.sess.struct_span_err(span, err)
+                    .span_note(span, "Clippy will use defaulf configuration")
+                    .emit();
+            utils::conf::Conf::default()
+        }
+    };
+
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
@@ -144,7 +176,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box entry::HashMapLint);
     reg.register_late_lint_pass(box ranges::StepByZero);
     reg.register_late_lint_pass(box types::CastPass);
-    reg.register_late_lint_pass(box types::TypeComplexityPass);
+    reg.register_late_lint_pass(box types::TypeComplexityPass::new(conf.type_complexity_threshold));
     reg.register_late_lint_pass(box matches::MatchPass);
     reg.register_late_lint_pass(box misc::PatternPass);
     reg.register_late_lint_pass(box minmax::MinMaxPass);
@@ -157,7 +189,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box map_clone::MapClonePass);
     reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
     reg.register_late_lint_pass(box transmute::UselessTransmute);
-    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(25));
+    reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
     reg.register_late_lint_pass(box escape::EscapePass);
     reg.register_early_lint_pass(box misc_early::MiscEarly);
     reg.register_late_lint_pass(box misc::UsedUnderscoreBinding);
@@ -179,6 +211,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
+    reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
+    reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -211,6 +245,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         attrs::INLINE_ALWAYS,
         bit_mask::BAD_BIT_MASK,
         bit_mask::INEFFECTIVE_BIT_MASK,
+        blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         collapsible_if::COLLAPSIBLE_IF,
@@ -230,6 +265,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         format::USELESS_FORMAT,
         formatting::SUSPICIOUS_ASSIGNMENT_FORMATTING,
         formatting::SUSPICIOUS_ELSE_FORMATTING,
+        functions::TOO_MANY_ARGUMENTS,
         identity_op::IDENTITY_OP,
         if_not_else::IF_NOT_ELSE,
         items_after_statements::ITEMS_AFTER_STATEMENTS,
