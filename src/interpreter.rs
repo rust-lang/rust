@@ -16,6 +16,7 @@ pub enum EvalError {
     DanglingPointerDeref,
     InvalidBool,
     PointerOutOfBounds,
+    InvalidPointerAccess,
 }
 
 pub type EvalResult<T> = Result<T, EvalError>;
@@ -26,6 +27,8 @@ impl Error for EvalError {
             EvalError::DanglingPointerDeref => "dangling pointer was dereferenced",
             EvalError::InvalidBool => "invalid boolean value read",
             EvalError::PointerOutOfBounds => "pointer offset outside bounds of allocation",
+            EvalError::InvalidPointerAccess =>
+                "a raw memory access tried to access part of a pointer value as bytes",
         }
     }
 
@@ -297,9 +300,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }
             }
 
-            // Ref(_region, _kind, ref lvalue) => {
-            //     Value::Pointer(self.lvalue_to_ptr(lvalue))
-            // }
+            Ref(_, _, ref lvalue) => {
+                let (ptr, _) = try!(self.eval_lvalue(lvalue));
+                self.memory.write_ptr(dest, ptr)
+            }
 
             ref r => panic!("can't handle rvalue: {:?}", r),
         }
@@ -348,6 +352,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         Repr::Sum { ref discr, .. } => base_ptr.offset(discr.size()),
                         _ => panic!("variant downcast on non-sum type"),
                     },
+
+                    Deref => try!(self.memory.read_ptr(base_ptr)),
 
                     _ => unimplemented!(),
                 }
@@ -451,6 +457,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ty::TyStruct(adt_def, substs) => {
                 assert_eq!(adt_def.variants.len(), 1);
                 self.make_variant_repr(&adt_def.variants[0], substs)
+            }
+
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) => {
+                Repr::Pointer { target: Box::new(self.ty_to_repr(ty)) }
             }
 
             ref t => panic!("can't convert type to repr: {:?}", t),

@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(btree_range, collections_bound, rustc_private)]
 
 extern crate byteorder;
 extern crate rustc;

@@ -1,9 +1,12 @@
 use byteorder::{self, ByteOrder};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::collections::Bound::{Included, Excluded};
 use std::ptr;
 
 use interpreter::{EvalError, EvalResult};
 use primval::PrimVal;
+
+const POINTER_SIZE: usize = 8;
 
 pub struct Memory {
     next_id: u64,
@@ -13,10 +16,20 @@ pub struct Memory {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AllocId(u64);
 
+/// A relocation represents a part of an allocation which points into another allocation. This is
+/// used to represent pointers existing in the virtual memory.
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct Relocation {
+    /// The offset in the allocation where the relocation starts.
+    offset: usize,
+    /// The allocation this relocation points into.
+    target: AllocId,
+}
+
 #[derive(Debug)]
 pub struct Allocation {
     pub bytes: Vec<u8>,
-    // TODO(tsion): relocations
+    pub relocations: BTreeMap<usize, AllocId>,
     // TODO(tsion): undef mask
 }
 
@@ -61,6 +74,10 @@ pub enum Repr {
     //     length: usize,
     //     elem: Repr,
     // },
+
+    Pointer {
+        target: Box<Repr>,
+    }
 }
 
 impl Memory {
@@ -70,7 +87,7 @@ impl Memory {
 
     pub fn allocate(&mut self, size: usize) -> Pointer {
         let id = AllocId(self.next_id);
-        let alloc = Allocation { bytes: vec![0; size] };
+        let alloc = Allocation { bytes: vec![0; size], relocations: BTreeMap::new() };
         self.alloc_map.insert(self.next_id, alloc);
         self.next_id += 1;
         Pointer {
@@ -89,19 +106,39 @@ impl Memory {
 
     fn get_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
         let alloc = try!(self.get(ptr.alloc_id));
-        try!(alloc.check_bytes(ptr.offset, ptr.offset + size));
+        try!(alloc.check_no_relocations(ptr.offset, ptr.offset + size));
         Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
         let alloc = try!(self.get_mut(ptr.alloc_id));
-        try!(alloc.check_bytes(ptr.offset, ptr.offset + size));
+        try!(alloc.check_no_relocations(ptr.offset, ptr.offset + size));
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
     }
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        let src_bytes = try!(self.get_bytes_mut(src, size)).as_mut_ptr();
+        let (src_bytes, relocations) = {
+            let alloc = try!(self.get_mut(src.alloc_id));
+            try!(alloc.check_relocation_edges(src.offset, src.offset + size));
+            let bytes = alloc.bytes[src.offset..src.offset + size].as_mut_ptr();
+
+            let mut relocations: Vec<(usize, AllocId)> = alloc.relocations
+                .range(Included(&src.offset), Excluded(&(src.offset + size)))
+                .map(|(&k, &v)| (k, v))
+                .collect();
+
+            for &mut (ref mut offset, _) in &mut relocations {
+                alloc.relocations.remove(offset);
+                *offset += dest.offset - src.offset;
+            }
+
+            (bytes, relocations)
+        };
+
         let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
+
+        // TODO(tsion): Clear the destination range's existing relocations.
+        try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -114,6 +151,29 @@ impl Memory {
             }
         }
 
+        Ok(())
+    }
+
+    pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {
+        let alloc = try!(self.get(ptr.alloc_id));
+        try!(alloc.check_relocation_edges(ptr.offset, ptr.offset + POINTER_SIZE));
+        let bytes = &alloc.bytes[ptr.offset..ptr.offset + POINTER_SIZE];
+        let offset = byteorder::NativeEndian::read_u64(bytes) as usize;
+
+        // TODO(tsion): Return an EvalError here instead of panicking.
+        let alloc_id = *alloc.relocations.get(&ptr.offset).unwrap();
+
+        Ok(Pointer { alloc_id: alloc_id, offset: offset })
+    }
+
+    // TODO(tsion): Detect invalid writes here and elsewhere.
+    pub fn write_ptr(&mut self, dest: Pointer, ptr_val: Pointer) -> EvalResult<()> {
+        {
+            let bytes = try!(self.get_bytes_mut(dest, POINTER_SIZE));
+            byteorder::NativeEndian::write_u64(bytes, ptr_val.offset as u64);
+        }
+        let alloc = try!(self.get_mut(dest.alloc_id));
+        alloc.relocations.insert(dest.offset, ptr_val.alloc_id);
         Ok(())
     }
 
@@ -193,18 +253,45 @@ impl Memory {
 }
 
 impl Allocation {
-    fn check_bytes(&self, start: usize, end: usize) -> EvalResult<()> {
+    fn check_bounds(&self, start: usize, end: usize) -> EvalResult<()> {
         if start <= self.bytes.len() && end <= self.bytes.len() {
             Ok(())
         } else {
             Err(EvalError::PointerOutOfBounds)
         }
     }
+
+    fn count_overlapping_relocations(&self, start: usize, end: usize) -> usize {
+        self.relocations.range(
+            Included(&start.saturating_sub(POINTER_SIZE - 1)),
+            Excluded(&end)
+        ).count()
+    }
+
+    fn check_relocation_edges(&self, start: usize, end: usize) -> EvalResult<()> {
+        try!(self.check_bounds(start, end));
+        let n =
+            self.count_overlapping_relocations(start, start) +
+            self.count_overlapping_relocations(end, end);
+        if n == 0 {
+            Ok(())
+        } else {
+            Err(EvalError::InvalidPointerAccess)
+        }
+    }
+
+    fn check_no_relocations(&self, start: usize, end: usize) -> EvalResult<()> {
+        try!(self.check_bounds(start, end));
+        if self.count_overlapping_relocations(start, end) == 0 {
+            Ok(())
+        } else {
+            Err(EvalError::InvalidPointerAccess)
+        }
+    }
 }
 
 impl Pointer {
     pub fn offset(self, i: usize) -> Self {
-        // TODO(tsion): Check for offset out of bounds.
         Pointer { offset: self.offset + i, ..self }
     }
 }
@@ -219,6 +306,7 @@ impl Repr {
             Repr::I64 => 8,
             Repr::Product { size, .. } => size,
             Repr::Sum { ref discr, max_variant_size, .. } => discr.size() + max_variant_size,
+            Repr::Pointer { .. } => POINTER_SIZE,
         }
     }
 }
