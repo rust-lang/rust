@@ -344,7 +344,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         _ => panic!("field access on non-product type: {:?}", base_repr),
                     },
 
-                    Downcast(_, variant) => match base_repr {
+                    Downcast(..) => match base_repr {
                         Repr::Sum { ref discr, .. } => base_ptr.offset(discr.size()),
                         _ => panic!("variant downcast on non-sum type"),
                     },
