@@ -362,42 +362,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             LvalueTy::Downcast { ref adt_def, substs, variant_index } =>
                 self.make_variant_repr(&adt_def.variants[variant_index], substs),
         };
+
         Ok((ptr, repr))
-
-        //     mir::Lvalue::Projection(ref proj) => {
-        //         let base_ptr = self.lvalue_to_ptr(&proj.base);
-
-        //         match proj.elem {
-        //             mir::ProjectionElem::Field(field, _) => {
-        //                 base_ptr.offset(field.index())
-        //             }
-
-        //             mir::ProjectionElem::Downcast(_, variant) => {
-        //                 let adt_val = self.read_pointer(base_ptr);
-        //                 if let Value::Adt { variant: actual_variant, data_ptr } = adt_val {
-        //                     debug_assert_eq!(variant, actual_variant);
-        //                     data_ptr
-        //                 } else {
-        //                     panic!("Downcast attempted on non-ADT: {:?}", adt_val)
-        //                 }
-        //             }
-
-        //             mir::ProjectionElem::Deref => {
-        //                 let ptr_val = self.read_pointer(base_ptr);
-        //                 if let Value::Pointer(ptr) = ptr_val {
-        //                     ptr
-        //                 } else {
-        //                     panic!("Deref attempted on non-pointer: {:?}", ptr_val)
-        //                 }
-        //             }
-
-        //             mir::ProjectionElem::Index(ref _operand) => unimplemented!(),
-        //             mir::ProjectionElem::ConstantIndex { .. } => unimplemented!(),
-        //         }
-        //     }
-
-        //     _ => unimplemented!(),
-        // }
     }
 
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {
