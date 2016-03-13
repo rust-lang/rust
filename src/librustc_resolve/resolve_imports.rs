@@ -276,12 +276,6 @@ impl<'a> ::ModuleS<'a> {
             .increment_outstanding_references(is_public);
     }
 
-    fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
-        self.update_resolution(name, ns, |resolution| {
-            resolution.decrement_outstanding_references(is_public);
-        })
-    }
-
     // Use `update` to mutate the resolution for the name.
     // If the resolution becomes a success, define it in the module's glob importers.
     fn update_resolution<T, F>(&self, name: Name, ns: Namespace, update: F) -> T
@@ -485,7 +479,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // Temporarily count the directive as determined so that the resolution fails
                 // (as opposed to being indeterminate) when it can only be defined by the directive.
                 if !determined {
-                    module_.decrement_outstanding_references_for(target, ns, directive.is_public)
+                    module_.resolutions.borrow_mut().get_mut(&(target, ns)).unwrap()
+                           .decrement_outstanding_references(directive.is_public);
                 }
                 let result =
                     self.resolver.resolve_name_in_module(target_module, source, ns, false, true);
@@ -522,7 +517,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     self.report_conflict(target, ns, &directive.import(binding, None), old_binding);
                 }
             }
-            module_.decrement_outstanding_references_for(target, ns, directive.is_public);
+
+            module_.update_resolution(target, ns, |resolution| {
+                resolution.decrement_outstanding_references(directive.is_public);
+            })
         }
 
         match (&value_result, &type_result) {
