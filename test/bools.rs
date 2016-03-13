@@ -7,17 +7,17 @@ fn boolean() -> bool {
 }
 
 #[miri_run]
-fn if_false() -> i32 {
+fn if_false() -> i64 {
     if false { 1 } else { 0 }
 }
 
 #[miri_run]
-fn if_true() -> i32 {
+fn if_true() -> i64 {
     if true { 1 } else { 0 }
 }
 
 // #[miri_run]
-// fn match_bool() -> i32 {
+// fn match_bool() -> i64 {
 //     let b = true;
 //     match b {
 //         true => 1,

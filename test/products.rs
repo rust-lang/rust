@@ -2,17 +2,17 @@
 #![allow(dead_code, unused_attributes)]
 
 #[miri_run]
-fn tuple() -> (i32,) {
+fn tuple() -> (i64,) {
     (1,)
 }
 
 #[miri_run]
-fn tuple_2() -> (i32, i32) {
+fn tuple_2() -> (i64, i64) {
     (1, 2)
 }
 
 #[miri_run]
-fn tuple_5() -> (i32, i32, i32, i32, i32) {
+fn tuple_5() -> (i64, i64, i64, i64, i64) {
     (1, 2, 3, 4, 5)
 }
 

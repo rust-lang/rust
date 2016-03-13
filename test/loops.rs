@@ -2,7 +2,7 @@
 #![allow(dead_code, unused_attributes)]
 
 // #[miri_run(expected = "Int(3628800)")]
-// fn factorial_loop() -> i32 {
+// fn factorial_loop() -> i64 {
 //     let mut product = 1;
 //     let mut i = 1;
 
