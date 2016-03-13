@@ -24,13 +24,13 @@ fn indirect_add() -> i64 {
 }
 
 #[miri_run]
-fn arith() -> i64 {
+fn arith() -> i32 {
     3*3 + 4*4
 }
 
 #[miri_run]
-fn match_int() -> i64 {
-    let n = 2i64;
+fn match_int() -> i16 {
+    let n = 2;
     match n {
         0 => 0,
         1 => 10,

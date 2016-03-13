@@ -16,11 +16,11 @@ fn if_true() -> i64 {
     if true { 1 } else { 0 }
 }
 
-// #[miri_run]
-// fn match_bool() -> i64 {
-//     let b = true;
-//     match b {
-//         true => 1,
-//         false => 0,
-//     }
-// }
+#[miri_run]
+fn match_bool() -> i16 {
+    let b = true;
+    match b {
+        true => 1,
+        _ => 0,
+    }
+}

@@ -158,16 +158,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }
 
                 SwitchInt { ref discr, ref values, ref targets, .. } => {
-                    // FIXME(tsion): Handle non-integer switch types.
                     let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
-                    let discr_val = try!(self.memory.read_i64(discr_ptr));
+                    let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
 
                     // Branch to the `otherwise` case by default, if no match is found.
                     current_block = targets[targets.len() - 1];
 
                     for (index, val_const) in values.iter().enumerate() {
                         let ptr = try!(self.const_to_ptr(val_const));
-                        let val = try!(self.memory.read_i64(ptr));
+                        let val = try!(self.memory.read_primval(ptr, &discr_repr));
                         if discr_val == val {
                             current_block = targets[index];
                             break;
