@@ -1,10 +1,15 @@
 use rustc::middle::const_eval;
+use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc::middle::subst::Substs;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
+use rustc::util::nodemap::DefIdMap;
+use std::cell::RefCell;
 use std::error::Error;
 use std::fmt;
+use std::ops::Deref;
+use std::rc::Rc;
 
 use memory::{FieldRepr, Memory, Pointer, Repr};
 use primval::{self, PrimVal};
@@ -41,10 +46,26 @@ impl fmt::Display for EvalError {
     }
 }
 
+#[derive(Clone)]
+pub enum CachedMir<'mir, 'tcx: 'mir> {
+    Ref(&'mir mir::Mir<'tcx>),
+    Owned(Rc<mir::Mir<'tcx>>)
+}
+
+impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
+    type Target = mir::Mir<'tcx>;
+    fn deref(&self) -> &mir::Mir<'tcx> {
+        match *self {
+            CachedMir::Ref(r) => r,
+            CachedMir::Owned(ref rc) => &rc,
+        }
+    }
+}
+
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
     /// The MIR for the function called on this frame.
-    mir: &'a mir::Mir<'tcx>,
+    mir: CachedMir<'a, 'tcx>,
 
     /// A pointer for writing the return value of the current call, if it's not a diverging call.
     return_ptr: Option<Pointer>,
@@ -78,6 +99,7 @@ impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
 struct Interpreter<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     mir_map: &'a MirMap<'tcx>,
+    mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
     memory: Memory,
     stack: Vec<Frame<'a, 'tcx>>,
 }
@@ -87,12 +109,13 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
+            mir_cache: RefCell::new(DefIdMap()),
             memory: Memory::new(),
             stack: Vec::new(),
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &'a mir::Mir<'tcx>, args: &[mir::Operand<'tcx>],
+    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, args: &[mir::Operand<'tcx>],
                         return_ptr: Option<Pointer>) -> EvalResult<()> {
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
@@ -117,7 +140,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }));
 
         self.stack.push(Frame {
-            mir: mir,
+            mir: mir.clone(),
             return_ptr: return_ptr,
             locals: locals,
             var_offset: num_args,
@@ -132,9 +155,28 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         // TODO(tsion): Deallocate local variables.
     }
 
-    fn call(&mut self, mir: &'a mir::Mir<'tcx>, args: &[mir::Operand<'tcx>],
+    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+        match self.tcx.map.as_local_node_id(def_id) {
+            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
+            None => {
+                let mut mir_cache = self.mir_cache.borrow_mut();
+                if let Some(mir) = mir_cache.get(&def_id) {
+                    return CachedMir::Owned(mir.clone());
+                }
+
+                use rustc::middle::cstore::CrateStore;
+                let cs = &self.tcx.sess.cstore;
+                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap();
+                let cached = Rc::new(mir);
+                mir_cache.insert(def_id, cached.clone());
+                CachedMir::Owned(cached)
+            }
+        }
+    }
+
+    fn call(&mut self, mir: CachedMir<'a, 'tcx>, args: &[mir::Operand<'tcx>],
             return_ptr: Option<Pointer>) -> EvalResult<()> {
-        try!(self.push_stack_frame(mir, args, return_ptr));
+        try!(self.push_stack_frame(mir.clone(), args, return_ptr));
         let mut current_block = mir::START_BLOCK;
 
         loop {
@@ -197,18 +239,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
                     match func_ty.sty {
                         ty::TyFnDef(def_id, _, _) => {
-                            // let mir_data;
-                            let mir = match self.tcx.map.as_local_node_id(def_id) {
-                                Some(node_id) => self.mir_map.map.get(&node_id).unwrap(),
-                                None => {
-                                    unimplemented!()
-                                    // use rustc::middle::cstore::CrateStore;
-                                    // let cs = &self.tcx.sess.cstore;
-                                    // mir_data = cs.maybe_get_item_mir(self.tcx, def_id).unwrap();
-                                    // &mir_data
-                                }
-                            };
-
+                            let mir = self.load_mir(def_id);
                             try!(self.call(mir, args, ptr));
                         }
 
@@ -491,7 +522,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     }
                     ty::FnDiverging => None,
                 };
-                miri.call(mir, &[], return_ptr).unwrap();
+                miri.call(CachedMir::Ref(mir), &[], return_ptr).unwrap();
 
                 if let Some(ret) = return_ptr {
                     println!("Returned: {:?}\n", miri.memory.get(ret.alloc_id).unwrap());

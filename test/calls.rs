@@ -22,7 +22,7 @@ fn factorial_recursive() -> i64 {
 }
 
 // Test calling a very simple function from the standard library.
-// #[miri_run(expected = "Int(1)")]
-// fn cross_crate_fn_call() -> i64 {
-//     if 1i64.is_positive() { 1 } else { 0 }
-// }
+#[miri_run]
+fn cross_crate_fn_call() -> i64 {
+    if 1i32.is_positive() { 1 } else { 0 }
+}
