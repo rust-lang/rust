@@ -1382,28 +1382,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                module_to_string(self.current_module));
 
         // Resolve the module prefix, if any.
-        let module_prefix_result = self.resolve_module_prefix(module_path);
+        let module_prefix_result = self.resolve_module_prefix(module_path, span);
 
         let search_module;
         let start_index;
         match module_prefix_result {
-            Failed(None) => {
-                let mpath = names_to_string(module_path);
-                let mpath = &mpath[..];
-                match mpath.rfind(':') {
-                    Some(idx) => {
-                        let msg = format!("Could not find `{}` in `{}`",
-                                          // idx +- 1 to account for the
-                                          // colons on either side
-                                          &mpath[idx + 1..],
-                                          &mpath[..idx - 1]);
-                        return Failed(Some((span, msg)));
-                    }
-                    None => {
-                        return Failed(None);
-                    }
-                }
-            }
             Failed(err) => return Failed(err),
             Indeterminate => {
                 debug!("(resolving module path for import) indeterminate; bailing");
@@ -1531,7 +1514,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Resolves a "module prefix". A module prefix is one or both of (a) `self::`;
     /// (b) some chain of `super::`.
     /// grammar: (SELF MOD_SEP ) ? (SUPER MOD_SEP) *
-    fn resolve_module_prefix(&mut self, module_path: &[Name])
+    fn resolve_module_prefix(&mut self, module_path: &[Name], span: Span)
                              -> ResolveResult<ModulePrefixResult<'a>> {
         // Start at the current module if we see `self` or `super`, or at the
         // top of the crate otherwise.
@@ -1548,7 +1531,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             debug!("(resolving module prefix) resolving `super` at {}",
                    module_to_string(&containing_module));
             match self.get_nearest_normal_module_parent(containing_module) {
-                None => return Failed(None),
+                None => {
+                    let msg = "There are too many initial `super`s.".into();
+                    return Failed(Some((span, msg)));
+                }
                 Some(new_module) => {
                     containing_module = new_module;
                     i += 1;
