@@ -22,6 +22,16 @@ impl PrimVal {
             _ => panic!("attempted to make integer primval from non-integer repr"),
         }
     }
+
+    pub fn to_int(self) -> i64 {
+        match self {
+            PrimVal::I8(n) => n as i64,
+            PrimVal::I16(n) => n as i64,
+            PrimVal::I32(n) => n as i64,
+            PrimVal::I64(n) => n,
+            _ => panic!("attempted to make integer from non-integer primval"),
+        }
+    }
 }
 
 pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {

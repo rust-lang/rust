@@ -174,6 +174,16 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     }
                 }
 
+                Switch { ref discr, ref targets, .. } => {
+                    let (adt_ptr, adt_repr) = try!(self.eval_lvalue(discr));
+                    let discr_repr = match adt_repr {
+                        Repr::Sum { ref discr, .. } => discr,
+                        _ => panic!("attmpted to switch on non-sum type"),
+                    };
+                    let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
+                    current_block = targets[discr_val.to_int() as usize];
+                }
+
                 // Call { ref func, ref args, ref destination, .. } => {
                 //     use rustc::middle::cstore::CrateStore;
                 //     let ptr = destination.as_ref().map(|&(ref lv, _)| self.lvalue_to_ptr(lv));
@@ -200,16 +210,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 //         }
                 //     } else {
                 //         panic!("tried to call a non-function value: {:?}", func_val);
-                //     }
-                // }
-
-                // Switch { ref discr, ref targets, .. } => {
-                //     let discr_val = self.read_lvalue(discr);
-
-                //     if let Value::Adt { variant, .. } = discr_val {
-                //         current_block = targets[variant];
-                //     } else {
-                //         panic!("Switch on non-Adt value: {:?}", discr_val);
                 //     }
                 // }
 
