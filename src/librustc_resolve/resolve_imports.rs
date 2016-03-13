@@ -17,7 +17,7 @@ use {NameBinding, NameBindingKind, PrivacyError};
 use ResolveResult;
 use ResolveResult::*;
 use Resolver;
-use UseLexicalScopeFlag;
+use UseLexicalScopeFlag::DontUseLexicalScope;
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
@@ -382,7 +382,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         debug!("(resolving imports for module subtree) resolving {}",
                module_to_string(&module_));
         let orig_module = replace(&mut self.resolver.current_module, module_);
-        self.resolve_imports_for_module(module_, errors);
+        self.resolve_imports_in_current_module(errors);
         self.resolver.current_module = orig_module;
 
         for (_, child_module) in module_.module_children.borrow().iter() {
@@ -391,22 +391,20 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     }
 
     /// Attempts to resolve imports for the given module only.
-    fn resolve_imports_for_module(&mut self,
-                                  module: Module<'b>,
-                                  errors: &mut Vec<ImportResolvingError<'b>>) {
+    fn resolve_imports_in_current_module(&mut self, errors: &mut Vec<ImportResolvingError<'b>>) {
         let mut imports = Vec::new();
-        let mut unresolved_imports = module.unresolved_imports.borrow_mut();
+        let mut unresolved_imports = self.resolver.current_module.unresolved_imports.borrow_mut();
         ::std::mem::swap(&mut imports, &mut unresolved_imports);
 
         for import_directive in imports {
-            match self.resolve_import_for_module(module, &import_directive) {
+            match self.resolve_import_for_module(&import_directive) {
                 Failed(err) => {
                     let (span, help) = match err {
                         Some((span, msg)) => (span, format!(". {}", msg)),
                         None => (import_directive.span, String::new()),
                     };
                     errors.push(ImportResolvingError {
-                        source_module: module,
+                        source_module: self.resolver.current_module,
                         import_directive: import_directive,
                         span: span,
                         help: help,
@@ -423,23 +421,15 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// don't know whether the name exists at the moment due to other
     /// currently-unresolved imports, or success if we know the name exists.
     /// If successful, the resolved bindings are written into the module.
-    fn resolve_import_for_module(&mut self,
-                                 module_: Module<'b>,
-                                 import_directive: &'b ImportDirective)
-                                 -> ResolveResult<()> {
+    fn resolve_import_for_module(&mut self, directive: &'b ImportDirective) -> ResolveResult<()> {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
-               names_to_string(&import_directive.module_path),
-               module_to_string(&module_));
+               names_to_string(&directive.module_path),
+               module_to_string(self.resolver.current_module));
 
         self.resolver
-            .resolve_module_path(&import_directive.module_path,
-                                 UseLexicalScopeFlag::DontUseLexicalScope,
-                                 import_directive.span)
-            .and_then(|containing_module| {
-                // We found the module that the target is contained
-                // within. Attempt to resolve the import within it.
-                self.resolve_import(module_, containing_module, import_directive)
-            })
+            .resolve_module_path(&directive.module_path, DontUseLexicalScope, directive.span)
+            // Once we have the module that contains the target, we can resolve the import.
+            .and_then(|containing_module| self.resolve_import(containing_module, directive))
             .and_then(|()| {
                 // Decrement the count of unresolved imports.
                 assert!(self.resolver.unresolved_imports >= 1);
@@ -448,18 +438,16 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             })
     }
 
-    fn resolve_import(&mut self,
-                      module_: Module<'b>,
-                      target_module: Module<'b>,
-                      directive: &'b ImportDirective)
+    fn resolve_import(&mut self, target_module: Module<'b>, directive: &'b ImportDirective)
                       -> ResolveResult<()> {
         let (source, target, value_determined, type_determined) = match directive.subclass {
             SingleImport { source, target, ref value_determined, ref type_determined } =>
                 (source, target, value_determined, type_determined),
-            GlobImport => return self.resolve_glob_import(module_, target_module, directive),
+            GlobImport => return self.resolve_glob_import(target_module, directive),
         };
 
         // We need to resolve both namespaces for this to succeed.
+        let module_ = self.resolver.current_module;
         let (value_result, type_result) = {
             let mut resolve_in_ns = |ns, determined: bool| {
                 // Temporarily count the directive as determined so that the resolution fails
@@ -594,15 +582,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     // succeeds or bails out (as importing * from an empty module or a module
     // that exports nothing is valid). target_module is the module we are
     // actually importing, i.e., `foo` in `use foo::*`.
-    fn resolve_glob_import(&mut self,
-                           module_: Module<'b>,
-                           target_module: Module<'b>,
-                           directive: &'b ImportDirective)
+    fn resolve_glob_import(&mut self, target_module: Module<'b>, directive: &'b ImportDirective)
                            -> ResolveResult<()> {
         if let Some(Def::Trait(_)) = target_module.def {
             self.resolver.session.span_err(directive.span, "items in traits are not importable.");
         }
 
+        let module_ = self.resolver.current_module;
         if module_.def_id() == target_module.def_id() {
             // This means we are trying to glob import a module into itself, and it is a no-go
             let msg = "Cannot glob-import a module into itself.".into();
