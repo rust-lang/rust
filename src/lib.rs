@@ -7,3 +7,4 @@ extern crate syntax;
 
 pub mod interpreter;
 mod memory;
+mod primval;

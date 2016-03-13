@@ -2,7 +2,8 @@ use byteorder::{self, ByteOrder};
 use std::collections::HashMap;
 use std::ptr;
 
-use interpreter::{EvalError, EvalResult, PrimVal};
+use interpreter::{EvalError, EvalResult};
+use primval::PrimVal;
 
 pub struct Memory {
     next_id: u64,

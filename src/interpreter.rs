@@ -6,6 +6,7 @@ use std::error::Error;
 use std::fmt;
 
 use memory::{FieldRepr, IntRepr, Memory, Pointer, Repr};
+use primval;
 
 const TRACE_EXECUTION: bool = true;
 
@@ -75,15 +76,6 @@ struct Interpreter<'a, 'tcx: 'a> {
     mir_map: &'a MirMap<'tcx>,
     memory: Memory,
     stack: Vec<Frame<'a, 'tcx>>,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum PrimVal {
-    Bool(bool),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
 }
 
 impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
@@ -236,41 +228,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Ok(())
     }
 
-    fn eval_binary_op(&mut self, bin_op: mir::BinOp, left_operand: &mir::Operand<'tcx>,
-                      right_operand: &mir::Operand<'tcx>, dest: Pointer) -> EvalResult<()>
-    {
-        // FIXME(tsion): Check for non-integer binary operations.
-        let (left, left_repr) = try!(self.eval_operand(left_operand));
-        let (right, right_repr) = try!(self.eval_operand(right_operand));
-
-        let left_val = try!(self.memory.read_primval(left, &left_repr));
-        let right_val = try!(self.memory.read_primval(right, &right_repr));
-
-        use rustc::mir::repr::BinOp::*;
-        use self::PrimVal::*;
-        let result_val = match (bin_op, left_val, right_val) {
-            (Add,    I64(l), I64(r)) => I64(l + r),
-            (Sub,    I64(l), I64(r)) => I64(l - r),
-            (Mul,    I64(l), I64(r)) => I64(l * r),
-            (Div,    I64(l), I64(r)) => I64(l / r),
-            (Rem,    I64(l), I64(r)) => I64(l % r),
-            (BitXor, I64(l), I64(r)) => I64(l ^ r),
-            (BitAnd, I64(l), I64(r)) => I64(l & r),
-            (BitOr,  I64(l), I64(r)) => I64(l | r),
-            (Shl,    I64(l), I64(r)) => I64(l << r),
-            (Shr,    I64(l), I64(r)) => I64(l >> r),
-            (Eq,     I64(l), I64(r)) => Bool(l == r),
-            (Lt,     I64(l), I64(r)) => Bool(l < r),
-            (Le,     I64(l), I64(r)) => Bool(l <= r),
-            (Ne,     I64(l), I64(r)) => Bool(l != r),
-            (Ge,     I64(l), I64(r)) => Bool(l >= r),
-            (Gt,     I64(l), I64(r)) => Bool(l > r),
-            _ => unimplemented!(),
-        };
-
-        self.memory.write_primval(dest, result_val)
-    }
-
     fn assign_to_product(&mut self, dest: Pointer, dest_repr: &Repr,
                          operands: &[mir::Operand<'tcx>]) -> EvalResult<()> {
         match *dest_repr {
@@ -297,23 +254,18 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.memory.copy(src, dest, dest_repr.size())
             }
 
-            BinaryOp(bin_op, ref left, ref right) =>
-                self.eval_binary_op(bin_op, left, right, dest),
+            BinaryOp(bin_op, ref left, ref right) => {
+                let (left_ptr, left_repr) = try!(self.eval_operand(left));
+                let (right_ptr, right_repr) = try!(self.eval_operand(right));
+                let left_val = try!(self.memory.read_primval(left_ptr, &left_repr));
+                let right_val = try!(self.memory.read_primval(right_ptr, &right_repr));
+                self.memory.write_primval(dest, primval::binary_op(bin_op, left_val, right_val))
+            }
 
             UnaryOp(un_op, ref operand) => {
-                let (src, src_repr) = try!(self.eval_operand(operand));
-                let src_val = try!(self.memory.read_primval(src, &src_repr));
-
-                use rustc::mir::repr::UnOp::*;
-                use self::PrimVal::*;
-                let result_val = match (un_op, src_val) {
-                    (Not, Bool(b)) => Bool(!b),
-                    (Not, I64(n)) => I64(!n),
-                    (Neg, I64(n)) => I64(-n),
-                    _ => unimplemented!(),
-                };
-
-                self.memory.write_primval(dest, result_val)
+                let (ptr, repr) = try!(self.eval_operand(operand));
+                let val = try!(self.memory.read_primval(ptr, &repr));
+                self.memory.write_primval(dest, primval::unary_op(un_op, val))
             }
 
             Aggregate(ref kind, ref operands) => {
