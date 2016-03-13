@@ -269,9 +269,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         self.memory.write_int(dest, n)
     }
 
-    fn assign_to_product(&mut self, dest: Pointer, dest_repr: Repr,
+    fn assign_to_product(&mut self, dest: Pointer, dest_repr: &Repr,
                          operands: &[mir::Operand<'tcx>]) -> EvalResult<()> {
-        match dest_repr {
+        match *dest_repr {
             Repr::Product { ref fields, .. } => {
                 for (field, operand) in fields.iter().zip(operands) {
                     let src = try!(self.operand_to_ptr(operand));
@@ -315,32 +315,26 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Aggregate(ref kind, ref operands) => {
                 use rustc::mir::repr::AggregateKind::*;
                 match *kind {
-                    Tuple => self.assign_to_product(dest, dest_repr, operands),
+                    Tuple => self.assign_to_product(dest, &dest_repr, operands),
 
-                    Adt(ref adt_def, variant_idx, _) => {
-                        use rustc::middle::ty::AdtKind::*;
-                        match adt_def.adt_kind() {
-                            Struct => self.assign_to_product(dest, dest_repr, operands),
+                    Adt(ref adt_def, variant_idx, _) => match adt_def.adt_kind() {
+                        ty::AdtKind::Struct => self.assign_to_product(dest, &dest_repr, operands),
 
-                            Enum => unimplemented!(),
+                        ty::AdtKind::Enum => match dest_repr {
+                            Repr::Sum { discr_size, ref variants, .. } =>
+                                // TODO(tsion): Write the discriminant value.
+                                self.assign_to_product(
+                                    dest.offset(discr_size),
+                                    &variants[variant_idx],
+                                    operands
+                                ),
+                            _ => panic!("expected Repr::Sum target"),
                         }
-                    }
+                    },
 
                     Vec => unimplemented!(),
                     Closure(..) => unimplemented!(),
                 }
-
-                // let max_fields = adt_def.variants
-                //     .iter()
-                //     .map(|v| v.fields.len())
-                //     .max()
-                //     .unwrap_or(0);
-                // let ptr = self.allocate_aggregate(max_fields);
-                // for (i, operand) in operands.iter().enumerate() {
-                //     let val = self.operand_to_ptr(operand);
-                //     self.write_pointer(ptr.offset(i), val);
-                // }
-                // Value::Adt { variant: variant, data_ptr: ptr }
             }
 
             // Ref(_region, _kind, ref lvalue) => {
