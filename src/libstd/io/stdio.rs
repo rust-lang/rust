@@ -12,7 +12,6 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use cell::{RefCell, BorrowState};
-use cmp;
 use fmt;
 use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
@@ -312,22 +311,6 @@ impl<'a> BufRead for StdinLock<'a> {
     fn consume(&mut self, n: usize) { self.inner.consume(n) }
 }
 
-// As with stdin on windows, stdout often can't handle writes of large
-// sizes. For an example, see #14940. For this reason, don't try to
-// write the entire output buffer on windows. On unix we can just
-// write the whole buffer all at once.
-//
-// For some other references, it appears that this problem has been
-// encountered by others [1] [2]. We choose the number 8KB just because
-// libuv does the same.
-//
-// [1]: https://tahoe-lafs.org/trac/tahoe-lafs/ticket/1232
-// [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
-#[cfg(windows)]
-const OUT_MAX: usize = 8192;
-#[cfg(unix)]
-const OUT_MAX: usize = ::usize::MAX;
-
 /// A handle to the global standard output stream of the current process.
 ///
 /// Each handle shares a global buffer of data to be written to the standard
@@ -440,7 +423,7 @@ impl Write for Stdout {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StdoutLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.borrow_mut().write(&buf[..cmp::min(buf.len(), OUT_MAX)])
+        self.inner.borrow_mut().write(buf)
     }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
@@ -546,7 +529,7 @@ impl Write for Stderr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StderrLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.borrow_mut().write(&buf[..cmp::min(buf.len(), OUT_MAX)])
+        self.inner.borrow_mut().write(buf)
     }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
