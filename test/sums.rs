@@ -24,11 +24,11 @@
 //     }
 // }
 
-// #[miri_run(expected = "Int(13)")]
-// fn match_opt_some() -> i32 {
-//     let x = Some(13);
-//     match x {
-//         Some(data)  => data,
-//         None => 42,
-//     }
-// }
+#[miri_run]
+fn match_opt_some() -> i64 {
+    let x = Some(13);
+    match x {
+        Some(data) => data,
+        None => 42,
+    }
+}

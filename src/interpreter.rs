@@ -269,6 +269,20 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         self.memory.write_int(dest, n)
     }
 
+    fn assign_to_product(&mut self, dest: Pointer, dest_repr: Repr,
+                         operands: &[mir::Operand<'tcx>]) -> EvalResult<()> {
+        match dest_repr {
+            Repr::Product { ref fields, .. } => {
+                for (field, operand) in fields.iter().zip(operands) {
+                    let src = try!(self.operand_to_ptr(operand));
+                    try!(self.memory.copy(src, dest.offset(field.offset), field.repr.size()));
+                }
+            }
+            _ => panic!("expected Repr::Product target"),
+        }
+        Ok(())
+    }
+
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
     {
@@ -298,8 +312,23 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.memory.write_int(dest, n)
             }
 
-            Aggregate(ref _kind, ref operands) => {
-                // TODO(tsion): Handle different `kind` variants.
+            Aggregate(ref kind, ref operands) => {
+                use rustc::mir::repr::AggregateKind::*;
+                match *kind {
+                    Tuple => self.assign_to_product(dest, dest_repr, operands),
+
+                    Adt(ref adt_def, variant_idx, _) => {
+                        use rustc::middle::ty::AdtKind::*;
+                        match adt_def.adt_kind() {
+                            Struct => self.assign_to_product(dest, dest_repr, operands),
+
+                            Enum => unimplemented!(),
+                        }
+                    }
+
+                    Vec => unimplemented!(),
+                    Closure(..) => unimplemented!(),
+                }
 
                 // let max_fields = adt_def.variants
                 //     .iter()
@@ -312,19 +341,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 //     self.write_pointer(ptr.offset(i), val);
                 // }
                 // Value::Adt { variant: variant, data_ptr: ptr }
-
-                match dest_repr {
-                    Repr::Aggregate { ref fields, .. } => {
-                        for (field, operand) in fields.iter().zip(operands) {
-                            let src = try!(self.operand_to_ptr(operand));
-                            try!(self.memory.copy(src, dest.offset(field.offset),
-                                                  field.repr.size()));
-                        }
-                        Ok(())
-                    }
-
-                    _ => unimplemented!(),
-                }
             }
 
             // Ref(_region, _kind, ref lvalue) => {
@@ -426,7 +442,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn make_aggregate_repr<I>(&self, iter: I) -> Repr where I: IntoIterator<Item = ty::Ty<'tcx>> {
+    fn make_product_repr<I>(&self, iter: I) -> Repr where I: IntoIterator<Item = ty::Ty<'tcx>> {
         let mut size = 0;
         let fields = iter.into_iter().map(|ty| {
             let repr = self.ty_to_repr(ty);
@@ -434,7 +450,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             size += repr.size();
             FieldRepr { offset: old_size, repr: repr }
         }).collect();
-        Repr::Aggregate { size: size, fields: fields }
+        Repr::Product { size: size, fields: fields }
     }
 
     // TODO(tsion): Cache these outputs.
@@ -442,13 +458,39 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match ty.sty {
             ty::TyBool => Repr::Bool,
             ty::TyInt(_) => Repr::Int,
-            ty::TyTuple(ref fields) => self.make_aggregate_repr(fields.iter().cloned()),
+            ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
 
-            ty::TyEnum(adt_def, ref subst) | ty::TyStruct(adt_def, ref subst) => {
-                // TODO(tsion): Support multi-variant enums.
-                assert!(adt_def.variants.len() == 1);
+            ty::TyEnum(adt_def, ref subst) => {
+                let num_variants = adt_def.variants.len();
+
+                let discr_size = if num_variants <= 1 {
+                    0
+                } else if num_variants <= 1 << 8 {
+                    1
+                } else if num_variants <= 1 << 16 {
+                    2
+                } else if num_variants <= 1 << 32 {
+                    4
+                } else {
+                    8
+                };
+
+                let variants: Vec<Repr> = adt_def.variants.iter().map(|v| {
+                    let field_tys = v.fields.iter().map(|f| f.ty(self.tcx, subst));
+                    self.make_product_repr(field_tys)
+                }).collect();
+
+                Repr::Sum {
+                    discr_size: discr_size,
+                    max_variant_size: variants.iter().map(Repr::size).max().unwrap_or(0),
+                    variants: variants,
+                }
+            }
+
+            ty::TyStruct(adt_def, ref subst) => {
+                assert_eq!(adt_def.variants.len(), 1);
                 let field_tys = adt_def.variants[0].fields.iter().map(|f| f.ty(self.tcx, subst));
-                self.make_aggregate_repr(field_tys)
+                self.make_product_repr(field_tys)
             }
 
             ref t => panic!("can't convert type to repr: {:?}", t),

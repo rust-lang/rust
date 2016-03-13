@@ -36,10 +36,31 @@ pub struct FieldRepr {
 pub enum Repr {
     Bool,
     Int,
-    Aggregate {
+
+    /// The representation for product types including tuples, structs, and the contents of enum
+    /// variants.
+    Product {
+        /// Size in bytes.
         size: usize,
         fields: Vec<FieldRepr>,
     },
+
+    /// The representation for a sum type, i.e. a Rust enum.
+    Sum {
+        /// The size of the discriminant in bytes.
+        discr_size: usize,
+
+        /// The size of the largest variant in bytes.
+        max_variant_size: usize,
+
+        variants: Vec<Repr>,
+    },
+
+    // Array {
+    //     /// Number of elements.
+    //     length: usize,
+    //     elem: Repr,
+    // },
 }
 
 impl Memory {
@@ -144,7 +165,8 @@ impl Repr {
         match *self {
             Repr::Bool => 1,
             Repr::Int => mem::size_of::<i64>(),
-            Repr::Aggregate { size, .. } => size,
+            Repr::Product { size, .. } => size,
+            Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
         }
     }
 }
