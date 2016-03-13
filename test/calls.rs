@@ -1,27 +1,25 @@
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
-// #[miri_run(expected = "Int(2)")]
-// fn call() -> i64 {
-//     fn increment(x: i64) -> i64 {
-//         x + 1
-//     }
+#[miri_run]
+fn call() -> i32 {
+    fn increment(x: i32) -> i32 {
+        x + 1
+    }
+    increment(1)
+}
 
-//     increment(1)
-// }
-
-// #[miri_run(expected = "Int(3628800)")]
-// fn factorial_recursive() -> i64 {
-//     fn fact(n: i64) -> i64 {
-//         if n == 0 {
-//             1
-//         } else {
-//             n * fact(n - 1)
-//         }
-//     }
-
-//     fact(10)
-// }
+#[miri_run]
+fn factorial_recursive() -> i64 {
+    fn fact(n: i64) -> i64 {
+        if n == 0 {
+            1
+        } else {
+            n * fact(n - 1)
+        }
+    }
+    fact(10)
+}
 
 // Test calling a very simple function from the standard library.
 // #[miri_run(expected = "Int(1)")]

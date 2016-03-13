@@ -92,7 +92,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn push_stack_frame(&mut self, mir: &'a mir::Mir<'tcx>, args: &[&mir::Operand<'tcx>],
+    fn push_stack_frame(&mut self, mir: &'a mir::Mir<'tcx>, args: &[mir::Operand<'tcx>],
                         return_ptr: Option<Pointer>) -> EvalResult<()> {
         let num_args = mir.arg_decls.len();
         let num_vars = mir.var_decls.len();
@@ -132,7 +132,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         // TODO(tsion): Deallocate local variables.
     }
 
-    fn call(&mut self, mir: &'a mir::Mir<'tcx>, args: &[&mir::Operand<'tcx>],
+    fn call(&mut self, mir: &'a mir::Mir<'tcx>, args: &[mir::Operand<'tcx>],
             return_ptr: Option<Pointer>) -> EvalResult<()> {
         try!(self.push_stack_frame(mir, args, return_ptr));
         let mut current_block = mir::START_BLOCK;
@@ -188,34 +188,37 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     current_block = targets[discr_val.to_int() as usize];
                 }
 
-                // Call { ref func, ref args, ref destination, .. } => {
-                //     use rustc::middle::cstore::CrateStore;
-                //     let ptr = destination.as_ref().map(|&(ref lv, _)| self.lvalue_to_ptr(lv));
-                //     let func_val = self.operand_to_ptr(func);
+                Call { ref func, ref args, ref destination, .. } => {
+                    let ptr = match *destination {
+                        Some((ref lv, _)) => Some(try!(self.eval_lvalue(lv)).0),
+                        None => None,
+                    };
+                    let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
 
-                //     if let Value::Func(def_id) = func_val {
-                //         let mir_data;
-                //         let mir = match self.tcx.map.as_local_node_id(def_id) {
-                //             Some(node_id) => self.mir_map.map.get(&node_id).unwrap(),
-                //             None => {
-                //                 let cstore = &self.tcx.sess.cstore;
-                //                 mir_data = cstore.maybe_get_item_mir(self.tcx, def_id).unwrap();
-                //                 &mir_data
-                //             }
-                //         };
+                    match func_ty.sty {
+                        ty::TyFnDef(def_id, _, _) => {
+                            // let mir_data;
+                            let mir = match self.tcx.map.as_local_node_id(def_id) {
+                                Some(node_id) => self.mir_map.map.get(&node_id).unwrap(),
+                                None => {
+                                    unimplemented!()
+                                    // use rustc::middle::cstore::CrateStore;
+                                    // let cs = &self.tcx.sess.cstore;
+                                    // mir_data = cs.maybe_get_item_mir(self.tcx, def_id).unwrap();
+                                    // &mir_data
+                                }
+                            };
 
-                //         let arg_vals: Vec<Value> =
-                //             args.iter().map(|arg| self.operand_to_ptr(arg)).collect();
+                            try!(self.call(mir, args, ptr));
+                        }
 
-                //         self.call(mir, &arg_vals, ptr);
+                        _ => panic!("can't handle callee of type {:?}", func_ty),
+                    }
 
-                //         if let Some((_, target)) = *destination {
-                //             current_block = target;
-                //         }
-                //     } else {
-                //         panic!("tried to call a non-function value: {:?}", func_val);
-                //     }
-                // }
+                    if let Some((_, target)) = *destination {
+                        current_block = target;
+                    }
+                }
 
                 Drop { target, .. } => {
                     // TODO: Handle destructors and dynamic drop.
@@ -223,7 +226,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }
 
                 Resume => unimplemented!(),
-                _ => unimplemented!(),
             }
         }
 
