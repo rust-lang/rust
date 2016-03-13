@@ -729,7 +729,14 @@ fn bind_subslice_pat(bcx: Block,
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
     let slice_begin = InBoundsGEP(bcx, base, &[C_uint(bcx.ccx(), offset_left)]);
-    let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
+    let diff = offset_left + offset_right;
+    if let ty::TyArray(ty, n) = vec_ty_contents.sty {
+        let array_ty = bcx.tcx().mk_array(ty, n-diff);
+        let llty_array = type_of::type_of(bcx.ccx(), array_ty);
+        return PointerCast(bcx, slice_begin, llty_array.ptr_to());
+    }
+
+    let slice_len_offset = C_uint(bcx.ccx(), diff);
     let slice_len = Sub(bcx, len, slice_len_offset, DebugLoc::None);
     let slice_ty = bcx.tcx().mk_imm_ref(bcx.tcx().mk_region(ty::ReErased),
                                          bcx.tcx().mk_slice(unit_ty));
@@ -1205,7 +1212,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         Some(field_vals)
     } else if any_uniq_pat(m, col) || any_region_pat(m, col) {
-        Some(vec!(Load(bcx, val.val)))
+        let ptr = if type_is_fat_ptr(bcx.tcx(), left_ty) {
+            val.val
+        } else {
+            Load(bcx, val.val)
+        };
+        Some(vec!(ptr))
     } else {
         match left_ty.sty {
             ty::TyArray(_, n) => {
