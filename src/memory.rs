@@ -50,13 +50,10 @@ pub enum Repr {
 
     /// The representation for a sum type, i.e. a Rust enum.
     Sum {
-        /// The size of the discriminant in bytes.
-        discr_size: usize,
-
         /// The size of the largest variant in bytes.
         max_variant_size: usize,
-
         variants: Vec<Repr>,
+        discr: Box<Repr>,
     },
 
     // Array {
@@ -221,7 +218,7 @@ impl Repr {
             Repr::I32 => 4,
             Repr::I64 => 8,
             Repr::Product { size, .. } => size,
-            Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
+            Repr::Sum { ref discr, max_variant_size, .. } => discr.size() + max_variant_size,
         }
     }
 }

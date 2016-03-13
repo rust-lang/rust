@@ -277,10 +277,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         ty::AdtKind::Struct => self.assign_to_product(dest, &dest_repr, operands),
 
                         ty::AdtKind::Enum => match dest_repr {
-                            Repr::Sum { discr_size, ref variants, .. } => {
+                            Repr::Sum { ref discr, ref variants, .. } => {
                                 // TODO(tsion): Write the discriminant value.
                                 self.assign_to_product(
-                                    dest.offset(discr_size),
+                                    dest.offset(discr.size()),
                                     &variants[variant_idx],
                                     operands
                                 )
@@ -426,16 +426,16 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ty::TyEnum(adt_def, ref subst) => {
                 let num_variants = adt_def.variants.len();
 
-                let discr_size = if num_variants <= 1 {
-                    0
+                let discr = if num_variants <= 1 {
+                    Repr::Product { size: 0, fields: vec![] }
                 } else if num_variants <= 1 << 8 {
-                    1
+                    Repr::I8
                 } else if num_variants <= 1 << 16 {
-                    2
+                    Repr::I16
                 } else if num_variants <= 1 << 32 {
-                    4
+                    Repr::I32
                 } else {
-                    8
+                    Repr::I64
                 };
 
                 let variants: Vec<Repr> = adt_def.variants.iter().map(|v| {
@@ -444,7 +444,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }).collect();
 
                 Repr::Sum {
-                    discr_size: discr_size,
+                    discr: Box::new(discr),
                     max_variant_size: variants.iter().map(Repr::size).max().unwrap_or(0),
                     variants: variants,
                 }
