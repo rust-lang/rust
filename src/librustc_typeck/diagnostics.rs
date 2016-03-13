@@ -3696,6 +3696,6 @@ register_diagnostics! {
            // type `{}` was overridden
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
-    E0519, // redundant default implementations of trait
-    E0520  // cannot specialize non-default item
+    E0520, // cannot specialize non-default item
+    E0521  // redundant default implementations of trait
 }
