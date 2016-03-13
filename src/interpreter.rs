@@ -5,7 +5,7 @@ use rustc::mir::repr as mir;
 use std::error::Error;
 use std::fmt;
 
-use memory::{FieldRepr, IntRepr, Memory, Pointer, Repr};
+use memory::{FieldRepr, Memory, Pointer, Repr};
 use primval;
 
 const TRACE_EXECUTION: bool = true;
@@ -416,10 +416,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ty::TyBool => Repr::Bool,
 
             ty::TyInt(IntTy::Is) => unimplemented!(),
-            ty::TyInt(IntTy::I8) => Repr::Int(IntRepr::I8),
-            ty::TyInt(IntTy::I16) => Repr::Int(IntRepr::I16),
-            ty::TyInt(IntTy::I32) => Repr::Int(IntRepr::I32),
-            ty::TyInt(IntTy::I64) => Repr::Int(IntRepr::I64),
+            ty::TyInt(IntTy::I8) => Repr::I8,
+            ty::TyInt(IntTy::I16) => Repr::I16,
+            ty::TyInt(IntTy::I32) => Repr::I32,
+            ty::TyInt(IntTy::I64) => Repr::I64,
 
             ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
 

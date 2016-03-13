@@ -27,9 +27,6 @@ pub struct Pointer {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub enum IntRepr { I8, I16, I32, I64 }
-
-#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldRepr {
     pub offset: usize,
     pub repr: Repr,
@@ -38,7 +35,10 @@ pub struct FieldRepr {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repr {
     Bool,
-    Int(IntRepr),
+    I8,
+    I16,
+    I32,
+    I64,
 
     /// The representation for product types including tuples, structs, and the contents of enum
     /// variants.
@@ -123,10 +123,10 @@ impl Memory {
     pub fn read_primval(&self, ptr: Pointer, repr: &Repr) -> EvalResult<PrimVal> {
         match *repr {
             Repr::Bool => self.read_bool(ptr).map(PrimVal::Bool),
-            Repr::Int(IntRepr::I8) => self.read_i8(ptr).map(PrimVal::I8),
-            Repr::Int(IntRepr::I16) => self.read_i16(ptr).map(PrimVal::I16),
-            Repr::Int(IntRepr::I32) => self.read_i32(ptr).map(PrimVal::I32),
-            Repr::Int(IntRepr::I64) => self.read_i64(ptr).map(PrimVal::I64),
+            Repr::I8 => self.read_i8(ptr).map(PrimVal::I8),
+            Repr::I16 => self.read_i16(ptr).map(PrimVal::I16),
+            Repr::I32 => self.read_i32(ptr).map(PrimVal::I32),
+            Repr::I64 => self.read_i64(ptr).map(PrimVal::I64),
             _ => panic!("primitive read of non-primitive: {:?}", repr),
         }
     }
@@ -216,10 +216,10 @@ impl Repr {
     pub fn size(&self) -> usize {
         match *self {
             Repr::Bool => 1,
-            Repr::Int(IntRepr::I8) => 1,
-            Repr::Int(IntRepr::I16) => 2,
-            Repr::Int(IntRepr::I32) => 4,
-            Repr::Int(IntRepr::I64) => 8,
+            Repr::I8 => 1,
+            Repr::I16 => 2,
+            Repr::I32 => 4,
+            Repr::I64 => 8,
             Repr::Product { size, .. } => size,
             Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
         }
