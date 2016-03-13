@@ -332,6 +332,21 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Arg(i) => frame.arg_ptr(i),
             Var(i) => frame.var_ptr(i),
             Temp(i) => frame.temp_ptr(i),
+
+            Projection(ref proj) => {
+                let (base_ptr, base_repr) = try!(self.eval_lvalue(&proj.base));
+                use rustc::mir::repr::ProjectionElem::*;
+                match proj.elem {
+                    Field(field, _) => match base_repr {
+                        Repr::Product { ref fields, .. } =>
+                            base_ptr.offset(fields[field.index()].offset),
+                        _ => panic!("field access on non-product type"),
+                    },
+
+                    _ => unimplemented!(),
+                }
+            }
+
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
 

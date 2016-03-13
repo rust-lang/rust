@@ -16,9 +16,16 @@ fn tuple_5() -> (i64, i64, i64, i64, i64) {
     (1, 2, 3, 4, 5)
 }
 
-struct Pair { x: i64, y: i64 }
+struct Pair { x: i8, y: i8 }
 
 #[miri_run]
 fn pair() -> Pair {
     Pair { x: 10, y: 20 }
+}
+
+#[miri_run]
+fn field_access() -> (i8, i8) {
+    let mut p = Pair { x: 10, y: 20 };
+    p.x += 5;
+    (p.x, p.y)
 }
