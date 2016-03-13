@@ -119,6 +119,9 @@ pub struct SharedContext {
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub issue_tracker_base_url: Option<String>,
+    /// The given user css file which allow to customize the generated
+    /// documentation theme.
+    pub css_file_extension: Option<PathBuf>,
 }
 
 /// Indicates where an external crate can be found.
@@ -411,7 +414,8 @@ pub fn derive_id(candidate: String) -> String {
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: PathBuf,
-           passes: HashSet<String>) -> Result<(), Error> {
+           passes: HashSet<String>,
+           css_file_extension: Option<PathBuf>) -> Result<(), Error> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -429,6 +433,11 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
             playground_url: "".to_string(),
         },
+        include_sources: true,
+        local_sources: HashMap::new(),
+        render_redirect_pages: false,
+        issue_tracker_base_url: None,
+        css_file_extension: css_file_extension,
     };
 
     // Crawl the crate attributes looking for attributes which control how we're
@@ -637,6 +646,7 @@ fn write_shared(cx: &Context,
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
+
     write(cx.dst.join("jquery.js"),
           include_bytes!("static/jquery-2.1.4.min.js"))?;
     write(cx.dst.join("main.js"),
@@ -647,6 +657,17 @@ fn write_shared(cx: &Context,
           include_bytes!("static/rustdoc.css"))?;
     write(cx.dst.join("main.css"),
           include_bytes!("static/styles/main.css"))?;
+    if let Some(ref css) = cx.css_file_extension {
+        let mut content = String::new();
+        let css = css.as_path();
+        let mut f = try_err!(File::open(css), css);
+
+        try_err!(f.read_to_string(&mut content), css);
+        let css = cx.dst.join("theme.css");
+        let css = css.as_path();
+        let mut f = try_err!(File::create(css), css);
+        try_err!(write!(f, "{}", &content), css);
+    }
     write(cx.dst.join("normalize.css"),
           include_bytes!("static/normalize.css"))?;
     write(cx.dst.join("FiraSans-Regular.woff"),
@@ -931,8 +952,9 @@ impl<'a> SourceCollector<'a> {
             description: &desc,
             keywords: BASIC_KEYWORDS,
         };
-        layout::render(&mut w, &self.scx.layout,
-                       &page, &(""), &Source(contents))?;
+        layout::render(&mut w, &self.cx.layout,
+                       &page, &(""), &Source(contents),
+                       self.cx.css_file_extension.is_some())?;
         w.flush()?;
         self.scx.local_sources.insert(p, href);
         Ok(())
@@ -1294,8 +1316,8 @@ impl Context {
             if !cx.render_redirect_pages {
                 layout::render(&mut writer, &cx.shared.layout, &page,
                                &Sidebar{ cx: cx, item: it },
-                               &Item{ cx: cx, item: it })?;
-
+                               &Item{ cx: cx, item: it },
+                               cx.css_file_extension.is_some())?;
             } else {
                 let mut url = repeat("../").take(cx.current.len())
                                            .collect::<String>();
