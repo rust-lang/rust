@@ -1095,6 +1095,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         }
     }
 
+    if cg.codegen_units < 1 {
+        early_error(error_format, "Value for codegen units must be a positive nonzero integer");
+    }
+
     let cg = cg;
 
     let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
