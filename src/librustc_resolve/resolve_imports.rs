@@ -176,6 +176,25 @@ impl<'a> NameResolution<'a> {
         }
     }
 
+    fn increment_outstanding_references(&mut self, is_public: bool) {
+        self.outstanding_references += 1;
+        if is_public {
+            self.pub_outstanding_references += 1;
+        }
+    }
+
+    fn decrement_outstanding_references(&mut self, is_public: bool) {
+        let decrement_references = |count: &mut _| {
+            assert!(*count > 0);
+            *count -= 1;
+        };
+
+        decrement_references(&mut self.outstanding_references);
+        if is_public {
+            decrement_references(&mut self.pub_outstanding_references);
+        }
+    }
+
     fn report_conflicts<F: FnMut(&NameBinding, &NameBinding)>(&self, mut report: F) {
         let binding = match self.binding {
             Some(binding) => binding,
@@ -253,25 +272,13 @@ impl<'a> ::ModuleS<'a> {
     }
 
     pub fn increment_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
-        let mut resolutions = self.resolutions.borrow_mut();
-        let resolution = resolutions.entry((name, ns)).or_insert_with(Default::default);
-        resolution.outstanding_references += 1;
-        if is_public {
-            resolution.pub_outstanding_references += 1;
-        }
+        self.resolutions.borrow_mut().entry((name, ns)).or_insert_with(Default::default)
+            .increment_outstanding_references(is_public);
     }
 
     fn decrement_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
-        let decrement_references = |count: &mut _| {
-            assert!(*count > 0);
-            *count -= 1;
-        };
-
         self.update_resolution(name, ns, |resolution| {
-            decrement_references(&mut resolution.outstanding_references);
-            if is_public {
-                decrement_references(&mut resolution.pub_outstanding_references);
-            }
+            resolution.decrement_outstanding_references(is_public);
         })
     }
 
