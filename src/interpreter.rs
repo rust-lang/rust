@@ -344,11 +344,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 use rustc::mir::repr::Literal::*;
                 match constant.literal {
                     Value { ref value } => self.const_to_ptr(value),
-
-                    Item { kind, .. } => match kind {
-                        // mir::ItemKind::Function | mir::ItemKind::Method => Value::Func(def_id),
-                        _ => panic!("can't handle item literal: {:?}", constant.literal),
-                    },
+                    ref l => panic!("can't handle item literal: {:?}", l),
                 }
             }
         }
