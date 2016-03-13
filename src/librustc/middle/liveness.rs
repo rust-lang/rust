@@ -112,7 +112,7 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
-use middle::ty::{self, TyCtxt};
+use middle::ty::{self, TyCtxt, ParameterEnvironment};
 use middle::traits;
 use middle::infer;
 use lint;
@@ -1494,15 +1494,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ty::FnConverging(t_ret)
                     if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                let infcx = infer::new_infer_ctxt(&self.ir.tcx, &self.ir.tcx.tables, None);
-                let mut selcx = traits::SelectionContext::new(&infcx);
+                let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
+                let infcx = infer::new_infer_ctxt(&self.ir.tcx,
+                                                  &self.ir.tcx.tables,
+                                                  Some(param_env));
                 let cause = traits::ObligationCause::dummy();
+                let norm = traits::fully_normalize(&infcx,
+                                                   cause,
+                                                   &t_ret);
 
-                let norm = traits::normalize(&mut selcx,
-                                             cause,
-                                             &t_ret);
-
-                if norm.value.is_nil() {
+                if norm.unwrap().is_nil() {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {
