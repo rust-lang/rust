@@ -444,8 +444,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                module_to_string(&module_));
 
         self.resolver
-            .resolve_module_path(module_,
-                                 &import_directive.module_path,
+            .resolve_module_path(&import_directive.module_path,
                                  UseLexicalScopeFlag::DontUseLexicalScope,
                                  import_directive.span)
             .and_then(|containing_module| {
