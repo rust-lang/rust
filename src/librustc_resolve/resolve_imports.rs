@@ -397,7 +397,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         ::std::mem::swap(&mut imports, &mut unresolved_imports);
 
         for import_directive in imports {
-            match self.resolve_import_for_module(&import_directive) {
+            match self.resolve_import(&import_directive) {
                 Failed(err) => {
                     let (span, help) = match err {
                         Some((span, msg)) => (span, format!(". {}", msg)),
@@ -411,7 +411,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     });
                 }
                 Indeterminate => unresolved_imports.push(import_directive),
-                Success(()) => {}
+                Success(()) => {
+                    // Decrement the count of unresolved imports.
+                    assert!(self.resolver.unresolved_imports >= 1);
+                    self.resolver.unresolved_imports -= 1;
+                }
             }
         }
     }
@@ -421,25 +425,19 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// don't know whether the name exists at the moment due to other
     /// currently-unresolved imports, or success if we know the name exists.
     /// If successful, the resolved bindings are written into the module.
-    fn resolve_import_for_module(&mut self, directive: &'b ImportDirective) -> ResolveResult<()> {
+    fn resolve_import(&mut self, directive: &'b ImportDirective) -> ResolveResult<()> {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&directive.module_path),
                module_to_string(self.resolver.current_module));
 
-        self.resolver
-            .resolve_module_path(&directive.module_path, DontUseLexicalScope, directive.span)
-            // Once we have the module that contains the target, we can resolve the import.
-            .and_then(|containing_module| self.resolve_import(containing_module, directive))
-            .and_then(|()| {
-                // Decrement the count of unresolved imports.
-                assert!(self.resolver.unresolved_imports >= 1);
-                self.resolver.unresolved_imports -= 1;
-                Success(())
-            })
-    }
+        let target_module = match self.resolver.resolve_module_path(&directive.module_path,
+                                                                    DontUseLexicalScope,
+                                                                    directive.span) {
+            Success(module) => module,
+            Indeterminate => return Indeterminate,
+            Failed(err) => return Failed(err),
+        };
 
-    fn resolve_import(&mut self, target_module: Module<'b>, directive: &'b ImportDirective)
-                      -> ResolveResult<()> {
         let (source, target, value_determined, type_determined) = match directive.subclass {
             SingleImport { source, target, ref value_determined, ref type_determined } =>
                 (source, target, value_determined, type_determined),
