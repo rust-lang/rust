@@ -18,17 +18,20 @@ extern crate rustc_front;
 extern crate rustc_plugin;
 extern crate syntax;
 
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{self, MirPass};
 use rustc::mir::repr::{Mir, Literal};
 use rustc::mir::visit::MutVisitor;
-use rustc::middle::infer::InferCtxt;
+use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal;
 use rustc_plugin::Registry;
 
+use syntax::ast::NodeId;
+
 struct Pass;
 
-impl MirPass for Pass {
-    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &InferCtxt<'a, 'tcx>) {
+impl transform::Pass for Pass {}
+impl<'tcx> MirPass<'tcx> for Pass {
+    fn run_pass(&mut self, _: &ty::TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
         Visitor.visit_mir(mir)
     }
 }

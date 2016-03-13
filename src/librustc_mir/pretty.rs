@@ -11,19 +11,22 @@
 use rustc::mir::repr::*;
 use rustc::middle::ty;
 use std::io::{self, Write};
+use syntax::ast::NodeId;
 
 const INDENT: &'static str = "    ";
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
-    try!(write_mir_intro(mir, w));
-
-    // Nodes
-    for block in mir.all_basic_blocks() {
-        try!(write_basic_block(block, mir, w));
+pub fn write_mir_pretty<'a, 't, W, I>(tcx: &ty::TyCtxt<'t>, iter: I, w: &mut W) -> io::Result<()>
+where W: Write, I: Iterator<Item=(&'a NodeId, &'a Mir<'a>)> {
+    for (&nodeid, mir) in iter {
+        try!(write_mir_intro(tcx, nodeid, mir, w));
+        // Nodes
+        for block in mir.all_basic_blocks() {
+            try!(write_basic_block(block, mir, w));
+        }
+        try!(writeln!(w, "}}"))
     }
-
-    writeln!(w, "}}")
+    Ok(())
 }
 
 /// Write out a human-readable textual representation for the given basic block.
@@ -46,8 +49,10 @@ fn write_basic_block<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::R
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-fn write_mir_intro<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
-    try!(write!(w, "fn("));
+fn write_mir_intro<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
+-> io::Result<()> {
+
+    try!(write!(w, "fn {}(", tcx.map.path_to_string(nid)));
 
     // fn argument types.
     for (i, arg) in mir.arg_decls.iter().enumerate() {

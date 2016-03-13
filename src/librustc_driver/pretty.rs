@@ -31,6 +31,7 @@ use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 
 use rustc_mir::pretty::write_mir_pretty;
+use rustc_mir::graphviz::write_mir_graphviz;
 
 use syntax::ast::{self, BlockCheckMode};
 use syntax::codemap;
@@ -44,6 +45,7 @@ use graphviz as dot;
 
 use std::fs::File;
 use std::io::{self, Write};
+use std::iter;
 use std::option;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -80,6 +82,7 @@ pub enum PpMode {
     PpmHir(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),
     PpmMir,
+    PpmMirCFG,
 }
 
 pub fn parse_pretty(sess: &Session,
@@ -100,6 +103,7 @@ pub fn parse_pretty(sess: &Session,
         ("hir,identified", true) => PpmHir(PpmIdentified),
         ("hir,typed", true) => PpmHir(PpmTyped),
         ("mir", true) => PpmMir,
+        ("mir-cfg", true) => PpmMirCFG,
         ("flowgraph", true) => PpmFlowGraph(PpFlowGraphMode::Default),
         ("flowgraph,unlabelled", true) => PpmFlowGraph(PpFlowGraphMode::UnlabelledEdges),
         _ => {
@@ -574,6 +578,7 @@ fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
         PpmSource(PpmExpandedHygiene) |
         PpmHir(_) |
         PpmMir |
+        PpmMirCFG |
         PpmFlowGraph(_) => true,
         PpmSource(PpmTyped) => panic!("invalid state"),
     }
@@ -590,6 +595,7 @@ fn needs_expansion(ppm: &PpMode) -> bool {
         PpmSource(PpmExpandedHygiene) |
         PpmHir(_) |
         PpmMir |
+        PpmMirCFG |
         PpmFlowGraph(_) => true,
         PpmSource(PpmTyped) => panic!("invalid state"),
     }
@@ -807,9 +813,15 @@ pub fn pretty_print_input(sess: Session,
             })
         }
 
-        (PpmMir, None) => {
-            debug!("pretty printing MIR for whole crate");
-            let ast_map = ast_map.expect("--unpretty mir missing ast_map");
+        (pp_type@PpmMir, uii) | (pp_type@PpmMirCFG, uii) => {
+            let ast_map = ast_map.expect("--unpretty missing ast_map");
+            let nodeid = if let Some(uii) = uii {
+                debug!("pretty printing MIR for {:?}", uii);
+                Some(uii.to_one_node_id("--unpretty", &sess, &ast_map))
+            } else {
+                debug!("pretty printing MIR for whole crate");
+                None
+            };
             abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                              &cstore,
                                                              ast_map,
@@ -818,33 +830,20 @@ pub fn pretty_print_input(sess: Session,
                                                              resolve::MakeGlobMap::No,
                                                              |tcx, mir_map, _, _| {
                 if let Some(mir_map) = mir_map {
-                    for (nodeid, mir) in &mir_map.map {
-                        try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(*nodeid)));
-                        try!(write_mir_pretty(mir, &mut out));
+                    if let Some(nodeid) = nodeid {
+                        let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
+                            sess.fatal(&format!("no MIR map entry for node {}", nodeid))
+                        });
+                        try!(match pp_type {
+                            PpmMir => write_mir_pretty(tcx, iter::once((&nodeid, mir)), &mut out),
+                            _ => write_mir_graphviz(tcx, iter::once((&nodeid, mir)), &mut out)
+                        });
+                    } else {
+                        try!(match pp_type {
+                            PpmMir => write_mir_pretty(tcx, mir_map.map.iter(), &mut out),
+                            _ => write_mir_graphviz(tcx, mir_map.map.iter(), &mut out)
+                        });
                     }
-                }
-                Ok(())
-            }), &sess)
-        }
-
-        (PpmMir, Some(uii)) => {
-            debug!("pretty printing MIR for {:?}", uii);
-            let ast_map = ast_map.expect("--unpretty mir missing ast_map");
-            let nodeid = uii.to_one_node_id("--unpretty", &sess, &ast_map);
-
-            abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                             &cstore,
-                                                             ast_map,
-                                                             &arenas,
-                                                             &id,
-                                                             resolve::MakeGlobMap::No,
-                                                             |tcx, mir_map, _, _| {
-                if let Some(mir_map) = mir_map {
-                    try!(writeln!(out, "MIR for {}", tcx.map.node_to_string(nodeid)));
-                    let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
-                        sess.fatal(&format!("no MIR map entry for node {}", nodeid))
-                    });
-                    try!(write_mir_pretty(mir, &mut out));
                 }
                 Ok(())
             }), &sess)
