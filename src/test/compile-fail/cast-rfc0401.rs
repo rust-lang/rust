@@ -87,7 +87,7 @@ fn main()
     //~^^ HELP through a usize first
 
     let _ = 42usize as *const [u8]; //~ ERROR casting
-    let _ = v as *const [u8]; //~ ERROR casting
+    let _ = v as *const [u8]; //~ ERROR cannot cast
     let _ = fat_v as *const Foo;
     //~^ ERROR `core::marker::Sized` is not implemented for the type `[u8]`
     let _ = foo as *const str; //~ ERROR casting
