@@ -36,19 +36,23 @@ pub fn collect(build: &mut Build) {
     match &build.config.channel[..] {
         "stable" => {
             build.release = release_num.to_string();
+            build.package_vers = build.release.clone();
             build.unstable_features = false;
         }
         "beta" => {
             build.release = format!("{}-beta{}", release_num,
                                    prerelease_version);
+            build.package_vers = "beta".to_string();
             build.unstable_features = false;
         }
         "nightly" => {
             build.release = format!("{}-nightly", release_num);
+            build.package_vers = "nightly".to_string();
             build.unstable_features = true;
         }
         _ => {
             build.release = format!("{}-dev", release_num);
+            build.package_vers = build.release.clone();
             build.unstable_features = true;
         }
     }
