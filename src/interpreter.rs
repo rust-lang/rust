@@ -6,7 +6,7 @@ use std::error::Error;
 use std::fmt;
 
 use memory::{FieldRepr, Memory, Pointer, Repr};
-use primval;
+use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = true;
 
@@ -277,7 +277,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
                         ty::AdtKind::Enum => match dest_repr {
                             Repr::Sum { ref discr, ref variants, .. } => {
-                                // TODO(tsion): Write the discriminant value.
+                                if discr.size() > 0 {
+                                    let discr_val = PrimVal::from_int(variant_idx as i64, discr);
+                                    try!(self.memory.write_primval(dest, discr_val));
+                                }
                                 self.assign_to_product(
                                     dest.offset(discr.size()),
                                     &variants[variant_idx],

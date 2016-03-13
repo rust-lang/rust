@@ -1,5 +1,7 @@
 use rustc::mir::repr as mir;
 
+use memory::Repr;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PrimVal {
     Bool(bool),
@@ -7,6 +9,19 @@ pub enum PrimVal {
     I16(i16),
     I32(i32),
     I64(i64),
+}
+
+impl PrimVal {
+    pub fn from_int(n: i64, repr: &Repr) -> Self {
+        // TODO(tsion): Use checked casts.
+        match *repr {
+            Repr::I8 => PrimVal::I8(n as i8),
+            Repr::I16 => PrimVal::I16(n as i16),
+            Repr::I32 => PrimVal::I32(n as i32),
+            Repr::I64 => PrimVal::I64(n),
+            _ => panic!("attempted to make integer primval from non-integer repr"),
+        }
+    }
 }
 
 pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {
