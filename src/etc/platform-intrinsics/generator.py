@@ -117,7 +117,10 @@ class Void(Type):
         Type.__init__(self, 0)
 
     def compiler_ctor(self):
-        return 'void()'
+        return '::VOID'
+
+    def compiler_ctor_ref(self):
+        return '&' + self.compiler_ctor()
 
     def rust_name(self):
         return '()'
@@ -163,10 +166,12 @@ class Signed(Number):
 
     def compiler_ctor(self):
         if self._llvm_bitwidth is None:
-            return 'i({})'.format(self.bitwidth())
+            return '::I{}'.format(self.bitwidth())
         else:
-            return 'i_({}, {})'.format(self.bitwidth(),
-                                       self._llvm_bitwidth)
+            return '::I{}_{}'.format(self.bitwidth(), self._llvm_bitwidth)
+
+    def compiler_ctor_ref(self):
+        return '&' + self.compiler_ctor()
 
     def llvm_name(self):
         bw = self._llvm_bitwidth or self.bitwidth()
@@ -182,10 +187,12 @@ class Unsigned(Number):
 
     def compiler_ctor(self):
         if self._llvm_bitwidth is None:
-            return 'u({})'.format(self.bitwidth())
+            return '::U{}'.format(self.bitwidth())
         else:
-            return 'u_({}, {})'.format(self.bitwidth(),
-                                       self._llvm_bitwidth)
+            return '::U{}_{}'.format(self.bitwidth(), self._llvm_bitwidth)
+
+    def compiler_ctor_ref(self):
+        return '&' + self.compiler_ctor()
 
     def llvm_name(self):
         bw = self._llvm_bitwidth or self.bitwidth()
@@ -200,7 +207,10 @@ class Float(Number):
         Number.__init__(self, bitwidth)
 
     def compiler_ctor(self):
-        return 'f({})'.format(self.bitwidth())
+        return '::F{}'.format(self.bitwidth())
+
+    def compiler_ctor_ref(self):
+        return '&' + self.compiler_ctor()
 
     def llvm_name(self):
         return 'f{}'.format(self.bitwidth())
@@ -244,12 +254,16 @@ class Vector(Type):
 
     def compiler_ctor(self):
         if self._bitcast is None:
-            return 'v({}, {})'.format(self._elem.compiler_ctor(),
-                                      self._length)
+            return '{}x{}'.format(self._elem.compiler_ctor(),
+                                     self._length)
         else:
-            return 'v_({}, {}, {})'.format(self._elem.compiler_ctor(),
-                                           self._bitcast.compiler_ctor(),
-                                           self._length)
+            return '{}x{}_{}'.format(self._elem.compiler_ctor(),
+                                     self._length,
+                                     self._bitcast.compiler_ctor()
+                                         .replace('::', ''))
+
+    def compiler_ctor_ref(self):
+        return '&' + self.compiler_ctor()
 
     def rust_name(self):
         return '{}x{}'.format(self._elem.rust_name(), self._length)
@@ -284,10 +298,14 @@ class Pointer(Type):
         if self._llvm_elem is None:
             llvm_elem = 'None'
         else:
-            llvm_elem = 'Some({})'.format(self._llvm_elem.compiler_ctor())
-        return 'p({}, {}, {})'.format('true' if self._const else 'false',
-                                      self._elem.compiler_ctor(),
-                                      llvm_elem)
+            llvm_elem = 'Some({})'.format(self._llvm_elem.compiler_ctor_ref())
+        return 'Type::Pointer({}, {}, {})'.format(self._elem.compiler_ctor_ref(),
+                                                  llvm_elem,
+                                                  'true' if self._const else 'false')
+
+    def compiler_ctor_ref(self):
+        return "{{ static PTR: Type = {}; &PTR }}".format(self.compiler_ctor())
+
 
     def rust_name(self):
         return '*{} {}'.format('const' if self._const else 'mut',
@@ -322,8 +340,14 @@ class Aggregate(Type):
             raise NotImplementedError()
 
     def compiler_ctor(self):
-        return 'agg({}, vec![{}])'.format('true' if self._flatten else 'false',
-                                          ', '.join(elem.compiler_ctor() for elem in self._elems))
+        parts = "{{ static PARTS: [&'static Type; {}] = [{}]; &PARTS }}"
+        elems = ', '.join(elem.compiler_ctor_ref() for elem in self._elems)
+        parts = parts.format(len(self._elems), elems)
+        return 'Type::Aggregate({}, {})'.format('true' if self._flatten else 'false',
+                                                parts)
+
+    def compiler_ctor_ref(self):
+        return "{{ static AGG: Type = {}; &AGG }}".format(self.compiler_ctor())
 
     def rust_name(self):
         return '({})'.format(', '.join(elem.rust_name() for elem in self._elems))
@@ -518,10 +542,10 @@ class MonomorphicIntrinsic(object):
         return self._platform.platform().intrinsic_prefix() + self.intrinsic_suffix()
 
     def compiler_args(self):
-        return ', '.join(arg.compiler_ctor() for arg in self._args_raw)
+        return ', '.join(arg.compiler_ctor_ref() for arg in self._args_raw)
 
     def compiler_ret(self):
-        return self._ret_raw.compiler_ctor()
+        return self._ret_raw.compiler_ctor_ref()
 
     def compiler_signature(self):
         return '({}) -> {}'.format(self.compiler_args(), self.compiler_ret())
@@ -733,7 +757,7 @@ class CompilerDefs(object):
 
 #![allow(unused_imports)]
 
-use {{Intrinsic, i, i_, u, u_, f, v, v_, agg, p, void}};
+use {{Intrinsic, Type}};
 use IntrinsicDef::Named;
 use rustc::middle::ty::TyCtxt;
 
@@ -747,10 +771,11 @@ pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {{
     def render(self, mono):
         return '''\
         "{}" => Intrinsic {{
-            inputs: vec![{}],
+            inputs: {{ static INPUTS: [&'static Type; {}] = [{}]; &INPUTS }},
             output: {},
             definition: Named("{}")
         }},'''.format(mono.intrinsic_suffix(),
+                      len(mono._args_raw),
                       mono.compiler_args(),
                       mono.compiler_ret(),
                       mono.llvm_name())
