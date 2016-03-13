@@ -185,7 +185,10 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  "FILES"),
         optopt("", "markdown-playground-url",
                "URL to send code snippets to", "URL"),
-        optflag("", "markdown-no-toc", "don't include table of contents")
+        optflag("", "markdown-no-toc", "don't include table of contents"),
+        optopt("e", "extend-css",
+               "to redefine some css rules with a given file to generate doc with your \
+                own theme", "PATH"),
     )
 }
 
@@ -254,7 +257,15 @@ pub fn main_args(args: &[String]) -> isize {
     let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
 
     let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
+    let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
+
+    if let Some(ref p) = css_file_extension {
+        if !p.is_file() {
+            println!("{}", "--extend-css option must take a css file as input");
+            return 1;
+        }
+    }
 
     let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
@@ -291,7 +302,8 @@ pub fn main_args(args: &[String]) -> isize {
         Some("html") | None => {
             html::render::run(krate, &external_html,
                               output.unwrap_or(PathBuf::from("doc")),
-                              passes.into_iter().collect())
+                              passes.into_iter().collect(),
+                              css_file_extension)
                 .expect("failed to generate documentation")
         }
         Some("json") => {
