@@ -371,10 +371,12 @@ impl Ipv6Addr {
     /// - the link-local addresses
     /// - the (deprecated) site-local addresses
     /// - unique local addresses
+    /// - the unspecified address
     pub fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
             && !self.is_loopback() && !self.is_unicast_link_local()
             && !self.is_unicast_site_local() && !self.is_unique_local()
+            && !self.is_unspecified()
     }
 
     /// Returns the address's multicast scope if the address is multicast.
@@ -768,7 +770,7 @@ mod tests {
 
         //    unspec loopbk uniqlo global unill  unisl  uniglo mscope
         check("::",
-              true,  false, false, true,  false, false, true,  None);
+              true,  false, false, false,  false, false, false,  None);
         check("::1",
               false, true,  false, false, false, false, false, None);
         check("::0.0.0.2",
