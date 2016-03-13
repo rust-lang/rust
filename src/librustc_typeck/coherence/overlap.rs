@@ -120,7 +120,7 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                 if let Some(prev_id) = prev_default_impl {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
-                        self.tcx.span_of_impl(impl_def_id).unwrap(), E0519,
+                        self.tcx.span_of_impl(impl_def_id).unwrap(), E0521,
                         "redundant default implementations of trait `{}`:",
                         trait_ref);
                     err.span_note(self.tcx.span_of_impl(self.tcx.map.local_def_id(prev_id))
