@@ -21,6 +21,7 @@
 #![feature(fn_traits)]
 #![feature(enumset)]
 #![feature(iter_arith)]
+#![feature(map_entry_keys)]
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(set_recovery)]
