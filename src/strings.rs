@@ -140,7 +140,7 @@ impl LateLintPass for StringLitAsBytes {
             if name.node.as_str() == "as_bytes" {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
-                        if lit_content.chars().all(|c| c.is_ascii()) && !in_macro(cx, e.span) {
+                        if lit_content.chars().all(|c| c.is_ascii()) && !in_macro(cx, args[0].span) {
                             let msg = format!("calling `as_bytes()` on a string literal. \
                                                Consider using a byte string literal instead: \
                                                `b{}`",
