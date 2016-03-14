@@ -1365,9 +1365,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Attempts to resolve the module part of an import directive or path
     /// rooted at the given module.
-    ///
-    /// On success, returns the resolved module, and the closest *private*
-    /// module found to the destination when resolving this path.
     fn resolve_module_path(&mut self,
                            module_path: &[Name],
                            use_lexical_scope: UseLexicalScopeFlag,
