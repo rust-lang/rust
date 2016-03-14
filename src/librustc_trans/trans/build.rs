@@ -221,6 +221,18 @@ pub fn FAdd(cx: Block,
     B(cx).fadd(lhs, rhs)
 }
 
+pub fn FAddFast(cx: Block,
+                lhs: ValueRef,
+                rhs: ValueRef,
+                debug_loc: DebugLoc)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    debug_loc.apply(cx.fcx);
+    B(cx).fadd_fast(lhs, rhs)
+}
+
 pub fn Sub(cx: Block,
            lhs: ValueRef,
            rhs: ValueRef,
@@ -267,6 +279,18 @@ pub fn FSub(cx: Block,
     }
     debug_loc.apply(cx.fcx);
     B(cx).fsub(lhs, rhs)
+}
+
+pub fn FSubFast(cx: Block,
+                lhs: ValueRef,
+                rhs: ValueRef,
+                debug_loc: DebugLoc)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    debug_loc.apply(cx.fcx);
+    B(cx).fsub_fast(lhs, rhs)
 }
 
 pub fn Mul(cx: Block,
@@ -317,6 +341,18 @@ pub fn FMul(cx: Block,
     B(cx).fmul(lhs, rhs)
 }
 
+pub fn FMulFast(cx: Block,
+                lhs: ValueRef,
+                rhs: ValueRef,
+                debug_loc: DebugLoc)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    debug_loc.apply(cx.fcx);
+    B(cx).fmul_fast(lhs, rhs)
+}
+
 pub fn UDiv(cx: Block,
             lhs: ValueRef,
             rhs: ValueRef,
@@ -365,6 +401,18 @@ pub fn FDiv(cx: Block,
     B(cx).fdiv(lhs, rhs)
 }
 
+pub fn FDivFast(cx: Block,
+                lhs: ValueRef,
+                rhs: ValueRef,
+                debug_loc: DebugLoc)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    debug_loc.apply(cx.fcx);
+    B(cx).fdiv_fast(lhs, rhs)
+}
+
 pub fn URem(cx: Block,
             lhs: ValueRef,
             rhs: ValueRef,
@@ -399,6 +447,18 @@ pub fn FRem(cx: Block,
     }
     debug_loc.apply(cx.fcx);
     B(cx).frem(lhs, rhs)
+}
+
+pub fn FRemFast(cx: Block,
+                lhs: ValueRef,
+                rhs: ValueRef,
+                debug_loc: DebugLoc)
+            -> ValueRef {
+    if cx.unreachable.get() {
+        return _Undef(lhs);
+    }
+    debug_loc.apply(cx.fcx);
+    B(cx).frem_fast(lhs, rhs)
 }
 
 pub fn Shl(cx: Block,
