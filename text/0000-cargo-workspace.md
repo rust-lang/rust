@@ -40,12 +40,12 @@ Cargo will grow the concept of a **workspace** for managing repositories of
 multiple crates. Workspaces will then have the properties:
 
 * A workspace can contain multiple local crates.
-* Each workspace will have one root crate.
+* Each workspace will have a root.
 * Whenever any crate in the workspace is compiled, output will be placed in the
-  `target` directory next to the root crate.
-* One `Cargo.lock` for the entire workspace will reside next to the root crate
-  and encompass the dependencies (and dev-dependencies) for all packages in the
-  workspace.
+  `target` directory next to the root.
+* One `Cargo.lock` for the entire workspace will reside next to the workspace
+  root and encompass the dependencies (and dev-dependencies) for all packages
+  in the workspace.
 
 With workspaces, Cargo can now solve the problems set forth in the motivation
 section. Next, however, workspaces need to be defined. In the spirit of much of
@@ -57,18 +57,15 @@ conventional project layouts but will have explicit controls for configuration.
 First, let's look at the new manifest keys which will be added to `Cargo.toml`:
 
 ```toml
-[package]
-
-# ...
-
-workspace-root = true
-workspace = ["relative/path/to/child1", "child2"]
+[workspace]
+root = true
+members = ["relative/path/to/child1", "child2"]
 ```
 
-Here the `workspace-root` key will be used to indicate whether a package is the
-root of a workspace, and the `workspace` key will be a list of paths to crates
-which should be added to the package's workspace. The paths listed in
-`workspace` must be valid paths to crates.
+Here the `workspace.root` key will be used to indicate whether a `Cargo.toml` is
+the root of a workspace, and the `members` key will be a list of paths to
+crates which should be added to the package's workspace. The paths listed in
+`members` must be valid paths to crates.
 
 ### Implicit relations
 
@@ -81,14 +78,37 @@ keys wherever possible:
   filesystem to find a sibling `Cargo.toml` and VCS directory (e.g. `.git` or
   `.svn`). If found, this crate is also implicitly considered a member of the
   workspace.
-* Crates whose `Cargo.toml` that reside next to VCS directories are implicitly
-  workspace roots.
+* A `Cargo.toml` which resides next to a VCS directory is implicitly a
+  workspace root.
 
-These rules are intended to reflect conventional Cargo project layouts. "Root
-crates" typically appear at the root of a repository with lots path dependencies
-to all other crates in a repo. Additionally, we don't want to traverse wildly
-across the filesystem so we only go upwards to a fixed point or downwards to
-specific locations.
+These rules are intended to reflect some conventional Cargo project layouts.
+"Root crates" typically appear at the root of a repository with lots path
+dependencies to all other crates in a repo. Additionally, we don't want to
+traverse wildly across the filesystem so we only go upwards to a fixed point or
+downwards to specific locations.
+
+### "Virtual" `Cargo.toml`
+
+A good number of projects do not have a root `Cargo.toml` at the top of a
+repository, however. While the explicit `[workspace]` keys should be enough to
+configure the workspace in addition to the implicit relations above, this
+directory structure is common enough that it shouldn't require *that* much more
+configuration.
+
+To accomodate this project layout, Cargo will now allow for "virtual manifest"
+files. These manifests will currently **only** contains the `[workspace]` key
+and will notably be lacking a `[project]` or `[package]` top level key.
+
+A virtual manifest does not itself define a crate, but can help when defining a
+root. For example a `Cargo.toml` file at the root of a repository with
+`workspace.members` keys would suffice for the project configurations in
+question.
+
+Cargo will for the time being disallow many commands against a virtual manifest,
+for example `cargo build` will be rejected. Arguments that take a package,
+however, such as `cargo test -p foo` will be allowed. Workspaces can eventually
+get extended with `--all` flags so in a workspace root you could execute
+`cargo build --all` to compile all crates.
 
 ### Constructing a workspace
 
@@ -147,8 +167,10 @@ configuration to have all crates be members of a workspace:
 Projects like the compiler, however, will likely need explicit configuration.
 The `rust` repo conceptually has two workspaces, the standard library and the
 compiler, and these would need to be manually configured with `workspace` and
-`workspace-root` keys amongst all crates. Some examples of layouts that will
-require extra configuration are:
+`workspace-root` keys amongst all crates.
+
+Some examples of layouts that will require extra configuration, along with the
+configuration necessary, are:
 
 * Trees without any root crate
 
@@ -162,6 +184,18 @@ require extra configuration are:
   crate3/
     Cargo.toml
     src/
+  ```
+
+  these crates can all join the same workspace via a `Cargo.toml` file at the
+  root looking like:
+
+  ```toml
+  [workspace]
+  members = [
+    "crate1",
+    "crate2",
+    "crate3",
+  ]
   ```
 
 * Trees with multiple workspaces
@@ -180,6 +214,40 @@ require extra configuration are:
     crate3/
       Cargo.toml
       src/
+  ```
+
+  The two workspaces here can be configured by placing the following in the
+  manifests:
+
+  ```toml
+  # ws1/Cargo.toml
+  [workspace]
+  root = true
+  members = ["crate1", "crate2"]
+  ```
+
+  ```toml
+  # ws1/crate1/Cargo.toml
+  [workspace]
+  members = [".."]
+  ```
+
+  ```toml
+  # ws1/crate2/Cargo.toml
+  [workspace]
+  members = [".."]
+  ```
+
+  ```toml
+  # ws2/Cargo.toml
+  [workspace]
+  root = true
+  ```
+
+  ```toml
+  # ws2/crate3/Cargo.toml
+  [workspace]
+  members = [".."]
   ```
 
 ### Future Extensions
