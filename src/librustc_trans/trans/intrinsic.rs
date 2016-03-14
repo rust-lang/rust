@@ -609,7 +609,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "volatile_store") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-            let val = from_arg_ty(bcx, llargs[1], tp_ty);
+            let val = if type_is_immediate(bcx.ccx(), tp_ty) {
+                from_arg_ty(bcx, llargs[1], tp_ty)
+            } else {
+                Load(bcx, llargs[1])
+            };
             let store = VolatileStore(bcx, val, ptr);
             unsafe {
                 llvm::LLVMSetAlignment(store, type_of::align_of(ccx, tp_ty));
