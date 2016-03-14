@@ -6,7 +6,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
-use utils::{span_lint, span_lint_and_then, snippet};
+use utils::{span_lint, span_lint_and_then, snippet, snippet_opt};
 
 /// **What it does:** This lint checks for expressions of the form `if c { true } else { false }` (or vice versa) and suggest using the condition directly.
 ///
@@ -50,16 +50,16 @@ impl LateLintPass for NeedlessBool {
         use self::Expression::*;
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             let reduce = |hint: &str, not| {
-                let pred_snip = snippet(cx, pred.span, "..");
-                let hint = if pred_snip == ".." {
-                    hint.into()
-                } else {
-                    format!("`{}{}`", not, pred_snip)
+                let hint = match snippet_opt(cx, pred.span) {
+                    Some(pred_snip) => format!("`{}{}`", not, pred_snip),
+                    None => hint.into(),
                 };
-                span_lint(cx,
-                          NEEDLESS_BOOL,
-                          e.span,
-                          &format!("you can reduce this if-then-else expression to just {}", hint));
+                span_lint_and_then(cx,
+                                   NEEDLESS_BOOL,
+                                   e.span,
+                                   "this if-then-else expression returns a bool literal", |db| {
+                    db.span_suggestion(e.span, "you can reduce it to", hint);
+                });
             };
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                 (RetBool(true), RetBool(true)) |
