@@ -8,7 +8,7 @@ use rustc_front::hir::*;
 use syntax::codemap::Spanned;
 use utils::STRING_PATH;
 use utils::SpanlessEq;
-use utils::{match_type, span_lint, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, span_lint, span_lint_and_then, walk_ptrs_ty, get_parent_expr};
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
 ///
@@ -141,11 +141,18 @@ impl LateLintPass for StringLitAsBytes {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
                         if lit_content.chars().all(|c| c.is_ascii()) && !in_macro(cx, args[0].span) {
-                            let msg = format!("calling `as_bytes()` on a string literal. \
-                                               Consider using a byte string literal instead: \
-                                               `b{}`",
-                                              snippet(cx, args[0].span, r#""foo""#));
-                            span_lint(cx, STRING_LIT_AS_BYTES, e.span, &msg);
+                            span_lint_and_then(cx,
+                                               STRING_LIT_AS_BYTES,
+                                               e.span,
+                                               "calling `as_bytes()` on a string literal",
+                                               |db| {
+                                                   let sugg = format!("b{}",
+                                                                      snippet(cx, args[0].span, r#""foo""#));
+                                                   db.span_suggestion(e.span,
+                                                                      "consider using a byte string literal instead",
+                                                                      sugg);
+                                               });
+
                         }
                     }
                 }

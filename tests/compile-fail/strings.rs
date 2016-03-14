@@ -47,9 +47,15 @@ fn both() {
 #[allow(dead_code, unused_variables)]
 #[deny(string_lit_as_bytes)]
 fn str_lit_as_bytes() {
-    let bs = "hello there".as_bytes(); //~ERROR calling `as_bytes()`
+    let bs = "hello there".as_bytes();
+    //~^ERROR calling `as_bytes()`
+    //~|HELP byte string literal
+    //~|SUGGESTION b"hello there"
+
     // no warning, because this cannot be written as a byte string literal:
     let ubs = "☃".as_bytes();
+
+    let strify = stringify!(foobar).as_bytes();
 }
 
 fn main() {
