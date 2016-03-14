@@ -55,7 +55,8 @@ A new crate type will be accepted by the compiler, `rdylib`, which can be passed
 as either `--crate-type rdylib` on the command line or via `#![crate_type =
 "rdylib"]` in crate attributes. This crate type will conceptually correspond to
 the rdylib use case described above, and today's `dylib` crate-type will
-correspond to the cdylib use case above.
+correspond to the cdylib use case above. Note that the literal output artifacts
+of these two crate types (files, file names, etc) will be the same.
 
 The two formats will differ in the parts listed in the motivation above,
 specifically:
