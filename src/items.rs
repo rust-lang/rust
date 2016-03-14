@@ -84,19 +84,24 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.push_str(&::utils::format_abi(fm.abi));
 
         let snippet = self.snippet(span);
-        let brace_pos = snippet.find_uncommented("{").unwrap() as u32;
+        let brace_pos = snippet.find_uncommented("{").unwrap();
 
-        // FIXME: this skips comments between the extern keyword and the opening
-        // brace.
-        self.last_pos = span.lo + BytePos(brace_pos);
-        self.block_indent = self.block_indent.block_indent(self.config);
+        if fm.items.is_empty() && !contains_comment(&snippet[brace_pos..]) {
+            self.buffer.push_str("{");
+        } else {
+            // FIXME: this skips comments between the extern keyword and the opening
+            // brace.
+            self.last_pos = span.lo + BytePos(brace_pos as u32);
+            self.block_indent = self.block_indent.block_indent(self.config);
 
-        for item in &fm.items {
-            self.format_foreign_item(&*item);
+            for item in &fm.items {
+                self.format_foreign_item(&*item);
+            }
+
+            self.block_indent = self.block_indent.block_unindent(self.config);
+            self.format_missing_with_indent(span.hi - BytePos(1));
         }
 
-        self.block_indent = self.block_indent.block_unindent(self.config);
-        self.format_missing_with_indent(span.hi - BytePos(1));
         self.buffer.push_str("}");
         self.last_pos = span.hi;
     }
