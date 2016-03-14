@@ -498,6 +498,16 @@ pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(64), 4),
             definition: Named("llvm.x86.avx.addsub.pd.256")
         },
+        "256_blendv_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), v(f(32), 8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.avx.blendv.ps.256")
+        },
+        "256_blendv_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), v(f(64), 4)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx.blendv.pd.256")
+        },
         "256_broadcast_ps" => Intrinsic {
             inputs: vec![p(true, i(8), None)],
             output: v(f(32), 8),
@@ -507,6 +517,16 @@ pub fn find<'tcx>(_tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![p(true, i(8), None)],
             output: v(f(64), 4),
             definition: Named("llvm.x86.avx.vbroadcastf128.pd.256")
+        },
+        "256_cmp_ps" => Intrinsic {
+            inputs: vec![v(f(32), 8), v(f(32), 8), i(8)],
+            output: v(f(32), 8),
+            definition: Named("llvm.x86.avx.cmp.ps.256")
+        },
+        "256_cmp_pd" => Intrinsic {
+            inputs: vec![v(f(64), 4), v(f(64), 4), i(8)],
+            output: v(f(64), 4),
+            definition: Named("llvm.x86.avx.cmp.pd.256")
         },
         "256_cvtepi32_pd" => Intrinsic {
             inputs: vec![v(i(32), 4)],
