@@ -83,7 +83,7 @@ impl LateLintPass for ArrayIndexing {
                         eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None)).map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(start, end, range.limits, size) {
-                        if start >= size || end >= size {
+                        if start > size || end > size {
                             utils::span_lint(cx,
                                              OUT_OF_BOUNDS_INDEXING,
                                              e.span,
@@ -109,14 +109,11 @@ impl LateLintPass for ArrayIndexing {
     }
 }
 
-/// Returns an option containing a tuple with the start and end (exclusive) of the range
-///
-/// Note: we assume the start and the end of the range are unsigned, since array slicing
-/// works only on usize
+/// Returns an option containing a tuple with the start and end (exclusive) of the range.
 fn to_const_range(start: Option<Option<ConstVal>>,
-                    end: Option<Option<ConstVal>>,
-                    limits: RangeLimits,
-                    array_size: ConstInt)
+                  end: Option<Option<ConstVal>>,
+                  limits: RangeLimits,
+                  array_size: ConstInt)
                     -> Option<(ConstInt, ConstInt)> {
     let start = match start {
         Some(Some(ConstVal::Integral(x))) => x,
@@ -127,13 +124,13 @@ fn to_const_range(start: Option<Option<ConstVal>>,
     let end = match end {
         Some(Some(ConstVal::Integral(x))) => {
             if limits == RangeLimits::Closed {
-                x
+                (x + ConstInt::Infer(1)).expect("such a big array is not realistic")
             } else {
-                (x - ConstInt::Infer(1)).expect("x > 0")
+                x
             }
         }
         Some(_) => return None,
-        None => (array_size - ConstInt::Infer(1)).expect("array_size > 0"),
+        None => array_size
     };
 
     Some((start, end))
