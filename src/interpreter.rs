@@ -1,7 +1,7 @@
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, TyCtxt};
-use rustc::middle::subst::Substs;
+use rustc::middle::subst::{Subst, Substs};
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::util::nodemap::DefIdMap;
@@ -102,6 +102,7 @@ struct Interpreter<'a, 'tcx: 'a> {
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
     memory: Memory,
     stack: Vec<Frame<'a, 'tcx>>,
+    substs_stack: Vec<&'tcx Substs<'tcx>>,
 }
 
 impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
@@ -112,6 +113,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             mir_cache: RefCell::new(DefIdMap()),
             memory: Memory::new(),
             stack: Vec::new(),
+            substs_stack: vec![tcx.mk_substs(Substs::empty())],
         }
     }
 
@@ -238,7 +240,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
 
                     match func_ty.sty {
-                        ty::TyFnDef(def_id, _, _) => {
+                        ty::TyFnDef(def_id, substs, _) => {
+                            self.substs_stack.push(substs);
                             let mir = self.load_mir(def_id);
                             try!(self.call(mir, args, ptr));
                         }
@@ -261,6 +264,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
 
         self.pop_stack_frame();
+        self.substs_stack.pop();
         Ok(())
     }
 
@@ -450,7 +454,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     // TODO(tsion): Cache these outputs.
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
         use syntax::ast::IntTy;
-        match ty.sty {
+        let substs = self.substs_stack.last().unwrap();
+
+        match ty.subst(self.tcx, substs).sty {
             ty::TyBool => Repr::Bool,
 
             ty::TyInt(IntTy::Is) => unimplemented!(),

@@ -21,6 +21,12 @@ fn factorial_recursive() -> i64 {
     fact(10)
 }
 
+#[miri_run]
+fn call_generic() -> (i16, bool) {
+    fn id<T>(t: T) -> T { t }
+    (id(42), id(true))
+}
+
 // Test calling a very simple function from the standard library.
 #[miri_run]
 fn cross_crate_fn_call() -> i64 {
