@@ -79,8 +79,9 @@ winner.
 
 [discuss]: https://internals.rust-lang.org/t/vs-for-inclusive-ranges/1539
 
-This RFC doesn't propose non-double-ended syntax, like `a...`, `...b`
-or `...` since it isn't clear that this is so useful. Maybe it is.
+This RFC proposes single-ended syntax with only an end, `...b`, but not
+with only a start (`a...`) or unconstrained `...`. This balance could be
+reevaluated for usefulness and conflicts with other proposed syntax.
 
 The `Empty` variant could be omitted, leaving two options:
 
