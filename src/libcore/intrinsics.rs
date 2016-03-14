@@ -53,19 +53,35 @@ extern "rust-intrinsic" {
     // NB: These intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
+    #[cfg(stage0)]
     pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(stage0)]
     pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(stage0)]
     pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(stage0)]
     pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> T;
+    #[cfg(stage0)]
     pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> T;
+
     #[cfg(not(stage0))]
-    pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
+    pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     #[cfg(not(stage0))]
-    pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> T;
+    pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     #[cfg(not(stage0))]
-    pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
+    pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     #[cfg(not(stage0))]
-    pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> T;
+    pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
+    #[cfg(not(stage0))]
+    pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     #[cfg(not(stage0))]
     pub fn atomic_cxchgweak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
