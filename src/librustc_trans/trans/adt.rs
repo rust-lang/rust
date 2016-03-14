@@ -1035,7 +1035,7 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
     match ity {
         attr::UnsignedInt(_) => {
             assert!(min <= discr);
-            assert!(discr <= max)
+            assert!(discr <= max);
         },
         attr::SignedInt(_) => {
             assert!(min.0 as i64 <= discr.0 as i64);

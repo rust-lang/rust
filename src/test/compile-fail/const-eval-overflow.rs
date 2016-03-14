@@ -23,84 +23,84 @@ const VALS_I8: (i8, i8, i8, i8) =
     (-i8::MIN,
      //~^ ERROR attempted to negate with overflow
      i8::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      i8::MAX + 1,
      //~^ ERROR attempted to add with overflow
      i8::MIN * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_I16: (i16, i16, i16, i16) =
     (-i16::MIN,
      //~^ ERROR attempted to negate with overflow
      i16::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      i16::MAX + 1,
      //~^ ERROR attempted to add with overflow
      i16::MIN * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_I32: (i32, i32, i32, i32) =
     (-i32::MIN,
      //~^ ERROR attempted to negate with overflow
      i32::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      i32::MAX + 1,
      //~^ ERROR attempted to add with overflow
      i32::MIN * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_I64: (i64, i64, i64, i64) =
     (-i64::MIN,
      //~^ ERROR attempted to negate with overflow
      i64::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      i64::MAX + 1,
      //~^ ERROR attempted to add with overflow
      i64::MAX * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_U8: (u8, u8, u8, u8) =
     (-(u8::MIN as i8) as u8,
      u8::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      u8::MAX + 1,
      //~^ ERROR attempted to add with overflow
      u8::MAX * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_U16: (u16, u16, u16, u16) =
     (-(u16::MIN as i16) as u16,
      u16::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      u16::MAX + 1,
      //~^ ERROR attempted to add with overflow
      u16::MAX * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_U32: (u32, u32, u32, u32) =
     (-(u32::MIN as i32) as u32,
      u32::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      u32::MAX + 1,
      //~^ ERROR attempted to add with overflow
      u32::MAX * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 const VALS_U64: (u64, u64, u64, u64) =
     (-(u64::MIN as i64) as u64,
      u64::MIN - 1,
-     //~^ ERROR attempted to sub with overflow
+     //~^ ERROR attempted to subtract with overflow
      u64::MAX + 1,
      //~^ ERROR attempted to add with overflow
      u64::MAX * 2,
-     //~^ ERROR attempted to mul with overflow
+     //~^ ERROR attempted to multiply with overflow
      );
 
 fn main() {

@@ -26,6 +26,7 @@ use middle::dependency_format::Linkage;
 use middle::stability;
 use middle::subst;
 use middle::ty::{self, Ty, TyCtxt};
+use middle::ty::util::IntTypeExt;
 
 use rustc::back::svh::Svh;
 use rustc::front::map::{LinkedPath, PathElem, PathElems};
@@ -238,7 +239,8 @@ fn encode_symbol(ecx: &EncodeContext,
 fn encode_disr_val(_: &EncodeContext,
                    rbml_w: &mut Encoder,
                    disr_val: ty::Disr) {
-    rbml_w.wr_tagged_str(tag_disr_val, &disr_val.to_string());
+    // convert to u64 so just the number is printed, without any type info
+    rbml_w.wr_tagged_str(tag_disr_val, &disr_val.to_u64_unchecked().to_string());
 }
 
 fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
@@ -262,13 +264,14 @@ fn encode_struct_fields(rbml_w: &mut Encoder,
 
 fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                       rbml_w: &mut Encoder,
-                                      id: NodeId,
+                                      did: DefId,
                                       vis: hir::Visibility,
                                       index: &mut CrateIndex<'tcx>) {
-    debug!("encode_enum_variant_info(id={})", id);
-
-    let mut disr_val = 0;
-    let def = ecx.tcx.lookup_adt_def(ecx.tcx.map.local_def_id(id));
+    debug!("encode_enum_variant_info(did={:?})", did);
+    let repr_hints = ecx.tcx.lookup_repr_hints(did);
+    let repr_type = ecx.tcx.enum_repr_type(repr_hints.get(0));
+    let mut disr_val = repr_type.initial_discriminant(&ecx.tcx);
+    let def = ecx.tcx.lookup_adt_def(did);
     for variant in &def.variants {
         let vid = variant.did;
         let variant_node_id = ecx.local_id(vid);
@@ -290,7 +293,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             ty::VariantKind::Unit => 'w',
         });
         encode_name(rbml_w, variant.name);
-        encode_parent_item(rbml_w, ecx.tcx.map.local_def_id(id));
+        encode_parent_item(rbml_w, did);
         encode_visibility(rbml_w, vis);
 
         let attrs = ecx.tcx.get_attrs(vid);
@@ -313,7 +316,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
         ecx.tcx.map.with_path(variant_node_id, |path| encode_path(rbml_w, path));
         rbml_w.end_tag();
-        disr_val = disr_val.wrapping_add(1);
+        disr_val = disr_val.wrap_incr();
     }
 }
 
@@ -1035,7 +1038,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
         encode_enum_variant_info(ecx,
                                  rbml_w,
-                                 item.id,
+                                 def_id,
                                  vis,
                                  index);
       }

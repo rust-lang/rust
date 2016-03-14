@@ -10,12 +10,13 @@
 
 use hair::*;
 use rustc_data_structures::fnv::FnvHashMap;
+use rustc_const_eval::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::front::map;
 use rustc::middle::def::Def;
-use rustc::middle::const_eval;
+use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
 use rustc::middle::ty::{self, VariantDef, Ty};
@@ -227,24 +228,33 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 }
             }
 
-            hir::ExprUnary(op, ref arg) => {
+            hir::ExprUnary(hir::UnOp::UnNot, ref arg) => {
                 if cx.tcx.is_method_call(self.id) {
                     overloaded_operator(cx, self, ty::MethodCall::expr(self.id),
                                         PassArgs::ByValue, arg.to_ref(), vec![])
                 } else {
-                    // FIXME overflow
-                    let op = match op {
-                        hir::UnOp::UnNot => UnOp::Not,
-                        hir::UnOp::UnNeg => UnOp::Neg,
-                        hir::UnOp::UnDeref => {
-                            cx.tcx.sess.span_bug(
-                                self.span,
-                                "UnDeref should have been handled elsewhere");
-                        }
-                    };
                     ExprKind::Unary {
-                        op: op,
+                        op: UnOp::Not,
                         arg: arg.to_ref(),
+                    }
+                }
+            }
+
+            hir::ExprUnary(hir::UnOp::UnNeg, ref arg) => {
+                if cx.tcx.is_method_call(self.id) {
+                    overloaded_operator(cx, self, ty::MethodCall::expr(self.id),
+                                        PassArgs::ByValue, arg.to_ref(), vec![])
+                } else {
+                    // FIXME runtime-overflow
+                    if let hir::ExprLit(_) = arg.node {
+                        ExprKind::Literal {
+                            literal: cx.const_eval_literal(self),
+                        }
+                    } else {
+                        ExprKind::Unary {
+                            op: UnOp::Neg,
+                            arg: arg.to_ref(),
+                        }
                     }
                 }
             }
@@ -338,7 +348,10 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 count: TypedConstVal {
                     ty: cx.tcx.expr_ty(c),
                     span: c.span,
-                    value: const_eval::eval_const_expr(cx.tcx, c)
+                    value: match const_eval::eval_const_expr(cx.tcx, c) {
+                        ConstVal::Integral(ConstInt::Usize(u)) => u,
+                        other => panic!("constant evaluation of repeat count yielded {:?}", other),
+                    },
                 }
             },
             hir::ExprRet(ref v) =>

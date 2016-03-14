@@ -94,7 +94,7 @@ use middle::pat_util::{self, pat_id_map};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{GenericPredicates, TypeScheme};
-use middle::ty::{Disr, ParamTy, ParameterEnvironment};
+use middle::ty::{ParamTy, ParameterEnvironment};
 use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use middle::ty::{self, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::{MethodCall, MethodCallee};
@@ -102,7 +102,7 @@ use middle::ty::adjustment;
 use middle::ty::error::TypeError;
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use middle::ty::relate::TypeRelation;
-use middle::ty::util::Representability;
+use middle::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::{Session, CompileResult};
@@ -4076,34 +4076,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     sp: Span,
                                     vs: &'tcx [hir::Variant],
                                     id: ast::NodeId) {
-    // disr_in_range should be removed once we have forced type hints for consts
-    fn disr_in_range(ccx: &CrateCtxt,
-                     ty: attr::IntType,
-                     disr: ty::Disr) -> bool {
-        fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
-            match ty {
-                ast::UintTy::U8 => disr as u8 as Disr == disr,
-                ast::UintTy::U16 => disr as u16 as Disr == disr,
-                ast::UintTy::U32 => disr as u32 as Disr == disr,
-                ast::UintTy::U64 => disr as u64 as Disr == disr,
-                ast::UintTy::Us => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
-            }
-        }
-        fn int_in_range(ccx: &CrateCtxt, ty: ast::IntTy, disr: ty::Disr) -> bool {
-            match ty {
-                ast::IntTy::I8 => disr as i8 as Disr == disr,
-                ast::IntTy::I16 => disr as i16 as Disr == disr,
-                ast::IntTy::I32 => disr as i32 as Disr == disr,
-                ast::IntTy::I64 => disr as i64 as Disr == disr,
-                ast::IntTy::Is => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
-            }
-        }
-        match ty {
-            attr::UnsignedInt(ty) => uint_in_range(ccx, ty, disr),
-            attr::SignedInt(ty) => int_in_range(ccx, ty, disr)
-        }
-    }
-
     fn do_check<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                           vs: &'tcx [hir::Variant],
                           id: ast::NodeId,
@@ -4117,7 +4089,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         let inh = static_inherited_fields(ccx, &tables);
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), id);
 
-        let (_, repr_type_ty) = ccx.tcx.enum_repr_type(Some(&hint));
+        let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(&ccx.tcx);
         for v in vs {
             if let Some(ref e) = v.node.disr_expr {
                 check_const_with_ty(&fcx, e.span, e, repr_type_ty);
@@ -4142,23 +4114,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 }
                 None => {}
             }
-            // Check for unrepresentable discriminant values
-            match hint {
-                attr::ReprAny | attr::ReprExtern => {
-                    disr_vals.push(current_disr_val);
-                }
-                attr::ReprInt(sp, ity) => {
-                    if !disr_in_range(ccx, ity, current_disr_val) {
-                        let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0082,
-                            "discriminant value outside specified type");
-                        span_note!(&mut err, sp,
-                            "discriminant type specified here");
-                        err.emit();
-                    }
-                }
-                // Error reported elsewhere.
-                attr::ReprSimd | attr::ReprPacked => {}
-            }
+            disr_vals.push(current_disr_val);
         }
     }
 

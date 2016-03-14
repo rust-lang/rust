@@ -50,6 +50,8 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 
+use rustc_const_eval::ConstInt;
+
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait, PatKind};
 use rustc_front::intravisit::Visitor;
@@ -100,8 +102,7 @@ mod ivar;
 mod structural_impls;
 mod sty;
 
-pub type Disr = u64;
-pub const INITIAL_DISCRIMINANT_VALUE: Disr = 0;
+pub type Disr = ConstInt;
 
 // Data types
 
@@ -1580,7 +1581,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Asserts this is a struct and returns the struct's unique
     /// variant.
     pub fn struct_variant(&self) -> &VariantDefData<'tcx, 'container> {
-        assert!(self.adt_kind() == AdtKind::Struct);
+        assert_eq!(self.adt_kind(), AdtKind::Struct);
         &self.variants[0]
     }
 

@@ -81,6 +81,8 @@ use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
 
+use rustc_const_eval::ConstInt;
+
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
@@ -1012,7 +1014,7 @@ fn convert_struct_def<'tcx>(tcx: &TyCtxt<'tcx>,
     tcx.intern_adt_def(
         did,
         ty::AdtKind::Struct,
-        vec![convert_struct_variant(tcx, ctor_id, it.name, 0, def)]
+        vec![convert_struct_variant(tcx, ctor_id, it.name, ConstInt::Infer(0), def)]
     )
 }
 
@@ -1021,24 +1023,39 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
                           def: &hir::EnumDef)
                           -> ty::AdtDefMaster<'tcx>
 {
+    fn print_err(tcx: &TyCtxt, span: Span, ty: ty::Ty, cv: ConstVal) {
+        span_err!(tcx.sess, span, E0079, "mismatched types: expected `{}` got `{}`",
+                  ty, cv.description());
+    }
     fn evaluate_disr_expr<'tcx>(tcx: &TyCtxt<'tcx>,
-                                repr_ty: Ty<'tcx>,
+                                repr_ty: attr::IntType,
                                 e: &hir::Expr) -> Option<ty::Disr> {
         debug!("disr expr, checking {}", pprust::expr_to_string(e));
 
-        let hint = UncheckedExprHint(repr_ty);
+        let ty_hint = repr_ty.to_ty(tcx);
+        let hint = UncheckedExprHint(ty_hint);
         match const_eval::eval_const_expr_partial(tcx, e, hint, None) {
-            Ok(ConstVal::Int(val)) => Some(val as ty::Disr),
-            Ok(ConstVal::Uint(val)) => Some(val as ty::Disr),
-            Ok(_) => {
-                let sign_desc = if repr_ty.is_signed() {
-                    "signed"
-                } else {
-                    "unsigned"
-                };
-                span_err!(tcx.sess, e.span, E0079,
-                          "expected {} integer constant",
-                          sign_desc);
+            Ok(ConstVal::Integral(i)) => {
+                // FIXME: eval_const_expr_partial should return an error if the hint is wrong
+                match (repr_ty, i) {
+                    (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) => Some(i),
+                    (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) => Some(i),
+                    (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => Some(i),
+                    (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => Some(i),
+                    (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => Some(i),
+                    (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => Some(i),
+                    (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => Some(i),
+                    (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => Some(i),
+                    (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => Some(i),
+                    (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => Some(i),
+                    (_, i) => {
+                        print_err(tcx, e.span, ty_hint, ConstVal::Integral(i));
+                        None
+                    },
+                }
+            },
+            Ok(cv) => {
+                print_err(tcx, e.span, ty_hint, cv);
                 None
             },
             Err(err) => {
@@ -1057,16 +1074,11 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
     fn report_discrim_overflow(tcx: &TyCtxt,
                                variant_span: Span,
                                variant_name: &str,
-                               repr_type: attr::IntType,
                                prev_val: ty::Disr) {
-        let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
-        let computed_value = repr_type.disr_string(computed_value);
-        let prev_val = repr_type.disr_string(prev_val);
-        let repr_type = repr_type.to_ty(tcx);
         span_err!(tcx.sess, variant_span, E0370,
-                  "enum discriminant overflowed on value after {}: {}; \
+                  "enum discriminant overflowed on value after {}; \
                    set explicitly via {} = {} if that is desired outcome",
-                  prev_val, repr_type, variant_name, computed_value);
+                  prev_val, variant_name, prev_val.wrap_incr());
     }
 
     fn next_disr(tcx: &TyCtxt,
@@ -1076,12 +1088,11 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
         if let Some(prev_disr_val) = prev_disr_val {
             let result = repr_type.disr_incr(prev_disr_val);
             if let None = result {
-                report_discrim_overflow(tcx, v.span, &v.node.name.as_str(),
-                                             repr_type, prev_disr_val);
+                report_discrim_overflow(tcx, v.span, &v.node.name.as_str(), prev_disr_val);
             }
             result
         } else {
-            Some(ty::INITIAL_DISCRIMINANT_VALUE)
+            Some(repr_type.initial_discriminant(tcx))
         }
     }
     fn convert_enum_variant<'tcx>(tcx: &TyCtxt<'tcx>,
@@ -1095,17 +1106,19 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
     }
     let did = tcx.map.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);
-    let (repr_type, repr_type_ty) = tcx.enum_repr_type(repr_hints.get(0));
+    let repr_type = tcx.enum_repr_type(repr_hints.get(0));
     let mut prev_disr = None;
     let variants = def.variants.iter().map(|v| {
         let disr = match v.node.disr_expr {
-            Some(ref e) => evaluate_disr_expr(tcx, repr_type_ty, e),
+            Some(ref e) => evaluate_disr_expr(tcx, repr_type, e),
             None => next_disr(tcx, v, repr_type, prev_disr)
-        }.unwrap_or(repr_type.disr_wrap_incr(prev_disr));
+        }.unwrap_or_else(|| {
+            prev_disr.map(ty::Disr::wrap_incr)
+                     .unwrap_or(repr_type.initial_discriminant(tcx))
+        });
 
-        let v = convert_enum_variant(tcx, v, disr);
         prev_disr = Some(disr);
-        v
+        convert_enum_variant(tcx, v, disr)
     }).collect();
     tcx.intern_adt_def(tcx.map.local_def_id(it.id), ty::AdtKind::Enum, variants)
 }

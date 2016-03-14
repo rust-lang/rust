@@ -25,9 +25,9 @@ fn main() {
     //~^ WARN attempted to add with overflow
     //~^^ WARN attempted to add with overflow
     let c = 200u8 * 4;
-    //~^ WARN attempted to mul with overflow
+    //~^ WARN attempted to multiply with overflow
     let d = 42u8 - (42u8 + 1);
-    //~^ WARN attempted to sub with overflow
+    //~^ WARN attempted to subtract with overflow
     let _e = BLA;
     black_box(a);
     black_box(b);
