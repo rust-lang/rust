@@ -46,7 +46,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         Operand::Constant(constant)
     }
 
-    pub fn push_usize(&mut self, block: BasicBlock, span: Span, value: usize) -> Lvalue<'tcx> {
+    pub fn push_usize(&mut self, block: BasicBlock, span: Span, value: u64) -> Lvalue<'tcx> {
         let usize_ty = self.hir.usize_ty();
         let temp = self.temp(usize_ty);
         self.cfg.push_assign_constant(

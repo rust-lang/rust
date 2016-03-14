@@ -14,7 +14,6 @@
  */
 
 use mir::repr::*;
-use middle::const_eval::ConstVal;
 use middle::subst::{Subst, Substs};
 use middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_front::hir;
@@ -144,12 +143,10 @@ impl<'tcx> Mir<'tcx> {
         match *rvalue {
             Rvalue::Use(ref operand) => Some(self.operand_ty(tcx, operand)),
             Rvalue::Repeat(ref operand, ref count) => {
-                if let ConstVal::Uint(u) = count.value {
-                    let op_ty = self.operand_ty(tcx, operand);
-                    Some(tcx.mk_array(op_ty, u as usize))
-                } else {
-                    None
-                }
+                let op_ty = self.operand_ty(tcx, operand);
+                let count = count.value.as_u64(tcx.sess.target.uint_type);
+                assert_eq!(count as usize as u64, count);
+                Some(tcx.mk_array(op_ty, count as usize))
             }
             Rvalue::Ref(reg, bk, ref lv) => {
                 let lv_ty = self.lvalue_ty(tcx, lv).to_ty(tcx);

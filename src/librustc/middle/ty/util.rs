@@ -21,7 +21,8 @@ use middle::traits;
 use middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use middle::ty::{Disr, ParameterEnvironment};
 use middle::ty::TypeVariants::*;
-use util::num::ToPrimitive;
+
+use rustc_const_eval::{ConstInt, ConstIsize, ConstUsize};
 
 use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
@@ -34,11 +35,9 @@ use rustc_front::hir;
 
 pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx>;
-    fn i64_to_disr(&self, val: i64) -> Option<Disr>;
-    fn u64_to_disr(&self, val: u64) -> Option<Disr>;
     fn disr_incr(&self, val: Disr) -> Option<Disr>;
-    fn disr_string(&self, val: Disr) -> String;
-    fn disr_wrap_incr(&self, val: Option<Disr>) -> Disr;
+    fn assert_ty_matches(&self, val: Disr);
+    fn initial_discriminant(&self, tcx: &TyCtxt) -> Disr;
 }
 
 impl IntTypeExt for attr::IntType {
@@ -57,98 +56,48 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn i64_to_disr(&self, val: i64) -> Option<Disr> {
+    fn initial_discriminant(&self, tcx: &TyCtxt) -> Disr {
         match *self {
-            SignedInt(ast::IntTy::I8)    => val.to_i8()  .map(|v| v as Disr),
-            SignedInt(ast::IntTy::I16)   => val.to_i16() .map(|v| v as Disr),
-            SignedInt(ast::IntTy::I32)   => val.to_i32() .map(|v| v as Disr),
-            SignedInt(ast::IntTy::I64)   => val.to_i64() .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U8)  => val.to_u8()  .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U16) => val.to_u16() .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U32) => val.to_u32() .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U64) => val.to_u64() .map(|v| v as Disr),
-
-            UnsignedInt(ast::UintTy::Us) |
-            SignedInt(ast::IntTy::Is) => unreachable!(),
+            SignedInt(ast::IntTy::I8)    => ConstInt::I8(0),
+            SignedInt(ast::IntTy::I16)   => ConstInt::I16(0),
+            SignedInt(ast::IntTy::I32)   => ConstInt::I32(0),
+            SignedInt(ast::IntTy::I64)   => ConstInt::I64(0),
+            SignedInt(ast::IntTy::Is) => match tcx.sess.target.int_type {
+                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32(0)),
+                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64(0)),
+                _ => unreachable!(),
+            },
+            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8(0),
+            UnsignedInt(ast::UintTy::U16) => ConstInt::U16(0),
+            UnsignedInt(ast::UintTy::U32) => ConstInt::U32(0),
+            UnsignedInt(ast::UintTy::U64) => ConstInt::U64(0),
+            UnsignedInt(ast::UintTy::Us) => match tcx.sess.target.uint_type {
+                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(0)),
+                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(0)),
+                _ => unreachable!(),
+            },
         }
     }
 
-    fn u64_to_disr(&self, val: u64) -> Option<Disr> {
-        match *self {
-            SignedInt(ast::IntTy::I8)    => val.to_i8()  .map(|v| v as Disr),
-            SignedInt(ast::IntTy::I16)   => val.to_i16() .map(|v| v as Disr),
-            SignedInt(ast::IntTy::I32)   => val.to_i32() .map(|v| v as Disr),
-            SignedInt(ast::IntTy::I64)   => val.to_i64() .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U8)  => val.to_u8()  .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U16) => val.to_u16() .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U32) => val.to_u32() .map(|v| v as Disr),
-            UnsignedInt(ast::UintTy::U64) => val.to_u64() .map(|v| v as Disr),
-
-            UnsignedInt(ast::UintTy::Us) |
-            SignedInt(ast::IntTy::Is) => unreachable!(),
+    fn assert_ty_matches(&self, val: Disr) {
+        match (*self, val) {
+            (SignedInt(ast::IntTy::I8), ConstInt::I8(_)) => {},
+            (SignedInt(ast::IntTy::I16), ConstInt::I16(_)) => {},
+            (SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => {},
+            (SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => {},
+            (SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => {},
+            (UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => {},
+            (UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => {},
+            (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
+            (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
+            (UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => {},
+            _ => panic!("disr type mismatch: {:?} vs {:?}", self, val),
         }
     }
 
     fn disr_incr(&self, val: Disr) -> Option<Disr> {
-        macro_rules! add1 {
-            ($e:expr) => { $e.and_then(|v|v.checked_add(1)).map(|v| v as Disr) }
-        }
-        match *self {
-            // SignedInt repr means we *want* to reinterpret the bits
-            // treating the highest bit of Disr as a sign-bit, so
-            // cast to i64 before range-checking.
-            SignedInt(ast::IntTy::I8)    => add1!((val as i64).to_i8()),
-            SignedInt(ast::IntTy::I16)   => add1!((val as i64).to_i16()),
-            SignedInt(ast::IntTy::I32)   => add1!((val as i64).to_i32()),
-            SignedInt(ast::IntTy::I64)   => add1!(Some(val as i64)),
-
-            UnsignedInt(ast::UintTy::U8)  => add1!(val.to_u8()),
-            UnsignedInt(ast::UintTy::U16) => add1!(val.to_u16()),
-            UnsignedInt(ast::UintTy::U32) => add1!(val.to_u32()),
-            UnsignedInt(ast::UintTy::U64) => add1!(Some(val)),
-
-            UnsignedInt(ast::UintTy::Us) |
-            SignedInt(ast::IntTy::Is) => unreachable!(),
-        }
-    }
-
-    // This returns a String because (1.) it is only used for
-    // rendering an error message and (2.) a string can represent the
-    // full range from `i64::MIN` through `u64::MAX`.
-    fn disr_string(&self, val: Disr) -> String {
-        match *self {
-            SignedInt(ast::IntTy::I8)    => format!("{}", val as i8 ),
-            SignedInt(ast::IntTy::I16)   => format!("{}", val as i16),
-            SignedInt(ast::IntTy::I32)   => format!("{}", val as i32),
-            SignedInt(ast::IntTy::I64)   => format!("{}", val as i64),
-            UnsignedInt(ast::UintTy::U8)  => format!("{}", val as u8 ),
-            UnsignedInt(ast::UintTy::U16) => format!("{}", val as u16),
-            UnsignedInt(ast::UintTy::U32) => format!("{}", val as u32),
-            UnsignedInt(ast::UintTy::U64) => format!("{}", val as u64),
-
-            UnsignedInt(ast::UintTy::Us) |
-            SignedInt(ast::IntTy::Is) => unreachable!(),
-        }
-    }
-
-    fn disr_wrap_incr(&self, val: Option<Disr>) -> Disr {
-        macro_rules! add1 {
-            ($e:expr) => { ($e).wrapping_add(1) as Disr }
-        }
-        let val = val.unwrap_or(ty::INITIAL_DISCRIMINANT_VALUE);
-        match *self {
-            SignedInt(ast::IntTy::I8)    => add1!(val as i8 ),
-            SignedInt(ast::IntTy::I16)   => add1!(val as i16),
-            SignedInt(ast::IntTy::I32)   => add1!(val as i32),
-            SignedInt(ast::IntTy::I64)   => add1!(val as i64),
-            UnsignedInt(ast::UintTy::U8)  => add1!(val as u8 ),
-            UnsignedInt(ast::UintTy::U16) => add1!(val as u16),
-            UnsignedInt(ast::UintTy::U32) => add1!(val as u32),
-            UnsignedInt(ast::UintTy::U64) => add1!(val as u64),
-
-            UnsignedInt(ast::UintTy::Us) |
-            SignedInt(ast::IntTy::Is) => unreachable!(),
-        }
+        self.assert_ty_matches(val);
+        (val + ConstInt::Infer(1)).ok()
     }
 }
 
@@ -266,13 +215,11 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    /// Returns `(normalized_type, ty)`, where `normalized_type` is the
-    /// IntType representation of one of {i64,i32,i16,i8,u64,u32,u16,u8},
-    /// and `ty` is the original type (i.e. may include `isize` or
-    /// `usize`).
-    pub fn enum_repr_type(&self, opt_hint: Option<&attr::ReprAttr>)
-                          -> (attr::IntType, Ty<'tcx>) {
-        let repr_type = match opt_hint {
+    /// Returns the IntType representation.
+    /// This used to ensure `int_ty` doesn't contain `usize` and `isize`
+    /// by converting them to their actual types. That doesn't happen anymore.
+    pub fn enum_repr_type(&self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
+        match opt_hint {
             // Feed in the given type
             Some(&attr::ReprInt(_, int_t)) => int_t,
             // ... but provide sensible default if none provided
@@ -280,18 +227,7 @@ impl<'tcx> TyCtxt<'tcx> {
             // NB. Historically `fn enum_variants` generate i64 here, while
             // rustc_typeck::check would generate isize.
             _ => SignedInt(ast::IntTy::Is),
-        };
-
-        let repr_type_ty = repr_type.to_ty(self);
-        let repr_type = match repr_type {
-            SignedInt(ast::IntTy::Is) =>
-                SignedInt(self.sess.target.int_type),
-            UnsignedInt(ast::UintTy::Us) =>
-                UnsignedInt(self.sess.target.uint_type),
-            other => other
-        };
-
-        (repr_type, repr_type_ty)
+        }
     }
 
     /// Returns the deeply last field of nested structures, or the same type,
@@ -335,15 +271,16 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn eval_repeat_count(&self, count_expr: &hir::Expr) -> usize {
         let hint = UncheckedExprHint(self.types.usize);
         match const_eval::eval_const_expr_partial(self, count_expr, hint, None) {
-            Ok(val) => {
-                let found = match val {
-                    ConstVal::Uint(count) => return count as usize,
-                    ConstVal::Int(count) if count >= 0 => return count as usize,
-                    const_val => const_val.description(),
-                };
+            Ok(ConstVal::Integral(ConstInt::Usize(count))) => {
+                let val = count.as_u64(self.sess.target.uint_type);
+                assert_eq!(val as usize as u64, val);
+                val as usize
+            },
+            Ok(const_val) => {
                 span_err!(self.sess, count_expr.span, E0306,
-                    "expected positive integer for repeat count, found {}",
-                    found);
+                          "expected positive integer for repeat count, found {}",
+                          const_val.description());
+                0
             }
             Err(err) => {
                 let err_msg = match count_expr.node {
@@ -360,9 +297,9 @@ impl<'tcx> TyCtxt<'tcx> {
                 };
                 span_err!(self.sess, count_expr.span, E0307,
                     "expected constant integer for repeat count, {}", err_msg);
+                0
             }
         }
-        0
     }
 
     /// Given a set of predicates that apply to an object type, returns

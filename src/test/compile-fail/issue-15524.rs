@@ -12,12 +12,12 @@ const N: isize = 1;
 
 enum Foo {
     A = 1,
-    B = 1, //~ ERROR discriminant value `1` already exists
+    B = 1, //~ ERROR discriminant value `1isize` already exists
     //~^^ NOTE conflicting
     C = 0,
-    D, //~ ERROR discriminant value `1` already exists
+    D, //~ ERROR discriminant value `1isize` already exists
     //~^^^^^ NOTE conflicting
-    E = N, //~ ERROR discriminant value `1` already exists
+    E = N, //~ ERROR discriminant value `1isize` already exists
     //~^^^^^^^ NOTE conflicting
 }
 

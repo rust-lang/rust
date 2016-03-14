@@ -35,6 +35,8 @@ use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
 
+use rustc_const_eval::ConstInt;
+
 use rustc::mir;
 use rustc::mir::visit::MutVisitor;
 
@@ -198,7 +200,7 @@ fn reexports<'a>(d: rbml::Doc<'a>) -> reader::TaggedDocsIterator<'a> {
     reader::tagged_docs(d, tag_items_data_item_reexport)
 }
 
-fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
+fn variant_disr_val(d: rbml::Doc) -> Option<u64> {
     reader::maybe_get_doc(d, tag_disr_val).and_then(|val_doc| {
         reader::with_doc_data(val_doc, |data| {
             str::from_utf8(data).ok().and_then(|s| s.parse().ok())
@@ -396,7 +398,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                 did: did,
                 name: item_name(intr, item),
                 fields: get_variant_fields(intr, cdata, item, tcx),
-                disr_val: disr,
+                disr_val: ConstInt::Infer(disr),
                 kind: expect_variant_kind(item_family(item), tcx),
             }
         }).collect()
@@ -432,7 +434,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             did: did,
             name: item_name(intr, doc),
             fields: get_variant_fields(intr, cdata, doc, tcx),
-            disr_val: 0,
+            disr_val: ConstInt::Infer(0),
             kind: expect_variant_kind(item_family(doc), tcx),
         }
     }

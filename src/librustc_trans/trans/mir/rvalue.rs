@@ -11,6 +11,8 @@
 use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty};
 use middle::ty::cast::{CastTy, IntTy};
+use middle::const_eval::ConstVal;
+use rustc_const_eval::ConstInt;
 use rustc::mir::repr as mir;
 
 use trans::asm;
@@ -95,7 +97,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let tr_elem = self.trans_operand(&bcx, elem);
-                let size = self.trans_constval(&bcx, &count.value, count.ty).immediate();
+                let count = ConstVal::Integral(ConstInt::Usize(count.value));
+                let size = self.trans_constval(&bcx, &count, bcx.tcx().types.usize).immediate();
                 let bcx = bcx.map_block(|block| {
                     let base = expr::get_dataptr(block, dest.llval);
                     tvec::iter_vec_raw(block, base, tr_elem.ty, size, |block, llslot, _| {

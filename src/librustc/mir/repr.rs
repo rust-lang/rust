@@ -10,6 +10,7 @@
 
 use graphviz::IntoCow;
 use middle::const_eval::ConstVal;
+use rustc_const_eval::{ConstUsize, ConstInt};
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
@@ -851,13 +852,12 @@ pub struct Constant<'tcx> {
 pub struct TypedConstVal<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
-    pub value: ConstVal
+    pub value: ConstUsize,
 }
 
 impl<'tcx> Debug for TypedConstVal<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        try!(write!(fmt, "const "));
-        fmt_const_val(fmt, &self.value)
+        write!(fmt, "const {}", ConstInt::Usize(self.value))
     }
 }
 
@@ -897,8 +897,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
     use middle::const_eval::ConstVal::*;
     match *const_val {
         Float(f) => write!(fmt, "{:?}", f),
-        Int(n) => write!(fmt, "{:?}", n),
-        Uint(n) => write!(fmt, "{:?}", n),
+        Integral(n) => write!(fmt, "{}", n),
         Str(ref s) => write!(fmt, "{:?}", s),
         ByteStr(ref bytes) => {
             let escaped: String = bytes
@@ -911,6 +910,8 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
             write!(fmt, "{}", node_to_string(node_id)),
+        Char(c) => write!(fmt, "{:?}", c),
+        Dummy => unreachable!(),
     }
 }
 
