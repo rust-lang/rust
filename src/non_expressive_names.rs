@@ -262,12 +262,7 @@ fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
         }
         if let Some(b2) = b_chars.next() {
             // check if there's just one character inserted
-            if a == b2 && a_chars.eq(b_chars) {
-                return false;
-            } else {
-                // two charaters don't match
-                return true;
-            }
+            return !(a == b2 && a_chars.eq(b_chars));
         } else {
             // tuple
             // ntuple

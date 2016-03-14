@@ -47,44 +47,39 @@ impl LintPass for NeedlessBool {
 
 impl LateLintPass for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+        use self::Expression::*;
         if let ExprIf(ref pred, ref then_block, Some(ref else_expr)) = e.node {
+            let reduce = |hint: &str, not| {
+                let pred_snip = snippet(cx, pred.span, "..");
+                let hint = if pred_snip == ".." {
+                    hint.into()
+                } else {
+                    format!("`{}{}`", not, pred_snip)
+                };
+                span_lint(cx,
+                          NEEDLESS_BOOL,
+                          e.span,
+                          &format!("you can reduce this if-then-else expression to just {}", hint));
+            };
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
-                (Some(true), Some(true)) => {
+                (RetBool(true), RetBool(true)) |
+                (Bool(true), Bool(true)) => {
                     span_lint(cx,
                               NEEDLESS_BOOL,
                               e.span,
                               "this if-then-else expression will always return true");
                 }
-                (Some(false), Some(false)) => {
+                (RetBool(false), RetBool(false)) |
+                (Bool(false), Bool(false)) => {
                     span_lint(cx,
                               NEEDLESS_BOOL,
                               e.span,
                               "this if-then-else expression will always return false");
                 }
-                (Some(true), Some(false)) => {
-                    let pred_snip = snippet(cx, pred.span, "..");
-                    let hint = if pred_snip == ".." {
-                        "its predicate".into()
-                    } else {
-                        format!("`{}`", pred_snip)
-                    };
-                    span_lint(cx,
-                              NEEDLESS_BOOL,
-                              e.span,
-                              &format!("you can reduce this if-then-else expression to just {}", hint));
-                }
-                (Some(false), Some(true)) => {
-                    let pred_snip = snippet(cx, pred.span, "..");
-                    let hint = if pred_snip == ".." {
-                        "`!` and its predicate".into()
-                    } else {
-                        format!("`!{}`", pred_snip)
-                    };
-                    span_lint(cx,
-                              NEEDLESS_BOOL,
-                              e.span,
-                              &format!("you can reduce this if-then-else expression to just {}", hint));
-                }
+                (RetBool(true), RetBool(false)) => reduce("its predicate", "return "),
+                (Bool(true), Bool(false)) => reduce("its predicate", ""),
+                (RetBool(false), RetBool(true)) => reduce("`!` and its predicate", "return !"),
+                (Bool(false), Bool(true)) => reduce("`!` and its predicate", "!"),
                 _ => (),
             }
         }
@@ -102,9 +97,10 @@ impl LintPass for BoolComparison {
 
 impl LateLintPass for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
+        use self::Expression::*;
         if let ExprBinary(Spanned{ node: BiEq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-                (Some(true), None) => {
+                (Bool(true), Other) => {
                     let hint = snippet(cx, right_side.span, "..").into_owned();
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
@@ -114,7 +110,7 @@ impl LateLintPass for BoolComparison {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
-                (None, Some(true)) => {
+                (Other, Bool(true)) => {
                     let hint = snippet(cx, left_side.span, "..").into_owned();
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
@@ -124,7 +120,7 @@ impl LateLintPass for BoolComparison {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
-                (Some(false), None) => {
+                (Bool(false), Other) => {
                     let hint = format!("!{}", snippet(cx, right_side.span, ".."));
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
@@ -134,7 +130,7 @@ impl LateLintPass for BoolComparison {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
                 }
-                (None, Some(false)) => {
+                (Other, Bool(false)) => {
                     let hint = format!("!{}", snippet(cx, left_side.span, ".."));
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
@@ -150,24 +146,42 @@ impl LateLintPass for BoolComparison {
     }
 }
 
-fn fetch_bool_block(block: &Block) -> Option<bool> {
-    if block.stmts.is_empty() {
-        block.expr.as_ref().and_then(|e| fetch_bool_expr(e))
-    } else {
-        None
+enum Expression {
+    Bool(bool),
+    RetBool(bool),
+    Other,
+}
+
+fn fetch_bool_block(block: &Block) -> Expression {
+    match (&*block.stmts, block.expr.as_ref()) {
+        ([], Some(e)) => fetch_bool_expr(&**e),
+        ([ref e], None) => if let StmtSemi(ref e, _) = e.node {
+            if let ExprRet(_) = e.node {
+                fetch_bool_expr(&**e)
+            } else {
+                Expression::Other
+            }
+        } else {
+            Expression::Other
+        },
+        _ => Expression::Other,
     }
 }
 
-fn fetch_bool_expr(expr: &Expr) -> Option<bool> {
+fn fetch_bool_expr(expr: &Expr) -> Expression {
     match expr.node {
         ExprBlock(ref block) => fetch_bool_block(block),
         ExprLit(ref lit_ptr) => {
             if let LitKind::Bool(value) = lit_ptr.node {
-                Some(value)
+                Expression::Bool(value)
             } else {
-                None
+                Expression::Other
             }
-        }
-        _ => None,
+        },
+        ExprRet(Some(ref expr)) => match fetch_bool_expr(expr) {
+            Expression::Bool(value) => Expression::RetBool(value),
+            _ => Expression::Other,
+        },
+        _ => Expression::Other,
     }
 }
