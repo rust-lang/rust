@@ -31,9 +31,6 @@ extern crate unicode_normalization;
 // for semver check in attrs.rs
 extern crate semver;
 
-// for levensthein distance
-extern crate strsim;
-
 // for regex checking
 extern crate regex_syntax;
 
@@ -205,7 +202,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box print::PrintLint);
     reg.register_late_lint_pass(box vec::UselessVec);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
-        similarity_threshold: 1,
         max_single_char_names: 5,
     });
     reg.register_late_lint_pass(box drop_ref::DropRefPass);

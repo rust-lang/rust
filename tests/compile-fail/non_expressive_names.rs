@@ -15,6 +15,11 @@ fn main() {
     let b_bar: i32;
     let c_bar: i32;
 
+    let items = [5];
+    for item in &items {
+        loop {}
+    }
+
     let foo_x: i32;
     let foo_y: i32;
 

@@ -4,7 +4,6 @@ use syntax::parse::token::InternedString;
 use syntax::ast::*;
 use syntax::visit::{self, FnKind};
 use utils::{span_lint_and_then, in_macro, span_lint};
-use strsim::levenshtein;
 
 /// **What it does:** This lint warns about names that are very similar and thus confusing
 ///
@@ -33,7 +32,6 @@ declare_lint! {
 }
 
 pub struct NonExpressiveNames {
-    pub similarity_threshold: usize,
     pub max_single_char_names: usize,
 }
 
@@ -44,7 +42,7 @@ impl LintPass for NonExpressiveNames {
 }
 
 struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
-    names: Vec<(InternedString, Span)>,
+    names: Vec<(InternedString, Span, usize)>,
     cx: &'a EarlyContext<'b>,
     lint: &'a NonExpressiveNames,
     single_char_names: Vec<char>,
@@ -65,7 +63,43 @@ impl<'v, 'a, 'b, 'c> visit::Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> 
     }
 }
 
+fn whitelisted(interned_name: &str) -> bool {
+    for &allow in WHITELIST {
+        if interned_name == allow {
+            return true;
+        }
+        if interned_name.len() <= allow.len() {
+            continue;
+        }
+        // allow_*
+        let allow_start = allow.chars().chain(Some('_'));
+        if interned_name.chars().zip(allow_start).all(|(l, r)| l == r) {
+            return true;
+        }
+        // *_allow
+        let allow_end = Some('_').into_iter().chain(allow.chars());
+        if interned_name.chars().rev().zip(allow_end.rev()).all(|(l, r)| l == r) {
+            return true;
+        }
+    }
+    false
+}
+
 impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
+    fn check_short_name(&mut self, c: char, span: Span) {
+        // make sure we ignore shadowing
+        if self.0.single_char_names.contains(&c) {
+            return;
+        }
+        self.0.single_char_names.push(c);
+        if self.0.single_char_names.len() >= self.0.lint.max_single_char_names {
+            span_lint(self.0.cx,
+                      MANY_SINGLE_CHAR_NAMES,
+                      span,
+                      &format!("{}th binding whose name is just one char",
+                               self.0.single_char_names.len()));
+        }
+    }
     fn check_name(&mut self, span: Span, name: Name) {
         if in_macro(self.0.cx, span) {
             return;
@@ -80,67 +114,68 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                 return;
             }
             let c = interned_name.chars().next().expect("already checked");
-            // make sure we ignore shadowing
-            if self.0.single_char_names.contains(&c) {
-                return;
-            }
-            self.0.single_char_names.push(c);
-            if self.0.single_char_names.len() >= self.0.lint.max_single_char_names {
-                span_lint(self.0.cx,
-                          MANY_SINGLE_CHAR_NAMES,
-                          span,
-                          &format!("{}th binding whose name is just one char",
-                                   self.0.single_char_names.len()));
-            }
+            self.check_short_name(c, span);
             return;
         }
-        for &allow in WHITELIST {
-            if interned_name == allow {
-                return;
-            }
-            if interned_name.len() <= allow.len() {
-                continue;
-            }
-            // allow_*
-            let allow_start = allow.chars().chain(Some('_'));
-            if interned_name.chars().zip(allow_start).all(|(l, r)| l == r) {
-                return;
-            }
-            // *_allow
-            let allow_end = Some('_').into_iter().chain(allow.chars());
-            if interned_name.chars().rev().zip(allow_end.rev()).all(|(l, r)| l == r) {
-                return;
-            }
+        if whitelisted(&interned_name) {
+            return;
         }
-        for &(ref existing_name, sp) in &self.0.names {
-            let dist = levenshtein(&interned_name, &existing_name);
-            // equality is caught by shadow lints
-            if dist == 0 {
-                continue;
-            }
-            // if they differ enough it's all good
-            if dist > self.0.lint.similarity_threshold {
-                continue;
-            }
-            // are we doing stuff like `for item in items`?
-            if interned_name.starts_with(&**existing_name) ||
-               existing_name.starts_with(&*interned_name) ||
-               interned_name.ends_with(&**existing_name) ||
-               existing_name.ends_with(&*interned_name) {
-                continue;
-            }
+        for &(ref existing_name, sp, existing_len) in &self.0.names {
             let mut split_at = None;
-            if dist == 1 {
-                // are we doing stuff like a_bar, b_bar, c_bar?
-                if interned_name.chars().next() != existing_name.chars().next() {
-                    if interned_name.chars().nth(1) == Some('_') {
+            if existing_len > count {
+                if existing_len - count != 1 {
+                    continue;
+                }
+                if levenstein_not_1(&interned_name, &existing_name) {
+                    continue;
+                }
+            } else if existing_len < count {
+                if count - existing_len != 1 {
+                    continue;
+                }
+                if levenstein_not_1(&existing_name, &interned_name) {
+                    continue;
+                }
+            } else {
+                let mut interned_chars = interned_name.chars();
+                let mut existing_chars = existing_name.chars();
+
+                if interned_chars.next() != existing_chars.next() {
+                    let i = interned_chars.next().expect("we know we have more than 1 char");
+                    let e = existing_chars.next().expect("we know we have more than 1 char");
+                    if i == e {
+                        if i == '_' {
+                            // allowed similarity x_foo, y_foo
+                            // or too many chars differ (x_foo, y_boo)
+                            continue;
+                        } else if interned_chars.ne(existing_chars) {
+                            // too many chars differ
+                            continue
+                        }
+                    } else {
+                        // too many chars differ
                         continue;
                     }
                     split_at = interned_name.chars().next().map(|c| c.len_utf8());
-                }
-                // are we doing stuff like foo_x, foo_y, foo_z?
-                if interned_name.chars().rev().next() != existing_name.chars().rev().next() {
-                    if interned_name.chars().rev().nth(1) == Some('_') {
+                } else if interned_chars.next_back() == existing_chars.next_back() {
+                    if interned_chars.zip(existing_chars).filter(|&(i, e)| i != e).count() != 1 {
+                        // too many chars differ, or none differ (aka shadowing)
+                        continue;
+                    }
+                } else {
+                    let i = interned_chars.next_back().expect("we know we have more than 2 chars");
+                    let e = existing_chars.next_back().expect("we know we have more than 2 chars");
+                    if i == e {
+                        if i == '_' {
+                            // allowed similarity foo_x, foo_x
+                            // or too many chars differ (foo_x, boo_x)
+                            continue;
+                        } else if interned_chars.ne(existing_chars) {
+                            // too many chars differ
+                            continue
+                        }
+                    } else {
+                        // too many chars differ
                         continue;
                     }
                     split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
@@ -161,7 +196,7 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                                });
             return;
         }
-        self.0.names.push((interned_name, span));
+        self.0.names.push((interned_name, span, count));
     }
 }
 
@@ -214,4 +249,31 @@ impl EarlyLintPass for NonExpressiveNames {
         // walk all other bindings
         visit::walk_block(&mut visitor, blk);
     }
+}
+
+/// precondition: a_name.chars().count() < b_name.chars().count()
+fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
+    debug_assert!(a_name.chars().count() < b_name.chars().count());
+    let mut a_chars = a_name.chars();
+    let mut b_chars = b_name.chars();
+    while let (Some(a), Some(b)) = (a_chars.next(), b_chars.next()) {
+        if a == b {
+            continue;
+        }
+        if let Some(b2) = b_chars.next() {
+            // check if there's just one character inserted
+            if a == b2 && a_chars.eq(b_chars) {
+                return false;
+            } else {
+                // two charaters don't match
+                return true;
+            }
+        } else {
+            // tuple
+            // ntuple
+            return true;
+        }
+    }
+    // for item in items
+    true
 }
