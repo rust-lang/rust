@@ -85,14 +85,13 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                 return;
             }
             self.0.single_char_names.push(c);
-            if self.0.single_char_names.len() < self.0.lint.max_single_char_names {
-                return;
+            if self.0.single_char_names.len() >= self.0.lint.max_single_char_names {
+                span_lint(self.0.cx,
+                          MANY_SINGLE_CHAR_NAMES,
+                          span,
+                          &format!("{}th binding whose name is just one char",
+                                   self.0.single_char_names.len()));
             }
-            span_lint(self.0.cx,
-                      MANY_SINGLE_CHAR_NAMES,
-                      span,
-                      &format!("{}th binding whose name is just one char",
-                               self.0.single_char_names.len()));
             return;
         }
         for &allow in WHITELIST {

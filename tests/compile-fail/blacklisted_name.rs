@@ -3,7 +3,7 @@
 
 #![allow(dead_code)]
 #![allow(single_match)]
-#![allow(unused_variables)]
+#![allow(unused_variables, similar_names)]
 #![deny(blacklisted_name)]
 
 fn test(foo: ()) {} //~ERROR use of a blacklisted/placeholder name `foo`
