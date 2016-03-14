@@ -283,7 +283,6 @@ impl<'a> ::ModuleS<'a> {
 
     fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
         if !binding.defined_with(DefModifiers::PUBLIC | DefModifiers::IMPORTABLE) { return }
-        if binding.is_extern_crate() { return }
         for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
             let _ = importer.try_define_child(name, ns, directive.import(binding, None));
         }
