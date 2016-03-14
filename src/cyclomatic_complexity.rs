@@ -47,6 +47,10 @@ impl CyclomaticComplexity {
         let cfg = CFG::new(cx.tcx, block);
         let n = cfg.graph.len_nodes() as u64;
         let e = cfg.graph.len_edges() as u64;
+        if e + 2 < n {
+            // the function has unreachable code, other lints should catch this
+            return;
+        }
         let cc = e + 2 - n;
         let mut helper = CCHelper {
             match_arms: 0,
