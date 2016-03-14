@@ -11,7 +11,7 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, BinOpKind, self};
+use syntax::ast::{MetaItem, Expr, self};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
@@ -64,7 +64,7 @@ pub fn ordering_collapsed(cx: &mut ExtCtxt,
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> P<Expr> {
-    let test_id = cx.ident_of("__test");
+    let test_id = cx.ident_of("cmp");
     let equals_path = cx.path_global(span,
                                      cx.std_path(&["cmp", "Ordering", "Equal"]));
 
@@ -73,36 +73,31 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
     /*
     Builds:
 
-    let __test = ::std::cmp::Ord::cmp(&self_field1, &other_field1);
-    if other == ::std::cmp::Ordering::Equal {
-        let __test = ::std::cmp::Ord::cmp(&self_field2, &other_field2);
-        if __test == ::std::cmp::Ordering::Equal {
-            ...
-        } else {
-            __test
-        }
-    } else {
-        __test
+    match ::std::cmp::Ord::cmp(&self_field1, &other_field1) {
+        ::std::cmp::Ordering::Equal =>
+            match ::std::cmp::Ord::cmp(&self_field2, &other_field2) {
+                ::std::cmp::Ordering::Equal => {
+                    ...
+                }
+                cmp => cmp
+            },
+        cmp => cmp
     }
-
-    FIXME #6449: These `if`s could/should be `match`es.
     */
     cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
         |cx, span, old, self_f, other_fs| {
-            // let __test = new;
-            // if __test == ::std::cmp::Ordering::Equal {
-            //    old
-            // } else {
-            //    __test
+            // match new {
+            //     ::std::cmp::Ordering::Equal => old,
+            //     cmp => cmp
             // }
 
             let new = {
                 let other_f = match (other_fs.len(), other_fs.get(0)) {
                     (1, Some(o_f)) => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`"),
                 };
 
                 let args = vec![
@@ -113,20 +108,21 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
                 cx.expr_call_global(span, cmp_path.clone(), args)
             };
 
-            let assign = cx.stmt_let(span, false, test_id, new);
+            let eq_arm = cx.arm(span,
+                                vec![cx.pat_enum(span,
+                                                 equals_path.clone(),
+                                                 vec![])],
+                                old);
+            let neq_arm = cx.arm(span,
+                                 vec![cx.pat_ident(span, test_id)],
+                                 cx.expr_ident(span, test_id));
 
-            let cond = cx.expr_binary(span, BinOpKind::Eq,
-                                      cx.expr_ident(span, test_id),
-                                      cx.expr_path(equals_path.clone()));
-            let if_ = cx.expr_if(span,
-                                 cond,
-                                 old, Some(cx.expr_ident(span, test_id)));
-            cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
+            cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         cx.expr_path(equals_path.clone()),
         Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `derives(Ord)`")
+                cx.span_bug(span, "not exactly 2 arguments in `derive(Ord)`")
             } else {
                 ordering_collapsed(cx, span, tag_tuple)
             }

@@ -46,6 +46,7 @@ enum Ei64 {
     Bi64 = 0x8000_0000
 }
 
+#[derive(PartialEq)]
 enum Eu64 {
     Au64 = 0,
     Bu64 = 0x8000_0000_0000_0000
@@ -60,4 +61,7 @@ pub fn main() {
     assert_eq!(size_of::<Eu32>(), 4);
     assert_eq!(size_of::<Ei64>(), 8);
     assert_eq!(size_of::<Eu64>(), 8);
+
+    // ensure no i32 collisions
+    assert!(Eu64::Au64 != Eu64::Bu64);
 }
