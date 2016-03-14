@@ -202,7 +202,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box print::PrintLint);
     reg.register_late_lint_pass(box vec::UselessVec);
     reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
-        max_single_char_names: 5,
+        max_single_char_names: conf.max_single_char_names,
     });
     reg.register_late_lint_pass(box drop_ref::DropRefPass);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);

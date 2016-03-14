@@ -153,6 +153,8 @@ define_Conf! {
     ("too-many-arguments-threshold", too_many_arguments_threshold, 7 => u64),
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
     ("type-complexity-threshold", type_complexity_threshold, 250 => u64),
+    /// Lint: MANY_SINGLE_CHAR_NAMES. The maximum number of single char bindings a scope may have
+    ("single-char-binding-names-threshold", max_single_char_names, 5 => u64),
 }
 
 /// Read the `toml` configuration file. The function will ignore “File not found” errors iif

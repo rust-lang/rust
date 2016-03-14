@@ -32,7 +32,7 @@ declare_lint! {
 }
 
 pub struct NonExpressiveNames {
-    pub max_single_char_names: usize,
+    pub max_single_char_names: u64,
 }
 
 impl LintPass for NonExpressiveNames {
@@ -92,7 +92,7 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
             return;
         }
         self.0.single_char_names.push(c);
-        if self.0.single_char_names.len() >= self.0.lint.max_single_char_names {
+        if self.0.single_char_names.len() as u64 >= self.0.lint.max_single_char_names {
             span_lint(self.0.cx,
                       MANY_SINGLE_CHAR_NAMES,
                       span,
