@@ -205,7 +205,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     current_dir().unwrap().join(path)
                 }
             },
-            Input::Str(_) => PathBuf::new() // FIXME: this is wrong
+            Input::Str { ref name, .. } => PathBuf::from(name.clone()),
         };
 
         Crate {

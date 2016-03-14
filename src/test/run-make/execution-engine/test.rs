@@ -216,7 +216,10 @@ fn build_exec_options(sysroot: PathBuf) -> Options {
 /// for crates used in the given input.
 fn compile_program(input: &str, sysroot: PathBuf)
                    -> Option<(llvm::ModuleRef, Vec<PathBuf>)> {
-    let input = Input::Str(input.to_string());
+    let input = Input::Str {
+        name: driver::anon_src(),
+        input: input.to_string(),
+    };
     let thread = Builder::new().name("compile_program".to_string());
 
     let handle = thread.spawn(move || {
