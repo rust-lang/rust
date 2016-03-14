@@ -13,11 +13,26 @@ use std::mem;
 /// `BitSlice` provides helper methods for treating a `[usize]`
 /// as a bitvector.
 pub trait BitSlice {
+    fn clear_bit(&mut self, idx: usize) -> bool;
     fn set_bit(&mut self, idx: usize) -> bool;
     fn get_bit(&self, idx: usize) -> bool;
 }
 
 impl BitSlice for [usize] {
+    /// Clears bit at `idx` to 0; returns true iff this changed `self.`
+    fn clear_bit(&mut self, idx: usize) -> bool {
+        let words = self;
+        debug!("clear_bit: words={} idx={}",
+               bits_to_string(words, words.len() * mem::size_of::<usize>()), bit_str(idx));
+        let BitLookup { word, bit_in_word, bit_mask } = bit_lookup(idx);
+        debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, bit_mask);
+        let oldv = words[word];
+        let newv = oldv & !bit_mask;
+        words[word] = newv;
+        oldv != newv
+    }
+
+    /// Sets bit at `idx` to 1; returns true iff this changed `self.`
     fn set_bit(&mut self, idx: usize) -> bool {
         let words = self;
         debug!("set_bit: words={} idx={}",
@@ -30,6 +45,7 @@ impl BitSlice for [usize] {
         oldv != newv
     }
 
+    /// Extracts value of bit at `idx` in `self`.
     fn get_bit(&self, idx: usize) -> bool {
         let words = self;
         let BitLookup { word, bit_mask, .. } = bit_lookup(idx);
@@ -37,7 +53,14 @@ impl BitSlice for [usize] {
     }
 }
 
-struct BitLookup { word: usize, bit_in_word: usize, bit_mask: usize }
+struct BitLookup {
+    /// An index of the word holding the bit in original `[usize]` of query.
+    word: usize,
+    /// Index of the particular bit within the word holding the bit.
+    bit_in_word: usize,
+    /// Word with single 1-bit set corresponding to where the bit is located.
+    bit_mask: usize,
+}
 
 #[inline]
 fn bit_lookup(bit: usize) -> BitLookup {

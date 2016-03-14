@@ -18,7 +18,7 @@ use std::mem;
 use std::usize;
 
 use super::MirBorrowckCtxt;
-use super::gather_moves::{Location, MoveData, MovePathData, MovePathIndex, PathMap};
+use super::gather_moves::{Location, MoveData, MovePathData, MovePathIndex, MoveOutIndex, PathMap};
 use super::graphviz;
 use bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 
@@ -35,15 +35,31 @@ impl<'b, 'a: 'b, 'tcx: 'a> Dataflow for MirBorrowckCtxt<'b, 'a, 'tcx> {
     }
 }
 
-struct PropagationContext<'c, 'b: 'c, 'a: 'b, 'tcx: 'a> {
+struct PropagationContext<'c, 'b: 'c, 'a: 'b, 'tcx: 'a, OnReturn>
+    where OnReturn: Fn(&MoveData, &mut [usize], &repr::Lvalue)
+{
     mbcx: &'c mut MirBorrowckCtxt<'b, 'a, 'tcx>,
     changed: bool,
+    on_return: OnReturn
 }
 
 impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
     fn propagate(&mut self) {
         let mut temp = vec![0; self.flow_state.sets.words_per_block];
-        let mut propcx = PropagationContext { mbcx: &mut *self, changed: true, };
+        let mut propcx = PropagationContext {
+            mbcx: &mut *self,
+            changed: true,
+            on_return: |move_data, in_out, dest_lval| {
+                let move_path_index = move_data.rev_lookup.find(dest_lval);
+                on_all_children_bits(in_out,
+                                     &move_data.path_map,
+                                     &move_data.move_paths,
+                                     move_path_index,
+                                     &|in_out, mpi| {
+                                         in_out.clear_bit(mpi.idx().unwrap());
+                                     });
+            },
+        };
         while propcx.changed {
             propcx.changed = false;
             propcx.reset(&mut temp);
@@ -79,8 +95,7 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
                     // Every path deinitialized by a *particular move*
                     // has corresponding bit, "gen'ed" (i.e. set)
                     // here, in dataflow vector
-                    let retval = sets.gen_set.set_bit(move_index.idx().unwrap());
-                    assert!(retval);
+                    zero_to_one(&mut sets.gen_set, *move_index);
                 }
                 match stmt.kind {
                     repr::StatementKind::Assign(ref lvalue, _) => {
@@ -88,10 +103,14 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
                         // MoveOuts from it, and *also* all MoveOuts
                         // for children and associated fragment sets.
                         let move_path_index = rev_lookup.find(lvalue);
-                        set_children_kill_bits(sets.kill_set,
-                                               move_path_index,
-                                               path_map,
-                                               move_paths);
+
+                        on_all_children_bits(sets.kill_set,
+                                             path_map,
+                                             move_paths,
+                                             move_path_index,
+                                             &|kill_set, mpi| {
+                                                 kill_set.set_bit(mpi.idx().unwrap());
+                                             });
                     }
                 }
             }
@@ -100,79 +119,47 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
             debug!("terminator {:?} at loc {:?} moves out of move_indexes {:?}",
                    terminator, loc, &loc_map[loc]);
             for move_index in &loc_map[loc] {
-                let retval = sets.gen_set.set_bit(move_index.idx().unwrap());
-                assert!(retval);
-            }
-
-            // Note: while below as originally authored could be
-            // written as an `if let`, it is more future-proof (to MIR
-            // changes) to use an explicit `match` here.
-            match *terminator {
-                None => {}
-                Some(repr::Terminator::Goto { target: _ }) => {}
-                Some(repr::Terminator::If { cond: _, targets: _ }) => {}
-                Some(repr::Terminator::Switch { discr: _, adt_def: _, targets: _ }) => {}
-                Some(repr::Terminator::SwitchInt { discr: _, switch_ty: _, values: _, targets: _ }) => {}
-                Some(repr::Terminator::Resume) => {}
-                Some(repr::Terminator::Return) => {}
-                Some(repr::Terminator::Drop { value: _, target: _, unwind: _ }) => {
-                    // either kind of Drop completely invalidates the
-                    // state of the referenced memory, effectively
-                    // acting like a MoveOut. Such gen-set additions
-                    // were added by the loop above over the loc_map.
-                }
-                Some(repr::Terminator::Call { func: _, args: _, cleanup: _,
-                                              ref destination }) => {
-                    // Note: a followup commit refines this to reflect
-                    // that the destination will be initialized if the
-                    // call succeeds (thus killling any MoveOuts for
-                    // that destination).
-                    //
-                    // That is, this code just does the kills
-                    // unconditionally (which I believe this matches
-                    // the behavior of the old borrowck dataflow
-                    // analysis), but this code also is also removed
-                    // and replaced with something flow-dependent in a
-                    // followup commit.
-
-                    if let Some((ref destination, _)) = *destination {
-                        let move_path_index = rev_lookup.find(destination);
-                        set_children_kill_bits(sets.kill_set,
-                                               move_path_index,
-                                               path_map,
-                                               move_paths);
-                    }
-                }
+                zero_to_one(&mut sets.gen_set, *move_index);
             }
         }
 
-        fn set_children_kill_bits(kill_set: &mut [usize],
-                                  move_path_index: MovePathIndex,
-                                  path_map: &PathMap,
-                                  move_paths: &MovePathData) {
-            assert!(move_path_index.idx().is_some());
-
-            // 1. set kill bits for all moves that directly
-            // influence path for `move_path_index`
-            for move_index in &path_map[move_path_index] {
-                kill_set.set_bit(move_index.idx().unwrap());
-            }
-
-            // 2. for each child of the path (that is named in this
-            //    function), recur.
-            //
-            // (Unnamed children are irrelevant to dataflow; by
-            // definition they have no associated moves.)
-            let mut child_index = move_paths[move_path_index].first_child;
-            while let Some(_) = child_index.idx() {
-                set_children_kill_bits(kill_set, child_index, path_map, move_paths);
-                child_index = move_paths[child_index].next_sibling;
-            }
+        fn zero_to_one(gen_set: &mut [usize], move_index: MoveOutIndex) {
+            let retval = gen_set.set_bit(move_index.idx().unwrap());
+            assert!(retval);
         }
     }
 }
 
-impl<'c, 'b: 'c, 'a: 'b, 'tcx: 'a> PropagationContext<'c, 'b, 'a, 'tcx> {
+fn on_all_children_bits<Each>(set: &mut [usize],
+                              path_map: &PathMap,
+                              move_paths: &MovePathData,
+                              move_path_index: MovePathIndex,
+                              each_child: &Each)
+    where Each: Fn(&mut [usize], MoveOutIndex)
+{
+    assert!(move_path_index.idx().is_some());
+
+    // 1. invoke `each_child` callback for all moves that directly
+    //    influence path for `move_path_index`
+    for move_index in &path_map[move_path_index] {
+        each_child(set, *move_index);
+    }
+
+    // 2. for each child of the path (that is named in this
+    //    function), recur.
+    //
+    // (Unnamed children are irrelevant to dataflow; by
+    // definition they have no associated moves.)
+    let mut child_index = move_paths[move_path_index].first_child;
+    while let Some(_) = child_index.idx() {
+        on_all_children_bits(set, path_map, move_paths, child_index, each_child);
+        child_index = move_paths[child_index].next_sibling;
+    }
+}
+
+impl<'c, 'b: 'c, 'a: 'b, 'tcx: 'a, OnReturn> PropagationContext<'c, 'b, 'a, 'tcx, OnReturn>
+    where OnReturn: Fn(&MoveData, &mut [usize], &repr::Lvalue)
+{
     fn reset(&mut self, bits: &mut [usize]) {
         let e = if self.mbcx.flow_state.operator.initial_value() {usize::MAX} else {0};
         for b in bits {
@@ -190,7 +177,10 @@ impl<'c, 'b: 'c, 'a: 'b, 'tcx: 'a> PropagationContext<'c, 'b, 'a, 'tcx> {
                 bitwise(in_out, sets.gen_set, &Union);
                 bitwise(in_out, sets.kill_set, &Subtract);
             }
-            flow_state.propagate_bits_into_graph_successors_of(in_out, &mut self.changed, bb);
+            flow_state.propagate_bits_into_graph_successors_of(in_out,
+                                                               &mut self.changed,
+                                                               bb,
+                                                               &self.on_return);
         }
     }
 }
@@ -405,10 +395,23 @@ impl<D: BitDenotation> DataflowState<D> {
 }
 
 impl<D: BitDenotation> DataflowState<D> {
-    fn propagate_bits_into_graph_successors_of(&mut self,
-                                               in_out: &mut [usize],
-                                               changed: &mut bool,
-                                               bb: &repr::BasicBlockData) {
+    /// Propagates the bits of `in_out` into all the successors of `bb`,
+    /// using bitwise operator denoted by `self.operator`.
+    ///
+    /// For most blocks, this is entirely uniform. However, for blocks
+    /// that end with a call terminator, the effect of the call on the
+    /// dataflow state may depend on whether the call returned
+    /// successfully or unwound. To reflect this, the `on_return`
+    /// callback mutates `in_out` when propagating `in_out` via a call
+    /// terminator; such mutation is performed *last*, to ensure its
+    /// side-effects do not leak elsewhere (e.g. into unwind target).
+    fn propagate_bits_into_graph_successors_of<OnReturn>(
+        &mut self,
+        in_out: &mut [usize],
+        changed: &mut bool,
+        bb: &repr::BasicBlockData,
+        on_return: OnReturn) where OnReturn: Fn(&D, &mut [usize], &repr::Lvalue)
+    {
         let term = if let Some(ref term) = bb.terminator { term } else { return };
         match *term {
             repr::Terminator::Return |
@@ -435,15 +438,18 @@ impl<D: BitDenotation> DataflowState<D> {
                 if let Some(ref unwind) = *cleanup {
                     self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
                 }
-                if let Some((_, ref destination)) = *destination {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, destination);
+                if let Some((ref dest_lval, ref dest_bb)) = *destination {
+                    // N.B.: This must be done *last*, after all other
+                    // propagation, as documented in comment above.
+                    on_return(&self.operator, in_out, dest_lval);
+                    self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
                 }
             }
         }
     }
 
     fn propagate_bits_into_entry_set_for(&mut self,
-                                         in_out: &mut [usize],
+                                         in_out: &[usize],
                                          changed: &mut bool,
                                          bb: &repr::BasicBlock) {
         let entry_set = self.sets.for_block(bb.index()).on_entry;
