@@ -501,9 +501,7 @@ impl<'a> Iterator for CommentCodeSlices<'a> {
             CodeCharKind::Comment => CodeCharKind::Normal,
             CodeCharKind::Normal => CodeCharKind::Comment,
         };
-        let res = (kind,
-                   self.last_slice_end,
-                   &self.slice[self.last_slice_end..sub_slice_end]);
+        let res = (kind, self.last_slice_end, &self.slice[self.last_slice_end..sub_slice_end]);
         self.last_slice_end = sub_slice_end;
         self.last_slice_kind = kind;
 

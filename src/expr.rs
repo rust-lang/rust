@@ -18,7 +18,7 @@ use std::fmt::Write;
 use {Indent, Spanned};
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic, ListItem, format_fn_args};
+            DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
 use string::{StringFormat, rewrite_string};
 use utils::{CodeMapSpanUtils, extra_offset, last_line_width, wrap_str, binary_search,
             first_line_width, semicolon_for_stmt};
@@ -1336,9 +1336,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     // Replace the stub with the full overflowing last argument if the rewrite
     // succeeded and its first line fits with the other arguments.
     match (overflow_last, tactic, placeholder) {
-        (true,
-         DefinitiveListTactic::Horizontal,
-         placeholder @ Some(..)) => {
+        (true, DefinitiveListTactic::Horizontal, placeholder @ Some(..)) => {
             item_vec[arg_count - 1].item = placeholder;
         }
         (true, _, _) => {
@@ -1511,8 +1509,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                      outer_indent))
     };
 
-    match (context.config.struct_lit_style,
-           context.config.struct_lit_multiline_style) {
+    match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
         (StructLitStyle::Block, _) if fields_str.contains('\n') || fields_str.len() > h_budget => {
             format_on_newline()
         }
@@ -1583,7 +1580,7 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
                              list_lo,
                              span.hi - BytePos(1));
     let budget = try_opt!(width.checked_sub(2));
-    let list_str = try_opt!(format_fn_args(items, budget, indent, context.config));
+    let list_str = try_opt!(format_item_list(items, budget, indent, context.config));
 
     Some(format!("({})", list_str))
 }
