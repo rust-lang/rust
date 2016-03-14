@@ -298,3 +298,9 @@ fn void(void: Void) { //~ ERROR: the function has a cyclomatic complexity of 1
         }
     }
 }
+
+#[cyclomatic_complexity = "0"]
+fn mcarton_sees_all() {
+    panic!("meh");
+    panic!("möh");
+}
