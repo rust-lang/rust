@@ -100,6 +100,8 @@ enum CastError {
     CastToBool,
     CastToChar,
     DifferingKinds,
+    /// Cast of thin to fat raw ptr (eg. `*const () as *const [u8]`)
+    SizedUnsizedCast,
     IllegalCast,
     NeedViaPtr,
     NeedViaThinPtr,
@@ -164,6 +166,13 @@ impl<'tcx> CastCheck<'tcx> {
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None);
+            }
+            CastError::SizedUnsizedCast => {
+                fcx.type_error_message(self.span, |actual| {
+                    format!("cannot cast thin pointer `{}` to fat pointer `{}`",
+                            actual,
+                            fcx.infcx().ty_to_string(self.cast_ty))
+                }, self.expr_ty, None)
             }
             CastError::DifferingKinds => {
                 fcx.type_error_struct(self.span, |actual| {
@@ -312,7 +321,7 @@ impl<'tcx> CastCheck<'tcx> {
 
         // sized -> unsized? report invalid cast (don't complain about vtable kinds)
         if fcx.type_is_known_to_be_sized(m_expr.ty, self.span) {
-            return Err(CastError::IllegalCast);
+            return Err(CastError::SizedUnsizedCast);
         }
 
         // vtable kinds must match
