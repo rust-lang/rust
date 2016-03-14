@@ -539,6 +539,32 @@ extern "rust-intrinsic" {
     /// Returns the nearest integer to an `f64`. Rounds half-way cases away from zero.
     pub fn roundf64(x: f64) -> f64;
 
+    /// Float addition that allows optimizations based on algebraic rules.
+    /// May assume inputs are finite.
+    #[cfg(not(stage0))]
+    pub fn fadd_fast<T>(a: T, b: T) -> T;
+
+    /// Float subtraction that allows optimizations based on algebraic rules.
+    /// May assume inputs are finite.
+    #[cfg(not(stage0))]
+    pub fn fsub_fast<T>(a: T, b: T) -> T;
+
+    /// Float multiplication that allows optimizations based on algebraic rules.
+    /// May assume inputs are finite.
+    #[cfg(not(stage0))]
+    pub fn fmul_fast<T>(a: T, b: T) -> T;
+
+    /// Float division that allows optimizations based on algebraic rules.
+    /// May assume inputs are finite.
+    #[cfg(not(stage0))]
+    pub fn fdiv_fast<T>(a: T, b: T) -> T;
+
+    /// Float remainder that allows optimizations based on algebraic rules.
+    /// May assume inputs are finite.
+    #[cfg(not(stage0))]
+    pub fn frem_fast<T>(a: T, b: T) -> T;
+
+
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
 

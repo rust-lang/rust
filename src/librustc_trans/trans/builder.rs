@@ -226,6 +226,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn fadd_fast(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("fadd");
+        unsafe {
+            let instr = llvm::LLVMBuildFAdd(self.llbuilder, lhs, rhs, noname());
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+
     pub fn sub(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("sub");
         unsafe {
@@ -251,6 +260,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("sub");
         unsafe {
             llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, noname())
+        }
+    }
+
+    pub fn fsub_fast(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("sub");
+        unsafe {
+            let instr = llvm::LLVMBuildFSub(self.llbuilder, lhs, rhs, noname());
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
         }
     }
 
@@ -282,6 +300,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn fmul_fast(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("fmul");
+        unsafe {
+            let instr = llvm::LLVMBuildFMul(self.llbuilder, lhs, rhs, noname());
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+
+
     pub fn udiv(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("udiv");
         unsafe {
@@ -310,6 +338,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn fdiv_fast(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("fdiv");
+        unsafe {
+            let instr = llvm::LLVMBuildFDiv(self.llbuilder, lhs, rhs, noname());
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
+        }
+    }
+
     pub fn urem(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
         self.count_insn("urem");
         unsafe {
@@ -328,6 +365,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("frem");
         unsafe {
             llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, noname())
+        }
+    }
+
+    pub fn frem_fast(&self, lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+        self.count_insn("frem");
+        unsafe {
+            let instr = llvm::LLVMBuildFRem(self.llbuilder, lhs, rhs, noname());
+            llvm::LLVMRustSetHasUnsafeAlgebra(instr);
+            instr
         }
     }
 
