@@ -198,9 +198,11 @@ mod aliases_pub {
     use self::m::PubTr as PrivUseAliasTr;
     type PrivAlias = m::Pub2;
     trait PrivTr {
+        type AssocAlias;
+    }
+    impl PrivTr for Priv {
         type AssocAlias = m::Pub3;
     }
-    impl PrivTr for Priv {}
 
     pub fn f1(arg: PrivUseAlias) {} // OK
 
@@ -245,9 +247,11 @@ mod aliases_priv {
     use self::PrivTr1 as PrivUseAliasTr;
     type PrivAlias = Priv2;
     trait PrivTr {
+        type AssocAlias;
+    }
+    impl PrivTr for Priv {
         type AssocAlias = Priv3;
     }
-    impl PrivTr for Priv {}
 
     pub trait Tr1: PrivUseAliasTr {} //~ WARN private trait in public interface
         //~^ WARNING hard error

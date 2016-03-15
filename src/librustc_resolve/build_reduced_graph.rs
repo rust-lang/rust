@@ -289,7 +289,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     };
-                    self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
                     let module = self.new_extern_crate_module(parent_link, def, is_public, item.id);
@@ -331,10 +330,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             // These items live in the type namespace.
             ItemTy(..) => {
-                let parent_link = ModuleParentLink(parent, name);
                 let def = Def::TyAlias(self.ast_map.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), false, is_public);
-                self.define(parent, name, TypeNS, (module, sp));
+                self.define(parent, name, TypeNS, (def, sp, modifiers));
                 parent
             }
 
@@ -495,17 +492,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             modifiers = modifiers | DefModifiers::IMPORTABLE;
         }
 
-        let is_exported = is_public &&
-                          match new_parent.def_id() {
-            None => true,
-            Some(did) => self.external_exports.contains(&did),
-        };
-        if is_exported {
-            self.external_exports.insert(def.def_id());
-        }
-
         match def {
-            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) | Def::TyAlias(..) => {
+            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {}",
                        final_ident,
                        is_public);
@@ -552,17 +540,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            trait_item_name);
 
                     self.trait_item_map.insert((trait_item_name, def_id), trait_item_def.def_id());
-
-                    if is_exported {
-                        self.external_exports.insert(trait_item_def.def_id());
-                    }
                 }
 
                 let parent_link = ModuleParentLink(new_parent, name);
                 let module = self.new_module(parent_link, Some(def), true, is_public);
                 self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
-            Def::AssociatedTy(..) => {
+            Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
                 self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
@@ -681,8 +665,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         match subclass {
             SingleImport { target, .. } => {
-                module_.increment_outstanding_references_for(target, ValueNS);
-                module_.increment_outstanding_references_for(target, TypeNS);
+                module_.increment_outstanding_references_for(target, ValueNS, is_public);
+                module_.increment_outstanding_references_for(target, TypeNS, is_public);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the

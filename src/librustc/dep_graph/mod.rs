@@ -10,6 +10,7 @@
 
 use self::thread::{DepGraphThreadData, DepMessage};
 use middle::def_id::DefId;
+use syntax::ast::NodeId;
 use middle::ty::TyCtxt;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
@@ -58,6 +59,7 @@ pub enum DepNode {
     CoherenceCheckImpl(DefId),
     CoherenceOverlapCheck(DefId),
     CoherenceOverlapCheckSpecial(DefId),
+    CoherenceOverlapInherentCheck(DefId),
     CoherenceOrphanCheck(DefId),
     Variance,
     WfCheck(DefId),
@@ -70,6 +72,7 @@ pub enum DepNode {
     IntrinsicCheck(DefId),
     MatchCheck(DefId),
     MirMapConstruction(DefId),
+    MirTypeck(NodeId),
     BorrowCheck(DefId),
     RvalueCheck(DefId),
     Reachability,

@@ -20,7 +20,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![feature(dynamic_lib)]
 #![feature(libc)]
 #![feature(recover)]
 #![feature(rustc_private)]
@@ -43,7 +42,7 @@ extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_metadata;
 extern crate serialize;
-extern crate syntax;
+#[macro_use] extern crate syntax;
 extern crate test as testing;
 extern crate rustc_unicode;
 #[macro_use] extern crate log;
@@ -108,7 +107,8 @@ const PASSES: &'static [Pass] = &[
     ("collapse-docs", passes::collapse_docs,
      "concatenates all document attributes into one document attribute"),
     ("strip-private", passes::strip_private,
-     "strips all private items from a crate which cannot be seen externally"),
+     "strips all private items from a crate which cannot be seen externally, \
+      implies strip-priv-imports"),
     ("strip-priv-imports", passes::strip_priv_imports,
      "strips all private import statements (`use`, `extern crate`) from a crate"),
 ];

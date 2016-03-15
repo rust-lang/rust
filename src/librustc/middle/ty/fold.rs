@@ -146,6 +146,10 @@ pub trait TypeFolder<'tcx> : Sized {
         t.super_fold_with(self)
     }
 
+    fn fold_impl_header(&mut self, imp: &ty::ImplHeader<'tcx>) -> ty::ImplHeader<'tcx> {
+        imp.super_fold_with(self)
+    }
+
     fn fold_substs(&mut self,
                    substs: &subst::Substs<'tcx>)
                    -> subst::Substs<'tcx> {

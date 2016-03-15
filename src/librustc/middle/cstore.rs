@@ -137,6 +137,7 @@ pub trait CrateStore<'tcx> : Any {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
+    fn visibility(&self, def: DefId) -> hir::Visibility;
     fn closure_kind(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
                     -> ty::ClosureKind;
     fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
@@ -175,6 +176,7 @@ pub trait CrateStore<'tcx> : Any {
                                   -> Option<ty::adjustment::CustomCoerceUnsized>;
     fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                          -> Vec<Rc<ty::AssociatedConst<'tcx>>>;
+    fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
@@ -302,6 +304,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability> { unimplemented!() }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { unimplemented!() }
+    fn visibility(&self, def: DefId) -> hir::Visibility { unimplemented!() }
     fn closure_kind(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
                     -> ty::ClosureKind  { unimplemented!() }
     fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
@@ -344,6 +347,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { unimplemented!() }
     fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                          -> Vec<Rc<ty::AssociatedConst<'tcx>>> { unimplemented!() }
+    fn impl_parent(&self, def: DefId) -> Option<DefId> { unimplemented!() }
 
     // trait/impl-item info
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)

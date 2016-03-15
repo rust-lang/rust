@@ -164,7 +164,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &TyCtxt,
 fn build_external_function(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
-        ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
+        ty::TyFnDef(_, _, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
 
@@ -222,7 +222,8 @@ fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
     }, false)
 }
 
-pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
+pub fn build_impls(cx: &DocContext,
+                   tcx: &TyCtxt,
                    did: DefId) -> Vec<clean::Item> {
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
@@ -241,10 +242,12 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
     // Primarily, the impls will be used to populate the documentation for this
     // type being inlined, but impls can also be used when generating
     // documentation for primitives (no way to find those specifically).
-    if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
+    if !cx.all_crate_impls.borrow_mut().contains_key(&did.krate) {
+        let mut impls = Vec::new();
         for item in tcx.sess.cstore.crate_top_level_items(did.krate) {
             populate_impls(cx, tcx, item.def, &mut impls);
         }
+        cx.all_crate_impls.borrow_mut().insert(did.krate, impls);
 
         fn populate_impls(cx: &DocContext, tcx: &TyCtxt,
                           def: cstore::DefLike,
@@ -263,6 +266,20 @@ pub fn build_impls(cx: &DocContext, tcx: &TyCtxt,
                 }
                 _ => {}
             }
+        }
+    }
+
+    let mut candidates = cx.all_crate_impls.borrow_mut();
+    let candidates = candidates.get_mut(&did.krate).unwrap();
+    for i in (0..candidates.len()).rev() {
+        let remove = match candidates[i].inner {
+            clean::ImplItem(ref i) => {
+                i.for_.def_id() == Some(did) || i.for_.primitive_type().is_some()
+            }
+            _ => continue,
+        };
+        if remove {
+            impls.push(candidates.swap_remove(i));
         }
     }
 
@@ -320,7 +337,7 @@ pub fn build_impl(cx: &DocContext,
                 let type_scheme = tcx.lookup_item_type(did);
                 let default = if assoc_const.has_value {
                     Some(const_eval::lookup_const_by_id(tcx, did, None, None)
-                         .unwrap().span.to_src(cx))
+                         .unwrap().0.span.to_src(cx))
                 } else {
                     None
                 };
@@ -462,7 +479,7 @@ fn build_const(cx: &DocContext, tcx: &TyCtxt,
     use rustc::middle::const_eval;
     use rustc_front::print::pprust;
 
-    let expr = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
+    let (expr, ty) = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
     debug!("converting constant expr {:?} to snippet", expr);
@@ -470,7 +487,7 @@ fn build_const(cx: &DocContext, tcx: &TyCtxt,
     debug!("got snippet {}", sn);
 
     clean::Constant {
-        type_: tcx.lookup_item_type(did).ty.clean(cx),
+        type_: ty.map(|t| t.clean(cx)).unwrap_or_else(|| tcx.lookup_item_type(did).ty.clean(cx)),
         expr: sn
     }
 }

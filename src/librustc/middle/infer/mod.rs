@@ -27,7 +27,7 @@ use middle::region::CodeExtent;
 use middle::subst;
 use middle::subst::Substs;
 use middle::subst::Subst;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::ty::adjustment;
 use middle::ty::{TyVid, IntVid, FloatVid};
 use middle::ty::{self, Ty, TyCtxt};
@@ -98,6 +98,11 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     // At a point sometime in the future normalization will be done by the typing context
     // directly.
     normalize: bool,
+
+    // Sadly, the behavior of projection varies a bit depending on the
+    // stage of compilation. The specifics are given in the
+    // documentation for `ProjectionMode`.
+    projection_mode: ProjectionMode,
 
     err_count_on_creation: usize,
 }
@@ -354,7 +359,8 @@ pub fn fixup_err_to_string(f: FixupError) -> String {
 
 pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
                                 tables: &'a RefCell<ty::Tables<'tcx>>,
-                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>)
+                                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
+                                projection_mode: ProjectionMode)
                                 -> InferCtxt<'a, 'tcx> {
     InferCtxt {
         tcx: tcx,
@@ -366,14 +372,16 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
         parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
         reported_trait_errors: RefCell::new(FnvHashSet()),
         normalize: false,
+        projection_mode: projection_mode,
         err_count_on_creation: tcx.sess.err_count()
     }
 }
 
 pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
-                                        tables: &'a RefCell<ty::Tables<'tcx>>)
+                                        tables: &'a RefCell<ty::Tables<'tcx>>,
+                                        projection_mode: ProjectionMode)
                                         -> InferCtxt<'a, 'tcx> {
-    let mut infcx = new_infer_ctxt(tcx, tables, None);
+    let mut infcx = new_infer_ctxt(tcx, tables, None, projection_mode);
     infcx.normalize = true;
     infcx
 }
@@ -454,19 +462,18 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          -> UnitResult<'tcx>
 {
     debug!("mk_eqty({:?} <: {:?})", a, b);
-    cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
+    cx.eq_types(a_is_expected, origin, a, b)
 }
 
 pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                   a_is_expected: bool,
-                                   origin: TypeOrigin,
-                                   a: ty::TraitRef<'tcx>,
-                                   b: ty::TraitRef<'tcx>)
-                                   -> UnitResult<'tcx>
+                                  a_is_expected: bool,
+                                  origin: TypeOrigin,
+                                  a: ty::TraitRef<'tcx>,
+                                  b: ty::TraitRef<'tcx>)
+                                  -> UnitResult<'tcx>
 {
-    debug!("mk_eq_trait_refs({:?} <: {:?})",
-           a, b);
-    cx.commit_if_ok(|_| cx.eq_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    debug!("mk_eq_trait_refs({:?} = {:?})", a, b);
+    cx.eq_trait_refs(a_is_expected, origin, a, b)
 }
 
 pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -476,9 +483,23 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                         b: ty::PolyTraitRef<'tcx>)
                                         -> UnitResult<'tcx>
 {
-    debug!("mk_sub_poly_trait_refs({:?} <: {:?})",
-           a, b);
-    cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    debug!("mk_sub_poly_trait_refs({:?} <: {:?})", a, b);
+    cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
+}
+
+pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
+                                    a_is_expected: bool,
+                                    origin: TypeOrigin,
+                                    a: &ty::ImplHeader<'tcx>,
+                                    b: &ty::ImplHeader<'tcx>)
+                                    -> UnitResult<'tcx>
+{
+    debug!("mk_eq_impl_header({:?} = {:?})", a, b);
+    match (a.trait_ref, b.trait_ref) {
+        (Some(a_ref), Some(b_ref)) => mk_eq_trait_refs(cx, a_is_expected, origin, a_ref, b_ref),
+        (None, None) => mk_eqty(cx, a_is_expected, origin, a.self_ty, b.self_ty),
+        _ => cx.tcx.sess.bug("mk_eq_impl_headers given mismatched impl kinds"),
+    }
 }
 
 fn expected_found<T>(a_is_expected: bool,
@@ -501,6 +522,7 @@ pub struct CombinedSnapshot {
     region_vars_snapshot: RegionSnapshot,
 }
 
+// NOTE: Callable from trans only!
 pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
@@ -512,7 +534,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &TyCtxt<'tcx>, value: &T) -> T
         return value;
     }
 
-    let infcx = new_infer_ctxt(tcx, &tcx.tables, None);
+    let infcx = new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::Any);
     let mut selcx = traits::SelectionContext::new(&infcx);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =
@@ -580,6 +602,10 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+    pub fn projection_mode(&self) -> ProjectionMode {
+        self.projection_mode
+    }
+
     pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }
@@ -1012,8 +1038,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               substs: &mut Substs<'tcx>,
                               defs: &[ty::TypeParameterDef<'tcx>]) {
 
-        let mut vars = Vec::with_capacity(defs.len());
-
         for def in defs.iter() {
             let default = def.default.map(|default| {
                 type_variable::Default {
@@ -1025,7 +1049,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             let ty_var = self.next_ty_var_with_default(default);
             substs.types.push(space, ty_var);
-            vars.push(ty_var)
         }
     }
 
@@ -1107,11 +1130,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         .map(|method| resolve_ty(method.ty)))
     }
 
+    pub fn errors_since_creation(&self) -> bool {
+        self.tcx.sess.err_count() - self.err_count_on_creation != 0
+    }
+
     pub fn node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
         match self.tables.borrow().node_types.get(&id) {
             Some(&t) => t,
             // FIXME
-            None if self.tcx.sess.err_count() - self.err_count_on_creation != 0 =>
+            None if self.errors_since_creation() =>
                 self.tcx.types.err,
             None => {
                 self.tcx.sess.bug(
@@ -1134,7 +1161,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                              free_regions: &FreeRegionMap,
                                              subject_node_id: ast::NodeId) {
         let errors = self.region_vars.resolve_regions(free_regions, subject_node_id);
-        self.report_region_errors(&errors); // see error_reporting.rs
+        if !self.errors_since_creation() {
+            // As a heuristic, just skip reporting region errors
+            // altogether if other errors have been reported while
+            // this infcx was in use.  This is totally hokey but
+            // otherwise we have a hard time separating legit region
+            // errors from silly ones.
+            self.report_region_errors(&errors); // see error_reporting.rs
+        }
     }
 
     pub fn ty_to_string(&self, t: Ty<'tcx>) -> String {
@@ -1351,18 +1385,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn report_mismatched_types(&self,
-                                   span: Span,
+                                   origin: TypeOrigin,
                                    expected: Ty<'tcx>,
                                    actual: Ty<'tcx>,
-                                   err: &TypeError<'tcx>) {
+                                   err: TypeError<'tcx>) {
         let trace = TypeTrace {
-            origin: TypeOrigin::Misc(span),
+            origin: origin,
             values: Types(ExpectedFound {
                 expected: expected,
                 found: actual
             })
         };
-        self.report_and_explain_type_error(trace, err);
+        self.report_and_explain_type_error(trace, &err);
     }
 
     pub fn report_conflicting_default_types(&self,

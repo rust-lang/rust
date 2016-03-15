@@ -1061,6 +1061,7 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             ident: ii.ident,
             attrs: ii.attrs,
             vis: ii.vis,
+            defaultness: ii.defaultness,
             node: match ii.node  {
                 ast::ImplItemKind::Method(sig, body) => {
                     let (sig, body) = expand_and_rename_method(sig, body, fld);
@@ -1519,7 +1520,7 @@ mod tests {
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
-            Vec::new(), &sess);
+            Vec::new(), &sess).unwrap();
         // should fail:
         let mut gated_cfgs = vec![];
         let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
@@ -1535,7 +1536,7 @@ mod tests {
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
-            Vec::new(), &sess);
+            Vec::new(), &sess).unwrap();
         let mut gated_cfgs = vec![];
         let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
         expand_crate(ecx, vec![], vec![], crate_ast);
@@ -1549,7 +1550,7 @@ mod tests {
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
-            Vec::new(), &sess);
+            Vec::new(), &sess).unwrap();
         let mut gated_cfgs = vec![];
         let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
         expand_crate(ecx, vec![], vec![], crate_ast);

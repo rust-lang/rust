@@ -56,7 +56,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub external_traits: RefCell<Option<HashMap<DefId, clean::Trait>>>,
     pub external_typarams: RefCell<Option<HashMap<DefId, String>>>,
     pub inlined: RefCell<Option<HashSet<DefId>>>,
-    pub populated_crate_impls: RefCell<HashSet<ast::CrateNum>>,
+    pub all_crate_impls: RefCell<HashMap<ast::CrateNum, Vec<clean::Item>>>,
     pub deref_trait_did: Cell<Option<DefId>>,
 }
 
@@ -133,7 +133,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let mut cfg = config::build_configuration(&sess);
     target_features::add_configuration(&mut cfg, &sess);
 
-    let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
 
     let name = link::find_crate_name(Some(&sess), &krate.attrs,
                                      &input);
@@ -179,7 +179,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
             external_typarams: RefCell::new(Some(HashMap::new())),
             external_paths: RefCell::new(Some(HashMap::new())),
             inlined: RefCell::new(Some(HashSet::new())),
-            populated_crate_impls: RefCell::new(HashSet::new()),
+            all_crate_impls: RefCell::new(HashMap::new()),
             deref_trait_did: Cell::new(None),
         };
         debug!("crate: {:?}", ctxt.map.krate());

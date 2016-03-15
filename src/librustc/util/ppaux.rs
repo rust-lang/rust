@@ -13,7 +13,7 @@ use middle::def_id::DefId;
 use middle::subst::{self, Subst};
 use middle::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
-use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyBareFn};
+use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
 use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use middle::ty::TyClosure;
 use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
@@ -812,7 +812,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
                 write!(f, ")")
             }
-            TyBareFn(opt_def_id, ref bare_fn) => {
+            TyFnDef(def_id, substs, ref bare_fn) => {
                 if bare_fn.unsafety == hir::Unsafety::Unsafe {
                     try!(write!(f, "unsafe "));
                 }
@@ -822,13 +822,30 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 }
 
                 try!(write!(f, "{}", bare_fn.sig.0));
+                try!(ty::tls::with(|tcx| {
+                    write!(f, " {{{}", tcx.item_path_str(def_id))
+                }));
 
-                if let Some(def_id) = opt_def_id {
-                    try!(write!(f, " {{{}}}", ty::tls::with(|tcx| {
-                        tcx.item_path_str(def_id)
-                    })));
+                let tps = substs.types.get_slice(subst::FnSpace);
+                if tps.len() >= 1 {
+                    try!(write!(f, "::<{}", tps[0]));
+                    for &ty in &tps[1..] {
+                        try!(write!(f, ", {}", ty));
+                    }
+                    try!(write!(f, ">"));
                 }
-                Ok(())
+                write!(f, "}}")
+            }
+            TyFnPtr(ref bare_fn) => {
+                if bare_fn.unsafety == hir::Unsafety::Unsafe {
+                    try!(write!(f, "unsafe "));
+                }
+
+                if bare_fn.abi != Abi::Rust {
+                    try!(write!(f, "extern {} ", bare_fn.abi));
+                }
+
+                write!(f, "{}", bare_fn.sig.0)
             }
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),

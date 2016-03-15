@@ -1582,6 +1582,9 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
+        if let ast::Defaultness::Default = ii.defaultness {
+            try!(self.word_nbsp("default"));
+        }
         match ii.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 try!(self.print_associated_const(ii.ident, &ty, Some(&expr), ii.vis));
@@ -2277,6 +2280,10 @@ impl<'a> State<'a> {
                 try!(self.print_inner_attributes_inline(attrs));
                 try!(self.print_expr(&e));
                 try!(self.pclose());
+            },
+            ast::ExprKind::Try(ref e) => {
+                try!(self.print_expr(e));
+                try!(word(&mut self.s, "?"))
             }
         }
         try!(self.ann.post(self, NodeExpr(expr)));

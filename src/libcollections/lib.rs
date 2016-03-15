@@ -38,18 +38,15 @@
 #![feature(decode_utf16)]
 #![feature(dropck_parametricity)]
 #![feature(fmt_internals)]
-#![feature(fmt_radix)]
 #![feature(heap_api)]
 #![feature(inclusive_range)]
 #![feature(iter_arith)]
 #![feature(lang_items)]
 #![feature(nonzero)]
-#![feature(num_bits_bytes)]
 #![feature(pattern)]
 #![feature(placement_in)]
 #![feature(placement_new_protocol)]
 #![feature(shared)]
-#![feature(slice_bytes)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(step_by)]
@@ -71,13 +68,21 @@ extern crate std;
 #[cfg(test)]
 extern crate test;
 
+#[doc(no_inline)]
 pub use binary_heap::BinaryHeap;
+#[doc(no_inline)]
 pub use btree_map::BTreeMap;
+#[doc(no_inline)]
 pub use btree_set::BTreeSet;
+#[doc(no_inline)]
 pub use linked_list::LinkedList;
+#[doc(no_inline)]
 pub use enum_set::EnumSet;
+#[doc(no_inline)]
 pub use vec_deque::VecDeque;
+#[doc(no_inline)]
 pub use string::String;
+#[doc(no_inline)]
 pub use vec::Vec;
 
 // Needed for the vec! macro

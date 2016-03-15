@@ -143,8 +143,11 @@ impl LateLintPass for TypeLimits {
                             else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
-                                Ok(ConstVal::Int(shift)) => { shift as u64 >= bits },
-                                Ok(ConstVal::Uint(shift)) => { shift >= bits },
+                                Ok(ConstVal::Integral(i)) => {
+                                    i.is_negative() || i.to_u64()
+                                                        .map(|i| i >= bits)
+                                                        .unwrap_or(true)
+                                },
                                 _ => { false }
                             }
                         };
@@ -391,7 +394,7 @@ fn is_repr_nullable_ptr<'tcx>(tcx: &TyCtxt<'tcx>,
 
         if def.variants[data_idx].fields.len() == 1 {
             match def.variants[data_idx].fields[0].ty(tcx, substs).sty {
-                ty::TyBareFn(None, _) => { return true; }
+                ty::TyFnPtr(_) => { return true; }
                 ty::TyRef(..) => { return true; }
                 _ => { }
             }
@@ -556,7 +559,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 self.check_type_for_ffi(cache, ty)
             }
 
-            ty::TyBareFn(None, bare_fn) => {
+            ty::TyFnPtr(bare_fn) => {
                 match bare_fn.abi {
                     Abi::Rust |
                     Abi::RustIntrinsic |
@@ -595,7 +598,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyParam(..) | ty::TyInfer(..) | ty::TyError |
             ty::TyClosure(..) | ty::TyProjection(..) |
-            ty::TyBareFn(Some(_), _) => {
+            ty::TyFnDef(..) => {
                 panic!("Unexpected type in foreign function")
             }
         }

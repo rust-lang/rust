@@ -49,6 +49,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_deprecation(&cdata, def.index)
     }
 
+    fn visibility(&self, def: DefId) -> hir::Visibility {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::get_visibility(&cdata, def.index)
+    }
+
     fn closure_kind(&self, _tcx: &TyCtxt<'tcx>, def_id: DefId) -> ty::ClosureKind
     {
         assert!(!def_id.is_local());
@@ -218,6 +223,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                          -> Vec<Rc<ty::AssociatedConst<'tcx>>> {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_associated_consts(self.intr.clone(), &cdata, def.index, tcx)
+    }
+
+    fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
+        let cdata = self.get_crate_data(impl_def.krate);
+        decoder::get_parent_impl(&*cdata, impl_def.index)
     }
 
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId) -> Option<DefId>

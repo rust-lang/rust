@@ -451,8 +451,8 @@ fn find_discr_field_candidate<'tcx>(tcx: &TyCtxt<'tcx>,
         // Regular thin pointer: &T/&mut T/Box<T>
         ty::TyRef(..) | ty::TyBox(..) => Some(path),
 
-        // Functions are just pointers
-        ty::TyBareFn(..) => Some(path),
+        // Function pointer: `fn() -> i32`
+        ty::TyFnPtr(_) => Some(path),
 
         // Is this the NonZero lang item wrapping a pointer or integer type?
         ty::TyStruct(def, substs) if Some(def.did) == tcx.lang_items.non_zero() => {
@@ -1035,7 +1035,7 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
     match ity {
         attr::UnsignedInt(_) => {
             assert!(min <= discr);
-            assert!(discr <= max)
+            assert!(discr <= max);
         },
         attr::SignedInt(_) => {
             assert!(min.0 as i64 <= discr.0 as i64);

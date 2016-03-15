@@ -35,6 +35,8 @@ use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
 
+use rustc_const_eval::ConstInt;
+
 use rustc::mir;
 use rustc::mir::visit::MutVisitor;
 
@@ -163,6 +165,19 @@ fn fn_constness(item: rbml::Doc) -> hir::Constness {
     }
 }
 
+fn item_defaultness(item: rbml::Doc) -> hir::Defaultness {
+    match reader::maybe_get_doc(item, tag_items_data_item_defaultness) {
+        None => hir::Defaultness::Default, // should occur only for default impls on traits
+        Some(defaultness_doc) => {
+            match reader::doc_as_u8(defaultness_doc) as char {
+                'd' => hir::Defaultness::Default,
+                'f' => hir::Defaultness::Final,
+                _ => panic!("unknown defaultness character")
+            }
+        }
+    }
+}
+
 fn item_sort(item: rbml::Doc) -> Option<char> {
     reader::tagged_docs(item, tag_item_trait_item_sort).nth(0).map(|doc| {
         doc.as_str_slice().as_bytes()[0] as char
@@ -198,7 +213,7 @@ fn reexports<'a>(d: rbml::Doc<'a>) -> reader::TaggedDocsIterator<'a> {
     reader::tagged_docs(d, tag_items_data_item_reexport)
 }
 
-fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
+fn variant_disr_val(d: rbml::Doc) -> Option<u64> {
     reader::maybe_get_doc(d, tag_disr_val).and_then(|val_doc| {
         reader::with_doc_data(val_doc, |data| {
             str::from_utf8(data).ok().and_then(|s| s.parse().ok())
@@ -396,7 +411,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                 did: did,
                 name: item_name(intr, item),
                 fields: get_variant_fields(intr, cdata, item, tcx),
-                disr_val: disr,
+                disr_val: ConstInt::Infer(disr),
                 kind: expect_variant_kind(item_family(item), tcx),
             }
         }).collect()
@@ -432,7 +447,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             did: did,
             name: item_name(intr, doc),
             fields: get_variant_fields(intr, cdata, doc, tcx),
-            disr_val: 0,
+            disr_val: ConstInt::Infer(0),
             kind: expect_variant_kind(item_family(doc), tcx),
         }
     }
@@ -472,7 +487,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                    variant.name,
                    ctor_ty);
             let field_tys = match ctor_ty.sty {
-                ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
                     ref inputs, ..
                 }), ..}) => {
                     // tuple-struct constructors don't have escaping regions
@@ -542,6 +557,17 @@ pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
     reader::maybe_get_doc(item, tag_items_data_item_deprecation).map(|doc| {
         let mut decoder = reader::Decoder::new(doc);
         Decodable::decode(&mut decoder).unwrap()
+    })
+}
+
+pub fn get_visibility(cdata: Cmd, id: DefIndex) -> hir::Visibility {
+    item_visibility(cdata.lookup_item(id))
+}
+
+pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
+    let item = cdata.lookup_item(id);
+    reader::maybe_get_doc(item, tag_items_data_parent_impl).map(|doc| {
+        translated_def_id(cdata, doc)
     })
 }
 
@@ -970,6 +996,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
 
     let name = item_name(&intr, item_doc);
     let vis = item_visibility(item_doc);
+    let defaultness = item_defaultness(item_doc);
 
     match item_sort(item_doc) {
         sort @ Some('C') | sort @ Some('c') => {
@@ -978,6 +1005,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                 name: name,
                 ty: ty,
                 vis: vis,
+                defaultness: defaultness,
                 def_id: def_id,
                 container: container,
                 has_value: sort == Some('C')
@@ -988,7 +1016,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
             let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
-                ty::TyBareFn(_, fty) => fty.clone(),
+                ty::TyFnDef(_, _, fty) => fty.clone(),
                 _ => tcx.sess.bug(&format!(
                     "the type {:?} of the method {:?} is not a function?",
                     ity, name))
@@ -1001,6 +1029,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                                         fty,
                                                         explicit_self,
                                                         vis,
+                                                        defaultness,
                                                         def_id,
                                                         container)))
         }
@@ -1010,6 +1039,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                 name: name,
                 ty: ty,
                 vis: vis,
+                defaultness: defaultness,
                 def_id: def_id,
                 container: container,
             }))
@@ -1582,7 +1612,8 @@ pub fn is_extern_item(cdata: Cmd, id: DefIndex, tcx: &TyCtxt) -> bool {
             let ty::TypeScheme { generics, ty } = get_type(cdata, id, tcx);
             let no_generics = generics.types.is_empty();
             match ty.sty {
-                ty::TyBareFn(_, fn_ty) if fn_ty.abi != Abi::Rust => return no_generics,
+                ty::TyFnDef(_, _, fn_ty) | ty::TyFnPtr(fn_ty)
+                    if fn_ty.abi != Abi::Rust => return no_generics,
                 _ => no_generics,
             }
         },

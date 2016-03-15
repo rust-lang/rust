@@ -737,7 +737,7 @@ pub enum Expr_ {
     ExprBinary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
     ExprUnary(UnOp, P<Expr>),
-    /// A literal (For example: `1u8`, `"foo"`)
+    /// A literal (For example: `1`, `"foo"`)
     ExprLit(P<Lit>),
     /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
@@ -804,7 +804,7 @@ pub enum Expr_ {
 
     /// A vector literal constructed from one repeated element.
     ///
-    /// For example, `[1u8; 5]`. The first expression is the element
+    /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
 }
@@ -835,6 +835,7 @@ pub enum MatchSource {
     },
     WhileLetDesugar,
     ForLoopDesugar,
+    TryDesugar,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -863,10 +864,10 @@ pub struct MethodSig {
     pub explicit_self: ExplicitSelf,
 }
 
-/// Represents a method declaration in a trait declaration, possibly including
-/// a default implementation A trait method is either required (meaning it
-/// doesn't have an implementation, just a signature) or provided (meaning it
-/// has a default implementation).
+/// Represents an item declaration within a trait declaration,
+/// possibly including a default implementation. A trait item is
+/// either required (meaning it doesn't have an implementation, just a
+/// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitItem {
     pub id: NodeId,
@@ -888,6 +889,7 @@ pub struct ImplItem {
     pub id: NodeId,
     pub name: Name,
     pub vis: Visibility,
+    pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
     pub node: ImplItemKind,
     pub span: Span,
@@ -1043,6 +1045,22 @@ pub enum Unsafety {
 pub enum Constness {
     Const,
     NotConst,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum Defaultness {
+    Default,
+    Final,
+}
+
+impl Defaultness {
+    pub fn is_final(&self) -> bool {
+        *self == Defaultness::Final
+    }
+
+    pub fn is_default(&self) -> bool {
+        *self == Defaultness::Default
+    }
 }
 
 impl fmt::Display for Unsafety {

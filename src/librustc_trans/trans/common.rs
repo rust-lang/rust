@@ -37,8 +37,8 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
-use middle::traits;
 use middle::ty::{self, Ty, TyCtxt};
+use middle::traits::{self, SelectionContext, ProjectionMode};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
 use rustc::mir::repr::Mir;
@@ -1137,8 +1137,8 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-    let mut selcx = traits::SelectionContext::new(&infcx);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+    let mut selcx = SelectionContext::new(&infcx);
 
     let obligation =
         traits::Obligation::new(traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID),
@@ -1198,8 +1198,8 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            predicates);
 
     let tcx = ccx.tcx();
-    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables);
-    let mut selcx = traits::SelectionContext::new(&infcx);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+    let mut selcx = SelectionContext::new(&infcx);
     let mut fulfill_cx = traits::FulfillmentContext::new();
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: predicates, obligations } =
@@ -1228,7 +1228,7 @@ pub enum ExprOrMethodCall {
 pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 node: ExprOrMethodCall,
                                 param_substs: &subst::Substs<'tcx>)
-                                -> subst::Substs<'tcx> {
+                                -> &'tcx subst::Substs<'tcx> {
     let tcx = ccx.tcx();
 
     let substs = match node {
@@ -1245,9 +1245,9 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               node, substs));
     }
 
-    monomorphize::apply_param_substs(tcx,
-                                     param_substs,
-                                     &substs.erase_regions())
+    ccx.tcx().mk_substs(monomorphize::apply_param_substs(tcx,
+                                                         param_substs,
+                                                         &substs.erase_regions()))
 }
 
 pub fn langcall(bcx: Block,
@@ -1277,7 +1277,7 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
            inlined_vid);
     let adt_def = match ctor_ty.sty {
-        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
             output: ty::FnConverging(ty), ..
         }), ..}) => ty,
         _ => ctor_ty

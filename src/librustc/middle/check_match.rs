@@ -25,6 +25,7 @@ use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization::{cmt};
 use middle::pat_util::*;
+use middle::traits::ProjectionMode;
 use middle::ty::*;
 use middle::ty;
 use std::cmp::Ordering;
@@ -344,6 +345,10 @@ fn check_arms(cx: &MatchCheckCtxt,
                         hir::MatchSource::Normal => {
                             span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
                         },
+
+                        hir::MatchSource::TryDesugar => {
+                            cx.tcx.sess.span_bug(pat.span, "unreachable try pattern")
+                        },
                     }
                 }
                 Useful => (),
@@ -472,7 +477,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                     Some(Def::AssociatedConst(did)) |
                     Some(Def::Const(did)) => match lookup_const_by_id(self.tcx, did,
                                                                     Some(pat.id), None) {
-                        Some(const_expr) => {
+                        Some((const_expr, _const_ty)) => {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
 
                                 if let Some(ref mut renaming_map) = self.renaming_map {
@@ -1097,7 +1102,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                         //FIXME: (@jroesch) this code should be floated up as well
                         let infcx = infer::new_infer_ctxt(cx.tcx,
                                                           &cx.tcx.tables,
-                                                          Some(cx.param_env.clone()));
+                                                          Some(cx.param_env.clone()),
+                                                          ProjectionMode::AnyFinal);
                         if infcx.type_moves_by_default(pat_ty, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
@@ -1129,7 +1135,8 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
 
     let infcx = infer::new_infer_ctxt(cx.tcx,
                                       &cx.tcx.tables,
-                                      Some(checker.cx.param_env.clone()));
+                                      Some(checker.cx.param_env.clone()),
+                                      ProjectionMode::AnyFinal);
 
     let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
     visitor.walk_expr(guard);

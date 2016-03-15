@@ -1014,6 +1014,11 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
+
+        if let hir::Defaultness::Default = ii.defaultness {
+            try!(self.word_nbsp("default"));
+        }
+
         match ii.node {
             hir::ImplItemKind::Const(ref ty, ref expr) => {
                 try!(self.print_associated_const(ii.name, &ty, Some(&expr), ii.vis));

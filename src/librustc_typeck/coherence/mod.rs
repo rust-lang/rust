@@ -15,19 +15,18 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-
 use middle::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
-use middle::traits;
 use middle::ty::{self, TyCtxt, TypeFoldable};
+use middle::traits::{self, ProjectionMode};
 use middle::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
 use middle::ty::{TyParam, TyRawPtr};
 use middle::ty::{TyRef, TyStruct, TyTrait, TyTuple};
 use middle::ty::{TyStr, TyArray, TySlice, TyFloat, TyInfer, TyInt};
-use middle::ty::{TyUint, TyClosure, TyBox, TyBareFn};
+use middle::ty::{TyUint, TyClosure, TyBox, TyFnDef, TyFnPtr};
 use middle::ty::TyProjection;
 use middle::ty::util::CopyImplementationError;
 use middle::free_region::FreeRegionMap;
@@ -35,7 +34,9 @@ use CrateCtxt;
 use middle::infer::{self, InferCtxt, TypeOrigin, new_infer_ctxt};
 use std::cell::RefCell;
 use std::rc::Rc;
+use syntax::ast;
 use syntax::codemap::Span;
+use syntax::errors::DiagnosticBuilder;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
@@ -67,8 +68,8 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-        TyStr | TyArray(..) | TySlice(..) | TyBareFn(..) | TyTuple(..) |
-        TyParam(..) | TyError |
+        TyStr | TyArray(..) | TySlice(..) | TyFnDef(..) | TyFnPtr(_) |
+        TyTuple(..) | TyParam(..) | TyError |
         TyRawPtr(_) | TyRef(_, _) | TyProjection(..) => {
             None
         }
@@ -195,7 +196,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
                impl_trait_ref, impl_def_id);
         let trait_def = self.crate_context.tcx.lookup_trait_def(impl_trait_ref.def_id);
-        trait_def.record_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
+        trait_def.record_local_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
     // Converts an implementation in the AST to a vector of items.
@@ -383,13 +384,14 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env), ProjectionMode::Topmost);
 
+            let origin = TypeOrigin::Misc(span);
             let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
                                mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
                 if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
-                    infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
-                                                  target, &ty::error::TypeError::Mutability);
+                    infcx.report_mismatched_types(origin, mk_ptr(mt_b.ty),
+                                                  target, ty::error::TypeError::Mutability);
                 }
                 (mt_a.ty, mt_b.ty, unsize_trait, None)
             };
@@ -418,7 +420,6 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                         return;
                     }
 
-                    let origin = TypeOrigin::Misc(span);
                     let fields = &def_a.struct_variant().fields;
                     let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
                         let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
@@ -519,9 +520,19 @@ fn enforce_trait_manually_implementable(tcx: &TyCtxt, sp: Span, trait_def_id: De
     err.emit();
 }
 
+// Factored out into helper because the error cannot be defined in multiple locations.
+pub fn report_duplicate_item<'tcx>(tcx: &TyCtxt<'tcx>, sp: Span, name: ast::Name)
+                                   -> DiagnosticBuilder<'tcx>
+{
+    struct_span_err!(tcx.sess, sp, E0201, "duplicate definitions with name `{}`:", name)
+}
+
 pub fn check_coherence(crate_context: &CrateCtxt) {
     let _task = crate_context.tcx.dep_graph.in_task(DepNode::Coherence);
-    let infcx = new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None);
+    let infcx = new_infer_ctxt(crate_context.tcx,
+                               &crate_context.tcx.tables,
+                               None,
+                               ProjectionMode::Topmost);
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: infcx,

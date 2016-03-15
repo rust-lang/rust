@@ -21,10 +21,10 @@ struct MyType { x: i32 }
 
 trait MyTrait { }
 
-impl<T: lib::MyCopy> MyTrait for T { } //~ ERROR E0119
+impl<T: lib::MyCopy> MyTrait for T { }
 
 // Tuples are not fundamental.
-impl MyTrait for lib::MyFundamentalStruct<(MyType,)> { }
+impl MyTrait for lib::MyFundamentalStruct<(MyType,)> { } //~ ERROR E0119
 
 #[rustc_error]
 fn main() { }

@@ -42,8 +42,8 @@ pub mod pattern;
 /// [`str`]'s [`parse()`] method. See [`parse()`]'s documentation for examples.
 ///
 /// [`from_str()`]: #tymethod.from_str
-/// [`str`]: ../primitive.str.html
-/// [`parse()`]: ../primitive.str.html#method.parse
+/// [`str`]: ../../std/primitive.str.html
+/// [`parse()`]: ../../std/primitive.str.html#method.parse
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
@@ -60,7 +60,7 @@ pub trait FromStr: Sized {
     ///
     /// Basic usage with [`i32`][ithirtytwo], a type that implements `FromStr`:
     ///
-    /// [ithirtytwo]: ../primitive.i32.html
+    /// [ithirtytwo]: ../../std/primitive.i32.html
     ///
     /// ```
     /// use std::str::FromStr;
@@ -182,7 +182,7 @@ impl Utf8Error {
 /// If you need a `String` instead of a `&str`, consider
 /// [`String::from_utf8()`][string].
 ///
-/// [string]: ../string/struct.String.html#method.from_utf8
+/// [string]: ../../std/string/struct.String.html#method.from_utf8
 ///
 /// Because you can stack-allocate a `[u8; N]`, and you can take a `&[u8]` of
 /// it, this function is one way to have a stack-allocated string. There is
@@ -322,7 +322,7 @@ Section: Iterators
 ///
 /// Created with the method [`chars()`].
 ///
-/// [`chars()`]: ../primitive.str.html#method.chars
+/// [`chars()`]: ../../std/primitive.str.html#method.chars
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -531,7 +531,7 @@ impl<'a> CharIndices<'a> {
 ///
 /// Created with the method [`bytes()`].
 ///
-/// [`bytes()`]: ../primitive.str.html#method.bytes
+/// [`bytes()`]: ../../std/primitive.str.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
@@ -816,12 +816,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split()`].
         ///
-        /// [`split()`]: ../primitive.str.html#method.split
+        /// [`split()`]: ../../std/primitive.str.html#method.split
         struct Split;
     reverse:
         /// Created with the method [`rsplit()`].
         ///
-        /// [`rsplit()`]: ../primitive.str.html#method.rsplit
+        /// [`rsplit()`]: ../../std/primitive.str.html#method.rsplit
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -834,12 +834,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`split_terminator()`].
         ///
-        /// [`split_terminator()`]: ../primitive.str.html#method.split_terminator
+        /// [`split_terminator()`]: ../../std/primitive.str.html#method.split_terminator
         struct SplitTerminator;
     reverse:
         /// Created with the method [`rsplit_terminator()`].
         ///
-        /// [`rsplit_terminator()`]: ../primitive.str.html#method.rsplit_terminator
+        /// [`rsplit_terminator()`]: ../../std/primitive.str.html#method.rsplit_terminator
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -884,12 +884,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`splitn()`].
         ///
-        /// [`splitn()`]: ../primitive.str.html#method.splitn
+        /// [`splitn()`]: ../../std/primitive.str.html#method.splitn
         struct SplitN;
     reverse:
         /// Created with the method [`rsplitn()`].
         ///
-        /// [`rsplitn()`]: ../primitive.str.html#method.rsplitn
+        /// [`rsplitn()`]: ../../std/primitive.str.html#method.rsplitn
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -926,12 +926,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`match_indices()`].
         ///
-        /// [`match_indices()`]: ../primitive.str.html#method.match_indices
+        /// [`match_indices()`]: ../../std/primitive.str.html#method.match_indices
         struct MatchIndices;
     reverse:
         /// Created with the method [`rmatch_indices()`].
         ///
-        /// [`rmatch_indices()`]: ../primitive.str.html#method.rmatch_indices
+        /// [`rmatch_indices()`]: ../../std/primitive.str.html#method.rmatch_indices
         struct RMatchIndices;
     stability:
         #[stable(feature = "str_match_indices", since = "1.5.0")]
@@ -970,12 +970,12 @@ generate_pattern_iterators! {
     forward:
         /// Created with the method [`matches()`].
         ///
-        /// [`matches()`]: ../primitive.str.html#method.matches
+        /// [`matches()`]: ../../std/primitive.str.html#method.matches
         struct Matches;
     reverse:
         /// Created with the method [`rmatches()`].
         ///
-        /// [`rmatches()`]: ../primitive.str.html#method.rmatches
+        /// [`rmatches()`]: ../../std/primitive.str.html#method.rmatches
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
@@ -986,7 +986,7 @@ generate_pattern_iterators! {
 
 /// Created with the method [`lines()`].
 ///
-/// [`lines()`]: ../primitive.str.html#method.lines
+/// [`lines()`]: ../../std/primitive.str.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
@@ -1016,7 +1016,7 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 
 /// Created with the method [`lines_any()`].
 ///
-/// [`lines_any()`]: ../primitive.str.html#method.lines_any
+/// [`lines_any()`]: ../../std/primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone)]
@@ -1311,13 +1311,19 @@ mod traits {
         }
     }
 
+    /// Implements substring slicing with syntax `&self[begin .. end]`.
+    ///
     /// Returns a slice of the given string from the byte range
     /// [`begin`..`end`).
     ///
     /// This operation is `O(1)`.
     ///
-    /// Panics when `begin` and `end` do not point to valid characters
-    /// or point beyond the last character of the string.
+    /// # Panics
+    ///
+    /// Panics if `begin` or `end` does not point to the starting
+    /// byte offset of a character (as defined by `is_char_boundary`).
+    /// Requires that `begin <= end` and `end <= len` where `len` is the
+    /// length of the string.
     ///
     /// # Examples
     ///
@@ -1353,8 +1359,20 @@ mod traits {
         }
     }
 
+    /// Implements mutable substring slicing with syntax
+    /// `&mut self[begin .. end]`.
+    ///
     /// Returns a mutable slice of the given string from the byte range
     /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `begin` or `end` does not point to the starting
+    /// byte offset of a character (as defined by `is_char_boundary`).
+    /// Requires that `begin <= end` and `end <= len` where `len` is the
+    /// length of the string.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::Range<usize>> for str {
         #[inline]
@@ -1370,13 +1388,12 @@ mod traits {
         }
     }
 
-    /// Returns a slice of the string from the beginning to byte
+    /// Implements substring slicing with syntax `&self[.. end]`.
+    ///
+    /// Returns a slice of the string from the beginning to byte offset
     /// `end`.
     ///
-    /// Equivalent to `self[0 .. end]`.
-    ///
-    /// Panics when `end` does not point to a valid character, or is
-    /// out of bounds.
+    /// Equivalent to `&self[0 .. end]`.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeTo<usize>> for str {
         type Output = str;
@@ -1392,8 +1409,12 @@ mod traits {
         }
     }
 
-    /// Returns a mutable slice of the string from the beginning to byte
+    /// Implements mutable substring slicing with syntax `&mut self[.. end]`.
+    ///
+    /// Returns a mutable slice of the string from the beginning to byte offset
     /// `end`.
+    ///
+    /// Equivalent to `&mut self[0 .. end]`.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::RangeTo<usize>> for str {
         #[inline]
@@ -1407,12 +1428,12 @@ mod traits {
         }
     }
 
-    /// Returns a slice of the string from `begin` to its end.
+    /// Implements substring slicing with syntax `&self[begin ..]`.
     ///
-    /// Equivalent to `self[begin .. self.len()]`.
+    /// Returns a slice of the string from byte offset `begin`
+    /// to the end of the string.
     ///
-    /// Panics when `begin` does not point to a valid character, or is
-    /// out of bounds.
+    /// Equivalent to `&self[begin .. len]`.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFrom<usize>> for str {
         type Output = str;
@@ -1428,7 +1449,12 @@ mod traits {
         }
     }
 
-    /// Returns a slice of the string from `begin` to its end.
+    /// Implements mutable substring slicing with syntax `&mut self[begin ..]`.
+    ///
+    /// Returns a mutable slice of the string from byte offset `begin`
+    /// to the end of the string.
+    ///
+    /// Equivalent to `&mut self[begin .. len]`.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::RangeFrom<usize>> for str {
         #[inline]
@@ -1443,6 +1469,12 @@ mod traits {
         }
     }
 
+    /// Implements substring slicing with syntax `&self[..]`.
+    ///
+    /// Returns a slice of the whole string. This operation can
+    /// never panic.
+    ///
+    /// Equivalent to `&self[0 .. len]`.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFull> for str {
         type Output = str;
@@ -1453,6 +1485,12 @@ mod traits {
         }
     }
 
+    /// Implements mutable substring slicing with syntax `&mut self[..]`.
+    ///
+    /// Returns a mutable slice of the whole string. This operation can
+    /// never panic.
+    ///
+    /// Equivalent to `&mut self[0 .. len]`.
     #[stable(feature = "derefmut_for_string", since = "1.2.0")]
     impl ops::IndexMut<ops::RangeFull> for str {
         #[inline]
@@ -1523,7 +1561,7 @@ mod traits {
 #[doc(hidden)]
 #[unstable(feature = "core_str_ext",
            reason = "stable interface provided by `impl str` in later crates",
-           issue = "27701")]
+           issue = "32110")]
 pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.

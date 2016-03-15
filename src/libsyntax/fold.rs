@@ -993,6 +993,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
         vis: i.vis,
+        defaultness: i.defaultness,
         node: match i.node  {
             ast::ImplItemKind::Const(ty, expr) => {
                 ast::ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
@@ -1332,7 +1333,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                         fields.move_map(|x| folder.fold_field(x)),
                         maybe_expr.map(|x| folder.fold_expr(x)))
             },
-            ExprKind::Paren(ex) => ExprKind::Paren(folder.fold_expr(ex))
+            ExprKind::Paren(ex) => ExprKind::Paren(folder.fold_expr(ex)),
+            ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
         },
         span: folder.new_span(span),
         attrs: attrs.map_thin_attrs(|v| fold_attrs(v, folder)),

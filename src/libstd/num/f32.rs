@@ -262,7 +262,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
-    /// [floating-point]: ../../../../../reference.html#machine-types
+    /// [floating-point]: ../reference.html#machine-types
     #[unstable(feature = "float_extras", reason = "signature is undecided",
                issue = "27752")]
     #[inline]

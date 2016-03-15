@@ -9,6 +9,83 @@
             "args": ["0", "0"]
         },
         {
+            "intrinsic": "256_blendv_{0.data_type}",
+            "width": [256],
+            "llvm": "blendv.{0.data_type}.256",
+            "ret": "f(32-64)",
+            "args": ["0", "0", "0"]
+        },
+        {
+            "intrinsic": "256_broadcast_{0.data_type}",
+            "width": [256],
+            "llvm": "vbroadcastf128.{0.data_type}.256",
+            "ret": "f(32-64)",
+            "args": ["s8SPc"]
+        },
+        {
+            "intrinsic": "256_cmp_{0.data_type}",
+            "width": [256],
+            "llvm": "cmp.{1.data_type}.256",
+            "ret": "f(32-64)",
+            "args": ["0", "0", "s8S"]
+        },
+        {
+            "intrinsic": "256_cvtepi32_pd",
+            "width": [256],
+            "llvm": "cvtdq2.pd.256",
+            "ret": "f64",
+            "args": ["s32h"]
+        },
+        {
+            "intrinsic": "256_cvtepi32_ps",
+            "width": [256],
+            "llvm": "cvtdq2.ps.256",
+            "ret": "f32",
+            "args": ["s32"]
+        },
+        {
+            "intrinsic": "256_cvtpd_epi32",
+            "width": [256],
+            "llvm": "cvt.pd2dq.256",
+            "ret": "s32h",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "256_cvtpd_ps",
+            "width": [256],
+            "llvm": "cvt.pd2.ps.256",
+            "ret": "f32h",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "256_cvtps_epi32",
+            "width": [256],
+            "llvm": "cvt.ps2dq.256",
+            "ret": "s32",
+            "args": ["f32"]
+        },
+        {
+            "intrinsic": "256_cvtps_pd",
+            "width": [256],
+            "llvm": "cvt.ps2.pd.256",
+            "ret": "f64",
+            "args": ["f32h"]
+        },
+        {
+            "intrinsic": "256_cvttpd_epi32",
+            "width": [256],
+            "llvm": "cvtt.pd2dq.256",
+            "ret": "s32h",
+            "args": ["f64"]
+        },
+        {
+            "intrinsic": "256_cvttps_epi32",
+            "width": [256],
+            "llvm": "cvtt.ps2dq.256",
+            "ret": "s32",
+            "args": ["f32"]
+        },
+        {
             "intrinsic": "256_dp_ps",
             "width": [256],
             "llvm": "dp.ps.256",

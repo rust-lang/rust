@@ -15,19 +15,12 @@ use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
 use middle::cstore::LOCAL_CRATE;
-use middle::const_eval::{self, ConstVal, ConstEvalErr};
-use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
-use middle::const_eval::{const_int_checked_add, const_uint_checked_add};
-use middle::const_eval::{const_int_checked_sub, const_uint_checked_sub};
-use middle::const_eval::{const_int_checked_mul, const_uint_checked_mul};
-use middle::const_eval::{const_int_checked_div, const_uint_checked_div};
-use middle::const_eval::{const_int_checked_rem, const_uint_checked_rem};
-use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
-use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
+use middle::const_eval::{self, ConstEvalErr};
 use middle::def::Def;
 use middle::def_id::DefId;
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
+use trans::callee::Callee;
 use trans::collector::{self, TransItem};
 use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
@@ -41,9 +34,10 @@ use trans::Disr;
 use middle::subst::Substs;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
+use rustc_const_eval::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
 
 use rustc_front::hir;
 
@@ -211,7 +205,7 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let arg_ids = args.iter().map(|arg| arg.pat.id);
     let fn_args = arg_ids.zip(arg_vals.iter().cloned()).collect();
 
-    let substs = ccx.tcx().mk_substs(node_id_substs(ccx, node, param_substs));
+    let substs = node_id_substs(ccx, node, param_substs);
     match fn_like.body().expr {
         Some(ref expr) => {
             const_expr(ccx, &expr, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
@@ -233,7 +227,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id), Some(param_substs)) {
-        Some(ref expr) => expr,
+        Some((ref expr, _ty)) => expr,
         None => {
             ccx.sess().span_bug(ref_expr.span, "constant item not found")
         }
@@ -355,8 +349,16 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let opt_adj = cx.tcx().tables.borrow().adjustments.get(&e.id).cloned();
     match opt_adj {
         Some(AdjustReifyFnPointer) => {
-            // FIXME(#19925) once fn item types are
-            // zero-sized, we'll need to do something here
+            match ety.sty {
+                ty::TyFnDef(def_id, substs, _) => {
+                    let datum = Callee::def(cx, def_id, substs, ety).reify(cx);
+                    llconst = datum.val;
+                    ety_adjusted = datum.ty;
+                }
+                _ => {
+                    unreachable!("{} cannot be reified to a fn ptr", ety)
+                }
+            }
         }
         Some(AdjustUnsafeFnPointer) | Some(AdjustMutToConstPointer) => {
             // purely a type-level thing
@@ -413,8 +415,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     .expect("consts: unsizing got non-pointer target type").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                 let base = ptrcast(base, ptr_ty);
-                let info = base::unsized_info(cx, pointee_ty, unsized_ty,
-                                              old_info, param_substs);
+                let info = base::unsized_info(cx, pointee_ty, unsized_ty, old_info);
 
                 if old_info.is_none() {
                     let prev_const = cx.const_unsized().borrow_mut()
@@ -461,35 +462,70 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
         // Catch this up front by looking for ExprLit directly,
         // and just accepting it.
         if let hir::ExprLit(_) = inner_e.node { return Ok(()); }
-
-        let result = match t.sty {
-            ty::TyInt(int_type) => {
-                let input = match const_to_opt_int(te) {
-                    Some(v) => v,
-                    None => return Ok(()),
-                };
-                const_int_checked_neg(
-                    input, e, Some(const_eval::IntTy::from(cx.tcx(), int_type)))
-            }
-            ty::TyUint(uint_type) => {
-                let input = match const_to_opt_uint(te) {
-                    Some(v) => v,
-                    None => return Ok(()),
-                };
-                const_uint_checked_neg(
-                    input, e, Some(const_eval::UintTy::from(cx.tcx(), uint_type)))
-            }
-            _ => return Ok(()),
+        let cval = match to_const_int(te, t, cx.tcx()) {
+            Some(v) => v,
+            None => return Ok(()),
         };
-        const_err(cx, e, result, trueconst)
+        match -cval {
+            Ok(_) => return Ok(()),
+            Err(err) => const_err(cx, e, Err(err), trueconst),
+        }
     } else {
         Ok(())
     }
 }
 
+fn to_const_int(value: ValueRef, t: Ty, tcx: &TyCtxt) -> Option<ConstInt> {
+    match t.sty {
+        ty::TyInt(int_type) => const_to_opt_int(value).and_then(|input| match int_type {
+            ast::IntTy::I8 => {
+                assert_eq!(input as i8 as i64, input);
+                Some(ConstInt::I8(input as i8))
+            },
+            ast::IntTy::I16 => {
+                assert_eq!(input as i16 as i64, input);
+                Some(ConstInt::I16(input as i16))
+            },
+            ast::IntTy::I32 => {
+                assert_eq!(input as i32 as i64, input);
+                Some(ConstInt::I32(input as i32))
+            },
+            ast::IntTy::I64 => {
+                Some(ConstInt::I64(input))
+            },
+            ast::IntTy::Is => {
+                ConstIsize::new(input, tcx.sess.target.int_type)
+                    .ok().map(ConstInt::Isize)
+            },
+        }),
+        ty::TyUint(uint_type) => const_to_opt_uint(value).and_then(|input| match uint_type {
+            ast::UintTy::U8 => {
+                assert_eq!(input as u8 as u64, input);
+                Some(ConstInt::U8(input as u8))
+            },
+            ast::UintTy::U16 => {
+                assert_eq!(input as u16 as u64, input);
+                Some(ConstInt::U16(input as u16))
+            },
+            ast::UintTy::U32 => {
+                assert_eq!(input as u32 as u64, input);
+                Some(ConstInt::U32(input as u32))
+            },
+            ast::UintTy::U64 => {
+                Some(ConstInt::U64(input))
+            },
+            ast::UintTy::Us => {
+                ConstUsize::new(input, tcx.sess.target.uint_type)
+                    .ok().map(ConstInt::Usize)
+            },
+        }),
+        _ => None,
+    }
+}
+
 fn const_err(cx: &CrateContext,
              e: &hir::Expr,
-             result: Result<ConstVal, ConstEvalErr>,
+             result: Result<ConstInt, ConstMathErr>,
              trueconst: TrueConst)
              -> Result<(), ConstEvalFailure> {
     match (result, trueconst) {
@@ -498,10 +534,12 @@ fn const_err(cx: &CrateContext,
             Ok(())
         },
         (Err(err), TrueConst::Yes) => {
+            let err = ConstEvalErr{ span: e.span, kind: const_eval::ErrKind::Math(err) };
             cx.tcx().sess.span_err(e.span, &err.description());
             Err(Compiletime(err))
         },
         (Err(err), TrueConst::No) => {
+            let err = ConstEvalErr{ span: e.span, kind: const_eval::ErrKind::Math(err) };
             cx.tcx().sess.span_warn(e.span, &err.description());
             Err(Runtime(err))
         },
@@ -512,46 +550,18 @@ fn check_binary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
                               te1: ValueRef, te2: ValueRef,
                               trueconst: TrueConst) -> Result<(), ConstEvalFailure> {
     let b = if let hir::ExprBinary(b, _, _) = e.node { b } else { unreachable!() };
-
-    let result = match t.sty {
-        ty::TyInt(int_type) => {
-            let (lhs, rhs) = match (const_to_opt_int(te1),
-                                    const_to_opt_int(te2)) {
-                (Some(v1), Some(v2)) => (v1, v2),
-                _ => return Ok(()),
-            };
-
-            let opt_ety = Some(const_eval::IntTy::from(cx.tcx(), int_type));
-            match b.node {
-                hir::BiAdd => const_int_checked_add(lhs, rhs, e, opt_ety),
-                hir::BiSub => const_int_checked_sub(lhs, rhs, e, opt_ety),
-                hir::BiMul => const_int_checked_mul(lhs, rhs, e, opt_ety),
-                hir::BiDiv => const_int_checked_div(lhs, rhs, e, opt_ety),
-                hir::BiRem => const_int_checked_rem(lhs, rhs, e, opt_ety),
-                hir::BiShl => const_int_checked_shl(lhs, rhs, e, opt_ety),
-                hir::BiShr => const_int_checked_shr(lhs, rhs, e, opt_ety),
-                _ => return Ok(()),
-            }
-        }
-        ty::TyUint(uint_type) => {
-            let (lhs, rhs) = match (const_to_opt_uint(te1),
-                                    const_to_opt_uint(te2)) {
-                (Some(v1), Some(v2)) => (v1, v2),
-                _ => return Ok(()),
-            };
-
-            let opt_ety = Some(const_eval::UintTy::from(cx.tcx(), uint_type));
-            match b.node {
-                hir::BiAdd => const_uint_checked_add(lhs, rhs, e, opt_ety),
-                hir::BiSub => const_uint_checked_sub(lhs, rhs, e, opt_ety),
-                hir::BiMul => const_uint_checked_mul(lhs, rhs, e, opt_ety),
-                hir::BiDiv => const_uint_checked_div(lhs, rhs, e, opt_ety),
-                hir::BiRem => const_uint_checked_rem(lhs, rhs, e, opt_ety),
-                hir::BiShl => const_uint_checked_shl(lhs, rhs, e, opt_ety),
-                hir::BiShr => const_uint_checked_shr(lhs, rhs, e, opt_ety),
-                _ => return Ok(()),
-            }
-        }
+    let (lhs, rhs) = match (to_const_int(te1, t, cx.tcx()), to_const_int(te2, t, cx.tcx())) {
+        (Some(v1), Some(v2)) => (v1, v2),
+        _ => return Ok(()),
+    };
+    let result = match b.node {
+        hir::BiAdd => lhs + rhs,
+        hir::BiSub => lhs - rhs,
+        hir::BiMul => lhs * rhs,
+        hir::BiDiv => lhs / rhs,
+        hir::BiRem => lhs % rhs,
+        hir::BiShl => lhs << rhs,
+        hir::BiShr => lhs >> rhs,
         _ => return Ok(()),
     };
     const_err(cx, e, result, trueconst)
@@ -894,9 +904,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         cx.sess().span_bug(e.span, "const fn argument not found")
                     }
                 }
-                Def::Fn(..) | Def::Method(..) => {
-                    expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
-                }
+                Def::Fn(..) | Def::Method(..) => C_nil(cx),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
                     load_const(cx, try!(get_const_val(cx, def_id, e, param_substs)),
                                ety)
@@ -908,23 +916,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             let repr = adt::represent_type(cx, ety);
                             adt::trans_const(cx, &repr, Disr::from(vinfo.disr_val), &[])
                         }
-                        ty::VariantKind::Tuple => {
-                            expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
-                        }
+                        ty::VariantKind::Tuple => C_nil(cx),
                         ty::VariantKind::Struct => {
                             cx.sess().span_bug(e.span, "path-expr refers to a dict variant!")
                         }
                     }
                 }
-                Def::Struct(..) => {
-                    if let ty::TyBareFn(..) = ety.sty {
-                        // Tuple struct.
-                        expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
-                    } else {
-                        // Unit struct.
-                        C_null(type_of::type_of(cx, ety))
-                    }
-                }
+                // Unit struct or ctor.
+                Def::Struct(..) => C_null(type_of::type_of(cx, ety)),
                 _ => {
                     cx.sess().span_bug(e.span, "expected a const, fn, struct, \
                                                 or variant def")

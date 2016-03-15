@@ -172,8 +172,12 @@ pub enum PrintRequest {
 pub enum Input {
     /// Load source from file
     File(PathBuf),
-    /// The string is the source
-    Str(String)
+    Str {
+        /// String that is shown in place of a filename
+        name: String,
+        /// Anonymous source string
+        input: String,
+    },
 }
 
 impl Input {
@@ -181,7 +185,7 @@ impl Input {
         match *self {
             Input::File(ref ifile) => ifile.file_stem().unwrap()
                                            .to_str().unwrap().to_string(),
-            Input::Str(_) => "rust_out".to_string(),
+            Input::Str { .. } => "rust_out".to_string(),
         }
     }
 }
@@ -1093,6 +1097,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             early_warn(error_format, "resetting to default -C codegen-units=1");
             cg.codegen_units = 1;
         }
+    }
+
+    if cg.codegen_units < 1 {
+        early_error(error_format, "Value for codegen units must be a positive nonzero integer");
     }
 
     let cg = cg;

@@ -223,8 +223,8 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::TySlice(_) => "slice".to_string(),
             ty::TyRawPtr(_) => "*-ptr".to_string(),
             ty::TyRef(_, _) => "&-ptr".to_string(),
-            ty::TyBareFn(Some(_), _) => format!("fn item"),
-            ty::TyBareFn(None, _) => "fn pointer".to_string(),
+            ty::TyFnDef(..) => format!("fn item"),
+            ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
                 format!("trait {}", cx.item_path_str(inner.principal_def_id()))
             }

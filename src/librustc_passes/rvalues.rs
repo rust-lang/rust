@@ -16,6 +16,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::ty::{self, TyCtxt, ParameterEnvironment};
+use rustc::middle::traits::ProjectionMode;
 
 use rustc_front::hir;
 use rustc_front::intravisit;
@@ -43,7 +44,8 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
             let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
             let infcx = infer::new_infer_ctxt(self.tcx,
                                               &self.tcx.tables,
-                                              Some(param_env.clone()));
+                                              Some(param_env.clone()),
+                                              ProjectionMode::AnyFinal);
             let mut delegate = RvalueContextDelegate { tcx: self.tcx, param_env: &param_env };
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
             euv.walk_fn(fd, b);

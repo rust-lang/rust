@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "lib"]
-#![feature(globs)]
 
 mod m {
     pub use self::a::Foo;

@@ -36,4 +36,3 @@ fn main() {
 fn foo<T:fmt::Debug>(x: T) {
     println!("{:?}", x);
 }
-

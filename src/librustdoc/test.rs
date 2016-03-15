@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
-
 use std::cell::{RefCell, Cell};
-use std::collections::{HashSet, HashMap};
-use std::dynamic_lib::DynamicLibrary;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -32,6 +29,7 @@ use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
 use rustc_metadata::cstore::CStore;
@@ -91,7 +89,7 @@ pub fn run(input: &str,
 
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(config::parse_cfgspecs(cfgs.clone()));
-    let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
@@ -114,7 +112,7 @@ pub fn run(input: &str,
         external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
-        populated_crate_impls: RefCell::new(HashSet::new()),
+        all_crate_impls: RefCell::new(HashMap::new()),
         deref_trait_did: Cell::new(None),
     };
 
@@ -182,7 +180,10 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), as_test_harness, opts);
-    let input = config::Input::Str(test.to_string());
+    let input = config::Input::Str {
+        name: driver::anon_src(),
+        input: test.to_owned(),
+    };
     let mut outputs = HashMap::new();
     outputs.insert(OutputType::Exe, None);
 

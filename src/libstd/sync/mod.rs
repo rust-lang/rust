@@ -38,9 +38,6 @@ pub use sys_common::poison::{PoisonError, TryLockError, TryLockResult, LockResul
 pub use self::rwlock::{RwLockReadGuard, RwLockWriteGuard};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, StaticRwLock, RW_LOCK_INIT};
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-pub use self::semaphore::{Semaphore, SemaphoreGuard};
 
 pub mod mpsc;
 
@@ -49,4 +46,3 @@ mod condvar;
 mod mutex;
 mod once;
 mod rwlock;
-mod semaphore;

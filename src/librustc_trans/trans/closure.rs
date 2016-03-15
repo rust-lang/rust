@@ -13,11 +13,12 @@ use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
+use middle::traits::ProjectionMode;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
 use trans::build::*;
-use trans::callee::{self, ArgVals, Callee, TraitItem, MethodData};
+use trans::callee::{self, ArgVals, Callee};
 use trans::cleanup::{CleanupMethods, CustomScope, ScopeId};
 use trans::common::*;
 use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue};
@@ -49,7 +50,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let closure_ty = node_id_type(bcx, bcx.fcx.id);
     let self_type = self_type_for_closure(bcx.ccx(), closure_def_id, closure_ty);
     let kind = kind_for_closure(bcx.ccx(), closure_def_id);
-    let llenv = if kind == ty::FnOnceClosureKind &&
+    let llenv = if kind == ty::ClosureKind::FnOnce &&
             !arg_is_indirect(bcx.ccx(), self_type) {
         let datum = rvalue_scratch_datum(bcx,
                                          self_type,
@@ -85,7 +86,7 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let node_id = freevar.def.var_id();
         bcx.fcx.llupvars.borrow_mut().insert(node_id, upvar_ptr);
 
-        if kind == ty::FnOnceClosureKind && !captured_by_ref {
+        if kind == ty::ClosureKind::FnOnce && !captured_by_ref {
             let hint = bcx.fcx.lldropflag_hints.borrow().hint_datum(upvar_id.var_id);
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
@@ -206,7 +207,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
 
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
     let function_type = infcx.closure_type(closure_def_id, closure_substs);
 
     let freevars: Vec<ty::Freevar> =
@@ -271,24 +272,8 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
     // then adapt the self type
-    let closure_kind = ccx.tcx().closure_kind(closure_def_id);
-    trans_closure_adapter_shim(ccx,
-                               closure_def_id,
-                               substs,
-                               closure_kind,
-                               trait_closure_kind,
-                               llfn)
-}
+    let llfn_closure_kind = ccx.tcx().closure_kind(closure_def_id);
 
-fn trans_closure_adapter_shim<'a, 'tcx>(
-    ccx: &'a CrateContext<'a, 'tcx>,
-    closure_def_id: DefId,
-    substs: ty::ClosureSubsts<'tcx>,
-    llfn_closure_kind: ty::ClosureKind,
-    trait_closure_kind: ty::ClosureKind,
-    llfn: ValueRef)
-    -> ValueRef
-{
     let _icx = push_ctxt("trans_closure_adapter_shim");
     let tcx = ccx.tcx();
 
@@ -300,20 +285,20 @@ fn trans_closure_adapter_shim<'a, 'tcx>(
            ccx.tn().val_to_string(llfn));
 
     match (llfn_closure_kind, trait_closure_kind) {
-        (ty::FnClosureKind, ty::FnClosureKind) |
-        (ty::FnMutClosureKind, ty::FnMutClosureKind) |
-        (ty::FnOnceClosureKind, ty::FnOnceClosureKind) => {
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
             // No adapter needed.
             llfn
         }
-        (ty::FnClosureKind, ty::FnMutClosureKind) => {
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
             // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
             // `fn(&mut self, ...)`. In fact, at trans time, these are
             // basically the same thing, so we can just return llfn.
             llfn
         }
-        (ty::FnClosureKind, ty::FnOnceClosureKind) |
-        (ty::FnMutClosureKind, ty::FnOnceClosureKind) => {
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
             // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
             // self, ...)`.  We want a `fn(self, ...)`. We can produce
             // this by doing something like:
@@ -345,7 +330,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            ccx.tn().val_to_string(llreffn));
 
     let tcx = ccx.tcx();
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
@@ -355,28 +340,31 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, &substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
-    let llref_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
-                                                               abi: abi,
-                                                               sig: sig.clone() });
-    let llref_fn_ty = tcx.mk_fn(None, llref_bare_fn_ty);
+    let llref_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+        unsafety: unsafety,
+        abi: abi,
+        sig: sig.clone()
+    });
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
+
+    let ret_ty = tcx.erase_late_bound_regions(&sig.output());
+    let ret_ty = infer::normalize_associated_type(ccx.tcx(), &ret_ty);
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
     assert_eq!(abi, RustCall);
     sig.0.inputs[0] = closure_ty;
-    let llonce_bare_fn_ty = tcx.mk_bare_fn(ty::BareFnTy { unsafety: unsafety,
-                                                                abi: abi,
-                                                                sig: sig });
-    let llonce_fn_ty = tcx.mk_fn(None, llonce_bare_fn_ty);
+    let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+        unsafety: unsafety,
+        abi: abi,
+        sig: sig
+    });
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
     let lloncefn = declare::define_internal_rust_fn(ccx, &function_name,
                                                     llonce_fn_ty);
-    let sig = tcx.erase_late_bound_regions(&llonce_bare_fn_ty.sig);
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
@@ -384,13 +372,13 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
                       lloncefn,
                       ast::DUMMY_NODE_ID,
                       false,
-                      sig.output,
+                      ret_ty,
                       substs.func_substs,
                       None,
                       &block_arena);
-    let mut bcx = init_function(&fcx, false, sig.output);
+    let mut bcx = init_function(&fcx, false, ret_ty);
 
-    let llargs = get_params(fcx.llfn);
+    let mut llargs = get_params(fcx.llfn);
 
     // the first argument (`self`) will be the (by value) closure env.
     let self_scope = fcx.push_custom_cleanup_scope();
@@ -405,25 +393,21 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     debug!("trans_fn_once_adapter_shim: env_datum={}",
            bcx.val_to_string(env_datum.val));
+    llargs[self_idx] = env_datum.val;
 
     let dest =
         fcx.llretslotptr.get().map(
-            |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
+            |_| expr::SaveIn(fcx.get_ret_slot(bcx, ret_ty, "ret_slot")));
 
-    let callee_data = TraitItem(MethodData { llfn: llreffn,
-                                             llself: env_datum.val });
-
-    bcx = callee::trans_call_inner(bcx, DebugLoc::None, |bcx, _| {
-        Callee {
-            bcx: bcx,
-            data: callee_data,
-            ty: llref_fn_ty
-        }
-    }, ArgVals(&llargs[(self_idx + 1)..]), dest).bcx;
+    let callee = Callee {
+        data: callee::Fn(llreffn),
+        ty: llref_fn_ty
+    };
+    bcx = callee.call(bcx, DebugLoc::None, ArgVals(&llargs[self_idx..]), dest).bcx;
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, self_scope);
 
-    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
+    finish_fn(&fcx, bcx, ret_ty, DebugLoc::None);
 
     lloncefn
 }

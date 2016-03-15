@@ -16,19 +16,24 @@
 #[macro_use] extern crate rustc;
 extern crate rustc_front;
 extern crate rustc_plugin;
+extern crate rustc_const_eval;
 extern crate syntax;
 
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{self, MirPass};
 use rustc::mir::repr::{Mir, Literal};
 use rustc::mir::visit::MutVisitor;
-use rustc::middle::infer::InferCtxt;
+use rustc::middle::ty;
 use rustc::middle::const_eval::ConstVal;
+use rustc_const_eval::ConstInt;
 use rustc_plugin::Registry;
+
+use syntax::ast::NodeId;
 
 struct Pass;
 
-impl MirPass for Pass {
-    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, _: &InferCtxt<'a, 'tcx>) {
+impl transform::Pass for Pass {}
+impl<'tcx> MirPass<'tcx> for Pass {
+    fn run_pass(&mut self, _: &ty::TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
         Visitor.visit_mir(mir)
     }
 }
@@ -37,8 +42,10 @@ struct Visitor;
 
 impl<'tcx> MutVisitor<'tcx> for Visitor {
     fn visit_literal(&mut self, literal: &mut Literal<'tcx>) {
-        if let Literal::Value { value: ConstVal::Int(ref mut i @ 11) } = *literal {
-            *i = 42;
+        if let Literal::Value { ref mut value } = *literal {
+            if let ConstVal::Integral(ConstInt::I32(ref mut i @ 11)) = *value {
+                *i = 42;
+            }
         }
     }
 }

@@ -15,4 +15,4 @@ struct S;
 impl S {
     static fn f() {}
 }
-//~^^ ERROR expected one of `const`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `static`
+//~^^ ERROR expected one of `const`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`

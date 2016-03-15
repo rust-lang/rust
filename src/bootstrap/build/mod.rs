@@ -30,6 +30,7 @@ macro_rules! t {
 
 mod cc;
 mod channel;
+mod check;
 mod clean;
 mod compile;
 mod config;
@@ -81,6 +82,12 @@ pub struct Build {
     cc: HashMap<String, (gcc::Tool, PathBuf)>,
     cxx: HashMap<String, gcc::Tool>,
     compiler_rt_built: RefCell<HashMap<String, PathBuf>>,
+}
+
+pub enum Mode {
+    Libstd,
+    Librustc,
+    Tool,
 }
 
 impl Build {
@@ -145,25 +152,33 @@ impl Build {
                 CompilerRt { _dummy } => {
                     native::compiler_rt(self, target.target);
                 }
-                Libstd { stage, compiler } => {
-                    compile::std(self, stage, target.target, &compiler);
+                Libstd { compiler } => {
+                    compile::std(self, target.target, &compiler);
                 }
-                Librustc { stage, compiler } => {
-                    compile::rustc(self, stage, target.target, &compiler);
+                Librustc { compiler } => {
+                    compile::rustc(self, target.target, &compiler);
                 }
-                LibstdLink { stage, compiler, host } => {
-                    compile::std_link(self, stage, target.target,
-                                      &compiler, host);
+                LibstdLink { compiler, host } => {
+                    compile::std_link(self, target.target, &compiler, host);
                 }
-                LibrustcLink { stage, compiler, host } => {
-                    compile::rustc_link(self, stage, target.target,
-                                        &compiler, host);
+                LibrustcLink { compiler, host } => {
+                    compile::rustc_link(self, target.target, &compiler, host);
                 }
                 Rustc { stage: 0 } => {
                     // nothing to do...
                 }
                 Rustc { stage } => {
                     compile::assemble_rustc(self, stage, target.target);
+                }
+                ToolLinkchecker { stage } => {
+                    compile::tool(self, stage, target.target, "linkchecker");
+                }
+                ToolRustbook { stage } => {
+                    compile::tool(self, stage, target.target, "rustbook");
+                }
+                ToolErrorIndex { stage } => {
+                    compile::tool(self, stage, target.target,
+                                  "error_index_generator");
                 }
                 DocBook { stage } => {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
@@ -179,7 +194,22 @@ impl Build {
                 DocStandalone { stage } => {
                     doc::standalone(self, stage, target.target, &doc_out);
                 }
-                Doc { .. } => {} // pseudo-step
+                DocStd { stage } => {
+                    doc::std(self, stage, target.target, &doc_out);
+                }
+                DocRustc { stage } => {
+                    doc::rustc(self, stage, target.target, &doc_out);
+                }
+                DocErrorIndex { stage } => {
+                    doc::error_index(self, stage, target.target, &doc_out);
+                }
+
+                CheckLinkcheck { stage } => {
+                    check::linkcheck(self, stage, target.target);
+                }
+
+                Doc { .. } | // pseudo-steps
+                Check { .. } => {}
             }
         }
     }
@@ -229,37 +259,39 @@ impl Build {
     /// This will create a `Command` that represents a pending execution of
     /// Cargo for the specified stage, whether or not the standard library is
     /// being built, and using the specified compiler targeting `target`.
-    // FIXME: aren't stage/compiler duplicated?
-    fn cargo(&self, stage: u32, compiler: &Compiler, is_std: bool,
-             target: &str, cmd: &str) -> Command {
+    fn cargo(&self,
+             compiler: &Compiler,
+             mode: Mode,
+             target: &str,
+             cmd: &str) -> Command {
         let mut cargo = Command::new(&self.cargo);
-        let host = compiler.host;
-        let out_dir = self.stage_out(stage, host, is_std);
+        let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", out_dir)
              .arg(cmd)
-             .arg("--target").arg(target)
-             .arg("-j").arg(self.jobs().to_string());
+             .arg("-j").arg(self.jobs().to_string())
+             .arg("--target").arg(target);
 
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
         cargo.env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
-             .env("RUSTC_STAGE", self.stage_arg(stage, compiler).to_string())
+             .env("RUSTC_STAGE", compiler.stage.to_string())
              .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
              .env("RUSTC_SNAPSHOT", &self.rustc)
-             .env("RUSTC_SYSROOT", self.sysroot(stage, host))
+             .env("RUSTC_SYSROOT", self.sysroot(compiler))
              .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
-             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "))
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
-             .env("RUSTDOC", self.tool(compiler, "rustdoc"));
+             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
+             .env("RUSTDOC_REAL", self.rustdoc(compiler))
+             .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
 
-        // Specify some variuos options for build scripts used throughout the
-        // build.
+        // Specify some various options for build scripts used throughout
+        // the build.
         //
         // FIXME: the guard against msvc shouldn't need to be here
         if !target.contains("msvc") {
@@ -288,41 +320,35 @@ impl Build {
         if compiler.is_snapshot(self) {
             self.rustc.clone()
         } else {
-            self.sysroot(compiler.stage, compiler.host).join("bin")
-                .join(exe("rustc", compiler.host))
+            self.sysroot(compiler).join("bin").join(exe("rustc", compiler.host))
         }
     }
 
-    /// Get the specified tool next to the specified compiler
+    /// Get the specified tool built by the specified compiler
     fn tool(&self, compiler: &Compiler, tool: &str) -> PathBuf {
-        if compiler.is_snapshot(self) {
-            assert!(tool == "rustdoc", "no tools other than rustdoc in stage0");
-            let mut rustdoc = self.rustc.clone();
-            rustdoc.pop();
-            rustdoc.push(exe("rustdoc", &self.config.build));
-            return rustdoc
-        }
-        let (stage, host) = (compiler.stage, compiler.host);
-        self.cargo_out(stage - 1, host, false, host).join(exe(tool, host))
+        self.cargo_out(compiler, Mode::Tool, compiler.host)
+            .join(exe(tool, compiler.host))
+    }
+
+    /// Get the `rustdoc` executable next to the specified compiler
+    fn rustdoc(&self, compiler: &Compiler) -> PathBuf {
+        let mut rustdoc = self.compiler_path(compiler);
+        rustdoc.pop();
+        rustdoc.push(exe("rustdoc", compiler.host));
+        return rustdoc
     }
 
     /// Get a `Command` which is ready to run `tool` in `stage` built for
     /// `host`.
-    #[allow(dead_code)] // this will be used soon
     fn tool_cmd(&self, compiler: &Compiler, tool: &str) -> Command {
         let mut cmd = Command::new(self.tool(&compiler, tool));
         let host = compiler.host;
-        let stage = compiler.stage;
         let paths = vec![
-            self.cargo_out(stage - 1, host, true, host).join("deps"),
-            self.cargo_out(stage - 1, host, false, host).join("deps"),
+            self.cargo_out(compiler, Mode::Libstd, host).join("deps"),
+            self.cargo_out(compiler, Mode::Librustc, host).join("deps"),
         ];
         add_lib_path(paths, &mut cmd);
         return cmd
-    }
-
-    fn stage_arg(&self, stage: u32, compiler: &Compiler) -> u32 {
-        if stage == 0 && compiler.host != self.config.build {1} else {stage}
     }
 
     /// Get the space-separated set of activated features for the standard
@@ -339,14 +365,10 @@ impl Build {
     }
 
     /// Get the space-separated set of activated features for the compiler.
-    fn rustc_features(&self, stage: u32) -> String {
+    fn rustc_features(&self) -> String {
         let mut features = String::new();
         if self.config.use_jemalloc {
             features.push_str(" jemalloc");
-        }
-        if stage > 0 {
-            features.push_str(" rustdoc");
-            features.push_str(" rustbook");
         }
         return features
     }
@@ -357,35 +379,40 @@ impl Build {
         if self.config.rust_optimize {"release"} else {"debug"}
     }
 
-    fn sysroot(&self, stage: u32, host: &str) -> PathBuf {
-        if stage == 0 {
-            self.stage_out(stage, host, false)
+    fn sysroot(&self, compiler: &Compiler) -> PathBuf {
+        if compiler.stage == 0 {
+            self.out.join(compiler.host).join("stage0-sysroot")
         } else {
-            self.out.join(host).join(format!("stage{}", stage))
+            self.out.join(compiler.host).join(format!("stage{}", compiler.stage))
         }
     }
 
-    fn sysroot_libdir(&self, stage: u32, host: &str, target: &str) -> PathBuf {
-        self.sysroot(stage, host).join("lib").join("rustlib")
+    fn sysroot_libdir(&self, compiler: &Compiler, target: &str) -> PathBuf {
+        self.sysroot(compiler).join("lib").join("rustlib")
             .join(target).join("lib")
     }
 
     /// Returns the root directory for all output generated in a particular
     /// stage when running with a particular host compiler.
     ///
-    /// The `is_std` flag indicates whether the root directory is for the
-    /// bootstrap of the standard library or for the compiler.
-    fn stage_out(&self, stage: u32, host: &str, is_std: bool) -> PathBuf {
-        self.out.join(host)
-            .join(format!("stage{}{}", stage, if is_std {"-std"} else {"-rustc"}))
+    /// The mode indicates what the root directory is for.
+    fn stage_out(&self, compiler: &Compiler, mode: Mode) -> PathBuf {
+        let suffix = match mode {
+            Mode::Libstd => "-std",
+            _ => "-rustc",
+        };
+        self.out.join(compiler.host)
+                .join(format!("stage{}{}", compiler.stage, suffix))
     }
 
     /// Returns the root output directory for all Cargo output in a given stage,
     /// running a particular comipler, wehther or not we're building the
     /// standard library, and targeting the specified architecture.
-    fn cargo_out(&self, stage: u32, host: &str, is_std: bool,
+    fn cargo_out(&self,
+                 compiler: &Compiler,
+                 mode: Mode,
                  target: &str) -> PathBuf {
-        self.stage_out(stage, host, is_std).join(target).join(self.cargo_dir())
+        self.stage_out(compiler, mode).join(target).join(self.cargo_dir())
     }
 
     /// Root output directory for LLVM compiled for `target`
@@ -411,8 +438,7 @@ impl Build {
         if compiler.is_snapshot(self) {
             self.rustc_snapshot_libdir()
         } else {
-            self.sysroot(compiler.stage, compiler.host)
-                .join(libdir(compiler.host))
+            self.sysroot(compiler).join(libdir(compiler.host))
         }
     }
 

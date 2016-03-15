@@ -148,6 +148,12 @@ declare_lint! {
     "uses of #[derive] with raw pointers are rarely correct"
 }
 
+declare_lint! {
+    pub TRANSMUTE_FROM_FN_ITEM_TYPES,
+    Warn,
+    "transmute from function item type to pointer-sized type erroneously allowed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -177,7 +183,8 @@ impl LintPass for HardwiredLints {
             INVALID_TYPE_PARAM_DEFAULT,
             MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR,
-            RAW_POINTER_DERIVE
+            RAW_POINTER_DERIVE,
+            TRANSMUTE_FROM_FN_ITEM_TYPES
         )
     }
 }

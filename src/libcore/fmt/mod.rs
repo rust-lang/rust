@@ -22,20 +22,20 @@ use ops::Deref;
 use result;
 use slice;
 use str;
-use self::rt::v1::Alignment;
 
-#[unstable(feature = "fmt_radix", issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[allow(deprecated)]
-pub use self::num::radix;
-#[unstable(feature = "fmt_radix", issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[allow(deprecated)]
-pub use self::num::Radix;
-#[unstable(feature = "fmt_radix", issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[allow(deprecated)]
-pub use self::num::RadixFmt;
+#[unstable(feature = "fmt_flags_align", issue = "27726")]
+/// Possible alignments returned by `Formatter::align`
+pub enum Alignment {
+    /// Indication that contents should be left-aligned.
+    Left,
+    /// Indication that contents should be right-aligned.
+    Right,
+    /// Indication that contents should be center-aligned.
+    Center,
+    /// No alignment was requested.
+    Unknown,
+}
+
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugList, DebugMap};
 
@@ -780,7 +780,7 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
         width: None,
         precision: None,
         buf: output,
-        align: Alignment::Unknown,
+        align: rt::v1::Alignment::Unknown,
         fill: ' ',
         args: args.args,
         curarg: args.args.iter(),
@@ -920,13 +920,13 @@ impl<'a> Formatter<'a> {
             Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
                 try!(write_prefix(self));
-                self.with_padding(min - width, Alignment::Right, |f| {
+                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
                     f.buf.write_str(buf)
                 })
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                self.with_padding(min - width, Alignment::Right, |f| {
+                self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
                     try!(write_prefix(f)); f.buf.write_str(buf)
                 })
             }
@@ -973,7 +973,8 @@ impl<'a> Formatter<'a> {
             // If we're under both the maximum and the minimum width, then fill
             // up the minimum width with the specified string + some alignment.
             Some(width) => {
-                self.with_padding(width - s.chars().count(), Alignment::Left, |me| {
+                let align = rt::v1::Alignment::Left;
+                self.with_padding(width - s.chars().count(), align, |me| {
                     me.buf.write_str(s)
                 })
             }
@@ -982,20 +983,21 @@ impl<'a> Formatter<'a> {
 
     /// Runs a callback, emitting the correct padding either before or
     /// afterwards depending on whether right or left alignment is requested.
-    fn with_padding<F>(&mut self, padding: usize, default: Alignment,
+    fn with_padding<F>(&mut self, padding: usize, default: rt::v1::Alignment,
                        f: F) -> Result
         where F: FnOnce(&mut Formatter) -> Result,
     {
         use char::CharExt;
         let align = match self.align {
-            Alignment::Unknown => default,
+            rt::v1::Alignment::Unknown => default,
             _ => self.align
         };
 
         let (pre_pad, post_pad) = match align {
-            Alignment::Left => (0, padding),
-            Alignment::Right | Alignment::Unknown => (padding, 0),
-            Alignment::Center => (padding / 2, (padding + 1) / 2),
+            rt::v1::Alignment::Left => (0, padding),
+            rt::v1::Alignment::Right |
+            rt::v1::Alignment::Unknown => (padding, 0),
+            rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
         let mut fill = [0; 4];
@@ -1033,7 +1035,7 @@ impl<'a> Formatter<'a> {
                 // remove the sign from the formatted parts
                 formatted.sign = b"";
                 width = if width < sign.len() { 0 } else { width - sign.len() };
-                align = Alignment::Right;
+                align = rt::v1::Alignment::Right;
                 self.fill = '0';
             }
 
@@ -1116,7 +1118,14 @@ impl<'a> Formatter<'a> {
     /// Flag indicating what form of alignment was requested
     #[unstable(feature = "fmt_flags_align", reason = "method was just created",
                issue = "27726")]
-    pub fn align(&self) -> Alignment { self.align }
+    pub fn align(&self) -> Alignment {
+        match self.align {
+            rt::v1::Alignment::Left => Alignment::Left,
+            rt::v1::Alignment::Right => Alignment::Right,
+            rt::v1::Alignment::Center => Alignment::Center,
+            rt::v1::Alignment::Unknown => Alignment::Unknown,
+        }
+    }
 
     /// Optionally specified integer width that the output should be
     #[stable(feature = "fmt_flags", since = "1.5.0")]
@@ -1540,15 +1549,9 @@ macro_rules! tuple {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;
-                let mut n = 0;
                 $(
                     builder.field($name);
-                    n += 1;
                 )*
-
-                if n == 1 {
-                    try!(write!(builder.formatter(), ","));
-                }
 
                 builder.finish()
             }

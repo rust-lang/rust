@@ -670,13 +670,13 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         // conceptually a `&mut` or `&` reference, so we have to add a
         // deref.
         let cmt_result = match kind {
-            ty::FnOnceClosureKind => {
+            ty::ClosureKind::FnOnce => {
                 cmt_result
             }
-            ty::FnMutClosureKind => {
+            ty::ClosureKind::FnMut => {
                 self.env_deref(id, span, upvar_id, var_mutbl, ty::MutBorrow, cmt_result)
             }
-            ty::FnClosureKind => {
+            ty::ClosureKind::Fn => {
                 self.env_deref(id, span, upvar_id, var_mutbl, ty::ImmBorrow, cmt_result)
             }
         };
@@ -1630,9 +1630,9 @@ impl fmt::Debug for Upvar {
 impl fmt::Display for Upvar {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let kind = match self.kind {
-            ty::FnClosureKind => "Fn",
-            ty::FnMutClosureKind => "FnMut",
-            ty::FnOnceClosureKind => "FnOnce",
+            ty::ClosureKind::Fn => "Fn",
+            ty::ClosureKind::FnMut => "FnMut",
+            ty::ClosureKind::FnOnce => "FnOnce",
         };
         write!(f, "captured outer variable in an `{}` closure", kind)
     }

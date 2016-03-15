@@ -11,17 +11,18 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 #![allow(unreachable_code)]
 
+use rustc::dep_graph::DepNode;
 use rustc::middle::infer::{self, InferCtxt};
-use rustc::middle::traits;
-use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::middle::traits::{self, ProjectionMode};
 use rustc::middle::ty::fold::TypeFoldable;
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::{MirPass, Pass};
 use rustc::mir::visit::{self, Visitor};
-
-use syntax::codemap::{Span, DUMMY_SP};
 use std::fmt;
+use syntax::ast::NodeId;
+use syntax::codemap::{Span, DUMMY_SP};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -421,7 +422,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let func_ty = mir.operand_ty(tcx, func);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
                 let func_ty = match func_ty.sty {
-                    ty::TyBareFn(_, func_ty) => func_ty,
+                    ty::TyFnDef(_, _, func_ty) | ty::TyFnPtr(func_ty) => func_ty,
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
@@ -572,17 +573,20 @@ impl TypeckMir {
     }
 }
 
-impl MirPass for TypeckMir {
-    fn run_on_mir<'a, 'tcx>(&mut self, mir: &mut Mir<'tcx>, infcx: &InferCtxt<'a, 'tcx>)
-    {
-        if infcx.tcx.sess.err_count() > 0 {
+impl<'tcx> MirPass<'tcx> for TypeckMir {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>) {
+        if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-
-        let mut checker = TypeChecker::new(infcx);
-
+        let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(id));
+        let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+        let infcx = infer::new_infer_ctxt(tcx,
+                                          &tcx.tables,
+                                          Some(param_env),
+                                          ProjectionMode::AnyFinal);
+        let mut checker = TypeChecker::new(&infcx);
         {
             let mut verifier = TypeVerifier::new(&mut checker, mir);
             verifier.visit_mir(mir);
@@ -591,8 +595,9 @@ impl MirPass for TypeckMir {
                 return;
             }
         }
-
         checker.typeck_mir(mir);
         checker.verify_obligations(mir);
     }
 }
+
+impl Pass for TypeckMir {}

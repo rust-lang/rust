@@ -625,7 +625,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// ```
     #[unstable(feature = "cell_extras", reason = "recently added",
                issue = "27746")]
-    #[rustc_deprecated(since = "1.8.0", reason = "can be built on Ref::map")]
+    #[rustc_deprecated(since = "1.8.0", reason = "can be built on `Ref::map`: \
+        https://crates.io/crates/ref_filter_map")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Option<Ref<'b, U>>
         where F: FnOnce(&T) -> Option<&U>
@@ -700,7 +701,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// ```
     #[unstable(feature = "cell_extras", reason = "recently added",
                issue = "27746")]
-    #[rustc_deprecated(since = "1.8.0", reason = "can be built on RefMut::map")]
+    #[rustc_deprecated(since = "1.8.0", reason = "can be built on `RefMut::map`: \
+        https://crates.io/crates/ref_filter_map")]
     #[inline]
     pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Option<RefMut<'b, U>>
         where F: FnOnce(&mut T) -> Option<&mut U>

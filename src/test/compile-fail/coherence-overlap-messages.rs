@@ -10,33 +10,23 @@
 
 trait Foo {}
 
-impl<T> Foo for T {} //~ ERROR conflicting implementations of trait `Foo`:
-impl<U> Foo for U {}
+impl<T> Foo for T {}
+impl<U> Foo for U {} //~ ERROR conflicting implementations of trait `Foo`:
 
 trait Bar {}
 
-impl<T> Bar for T {} //~ ERROR conflicting implementations of trait `Bar` for type `u8`:
-impl Bar for u8 {}
+impl<T> Bar for (T, u8) {}
+impl<T> Bar for (u8, T) {} //~ ERROR conflicting implementations of trait `Bar` for type `(u8, u8)`:
 
 trait Baz<T> {}
 
-impl<T, U> Baz<U> for T {} //~ ERROR conflicting implementations of trait `Baz<_>` for type `u8`:
-impl<T> Baz<T> for u8 {}
+impl<T> Baz<u8> for T {}
+impl<T> Baz<T> for u8 {} //~ ERROR conflicting implementations of trait `Baz<u8>` for type `u8`:
 
-trait Quux<T> {}
+trait Quux<U, V> {}
 
-impl<T, U> Quux<U> for T {} //~ ERROR conflicting implementations of trait `Quux<_>`:
-impl<T> Quux<T> for T {}
-
-trait Qaar<T> {}
-
-impl<T, U> Qaar<U> for T {} //~ ERROR conflicting implementations of trait `Qaar<u8>`:
-impl<T> Qaar<u8> for T {}
-
-trait Qaax<T> {}
-
-impl<T, U> Qaax<U> for T {}
-//~^ ERROR conflicting implementations of trait `Qaax<u8>` for type `u32`:
-impl Qaax<u8> for u32 {}
+impl<T, U, V> Quux<U, V> for T {}
+impl<T, U> Quux<U, U> for T {} //~ ERROR conflicting implementations of trait `Quux<_, _>`:
+impl<T, V> Quux<T, V> for T {} //~ ERROR conflicting implementations of trait `Quux<_, _>`:
 
 fn main() {}

@@ -8,33 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_docs)]
-#![unstable(feature = "old_wrapping", reason = "may be removed or relocated",
-            issue = "27755")]
-
-use intrinsics::{add_with_overflow, sub_with_overflow, mul_with_overflow};
-
 use super::Wrapping;
 
 use ops::*;
-
-use ::{i8, i16, i32, i64, isize};
-
-#[unstable(feature = "old_wrapping", reason = "may be removed or relocated",
-           issue = "27755")]
-#[rustc_deprecated(since = "1.7.0", reason = "moved to inherent methods")]
-pub trait OverflowingOps {
-    fn overflowing_add(self, rhs: Self) -> (Self, bool);
-    fn overflowing_sub(self, rhs: Self) -> (Self, bool);
-    fn overflowing_mul(self, rhs: Self) -> (Self, bool);
-
-    fn overflowing_div(self, rhs: Self) -> (Self, bool);
-    fn overflowing_rem(self, rhs: Self) -> (Self, bool);
-    fn overflowing_neg(self) -> (Self, bool);
-
-    fn overflowing_shl(self, rhs: u32) -> (Self, bool);
-    fn overflowing_shr(self, rhs: u32) -> (Self, bool);
-}
 
 macro_rules! sh_impl_signed {
     ($t:ident, $f:ident) => (
@@ -52,7 +28,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -74,7 +50,7 @@ macro_rules! sh_impl_signed {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -96,7 +72,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shl_assign(&mut self, other: $f) {
@@ -114,7 +90,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
             #[inline(always)]
             fn shr_assign(&mut self, other: $f) {
@@ -218,7 +194,7 @@ macro_rules! wrapping_impl {
             }
         }
 
-        #[unstable(feature = "wrapping_impls", reason = "recently added", issue = "30524")]
+        #[stable(feature = "wrapping_impls", since = "1.7.0")]
         impl Rem for Wrapping<$t> {
             type Output = Wrapping<$t>;
 
@@ -331,120 +307,3 @@ mod shift_max {
     pub const u64: u32 = i64;
     pub use self::platform::usize;
 }
-
-macro_rules! signed_overflowing_impl {
-    ($($t:ident)*) => ($(
-        #[allow(deprecated)]
-        impl OverflowingOps for $t {
-            #[inline(always)]
-            fn overflowing_add(self, rhs: $t) -> ($t, bool) {
-                unsafe {
-                    add_with_overflow(self, rhs)
-                }
-            }
-            #[inline(always)]
-            fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
-                unsafe {
-                    sub_with_overflow(self, rhs)
-                }
-            }
-            #[inline(always)]
-            fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
-                unsafe {
-                    mul_with_overflow(self, rhs)
-                }
-            }
-
-            #[inline(always)]
-            fn overflowing_div(self, rhs: $t) -> ($t, bool) {
-                if self == $t::MIN && rhs == -1 {
-                    (self, true)
-                } else {
-                    (self/rhs, false)
-                }
-            }
-            #[inline(always)]
-            fn overflowing_rem(self, rhs: $t) -> ($t, bool) {
-                if self == $t::MIN && rhs == -1 {
-                    (0, true)
-                } else {
-                    (self % rhs, false)
-                }
-            }
-
-            #[inline(always)]
-            fn overflowing_shl(self, rhs: u32) -> ($t, bool) {
-                (self << (rhs & self::shift_max::$t),
-                 (rhs > self::shift_max::$t))
-            }
-            #[inline(always)]
-            fn overflowing_shr(self, rhs: u32) -> ($t, bool) {
-                (self >> (rhs & self::shift_max::$t),
-                 (rhs > self::shift_max::$t))
-            }
-
-            #[inline(always)]
-            fn overflowing_neg(self) -> ($t, bool) {
-                if self == $t::MIN {
-                    ($t::MIN, true)
-                } else {
-                    (-self, false)
-                }
-            }
-        }
-    )*)
-}
-
-macro_rules! unsigned_overflowing_impl {
-    ($($t:ident)*) => ($(
-        #[allow(deprecated)]
-        impl OverflowingOps for $t {
-            #[inline(always)]
-            fn overflowing_add(self, rhs: $t) -> ($t, bool) {
-                unsafe {
-                    add_with_overflow(self, rhs)
-                }
-            }
-            #[inline(always)]
-            fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
-                unsafe {
-                    sub_with_overflow(self, rhs)
-                }
-            }
-            #[inline(always)]
-            fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
-                unsafe {
-                    mul_with_overflow(self, rhs)
-                }
-            }
-
-            #[inline(always)]
-            fn overflowing_div(self, rhs: $t) -> ($t, bool) {
-                (self/rhs, false)
-            }
-            #[inline(always)]
-            fn overflowing_rem(self, rhs: $t) -> ($t, bool) {
-                (self % rhs, false)
-            }
-
-            #[inline(always)]
-            fn overflowing_shl(self, rhs: u32) -> ($t, bool) {
-                (self << (rhs & self::shift_max::$t),
-                 (rhs > self::shift_max::$t))
-            }
-            #[inline(always)]
-            fn overflowing_shr(self, rhs: u32) -> ($t, bool) {
-                (self >> (rhs & self::shift_max::$t),
-                 (rhs > self::shift_max::$t))
-            }
-
-            #[inline(always)]
-            fn overflowing_neg(self) -> ($t, bool) {
-                ((!self).wrapping_add(1), true)
-            }
-        }
-    )*)
-}
-
-signed_overflowing_impl! { i8 i16 i32 i64 isize }
-unsigned_overflowing_impl! { u8 u16 u32 u64 usize }

@@ -29,21 +29,24 @@ macro_rules! targets {
             // and one for the compiler itself. These are parameterized over the
             // stage output they're going to be placed in along with the
             // compiler which is producing the copy of libstd or librustc
-            (libstd, Libstd { stage: u32, compiler: Compiler<'a> }),
-            (librustc, Librustc { stage: u32, compiler: Compiler<'a> }),
+            (libstd, Libstd { compiler: Compiler<'a> }),
+            (librustc, Librustc { compiler: Compiler<'a> }),
 
             // Links the standard library/librustc produced by the compiler
             // provided into the host's directory also provided.
             (libstd_link, LibstdLink {
-                stage: u32,
                 compiler: Compiler<'a>,
                 host: &'a str
             }),
             (librustc_link, LibrustcLink {
-                stage: u32,
                 compiler: Compiler<'a>,
                 host: &'a str
             }),
+
+            // Various tools that we can build as part of the build.
+            (tool_linkchecker, ToolLinkchecker { stage: u32 }),
+            (tool_rustbook, ToolRustbook { stage: u32 }),
+            (tool_error_index, ToolErrorIndex { stage: u32 }),
 
             // Steps for long-running native builds. Ideally these wouldn't
             // actually exist and would be part of build scripts, but for now
@@ -53,11 +56,23 @@ macro_rules! targets {
             // with braces are unstable so we just pick something that works.
             (llvm, Llvm { _dummy: () }),
             (compiler_rt, CompilerRt { _dummy: () }),
+
+            // Steps for various pieces of documentation that we can generate,
+            // the 'doc' step is just a pseudo target to depend on a bunch of
+            // others.
             (doc, Doc { stage: u32 }),
             (doc_book, DocBook { stage: u32 }),
             (doc_nomicon, DocNomicon { stage: u32 }),
             (doc_style, DocStyle { stage: u32 }),
             (doc_standalone, DocStandalone { stage: u32 }),
+            (doc_std, DocStd { stage: u32 }),
+            (doc_rustc, DocRustc { stage: u32 }),
+            (doc_error_index, DocErrorIndex { stage: u32 }),
+
+            // Steps for running tests. The 'check' target is just a pseudo
+            // target to depend on a bunch of others.
+            (check, Check { stage: u32, compiler: Compiler<'a> }),
+            (check_linkcheck, CheckLinkcheck { stage: u32 }),
         }
     }
 }
@@ -127,10 +142,9 @@ fn top_level(build: &Build) -> Vec<Step> {
             }
             let host = t.target(host);
             if host.target == build.config.build {
-                targets.push(host.librustc(stage, host.compiler(stage)));
+                targets.push(host.librustc(host.compiler(stage)));
             } else {
-                targets.push(host.librustc_link(stage, t.compiler(stage),
-                                                host.target));
+                targets.push(host.librustc_link(t.compiler(stage), host.target));
             }
             for target in build.config.target.iter() {
                 if !build.flags.target.contains(target) {
@@ -139,11 +153,10 @@ fn top_level(build: &Build) -> Vec<Step> {
 
                 if host.target == build.config.build {
                     targets.push(host.target(target)
-                                     .libstd(stage, host.compiler(stage)));
+                                     .libstd(host.compiler(stage)));
                 } else {
                     targets.push(host.target(target)
-                                     .libstd_link(stage, t.compiler(stage),
-                                                  host.target));
+                                     .libstd_link(t.compiler(stage), host.target));
                 }
             }
         }
@@ -158,25 +171,37 @@ fn add_steps<'a>(build: &'a Build,
                  host: &Step<'a>,
                  target: &Step<'a>,
                  targets: &mut Vec<Step<'a>>) {
+    struct Context<'a> {
+        stage: u32,
+        compiler: Compiler<'a>,
+        _dummy: (),
+        host: &'a str,
+    }
     for step in build.flags.step.iter() {
-        let compiler = host.target(&build.config.build).compiler(stage);
-        match &step[..] {
-            "libstd" => targets.push(target.libstd(stage, compiler)),
-            "librustc" => targets.push(target.librustc(stage, compiler)),
-            "libstd-link" => targets.push(target.libstd_link(stage, compiler,
-                                                             host.target)),
-            "librustc-link" => targets.push(target.librustc_link(stage, compiler,
-                                                                 host.target)),
-            "rustc" => targets.push(host.rustc(stage)),
-            "llvm" => targets.push(target.llvm(())),
-            "compiler-rt" => targets.push(target.compiler_rt(())),
-            "doc-style" => targets.push(host.doc_style(stage)),
-            "doc-standalone" => targets.push(host.doc_standalone(stage)),
-            "doc-nomicon" => targets.push(host.doc_nomicon(stage)),
-            "doc-book" => targets.push(host.doc_book(stage)),
-            "doc" => targets.push(host.doc(stage)),
-            _ => panic!("unknown build target: `{}`", step),
+
+        // The macro below insists on hygienic access to all local variables, so
+        // we shove them all in a struct and subvert hygiene by accessing struct
+        // fields instead,
+        let cx = Context {
+            stage: stage,
+            compiler: host.target(&build.config.build).compiler(stage),
+            _dummy: (),
+            host: host.target,
+        };
+        macro_rules! add_step {
+            ($(($short:ident, $name:ident { $($arg:ident: $t:ty),* }),)*) => ({$(
+                let name = stringify!($short).replace("_", "-");
+                if &step[..] == &name[..] {
+                    targets.push(target.$short($(cx.$arg),*));
+                    continue
+                }
+                drop(name);
+            )*})
         }
+
+        targets!(add_step);
+
+        panic!("unknown step: {}", step);
     }
 }
 
@@ -209,36 +234,63 @@ impl<'a> Step<'a> {
             }
             Source::Rustc { stage } => {
                 let compiler = Compiler::new(stage - 1, &build.config.build);
-                vec![self.librustc(stage - 1, compiler)]
+                vec![self.librustc(compiler)]
             }
-            Source::Librustc { stage, compiler } => {
-                vec![self.libstd(stage, compiler), self.llvm(())]
+            Source::Librustc { compiler } => {
+                vec![self.libstd(compiler), self.llvm(())]
             }
-            Source::Libstd { stage: _, compiler } => {
+            Source::Libstd { compiler } => {
                 vec![self.compiler_rt(()),
                      self.rustc(compiler.stage).target(compiler.host)]
             }
-            Source::LibrustcLink { stage, compiler, host } => {
-                vec![self.librustc(stage, compiler),
-                     self.libstd_link(stage, compiler, host)]
+            Source::LibrustcLink { compiler, host } => {
+                vec![self.librustc(compiler),
+                     self.libstd_link(compiler, host)]
             }
-            Source::LibstdLink { stage, compiler, host } => {
-                vec![self.libstd(stage, compiler),
-                     self.target(host).rustc(stage)]
+            Source::LibstdLink { compiler, host } => {
+                vec![self.libstd(compiler),
+                     self.target(host).rustc(compiler.stage)]
             }
             Source::CompilerRt { _dummy } => {
                 vec![self.llvm(()).target(&build.config.build)]
             }
             Source::Llvm { _dummy } => Vec::new(),
+            Source::DocStd { stage } => {
+                vec![self.libstd(self.compiler(stage))]
+            }
             Source::DocBook { stage } |
             Source::DocNomicon { stage } |
-            Source::DocStyle { stage } |
+            Source::DocStyle { stage } => {
+                vec![self.tool_rustbook(stage)]
+            }
+            Source::DocErrorIndex { stage } => {
+                vec![self.tool_error_index(stage)]
+            }
             Source::DocStandalone { stage } => {
                 vec![self.rustc(stage)]
             }
+            Source::DocRustc { stage } => {
+                vec![self.doc_std(stage)]
+            }
             Source::Doc { stage } => {
                 vec![self.doc_book(stage), self.doc_nomicon(stage),
-                     self.doc_style(stage), self.doc_standalone(stage)]
+                     self.doc_style(stage), self.doc_standalone(stage),
+                     self.doc_std(stage),
+                     self.doc_error_index(stage)]
+            }
+            Source::Check { stage, compiler: _ } => {
+                vec![self.check_linkcheck(stage)]
+            }
+            Source::CheckLinkcheck { stage } => {
+                vec![self.tool_linkchecker(stage), self.doc(stage)]
+            }
+
+            Source::ToolLinkchecker { stage } => {
+                vec![self.libstd(self.compiler(stage))]
+            }
+            Source::ToolErrorIndex { stage } |
+            Source::ToolRustbook { stage } => {
+                vec![self.librustc(self.compiler(stage))]
             }
         }
     }

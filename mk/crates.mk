@@ -49,16 +49,17 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := libc std flate arena term \
-                 serialize getopts collections test rand \
-                 log graphviz core rbml alloc \
+TARGET_CRATES := libc std term \
+                 getopts collections test rand \
+                 core alloc \
                  rustc_unicode rustc_bitflags \
-		 alloc_system alloc_jemalloc
+		 alloc_system alloc_jemalloc rustc_const_eval
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics \
                 rustc_plugin rustc_metadata rustc_passes
-HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros
+HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros \
+		flate arena graphviz rbml log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
 
 DEPS_core :=
@@ -84,14 +85,17 @@ DEPS_log := std
 DEPS_num := std
 DEPS_rbml := std log serialize
 DEPS_serialize := std log
-DEPS_term := std log
-DEPS_test := std getopts serialize rbml term native:rust_test_helpers
+DEPS_term := std
+DEPS_test := std getopts term native:rust_test_helpers
 
-DEPS_syntax := std term serialize log arena libc rustc_bitflags
+DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode
 DEPS_syntax_ext := syntax fmt_macros
 
+DEPS_rustc_const_eval := std syntax
+
 DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml rustc_front\
-              log graphviz rustc_llvm rustc_back rustc_data_structures
+              log graphviz rustc_llvm rustc_back rustc_data_structures\
+		  	  rustc_const_eval
 DEPS_rustc_back := std syntax rustc_llvm rustc_front flate log libc
 DEPS_rustc_borrowck := rustc rustc_front log graphviz syntax
 DEPS_rustc_data_structures := std log serialize
@@ -102,16 +106,17 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
 DEPS_rustc_front := std syntax log serialize
 DEPS_rustc_lint := rustc log syntax
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
-DEPS_rustc_metadata := rustc rustc_front syntax rbml
+DEPS_rustc_metadata := rustc rustc_front syntax rbml rustc_const_eval
 DEPS_rustc_passes := syntax rustc core rustc_front
-DEPS_rustc_mir := rustc rustc_front syntax
+DEPS_rustc_mir := rustc rustc_front syntax rustc_const_eval
 DEPS_rustc_resolve := arena rustc rustc_front log syntax
 DEPS_rustc_platform_intrinsics := rustc rustc_llvm
 DEPS_rustc_plugin := rustc rustc_metadata syntax rustc_mir
 DEPS_rustc_privacy := rustc rustc_front log syntax
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir \
-                    log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics
-DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics
+                    log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics \
+					rustc_const_eval
+DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics rustc_const_eval
 
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test rustc_lint rustc_front
@@ -125,8 +130,8 @@ TOOL_DEPS_error_index_generator := rustdoc syntax serialize
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
-TOOL_SOURCE_rustbook := $(S)src/rustbook/main.rs
-TOOL_SOURCE_error_index_generator := $(S)src/error_index_generator/main.rs
+TOOL_SOURCE_rustbook := $(S)src/tools/rustbook/main.rs
+TOOL_SOURCE_error_index_generator := $(S)src/tools/error_index_generator/main.rs
 
 ONLY_RLIB_core := 1
 ONLY_RLIB_libc := 1

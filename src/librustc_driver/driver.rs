@@ -48,12 +48,10 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use syntax::ast::{self, NodeIdAssigner};
-use syntax::attr;
-use syntax::attr::AttrMetaMethods;
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::diagnostics;
 use syntax::fold::Folder;
-use syntax::parse;
-use syntax::parse::token;
+use syntax::parse::{self, PResult, token};
 use syntax::util::node_count::NodeCounter;
 use syntax::visit;
 use syntax;
@@ -86,7 +84,13 @@ pub fn compile_input(sess: &Session,
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
         let (outputs, expanded_crate, id) = {
-            let krate = phase_1_parse_input(sess, cfg, input);
+            let krate = match phase_1_parse_input(sess, cfg, input) {
+                Ok(krate) => krate,
+                Err(mut parse_error) => {
+                    parse_error.emit();
+                    return Err(1);
+                }
+            };
 
             controller_entry_point!(after_parse,
                                     sess,
@@ -227,7 +231,6 @@ pub fn compile_input(sess: &Session,
     Ok(())
 }
 
-
 /// The name used for source code that doesn't originate in a file
 /// (e.g. source from stdin or a string)
 pub fn anon_src() -> String {
@@ -238,7 +241,7 @@ pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
         Input::File(ref ifile) => ifile.to_str().unwrap().to_string(),
-        Input::Str(_) => anon_src(),
+        Input::Str { ref name, .. } => name.clone(),
     }
 }
 
@@ -415,26 +418,29 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     }
 }
 
-pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input) -> ast::Crate {
+pub fn phase_1_parse_input<'a>(sess: &'a Session,
+                               cfg: ast::CrateConfig,
+                               input: &Input)
+                               -> PResult<'a, ast::Crate> {
     // These may be left in an incoherent state after a previous compile.
     // `clear_tables` and `get_ident_interner().clear()` can be used to free
     // memory, but they do not restore the initial state.
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
 
-    let krate = time(sess.time_passes(), "parsing", || {
+    let krate = try!(time(sess.time_passes(), "parsing", || {
         match *input {
             Input::File(ref file) => {
-                parse::parse_crate_from_file(&(*file), cfg.clone(), &sess.parse_sess)
+                parse::parse_crate_from_file(file, cfg.clone(), &sess.parse_sess)
             }
-            Input::Str(ref src) => {
-                parse::parse_crate_from_source_str(anon_src().to_string(),
-                                                   src.to_string(),
+            Input::Str { ref input, ref name } => {
+                parse::parse_crate_from_source_str(name.clone(),
+                                                   input.clone(),
                                                    cfg.clone(),
                                                    &sess.parse_sess)
             }
         }
-    });
+    }));
 
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
@@ -449,7 +455,7 @@ pub fn phase_1_parse_input(sess: &Session, cfg: ast::CrateConfig, input: &Input)
         syntax::show_span::run(sess.diagnostic(), s, &krate);
     }
 
-    krate
+    Ok(krate)
 }
 
 fn count_nodes(krate: &ast::Crate) -> usize {
@@ -561,7 +567,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        *sess.plugin_mir_passes.borrow_mut() = mir_passes;
+        sess.mir_passes.borrow_mut().extend(mir_passes);
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
     }));
 
@@ -761,7 +767,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         freevars,
         export_map,
         trait_map,
-        external_exports,
         glob_map,
     } = time(time_passes,
              "resolution",
@@ -822,9 +827,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         analysis.access_levels =
             time(time_passes, "privacy checking", || {
-                rustc_privacy::check_crate(tcx,
-                                           &analysis.export_map,
-                                           external_exports)
+                rustc_privacy::check_crate(tcx, &analysis.export_map)
             });
 
         // Do not move this check past lint
@@ -861,9 +864,19 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                  "MIR dump",
                  || mir::mir_map::build_mir_for_crate(tcx));
 
-        time(time_passes,
-             "MIR passes",
-             || mir_map.run_passes(&mut sess.plugin_mir_passes.borrow_mut(), tcx));
+        time(time_passes, "MIR passes", || {
+            let mut passes = sess.mir_passes.borrow_mut();
+            // Push all the built-in passes.
+            passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::type_check::TypeckMir);
+            passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
+            // Late passes
+            passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
+            passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+            passes.push_pass(box mir::transform::erase_regions::EraseRegions);
+            // And run everything.
+            passes.run_passes(tcx, &mut mir_map);
+        });
 
         time(time_passes,
              "borrow checking",
@@ -912,9 +925,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
-/// be discarded.
 pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
-                                       mut mir_map: MirMap<'tcx>,
+                                       mir_map: MirMap<'tcx>,
                                        analysis: ty::CrateAnalysis)
                                        -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
@@ -922,10 +934,6 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
     time(time_passes,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
-
-    time(time_passes,
-         "erasing regions from MIR",
-         || mir::transform::erase_regions::erase_regions(tcx, &mut mir_map));
 
     // Option dance to work around the lack of stack once closures.
     time(time_passes,

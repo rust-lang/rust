@@ -129,6 +129,9 @@ pub trait RefRecoverSafe {}
 ///
 /// # Examples
 ///
+/// One way to use `AssertRecoverSafe` is to assert that the entire closure
+/// itself is recover safe, bypassing all checks for all variables:
+///
 /// ```
 /// #![feature(recover, std_panic)]
 ///
@@ -144,10 +147,33 @@ pub trait RefRecoverSafe {}
 /// // });
 ///
 /// // This, however, will compile due to the `AssertRecoverSafe` wrapper
+/// let result = panic::recover(AssertRecoverSafe::new(|| {
+///     variable += 3;
+/// }));
+/// // ...
+/// ```
+///
+/// Wrapping the entire closure amounts to a blanket assertion that all captured
+/// variables are recover safe. This has the downside that if new captures are
+/// added in the future, they will also be considered recover safe. Therefore,
+/// you may prefer to just wrap individual captures, as shown below. This is
+/// more annotation, but it ensures that if a new capture is added which is not
+/// recover safe, you will get a compilation error at that time, which will
+/// allow you to consider whether that new capture in fact represent a bug or
+/// not.
+///
+/// ```
+/// #![feature(recover, std_panic)]
+///
+/// use std::panic::{self, AssertRecoverSafe};
+///
+/// let mut variable = 4;
+/// let other_capture = 3;
+///
 /// let result = {
 ///     let mut wrapper = AssertRecoverSafe::new(&mut variable);
 ///     panic::recover(move || {
-///         **wrapper += 3;
+///         **wrapper += other_capture;
 ///     })
 /// };
 /// // ...
@@ -212,6 +238,14 @@ impl<T> Deref for AssertRecoverSafe<T> {
 impl<T> DerefMut for AssertRecoverSafe<T> {
     fn deref_mut(&mut self) -> &mut T {
         &mut self.0
+    }
+}
+
+impl<R, F: FnOnce() -> R> FnOnce<()> for AssertRecoverSafe<F> {
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, _args: ()) -> R {
+        (self.0)()
     }
 }
 

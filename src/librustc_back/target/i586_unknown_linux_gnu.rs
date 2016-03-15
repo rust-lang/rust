@@ -11,18 +11,8 @@
 use target::Target;
 
 pub fn target() -> Target {
-    let mut base = super::linux_base::opts();
-    base.cpu = "pentium".to_string();
-    base.pre_link_args.push("-m32".to_string());
-
-    Target {
-        llvm_target: "i586-unknown-linux-gnu".to_string(),
-        target_endian: "little".to_string(),
-        target_pointer_width: "32".to_string(),
-        arch: "x86".to_string(),
-        target_os: "linux".to_string(),
-        target_env: "gnu".to_string(),
-        target_vendor: "unknown".to_string(),
-        options: base,
-    }
+    let mut base = super::i686_unknown_linux_gnu::target();
+    base.options.cpu = "pentium".to_string();
+    base.llvm_target = "i586-unknown-linux-gnu".to_string();
+    return base
 }

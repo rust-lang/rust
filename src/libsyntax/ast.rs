@@ -458,7 +458,7 @@ pub struct WhereEqPredicate {
 
 /// The set of MetaItems that define the compilation environment of the crate,
 /// used to drive conditional compilation
-pub type CrateConfig = Vec<P<MetaItem>> ;
+pub type CrateConfig = Vec<P<MetaItem>>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Crate {
@@ -927,7 +927,7 @@ pub enum ExprKind {
     Binary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
     Unary(UnOp, P<Expr>),
-    /// A literal (For example: `1u8`, `"foo"`)
+    /// A literal (For example: `1`, `"foo"`)
     Lit(P<Lit>),
     /// A cast (`foo as f64`)
     Cast(P<Expr>, P<Ty>),
@@ -1016,12 +1016,15 @@ pub enum ExprKind {
 
     /// An array literal constructed from one repeated element.
     ///
-    /// For example, `[1u8; 5]`. The first expression is the element
+    /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     Repeat(P<Expr>, P<Expr>),
 
     /// No-op: used solely so we can pretty-print faithfully
     Paren(P<Expr>),
+
+    /// `expr?`
+    Try(P<Expr>),
 }
 
 /// The explicit Self type in a "qualified path". The actual
@@ -1285,7 +1288,7 @@ pub enum LitKind {
     Byte(u8),
     /// A character literal (`'a'`)
     Char(char),
-    /// An integer literal (`1u8`)
+    /// An integer literal (`1`)
     Int(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
     Float(InternedString, FloatTy),
@@ -1325,10 +1328,10 @@ pub struct MethodSig {
     pub explicit_self: ExplicitSelf,
 }
 
-/// Represents a method declaration in a trait declaration, possibly including
-/// a default implementation. A trait method is either required (meaning it
-/// doesn't have an implementation, just a signature) or provided (meaning it
-/// has a default implementation).
+/// Represents an item declaration within a trait declaration,
+/// possibly including a default implementation. A trait item is
+/// either required (meaning it doesn't have an implementation, just a
+/// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitItem {
     pub id: NodeId,
@@ -1350,6 +1353,7 @@ pub struct ImplItem {
     pub id: NodeId,
     pub ident: Ident,
     pub vis: Visibility,
+    pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
     pub node: ImplItemKind,
     pub span: Span,
@@ -1649,6 +1653,12 @@ pub enum Unsafety {
 pub enum Constness {
     Const,
     NotConst,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum Defaultness {
+    Default,
+    Final,
 }
 
 impl fmt::Display for Unsafety {

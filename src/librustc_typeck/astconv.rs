@@ -65,6 +65,8 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
+use rustc_const_eval::ConstInt;
+
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
 use syntax::errors::DiagnosticBuilder;
@@ -1636,8 +1638,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         hir::TyBareFn(ref bf) => {
             require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-            let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &bf.decl);
-            tcx.mk_fn(None, tcx.mk_bare_fn(bare_fn))
+            tcx.mk_fn_ptr(ty_of_bare_fn(this, bf.unsafety, bf.abi, &bf.decl))
         }
         hir::TyPolyTraitRef(ref bounds) => {
             conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds)
@@ -1681,22 +1682,16 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         hir::TyFixedLengthVec(ref ty, ref e) => {
             let hint = UncheckedExprHint(tcx.types.usize);
             match const_eval::eval_const_expr_partial(tcx, &e, hint, None) {
-                Ok(r) => {
-                    match r {
-                        ConstVal::Int(i) =>
-                            tcx.mk_array(ast_ty_to_ty(this, rscope, &ty),
-                                         i as usize),
-                        ConstVal::Uint(i) =>
-                            tcx.mk_array(ast_ty_to_ty(this, rscope, &ty),
-                                         i as usize),
-                        _ => {
-                            span_err!(tcx.sess, ast_ty.span, E0249,
-                                      "expected constant integer expression \
-                                       for array length");
-                            this.tcx().types.err
-                        }
-                    }
-                }
+                Ok(ConstVal::Integral(ConstInt::Usize(i))) => {
+                    let i = i.as_u64(tcx.sess.target.uint_type);
+                    assert_eq!(i as usize as u64, i);
+                    tcx.mk_array(ast_ty_to_ty(this, rscope, &ty), i as usize)
+                },
+                Ok(val) => {
+                    span_err!(tcx.sess, ast_ty.span, E0249,
+                              "expected usize value for array length, got {}", val.description());
+                    this.tcx().types.err
+                },
                 Err(ref r) => {
                     let mut err = struct_span_err!(tcx.sess, r.span, E0250,
                                                    "array length constant evaluation error: {}",

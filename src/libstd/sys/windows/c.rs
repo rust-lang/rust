@@ -12,6 +12,7 @@
 
 #![allow(bad_style)]
 #![cfg_attr(test, allow(dead_code))]
+#![unstable(issue = "0", feature = "windows_c")]
 
 use os::raw::{c_int, c_uint, c_ulong, c_long, c_longlong, c_ushort,};
 use os::raw::{c_char, c_ulonglong};
@@ -153,8 +154,6 @@ pub const WSAESHUTDOWN: c_int = 10058;
 pub const WSAETIMEDOUT: c_int = 10060;
 pub const WSAECONNREFUSED: c_int = 10061;
 
-pub const NI_MAXHOST: DWORD = 1025;
-
 pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
 
 pub const TOKEN_READ: DWORD = 0x20008;
@@ -181,6 +180,7 @@ pub const ERROR_PATH_NOT_FOUND: DWORD = 3;
 pub const ERROR_ACCESS_DENIED: DWORD = 5;
 pub const ERROR_INVALID_HANDLE: DWORD = 6;
 pub const ERROR_NO_MORE_FILES: DWORD = 18;
+pub const ERROR_HANDLE_EOF: DWORD = 38;
 pub const ERROR_BROKEN_PIPE: DWORD = 109;
 pub const ERROR_CALL_NOT_IMPLEMENTED: DWORD = 120;
 pub const ERROR_INSUFFICIENT_BUFFER: DWORD = 122;
@@ -188,6 +188,7 @@ pub const ERROR_ALREADY_EXISTS: DWORD = 183;
 pub const ERROR_NO_DATA: DWORD = 232;
 pub const ERROR_ENVVAR_NOT_FOUND: DWORD = 203;
 pub const ERROR_OPERATION_ABORTED: DWORD = 995;
+pub const ERROR_IO_PENDING: DWORD = 997;
 pub const ERROR_TIMEOUT: DWORD = 0x5B4;
 
 pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
@@ -291,6 +292,14 @@ pub const EXCEPTION_UNWIND: DWORD = EXCEPTION_UNWINDING |
                                     EXCEPTION_EXIT_UNWIND |
                                     EXCEPTION_TARGET_UNWIND |
                                     EXCEPTION_COLLIDED_UNWIND;
+
+pub const PIPE_ACCESS_INBOUND: DWORD = 0x00000001;
+pub const FILE_FLAG_FIRST_PIPE_INSTANCE: DWORD = 0x00080000;
+pub const FILE_FLAG_OVERLAPPED: DWORD = 0x40000000;
+pub const PIPE_WAIT: DWORD = 0x00000000;
+pub const PIPE_TYPE_BYTE: DWORD = 0x00000000;
+pub const PIPE_REJECT_REMOTE_CLIENTS: DWORD = 0x00000008;
+pub const PIPE_READMODE_BYTE: DWORD = 0x00000000;
 
 #[repr(C)]
 #[cfg(target_arch = "x86")]
@@ -913,10 +922,6 @@ extern "system" {
                            nOutBufferSize: DWORD,
                            lpBytesReturned: LPDWORD,
                            lpOverlapped: LPOVERLAPPED) -> BOOL;
-    pub fn CreatePipe(hReadPipe: LPHANDLE,
-                      hWritePipe: LPHANDLE,
-                      lpPipeAttributes: LPSECURITY_ATTRIBUTES,
-                      nSize: DWORD) -> BOOL;
     pub fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES,
                         dwStackSize: SIZE_T,
                         lpStartAddress: extern "system" fn(*mut c_void)
@@ -1092,18 +1097,11 @@ extern "system" {
                        hints: *const ADDRINFOA,
                        res: *mut *mut ADDRINFOA) -> c_int;
     pub fn freeaddrinfo(res: *mut ADDRINFOA);
-    pub fn getnameinfo(sa: *const SOCKADDR, salen: c_int,
-                       host: *mut c_char, hostlen: DWORD,
-                       serv: *mut c_char, servlen: DWORD,
-                       flags: c_int) -> c_int;
 
     pub fn LoadLibraryW(name: LPCWSTR) -> HMODULE;
-    pub fn GetModuleHandleExW(dwFlags: DWORD, name: LPCWSTR,
-                              handle: *mut HMODULE) -> BOOL;
+    pub fn FreeLibrary(handle: HMODULE) -> BOOL;
     pub fn GetProcAddress(handle: HMODULE,
                           name: LPCSTR) -> *mut c_void;
-    pub fn FreeLibrary(handle: HMODULE) -> BOOL;
-    pub fn SetErrorMode(uMode: c_uint) -> c_uint;
     pub fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
     pub fn CryptAcquireContextA(phProv: *mut HCRYPTPROV,
                                 pszContainer: LPCSTR,
@@ -1129,6 +1127,29 @@ extern "system" {
                        OriginalContext: *const CONTEXT,
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
     pub fn GetSystemTimeAsFileTime(lpSystemTimeAsFileTime: LPFILETIME);
+
+    pub fn CreateEventW(lpEventAttributes: LPSECURITY_ATTRIBUTES,
+                        bManualReset: BOOL,
+                        bInitialState: BOOL,
+                        lpName: LPCWSTR) -> HANDLE;
+    pub fn WaitForMultipleObjects(nCount: DWORD,
+                                  lpHandles: *const HANDLE,
+                                  bWaitAll: BOOL,
+                                  dwMilliseconds: DWORD) -> DWORD;
+    pub fn CreateNamedPipeW(lpName: LPCWSTR,
+                            dwOpenMode: DWORD,
+                            dwPipeMode: DWORD,
+                            nMaxInstances: DWORD,
+                            nOutBufferSize: DWORD,
+                            nInBufferSize: DWORD,
+                            nDefaultTimeOut: DWORD,
+                            lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
+                            -> HANDLE;
+    pub fn CancelIo(handle: HANDLE) -> BOOL;
+    pub fn GetOverlappedResult(hFile: HANDLE,
+                               lpOverlapped: LPOVERLAPPED,
+                               lpNumberOfBytesTransferred: LPDWORD,
+                               bWait: BOOL) -> BOOL;
 }
 
 // Functions that aren't available on Windows XP, but we still use them and just
@@ -1145,10 +1166,6 @@ compat_fn! {
                                      _lpszFilePath: LPCWSTR,
                                      _cchFilePath: DWORD,
                                      _dwFlags: DWORD) -> DWORD {
-        SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
-    }
-    pub fn SetThreadErrorMode(_dwNewMode: DWORD,
-                              _lpOldMode: *mut DWORD) -> c_uint {
         SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0
     }
     pub fn SetThreadStackGuarantee(_size: *mut c_ulong) -> BOOL {

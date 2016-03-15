@@ -11,10 +11,13 @@
 use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty};
 use middle::ty::cast::{CastTy, IntTy};
+use middle::const_eval::ConstVal;
+use rustc_const_eval::ConstInt;
 use rustc::mir::repr as mir;
 
 use trans::asm;
 use trans::base;
+use trans::callee::Callee;
 use trans::common::{self, BlockAndBuilder, Result};
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -94,7 +97,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let tr_elem = self.trans_operand(&bcx, elem);
-                let size = self.trans_constval(&bcx, &count.value, count.ty).immediate();
+                let count = ConstVal::Integral(ConstInt::Usize(count.value));
+                let size = self.trans_constval(&bcx, &count, bcx.tcx().types.usize).immediate();
                 let bcx = bcx.map_block(|block| {
                     let base = expr::get_dataptr(block, dest.llval);
                     tvec::iter_vec_raw(block, base, tr_elem.ty, size, |block, llslot, _| {
@@ -193,9 +197,20 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let cast_ty = bcx.monomorphize(&cast_ty);
 
                 let val = match *kind {
-                    mir::CastKind::ReifyFnPointer |
+                    mir::CastKind::ReifyFnPointer => {
+                        match operand.ty.sty {
+                            ty::TyFnDef(def_id, substs, _) => {
+                                OperandValue::Immediate(
+                                    Callee::def(bcx.ccx(), def_id, substs, operand.ty)
+                                        .reify(bcx.ccx()).val)
+                            }
+                            _ => {
+                                unreachable!("{} cannot be reified to a fn ptr", operand.ty)
+                            }
+                        }
+                    }
                     mir::CastKind::UnsafeFnPointer => {
-                        // these are no-ops at the LLVM level
+                        // this is a no-op at the LLVM level
                         operand.val
                     }
                     mir::CastKind::Unsize => {

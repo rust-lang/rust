@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(stmt_expr_attributes)]
 
 use std::mem::size_of;
 
@@ -46,11 +47,6 @@ enum Ei64 {
     Bi64 = 0x8000_0000
 }
 
-enum Eu64 {
-    Au64 = 0,
-    Bu64 = 0x8000_0000_0000_0000
-}
-
 pub fn main() {
     assert_eq!(size_of::<Ei8>(), 1);
     assert_eq!(size_of::<Eu8>(), 1);
@@ -58,6 +54,8 @@ pub fn main() {
     assert_eq!(size_of::<Eu16>(), 2);
     assert_eq!(size_of::<Ei32>(), 4);
     assert_eq!(size_of::<Eu32>(), 4);
+    #[cfg(target_pointer_width = "64")]
     assert_eq!(size_of::<Ei64>(), 8);
-    assert_eq!(size_of::<Eu64>(), 8);
+    #[cfg(target_pointer_width = "32")]
+    assert_eq!(size_of::<Ei64>(), 4);
 }

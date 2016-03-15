@@ -205,7 +205,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     current_dir().unwrap().join(path)
                 }
             },
-            Input::Str(_) => PathBuf::new() // FIXME: this is wrong
+            Input::Str { ref name, .. } => PathBuf::from(name.clone()),
         };
 
         Crate {
@@ -1499,6 +1499,13 @@ impl Type {
             _ => None,
         }
     }
+
+    fn def_id(&self) -> Option<DefId> {
+        match *self {
+            ResolvedPath { did, .. } => Some(did),
+            _ => None,
+        }
+    }
 }
 
 impl PrimitiveType {
@@ -1663,7 +1670,8 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 mutability: mt.mutbl.clean(cx),
                 type_: box mt.ty.clean(cx),
             },
-            ty::TyBareFn(_, ref fty) => BareFunction(box BareFunctionDecl {
+            ty::TyFnDef(_, _, ref fty) |
+            ty::TyFnPtr(ref fty) => BareFunction(box BareFunctionDecl {
                 unsafety: fty.unsafety,
                 generics: Generics {
                     lifetimes: Vec::new(),

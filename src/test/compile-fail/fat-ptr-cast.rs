@@ -24,7 +24,7 @@ fn main() {
     //~^^ HELP cast through a thin pointer
 
     // #22955
-    q as *const [i32]; //~ ERROR casting
+    q as *const [i32]; //~ ERROR cannot cast
 
     // #21397
     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting

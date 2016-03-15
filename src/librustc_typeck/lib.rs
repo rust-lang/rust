@@ -91,6 +91,7 @@ extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_front;
 extern crate rustc_back;
+extern crate rustc_const_eval;
 
 pub use rustc::dep_graph;
 pub use rustc::front;
@@ -103,8 +104,9 @@ use dep_graph::DepNode;
 use front::map as hir_map;
 use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
-use middle::subst;
+use middle::subst::Substs;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use middle::traits::ProjectionMode;
 use session::{config, CompileResult};
 use util::common::time;
 use rustc_front::hir;
@@ -128,7 +130,7 @@ pub mod coherence;
 pub mod variance;
 
 pub struct TypeAndSubsts<'tcx> {
-    pub substs: subst::Substs<'tcx>,
+    pub substs: Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
@@ -195,7 +197,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &TyCtxt<'tcx>,
 {
     let result = match maybe_infcx {
         None => {
-            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+            let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
             infer::mk_eqty(&infcx, t1_is_expected, TypeOrigin::Misc(span), t1, t2)
         }
         Some(infcx) => {
@@ -220,7 +222,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let main_t = tcx.node_id_to_type(main_id);
     match main_t.sty {
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) => {
             match tcx.map.find(main_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
@@ -236,7 +238,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let main_def_id = tcx.map.local_def_id(main_id);
-            let se_ty = tcx.mk_fn(Some(main_def_id), tcx.mk_bare_fn(ty::BareFnTy {
+            let substs = tcx.mk_substs(Substs::empty());
+            let se_ty = tcx.mk_fn_def(main_def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -244,7 +247,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(tcx.mk_nil()),
                     variadic: false
                 })
-            }));
+            });
 
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
                 || {
@@ -266,7 +269,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     let tcx = ccx.tcx;
     let start_t = tcx.node_id_to_type(start_id);
     match start_t.sty {
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) => {
             match tcx.map.find(start_id) {
                 Some(hir_map::NodeItem(it)) => {
                     match it.node {
@@ -282,8 +285,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
 
-            let se_ty = tcx.mk_fn(Some(ccx.tcx.map.local_def_id(start_id)),
-                                  tcx.mk_bare_fn(ty::BareFnTy {
+            let start_def_id = ccx.tcx.map.local_def_id(start_id);
+            let substs = tcx.mk_substs(Substs::empty());
+            let se_ty = tcx.mk_fn_def(start_def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -294,7 +298,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(tcx.types.isize),
                     variadic: false,
                 }),
-            }));
+            });
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
                 || {

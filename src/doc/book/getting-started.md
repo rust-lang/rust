@@ -119,19 +119,7 @@ This will download a script, and start the installation. If it all goes well,
 you’ll see this appear:
 
 ```text
-Welcome to Rust.
-
-This script will download the Rust compiler and its package manager, Cargo, and
-install them to /usr/local. You may install elsewhere by running this script
-with the --prefix=<path> option.
-
-The installer will run under ‘sudo’ and may ask you for your password. If you do
-not want the script to run ‘sudo’ then pass it the --disable-sudo flag.
-
-You may uninstall later by running /usr/local/lib/rustlib/uninstall.sh,
-or by running this script again with the --uninstall flag.
-
-Continue? (y/N)
+Rust is ready to roll.
 ```
 
 From here, press `y` for ‘yes’, and then follow the rest of the prompts.
@@ -513,7 +501,7 @@ Cargo checks to see if any of your project’s files have been modified, and onl
 rebuilds your project if they’ve changed since the last time you built it.
 
 With simple projects, Cargo doesn't bring a whole lot over just using `rustc`,
-but it will become useful in future. This is especially true when you start
+but it will become useful in the future. This is especially true when you start
 using crates; these are synonymous with a ‘library’ or ‘package’ in other
 programming languages. For complex projects composed of multiple crates, it’s
 much easier to let Cargo coordinate the build. Using Cargo, you can run `cargo

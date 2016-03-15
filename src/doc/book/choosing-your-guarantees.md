@@ -204,7 +204,7 @@ borrow checker. Generally we know that such mutations won't happen in a nested f
 to check.
 
 For large, complicated programs, it becomes useful to put some things in `RefCell`s to make things
-simpler. For example, a lot of the maps in [the `ctxt` struct][ctxt] in the Rust compiler internals
+simpler. For example, a lot of the maps in the `ctxt` struct in the Rust compiler internals
 are inside this wrapper. These are only modified once (during creation, which is not right after
 initialization) or a couple of times in well-separated places. However, since this struct is
 pervasively used everywhere, juggling mutable and immutable pointers would be hard (perhaps
@@ -235,7 +235,6 @@ At runtime each borrow causes a modification/check of the refcount.
 [cell-mod]: ../std/cell/
 [cell]: ../std/cell/struct.Cell.html
 [refcell]: ../std/cell/struct.RefCell.html
-[ctxt]: ../rustc/middle/ty/struct.ctxt.html
 
 # Synchronous types
 

@@ -123,7 +123,7 @@ impl Command {
         self.stderr = Some(stderr);
     }
 
-    pub fn spawn(&mut self, default: Stdio)
+    pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
         // To have the spawning semantics of unix/windows stay the same, we need
         // to read the *child's* PATH if one is provided. See #15149 for more
@@ -181,7 +181,9 @@ impl Command {
             stdout: None,
             stderr: None,
         };
-        let stdin = self.stdin.as_ref().unwrap_or(&default);
+        let null = Stdio::Null;
+        let default_stdin = if needs_stdin {&default} else {&null};
+        let stdin = self.stdin.as_ref().unwrap_or(default_stdin);
         let stdout = self.stdout.as_ref().unwrap_or(&default);
         let stderr = self.stderr.as_ref().unwrap_or(&default);
         let stdin = try!(stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin));
