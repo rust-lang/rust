@@ -77,6 +77,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS"),
           optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
+          optflag("", "quiet", "print one character per test instead of one line"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
@@ -151,6 +152,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
+        quiet: matches.opt_present("quiet"),
     }
 }
 
@@ -184,6 +186,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("adb_device_status: {}",
                     config.adb_device_status));
     logv(c, format!("verbose: {}", config.verbose));
+    logv(c, format!("quiet: {}", config.quiet));
     logv(c, format!("\n"));
 }
 
@@ -247,6 +250,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
         filter: config.filter.clone(),
         run_ignored: config.run_ignored,
+        quiet: config.quiet,
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,

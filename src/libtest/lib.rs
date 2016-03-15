@@ -106,7 +106,7 @@ impl fmt::Display for TestName {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum NamePadding {
     PadNone,
     PadOnRight,
@@ -298,6 +298,7 @@ pub struct TestOpts {
     pub logfile: Option<PathBuf>,
     pub nocapture: bool,
     pub color: ColorConfig,
+    pub quiet: bool,
 }
 
 impl TestOpts {
@@ -311,6 +312,7 @@ impl TestOpts {
             logfile: None,
             nocapture: false,
             color: AutoColor,
+            quiet: false,
         }
     }
 }
@@ -328,6 +330,7 @@ fn optgroups() -> Vec<getopts::OptGroup> {
                           of stdout", "PATH"),
       getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
                                          task, allow printing directly"),
+      getopts::optflag("q", "quiet", "Display one character per test instead of one line"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
@@ -385,6 +388,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     };
 
     let run_ignored = matches.opt_present("ignored");
+    let quiet = matches.opt_present("quiet");
 
     let logfile = matches.opt_str("logfile");
     let logfile = logfile.map(|s| PathBuf::from(&s));
@@ -417,6 +421,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         logfile: logfile,
         nocapture: nocapture,
         color: color,
+        quiet: quiet,
     };
 
     Some(Ok(test_opts))
@@ -448,6 +453,7 @@ struct ConsoleTestState<T> {
     log_out: Option<File>,
     out: OutputLocation<T>,
     use_color: bool,
+    quiet: bool,
     total: usize,
     passed: usize,
     failed: usize,
@@ -473,6 +479,7 @@ impl<T: Write> ConsoleTestState<T> {
             out: out,
             log_out: log_out,
             use_color: use_color(opts),
+            quiet: opts.quiet,
             total: 0,
             passed: 0,
             failed: 0,
@@ -485,15 +492,15 @@ impl<T: Write> ConsoleTestState<T> {
     }
 
     pub fn write_ok(&mut self) -> io::Result<()> {
-        self.write_pretty("ok", term::color::GREEN)
+        self.write_short_result("ok", ".", term::color::GREEN)
     }
 
     pub fn write_failed(&mut self) -> io::Result<()> {
-        self.write_pretty("FAILED", term::color::RED)
+        self.write_short_result("FAILED", "F", term::color::RED)
     }
 
     pub fn write_ignored(&mut self) -> io::Result<()> {
-        self.write_pretty("ignored", term::color::YELLOW)
+        self.write_short_result("ignored", "i", term::color::YELLOW)
     }
 
     pub fn write_metric(&mut self) -> io::Result<()> {
@@ -502,6 +509,16 @@ impl<T: Write> ConsoleTestState<T> {
 
     pub fn write_bench(&mut self) -> io::Result<()> {
         self.write_pretty("bench", term::color::CYAN)
+    }
+
+    pub fn write_short_result(&mut self, verbose: &str, quiet: &str, color: term::color::Color)
+                              -> io::Result<()> {
+        if self.quiet {
+            self.write_pretty(quiet, color)
+        } else {
+            try!(self.write_pretty(verbose, color));
+            self.write_plain("\n")
+        }
     }
 
     pub fn write_pretty(&mut self, word: &str, color: term::color::Color) -> io::Result<()> {
@@ -547,28 +564,28 @@ impl<T: Write> ConsoleTestState<T> {
     }
 
     pub fn write_test_start(&mut self, test: &TestDesc, align: NamePadding) -> io::Result<()> {
-        let name = test.padded_name(self.max_name_len, align);
-        self.write_plain(&format!("test {} ... ", name))
+        if self.quiet && align != PadOnRight {
+            Ok(())
+        } else {
+            let name = test.padded_name(self.max_name_len, align);
+            self.write_plain(&format!("test {} ... ", name))
+        }
     }
 
     pub fn write_result(&mut self, result: &TestResult) -> io::Result<()> {
-        try!(match *result {
+        match *result {
             TrOk => self.write_ok(),
             TrFailed => self.write_failed(),
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 try!(self.write_metric());
-                self.write_plain(&format!(": {}", mm.fmt_metrics()))
+                self.write_plain(&format!(": {}\n", mm.fmt_metrics()))
             }
             TrBench(ref bs) => {
                 try!(self.write_bench());
-
-                try!(self.write_plain(&format!(": {}", fmt_bench_samples(bs))));
-
-                Ok(())
+                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
             }
-        });
-        self.write_plain("\n")
+        }
     }
 
     pub fn write_log(&mut self, test: &TestDesc, result: &TestResult) -> io::Result<()> {
@@ -626,9 +643,9 @@ impl<T: Write> ConsoleTestState<T> {
         try!(self.write_plain("\ntest result: "));
         if success {
             // There's no parallelism at this point so it's safe to use color
-            try!(self.write_ok());
+            try!(self.write_pretty("ok", term::color::GREEN));
         } else {
-            try!(self.write_failed());
+            try!(self.write_pretty("FAILED", term::color::RED));
         }
         let s = format!(". {} passed; {} failed; {} ignored; {} measured\n\n",
                         self.passed,
@@ -755,6 +772,7 @@ fn should_sort_failures_before_printing_them() {
         log_out: None,
         out: Raw(Vec::new()),
         use_color: false,
+        quiet: false,
         total: 0,
         passed: 0,
         failed: 0,

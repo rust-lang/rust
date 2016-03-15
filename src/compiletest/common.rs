@@ -155,5 +155,8 @@ pub struct Config {
     pub lldb_python_dir: Option<String>,
 
     // Explain what's going on
-    pub verbose: bool
+    pub verbose: bool,
+
+    // Print one character per test instead of one line
+    pub quiet: bool,
 }
