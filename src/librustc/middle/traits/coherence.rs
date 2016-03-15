@@ -10,8 +10,7 @@
 
 //! See `README.md` for high-level documentation
 
-use super::{SelectionContext};
-use super::{Obligation, ObligationCause};
+use super::{SelectionContext, Obligation, ObligationCause};
 
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
@@ -23,8 +22,8 @@ use syntax::codemap::DUMMY_SP;
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
 
-/// If there are types that satisfy both impls, returns an `ImplTy`
-/// with those types substituted (by updating the given `infcx`)
+/// If there are types that satisfy both impls, returns a suitably-freshened
+/// `ImplHeader` with those types substituted
 pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
                                     impl1_def_id: DefId,
                                     impl2_def_id: DefId)

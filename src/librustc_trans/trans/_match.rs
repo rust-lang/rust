@@ -217,6 +217,7 @@ use trans::tvec;
 use trans::type_of;
 use trans::Disr;
 use middle::ty::{self, Ty, TyCtxt};
+use middle::traits::ProjectionMode;
 use session::config::NoDebugInfo;
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
@@ -1475,7 +1476,9 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
         reassigned: false
     };
     {
-        let infcx = infer::normalizing_infer_ctxt(bcx.tcx(), &bcx.tcx().tables);
+        let infcx = infer::normalizing_infer_ctxt(bcx.tcx(),
+                                                  &bcx.tcx().tables,
+                                                  ProjectionMode::Any);
         let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
     }

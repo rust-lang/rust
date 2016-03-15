@@ -3695,5 +3695,7 @@ register_diagnostics! {
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
     E0436, // functional record update requires a struct
-    E0513  // no type for local variable ..
+    E0513, // no type for local variable ..
+    E0520, // cannot specialize non-default item
+    E0521  // redundant default implementations of trait
 }

@@ -15,12 +15,11 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-
 use middle::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
-use middle::traits;
 use middle::ty::{self, TyCtxt, TypeFoldable};
+use middle::traits::{self, ProjectionMode};
 use middle::ty::{ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
 use middle::ty::{Ty, TyBool, TyChar, TyEnum, TyError};
@@ -197,7 +196,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         debug!("add_trait_impl: impl_trait_ref={:?} impl_def_id={:?}",
                impl_trait_ref, impl_def_id);
         let trait_def = self.crate_context.tcx.lookup_trait_def(impl_trait_ref.def_id);
-        trait_def.record_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
+        trait_def.record_local_impl(self.crate_context.tcx, impl_def_id, impl_trait_ref);
     }
 
     // Converts an implementation in the AST to a vector of items.
@@ -385,7 +384,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+            let infcx = new_infer_ctxt(tcx, &tcx.tables, Some(param_env), ProjectionMode::Topmost);
 
             let origin = TypeOrigin::Misc(span);
             let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
@@ -530,7 +529,10 @@ pub fn report_duplicate_item<'tcx>(tcx: &TyCtxt<'tcx>, sp: Span, name: ast::Name
 
 pub fn check_coherence(crate_context: &CrateCtxt) {
     let _task = crate_context.tcx.dep_graph.in_task(DepNode::Coherence);
-    let infcx = new_infer_ctxt(crate_context.tcx, &crate_context.tcx.tables, None);
+    let infcx = new_infer_ctxt(crate_context.tcx,
+                               &crate_context.tcx.tables,
+                               None,
+                               ProjectionMode::Topmost);
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: infcx,

@@ -14,10 +14,10 @@ use back::svh::Svh;
 use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def_id::DefId;
-use middle::subst::{self, Subst, Substs};
+use middle::subst;
 use middle::infer;
 use middle::pat_util;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use middle::ty::{Disr, ParameterEnvironment};
 use middle::ty::TypeVariants::*;
@@ -26,7 +26,6 @@ use rustc_const_eval::{ConstInt, ConstIsize, ConstUsize};
 
 use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
-use std::rc::Rc;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
@@ -131,7 +130,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         let tcx = self.tcx;
 
         // FIXME: (@jroesch) float this code up
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(self.clone()));
+        let infcx = infer::new_infer_ctxt(tcx,
+                                          &tcx.tables,
+                                          Some(self.clone()),
+                                          ProjectionMode::AnyFinal);
 
         let adt = match self_type.sty {
             ty::TyStruct(struct_def, substs) => {
@@ -536,58 +538,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[derive(Debug)]
-pub struct ImplMethod<'tcx> {
-    pub method: Rc<ty::Method<'tcx>>,
-    pub substs: &'tcx Substs<'tcx>,
-    pub is_provided: bool
-}
-
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn get_impl_method(&self,
-                           impl_def_id: DefId,
-                           substs: &'tcx Substs<'tcx>,
-                           name: Name)
-                           -> ImplMethod<'tcx>
-    {
-        // there don't seem to be nicer accessors to these:
-        let impl_or_trait_items_map = self.impl_or_trait_items.borrow();
-
-        for impl_item in &self.impl_items.borrow()[&impl_def_id] {
-            if let ty::MethodTraitItem(ref meth) =
-                impl_or_trait_items_map[&impl_item.def_id()] {
-                if meth.name == name {
-                    return ImplMethod {
-                        method: meth.clone(),
-                        substs: substs,
-                        is_provided: false
-                    }
-                }
-            }
-        }
-
-        // It is not in the impl - get the default from the trait.
-        let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
-        for trait_item in self.trait_items(trait_ref.def_id).iter() {
-            if let &ty::MethodTraitItem(ref meth) = trait_item {
-                if meth.name == name {
-                    let impl_to_trait_substs = self
-                        .make_substs_for_receiver_types(&trait_ref, meth);
-                    let substs = impl_to_trait_substs.subst(self, substs);
-                    return ImplMethod {
-                        method: meth.clone(),
-                        substs: self.mk_substs(substs),
-                        is_provided: true
-                    }
-                }
-            }
-        }
-
-        self.sess.bug(&format!("method {:?} not found in {:?}",
-                               name, impl_def_id))
-    }
-}
-
 impl<'tcx> ty::TyS<'tcx> {
     fn impls_bound<'a>(&'tcx self, param_env: &ParameterEnvironment<'a,'tcx>,
                        bound: ty::BuiltinBound,
@@ -595,7 +545,10 @@ impl<'tcx> ty::TyS<'tcx> {
                        -> bool
     {
         let tcx = param_env.tcx;
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env.clone()));
+        let infcx = infer::new_infer_ctxt(tcx,
+                                          &tcx.tables,
+                                          Some(param_env.clone()),
+                                          ProjectionMode::AnyFinal);
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
                                                                 self, bound, span);

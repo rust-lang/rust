@@ -13,6 +13,7 @@ use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
+use middle::traits::ProjectionMode;
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -206,7 +207,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
 
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
     let function_type = infcx.closure_type(closure_def_id, closure_substs);
 
     let freevars: Vec<ty::Freevar> =
@@ -329,7 +330,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            ccx.tn().val_to_string(llreffn));
 
     let tcx = ccx.tcx();
-    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+    let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.

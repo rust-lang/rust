@@ -12,6 +12,8 @@
 
 use super::elaborate_predicates;
 use super::report_overflow_error;
+use super::specialization_graph;
+use super::translate_substs;
 use super::Obligation;
 use super::ObligationCause;
 use super::PredicateObligation;
@@ -21,12 +23,102 @@ use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
 
+use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 use syntax::parse::token;
+use syntax::ast;
 use util::common::FN_OUTPUT_NAME;
+
+use std::rc::Rc;
+
+/// Depending on the stage of compilation, we want projection to be
+/// more or less conservative.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ProjectionMode {
+    /// FIXME (#32205)
+    /// At coherence-checking time, we're still constructing the
+    /// specialization graph, and thus we only project project
+    /// non-`default` associated types that are defined directly in
+    /// the applicable impl. (This behavior should be improved over
+    /// time, to allow for successful projections modulo cycles
+    /// between different impls).
+    ///
+    /// Here's an example that will fail due to the restriction:
+    ///
+    /// ```
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     type Output = bool;
+    /// }
+    ///
+    /// impl Assoc for u8 {} // <- inherits the non-default type from above
+    ///
+    /// trait Foo {}
+    /// impl Foo for u32 {}
+    /// impl Foo for <u8 as Assoc>::Output {}  // <- this projection will fail
+    /// ```
+    ///
+    /// The projection would succeed if `Output` had been defined
+    /// directly in the impl for `u8`.
+    Topmost,
+
+    /// At type-checking time, we refuse to project any associated
+    /// type that is marked `default`. Non-`default` ("final") types
+    /// are always projected. This is necessary in general for
+    /// soundness of specialization. However, we *could* allow
+    /// projections in fully-monomorphic cases. We choose not to,
+    /// because we prefer for `default type` to force the type
+    /// definition to be treated abstractly by any consumers of the
+    /// impl. Concretely, that means that the following example will
+    /// fail to compile:
+    ///
+    /// ```
+    /// trait Assoc {
+    ///     type Output;
+    /// }
+    ///
+    /// impl<T> Assoc for T {
+    ///     default type Output = bool;
+    /// }
+    ///
+    /// fn main() {
+    ///     let <() as Assoc>::Output = true;
+    /// }
+    AnyFinal,
+
+    /// At trans time, all projections will succeed.
+    Any,
+}
+
+impl ProjectionMode {
+    pub fn is_topmost(&self) -> bool {
+        match *self {
+            ProjectionMode::Topmost => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_any_final(&self) -> bool {
+        match *self {
+            ProjectionMode::AnyFinal => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_any(&self) -> bool {
+        match *self {
+            ProjectionMode::Any => true,
+            _ => false,
+        }
+    }
+}
+
 
 pub type PolyProjectionObligation<'tcx> =
     Obligation<'tcx, ty::PolyProjectionPredicate<'tcx>>;
@@ -566,7 +658,76 @@ fn project_type<'cx,'tcx>(
 
     assert!(candidates.vec.len() <= 1);
 
-    match candidates.vec.pop() {
+    let possible_candidate = candidates.vec.pop().and_then(|candidate| {
+        // In Any (i.e. trans) mode, all projections succeed;
+        // otherwise, we need to be sensitive to `default` and
+        // specialization.
+        if !selcx.projection_mode().is_any() {
+            if let ProjectionTyCandidate::Impl(ref impl_data) = candidate {
+                if let Some(node_item) = assoc_ty_def(selcx,
+                                                      impl_data.impl_def_id,
+                                                      obligation.predicate.item_name) {
+                    if node_item.node.is_from_trait() {
+                        if node_item.item.ty.is_some() {
+                            // If the associated type has a default from the
+                            // trait, that should be considered `default` and
+                            // hence not projected.
+                            //
+                            // Note, however, that we allow a projection from
+                            // the trait specifically in the case that the trait
+                            // does *not* give a default. This is purely to
+                            // avoid spurious errors: the situation can only
+                            // arise when *no* impl in the specialization chain
+                            // has provided a definition for the type. When we
+                            // confirm the candidate, we'll turn the projection
+                            // into a TyError, since the actual error will be
+                            // reported in `check_impl_items_against_trait`.
+                            return None;
+                        }
+                    } else if node_item.item.defaultness.is_default() {
+                        return None;
+                    }
+                } else {
+                    // Normally this situation could only arise througha
+                    // compiler bug, but at coherence-checking time we only look
+                    // at the topmost impl (we don't even consider the trait
+                    // itself) for the definition -- so we can fail to find a
+                    // definition of the type even if it exists.
+
+                    // For now, we just unconditionally ICE, because otherwise,
+                    // examples like the following will succeed:
+                    //
+                    // ```
+                    // trait Assoc {
+                    //     type Output;
+                    // }
+                    //
+                    // impl<T> Assoc for T {
+                    //     default type Output = bool;
+                    // }
+                    //
+                    // impl Assoc for u8 {}
+                    // impl Assoc for u16 {}
+                    //
+                    // trait Foo {}
+                    // impl Foo for <u8 as Assoc>::Output {}
+                    // impl Foo for <u16 as Assoc>::Output {}
+                    //     return None;
+                    // }
+                    // ```
+                    //
+                    // The essential problem here is that the projection fails,
+                    // leaving two unnormalized types, which appear not to unify
+                    // -- so the overlap check succeeds, when it should fail.
+                    selcx.tcx().sess.bug("Tried to project an inherited associated type during \
+                                          coherence checking, which is currently not supported.");
+                }
+            }
+        }
+        Some(candidate)
+    });
+
+    match possible_candidate {
         Some(candidate) => {
             let (ty, obligations) = confirm_candidate(selcx, obligation, candidate);
             Ok(ProjectedTy::Progress(ty, obligations))
@@ -941,43 +1102,63 @@ fn confirm_impl_candidate<'cx,'tcx>(
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
-    // there don't seem to be nicer accessors to these:
-    let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
+    let VtableImplData { substs, nested, impl_def_id } = impl_vtable;
 
-    // Look for the associated type in the impl
-    for impl_item in &selcx.tcx().impl_items.borrow()[&impl_vtable.impl_def_id] {
-        if let ty::TypeTraitItem(ref assoc_ty) = impl_or_trait_items_map[&impl_item.def_id()] {
-            if assoc_ty.name == obligation.predicate.item_name {
-                return (assoc_ty.ty.unwrap().subst(selcx.tcx(), impl_vtable.substs),
-                        impl_vtable.nested);
-            }
+    let tcx = selcx.tcx();
+    let trait_ref = obligation.predicate.trait_ref;
+    let assoc_ty = assoc_ty_def(selcx, impl_def_id, obligation.predicate.item_name);
+
+    match assoc_ty {
+        Some(node_item) => {
+            let ty = node_item.item.ty.unwrap_or_else(|| {
+                // This means that the impl is missing a definition for the
+                // associated type. This error will be reported by the type
+                // checker method `check_impl_items_against_trait`, so here we
+                // just return TyError.
+                debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
+                       node_item.item.name,
+                       obligation.predicate.trait_ref);
+                tcx.types.err
+            });
+            let substs = translate_substs(selcx.infcx(), impl_def_id, substs, node_item.node);
+            (ty.subst(tcx, substs), nested)
+        }
+        None => {
+            tcx.sess.span_bug(obligation.cause.span,
+                              &format!("No associated type for {:?}", trait_ref));
         }
     }
+}
 
-    // It is not in the impl - get the default from the trait.
-    let trait_ref = obligation.predicate.trait_ref;
-    for trait_item in selcx.tcx().trait_items(trait_ref.def_id).iter() {
-        if let &ty::TypeTraitItem(ref assoc_ty) = trait_item {
-            if assoc_ty.name == obligation.predicate.item_name {
-                if let Some(ty) = assoc_ty.ty {
-                    return (ty.subst(selcx.tcx(), trait_ref.substs),
-                            impl_vtable.nested);
-                } else {
-                    // This means that the impl is missing a
-                    // definition for the associated type. This error
-                    // ought to be reported by the type checker method
-                    // `check_impl_items_against_trait`, so here we
-                    // just return TyError.
-                    debug!("confirm_impl_candidate: no associated type {:?} for {:?}",
-                           assoc_ty.name,
-                           trait_ref);
-                    return (selcx.tcx().types.err, vec!());
+/// Locate the definition of an associated type in the specialization hierarchy,
+/// starting from the given impl.
+///
+/// Based on the "projection mode", this lookup may in fact only examine the
+/// topmost impl. See the comments for `ProjectionMode` for more details.
+fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>,
+                           impl_def_id: DefId,
+                           assoc_ty_name: ast::Name)
+                           -> Option<specialization_graph::NodeItem<Rc<ty::AssociatedType<'tcx>>>>
+{
+    let trait_def_id = selcx.tcx().impl_trait_ref(impl_def_id).unwrap().def_id;
+
+    if selcx.projection_mode().is_topmost() {
+        let impl_node = specialization_graph::Node::Impl(impl_def_id);
+        for item in impl_node.items(selcx.tcx()) {
+            if let ty::TypeTraitItem(assoc_ty) = item {
+                if assoc_ty.name == assoc_ty_name {
+                    return Some(specialization_graph::NodeItem {
+                        node: specialization_graph::Node::Impl(impl_def_id),
+                        item: assoc_ty,
+                    });
                 }
             }
         }
+        None
+    } else {
+        selcx.tcx().lookup_trait_def(trait_def_id)
+            .ancestors(impl_def_id)
+            .type_defs(selcx.tcx(), assoc_ty_name)
+            .next()
     }
-
-    selcx.tcx().sess.span_bug(obligation.cause.span,
-                              &format!("No associated type for {:?}",
-                                       trait_ref));
 }

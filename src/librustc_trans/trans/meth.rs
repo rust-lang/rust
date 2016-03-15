@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::rc::Rc;
+
 use arena::TypedArena;
 use back::link;
 use llvm::{ValueRef, get_params};
@@ -15,7 +17,7 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::subst::{Subst, Substs};
 use middle::subst;
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use trans::base::*;
 use trans::build::*;
 use trans::callee::{Callee, Virtual, ArgVals,
@@ -31,9 +33,9 @@ use trans::glue;
 use trans::machine;
 use trans::type_::Type;
 use trans::type_of::*;
-use middle::ty::{self, Ty, TyCtxt};
+use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 
-use syntax::ast;
+use syntax::ast::{self, Name};
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 
@@ -107,7 +109,7 @@ pub fn callee_for_trait_impl<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // those from the impl and those from the method:
             let impl_substs = vtable_impl.substs.with_method_from(&substs);
             let substs = ccx.tcx().mk_substs(impl_substs);
-            let mth = ccx.tcx().get_impl_method(impl_did, substs, mname);
+            let mth = get_impl_method(ccx.tcx(), impl_did, substs, mname);
 
             // Translate the function, bypassing Callee::def.
             // That is because default methods have the same ID as the
@@ -315,7 +317,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 trans_fn_ref_with_substs(ccx,
                                                          mth.method.def_id,
                                                          None,
-                                                         mth.substs).val
+                                                         &mth.substs).val
                             }
                             None => nullptr
                         }
@@ -378,7 +380,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                     impl_id: DefId,
                                     substs: &'tcx subst::Substs<'tcx>)
-                                    -> Vec<Option<ty::util::ImplMethod<'tcx>>>
+                                    -> Vec<Option<ImplMethod<'tcx>>>
 {
     let tcx = ccx.tcx();
 
@@ -428,7 +430,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
-            let mth = tcx.get_impl_method(impl_id, substs, name);
+            let mth = get_impl_method(tcx, impl_id, substs, name);
 
             debug!("get_vtable_methods: mth={:?}", mth);
 
@@ -438,7 +440,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // method could then never be called, so we do not want to
             // try and trans it, in that case. Issue #23435.
             if mth.is_provided {
-                let predicates = mth.method.predicates.predicates.subst(tcx, mth.substs);
+                let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
                 if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
                     debug!("get_vtable_methods: predicates do not hold");
                     return None;
@@ -465,4 +467,38 @@ fn opaque_method_ty<'tcx>(tcx: &TyCtxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
             variadic: method_ty.sig.0.variadic,
         }),
     })
+}
+
+#[derive(Debug)]
+pub struct ImplMethod<'tcx> {
+    pub method: Rc<ty::Method<'tcx>>,
+    pub substs: &'tcx Substs<'tcx>,
+    pub is_provided: bool
+}
+
+/// Locates the applicable definition of a method, given its name.
+pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
+                             impl_def_id: DefId,
+                             substs: &'tcx Substs<'tcx>,
+                             name: Name)
+                             -> ImplMethod<'tcx>
+{
+    assert!(!substs.types.needs_infer());
+
+    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+
+    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+        Some(node_item) => {
+            ImplMethod {
+                method: node_item.item,
+                substs: traits::translate_substs(&infcx, impl_def_id, substs, node_item.node),
+                is_provided: node_item.node.is_from_trait(),
+            }
+        }
+        None => {
+            tcx.sess.bug(&format!("method {:?} not found in {:?}", name, impl_def_id))
+        }
+    }
 }

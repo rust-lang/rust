@@ -16,6 +16,6 @@ impl Foo {
     fn foo() {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
-} //~ ERROR expected one of `const`, `extern`, `fn`, `pub`, `type`, or `unsafe`, found `}`
+} //~ ERROR expected one of `const`, `default`, `extern`, `fn`, `pub`, `type`, or `unsafe`
 
 fn main() {}

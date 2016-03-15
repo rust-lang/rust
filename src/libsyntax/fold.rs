@@ -993,6 +993,7 @@ pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T)
         ident: folder.fold_ident(i.ident),
         attrs: fold_attrs(i.attrs, folder),
         vis: i.vis,
+        defaultness: i.defaultness,
         node: match i.node  {
             ast::ImplItemKind::Const(ty, expr) => {
                 ast::ImplItemKind::Const(folder.fold_ty(ty), folder.fold_expr(expr))
