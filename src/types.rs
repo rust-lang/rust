@@ -673,6 +673,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
     use types::ExtremeType::*;
     use rustc::middle::const_eval::ConstVal::*;
+    use rustc_const_eval::*;
 
     let ty = &cx.tcx.expr_ty(expr).sty;
 
@@ -687,33 +688,37 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
     };
 
     let which = match (ty, cv) {
-        (&ty::TyBool, Bool(false)) => Minimum,
+        (&ty::TyBool, Bool(false)) |
 
-        (&ty::TyInt(IntTy::Is), Int(x)) if x == ::std::isize::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::I8), Int(x)) if x == ::std::i8::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::I16), Int(x)) if x == ::std::i16::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::I32), Int(x)) if x == ::std::i32::MIN as i64 => Minimum,
-        (&ty::TyInt(IntTy::I64), Int(x)) if x == ::std::i64::MIN as i64 => Minimum,
+        (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MIN)))) |
+        (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MIN)))) |
+        (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MIN))) |
+        (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MIN))) |
+        (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MIN))) |
+        (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MIN))) |
 
-        (&ty::TyUint(UintTy::Us), Uint(x)) if x == ::std::usize::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::U8), Uint(x)) if x == ::std::u8::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::U16), Uint(x)) if x == ::std::u16::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::U32), Uint(x)) if x == ::std::u32::MIN as u64 => Minimum,
-        (&ty::TyUint(UintTy::U64), Uint(x)) if x == ::std::u64::MIN as u64 => Minimum,
+        (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MIN)))) |
+        (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MIN)))) |
+        (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MIN))) |
+        (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MIN))) |
+        (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MIN))) |
+        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MIN))) => Minimum,
 
-        (&ty::TyBool, Bool(true)) => Maximum,
+        (&ty::TyBool, Bool(true)) |
 
-        (&ty::TyInt(IntTy::Is), Int(x)) if x == ::std::isize::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::I8), Int(x)) if x == ::std::i8::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::I16), Int(x)) if x == ::std::i16::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::I32), Int(x)) if x == ::std::i32::MAX as i64 => Maximum,
-        (&ty::TyInt(IntTy::I64), Int(x)) if x == ::std::i64::MAX as i64 => Maximum,
+        (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MAX)))) |
+        (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MAX)))) |
+        (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MAX))) |
+        (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MAX))) |
+        (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MAX))) |
+        (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MAX))) |
 
-        (&ty::TyUint(UintTy::Us), Uint(x)) if x == ::std::usize::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::U8), Uint(x)) if x == ::std::u8::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::U16), Uint(x)) if x == ::std::u16::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::U32), Uint(x)) if x == ::std::u32::MAX as u64 => Maximum,
-        (&ty::TyUint(UintTy::U64), Uint(x)) if x == ::std::u64::MAX as u64 => Maximum,
+        (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MAX)))) |
+        (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MAX)))) |
+        (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MAX))) |
+        (&ty::TyUint(UintTy::U16), Integral(U16(::std::u16::MAX))) |
+        (&ty::TyUint(UintTy::U32), Integral(U32(::std::u32::MAX))) |
+        (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MAX))) => Maximum,
 
         _ => return None,
     };

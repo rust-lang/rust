@@ -35,7 +35,7 @@ extern crate semver;
 extern crate regex_syntax;
 
 extern crate rustc_plugin;
-
+extern crate rustc_const_eval;
 use rustc_plugin::Registry;
 
 pub mod consts;

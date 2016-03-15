@@ -3,6 +3,7 @@ use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::ty::TyArray;
 use rustc_front::hir::*;
+use rustc_const_eval::ConstInt;
 use syntax::ast::RangeLimits;
 use utils;
 
@@ -62,11 +63,11 @@ impl LateLintPass for ArrayIndexing {
             // Array with known size can be checked statically
             let ty = cx.tcx.expr_ty(array);
             if let TyArray(_, size) = ty.sty {
-                let size = size as u64;
+                let size = ConstInt::Infer(size as u64);
 
                 // Index is a constant uint
                 let const_index = eval_const_expr_partial(cx.tcx, &index, ExprTypeChecked, None);
-                if let Ok(ConstVal::Uint(const_index)) = const_index {
+                if let Ok(ConstVal::Integral(const_index)) = const_index {
                     if size <= const_index {
                         utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
                     }
@@ -115,24 +116,24 @@ impl LateLintPass for ArrayIndexing {
 fn to_const_range(start: Option<Option<ConstVal>>,
                     end: Option<Option<ConstVal>>,
                     limits: RangeLimits,
-                    array_size: u64)
-                    -> Option<(u64, u64)> {
+                    array_size: ConstInt)
+                    -> Option<(ConstInt, ConstInt)> {
     let start = match start {
-        Some(Some(ConstVal::Uint(x))) => x,
+        Some(Some(ConstVal::Integral(x))) => x,
         Some(_) => return None,
-        None => 0,
+        None => ConstInt::Infer(0),
     };
 
     let end = match end {
-        Some(Some(ConstVal::Uint(x))) => {
+        Some(Some(ConstVal::Integral(x))) => {
             if limits == RangeLimits::Closed {
                 x
             } else {
-                x - 1
+                (x - ConstInt::Infer(1)).expect("x > 0")
             }
         }
         Some(_) => return None,
-        None => array_size - 1,
+        None => (array_size - ConstInt::Infer(1)).expect("array_size > 0"),
     };
 
     Some((start, end))
