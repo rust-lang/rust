@@ -336,7 +336,20 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         }
                     },
 
-                    Vec => unimplemented!(),
+                    Vec => match dest_repr {
+                        Repr::Array { ref elem, length } => {
+                            assert_eq!(length, operands.len());
+                            let elem_size = elem.size();
+                            for (i, operand) in operands.iter().enumerate() {
+                                let (src, _) = try!(self.eval_operand(operand));
+                                let offset = i * elem_size;
+                                try!(self.memory.copy(src, dest.offset(offset), elem_size));
+                            }
+                            Ok(())
+                        }
+                        _ => panic!("expected Repr::Array target"),
+                    },
+
                     Closure(..) => unimplemented!(),
                 }
             }
@@ -517,9 +530,14 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.make_variant_repr(&adt_def.variants[0], substs)
             }
 
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) => {
-                Repr::Pointer { target: Box::new(self.ty_to_repr(ty)) }
-            }
+            ty::TyArray(ref elem_ty, length) => Repr::Array {
+                elem: Box::new(self.ty_to_repr(elem_ty)),
+                length: length,
+            },
+
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) => Repr::Pointer {
+                target: Box::new(self.ty_to_repr(ty))
+            },
 
             ref t => panic!("can't convert type to repr: {:?}", t),
         }
