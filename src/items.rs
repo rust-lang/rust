@@ -1034,9 +1034,7 @@ pub fn rewrite_associated_type(prefix: &str,
         let bounds: &[_] = &ty_param_bounds.as_slice();
         let bound_str = bounds.iter()
                               .filter_map(|ty_bound| {
-                                  ty_bound.rewrite(context,
-                                                   context.config.max_width,
-                                                   indent)
+                                  ty_bound.rewrite(context, context.config.max_width, indent)
                               })
                               .collect::<Vec<String>>()
                               .join(" + ");
@@ -1052,7 +1050,8 @@ pub fn rewrite_associated_type(prefix: &str,
     if let Some(ty) = ty_opt {
         let ty_str = try_opt!(ty.rewrite(context,
                                          context.config.max_width - context.block_indent.width() -
-                                         prefix.len() - 2,
+                                         prefix.len() -
+                                         2,
                                          context.block_indent));
         Some(format!("{} = {};", prefix, ty_str))
     } else {
@@ -1083,7 +1082,8 @@ pub fn rewrite_associated_static(prefix: &str,
         let lhs = format!("{}{} =", prefix, ty_str);
         // 1 = ;
         let remaining_width = context.config.max_width - context.block_indent.width() - 1;
-        rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
+        rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent)
+            .map(|s| s + ";")
     } else {
         let lhs = format!("{}{};", prefix, ty_str);
         Some(lhs)
@@ -1740,7 +1740,6 @@ fn rewrite_where_clause(context: &RewriteContext,
         config: context.config,
     };
     let preds_str = try_opt!(write_list(&item_vec, &fmt));
-    println!("{:?}", preds_str);
 
     let end_length = if terminator == "{" {
         // If the brace is on the next line we don't need to count it otherwise it needs two

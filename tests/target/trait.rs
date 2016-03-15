@@ -36,3 +36,12 @@ trait Test {
 }
 
 trait T {}
+
+trait Foo {
+    type Bar: Baz;
+}
+
+trait ConstCheck<T>: Foo where T: Baz
+{
+    const J: i32;
+}

@@ -21,7 +21,8 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
-use items::{rewrite_static, rewrite_associated_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
+use items::{rewrite_static, rewrite_associated_static, rewrite_associated_type,
+            rewrite_type_alias, format_impl, format_trait};
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
@@ -316,12 +317,12 @@ impl<'a> FmtVisitor<'a> {
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_associated_static("const",
-                                             ast::Visibility::Inherited,
-                                             ti.ident,
-                                             ty,
-                                             ast::Mutability::Immutable,
-                                             expr,
-                                             &self.get_context());
+                                                        ast::Visibility::Inherited,
+                                                        ti.ident,
+                                                        ty,
+                                                        ast::Mutability::Immutable,
+                                                        expr,
+                                                        &self.get_context());
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, None) => {

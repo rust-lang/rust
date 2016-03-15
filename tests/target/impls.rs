@@ -5,6 +5,10 @@ impl Foo for Bar {
 }
 
 pub impl Foo for Bar {
+    // Associated Constants
+    const Baz: i32 = 16;
+    // Associated Types
+    type FooBar = usize;
     // Comment 1
     fn foo() {
         "hi"
