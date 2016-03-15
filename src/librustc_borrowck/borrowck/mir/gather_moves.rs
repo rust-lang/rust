@@ -25,21 +25,31 @@ use std::usize;
 use super::dataflow::BitDenotation;
 use super::abs_domain::{AbstractElem, Lift};
 
-/// Index into MovePathData.move_paths
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct MovePathIndex(usize);
+macro_rules! new_index {
+    ($Index:ident, $INVALID_INDEX:ident) => {
+        #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+        pub struct $Index(usize);
 
-const INVALID_MOVE_PATH_INDEX: MovePathIndex = MovePathIndex(usize::MAX);
+        const $INVALID_INDEX: $Index = $Index(usize::MAX);
 
-impl MovePathIndex {
-    pub fn idx(&self) -> Option<usize> {
-        if *self == INVALID_MOVE_PATH_INDEX {
-            None
-        } else {
-            Some(self.0)
+        impl $Index {
+            pub fn idx(&self) -> Option<usize> {
+                if *self == $INVALID_INDEX {
+                    None
+                } else {
+                    Some(self.0)
+                }
+            }
         }
     }
 }
+
+/// Index into MovePathData.move_paths
+new_index!(MovePathIndex, INVALID_MOVE_PATH_INDEX);
+
+/// Index into MoveData.moves.
+new_index!(MoveOutIndex, INVALID_MOVE_OUT_INDEX);
+
 
 /// `MovePath` is a canonicalized representation of a path that is
 /// moved or assigned to.
@@ -98,22 +108,6 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
         write!(w, " lvalue: {:?} }}", self.lvalue)
     }
 }
-
-/// Index into MoveData.moves.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct MoveOutIndex(usize);
-
-impl MoveOutIndex {
-    pub fn idx(&self) -> Option<usize> {
-        if *self == INVALID_MOVE_OUT_INDEX {
-            None
-        } else {
-            Some(self.0)
-        }
-    }
-}
-
-const INVALID_MOVE_OUT_INDEX: MoveOutIndex = MoveOutIndex(usize::MAX);
 
 pub struct MoveData<'tcx> {
     pub move_paths: MovePathData<'tcx>,
