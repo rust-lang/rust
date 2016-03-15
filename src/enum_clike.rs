@@ -1,11 +1,9 @@
 //! lint on C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`
 
 use rustc::lint::*;
-use syntax::ast::{IntTy, UintTy};
 use syntax::attr::*;
 use rustc_front::hir::*;
 use rustc::middle::const_eval::{ConstVal, EvalHint, eval_const_expr_partial};
-use rustc::middle::ty;
 use utils::span_lint;
 
 /// **What it does:** Lints on C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`.
@@ -35,12 +33,10 @@ impl LateLintPass for EnumClikeUnportableVariant {
             for var in &def.variants {
                 let variant = &var.node;
                 if let Some(ref disr) = variant.disr_expr {
-                    let cv = eval_const_expr_partial(cx.tcx, &**disr, EvalHint::ExprTypeChecked, None);
-                    let bad = match (cv, &cx.tcx.expr_ty(&**disr).sty) {
-                        (Ok(ConstVal::Int(i)), &ty::TyInt(IntTy::Is)) => i as i32 as i64 != i,
-                        (Ok(ConstVal::Uint(i)), &ty::TyInt(IntTy::Is)) => i as i32 as u64 != i,
-                        (Ok(ConstVal::Int(i)), &ty::TyUint(UintTy::Us)) => (i < 0) || (i as u32 as i64 != i),
-                        (Ok(ConstVal::Uint(i)), &ty::TyUint(UintTy::Us)) => i as u32 as u64 != i,
+                    use rustc_const_eval::*;
+                    let bad = match eval_const_expr_partial(cx.tcx, &**disr, EvalHint::ExprTypeChecked, None) {
+                        Ok(ConstVal::Integral(Usize(Us64(i)))) => i as u32 as u64 != i,
+                        Ok(ConstVal::Integral(Isize(Is64(i)))) => i as i32 as i64 != i,
                         _ => false,
                     };
                     if bad {

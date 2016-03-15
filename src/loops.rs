@@ -429,10 +429,7 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
                 // who think that this will iterate from the larger value to the
                 // smaller value.
                 let (sup, eq) = match (start_idx, end_idx) {
-                    (ConstVal::Int(start_idx), ConstVal::Int(end_idx)) => {
-                        (start_idx > end_idx, start_idx == end_idx)
-                    }
-                    (ConstVal::Uint(start_idx), ConstVal::Uint(end_idx)) => {
+                    (ConstVal::Integral(start_idx), ConstVal::Integral(end_idx)) => {
                         (start_idx > end_idx, start_idx == end_idx)
                     }
                     _ => (false, false),

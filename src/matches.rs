@@ -1,9 +1,9 @@
 use rustc::lint::*;
-use rustc::middle::const_eval::ConstVal::{Int, Uint};
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
 use rustc::middle::ty;
 use rustc_front::hir::*;
+use rustc_const_eval::ConstInt;
 use std::cmp::Ordering;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
@@ -288,19 +288,16 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
     if arms.len() >= 2 && cx.tcx.expr_ty(ex).is_integral() {
         let ranges = all_ranges(cx, arms);
-        let overlap = match type_ranges(&ranges) {
-            TypedRanges::IntRanges(ranges) => overlapping(&ranges).map(|(start, end)| (start.span, end.span)),
-            TypedRanges::UintRanges(ranges) => overlapping(&ranges).map(|(start, end)| (start.span, end.span)),
-            TypedRanges::None => None,
-        };
-
-        if let Some((start, end)) = overlap {
-            span_note_and_lint(cx,
-                               MATCH_OVERLAPPING_ARM,
-                               start,
-                               "some ranges overlap",
-                               end,
-                               "overlaps with this");
+        let type_ranges = type_ranges(&ranges);
+        if !type_ranges.is_empty() {
+            if let Some((start, end)) = overlapping(&type_ranges) {
+                span_note_and_lint(cx,
+                                   MATCH_OVERLAPPING_ARM,
+                                   start.span,
+                                   "some ranges overlap",
+                                   end.span,
+                                   "overlaps with this");
+            }
         }
     }
 }
@@ -370,51 +367,22 @@ pub struct SpannedRange<T> {
     pub node: (T, T),
 }
 
-#[derive(Debug)]
-enum TypedRanges {
-    IntRanges(Vec<SpannedRange<i64>>),
-    UintRanges(Vec<SpannedRange<u64>>),
-    None,
-}
+type TypedRanges = Vec<SpannedRange<ConstInt>>;
 
 /// Get all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway and other types than
 /// `Uint` and `Int` probably don't make sense.
 fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
-    if ranges.is_empty() {
-        TypedRanges::None
-    } else {
-        match ranges[0].node {
-            (Int(_), Int(_)) => {
-                TypedRanges::IntRanges(ranges.iter()
-                                             .filter_map(|range| {
-                                                 if let (Int(start), Int(end)) = range.node {
-                                                     Some(SpannedRange {
-                                                         span: range.span,
-                                                         node: (start, end),
-                                                     })
-                                                 } else {
-                                                     None
-                                                 }
-                                             })
-                                             .collect())
-            }
-            (Uint(_), Uint(_)) => {
-                TypedRanges::UintRanges(ranges.iter()
-                                              .filter_map(|range| {
-                                                  if let (Uint(start), Uint(end)) = range.node {
-                                                      Some(SpannedRange {
-                                                          span: range.span,
-                                                          node: (start, end),
-                                                      })
-                                                  } else {
-                                                      None
-                                                  }
-                                              })
-                                              .collect())
-            }
-            _ => TypedRanges::None,
+    ranges.iter().filter_map(|range| {
+        if let (ConstVal::Integral(start), ConstVal::Integral(end)) = range.node {
+            Some(SpannedRange {
+                span: range.span,
+                node: (start, end),
+            })
+        } else {
+            None
         }
-    }
+    })
+    .collect()
 }
 
 fn is_unit_expr(expr: &Expr) -> bool {
