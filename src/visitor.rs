@@ -21,7 +21,7 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
-use items::{rewrite_static, rewrite_type_alias, format_impl, format_trait};
+use items::{rewrite_static, rewrite_associated_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
@@ -207,7 +207,6 @@ impl<'a> FmtVisitor<'a> {
                     self.last_pos = item.span.hi;
                 }
             }
-            // FIXME(#78): format traits.
             ast::ItemKind::Trait(..) => {
                 self.format_missing_with_indent(item.span.lo);
                 if let Some(trait_str) = format_trait(&self.get_context(),
@@ -216,11 +215,6 @@ impl<'a> FmtVisitor<'a> {
                     self.buffer.push_str(&trait_str);
                     self.last_pos = item.span.hi;
                 }
-                // self.block_indent = self.block_indent.block_indent(self.config);
-                // for item in trait_items {
-                //     self.visit_trait_item(&item);
-                // }
-                // self.block_indent = self.block_indent.block_unindent(self.config);
             }
             ast::ItemKind::ExternCrate(_) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -320,8 +314,15 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match ti.node {
-            ast::TraitItemKind::Const(..) => {
-                // FIXME: Implement
+            ast::TraitItemKind::Const(ref ty, ref expr) => {
+                let rewrite = rewrite_associated_static("const",
+                                             ast::Visibility::Inherited,
+                                             ti.ident,
+                                             ty,
+                                             ast::Mutability::Immutable,
+                                             expr,
+                                             &self.get_context());
+                self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, None) => {
                 let indent = self.block_indent;
@@ -336,25 +337,13 @@ impl<'a> FmtVisitor<'a> {
                               ti.id);
             }
             ast::TraitItemKind::Type(ref type_param_bounds, _) => {
-                let indent = self.block_indent;
-                let mut result = String::new();
-                result.push_str(&format!("type {}", ti.ident));
-
-                let bounds: &[_] = &type_param_bounds.as_slice();
-                let bound_str = bounds.iter()
-                                      .filter_map(|ty_bound| {
-                                          ty_bound.rewrite(&self.get_context(),
-                                                           self.config.max_width,
-                                                           indent)
-                                      })
-                                      .collect::<Vec<String>>()
-                                      .join(" + ");
-                if bounds.len() > 0 {
-                    result.push_str(&format!(": {}", bound_str));
-                }
-
-                result.push(';');
-                self.push_rewrite(ti.span, Some(result));
+                let rewrite = rewrite_associated_type("type",
+                                                      ti.ident,
+                                                      None,
+                                                      Some(type_param_bounds),
+                                                      &self.get_context(),
+                                                      self.block_indent);
+                self.push_rewrite(ti.span, rewrite);
             }
         }
     }
@@ -372,11 +361,24 @@ impl<'a> FmtVisitor<'a> {
                               ii.span,
                               ii.id);
             }
-            ast::ImplItemKind::Const(..) => {
-                // FIXME: Implement
+            ast::ImplItemKind::Const(ref ty, ref expr) => {
+                let rewrite = rewrite_static("const",
+                                             ast::Visibility::Inherited,
+                                             ii.ident,
+                                             ty,
+                                             ast::Mutability::Immutable,
+                                             &expr,
+                                             &self.get_context());
+                self.push_rewrite(ii.span, rewrite);
             }
-            ast::ImplItemKind::Type(_) => {
-                // FIXME: Implement
+            ast::ImplItemKind::Type(ref ty) => {
+                let rewrite = rewrite_associated_type("type",
+                                                      ii.ident,
+                                                      Some(ty),
+                                                      None,
+                                                      &self.get_context(),
+                                                      self.block_indent);
+                self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.format_missing_with_indent(ii.span.lo);

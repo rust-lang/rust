@@ -23,7 +23,7 @@ use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 use syntax::codemap;
 
-use syntax::{ast, abi};
+use syntax::{ast, abi, ptr};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
 use syntax::ast::ImplItem;
@@ -640,7 +640,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         if offset.width() + result.len() + trait_bound_str.len() > context.config.max_width {
             result.push('\n');
-            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let width = context.block_indent.width() + context.config.tab_spaces;
             let trait_indent = Indent::new(0, width);
             result.push_str(&trait_indent.to_string(context.config));
         }
@@ -1019,6 +1019,75 @@ pub fn rewrite_static(prefix: &str,
     // 1 = ;
     let remaining_width = context.config.max_width - context.block_indent.width() - 1;
     rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
+}
+
+pub fn rewrite_associated_type(prefix: &str,
+                               ident: ast::Ident,
+                               ty_opt: Option<&ptr::P<ast::Ty>>,
+                               ty_param_bounds_opt: Option<&ast::TyParamBounds>,
+                               context: &RewriteContext,
+                               indent: Indent)
+                               -> Option<String> {
+    let prefix = format!("{} {}", prefix, ident);
+
+    let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
+        let bounds: &[_] = &ty_param_bounds.as_slice();
+        let bound_str = bounds.iter()
+                              .filter_map(|ty_bound| {
+                                  ty_bound.rewrite(context,
+                                                   context.config.max_width,
+                                                   indent)
+                              })
+                              .collect::<Vec<String>>()
+                              .join(" + ");
+        if bounds.len() > 0 {
+            format!(": {}", bound_str)
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
+    if let Some(ty) = ty_opt {
+        let ty_str = try_opt!(ty.rewrite(context,
+                                         context.config.max_width - context.block_indent.width() -
+                                         prefix.len() - 2,
+                                         context.block_indent));
+        Some(format!("{} = {};", prefix, ty_str))
+    } else {
+        Some(format!("{}{};", prefix, type_bounds_str))
+    }
+}
+
+pub fn rewrite_associated_static(prefix: &str,
+                                 vis: ast::Visibility,
+                                 ident: ast::Ident,
+                                 ty: &ast::Ty,
+                                 mutability: ast::Mutability,
+                                 expr_opt: &Option<ptr::P<ast::Expr>>,
+                                 context: &RewriteContext)
+                                 -> Option<String> {
+    let prefix = format!("{}{} {}{}: ",
+                         format_visibility(vis),
+                         prefix,
+                         format_mutability(mutability),
+                         ident);
+    // 2 = " =".len()
+    let ty_str = try_opt!(ty.rewrite(context,
+                                     context.config.max_width - context.block_indent.width() -
+                                     prefix.len() - 2,
+                                     context.block_indent));
+
+    if let &Some(ref expr) = expr_opt {
+        let lhs = format!("{}{} =", prefix, ty_str);
+        // 1 = ;
+        let remaining_width = context.config.max_width - context.block_indent.width() - 1;
+        rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
+    } else {
+        let lhs = format!("{}{};", prefix, ty_str);
+        Some(lhs)
+    }
 }
 
 impl Rewrite for ast::FunctionRetTy {
@@ -1671,6 +1740,7 @@ fn rewrite_where_clause(context: &RewriteContext,
         config: context.config,
     };
     let preds_str = try_opt!(write_list(&item_vec, &fmt));
+    println!("{:?}", preds_str);
 
     let end_length = if terminator == "{" {
         // If the brace is on the next line we don't need to count it otherwise it needs two
