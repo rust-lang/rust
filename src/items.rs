@@ -22,7 +22,7 @@ use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
 use syntax::codemap;
 
-use syntax::{ast, abi};
+use syntax::{ast, abi, ptr};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
 use syntax::ast::ImplItem;
@@ -607,6 +607,133 @@ pub fn format_struct(context: &RewriteContext,
     }
 }
 
+pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) -> Option<String> {
+    if let ast::ItemKind::Trait(unsafety, ref generics, ref type_param_bounds, ref trait_items) =
+           item.node {
+        let mut result = String::new();
+        let header = format!("{}{}trait {}",
+                             format_visibility(item.vis),
+                             format_unsafety(unsafety),
+                             item.ident);
+
+        result.push_str(&header);
+
+        let body_lo = context.codemap.span_after(item.span, "{");
+
+        let generics_str = try_opt!(rewrite_generics(context,
+                                                     generics,
+                                                     offset,
+                                                     context.config.max_width,
+                                                     offset + result.len(),
+                                                     mk_sp(item.span.lo, body_lo)));
+        result.push_str(&generics_str);
+
+        let trait_bound_str = try_opt!(rewrite_trait_bounds(context,
+                                                            type_param_bounds,
+                                                            offset,
+                                                            context.config.max_width));
+        // If the trait, generics, and trait bound cannot fit on the same line,
+        // put the trait bounds on an indented new line
+        if offset.width() + last_line_width(&result) + trait_bound_str.len() >
+           context.config.ideal_width {
+            result.push('\n');
+            let width = context.block_indent.width() + context.config.tab_spaces;
+            let trait_indent = Indent::new(0, width);
+            result.push_str(&trait_indent.to_string(context.config));
+        }
+        result.push_str(&trait_bound_str);
+
+        let has_body = !trait_items.is_empty();
+
+        let where_density = if (context.config.where_density == Density::Compressed &&
+                                (!result.contains('\n') ||
+                                 context.config.fn_args_layout == StructLitStyle::Block)) ||
+                               (context.config.fn_args_layout == StructLitStyle::Block &&
+                                result.is_empty()) ||
+                               (context.config.where_density == Density::CompressedIfEmpty &&
+                                !has_body &&
+                                !result.contains('\n')) {
+            Density::Compressed
+        } else {
+            Density::Tall
+        };
+
+        let where_budget = try_opt!(context.config
+                                           .max_width
+                                           .checked_sub(last_line_width(&result)));
+        let where_clause_str = try_opt!(rewrite_where_clause(context,
+                                                             &generics.where_clause,
+                                                             context.config,
+                                                             context.config.item_brace_style,
+                                                             context.block_indent,
+                                                             where_budget,
+                                                             where_density,
+                                                             "{",
+                                                             has_body,
+                                                             None));
+        // If the where clause cannot fit on the same line,
+        // put the where clause on a new line
+        if !where_clause_str.contains('\n') &&
+           last_line_width(&result) + where_clause_str.len() + offset.width() >
+           context.config.ideal_width {
+            result.push('\n');
+            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let where_indent = Indent::new(0, width);
+            result.push_str(&where_indent.to_string(context.config));
+        }
+        result.push_str(&where_clause_str);
+
+        match context.config.item_brace_style {
+            BraceStyle::AlwaysNextLine => {
+                result.push('\n');
+                result.push_str(&offset.to_string(context.config));
+            }
+            BraceStyle::PreferSameLine => result.push(' '),
+            BraceStyle::SameLineWhere => {
+                if !where_clause_str.is_empty() &&
+                   (trait_items.len() > 0 || result.contains('\n')) {
+                    result.push('\n');
+                    result.push_str(&offset.to_string(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
+        }
+        result.push('{');
+
+        let snippet = context.snippet(item.span);
+        let open_pos = try_opt!(snippet.find_uncommented("{")) + 1;
+
+        if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
+            let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
+            visitor.block_indent = context.block_indent.block_indent(context.config);
+            visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
+
+            for item in trait_items {
+                visitor.visit_trait_item(&item);
+            }
+
+            visitor.format_missing(item.span.hi - BytePos(1));
+
+            let inner_indent_str = visitor.block_indent.to_string(context.config);
+            let outer_indent_str = context.block_indent.to_string(context.config);
+
+            result.push('\n');
+            result.push_str(&inner_indent_str);
+            result.push_str(&trim_newlines(&visitor.buffer.to_string().trim()));
+            result.push('\n');
+            result.push_str(&outer_indent_str);
+        } else if result.contains('\n') {
+            result.push('\n');
+        }
+
+        result.push('}');
+        Some(result)
+    } else {
+        unreachable!();
+    }
+}
+
 fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> Option<String> {
     let mut result = String::with_capacity(1024);
 
@@ -894,7 +1021,7 @@ pub fn rewrite_static(prefix: &str,
                       ident: ast::Ident,
                       ty: &ast::Ty,
                       mutability: ast::Mutability,
-                      expr: &ast::Expr,
+                      expr_opt: Option<&ptr::P<ast::Expr>>,
                       context: &RewriteContext)
                       -> Option<String> {
     let prefix = format!("{}{} {}{}: ",
@@ -907,11 +1034,54 @@ pub fn rewrite_static(prefix: &str,
                                      context.config.max_width - context.block_indent.width() -
                                      prefix.len() - 2,
                                      context.block_indent));
-    let lhs = format!("{}{} =", prefix, ty_str);
 
-    // 1 = ;
-    let remaining_width = context.config.max_width - context.block_indent.width() - 1;
-    rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
+    if let Some(ref expr) = expr_opt {
+        let lhs = format!("{}{} =", prefix, ty_str);
+        // 1 = ;
+        let remaining_width = context.config.max_width - context.block_indent.width() - 1;
+        rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent)
+            .map(|s| s + ";")
+    } else {
+        let lhs = format!("{}{};", prefix, ty_str);
+        Some(lhs)
+    }
+}
+
+pub fn rewrite_associated_type(ident: ast::Ident,
+                               ty_opt: Option<&ptr::P<ast::Ty>>,
+                               ty_param_bounds_opt: Option<&ast::TyParamBounds>,
+                               context: &RewriteContext,
+                               indent: Indent)
+                               -> Option<String> {
+    let prefix = format!("type {}", ident);
+
+    let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
+        let bounds: &[_] = &ty_param_bounds.as_slice();
+        let bound_str = bounds.iter()
+                              .filter_map(|ty_bound| {
+                                  ty_bound.rewrite(context, context.config.max_width, indent)
+                              })
+                              .collect::<Vec<String>>()
+                              .join(" + ");
+        if bounds.len() > 0 {
+            format!(": {}", bound_str)
+        } else {
+            String::new()
+        }
+    } else {
+        String::new()
+    };
+
+    if let Some(ty) = ty_opt {
+        let ty_str = try_opt!(ty.rewrite(context,
+                                         context.config.max_width - context.block_indent.width() -
+                                         prefix.len() -
+                                         2,
+                                         context.block_indent));
+        Some(format!("{} = {};", prefix, ty_str))
+    } else {
+        Some(format!("{}{};", prefix, type_bounds_str))
+    }
 }
 
 impl Rewrite for ast::FunctionRetTy {
@@ -1480,6 +1650,28 @@ fn rewrite_generics(context: &RewriteContext,
     let list_str = try_opt!(format_item_list(items, h_budget, offset, context.config));
 
     Some(format!("<{}>", list_str))
+}
+
+fn rewrite_trait_bounds(context: &RewriteContext,
+                        type_param_bounds: &ast::TyParamBounds,
+                        indent: Indent,
+                        width: usize)
+                        -> Option<String> {
+    let bounds: &[_] = &type_param_bounds.as_slice();
+
+    if bounds.is_empty() {
+        return Some(String::new());
+    }
+
+    let bound_str = bounds.iter()
+                          .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
+                          .collect::<Vec<String>>()
+                          .join(" + ");
+
+    let mut result = String::new();
+    result.push_str(": ");
+    result.push_str(&bound_str);
+    Some(result)
 }
 
 fn rewrite_where_clause(context: &RewriteContext,

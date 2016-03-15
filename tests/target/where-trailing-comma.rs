@@ -48,8 +48,9 @@ extern "C" {
               S: Q;
 }
 
-// Note: trait declarations are not fully formatted (issue #78)
-trait Q<S, T> where T: P, S: R
+trait Q<S, T>
+    where T: P,
+          S: R,
 {
     fn f<U, V>(self, x: T, y: S, z: U) -> Self
         where U: P,

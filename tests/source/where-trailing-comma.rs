@@ -20,7 +20,7 @@ struct Pair<S, T> where T: P, S: P + Q {
 
 struct TupPair<S, T> (S, T) where T: P, S: P + Q;
 
-enum E<S, T> where S: P, T: P { 
+enum E<S, T> where S: P, T: P {
     A {a: T},
 }
 
@@ -30,7 +30,6 @@ extern "C" {
     fn f<S, T>(x: T, y: S) -> T where T: P, S: Q;
 }
 
-// Note: trait declarations are not fully formatted (issue #78)
 trait Q<S, T> where T: P, S: R
 {
     fn f<U, V>(self, x: T, y: S, z: U) -> Self where U: P, V: P;

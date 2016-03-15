@@ -35,3 +35,21 @@ trait TraitWithExpr {
 trait Test {
     fn read_struct<T, F>(&mut self, s_name: &str, len: usize, f: F) -> Result<T, Self::Error> where F: FnOnce(&mut Self) -> Result<T, Self::Error>;
 }
+
+trait T<> {}
+
+trait Foo { type Bar: Baz;}
+
+trait ConstCheck<T>:Foo   where   T: Baz { 
+        const   J:   i32;
+}
+
+trait Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttt<T> 
+    where T: Foo {}
+
+trait Ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt<T> where T: Foo {}
+
+trait FooBar<T> : Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt where J: Bar { fn test(); }
+
+trait WhereList<T, J> where T: Foo, J: Bar {}
+
