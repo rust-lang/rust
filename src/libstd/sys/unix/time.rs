@@ -88,11 +88,11 @@ mod inner {
                         -> Result<Duration, Duration> {
             if self >= other {
                 Ok(if self.t.tv_usec >= other.t.tv_usec {
-                    Duration::new(self.t.tv_sec as u64 - other.t.tv_sec as u64,
-                                  (self.t.tv_usec as u32 -
-                                   other.t.tv_usec as u32) * 1000)
+                    Duration::new((self.t.tv_sec - other.t.tv_sec) as u64,
+                                  ((self.t.tv_usec -
+                                    other.t.tv_usec) as u32) * 1000)
                 } else {
-                    Duration::new(self.t.tv_sec as u64 - 1 - other.t.tv_sec as u64,
+                    Duration::new((self.t.tv_sec - 1 - other.t.tv_sec) as u64,
                                   (self.t.tv_usec as u32 + (USEC_PER_SEC as u32) -
                                    other.t.tv_usec as u32) * 1000)
                 })
