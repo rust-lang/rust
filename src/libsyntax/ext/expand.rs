@@ -1061,6 +1061,7 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             ident: ii.ident,
             attrs: ii.attrs,
             vis: ii.vis,
+            defaultness: ii.defaultness,
             node: match ii.node  {
                 ast::ImplItemKind::Method(sig, body) => {
                     let (sig, body) = expand_and_rename_method(sig, body, fld);

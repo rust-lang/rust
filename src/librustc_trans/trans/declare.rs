@@ -22,6 +22,7 @@
 use llvm::{self, ValueRef};
 use middle::ty;
 use middle::infer;
+use middle::traits::ProjectionMode;
 use syntax::abi::Abi;
 use trans::attributes;
 use trans::base;
@@ -111,7 +112,9 @@ pub fn declare_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
             (&f.sig, f.abi, None)
         }
         ty::TyClosure(closure_did, ref substs) => {
-            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(),
+                                                      &ccx.tcx().tables,
+                                                      ProjectionMode::Any);
             function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
             let llenvironment_type = type_of::type_of_explicit_arg(ccx, self_type);

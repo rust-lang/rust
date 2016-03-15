@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(specialization)]
+
 // Common code used for tests that model the Fn/FnMut/FnOnce hierarchy.
 
 pub trait Go {
@@ -37,7 +39,7 @@ pub fn go_once<G:GoOnce>(this: G, arg: isize) {
 impl<G> GoMut for G
     where G : Go
 {
-    fn go_mut(&mut self, arg: isize) {
+    default fn go_mut(&mut self, arg: isize) {
         go(&*self, arg)
     }
 }
@@ -45,7 +47,7 @@ impl<G> GoMut for G
 impl<G> GoOnce for G
     where G : GoMut
 {
-    fn go_once(mut self, arg: isize) {
+    default fn go_once(mut self, arg: isize) {
         go_mut(&mut self, arg)
     }
 }

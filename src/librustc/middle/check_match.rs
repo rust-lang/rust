@@ -25,6 +25,7 @@ use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization::{cmt};
 use middle::pat_util::*;
+use middle::traits::ProjectionMode;
 use middle::ty::*;
 use middle::ty;
 use std::cmp::Ordering;
@@ -1101,7 +1102,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                         //FIXME: (@jroesch) this code should be floated up as well
                         let infcx = infer::new_infer_ctxt(cx.tcx,
                                                           &cx.tcx.tables,
-                                                          Some(cx.param_env.clone()));
+                                                          Some(cx.param_env.clone()),
+                                                          ProjectionMode::AnyFinal);
                         if infcx.type_moves_by_default(pat_ty, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
@@ -1133,7 +1135,8 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
 
     let infcx = infer::new_infer_ctxt(cx.tcx,
                                       &cx.tcx.tables,
-                                      Some(checker.cx.param_env.clone()));
+                                      Some(checker.cx.param_env.clone()),
+                                      ProjectionMode::AnyFinal);
 
     let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
     visitor.walk_expr(guard);

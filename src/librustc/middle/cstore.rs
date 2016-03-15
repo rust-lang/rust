@@ -176,6 +176,7 @@ pub trait CrateStore<'tcx> : Any {
                                   -> Option<ty::adjustment::CustomCoerceUnsized>;
     fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                          -> Vec<Rc<ty::AssociatedConst<'tcx>>>;
+    fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
@@ -346,6 +347,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
         { unimplemented!() }
     fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                          -> Vec<Rc<ty::AssociatedConst<'tcx>>> { unimplemented!() }
+    fn impl_parent(&self, def: DefId) -> Option<DefId> { unimplemented!() }
 
     // trait/impl-item info
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)

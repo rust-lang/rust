@@ -13,6 +13,7 @@ use libc::{c_uint, c_ulonglong};
 use llvm::{self, ValueRef, AttrHelper};
 use middle::ty;
 use middle::infer;
+use middle::traits::ProjectionMode;
 use session::config::NoDebugInfo;
 use syntax::abi::Abi;
 pub use syntax::attr::InlineAttr;
@@ -133,7 +134,9 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
     let (fn_sig, abi, env_ty) = match fn_type.sty {
         ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => (&f.sig, f.abi, None),
         ty::TyClosure(closure_did, ref substs) => {
-            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(), &ccx.tcx().tables);
+            let infcx = infer::normalizing_infer_ctxt(ccx.tcx(),
+                                                      &ccx.tcx().tables,
+                                                      ProjectionMode::Any);
             function_type = infcx.closure_type(closure_did, substs);
             let self_type = base::self_type_for_closure(ccx, closure_did, fn_type);
             (&function_type.sig, Abi::RustCall, Some(self_type))

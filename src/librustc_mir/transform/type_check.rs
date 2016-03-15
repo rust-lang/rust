@@ -13,7 +13,7 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::middle::infer::{self, InferCtxt};
-use rustc::middle::traits;
+use rustc::middle::traits::{self, ProjectionMode};
 use rustc::middle::ty::fold::TypeFoldable;
 use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
@@ -582,7 +582,10 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
         }
         let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(id));
         let param_env = ty::ParameterEnvironment::for_item(tcx, id);
-        let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+        let infcx = infer::new_infer_ctxt(tcx,
+                                          &tcx.tables,
+                                          Some(param_env),
+                                          ProjectionMode::AnyFinal);
         let mut checker = TypeChecker::new(&infcx);
         {
             let mut verifier = TypeVerifier::new(&mut checker, mir);

@@ -25,6 +25,7 @@ use super::report_overflow_error;
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
+use super::ProjectionMode;
 use super::TraitNotObjectSafe;
 use super::Selection;
 use super::SelectionResult;
@@ -40,6 +41,7 @@ use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
 use middle::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use middle::traits;
 use middle::ty::fast_reject;
 use middle::ty::relate::TypeRelation;
 
@@ -75,7 +77,6 @@ pub struct SelectionContext<'cx, 'tcx:'cx> {
     /// other words, we consider `$0 : Bar` to be unimplemented if
     /// there is no type that the user could *actually name* that
     /// would satisfy it. This avoids crippling inference, basically.
-
     intercrate: bool,
 }
 
@@ -224,6 +225,12 @@ struct SelectionCandidateSet<'tcx> {
     ambiguous: bool,
 }
 
+#[derive(PartialEq,Eq,Debug,Clone)]
+struct EvaluatedCandidate<'tcx> {
+    candidate: SelectionCandidate<'tcx>,
+    evaluation: EvaluationResult,
+}
+
 enum BuiltinBoundConditions<'tcx> {
     If(ty::Binder<Vec<Ty<'tcx>>>),
     ParameterBuiltin,
@@ -251,8 +258,7 @@ pub struct EvaluationCache<'tcx> {
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>)
-               -> SelectionContext<'cx, 'tcx> {
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
@@ -260,8 +266,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>)
-                      -> SelectionContext<'cx, 'tcx> {
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
@@ -283,6 +288,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx> {
         self.infcx
+    }
+
+    pub fn projection_mode(&self) -> ProjectionMode {
+        self.infcx.projection_mode()
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -558,7 +567,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // this crate, perhaps the type would be unified with
         // something from another crate that does provide an impl.
         //
-        // In intracrate mode, we must still be conservative. The reason is
+        // In intra mode, we must still be conservative. The reason is
         // that we want to avoid cycles. Imagine an impl like:
         //
         //     impl<T:Eq> Eq for Vec<T>
@@ -746,6 +755,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate
     }
 
+    // Treat negative impls as unimplemented
+    fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
+                             -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
+        if let ImplCandidate(def_id) = candidate {
+            if self.tcx().trait_impl_polarity(def_id) == Some(hir::ImplPolarity::Negative) {
+                return Err(Unimplemented)
+            }
+        }
+        Ok(Some(candidate))
+    }
+
     fn candidate_from_obligation_no_cache<'o>(&mut self,
                                               stack: &TraitObligationStack<'o, 'tcx>)
                                               -> SelectionResult<'tcx, SelectionCandidate<'tcx>>
@@ -762,7 +782,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if !self.is_knowable(stack) {
-            debug!("intercrate not knowable");
+            debug!("coherence stage: not knowable");
             return Ok(None);
         }
 
@@ -803,12 +823,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // we were to winnow, we'd wind up with zero candidates.
         // Instead, we select the right impl now but report `Bar does
         // not implement Clone`.
-        if candidates.len() > 1 {
-            candidates.retain(|c| self.evaluate_candidate(stack, c).may_apply())
+        if candidates.len() == 1 {
+            return self.filter_negative_impls(candidates.pop().unwrap());
         }
 
-        // If there are STILL multiple candidate, we can further reduce
-        // the list by dropping duplicates.
+        // Winnow, but record the exact outcome of evaluation, which
+        // is needed for specialization.
+        let mut candidates: Vec<_> = candidates.into_iter().filter_map(|c| {
+            let eval = self.evaluate_candidate(stack, &c);
+            if eval.may_apply() {
+                Some(EvaluatedCandidate {
+                    candidate: c,
+                    evaluation: eval,
+                })
+            } else {
+                None
+            }
+        }).collect();
+
+        // If there are STILL multiple candidate, we can further
+        // reduce the list by dropping duplicates -- including
+        // resolving specializations.
         if candidates.len() > 1 {
             let mut i = 0;
             while i < candidates.len() {
@@ -836,8 +871,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(None);
         }
 
-
-        // If there are *NO* candidates, that there are no impls --
+        // If there are *NO* candidates, then there are no impls --
         // that we know of, anyway. Note that in the case where there
         // are unbound type variables within the obligation, it might
         // be the case that you could still satisfy the obligation
@@ -851,19 +885,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         // Just one candidate left.
-        let candidate = candidates.pop().unwrap();
-
-        match candidate {
-            ImplCandidate(def_id) => {
-                match self.tcx().trait_impl_polarity(def_id) {
-                    Some(hir::ImplPolarity::Negative) => return Err(Unimplemented),
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-
-        Ok(Some(candidate))
+        self.filter_negative_impls(candidates.pop().unwrap().candidate)
     }
 
     fn is_knowable<'o>(&mut self,
@@ -1565,41 +1587,54 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// candidates and prefer where-clause candidates.
     ///
     /// See the comment for "SelectionCandidate" for more details.
-    fn candidate_should_be_dropped_in_favor_of<'o>(&mut self,
-                                                   victim: &SelectionCandidate<'tcx>,
-                                                   other: &SelectionCandidate<'tcx>)
-                                                   -> bool
+    fn candidate_should_be_dropped_in_favor_of<'o>(
+        &mut self,
+        victim: &EvaluatedCandidate<'tcx>,
+        other: &EvaluatedCandidate<'tcx>)
+        -> bool
     {
-        if victim == other {
+        if victim.candidate == other.candidate {
             return true;
         }
 
-        match other {
-            &ObjectCandidate |
-            &ParamCandidate(_) | &ProjectionCandidate => match victim {
-                &DefaultImplCandidate(..) => {
+        match other.candidate {
+            ObjectCandidate |
+            ParamCandidate(_) | ProjectionCandidate => match victim.candidate {
+                DefaultImplCandidate(..) => {
                     self.tcx().sess.bug(
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
                 }
-                &ImplCandidate(..) |
-                &ClosureCandidate(..) |
-                &FnPointerCandidate |
-                &BuiltinObjectCandidate |
-                &BuiltinUnsizeCandidate |
-                &DefaultImplObjectCandidate(..) |
-                &BuiltinCandidate(..) => {
+                ImplCandidate(..) |
+                ClosureCandidate(..) |
+                FnPointerCandidate |
+                BuiltinObjectCandidate |
+                BuiltinUnsizeCandidate |
+                DefaultImplObjectCandidate(..) |
+                BuiltinCandidate(..) => {
                     // We have a where-clause so don't go around looking
                     // for impls.
                     true
                 }
-                &ObjectCandidate |
-                &ProjectionCandidate => {
+                ObjectCandidate |
+                ProjectionCandidate => {
                     // Arbitrarily give param candidates priority
                     // over projection and object candidates.
                     true
                 },
-                &ParamCandidate(..) => false,
+                ParamCandidate(..) => false,
+            },
+            ImplCandidate(other_def) => {
+                // See if we can toss out `victim` based on specialization.
+                // This requires us to know *for sure* that the `other` impl applies
+                // i.e. EvaluatedToOk:
+                if other.evaluation == EvaluatedToOk {
+                    if let ImplCandidate(victim_def) = victim.candidate {
+                        return traits::specializes(self.tcx(), other_def, victim_def);
+                    }
+                }
+
+                false
             },
             _ => false
         }

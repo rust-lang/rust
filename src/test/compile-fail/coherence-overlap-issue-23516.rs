@@ -14,6 +14,6 @@
 
 pub trait Sugar { fn dummy(&self) { } }
 pub trait Sweet { fn dummy(&self) { } }
-impl<T:Sugar> Sweet for T { } //~ ERROR E0119
-impl<U:Sugar> Sweet for Box<U> { }
+impl<T:Sugar> Sweet for T { }
+impl<U:Sugar> Sweet for Box<U> { } //~ ERROR E0119
 fn main() { }

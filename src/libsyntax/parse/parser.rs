@@ -18,7 +18,7 @@ use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
 use ast::Block;
 use ast::{BlockCheckMode, CaptureBy};
 use ast::{Constness, Crate, CrateConfig};
-use ast::{Decl, DeclKind};
+use ast::{Decl, DeclKind, Defaultness};
 use ast::{EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, ExprKind, RangeLimits};
 use ast::{Field, FnDecl};
@@ -644,6 +644,25 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn check_contextual_keyword(&mut self, ident: Ident) -> bool {
+        let tok = token::Ident(ident, token::Plain);
+        self.expected_tokens.push(TokenType::Token(tok));
+        if let token::Ident(ref cur_ident, _) = self.token {
+            cur_ident.name == ident.name
+        } else {
+            false
+        }
+    }
+
+    pub fn eat_contextual_keyword(&mut self, ident: Ident) -> bool {
+        if self.check_contextual_keyword(ident) {
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
+
     /// If the given word is not a keyword, signal an error.
     /// If the next token is not the given word, signal an error.
     /// Otherwise, eat it.
@@ -704,7 +723,6 @@ impl<'a> Parser<'a> {
             }
         }
     }
-
 
     /// Attempt to consume a `<`. If `<<` is seen, replace it with a single
     /// `<` and continue. If a `<` is not seen, return false.
@@ -4846,6 +4864,7 @@ impl<'a> Parser<'a> {
         let mut attrs = try!(self.parse_outer_attributes());
         let lo = self.span.lo;
         let vis = try!(self.parse_visibility());
+        let defaultness = try!(self.parse_defaultness());
         let (name, node) = if self.eat_keyword(keywords::Type) {
             let name = try!(self.parse_ident());
             try!(self.expect(&token::Eq));
@@ -4872,6 +4891,7 @@ impl<'a> Parser<'a> {
             span: mk_sp(lo, self.last_span.hi),
             ident: name,
             vis: vis,
+            defaultness: defaultness,
             attrs: attrs,
             node: node
         })
@@ -5206,6 +5226,15 @@ impl<'a> Parser<'a> {
     fn parse_visibility(&mut self) -> PResult<'a, Visibility> {
         if self.eat_keyword(keywords::Pub) { Ok(Visibility::Public) }
         else { Ok(Visibility::Inherited) }
+    }
+
+    /// Parse defaultness: DEFAULT or nothing
+    fn parse_defaultness(&mut self) -> PResult<'a, Defaultness> {
+        if self.eat_contextual_keyword(special_idents::DEFAULT) {
+            Ok(Defaultness::Default)
+        } else {
+            Ok(Defaultness::Final)
+        }
     }
 
     /// Given a termination token, parse all of the items in a module

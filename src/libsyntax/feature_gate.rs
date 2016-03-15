@@ -247,7 +247,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("inclusive_range_syntax", "1.7.0", Some(28237), Active),
 
     // `expr?`
-    ("question_mark", "1.9.0", Some(31436), Active)
+    ("question_mark", "1.9.0", Some(31436), Active),
+
+    // impl specialization (RFC 1210)
+    ("specialization", "1.7.0", Some(31844), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -574,6 +577,7 @@ pub struct Features {
     pub stmt_expr_attributes: bool,
     pub deprecated: bool,
     pub question_mark: bool,
+    pub specialization: bool,
 }
 
 impl Features {
@@ -608,6 +612,7 @@ impl Features {
             stmt_expr_attributes: false,
             deprecated: false,
             question_mark: false,
+            specialization: false,
         }
     }
 }
@@ -1102,6 +1107,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+        if ii.defaultness == ast::Defaultness::Default {
+            self.gate_feature("specialization",
+                              ii.span,
+                              "specialization is unstable");
+        }
+
         match ii.node {
             ast::ImplItemKind::Const(..) => {
                 self.gate_feature("associated_consts",
@@ -1212,6 +1223,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
         deprecated: cx.has_feature("deprecated"),
         question_mark: cx.has_feature("question_mark"),
+        specialization: cx.has_feature("specialization"),
     }
 }
 

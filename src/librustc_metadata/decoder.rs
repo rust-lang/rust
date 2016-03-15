@@ -165,6 +165,19 @@ fn fn_constness(item: rbml::Doc) -> hir::Constness {
     }
 }
 
+fn item_defaultness(item: rbml::Doc) -> hir::Defaultness {
+    match reader::maybe_get_doc(item, tag_items_data_item_defaultness) {
+        None => hir::Defaultness::Default, // should occur only for default impls on traits
+        Some(defaultness_doc) => {
+            match reader::doc_as_u8(defaultness_doc) as char {
+                'd' => hir::Defaultness::Default,
+                'f' => hir::Defaultness::Final,
+                _ => panic!("unknown defaultness character")
+            }
+        }
+    }
+}
+
 fn item_sort(item: rbml::Doc) -> Option<char> {
     reader::tagged_docs(item, tag_item_trait_item_sort).nth(0).map(|doc| {
         doc.as_str_slice().as_bytes()[0] as char
@@ -549,6 +562,13 @@ pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
 
 pub fn get_visibility(cdata: Cmd, id: DefIndex) -> hir::Visibility {
     item_visibility(cdata.lookup_item(id))
+}
+
+pub fn get_parent_impl(cdata: Cmd, id: DefIndex) -> Option<DefId> {
+    let item = cdata.lookup_item(id);
+    reader::maybe_get_doc(item, tag_items_data_parent_impl).map(|doc| {
+        translated_def_id(cdata, doc)
+    })
 }
 
 pub fn get_repr_attrs(cdata: Cmd, id: DefIndex) -> Vec<attr::ReprAttr> {
@@ -976,6 +996,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
 
     let name = item_name(&intr, item_doc);
     let vis = item_visibility(item_doc);
+    let defaultness = item_defaultness(item_doc);
 
     match item_sort(item_doc) {
         sort @ Some('C') | sort @ Some('c') => {
@@ -984,6 +1005,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                 name: name,
                 ty: ty,
                 vis: vis,
+                defaultness: defaultness,
                 def_id: def_id,
                 container: container,
                 has_value: sort == Some('C')
@@ -1007,6 +1029,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                                         fty,
                                                         explicit_self,
                                                         vis,
+                                                        defaultness,
                                                         def_id,
                                                         container)))
         }
@@ -1016,6 +1039,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                 name: name,
                 ty: ty,
                 vis: vis,
+                defaultness: defaultness,
                 def_id: def_id,
                 container: container,
             }))

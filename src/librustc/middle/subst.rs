@@ -160,6 +160,15 @@ impl<'tcx> Substs<'tcx> {
         Substs { types: types, regions: regions }
     }
 
+    pub fn with_method_from_subst(self, other: &Substs<'tcx>) -> Substs<'tcx> {
+        let Substs { types, regions } = self;
+        let types = types.with_slice(FnSpace, other.types.get_slice(FnSpace));
+        let regions = regions.map(|r| {
+            r.with_slice(FnSpace, other.regions().get_slice(FnSpace))
+        });
+        Substs { types: types, regions: regions }
+    }
+
     /// Creates a trait-ref out of this substs, ignoring the FnSpace substs
     pub fn to_trait_ref(&self, tcx: &TyCtxt<'tcx>, trait_id: DefId)
                         -> ty::TraitRef<'tcx> {

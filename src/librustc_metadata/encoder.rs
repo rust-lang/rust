@@ -25,6 +25,7 @@ use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use middle::stability;
 use middle::subst;
+use middle::traits::specialization_graph;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::util::IntTypeExt;
 
@@ -451,6 +452,14 @@ fn encode_constness(rbml_w: &mut Encoder, constness: hir::Constness) {
     rbml_w.end_tag();
 }
 
+fn encode_defaultness(rbml_w: &mut Encoder, defaultness: hir::Defaultness) {
+    let ch = match defaultness {
+        hir::Defaultness::Default => 'd',
+        hir::Defaultness::Final => 'f',
+    };
+    rbml_w.wr_tagged_u8(tag_items_data_item_defaultness, ch as u8);
+}
+
 fn encode_explicit_self(rbml_w: &mut Encoder,
                         explicit_self: &ty::ExplicitSelfCategory) {
     let tag = tag_item_trait_method_explicit_self;
@@ -674,6 +683,7 @@ fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
+        encode_defaultness(rbml_w, ii.defaultness);
         encode_inlined_item(ecx,
                             rbml_w,
                             InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
@@ -725,6 +735,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                                              impl_item));
             }
             encode_constness(rbml_w, sig.constness);
+            encode_defaultness(rbml_w, impl_item.defaultness);
             if !any_types {
                 let m_id = ecx.local_id(m.def_id);
                 encode_symbol(ecx, rbml_w, m_id);
@@ -767,6 +778,7 @@ fn encode_info_for_associated_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
     if let Some(ii) = impl_item_opt {
         encode_attributes(rbml_w, &ii.attrs);
+        encode_defaultness(rbml_w, ii.defaultness);
     } else {
         encode_predicates(rbml_w, ecx, index,
                           &ecx.tcx.lookup_predicates(associated_type.def_id),
@@ -870,6 +882,12 @@ fn encode_deprecation(rbml_w: &mut Encoder, depr_opt: Option<attr::Deprecation>)
         rbml_w.start_tag(tag_items_data_item_deprecation);
         depr.encode(rbml_w).unwrap();
         rbml_w.end_tag();
+    });
+}
+
+fn encode_parent_impl(rbml_w: &mut Encoder, parent_opt: Option<DefId>) {
+    parent_opt.map(|parent| {
+        rbml_w.wr_tagged_u64(tag_items_data_parent_impl, def_to_u64(parent));
     });
 }
 
@@ -1150,8 +1168,19 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             }
             rbml_w.end_tag();
         }
-        if let Some(trait_ref) = tcx.impl_trait_ref(ecx.tcx.map.local_def_id(item.id)) {
+        let did = ecx.tcx.map.local_def_id(item.id);
+        if let Some(trait_ref) = tcx.impl_trait_ref(did) {
             encode_trait_ref(rbml_w, ecx, trait_ref, tag_item_trait_ref);
+
+            let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
+            let parent = trait_def.ancestors(did)
+                .skip(1)
+                .next()
+                .and_then(|node| match node {
+                    specialization_graph::Node::Impl(parent) => Some(parent),
+                    _ => None,
+                });
+            encode_parent_impl(rbml_w, parent);
         }
         encode_path(rbml_w, path.clone());
         encode_stability(rbml_w, stab);
