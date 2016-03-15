@@ -152,14 +152,8 @@ enum ProjectionTyCandidate<'tcx> {
     // from the definition of `Trait` when you have something like <<A as Trait>::B as Trait2>::C
     TraitDef(ty::PolyProjectionPredicate<'tcx>),
 
-    // defined in an impl
-    Impl(VtableImplData<'tcx, PredicateObligation<'tcx>>),
-
-    // closure return type
-    Closure(VtableClosureData<'tcx, PredicateObligation<'tcx>>),
-
-    // fn pointer return type
-    FnPointer(Ty<'tcx>),
+    // from a "impl" (or a "pseudo-impl" returned by select)
+    Select,
 }
 
 struct ProjectionTyCandidateSet<'tcx> {
@@ -645,10 +639,8 @@ fn project_type<'cx,'tcx>(
         debug!("retaining param-env candidates only from {:?}", candidates.vec);
         candidates.vec.retain(|c| match *c {
             ProjectionTyCandidate::ParamEnv(..) => true,
-            ProjectionTyCandidate::Impl(..) |
-            ProjectionTyCandidate::Closure(..) |
             ProjectionTyCandidate::TraitDef(..) |
-            ProjectionTyCandidate::FnPointer(..) => false,
+            ProjectionTyCandidate::Select => false,
         });
         debug!("resulting candidate set: {:?}", candidates.vec);
         if candidates.vec.len() != 1 {
@@ -729,7 +721,10 @@ fn project_type<'cx,'tcx>(
 
     match possible_candidate {
         Some(candidate) => {
-            let (ty, obligations) = confirm_candidate(selcx, obligation, candidate);
+            let (ty, obligations) = confirm_candidate(selcx,
+                                                      obligation,
+                                                      &obligation_trait_ref,
+                                                      candidate);
             Ok(ProjectedTy::Progress(ty, obligations))
         }
         None => {
@@ -845,11 +840,147 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
     }
 }
 
-fn assemble_candidates_from_object_type<'cx,'tcx>(
+fn assemble_candidates_from_impls<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation:  &ProjectionTyObligation<'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
+    -> Result<(), SelectionError<'tcx>>
+{
+    // If we are resolving `<T as TraitRef<...>>::Item == Type`,
+    // start out by selecting the predicate `T as TraitRef<...>`:
+    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
+    selcx.infcx().probe(|_| {
+        let vtable = match selcx.select(&trait_obligation) {
+            Ok(Some(vtable)) => vtable,
+            Ok(None) => {
+                candidate_set.ambiguous = true;
+                return Ok(());
+            }
+            Err(e) => {
+                debug!("assemble_candidates_from_impls: selection error {:?}",
+                       e);
+                return Err(e);
+            }
+        };
+
+        match vtable {
+            super::VtableImpl(_) |
+            super::VtableClosure(_) |
+            super::VtableFnPointer(_) |
+            super::VtableObject(_) => {
+                debug!("assemble_candidates_from_impls: vtable={:?}",
+                       vtable);
+
+                candidate_set.vec.push(ProjectionTyCandidate::Select);
+            }
+            super::VtableParam(..) => {
+                // This case tell us nothing about the value of an
+                // associated type. Consider:
+                //
+                // ```
+                // trait SomeTrait { type Foo; }
+                // fn foo<T:SomeTrait>(...) { }
+                // ```
+                //
+                // If the user writes `<T as SomeTrait>::Foo`, then the `T
+                // : SomeTrait` binding does not help us decide what the
+                // type `Foo` is (at least, not more specifically than
+                // what we already knew).
+                //
+                // But wait, you say! What about an example like this:
+                //
+                // ```
+                // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
+                // ```
+                //
+                // Doesn't the `T : Sometrait<Foo=usize>` predicate help
+                // resolve `T::Foo`? And of course it does, but in fact
+                // that single predicate is desugared into two predicates
+                // in the compiler: a trait predicate (`T : SomeTrait`) and a
+                // projection. And the projection where clause is handled
+                // in `assemble_candidates_from_param_env`.
+            }
+            super::VtableDefaultImpl(..) |
+            super::VtableBuiltin(..) => {
+                // These traits have no associated types.
+                selcx.tcx().sess.span_bug(
+                    obligation.cause.span,
+                    &format!("Cannot project an associated type from `{:?}`",
+                             vtable));
+            }
+        }
+
+        Ok(())
+    })
+}
+
+fn confirm_candidate<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
+    candidate: ProjectionTyCandidate<'tcx>)
+    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+{
+    debug!("confirm_candidate(candidate={:?}, obligation={:?})",
+           candidate,
+           obligation);
+
+    match candidate {
+        ProjectionTyCandidate::ParamEnv(poly_projection) |
+        ProjectionTyCandidate::TraitDef(poly_projection) => {
+            confirm_param_env_candidate(selcx, obligation, poly_projection)
+        }
+
+        ProjectionTyCandidate::Select => {
+            confirm_select_candidate(selcx, obligation, obligation_trait_ref)
+        }
+    }
+}
+
+fn confirm_select_candidate<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>)
+    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+{
+    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
+    let vtable = match selcx.select(&trait_obligation) {
+        Ok(Some(vtable)) => vtable,
+        _ => {
+            selcx.tcx().sess.span_bug(
+                obligation.cause.span,
+                &format!("Failed to select `{:?}`", trait_obligation));
+        }
+    };
+
+    match vtable {
+        super::VtableImpl(data) =>
+            confirm_impl_candidate(selcx, obligation, data),
+        super::VtableClosure(data) =>
+            confirm_closure_candidate(selcx, obligation, data),
+        super::VtableFnPointer(data) =>
+            confirm_fn_pointer_candidate(selcx, obligation, data),
+        super::VtableObject(_) =>
+            confirm_object_candidate(selcx, obligation, obligation_trait_ref),
+        super::VtableDefaultImpl(..) |
+        super::VtableParam(..) |
+        super::VtableBuiltin(..) =>
+            // we don't create Select candidates with this kind of resolution
+            selcx.tcx().sess.span_bug(
+                obligation.cause.span,
+                &format!("Cannot project an associated type from `{:?}`",
+                         vtable)),
+    }
+}
+
+fn confirm_object_candidate<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation:  &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>)
+    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
     let self_ty = obligation_trait_ref.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
@@ -868,127 +999,49 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     let env_predicates = projection_bounds.iter()
                                           .map(|p| p.to_predicate())
                                           .collect();
-    let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
-    assemble_candidates_from_predicates(selcx,
-                                        obligation,
-                                        obligation_trait_ref,
-                                        candidate_set,
-                                        ProjectionTyCandidate::ParamEnv,
-                                        env_predicates)
-}
+    let env_predicate = {
+        let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
 
-fn assemble_candidates_from_impls<'cx,'tcx>(
-    selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
-    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
-    -> Result<(), SelectionError<'tcx>>
-{
-    // If we are resolving `<T as TraitRef<...>>::Item == Type`,
-    // start out by selecting the predicate `T as TraitRef<...>`:
-    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
-    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
-    let vtable = match selcx.select(&trait_obligation) {
-        Ok(Some(vtable)) => vtable,
-        Ok(None) => {
-            candidate_set.ambiguous = true;
-            return Ok(());
-        }
-        Err(e) => {
-            debug!("assemble_candidates_from_impls: selection error {:?}",
-                   e);
-            return Err(e);
+        // select only those projections that are actually projecting an
+        // item with the correct name
+        let env_predicates = env_predicates.filter_map(|p| match p {
+            ty::Predicate::Projection(data) =>
+                if data.item_name() == obligation.predicate.item_name {
+                    Some(data)
+                } else {
+                    None
+                },
+            _ => None
+        });
+
+        // select those with a relevant trait-ref
+        let mut env_predicates = env_predicates.filter(|data| {
+            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+            let data_poly_trait_ref = data.to_poly_trait_ref();
+            let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+            selcx.infcx().probe(|_| {
+                selcx.infcx().sub_poly_trait_refs(false,
+                                                  origin,
+                                                  data_poly_trait_ref,
+                                                  obligation_poly_trait_ref).is_ok()
+            })
+        });
+
+        // select the first matching one; there really ought to be one or
+        // else the object type is not WF, since an object type should
+        // include all of its projections explicitly
+        match env_predicates.next() {
+            Some(env_predicate) => env_predicate,
+            None => {
+                debug!("confirm_object_candidate: no env-predicate \
+                        found in object type `{:?}`; ill-formed",
+                       object_ty);
+                return (selcx.tcx().types.err, vec!());
+            }
         }
     };
 
-    match vtable {
-        super::VtableImpl(data) => {
-            debug!("assemble_candidates_from_impls: impl candidate {:?}",
-                   data);
-
-            candidate_set.vec.push(
-                ProjectionTyCandidate::Impl(data));
-        }
-        super::VtableObject(_) => {
-            assemble_candidates_from_object_type(
-                selcx, obligation, obligation_trait_ref, candidate_set);
-        }
-        super::VtableClosure(data) => {
-            candidate_set.vec.push(
-                ProjectionTyCandidate::Closure(data));
-        }
-        super::VtableFnPointer(fn_type) => {
-            candidate_set.vec.push(
-                ProjectionTyCandidate::FnPointer(fn_type));
-        }
-        super::VtableParam(..) => {
-            // This case tell us nothing about the value of an
-            // associated type. Consider:
-            //
-            // ```
-            // trait SomeTrait { type Foo; }
-            // fn foo<T:SomeTrait>(...) { }
-            // ```
-            //
-            // If the user writes `<T as SomeTrait>::Foo`, then the `T
-            // : SomeTrait` binding does not help us decide what the
-            // type `Foo` is (at least, not more specifically than
-            // what we already knew).
-            //
-            // But wait, you say! What about an example like this:
-            //
-            // ```
-            // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
-            // ```
-            //
-            // Doesn't the `T : Sometrait<Foo=usize>` predicate help
-            // resolve `T::Foo`? And of course it does, but in fact
-            // that single predicate is desugared into two predicates
-            // in the compiler: a trait predicate (`T : SomeTrait`) and a
-            // projection. And the projection where clause is handled
-            // in `assemble_candidates_from_param_env`.
-        }
-        super::VtableDefaultImpl(..) |
-        super::VtableBuiltin(..) => {
-            // These traits have no associated types.
-            selcx.tcx().sess.span_bug(
-                obligation.cause.span,
-                &format!("Cannot project an associated type from `{:?}`",
-                         vtable));
-        }
-    }
-
-    Ok(())
-}
-
-fn confirm_candidate<'cx,'tcx>(
-    selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation: &ProjectionTyObligation<'tcx>,
-    candidate: ProjectionTyCandidate<'tcx>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
-{
-    debug!("confirm_candidate(candidate={:?}, obligation={:?})",
-           candidate,
-           obligation);
-
-    match candidate {
-        ProjectionTyCandidate::ParamEnv(poly_projection) |
-        ProjectionTyCandidate::TraitDef(poly_projection) => {
-            confirm_param_env_candidate(selcx, obligation, poly_projection)
-        }
-
-        ProjectionTyCandidate::Impl(impl_vtable) => {
-            confirm_impl_candidate(selcx, obligation, impl_vtable)
-        }
-
-        ProjectionTyCandidate::Closure(closure_vtable) => {
-            confirm_closure_candidate(selcx, obligation, closure_vtable)
-        }
-
-        ProjectionTyCandidate::FnPointer(fn_type) => {
-            confirm_fn_pointer_candidate(selcx, obligation, fn_type)
-        }
-    }
+    confirm_param_env_candidate(selcx, obligation, env_predicate)
 }
 
 fn confirm_fn_pointer_candidate<'cx,'tcx>(
