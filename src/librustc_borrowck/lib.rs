@@ -24,6 +24,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(associated_consts)]
+#![feature(nonzero)]
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 
@@ -33,6 +34,7 @@ extern crate graphviz as dot;
 extern crate rustc;
 extern crate rustc_front;
 extern crate rustc_mir;
+extern crate core; // for NonZero
 
 pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;
