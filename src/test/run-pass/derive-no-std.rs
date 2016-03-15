@@ -8,32 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rand, collections, rustc_private)]
-#![no_std]
+// aux-build:derive-no-std.rs
 
-extern crate rand;
-extern crate serialize as rustc_serialize;
-extern crate collections;
-
-// Issue #16803
-
-#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord,
-         Debug, Default, Copy)]
-struct Foo {
-    x: u32,
-}
-
-#[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord,
-         Debug, Copy)]
-enum Bar {
-    Qux,
-    Quux(u32),
-}
-
-enum Baz { A=0, B=5, }
+extern crate derive_no_std;
+use derive_no_std::*;
 
 fn main() {
-    Foo { x: 0 };
-    Bar::Quux(3);
-    Baz::A;
+    let f = Foo { x: 0 };
+    assert_eq!(f.clone(), Foo::default());
+
+    assert!(Bar::Qux < Bar::Quux(42));
 }
+
