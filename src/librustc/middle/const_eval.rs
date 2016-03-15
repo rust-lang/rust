@@ -46,7 +46,7 @@ use std::hash;
 use std::mem::transmute;
 use std::rc::Rc;
 
-use rustc_const_eval::*;
+use rustc_const_math::*;
 
 macro_rules! math {
     ($e:expr, $op:expr) => {

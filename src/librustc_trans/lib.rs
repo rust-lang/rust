@@ -51,7 +51,7 @@ pub extern crate rustc_llvm as llvm;
 extern crate rustc_mir;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;
-extern crate rustc_const_eval;
+extern crate rustc_const_math;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

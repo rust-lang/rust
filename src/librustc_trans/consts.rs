@@ -38,7 +38,7 @@ use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
-use rustc_const_eval::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
+use rustc_const_math::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
 
 use rustc_front::hir;
 

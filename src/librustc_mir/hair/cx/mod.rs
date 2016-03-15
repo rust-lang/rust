@@ -26,7 +26,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use rustc_front::hir;
-use rustc_const_eval::{ConstInt, ConstUsize};
+use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'tcx: 'a> {

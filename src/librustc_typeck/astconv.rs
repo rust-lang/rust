@@ -65,7 +65,7 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};

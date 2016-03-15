@@ -10,7 +10,7 @@
 
 use graphviz::IntoCow;
 use middle::const_eval::ConstVal;
-use rustc_const_eval::{ConstUsize, ConstInt};
+use rustc_const_math::{ConstUsize, ConstInt};
 use middle::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
