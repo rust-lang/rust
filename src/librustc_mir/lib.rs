@@ -32,7 +32,7 @@ extern crate rustc_data_structures;
 extern crate rustc_front;
 extern crate rustc_back;
 extern crate syntax;
-extern crate rustc_const_eval;
+extern crate rustc_const_math;
 
 pub mod build;
 pub mod graphviz;

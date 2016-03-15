@@ -22,7 +22,7 @@ use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
 use ty::TypeVariants::*;
 
-use rustc_const_eval::{ConstInt, ConstIsize, ConstUsize};
+use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
 use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};

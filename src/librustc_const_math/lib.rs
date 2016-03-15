@@ -14,7 +14,7 @@
 //!
 //! This API is completely unstable and subject to change.
 
-#![crate_name = "rustc_const_eval"]
+#![crate_name = "rustc_const_math"]
 #![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

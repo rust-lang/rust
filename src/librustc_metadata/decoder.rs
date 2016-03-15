@@ -36,7 +36,7 @@ use rustc::ty::subst;
 use rustc::ty::{ImplContainer, TraitContainer};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
 
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 use rustc::mir;
 use rustc::mir::visit::MutVisitor;

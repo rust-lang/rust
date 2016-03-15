@@ -11,7 +11,7 @@
 use llvm::ValueRef;
 use rustc::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::{self, ConstVal};
-use rustc_const_eval::ConstInt::*;
+use rustc_const_math::ConstInt::*;
 use rustc::mir::repr as mir;
 use abi;
 use common::{self, BlockAndBuilder, C_bool, C_bytes, C_floating_f64, C_integral,

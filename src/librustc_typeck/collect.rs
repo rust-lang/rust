@@ -81,7 +81,7 @@ use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
 
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
 use std::collections::HashSet;

@@ -13,7 +13,7 @@ use middle::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, FnOutput, Region, Ty};
 use mir::repr::*;
-use rustc_const_eval::ConstUsize;
+use rustc_const_math::ConstUsize;
 use rustc_data_structures::tuple_slice::TupleSlice;
 use syntax::codemap::Span;
 

@@ -18,7 +18,7 @@ log = { path = "../liblog" }
 rbml = { path = "../librbml" }
 rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }
-rustc_const_eval = { path = "../librustc_const_eval" }
+rustc_const_math = { path = "../librustc_const_math" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_front = { path = "../librustc_front" }
 serialize = { path = "../libserialize" }

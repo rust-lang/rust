@@ -95,7 +95,7 @@ use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;
 use rustc::middle::const_eval::ConstVal;
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_datas
