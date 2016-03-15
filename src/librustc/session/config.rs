@@ -785,12 +785,12 @@ impl RustcOptGroup {
         self.stability == OptionStability::Stable
     }
 
-    fn stable(g: getopts::OptGroup) -> RustcOptGroup {
+    pub fn stable(g: getopts::OptGroup) -> RustcOptGroup {
         RustcOptGroup { opt_group: g, stability: OptionStability::Stable }
     }
 
     #[allow(dead_code)] // currently we have no "truly unstable" options
-    fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
+    pub fn unstable(g: getopts::OptGroup) -> RustcOptGroup {
         RustcOptGroup { opt_group: g, stability: OptionStability::Unstable }
     }
 
@@ -926,33 +926,32 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
 pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     let mut opts = rustc_short_optgroups();
     opts.extend_from_slice(&[
-        opt::multi_s("", "extern", "Specify where an external rust library is \
-                                located",
-                 "NAME=PATH"),
+        opt::multi_s("", "extern", "Specify where an external rust library is located",
+                     "NAME=PATH"),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi_ubnr("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_ubnr("", "error-format",
                       "How errors and other messages are produced",
                       "human|json"),
         opt::opt_s("", "color", "Configure coloring of output:
-            auto   = colorize, if output goes to a tty (default);
-            always = always colorize output;
-            never  = never colorize output", "auto|always|never"),
+                                 auto   = colorize, if output goes to a tty (default);
+                                 always = always colorize output;
+                                 never  = never colorize output", "auto|always|never"),
 
         opt::flagopt_ubnr("", "pretty",
-                   "Pretty-print the input instead of compiling;
-                   valid types are: `normal` (un-annotated source),
-                   `expanded` (crates expanded), or
-                   `expanded,identified` (fully parenthesized, AST nodes with IDs).",
-                 "TYPE"),
+                          "Pretty-print the input instead of compiling;
+                           valid types are: `normal` (un-annotated source),
+                           `expanded` (crates expanded), or
+                           `expanded,identified` (fully parenthesized, AST nodes with IDs).",
+                          "TYPE"),
         opt::flagopt_ubnr("", "unpretty",
-                     "Present the input source, unstable (and less-pretty) variants;
-                      valid types are any of the types for `--pretty`, as well as:
-                      `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
-                      `everybody_loops` (all function bodies replaced with `loop {}`),
-                      `hir` (the HIR), `hir,identified`, or
-                      `hir,typed` (HIR with types for each node).",
-                     "TYPE"),
+                          "Present the input source, unstable (and less-pretty) variants;
+                           valid types are any of the types for `--pretty`, as well as:
+                           `flowgraph=<nodeid>` (graphviz formatted flowgraph for node),
+                           `everybody_loops` (all function bodies replaced with `loop {}`),
+                           `hir` (the HIR), `hir,identified`, or
+                           `hir,typed` (HIR with types for each node).",
+                          "TYPE"),
 
         // new options here should **not** use the `_ubnr` functions, all new
         // unstable options should use the short variants to indicate that they
@@ -1263,7 +1262,6 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
 }
 
 pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
-
     let mut crate_types: Vec<CrateType> = Vec::new();
     for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
@@ -1285,6 +1283,72 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
     }
 
     return Ok(crate_types);
+}
+
+pub mod nightly_options {
+    use getopts;
+    use syntax::feature_gate::UnstableFeatures;
+    use super::{ErrorOutputType, OptionStability, RustcOptGroup, get_unstable_features_setting};
+    use session::{early_error, early_warn};
+
+    pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
+        is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
+    }
+
+    fn is_nightly_build() -> bool {
+        match get_unstable_features_setting() {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            _ => false,
+        }
+    }
+
+    pub fn check_nightly_options(matches: &getopts::Matches, flags: &[RustcOptGroup]) {
+        let has_z_unstable_option = matches.opt_strs("Z").iter().any(|x| *x == "unstable-options");
+        let really_allows_unstable_options = match get_unstable_features_setting() {
+            UnstableFeatures::Disallow => false,
+            _ => true,
+        };
+
+        for opt in flags.iter() {
+            if opt.stability == OptionStability::Stable {
+                continue
+            }
+            let opt_name = if opt.opt_group.long_name.is_empty() {
+                &opt.opt_group.short_name
+            } else {
+                &opt.opt_group.long_name
+            };
+            if !matches.opt_present(opt_name) {
+                continue
+            }
+            if opt_name != "Z" && !has_z_unstable_option {
+                early_error(ErrorOutputType::default(),
+                            &format!("the `-Z unstable-options` flag must also be passed to enable \
+                                      the flag `{}`",
+                                     opt_name));
+            }
+            if really_allows_unstable_options {
+                continue
+            }
+            match opt.stability {
+                OptionStability::Unstable => {
+                    let msg = format!("the option `{}` is only accepted on the \
+                                       nightly compiler", opt_name);
+                    early_error(ErrorOutputType::default(), &msg);
+                }
+                OptionStability::UnstableButNotReally => {
+                    let msg = format!("the option `{}` is is unstable and should \
+                                       only be used on the nightly compiler, but \
+                                       it is currently accepted for backwards \
+                                       compatibility; this will soon change, \
+                                       see issue #31847 for more details",
+                                      opt_name);
+                    early_warn(ErrorOutputType::default(), &msg);
+                }
+                OptionStability::Stable => {}
+            }
+        }
+    }
 }
 
 impl fmt::Display for CrateType {

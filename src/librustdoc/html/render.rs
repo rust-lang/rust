@@ -433,10 +433,6 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
             playground_url: "".to_string(),
         },
-        include_sources: true,
-        local_sources: HashMap::new(),
-        render_redirect_pages: false,
-        issue_tracker_base_url: None,
         css_file_extension: css_file_extension,
     };
 
