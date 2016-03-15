@@ -443,16 +443,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         use rustc::middle::const_eval::ConstVal::*;
         match *const_val {
             Float(_f) => unimplemented!(),
-            Int(n) => {
+            Integral(int) => {
                 // TODO(tsion): Check int constant type.
                 let ptr = self.memory.allocate(8);
-                try!(self.memory.write_i64(ptr, n));
-                Ok(ptr)
-            }
-            Uint(n) => {
-                // TODO(tsion): Check int constant type.
-                let ptr = self.memory.allocate(8);
-                try!(self.memory.write_u64(ptr, n));
+                try!(self.memory.write_u64(ptr, int.to_u64_unchecked()));
                 Ok(ptr)
             }
             Str(ref _s) => unimplemented!(),
@@ -462,11 +456,13 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 try!(self.memory.write_bool(ptr, b));
                 Ok(ptr)
             }
+            Char(_c)          => unimplemented!(),
             Struct(_node_id)  => unimplemented!(),
             Tuple(_node_id)   => unimplemented!(),
             Function(_def_id) => unimplemented!(),
             Array(_, _)       => unimplemented!(),
             Repeat(_, _)      => unimplemented!(),
+            Dummy             => unimplemented!(),
         }
     }
 
