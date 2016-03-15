@@ -23,7 +23,7 @@ def parse_path(p="src"):
 
 def parse_conf(p):
     c = {}
-    with open(p + '/conf.rs') as f:
+    with open(p + '/utils/conf.rs') as f:
         f = f.read()
 
         m = re.search(conf_re, f)
