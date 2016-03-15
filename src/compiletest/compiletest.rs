@@ -116,12 +116,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         }
     }
 
-    let filter = if !matches.free.is_empty() {
-        Some(matches.free[0].clone())
-    } else {
-        None
-    };
-
     Config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
@@ -137,7 +131,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: matches.opt_str("mode").unwrap().parse().ok().expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
-        filter: filter,
+        filter: matches.free.first().cloned(),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
@@ -251,10 +245,7 @@ pub fn run_tests(config: &Config) {
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
-        filter: match config.filter {
-            None => None,
-            Some(ref filter) => Some(filter.clone()),
-        },
+        filter: config.filter.clone(),
         run_ignored: config.run_ignored,
         logfile: config.logfile.clone(),
         run_tests: true,
