@@ -76,29 +76,28 @@ fn check(root: &Path, file: &Path, base: &Url, errors: &mut bool) {
 
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
-    if let Some(path) = pretty_file.to_str() {
-        // FIXME(#32129)
-        if path == "std/string/struct.String.html" {
-            return
-        }
-        // FIXME(#32130)
-        if path.contains("btree_set/struct.BTreeSet.html") ||
-           path == "collections/struct.BTreeSet.html" {
-            return
-        }
+    // FIXME(#32129)
+    if file.ends_with("std/string/struct.String.html") {
+        return
+    }
+    // FIXME(#32130)
+    if file.ends_with("btree_set/struct.BTreeSet.html") ||
+       file.ends_with("collections/struct.BTreeSet.html") {
+        return
+    }
+
+    if file.ends_with("std/sys/ext/index.html") {
+        return
+    }
+
+    if let Some(file) = file.to_str() {
         // FIXME(#31948)
-        if path.contains("ParseFloatError") {
+        if file.contains("ParseFloatError") {
             return
         }
-
-        // currently
-        if path == "std/sys/ext/index.html" {
-            return
-        }
-
         // weird reexports, but this module is on its way out, so chalk it up to
         // "rustdoc weirdness" and move on from there
-        if path.contains("scoped_tls") {
+        if file.contains("scoped_tls") {
             return
         }
     }
