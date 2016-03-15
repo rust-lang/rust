@@ -10,7 +10,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 
 use error::EvalResult;
-use memory::{FieldRepr, Memory, Pointer, Repr};
+use memory::{self, FieldRepr, Memory, Pointer, Repr};
 use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = true;
@@ -319,6 +319,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.memory.write_ptr(dest, ptr)
             }
 
+            Box(ty) => {
+                let repr = self.ty_to_repr(ty);
+                let ptr = self.memory.allocate(repr.size());
+                self.memory.write_ptr(dest, ptr)
+            }
+
             ref r => panic!("can't handle rvalue: {:?}", r),
         }
     }
@@ -476,7 +482,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 self.make_variant_repr(&adt_def.variants[0], substs)
             }
 
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) => {
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) => {
                 Repr::Pointer { target: Box::new(self.ty_to_repr(ty)) }
             }
 
@@ -523,6 +529,15 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
 }
 
 pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
+    /// Print the given allocation and all allocations it depends on.
+    fn print_allocation_tree(memory: &Memory, alloc_id: memory::AllocId) {
+        let alloc = memory.get(alloc_id).unwrap();
+        println!("  {:?}", alloc);
+        for &target_alloc in alloc.relocations.values() {
+            print_allocation_tree(memory, target_alloc);
+        }
+    }
+
     for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
             use syntax::attr::AttrMetaMethods;
@@ -543,7 +558,8 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 miri.run().unwrap();
 
                 if let Some(ret) = return_ptr {
-                    println!("Returned: {:?}\n", miri.memory.get(ret.alloc_id).unwrap());
+                    println!("Result:");
+                    print_allocation_tree(&miri.memory, ret.alloc_id);
                 }
             }
         }

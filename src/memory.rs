@@ -16,16 +16,6 @@ pub struct Memory {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AllocId(u64);
 
-/// A relocation represents a part of an allocation which points into another allocation. This is
-/// used to represent pointers existing in the virtual memory.
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Relocation {
-    /// The offset in the allocation where the relocation starts.
-    offset: usize,
-    /// The allocation this relocation points into.
-    target: AllocId,
-}
-
 #[derive(Debug)]
 pub struct Allocation {
     pub bytes: Vec<u8>,
