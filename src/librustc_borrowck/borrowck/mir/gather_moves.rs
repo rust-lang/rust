@@ -10,7 +10,6 @@
 
 
 use rustc::middle::ty;
-use rustc::middle::def_id::DefId;
 use rustc::mir::repr::{self, Mir, BasicBlock, Lvalue, Rvalue};
 use rustc::mir::repr::{StatementKind, Terminator};
 use rustc::util::nodemap::FnvHashMap;
@@ -75,7 +74,18 @@ pub struct MovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
     pub first_child: Option<MovePathIndex>,
     pub parent: Option<MovePathIndex>,
-    pub lvalue: Lvalue<'tcx>,
+    pub content: MovePathContent<'tcx>,
+}
+
+/// MovePaths usually represent a single l-value. The exceptions are
+/// forms that arise due to erroneous input code: static data holds
+/// l-values that we cannot actually move out of. Therefore we map
+/// statics to a special marker value (`MovePathContent::Static`)
+/// representing an invalid origin.
+#[derive(Clone, Debug)]
+pub enum MovePathContent<'tcx> {
+    Lvalue(Lvalue<'tcx>),
+    Static,
 }
 
 /// During construction of the MovePath's, we use PreMovePath to
@@ -86,7 +96,7 @@ struct PreMovePath<'tcx> {
     pub next_sibling: Option<MovePathIndex>,
     pub first_child: Cell<Option<MovePathIndex>>,
     pub parent: Option<MovePathIndex>,
-    pub lvalue: Lvalue<'tcx>,
+    pub content: MovePathContent<'tcx>,
 }
 
 impl<'tcx> PreMovePath<'tcx> {
@@ -94,7 +104,7 @@ impl<'tcx> PreMovePath<'tcx> {
         MovePath {
             next_sibling: self.next_sibling,
             parent: self.parent,
-            lvalue: self.lvalue,
+            content: self.content,
             first_child: self.first_child.get(),
         }
     }
@@ -112,7 +122,7 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
         if let Some(next_sibling) = self.next_sibling {
             try!(write!(w, " next_sibling: {:?}", next_sibling));
         }
-        write!(w, " lvalue: {:?} }}", self.lvalue)
+        write!(w, " content: {:?} }}", self.content)
     }
 }
 
@@ -219,13 +229,19 @@ pub struct MovePathLookup<'tcx> {
     vars: MovePathInverseMap,
     temps: MovePathInverseMap,
     args: MovePathInverseMap,
-    statics: FnvHashMap<DefId, MovePathIndex>,
+
+    /// The move path representing the return value is constructed
+    /// lazily when we first encounter it in the input MIR.
     return_ptr: Option<MovePathIndex>,
 
-    /// This is the only non-trivial lookup to explain: projections
-    /// are made from a base-lvalue and a projection elem. The
-    /// base-lvalue will have a unique MovePathIndex; we use the
-    /// latter as the index into the outer vector (narrowing
+    /// A single move path (representing any static data referenced)
+    /// is constructed lazily when we first encounter statics in the
+    /// input MIR.
+    statics: Option<MovePathIndex>,
+
+    /// projections are made from a base-lvalue and a projection
+    /// elem. The base-lvalue will have a unique MovePathIndex; we use
+    /// the latter as the index into the outer vector (narrowing
     /// subsequent search so that it is solely relative to that
     /// base-lvalue). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
@@ -269,7 +285,7 @@ impl<'tcx> MovePathLookup<'tcx> {
             vars: vec![],
             temps: vec![],
             args: vec![],
-            statics: Default::default(),
+            statics: None,
             return_ptr: None,
             projections: vec![],
             next_index: MovePathIndex::new(0),
@@ -318,16 +334,14 @@ impl<'tcx> MovePathLookup<'tcx> {
                                  &mut self.next_index)
     }
 
-    fn lookup_static(&mut self, static_id: DefId) -> Lookup<MovePathIndex> {
-        let &mut MovePathLookup { ref mut statics,
-                                  ref mut next_index, .. } = self;
-        match statics.entry(static_id.clone()) {
-            Entry::Occupied(ent) => {
-                Lookup(LookupKind::Reuse, *ent.get())
+    fn lookup_static(&mut self) -> Lookup<MovePathIndex> {
+        match self.statics {
+            Some(mpi) => {
+                Lookup(LookupKind::Reuse, mpi)
             }
-            Entry::Vacant(ent) => {
-                let mpi = Self::next_index(next_index);
-                ent.insert(mpi);
+            ref mut ret @ None => {
+                let mpi = Self::next_index(&mut self.next_index);
+                *ret = Some(mpi);
                 Lookup(LookupKind::Generate, mpi)
             }
         }
@@ -374,7 +388,7 @@ impl<'tcx> MovePathLookup<'tcx> {
             Lvalue::Var(var_idx) => self.vars[var_idx as usize].unwrap(),
             Lvalue::Temp(temp_idx) => self.temps[temp_idx as usize].unwrap(),
             Lvalue::Arg(arg_idx) => self.args[arg_idx as usize].unwrap(),
-            Lvalue::Static(ref def_id) => self.statics[def_id],
+            Lvalue::Static(ref _def_id) => self.statics.unwrap(),
             Lvalue::ReturnPointer => self.return_ptr.unwrap(),
             Lvalue::Projection(ref proj) => {
                 let base_index = self.find(&proj.base);
@@ -394,11 +408,16 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
         let lookup = {
             let mut rev_lookup = self.rev_lookup.borrow_mut();
             match *lval {
-                Lvalue::Var(var_idx) => rev_lookup.lookup_var(var_idx),
-                Lvalue::Temp(temp_idx) => rev_lookup.lookup_temp(temp_idx),
-                Lvalue::Arg(arg_idx) => rev_lookup.lookup_arg(arg_idx),
-                Lvalue::Static(def_id) => rev_lookup.lookup_static(def_id),
-                Lvalue::ReturnPointer => rev_lookup.lookup_return_pointer(),
+                Lvalue::Var(var_idx) =>
+                    rev_lookup.lookup_var(var_idx),
+                Lvalue::Temp(temp_idx) =>
+                    rev_lookup.lookup_temp(temp_idx),
+                Lvalue::Arg(arg_idx) =>
+                    rev_lookup.lookup_arg(arg_idx),
+                Lvalue::Static(_def_id) =>
+                    rev_lookup.lookup_static(),
+                Lvalue::ReturnPointer =>
+                    rev_lookup.lookup_return_pointer(),
                 Lvalue::Projection(ref proj) => {
                     // Manually drop the rev_lookup ...
                     drop(rev_lookup);
@@ -423,16 +442,26 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
         if let Lookup(LookupKind::Generate, mpi) = lookup {
             let parent;
             let sibling;
+            // tracks whether content is Some non-static; statics map to None.
+            let content: Option<&Lvalue<'tcx>>;
 
             match *lval {
+                Lvalue::Static(_) => {
+                    content = None;
+                    sibling = None;
+                    parent = None;
+                }
+
                 Lvalue::Var(_) | Lvalue::Temp(_) | Lvalue::Arg(_) |
-                Lvalue::Static(_) | Lvalue::ReturnPointer => {
+                Lvalue::ReturnPointer => {
+                    content = Some(lval);
                     sibling = None;
                     parent = None;
                 }
                 Lvalue::Projection(ref proj) => {
-                    // Here, install new MovePath as new first_child.
+                    content = Some(lval);
 
+                    // Here, install new MovePath as new first_child.
                     drop(pre_move_paths);
 
                     // Note: `parent` previously allocated (Projection
@@ -449,10 +478,15 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
                 }
             };
 
+            let content = match content {
+                Some(lval) => MovePathContent::Lvalue(lval.clone()),
+                None => MovePathContent::Static,
+            };
+
             let move_path = PreMovePath {
                 next_sibling: sibling,
                 parent: parent,
-                lvalue: lval.clone(),
+                content: content,
                 first_child: Cell::new(None),
             };
 
