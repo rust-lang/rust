@@ -11,7 +11,7 @@
 use Indent;
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, definitive_tactic};
 use types::rewrite_path;
-use utils::span_after;
+use utils::CodeMapSpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 
 use syntax::ast;
@@ -130,7 +130,7 @@ pub fn rewrite_use_list(width: usize,
                                 |vpi| vpi.span.lo,
                                 |vpi| vpi.span.hi,
                                 rewrite_path_item,
-                                span_after(span, "{", context.codemap),
+                                context.codemap.span_after(span, "{"),
                                 span.hi);
         items.extend(iter);
         items

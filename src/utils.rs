@@ -20,6 +20,42 @@ use rewrite::{Rewrite, RewriteContext};
 
 use SKIP_ANNOTATION;
 
+pub trait CodeMapSpanUtils {
+    fn span_after(&self, original: Span, needle: &str) -> BytePos;
+    fn span_after_last(&self, original: Span, needle: &str) -> BytePos;
+    fn span_before(&self, original: Span, needle: &str) -> BytePos;
+}
+
+impl CodeMapSpanUtils for CodeMap {
+    #[inline]
+    fn span_after(&self, original: Span, needle: &str) -> BytePos {
+        let snippet = self.span_to_snippet(original).unwrap();
+        let offset = snippet.find_uncommented(needle).unwrap() + needle.len();
+
+        original.lo + BytePos(offset as u32)
+    }
+
+    #[inline]
+    fn span_after_last(&self, original: Span, needle: &str) -> BytePos {
+        let snippet = self.span_to_snippet(original).unwrap();
+        let mut offset = 0;
+
+        while let Some(additional_offset) = snippet[offset..].find_uncommented(needle) {
+            offset += additional_offset + needle.len();
+        }
+
+        original.lo + BytePos(offset as u32)
+    }
+
+    #[inline]
+    fn span_before(&self, original: Span, needle: &str) -> BytePos {
+        let snippet = self.span_to_snippet(original).unwrap();
+        let offset = snippet.find_uncommented(needle).unwrap();
+
+        original.lo + BytePos(offset as u32)
+    }
+}
+
 // Computes the length of a string's last line, minus offset.
 #[inline]
 pub fn extra_offset(text: &str, offset: Indent) -> usize {
@@ -28,34 +64,6 @@ pub fn extra_offset(text: &str, offset: Indent) -> usize {
         Some(idx) => text.len() - idx - 1 - offset.width(),
         None => text.len(),
     }
-}
-
-#[inline]
-pub fn span_after(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
-    let snippet = codemap.span_to_snippet(original).unwrap();
-    let offset = snippet.find_uncommented(needle).unwrap() + needle.len();
-
-    original.lo + BytePos(offset as u32)
-}
-
-#[inline]
-pub fn span_before(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
-    let snippet = codemap.span_to_snippet(original).unwrap();
-    let offset = snippet.find_uncommented(needle).unwrap();
-
-    original.lo + BytePos(offset as u32)
-}
-
-#[inline]
-pub fn span_after_last(original: Span, needle: &str, codemap: &CodeMap) -> BytePos {
-    let snippet = codemap.span_to_snippet(original).unwrap();
-    let mut offset = 0;
-
-    while let Some(additional_offset) = snippet[offset..].find_uncommented(needle) {
-        offset += additional_offset + needle.len();
-    }
-
-    original.lo + BytePos(offset as u32)
 }
 
 #[inline]

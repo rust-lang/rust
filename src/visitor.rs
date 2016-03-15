@@ -16,7 +16,7 @@ use syntax::visit;
 use strings::string_buffer::StringBuffer;
 
 use Indent;
-use utils;
+use utils::{self, CodeMapSpanUtils};
 use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
@@ -477,7 +477,7 @@ impl<'a> FmtVisitor<'a> {
         if is_internal {
             self.buffer.push_str(" {");
             // Hackery to account for the closing }.
-            let mod_lo = ::utils::span_after(s, "{", self.codemap);
+            let mod_lo = self.codemap.span_after(s, "{");
             let body_snippet = self.snippet(codemap::mk_sp(mod_lo, m.inner.hi - BytePos(1)));
             let body_snippet = body_snippet.trim();
             if body_snippet.is_empty() {

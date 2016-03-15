@@ -11,9 +11,8 @@
 // Formatting top-level items - functions, structs, enums, traits, impls.
 
 use Indent;
-use utils::{format_mutability, format_visibility, contains_skip, span_after, end_typaram,
-            wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines,
-            span_after_last};
+use utils::{CodeMapSpanUtils, format_mutability, format_visibility, contains_skip, end_typaram,
+            wrap_str, last_line_width, semicolon_for_expr, format_unsafety, trim_newlines};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
@@ -451,7 +450,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
-        let lo = span_after(item.span, "impl", context.codemap);
+        let lo = context.codemap.span_after(item.span, "impl");
         let hi = match *trait_ref {
             Some(ref tr) => tr.path.span.lo,
             None => self_ty.span.lo,
@@ -738,7 +737,7 @@ fn format_struct_struct(context: &RewriteContext,
     let header_str = format_header(item_name, ident, vis);
     result.push_str(&header_str);
 
-    let body_lo = span_after(span, "{", context.codemap);
+    let body_lo = context.codemap.span_after(span, "{");
 
     let generics_str = match generics {
         Some(g) => {
@@ -785,7 +784,7 @@ fn format_struct_struct(context: &RewriteContext,
                              },
                              |field| field.node.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
-                             span_after(span, "{", context.codemap),
+                             context.codemap.span_after(span, "{"),
                              span.hi);
     // 1 = ,
     let budget = context.config.max_width - offset.width() + context.config.tab_spaces - 1;
@@ -867,7 +866,7 @@ fn format_tuple_struct(context: &RewriteContext,
                              },
                              |field| field.node.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
-                             span_after(span, "(", context.codemap),
+                             context.codemap.span_after(span, "("),
                              span.hi);
     let body = try_opt!(format_item_list(items, item_budget, item_indent, context.config));
     result.push_str(&body);
@@ -903,7 +902,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     result.push_str(&ident.to_string());
 
     let generics_indent = indent + result.len();
-    let generics_span = mk_sp(span_after(span, "type", context.codemap), ty.span.lo);
+    let generics_span = mk_sp(context.codemap.span_after(span, "type"), ty.span.lo);
     let generics_width = context.config.max_width - " =".len();
     let generics_str = try_opt!(rewrite_generics(context,
                                                  generics,
@@ -1327,7 +1326,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     let args_start = generics.ty_params
                              .last()
                              .map_or(span.lo, |tp| end_typaram(tp));
-    let args_span = mk_sp(span_after(mk_sp(args_start, span.hi), "(", context.codemap),
+    let args_span = mk_sp(context.codemap.span_after(mk_sp(args_start, span.hi), "("),
                           span_for_return(&fd.output).lo);
     let arg_str = try_opt!(rewrite_args(context,
                                         &fd.inputs,
@@ -1479,7 +1478,7 @@ fn rewrite_args(context: &RewriteContext,
     if args.len() >= min_args || variadic {
         let comment_span_start = if min_args == 2 {
             let reduced_span = mk_sp(span.lo, args[1].ty.span.lo);
-            span_after_last(reduced_span, ",", context.codemap)
+            context.codemap.span_after_last(reduced_span, ",")
         } else {
             span.lo
         };
@@ -1491,7 +1490,7 @@ fn rewrite_args(context: &RewriteContext,
 
         let variadic_arg = if variadic {
             let variadic_span = mk_sp(args.last().unwrap().ty.span.hi, span.hi);
-            let variadic_start = span_after(variadic_span, "...", context.codemap) - BytePos(3);
+            let variadic_start = context.codemap.span_after(variadic_span, "...") - BytePos(3);
             Some(ArgumentKind::Variadic(variadic_start))
         } else {
             None
@@ -1651,7 +1650,7 @@ fn rewrite_generics(context: &RewriteContext,
                              |&(sp, _)| sp.hi,
                              // FIXME: don't clone
                              |&(_, ref str)| str.clone(),
-                             span_after(span, "<", context.codemap),
+                             context.codemap.span_after(span, "<"),
                              span.hi);
     let list_str = try_opt!(format_item_list(items, h_budget, offset, context.config));
 

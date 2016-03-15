@@ -28,7 +28,7 @@ use Indent;
 use rewrite::RewriteContext;
 use expr::{rewrite_call, rewrite_array};
 use comment::FindUncommented;
-use utils::{wrap_str, span_after};
+use utils::{CodeMapSpanUtils, wrap_str};
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
 
@@ -104,9 +104,8 @@ pub fn rewrite_macro(mac: &ast::Mac,
             // Format macro invocation as array literal.
             let extra_offset = macro_name.len();
             let rewrite = try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                                 mk_sp(span_after(mac.span,
-                                                                  original_style.opener(),
-                                                                  context.codemap),
+                                                 mk_sp(context.codemap.span_after(mac.span,
+                                                                  original_style.opener()),
                                                        mac.span.hi - BytePos(1)),
                                                  context,
                                                  try_opt!(width.checked_sub(extra_offset)),

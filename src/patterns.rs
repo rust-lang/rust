@@ -10,7 +10,7 @@
 
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, format_mutability, span_after};
+use utils::{CodeMapSpanUtils, wrap_str, format_mutability};
 use lists::{format_item_list, itemize_list};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use types::rewrite_path;
@@ -85,7 +85,7 @@ impl Rewrite for Pat {
                                                      |item| item.span.lo,
                                                      |item| item.span.hi,
                                                      |item| item.rewrite(context, width, offset),
-                                                     span_after(self.span, "(", context.codemap),
+                                                     context.codemap.span_after(self.span, "("),
                                                      self.span.hi);
                             Some(format!("{}({})",
                                          path_str,
@@ -142,7 +142,7 @@ impl Rewrite for Pat {
                                          |f| f.span.lo,
                                          |f| f.span.hi,
                                          |f| f.node.rewrite(context, budget, offset),
-                                         span_after(self.span, "{", context.codemap),
+                                         context.codemap.span_after(self.span, "{"),
                                          self.span.hi);
                 let mut field_string = try_opt!(format_item_list(items,
                                                                  budget,
