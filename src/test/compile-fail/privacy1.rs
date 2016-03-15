@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, no_core)]
+#![feature(lang_items, start, no_core, primitive_type)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang="sized"]
@@ -17,8 +17,12 @@ pub trait Sized {}
 #[lang="copy"]
 pub trait Copy {}
 
+#[primitive_type] type isize = isize;
+#[primitive_type] type u8 = u8;
+
 mod bar {
     // shouldn't bring in too much
+    #[primitive_type] type isize = isize;
     pub use self::glob::*;
 
     // can't publicly re-export private items
@@ -93,6 +97,9 @@ fn lol() {
 }
 
 mod foo {
+    #[primitive_type] type isize = isize;
+    #[primitive_type] type f32 = f32;
+
     fn test() {
         ::bar::A::foo();
         ::bar::A::bar();        //~ ERROR: method `bar` is private

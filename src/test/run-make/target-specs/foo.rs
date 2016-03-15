@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, no_core)]
+#![feature(lang_items, no_core, primitive_type)]
 #![no_core]
+
+#[primitive_type] type u8 = u8;
+#[primitive_type] type isize = isize;
 
 #[lang="copy"]
 trait Copy { }

@@ -21,7 +21,6 @@ use num::flt2dec;
 use ops::Deref;
 use result;
 use slice;
-use str;
 
 #[unstable(feature = "fmt_flags_align", issue = "27726")]
 /// Possible alignments returned by `Formatter::align`

@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, no_core)]
+#![feature(lang_items, start, no_core, primitive_type)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 #[lang = "sized"] pub trait Sized {}
 #[lang="copy"] pub trait Copy {}
+#[primitive_type] type isize = isize;
+#[primitive_type] type u8 = u8;
 
 // Test to make sure that private items imported through globs remain private
 // when  they're used.

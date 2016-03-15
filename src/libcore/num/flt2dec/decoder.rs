@@ -12,7 +12,6 @@
 
 use prelude::v1::*;
 
-use {f32, f64};
 use num::{Float, FpCategory};
 
 /// Decoded unsigned finite value, such that:

@@ -28,6 +28,7 @@
 #![feature(libc)]
 #![feature(nonzero)]
 #![feature(peekable_is_empty)]
+#![feature(primitive_type)]
 #![feature(ptr_as_ref)]
 #![feature(rand)]
 #![feature(raw)]

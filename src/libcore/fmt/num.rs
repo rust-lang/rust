@@ -19,7 +19,6 @@ use prelude::v1::*;
 use fmt;
 use num::Zero;
 use ops::{Div, Rem, Sub};
-use str;
 use slice;
 use ptr;
 use mem;

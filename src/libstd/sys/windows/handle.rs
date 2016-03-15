@@ -21,7 +21,6 @@ use ptr;
 use sys::c;
 use sys::cvt;
 use sys_common::io::read_to_end_uninitialized;
-use u32;
 
 /// An owned container for `HANDLE` object, closing them on Drop.
 ///

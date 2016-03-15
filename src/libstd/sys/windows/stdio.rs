@@ -16,7 +16,6 @@ use io::prelude::*;
 use cmp;
 use io::{self, Cursor};
 use ptr;
-use str;
 use sync::Mutex;
 use sys::c;
 use sys::cvt;

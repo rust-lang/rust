@@ -121,23 +121,27 @@ impl Def {
         }
     }
 
-    pub fn def_id(&self) -> DefId {
+    pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::ForeignMod(id) | Def::Static(id, _) |
             Def::Variant(_, id) | Def::Enum(id) | Def::TyAlias(id) | Def::AssociatedTy(_, id) |
             Def::TyParam(_, _, id, _) | Def::Struct(id) | Def::Trait(id) |
             Def::Method(id) | Def::Const(id) | Def::AssociatedConst(id) |
             Def::Local(id, _) | Def::Upvar(id, _, _, _) => {
-                id
+                Some(id)
             }
 
             Def::Label(..)  |
             Def::PrimTy(..) |
             Def::SelfTy(..) |
             Def::Err => {
-                panic!("attempted .def_id() on invalid def: {:?}", self)
+                None
             }
         }
+    }
+
+    pub fn def_id(&self) -> DefId {
+        self.opt_def_id().expect(&format!("attempted .def_id() on invalid def: {:?}", self))
     }
 
     pub fn variant_def_ids(&self) -> Option<(DefId, DefId)> {

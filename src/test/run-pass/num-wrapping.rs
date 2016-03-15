@@ -12,7 +12,7 @@
 //
 // Test std::num::Wrapping<T> for {uN, iN, usize, isize}
 
-#![feature(test)]
+#![feature(test, primitive_type)]
 
 extern crate test;
 
@@ -26,6 +26,7 @@ use test::black_box;
 
 macro_rules! int_modules {
     ($(($name:ident, $size:expr),)*) => ($(
+        #[primitive_type]
         mod $name {
             pub const BITS: usize = $size;
             pub use std::$name::*;

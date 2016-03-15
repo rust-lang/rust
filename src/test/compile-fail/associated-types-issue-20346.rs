@@ -15,6 +15,7 @@
 
 use std::option::Option::{self, None, Some};
 use std::vec::Vec;
+use std::bool;
 
 trait Iterator {
     type Item;

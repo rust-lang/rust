@@ -394,7 +394,6 @@ mod tests {
     use sync::atomic::{AtomicUsize, Ordering};
     use thread;
     use time::Duration;
-    use u32;
 
     #[test]
     fn smoke() {

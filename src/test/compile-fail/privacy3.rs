@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start, no_core)]
+#![feature(start, no_core, primitive_type)]
 #![no_core] // makes debugging this test *a lot* easier (during resolve)
 
 // Test to make sure that private items imported through globs remain private
 // when  they're used.
+
+#[primitive_type] type isize = isize;
+#[primitive_type] type u8 = u8;
 
 mod bar {
     pub use self::glob::*;

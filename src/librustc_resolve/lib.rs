@@ -57,7 +57,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, FnvHashMap};
+use rustc::util::nodemap::{DefIdSet, NodeMap, FnvHashMap};
 
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
@@ -1082,6 +1082,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
     freevars_seen: NodeMap<NodeMap<usize>>,
     export_map: ExportMap,
     trait_map: TraitMap,
+    primitive_type_items: DefIdSet,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -1172,6 +1173,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: NodeMap(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
+            primitive_type_items: DefIdSet(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
@@ -2596,14 +2598,38 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ResolveAttempt(resolution)
     }
 
-    /// Skips `path_depth` trailing segments, which is also reflected in the
-    /// returned value. See `middle::def::PathResolution` for more info.
     pub fn resolve_path(&mut self,
                         id: NodeId,
                         path: &Path,
                         path_depth: usize,
                         namespace: Namespace)
                         -> Option<PathResolution> {
+        let resolution = self.resolve_path_noprim(id, path, path_depth, namespace);
+        // Check if the resolution is a #[primitive_type] item in type namespace,
+        // replace that item with a primitive type with the same name.
+        if let Some(PathResolution{base_def, ..}) = resolution {
+            if let Some(def_id) = base_def.opt_def_id() {
+                if namespace == TypeNS && self.primitive_type_items.contains(&def_id) {
+                    let name = &path.segments[path.segments.len() - path_depth - 1]
+                                    .identifier.unhygienic_name;
+                    if let Some(prim_ty) = self.primitive_type_table.primitive_types.get(name) {
+                        return Some(PathResolution::new(Def::PrimTy(*prim_ty), path_depth))
+                    }
+                }
+            }
+        }
+
+        resolution
+    }
+
+    /// Skips `path_depth` trailing segments, which is also reflected in the
+    /// returned value. See `middle::def::PathResolution` for more info.
+    pub fn resolve_path_noprim(&mut self,
+                               id: NodeId,
+                               path: &Path,
+                               path_depth: usize,
+                               namespace: Namespace)
+                               -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
@@ -2616,37 +2642,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Try to find a path to an item in a module.
         let last_ident = segments.last().unwrap().identifier;
-        // Resolve a single identifier with fallback to primitive types
-        let resolve_identifier_with_fallback = |this: &mut Self, record_used| {
-            let def = this.resolve_identifier(last_ident, namespace, record_used);
-            match def {
-                None | Some(LocalDef{def: Def::Mod(..), ..}) if namespace == TypeNS =>
-                    this.primitive_type_table
-                        .primitive_types
-                        .get(&last_ident.unhygienic_name)
-                        .map_or(def, |prim_ty| Some(LocalDef::from_def(Def::PrimTy(*prim_ty)))),
-                _ => def
-            }
-        };
-
         if segments.len() == 1 {
-            // In `a(::assoc_item)*` `a` cannot be a module. If `a` does resolve to a module we
-            // don't report an error right away, but try to fallback to a primitive type.
-            // So, we are still able to successfully resolve something like
-            //
-            // use std::u8; // bring module u8 in scope
-            // fn f() -> u8 { // OK, resolves to primitive u8, not to std::u8
-            //     u8::max_value() // OK, resolves to associated function <u8>::max_value,
-            //                     // not to non-existent std::u8::max_value
-            // }
-            //
-            // Such behavior is required for backward compatibility.
-            // The same fallback is used when `a` resolves to nothing.
-            let unqualified_def = resolve_identifier_with_fallback(self, true);
+            let unqualified_def = self.resolve_identifier(last_ident, namespace, true);
             return unqualified_def.and_then(|def| self.adjust_local_def(def, span)).map(mk_res);
         }
 
-        let unqualified_def = resolve_identifier_with_fallback(self, false);
+        let unqualified_def = self.resolve_identifier(last_ident, namespace, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
             (Some(d), Some(ref ud)) if d == ud.def => {
@@ -2932,17 +2933,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span: Span,
                                 name_path: &[ast::Name])
                                 -> Option<Module<'a>> {
-            let last_name = name_path.last().unwrap();
-
-            if name_path.len() == 1 {
-                match this.primitive_type_table.primitive_types.get(last_name) {
-                    Some(_) => None,
-                    None => this.current_module.resolve_name(*last_name, TypeNS, true).success()
-                                               .and_then(NameBinding::module)
-                }
-            } else {
-                this.resolve_module_path(&name_path, UseLexicalScope, span).success()
-            }
+            this.resolve_module_path(&name_path, UseLexicalScope, span).success()
         }
 
         fn is_static_method(this: &Resolver, did: DefId) -> bool {

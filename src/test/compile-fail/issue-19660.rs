@@ -10,11 +10,13 @@
 
 // error-pattern: requires `copy` lang_item
 
-#![feature(lang_items, start, no_core)]
+#![feature(lang_items, start, no_core, primitive_type)]
 #![no_core]
 
 #[lang = "sized"]
 trait Sized { }
+#[primitive_type] type isize = isize;
+#[primitive_type] type u8 = u8;
 
 struct S;
 

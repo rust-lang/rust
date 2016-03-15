@@ -134,6 +134,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         } else {
             DefModifiers::empty()
         } | DefModifiers::IMPORTABLE;
+        if item.attrs.iter().any(|attr| attr.name() == "primitive_type") {
+            if let Some(def_id) = self.ast_map.opt_local_def_id(item.id) {
+                self.resolver.primitive_type_items.insert(def_id);
+            }
+        }
 
         match item.node {
             ItemUse(ref view_path) => {
@@ -462,6 +467,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         }
         if new_parent.is_normal() {
             modifiers = modifiers | DefModifiers::IMPORTABLE;
+        }
+        if self.session.cstore.item_attrs(def.def_id()).
+                               iter().any(|attr| attr.name() == "primitive_type") {
+            self.resolver.primitive_type_items.insert(def.def_id());
         }
 
         match def {
