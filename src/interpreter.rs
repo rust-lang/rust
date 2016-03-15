@@ -67,6 +67,9 @@ struct Frame<'a, 'tcx: 'a> {
     /// The MIR for the function called on this frame.
     mir: CachedMir<'a, 'tcx>,
 
+    /// The block in the MIR this frame will execute once a fn call returns back to this frame.
+    next_block: mir::BasicBlock,
+
     /// A pointer for writing the return value of the current call, if it's not a diverging call.
     return_ptr: Option<Pointer>,
 
@@ -113,7 +116,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             mir_cache: RefCell::new(DefIdMap()),
             memory: Memory::new(),
             stack: Vec::new(),
-            substs_stack: vec![tcx.mk_substs(Substs::empty())],
+            substs_stack: Vec::new(),
         }
     }
 
@@ -143,6 +146,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
         self.stack.push(Frame {
             mir: mir.clone(),
+            next_block: mir::START_BLOCK,
             return_ptr: return_ptr,
             locals: locals,
             var_offset: num_args,
@@ -176,95 +180,96 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn call(&mut self, mir: CachedMir<'a, 'tcx>, args: &[mir::Operand<'tcx>],
-            return_ptr: Option<Pointer>) -> EvalResult<()> {
-        try!(self.push_stack_frame(mir.clone(), args, return_ptr));
-        let mut current_block = mir::START_BLOCK;
+    fn run(&mut self) -> EvalResult<()> {
+        'outer: while !self.stack.is_empty() {
+            let mut current_block = self.current_frame().next_block;
 
-        loop {
-            if TRACE_EXECUTION { println!("Entering block: {:?}", current_block); }
-            let block_data = mir.basic_block_data(current_block);
+            loop {
+                if TRACE_EXECUTION { println!("Entering block: {:?}", current_block); }
+                let current_mir = self.current_frame().mir.clone(); // Cloning a reference.
+                let block_data = current_mir.basic_block_data(current_block);
 
-            for stmt in &block_data.statements {
-                if TRACE_EXECUTION { println!("{:?}", stmt); }
-                let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                try!(self.eval_assignment(lvalue, rvalue));
-            }
-
-            if TRACE_EXECUTION { println!("{:?}", block_data.terminator()); }
-
-            use rustc::mir::repr::Terminator::*;
-            match *block_data.terminator() {
-                Return => break,
-
-                Goto { target } => current_block = target,
-
-                If { ref cond, targets: (then_target, else_target) } => {
-                    let (cond_ptr, _) = try!(self.eval_operand(cond));
-                    let cond_val = try!(self.memory.read_bool(cond_ptr));
-                    current_block = if cond_val { then_target } else { else_target };
+                for stmt in &block_data.statements {
+                    if TRACE_EXECUTION { println!("{:?}", stmt); }
+                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
+                    try!(self.eval_assignment(lvalue, rvalue));
                 }
 
-                SwitchInt { ref discr, ref values, ref targets, .. } => {
-                    let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
-                    let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
+                if TRACE_EXECUTION { println!("{:?}", block_data.terminator()); }
 
-                    // Branch to the `otherwise` case by default, if no match is found.
-                    current_block = targets[targets.len() - 1];
+                use rustc::mir::repr::Terminator::*;
+                match *block_data.terminator() {
+                    Return => break,
 
-                    for (index, val_const) in values.iter().enumerate() {
-                        let ptr = try!(self.const_to_ptr(val_const));
-                        let val = try!(self.memory.read_primval(ptr, &discr_repr));
-                        if discr_val == val {
-                            current_block = targets[index];
-                            break;
-                        }
-                    }
-                }
+                    Goto { target } => current_block = target,
 
-                Switch { ref discr, ref targets, .. } => {
-                    let (adt_ptr, adt_repr) = try!(self.eval_lvalue(discr));
-                    let discr_repr = match adt_repr {
-                        Repr::Sum { ref discr, .. } => discr,
-                        _ => panic!("attmpted to switch on non-sum type"),
-                    };
-                    let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
-                    current_block = targets[discr_val.to_int() as usize];
-                }
-
-                Call { ref func, ref args, ref destination, .. } => {
-                    let ptr = match *destination {
-                        Some((ref lv, _)) => Some(try!(self.eval_lvalue(lv)).0),
-                        None => None,
-                    };
-                    let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
-
-                    match func_ty.sty {
-                        ty::TyFnDef(def_id, substs, _) => {
-                            self.substs_stack.push(substs);
-                            let mir = self.load_mir(def_id);
-                            try!(self.call(mir, args, ptr));
-                        }
-
-                        _ => panic!("can't handle callee of type {:?}", func_ty),
+                    If { ref cond, targets: (then_target, else_target) } => {
+                        let (cond_ptr, _) = try!(self.eval_operand(cond));
+                        let cond_val = try!(self.memory.read_bool(cond_ptr));
+                        current_block = if cond_val { then_target } else { else_target };
                     }
 
-                    if let Some((_, target)) = *destination {
+                    SwitchInt { ref discr, ref values, ref targets, .. } => {
+                        let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
+                        let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
+
+                        // Branch to the `otherwise` case by default, if no match is found.
+                        current_block = targets[targets.len() - 1];
+
+                        for (index, val_const) in values.iter().enumerate() {
+                            let ptr = try!(self.const_to_ptr(val_const));
+                            let val = try!(self.memory.read_primval(ptr, &discr_repr));
+                            if discr_val == val {
+                                current_block = targets[index];
+                                break;
+                            }
+                        }
+                    }
+
+                    Switch { ref discr, ref targets, .. } => {
+                        let (adt_ptr, adt_repr) = try!(self.eval_lvalue(discr));
+                        let discr_repr = match adt_repr {
+                            Repr::Sum { ref discr, .. } => discr,
+                            _ => panic!("attmpted to switch on non-sum type"),
+                        };
+                        let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
+                        current_block = targets[discr_val.to_int() as usize];
+                    }
+
+                    Call { ref func, ref args, ref destination, .. } => {
+                        let mut return_ptr = None;
+                        if let Some((ref lv, target)) = *destination {
+                            self.current_frame_mut().next_block = target;
+                            return_ptr = Some(try!(self.eval_lvalue(lv)).0)
+                        }
+
+                        let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
+
+                        match func_ty.sty {
+                            ty::TyFnDef(def_id, substs, _) => {
+                                let mir = self.load_mir(def_id);
+                                self.substs_stack.push(substs);
+                                try!(self.push_stack_frame(mir, args, return_ptr));
+                                continue 'outer;
+                            }
+
+                            _ => panic!("can't handle callee of type {:?}", func_ty),
+                        }
+                    }
+
+                    Drop { target, .. } => {
+                        // TODO: Handle destructors and dynamic drop.
                         current_block = target;
                     }
-                }
 
-                Drop { target, .. } => {
-                    // TODO: Handle destructors and dynamic drop.
-                    current_block = target;
+                    Resume => unimplemented!(),
                 }
-
-                Resume => unimplemented!(),
             }
+
+            self.pop_stack_frame();
+            self.substs_stack.pop();
         }
 
-        self.pop_stack_frame();
-        self.substs_stack.pop();
         Ok(())
     }
 
@@ -454,7 +459,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     // TODO(tsion): Cache these outputs.
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
         use syntax::ast::IntTy;
-        let substs = self.substs_stack.last().unwrap();
+        let substs = self.substs_stack.last().map(|&s| s)
+            .unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()));
 
         match ty.subst(self.tcx, substs).sty {
             ty::TyBool => Repr::Bool,
@@ -509,6 +515,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn current_frame(&self) -> &Frame<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
+
+    fn current_frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
+        self.stack.last_mut().expect("no call frames exist")
+    }
 }
 
 pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
@@ -528,7 +538,8 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     }
                     ty::FnDiverging => None,
                 };
-                miri.call(CachedMir::Ref(mir), &[], return_ptr).unwrap();
+                miri.push_stack_frame(CachedMir::Ref(mir), &[], return_ptr).unwrap();
+                miri.run().unwrap();
 
                 if let Some(ret) = return_ptr {
                     println!("Returned: {:?}\n", miri.memory.get(ret.alloc_id).unwrap());
