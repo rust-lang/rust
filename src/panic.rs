@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::ast::LitKind;
-use utils::{span_lint, in_external_macro, match_path, BEGIN_UNWIND};
+use utils::{span_lint, is_direct_expn_of, match_path, BEGIN_UNWIND};
 
 /// **What it does:** This lint checks for missing parameters in `panic!`.
 ///
@@ -28,7 +28,6 @@ impl LintPass for PanicPass {
 impl LateLintPass for PanicPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if_let_chain! {[
-            in_external_macro(cx, expr.span),
             let ExprBlock(ref block) = expr.node,
             let Some(ref ex) = block.expr,
             let ExprCall(ref fun, ref params) = ex.node,
@@ -36,16 +35,13 @@ impl LateLintPass for PanicPass {
             let ExprPath(None, ref path) = fun.node,
             match_path(path, &BEGIN_UNWIND),
             let ExprLit(ref lit) = params[0].node,
+            is_direct_expn_of(cx, params[0].span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,
             let Some(par) = string.find('{'),
-            string[par..].contains('}'),
-            let Some(sp) = cx.sess().codemap()
-                             .with_expn_info(expr.span.expn_id,
-                                             |info| info.map(|i| i.call_site))
+            string[par..].contains('}')
         ], {
-
-            span_lint(cx, PANIC_PARAMS, sp,
-                      "You probably are missing some parameter in your `panic!` call");
+            span_lint(cx, PANIC_PARAMS, params[0].span,
+                      "you probably are missing some parameter in your format string");
         }}
     }
 }
