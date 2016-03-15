@@ -1,6 +1,6 @@
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
-use rustc::middle::subst::{Subst, Substs};
+use rustc::middle::subst::{self, Subst, Substs};
 use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
@@ -223,13 +223,38 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
 
                 match func_ty.sty {
-                    ty::TyFnDef(def_id, substs, _) => {
-                        let mir = self.load_mir(def_id);
-                        let substs = self.tcx.mk_substs(
-                            substs.subst(self.tcx, self.current_substs()));
-                        self.substs_stack.push(substs);
-                        try!(self.push_stack_frame(mir, args, return_ptr));
-                        TerminatorTarget::Call
+                    ty::TyFnDef(def_id, substs, bare_fn_ty) => {
+                        use syntax::abi::Abi;
+                        match bare_fn_ty.abi {
+                            Abi::RustIntrinsic => match &self.tcx.item_name(def_id).as_str()[..] {
+                                "size_of" => {
+                                    let ty = *substs.types.get(subst::FnSpace, 0);
+                                    let (dest, dest_repr) =
+                                        try!(self.eval_lvalue(&mir::Lvalue::ReturnPointer));
+                                    let size = PrimVal::from_usize(self.ty_to_repr(ty).size(),
+                                                                   &dest_repr);
+                                    try!(self.memory.write_primval(dest, size));
+
+                                    // Since we pushed no stack frame, the main loop will act as if
+                                    // the call just completed and it's returning to the current
+                                    // frame.
+                                    TerminatorTarget::Call
+                                },
+
+                                name => panic!("can't handle intrinsic named {}", name),
+                            },
+
+                            Abi::Rust => {
+                                let mir = self.load_mir(def_id);
+                                let substs = self.tcx.mk_substs(
+                                    substs.subst(self.tcx, self.current_substs()));
+                                self.substs_stack.push(substs);
+                                try!(self.push_stack_frame(mir, args, return_ptr));
+                                TerminatorTarget::Call
+                            }
+
+                            abi => panic!("can't handle function with ABI {:?}", abi),
+                        }
                     }
 
                     _ => panic!("can't handle callee of type {:?}", func_ty),
@@ -404,14 +429,19 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 try!(self.memory.write_i64(ptr, n));
                 Ok(ptr)
             }
-            Uint(_u)          => unimplemented!(),
-            Str(ref _s)       => unimplemented!(),
-            ByteStr(ref _bs)  => unimplemented!(),
+            Uint(n) => {
+                // TODO(tsion): Check int constant type.
+                let ptr = self.memory.allocate(8);
+                try!(self.memory.write_u64(ptr, n));
+                Ok(ptr)
+            }
+            Str(ref _s) => unimplemented!(),
+            ByteStr(ref _bs) => unimplemented!(),
             Bool(b) => {
                 let ptr = self.memory.allocate(Repr::Bool.size());
                 try!(self.memory.write_bool(ptr, b));
                 Ok(ptr)
-            },
+            }
             Struct(_node_id)  => unimplemented!(),
             Tuple(_node_id)   => unimplemented!(),
             Function(_def_id) => unimplemented!(),
