@@ -192,31 +192,49 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     }
 
     fn run(&mut self) -> EvalResult<()> {
+        fn print_indent(n: usize) {
+            for _ in 0..n {
+                print!("  ");
+            }
+        }
+
         'outer: while !self.stack.is_empty() {
             let mut current_block = self.current_frame().next_block;
 
             loop {
-                if TRACE_EXECUTION { println!("Entering block: {:?}", current_block); }
+                if TRACE_EXECUTION {
+                    print_indent(self.stack.len());
+                    println!("{:?}:", current_block);
+                }
+
                 let current_mir = self.current_frame().mir.clone(); // Cloning a reference.
                 let block_data = current_mir.basic_block_data(current_block);
 
                 for stmt in &block_data.statements {
-                    if TRACE_EXECUTION { println!("{:?}", stmt); }
+                    if TRACE_EXECUTION {
+                        print_indent(self.stack.len() + 1);
+                        println!("{:?}", stmt);
+                    }
                     let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
                     try!(self.eval_assignment(lvalue, rvalue));
                 }
 
                 let terminator = block_data.terminator();
-                if TRACE_EXECUTION { println!("{:?}", terminator); }
+                if TRACE_EXECUTION {
+                    print_indent(self.stack.len() + 1);
+                    println!("{:?}", terminator);
+                }
+
                 match try!(self.eval_terminator(terminator)) {
                     TerminatorTarget::Block(block) => current_block = block,
-                    TerminatorTarget::Return => break,
+                    TerminatorTarget::Return => {
+                        self.pop_stack_frame();
+                        self.substs_stack.pop();
+                        continue 'outer;
+                    }
                     TerminatorTarget::Call => continue 'outer,
                 }
             }
-
-            self.pop_stack_frame();
-            self.substs_stack.pop();
         }
 
         Ok(())
