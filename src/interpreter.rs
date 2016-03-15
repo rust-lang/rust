@@ -225,6 +225,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 match func_ty.sty {
                     ty::TyFnDef(def_id, substs, _) => {
                         let mir = self.load_mir(def_id);
+                        let substs = self.tcx.mk_substs(
+                            substs.subst(self.tcx, self.current_substs()));
                         self.substs_stack.push(substs);
                         try!(self.push_stack_frame(mir, args, return_ptr));
                         TerminatorTarget::Call
@@ -436,11 +438,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
     // TODO(tsion): Cache these outputs.
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
-        use syntax::ast::IntTy;
-        let substs = self.substs_stack.last().map(|&s| s)
-            .unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()));
-
-        match ty.subst(self.tcx, substs).sty {
+        use syntax::ast::{IntTy, UintTy};
+        match ty.subst(self.tcx, self.current_substs()).sty {
             ty::TyBool => Repr::Bool,
 
             ty::TyInt(IntTy::Is) => unimplemented!(),
@@ -496,6 +495,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
     fn current_frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
+    }
+
+    fn current_substs(&self) -> &'tcx Substs<'tcx> {
+        self.substs_stack.last().cloned().unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()))
     }
 
     fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
@@ -560,6 +563,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 if let Some(ret) = return_ptr {
                     println!("Result:");
                     print_allocation_tree(&miri.memory, ret.alloc_id);
+                    println!("");
                 }
             }
         }
