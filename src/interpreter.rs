@@ -185,7 +185,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
+                let discr_ptr = try!(self.eval_lvalue(discr));
+                let discr_repr = self.lvalue_repr(discr);
                 let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -204,7 +205,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             Switch { ref discr, ref targets, .. } => {
-                let (adt_ptr, adt_repr) = try!(self.eval_lvalue(discr));
+                let adt_ptr = try!(self.eval_lvalue(discr));
+                let adt_repr = self.lvalue_repr(discr);
                 let discr_repr = match adt_repr {
                     Repr::Sum { ref discr, .. } => discr,
                     _ => panic!("attmpted to switch on non-sum type"),
@@ -217,7 +219,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let mut return_ptr = None;
                 if let Some((ref lv, target)) = *destination {
                     self.current_frame_mut().next_block = target;
-                    return_ptr = Some(try!(self.eval_lvalue(lv)).0)
+                    return_ptr = Some(try!(self.eval_lvalue(lv)));
                 }
 
                 let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
@@ -229,8 +231,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                             Abi::RustIntrinsic => match &self.tcx.item_name(def_id).as_str()[..] {
                                 "size_of" => {
                                     let ty = *substs.types.get(subst::FnSpace, 0);
-                                    let (dest, dest_repr) =
-                                        try!(self.eval_lvalue(&mir::Lvalue::ReturnPointer));
+                                    let ret_ptr = &mir::Lvalue::ReturnPointer;
+                                    let dest = try!(self.eval_lvalue(ret_ptr));
+                                    let dest_repr = self.lvalue_repr(ret_ptr);
                                     let size = PrimVal::from_usize(self.ty_to_repr(ty).size(),
                                                                    &dest_repr);
                                     try!(self.memory.write_primval(dest, size));
@@ -289,7 +292,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
     {
-        let (dest, dest_repr) = try!(self.eval_lvalue(lvalue));
+        let dest = try!(self.eval_lvalue(lvalue));
+        let dest_repr = self.lvalue_repr(lvalue);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
@@ -355,7 +359,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             Ref(_, _, ref lvalue) => {
-                let (ptr, _) = try!(self.eval_lvalue(lvalue));
+                let ptr = try!(self.eval_lvalue(lvalue));
                 self.memory.write_ptr(dest, ptr)
             }
 
@@ -372,7 +376,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<(Pointer, Repr)> {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => self.eval_lvalue(lvalue),
+            Consume(ref lvalue) => Ok((try!(self.eval_lvalue(lvalue)), self.lvalue_repr(lvalue))),
 
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
@@ -387,7 +391,16 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn eval_lvalue(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<(Pointer, Repr)> {
+    fn lvalue_repr(&self, lvalue: &mir::Lvalue<'tcx>) -> Repr {
+        use rustc::mir::tcx::LvalueTy;
+        match self.current_frame().mir.lvalue_ty(self.tcx, lvalue) {
+            LvalueTy::Ty { ty } => self.ty_to_repr(ty),
+            LvalueTy::Downcast { ref adt_def, substs, variant_index } =>
+                self.make_variant_repr(&adt_def.variants[variant_index], substs),
+        }
+    }
+
+    fn eval_lvalue(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
         let frame = self.current_frame();
 
         use rustc::mir::repr::Lvalue::*;
@@ -399,7 +412,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Temp(i) => frame.locals[frame.temp_offset + i as usize],
 
             Projection(ref proj) => {
-                let (base_ptr, base_repr) = try!(self.eval_lvalue(&proj.base));
+                let base_ptr = try!(self.eval_lvalue(&proj.base));
+                let base_repr = self.lvalue_repr(&proj.base);
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
                     Field(field, _) => match base_repr {
@@ -422,14 +436,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
-        use rustc::mir::tcx::LvalueTy;
-        let repr = match self.current_frame().mir.lvalue_ty(self.tcx, lvalue) {
-            LvalueTy::Ty { ty } => self.ty_to_repr(ty),
-            LvalueTy::Downcast { ref adt_def, substs, variant_index } =>
-                self.make_variant_repr(&adt_def.variants[variant_index], substs),
-        };
-
-        Ok((ptr, repr))
+        Ok(ptr)
     }
 
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {

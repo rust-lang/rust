@@ -7,6 +7,7 @@ use std::ptr;
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
+// TODO(tsion): How should this get set? Host or target pointer size?
 const POINTER_SIZE: usize = 8;
 
 pub struct Memory {
