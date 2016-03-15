@@ -554,7 +554,11 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
                         Rvalue::Box(ref _ty) => {
                             // this is creating uninitialized
                             // memory that needs to be initialized.
-                            bb_ctxt.on_move_out_lval(SK::Box, lval, source);
+                            let deref_lval = Lvalue::Projection(Box::new( repr::Projection {
+                                base: lval.clone(),
+                                elem: repr::ProjectionElem::Deref,
+                            }));
+                            bb_ctxt.on_move_out_lval(SK::Box, &deref_lval, source);
                         }
                         Rvalue::Aggregate(ref _kind, ref operands) => {
                             for operand in operands {
