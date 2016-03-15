@@ -532,7 +532,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
     /// Print the given allocation and all allocations it depends on.
     fn print_allocation_tree(memory: &Memory, alloc_id: memory::AllocId) {
         let alloc = memory.get(alloc_id).unwrap();
-        println!("  {:?}", alloc);
+        println!("  {:?}: {:?}", alloc_id, alloc);
         for &target_alloc in alloc.relocations.values() {
             print_allocation_tree(memory, target_alloc);
         }
