@@ -14,7 +14,7 @@ use rustc::mir::repr::{self, Mir, BasicBlock, Lvalue, Rvalue};
 use rustc::mir::repr::{StatementKind, Terminator};
 use rustc::util::nodemap::FnvHashMap;
 
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell};
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::iter;
@@ -220,8 +220,8 @@ type MovePathInverseMap = Vec<Option<MovePathIndex>>;
 
 struct MovePathDataBuilder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    pre_move_paths: RefCell<Vec<PreMovePath<'tcx>>>,
-    rev_lookup: RefCell<MovePathLookup<'tcx>>,
+    pre_move_paths: Vec<PreMovePath<'tcx>>,
+    rev_lookup: MovePathLookup<'tcx>,
 }
 
 /// Tables mapping from an l-value to its MovePathIndex.
@@ -400,41 +400,32 @@ impl<'tcx> MovePathLookup<'tcx> {
 
 impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
     fn lookup(&mut self, lval: &Lvalue<'tcx>) -> Lookup<MovePathIndex> {
-        let proj = {
-            let mut rev_lookup = self.rev_lookup.borrow_mut();
-            match *lval {
-                Lvalue::Var(var_idx) =>
-                    return rev_lookup.lookup_var(var_idx),
-                Lvalue::Temp(temp_idx) =>
-                    return rev_lookup.lookup_temp(temp_idx),
-                Lvalue::Arg(arg_idx) =>
-                    return rev_lookup.lookup_arg(arg_idx),
-                Lvalue::Static(_def_id) =>
-                    return rev_lookup.lookup_static(),
-                Lvalue::ReturnPointer =>
-                    return rev_lookup.lookup_return_pointer(),
-                Lvalue::Projection(ref proj) => {
-                    proj
-                }
+        let proj = match *lval {
+            Lvalue::Var(var_idx) =>
+                return self.rev_lookup.lookup_var(var_idx),
+            Lvalue::Temp(temp_idx) =>
+                return self.rev_lookup.lookup_temp(temp_idx),
+            Lvalue::Arg(arg_idx) =>
+                return self.rev_lookup.lookup_arg(arg_idx),
+            Lvalue::Static(_def_id) =>
+                return self.rev_lookup.lookup_static(),
+            Lvalue::ReturnPointer =>
+                return self.rev_lookup.lookup_return_pointer(),
+            Lvalue::Projection(ref proj) => {
+                proj
             }
-            // drop the rev_lookup here ...
         };
 
         let base_index = self.move_path_for(&proj.base);
-
-        // ... restablish exclusive access to rev_lookup here.
-        let mut rev_lookup = self.rev_lookup.borrow_mut();
-        rev_lookup.lookup_proj(proj, base_index)
+        self.rev_lookup.lookup_proj(proj, base_index)
     }
 
-    // Caller must ensure self's RefCells (i.e. `self.pre_move_paths`
-    // and `self.rev_lookup`) are not mutably borrowed.
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>) -> MovePathIndex {
         let lookup: Lookup<MovePathIndex> = self.lookup(lval);
 
         // `lookup` is either the previously assigned index or a
         // newly-allocated one.
-        debug_assert!(lookup.idx() <= self.pre_move_paths.borrow().len());
+        debug_assert!(lookup.idx() <= self.pre_move_paths.len());
 
         if let Lookup(LookupKind::Generate, mpi) = lookup {
             let parent;
@@ -465,8 +456,7 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
                     let idx = self.move_path_for(&proj.base);
                     parent = Some(idx);
 
-                    let mut pre_move_paths = self.pre_move_paths.borrow_mut();
-                    let parent_move_path = &mut pre_move_paths[idx.idx()];
+                    let parent_move_path = &mut self.pre_move_paths[idx.idx()];
 
                     // At last: Swap in the new first_child.
                     sibling = parent_move_path.first_child.get();
@@ -486,8 +476,7 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
                 first_child: Cell::new(None),
             };
 
-            let mut pre_move_paths = self.pre_move_paths.borrow_mut();
-            pre_move_paths.push(move_path);
+            self.pre_move_paths.push(move_path);
         }
 
         return lookup.1;
@@ -519,8 +508,8 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
     // straight-forward than mutable borrows in this instance.)
     let mut builder = MovePathDataBuilder {
         mir: mir,
-        pre_move_paths: RefCell::new(Vec::new()),
-        rev_lookup: RefCell::new(MovePathLookup::new()),
+        pre_move_paths: Vec::new(),
+        rev_lookup: MovePathLookup::new(),
     };
 
     for bb in bbs {
@@ -644,10 +633,10 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
     // All such paths were not referenced ...
     //
     // well you know, lets actually try just asserting that the path map *is* complete.
-    assert_eq!(path_map.len(), builder.pre_move_paths.borrow().len());
-    path_map.fill_to(builder.pre_move_paths.borrow().len() - 1);
+    assert_eq!(path_map.len(), builder.pre_move_paths.len());
+    path_map.fill_to(builder.pre_move_paths.len() - 1);
 
-    let pre_move_paths = builder.pre_move_paths.into_inner();
+    let pre_move_paths = builder.pre_move_paths;
     let move_paths: Vec<_> = pre_move_paths.into_iter()
         .map(|p| p.into_move_path())
         .collect();
@@ -672,7 +661,7 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
         moves: moves,
         loc_map: LocMap { map: loc_map },
         path_map: PathMap { map: path_map },
-        rev_lookup: builder.rev_lookup.into_inner(),
+        rev_lookup: builder.rev_lookup,
     }
 }
 
