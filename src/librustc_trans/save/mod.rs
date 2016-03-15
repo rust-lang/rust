@@ -28,13 +28,32 @@ use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
-use self::span_utils::SpanUtils;
-
+mod csv_dumper;
+#[macro_use]
+mod data;
+mod dump;
+mod dump_visitor;
 #[macro_use]
 pub mod span_utils;
-pub mod recorder;
 
-mod dump_csv;
+pub use self::csv_dumper::CsvDumper;
+pub use self::data::*;
+pub use self::dump::Dump;
+pub use self::dump_visitor::DumpVisitor;
+use self::span_utils::SpanUtils;
+
+// FIXME this is legacy code and should be removed
+pub mod recorder {
+    pub use self::Row::*;
+
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
+    pub enum Row {
+        TypeRef,
+        ModRef,
+        VarRef,
+        FnRef,
+    }
+}
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: &'l TyCtxt<'tcx>,
@@ -42,157 +61,9 @@ pub struct SaveContext<'l, 'tcx: 'l> {
     span_utils: SpanUtils<'l>,
 }
 
-pub struct CrateData {
-    pub name: String,
-    pub number: u32,
-}
-
-/// Data for any entity in the Rust language. The actual data contained varied
-/// with the kind of entity being queried. See the nested structs for details.
-#[derive(Debug)]
-pub enum Data {
-    /// Data for all kinds of functions and methods.
-    FunctionData(FunctionData),
-    /// Data for local and global variables (consts and statics), and fields.
-    VariableData(VariableData),
-    /// Data for modules.
-    ModData(ModData),
-    /// Data for Enums.
-    EnumData(EnumData),
-    /// Data for impls.
-    ImplData(ImplData),
-
-    /// Data for the use of some variable (e.g., the use of a local variable, which
-    /// will refere to that variables declaration).
-    VariableRefData(VariableRefData),
-    /// Data for a reference to a type or trait.
-    TypeRefData(TypeRefData),
-    /// Data for a reference to a module.
-    ModRefData(ModRefData),
-    /// Data about a function call.
-    FunctionCallData(FunctionCallData),
-    /// Data about a method call.
-    MethodCallData(MethodCallData),
-    /// Data about a macro use.
-    MacroUseData(MacroUseData),
-}
-
-/// Data for all kinds of functions and methods.
-#[derive(Debug)]
-pub struct FunctionData {
-    pub id: NodeId,
-    pub name: String,
-    pub qualname: String,
-    pub declaration: Option<DefId>,
-    pub span: Span,
-    pub scope: NodeId,
-}
-
-/// Data for local and global variables (consts and statics).
-#[derive(Debug)]
-pub struct VariableData {
-    pub id: NodeId,
-    pub name: String,
-    pub qualname: String,
-    pub span: Span,
-    pub scope: NodeId,
-    pub value: String,
-    pub type_value: String,
-}
-
-/// Data for modules.
-#[derive(Debug)]
-pub struct ModData {
-    pub id: NodeId,
-    pub name: String,
-    pub qualname: String,
-    pub span: Span,
-    pub scope: NodeId,
-    pub filename: String,
-}
-
-/// Data for enum declarations.
-#[derive(Debug)]
-pub struct EnumData {
-    pub id: NodeId,
-    pub value: String,
-    pub qualname: String,
-    pub span: Span,
-    pub scope: NodeId,
-}
-
-#[derive(Debug)]
-pub struct ImplData {
-    pub id: NodeId,
-    pub span: Span,
-    pub scope: NodeId,
-    // FIXME: I'm not really sure inline data is the best way to do this. Seems
-    // OK in this case, but generalising leads to returning chunks of AST, which
-    // feels wrong.
-    pub trait_ref: Option<TypeRefData>,
-    pub self_ref: Option<TypeRefData>,
-}
-
-/// Data for the use of some item (e.g., the use of a local variable, which
-/// will refer to that variables declaration (by ref_id)).
-#[derive(Debug)]
-pub struct VariableRefData {
-    pub name: String,
-    pub span: Span,
-    pub scope: NodeId,
-    pub ref_id: DefId,
-}
-
-/// Data for a reference to a type or trait.
-#[derive(Debug)]
-pub struct TypeRefData {
-    pub span: Span,
-    pub scope: NodeId,
-    pub ref_id: DefId,
-}
-
-/// Data for a reference to a module.
-#[derive(Debug)]
-pub struct ModRefData {
-    pub span: Span,
-    pub scope: NodeId,
-    pub ref_id: DefId,
-}
-
-/// Data about a function call.
-#[derive(Debug)]
-pub struct FunctionCallData {
-    pub span: Span,
-    pub scope: NodeId,
-    pub ref_id: DefId,
-}
-
-/// Data about a method call.
-#[derive(Debug)]
-pub struct MethodCallData {
-    pub span: Span,
-    pub scope: NodeId,
-    pub ref_id: Option<DefId>,
-    pub decl_id: Option<DefId>,
-}
-
-/// Data about a macro use.
-#[derive(Debug)]
-pub struct MacroUseData {
-    pub span: Span,
-    pub name: String,
-    // Because macro expansion happens before ref-ids are determined,
-    // we use the callee span to reference the associated macro definition.
-    pub callee_span: Span,
-    pub scope: NodeId,
-    pub imported: bool,
-}
-
 macro_rules! option_try(
     ($e:expr) => (match $e { Some(e) => e, None => return None })
 );
-
-
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn new(tcx: &'l TyCtxt<'tcx>,
@@ -325,7 +196,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             TypeRefData {
                                 span: sub_span.unwrap(),
                                 scope: parent,
-                                ref_id: id,
+                                ref_id: Some(id),
+                                qualname: String::new() // FIXME: generate the real qualname
                             }
                         });
                     }
@@ -340,7 +212,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                           .and_then(|tr| self.get_trait_ref_data(tr, parent));
 
                 filter!(self.span_utils, sub_span, typ.span, None);
-                Some(Data::ImplData(ImplData {
+                Some(Data::ImplData(ImplData2 {
                     id: item.id,
                     span: sub_span.unwrap(),
                     scope: parent,
@@ -477,7 +349,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Some(TypeRefData {
                 span: sub_span.unwrap(),
                 scope: parent,
-                ref_id: def_id,
+                ref_id: Some(def_id),
+                qualname: String::new() // FIXME: generate the real qualname
             })
         })
     }
@@ -518,7 +391,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                         Some(Data::TypeRefData(TypeRefData {
                             span: sub_span.unwrap(),
                             scope: self.enclosing_scope(expr.id),
-                            ref_id: def.did,
+                            ref_id: Some(def.did),
+                            qualname: String::new() // FIXME: generate the real qualname
                         }))
                     }
                     _ => {
@@ -586,8 +460,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::TyParam(_, _, def_id, _) => {
                 Some(Data::TypeRefData(TypeRefData {
                     span: sub_span.unwrap(),
-                    ref_id: def_id,
+                    ref_id: Some(def_id),
                     scope: self.enclosing_scope(id),
+                    qualname: String::new() // FIXME: generate the real qualname
                 }))
             }
             Def::Method(decl_id) => {
@@ -635,9 +510,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             Def::Mod(def_id) => {
                 Some(Data::ModRefData(ModRefData {
-                    ref_id: def_id,
+                    ref_id: Some(def_id),
                     span: sub_span.unwrap(),
                     scope: self.enclosing_scope(id),
+                    qualname: String::new() // FIXME: generate the real qualname
                 }))
             }
             _ => None,
@@ -708,6 +584,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                         callee_span: mac_span,
                                         scope: self.enclosing_scope(id),
                                         imported: true,
+                                        qualname: String::new()// FIXME: generate the real qualname
                                     });
         }
 
@@ -717,6 +594,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             callee_span: callee_span,
             scope: self.enclosing_scope(id),
             imported: false,
+            qualname: String::new() // FIXME: generate the real qualname
         })
     }
 
@@ -833,16 +711,16 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     out_name.push_str(&tcx.sess.opts.cg.extra_filename);
     out_name.push_str(".csv");
     root_path.push(&out_name);
-    let output_file = match File::create(&root_path) {
-        Ok(f) => box f,
-        Err(e) => {
-            let disp = root_path.display();
-            tcx.sess.fatal(&format!("Could not open {}: {}", disp, e));
-        }
-    };
+    let mut output_file = File::create(&root_path).unwrap_or_else(|e| {
+        let disp = root_path.display();
+        tcx.sess.fatal(&format!("Could not open {}: {}", disp, e));
+    });
     root_path.pop();
 
-    let mut visitor = dump_csv::DumpCsvVisitor::new(tcx, lcx, analysis, output_file);
+    let utils = SpanUtils::new(&tcx.sess);
+    let mut dumper = CsvDumper::new(&mut output_file, utils);
+    let mut visitor = DumpVisitor::new(tcx, lcx, analysis, &mut dumper);
+    // FIXME: we don't write anything!
 
     visitor.dump_crate_info(cratename, krate);
     visit::walk_crate(&mut visitor, krate);
