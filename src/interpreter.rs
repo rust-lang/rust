@@ -1,66 +1,19 @@
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
-use rustc::middle::ty::{self, TyCtxt};
 use rustc::middle::subst::{Subst, Substs};
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::util::nodemap::DefIdMap;
 use std::cell::RefCell;
-use std::error::Error;
-use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 
+use error::EvalResult;
 use memory::{FieldRepr, Memory, Pointer, Repr};
 use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = true;
-
-#[derive(Clone, Debug)]
-pub enum EvalError {
-    DanglingPointerDeref,
-    InvalidBool,
-    PointerOutOfBounds,
-    InvalidPointerAccess,
-}
-
-pub type EvalResult<T> = Result<T, EvalError>;
-
-impl Error for EvalError {
-    fn description(&self) -> &str {
-        match *self {
-            EvalError::DanglingPointerDeref => "dangling pointer was dereferenced",
-            EvalError::InvalidBool => "invalid boolean value read",
-            EvalError::PointerOutOfBounds => "pointer offset outside bounds of allocation",
-            EvalError::InvalidPointerAccess =>
-                "a raw memory access tried to access part of a pointer value as bytes",
-        }
-    }
-
-    fn cause(&self) -> Option<&Error> { None }
-}
-
-impl fmt::Display for EvalError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.description())
-    }
-}
-
-#[derive(Clone)]
-pub enum CachedMir<'mir, 'tcx: 'mir> {
-    Ref(&'mir mir::Mir<'tcx>),
-    Owned(Rc<mir::Mir<'tcx>>)
-}
-
-impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
-    type Target = mir::Mir<'tcx>;
-    fn deref(&self) -> &mir::Mir<'tcx> {
-        match *self {
-            CachedMir::Ref(r) => r,
-            CachedMir::Owned(ref rc) => &rc,
-        }
-    }
-}
 
 struct Interpreter<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
@@ -78,8 +31,8 @@ struct Interpreter<'a, 'tcx: 'a> {
     /// The virtual call stack.
     stack: Vec<Frame<'a, 'tcx>>,
 
-    /// Another stack containing the type substitutions for the current function invocation. Exists
-    /// separately from `stack` because it must contain the `Substs` for a function while
+    /// Another stack containing the type substitutions for the current function invocation. It
+    /// exists separately from `stack` because it must contain the `Substs` for a function while
     /// *creating* the `Frame` for that same function.
     substs_stack: Vec<&'tcx Substs<'tcx>>,
 }
@@ -107,6 +60,12 @@ struct Frame<'a, 'tcx: 'a> {
     temp_offset: usize,
 }
 
+#[derive(Clone)]
+enum CachedMir<'mir, 'tcx: 'mir> {
+    Ref(&'mir mir::Mir<'tcx>),
+    Owned(Rc<mir::Mir<'tcx>>)
+}
+
 /// Represents the action to be taken in the main loop as a result of executing a terminator.
 enum TerminatorTarget {
     /// Make a local jump to the given block.
@@ -129,6 +88,46 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             stack: Vec::new(),
             substs_stack: Vec::new(),
         }
+    }
+
+    fn run(&mut self) -> EvalResult<()> {
+        use std::fmt::Debug;
+        fn print_trace<T: Debug>(t: &T, suffix: &'static str, indent: usize) {
+            if !TRACE_EXECUTION { return; }
+            for _ in 0..indent { print!("  "); }
+            println!("{:?}{}", t, suffix);
+        }
+
+        'outer: while !self.stack.is_empty() {
+            let mut current_block = self.current_frame().next_block;
+
+            loop {
+                print_trace(&current_block, ":", self.stack.len());
+                let current_mir = self.current_frame().mir.clone(); // Cloning a reference.
+                let block_data = current_mir.basic_block_data(current_block);
+
+                for stmt in &block_data.statements {
+                    print_trace(stmt, "", self.stack.len() + 1);
+                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
+                    try!(self.eval_assignment(lvalue, rvalue));
+                }
+
+                let terminator = block_data.terminator();
+                print_trace(terminator, "", self.stack.len() + 1);
+
+                match try!(self.eval_terminator(terminator)) {
+                    TerminatorTarget::Block(block) => current_block = block,
+                    TerminatorTarget::Return => {
+                        self.pop_stack_frame();
+                        self.substs_stack.pop();
+                        continue 'outer;
+                    }
+                    TerminatorTarget::Call => continue 'outer,
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, args: &[mir::Operand<'tcx>],
@@ -170,74 +169,6 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn pop_stack_frame(&mut self) {
         let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         // TODO(tsion): Deallocate local variables.
-    }
-
-    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
-        match self.tcx.map.as_local_node_id(def_id) {
-            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
-            None => {
-                let mut mir_cache = self.mir_cache.borrow_mut();
-                if let Some(mir) = mir_cache.get(&def_id) {
-                    return CachedMir::Owned(mir.clone());
-                }
-
-                use rustc::middle::cstore::CrateStore;
-                let cs = &self.tcx.sess.cstore;
-                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap();
-                let cached = Rc::new(mir);
-                mir_cache.insert(def_id, cached.clone());
-                CachedMir::Owned(cached)
-            }
-        }
-    }
-
-    fn run(&mut self) -> EvalResult<()> {
-        fn print_indent(n: usize) {
-            for _ in 0..n {
-                print!("  ");
-            }
-        }
-
-        'outer: while !self.stack.is_empty() {
-            let mut current_block = self.current_frame().next_block;
-
-            loop {
-                if TRACE_EXECUTION {
-                    print_indent(self.stack.len());
-                    println!("{:?}:", current_block);
-                }
-
-                let current_mir = self.current_frame().mir.clone(); // Cloning a reference.
-                let block_data = current_mir.basic_block_data(current_block);
-
-                for stmt in &block_data.statements {
-                    if TRACE_EXECUTION {
-                        print_indent(self.stack.len() + 1);
-                        println!("{:?}", stmt);
-                    }
-                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                    try!(self.eval_assignment(lvalue, rvalue));
-                }
-
-                let terminator = block_data.terminator();
-                if TRACE_EXECUTION {
-                    print_indent(self.stack.len() + 1);
-                    println!("{:?}", terminator);
-                }
-
-                match try!(self.eval_terminator(terminator)) {
-                    TerminatorTarget::Block(block) => current_block = block,
-                    TerminatorTarget::Return => {
-                        self.pop_stack_frame();
-                        self.substs_stack.pop();
-                        continue 'outer;
-                    }
-                    TerminatorTarget::Call => continue 'outer,
-                }
-            }
-        }
-
-        Ok(())
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<TerminatorTarget> {
@@ -417,9 +348,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         let ptr = match *lvalue {
             ReturnPointer =>
                 frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => frame.arg_ptr(i),
-            Var(i) => frame.var_ptr(i),
-            Temp(i) => frame.temp_ptr(i),
+            Arg(i) => frame.locals[i as usize],
+            Var(i) => frame.locals[frame.var_offset + i as usize],
+            Temp(i) => frame.locals[frame.temp_offset + i as usize],
 
             Projection(ref proj) => {
                 let (base_ptr, base_repr) = try!(self.eval_lvalue(&proj.base));
@@ -560,19 +491,34 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn current_frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
+
+    fn load_mir(&self, def_id: DefId) -> CachedMir<'a, 'tcx> {
+        match self.tcx.map.as_local_node_id(def_id) {
+            Some(node_id) => CachedMir::Ref(self.mir_map.map.get(&node_id).unwrap()),
+            None => {
+                let mut mir_cache = self.mir_cache.borrow_mut();
+                if let Some(mir) = mir_cache.get(&def_id) {
+                    return CachedMir::Owned(mir.clone());
+                }
+
+                use rustc::middle::cstore::CrateStore;
+                let cs = &self.tcx.sess.cstore;
+                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap();
+                let cached = Rc::new(mir);
+                mir_cache.insert(def_id, cached.clone());
+                CachedMir::Owned(cached)
+            }
+        }
+    }
 }
 
-impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
-    fn arg_ptr(&self, i: u32) -> Pointer {
-        self.locals[i as usize]
-    }
-
-    fn var_ptr(&self, i: u32) -> Pointer {
-        self.locals[self.var_offset + i as usize]
-    }
-
-    fn temp_ptr(&self, i: u32) -> Pointer {
-        self.locals[self.temp_offset + i as usize]
+impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
+    type Target = mir::Mir<'tcx>;
+    fn deref(&self) -> &mir::Mir<'tcx> {
+        match *self {
+            CachedMir::Ref(r) => r,
+            CachedMir::Owned(ref rc) => &rc,
+        }
     }
 }
 

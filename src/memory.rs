@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::collections::Bound::{Included, Excluded};
 use std::ptr;
 
-use interpreter::{EvalError, EvalResult};
+use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
 const POINTER_SIZE: usize = 8;
