@@ -121,8 +121,27 @@ impl<'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn report_cast_error<'a>(&self, fcx: &FnCtxt<'a, 'tcx>,
+    fn report_cast_error<'a>(&self,
+                             fcx: &FnCtxt<'a, 'tcx>,
                              e: CastError) {
+        // As a heuristic, don't report errors if there are unresolved
+        // inference variables floating around AND we've already
+        // reported some errors in this fn. It happens often that those
+        // inference variables are unresolved precisely *because* of
+        // the errors we've already reported. See #31997.
+        //
+        // Note: it's kind of annoying that we need this. Fallback is
+        // modified to push all unresolved inference variables to
+        // ty-err, but it's STILL possible to see fallback for
+        // integral/float variables, because those cannot be unified
+        // with ty-error.
+        if
+            fcx.infcx().is_tainted_by_errors() &&
+            (self.cast_ty.has_infer_types() || self.expr_ty.has_infer_types())
+        {
+            return;
+        }
+
         match e {
             CastError::NeedViaPtr |
             CastError::NeedViaThinPtr |

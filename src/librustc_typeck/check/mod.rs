@@ -1240,6 +1240,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     {
         self.normalize_associated_type(span, trait_ref, item_name)
     }
+
+    fn set_tainted_by_errors(&self) {
+        self.infcx().set_tainted_by_errors()
+    }
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -1771,16 +1775,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn default_type_parameters(&self) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+
+        // Defaulting inference variables becomes very dubious if we have
+        // encountered type-checking errors. Therefore, if we think we saw
+        // some errors in this function, just resolve all uninstanted type
+        // varibles to TyError.
+        if self.infcx().is_tainted_by_errors() {
+            for ty in &self.infcx().unsolved_variables() {
+                if let ty::TyInfer(_) = self.infcx().shallow_resolve(ty).sty {
+                    debug!("default_type_parameters: defaulting `{:?}` to error", ty);
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.err);
+                }
+            }
+            return;
+        }
+
         for ty in &self.infcx().unsolved_variables() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
+                debug!("default_type_parameters: defaulting `{:?}` to `()` because it diverges",
+                       resolved);
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
             } else {
                 match self.infcx().type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
+                        debug!("default_type_parameters: defaulting `{:?}` to `i32`",
+                               resolved);
                         demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
                     },
                     UnconstrainedFloat => {
+                        debug!("default_type_parameters: defaulting `{:?}` to `f32`",
+                               resolved);
                         demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
                     }
                     Neither => { }
@@ -3232,6 +3257,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Find the relevant variant
         let def = lookup_full_def(tcx, path.span, expr.id);
         if def == Def::Err {
+            fcx.infcx().set_tainted_by_errors();
             check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
             return;
         }
@@ -3435,6 +3461,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                    expr.span,
                                    id);
               } else {
+                  fcx.infcx().set_tainted_by_errors();
                   fcx.write_ty(id, fcx.tcx().types.err);
               }
           }
@@ -4408,8 +4435,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Def::ForeignMod(..) |
         Def::Local(..) |
         Def::Label(..) |
-        Def::Upvar(..) |
+        Def::Upvar(..) => {
+            segment_spaces = vec![None; segments.len()];
+        }
+
         Def::Err => {
+            fcx.infcx().set_tainted_by_errors();
             segment_spaces = vec![None; segments.len()];
         }
     }
