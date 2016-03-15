@@ -5,6 +5,7 @@ sudo: false
 script:
  - python util/update_lints.py -c
  - cargo build --features debugging
+ - rm -rf target/ Cargo.lock
  - cargo test --features debugging
 
  # only test regex_macros if it compiles

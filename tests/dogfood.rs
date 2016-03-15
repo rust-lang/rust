@@ -1,7 +1,11 @@
-extern crate compiletest_rs as compiletest;
+#![feature(test)]
 
-use std::path::Path;
+extern crate compiletest_rs as compiletest;
+extern crate test;
+
 use std::env::var;
+use std::path::PathBuf;
+use test::TestPaths;
 
 #[test]
 fn dogfood() {
@@ -20,5 +24,10 @@ fn dogfood() {
 
     config.mode = cfg_mode;
 
-    compiletest::runtest::run(config, &Path::new("src/lib.rs"));
+    let paths = TestPaths {
+        base: PathBuf::new(),
+        file: PathBuf::from("src/lib.rs"),
+        relative_dir: PathBuf::new(),
+    };
+    compiletest::runtest::run(config, &paths);
 }
