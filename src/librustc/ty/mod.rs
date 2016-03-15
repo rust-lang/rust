@@ -514,15 +514,16 @@ bitflags! {
         const HAS_SELF           = 1 << 1,
         const HAS_TY_INFER       = 1 << 2,
         const HAS_RE_INFER       = 1 << 3,
-        const HAS_RE_EARLY_BOUND = 1 << 4,
-        const HAS_FREE_REGIONS   = 1 << 5,
-        const HAS_TY_ERR         = 1 << 6,
-        const HAS_PROJECTION     = 1 << 7,
-        const HAS_TY_CLOSURE     = 1 << 8,
+        const HAS_RE_SKOL        = 1 << 4,
+        const HAS_RE_EARLY_BOUND = 1 << 5,
+        const HAS_FREE_REGIONS   = 1 << 6,
+        const HAS_TY_ERR         = 1 << 7,
+        const HAS_PROJECTION     = 1 << 8,
+        const HAS_TY_CLOSURE     = 1 << 9,
 
         // true if there are "names" of types and regions and so forth
         // that are local to a particular fn
-        const HAS_LOCAL_NAMES   = 1 << 9,
+        const HAS_LOCAL_NAMES    = 1 << 10,
 
         // Present if the type belongs in a local type context.
         // Only set for TyInfer other than Fresh.
