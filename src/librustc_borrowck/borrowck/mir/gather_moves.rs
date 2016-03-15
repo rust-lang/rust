@@ -20,36 +20,43 @@ use std::collections::hash_map::Entry;
 use std::fmt;
 use std::iter;
 use std::ops::Index;
-use std::usize;
 
 use super::dataflow::BitDenotation;
 use super::abs_domain::{AbstractElem, Lift};
 
-macro_rules! new_index {
-    ($Index:ident, $INVALID_INDEX:ident) => {
-        #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-        pub struct $Index(usize);
+// This submodule holds some newtype'd Index wrappers that are using
+// NonZero to ensure that Option<Index> occupies only a single word.
+// They are in a submodule to impose privacy restrictions; namely, to
+// ensure that other code does not accidentally access `index.0`
+// (which is likely to yield a subtle off-by-one error).
+mod indexes {
+    use core::nonzero::NonZero;
 
-        const $INVALID_INDEX: $Index = $Index(usize::MAX);
+    macro_rules! new_index {
+        ($Index:ident) => {
+            #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+            pub struct $Index(NonZero<usize>);
 
-        impl $Index {
-            pub fn idx(&self) -> Option<usize> {
-                if *self == $INVALID_INDEX {
-                    None
-                } else {
-                    Some(self.0)
+            impl $Index {
+                pub fn new(idx: usize) -> Self {
+                    unsafe { $Index(NonZero::new(idx + 1)) }
+                }
+                pub fn idx(&self) -> usize {
+                    *self.0 - 1
                 }
             }
         }
     }
+
+    /// Index into MovePathData.move_paths
+    new_index!(MovePathIndex);
+
+    /// Index into MoveData.moves.
+    new_index!(MoveOutIndex);
 }
 
-/// Index into MovePathData.move_paths
-new_index!(MovePathIndex, INVALID_MOVE_PATH_INDEX);
-
-/// Index into MoveData.moves.
-new_index!(MoveOutIndex, INVALID_MOVE_OUT_INDEX);
-
+pub use self::indexes::MovePathIndex;
+pub use self::indexes::MoveOutIndex;
 
 /// `MovePath` is a canonicalized representation of a path that is
 /// moved or assigned to.
@@ -65,9 +72,9 @@ new_index!(MoveOutIndex, INVALID_MOVE_OUT_INDEX);
 /// they both have the MovePath representing `x` as their parent.
 #[derive(Clone)]
 pub struct MovePath<'tcx> {
-    pub next_sibling: MovePathIndex,
-    pub first_child: MovePathIndex,
-    pub parent: MovePathIndex,
+    pub next_sibling: Option<MovePathIndex>,
+    pub first_child: Option<MovePathIndex>,
+    pub parent: Option<MovePathIndex>,
     pub lvalue: Lvalue<'tcx>,
 }
 
@@ -76,9 +83,9 @@ pub struct MovePath<'tcx> {
 /// children of each path.
 #[derive(Clone)]
 struct PreMovePath<'tcx> {
-    pub next_sibling: MovePathIndex,
-    pub first_child: Cell<MovePathIndex>,
-    pub parent: MovePathIndex,
+    pub next_sibling: Option<MovePathIndex>,
+    pub first_child: Cell<Option<MovePathIndex>>,
+    pub parent: Option<MovePathIndex>,
     pub lvalue: Lvalue<'tcx>,
 }
 
@@ -96,14 +103,14 @@ impl<'tcx> PreMovePath<'tcx> {
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(w, "MovePath {{"));
-        if self.parent != INVALID_MOVE_PATH_INDEX {
-            try!(write!(w, " parent: {:?},", self.parent));
+        if let Some(parent) = self.parent {
+            try!(write!(w, " parent: {:?},", parent));
         }
-        if self.first_child != INVALID_MOVE_PATH_INDEX {
-            try!(write!(w, " first_child: {:?},", self.first_child));
+        if let Some(first_child) = self.first_child {
+            try!(write!(w, " first_child: {:?},", first_child));
         }
-        if self.next_sibling != INVALID_MOVE_PATH_INDEX {
-            try!(write!(w, " next_sibling: {:?}", self.next_sibling));
+        if let Some(next_sibling) = self.next_sibling {
+            try!(write!(w, " next_sibling: {:?}", next_sibling));
         }
         write!(w, " lvalue: {:?} }}", self.lvalue)
     }
@@ -147,8 +154,7 @@ pub struct PathMap {
 impl Index<MovePathIndex> for PathMap {
     type Output = [MoveOutIndex];
     fn index(&self, index: MovePathIndex) -> &Self::Output {
-        assert!(index != INVALID_MOVE_PATH_INDEX);
-        &self.map[index.0]
+        &self.map[index.idx()]
     }
 }
 
@@ -168,7 +174,7 @@ pub struct MoveOut {
 
 impl fmt::Debug for MoveOut {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        write!(fmt, "p{}@{:?}", self.path.0, self.source)
+        write!(fmt, "p{}@{:?}", self.path.idx(), self.source)
     }
 }
 
@@ -194,13 +200,13 @@ pub struct MovePathData<'tcx> {
 impl<'tcx> Index<MovePathIndex> for MovePathData<'tcx> {
     type Output = MovePath<'tcx>;
     fn index(&self, i: MovePathIndex) -> &MovePath<'tcx> {
-        &self.move_paths[i.idx().unwrap()]
+        &self.move_paths[i.idx()]
     }
 }
 
-/// MovePathRevIndex maps from a uint in an lvalue-category to the
+/// MovePathInverseMap maps from a uint in an lvalue-category to the
 /// MovePathIndex for the MovePath for that lvalue.
-type MovePathRevIndex = Vec<MovePathIndex>;
+type MovePathInverseMap = Vec<Option<MovePathIndex>>;
 
 struct MovePathDataBuilder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
@@ -210,9 +216,9 @@ struct MovePathDataBuilder<'a, 'tcx: 'a> {
 
 /// Tables mapping from an l-value to its MovePathIndex.
 pub struct MovePathLookup<'tcx> {
-    vars: MovePathRevIndex,
-    temps: MovePathRevIndex,
-    args: MovePathRevIndex,
+    vars: MovePathInverseMap,
+    temps: MovePathInverseMap,
+    args: MovePathInverseMap,
     statics: FnvHashMap<DefId, MovePathIndex>,
     return_ptr: Option<MovePathIndex>,
 
@@ -254,7 +260,7 @@ enum LookupKind { Generate, Reuse }
 struct Lookup<T>(LookupKind, T);
 
 impl Lookup<MovePathIndex> {
-    fn idx(&self) -> usize { (self.1).0 }
+    fn idx(&self) -> usize { (self.1).idx() }
 }
 
 impl<'tcx> MovePathLookup<'tcx> {
@@ -266,28 +272,31 @@ impl<'tcx> MovePathLookup<'tcx> {
             statics: Default::default(),
             return_ptr: None,
             projections: vec![],
-            next_index: MovePathIndex(0),
+            next_index: MovePathIndex::new(0),
         }
     }
 
     fn next_index(next: &mut MovePathIndex) -> MovePathIndex {
         let i = *next;
-        *next = MovePathIndex(i.0 + 1);
+        *next = MovePathIndex::new(i.idx() + 1);
         i
     }
 
-    fn lookup_or_generate(vec: &mut Vec<MovePathIndex>,
+    fn lookup_or_generate(vec: &mut Vec<Option<MovePathIndex>>,
                           idx: u32,
                           next_index: &mut MovePathIndex) -> Lookup<MovePathIndex> {
         let idx = idx as usize;
-        vec.fill_to_with(idx, INVALID_MOVE_PATH_INDEX);
+        vec.fill_to_with(idx, None);
         let entry = &mut vec[idx];
-        if *entry == INVALID_MOVE_PATH_INDEX {
-            let i = Self::next_index(next_index);
-            *entry = i;
-            Lookup(LookupKind::Generate, i)
-        } else {
-            Lookup(LookupKind::Reuse, *entry)
+        match *entry {
+            None => {
+                let i = Self::next_index(next_index);
+                *entry = Some(i);
+                Lookup(LookupKind::Generate, i)
+            }
+            Some(entry_idx) => {
+                Lookup(LookupKind::Reuse, entry_idx)
+            }
         }
     }
 
@@ -342,8 +351,8 @@ impl<'tcx> MovePathLookup<'tcx> {
                    base: MovePathIndex) -> Lookup<MovePathIndex> {
         let MovePathLookup { ref mut projections,
                              ref mut next_index, .. } = *self;
-        projections.fill_to(base.0);
-        match projections[base.0].entry(proj.elem.lift()) {
+        projections.fill_to(base.idx());
+        match projections[base.idx()].entry(proj.elem.lift()) {
             Entry::Occupied(ent) => {
                 Lookup(LookupKind::Reuse, *ent.get())
             }
@@ -362,14 +371,14 @@ impl<'tcx> MovePathLookup<'tcx> {
     // unknown l-value; it will simply panic.
     pub fn find(&self, lval: &Lvalue<'tcx>) -> MovePathIndex {
         match *lval {
-            Lvalue::Var(var_idx) => self.vars[var_idx as usize],
-            Lvalue::Temp(temp_idx) => self.temps[temp_idx as usize],
-            Lvalue::Arg(arg_idx) => self.args[arg_idx as usize],
+            Lvalue::Var(var_idx) => self.vars[var_idx as usize].unwrap(),
+            Lvalue::Temp(temp_idx) => self.temps[temp_idx as usize].unwrap(),
+            Lvalue::Arg(arg_idx) => self.args[arg_idx as usize].unwrap(),
             Lvalue::Static(ref def_id) => self.statics[def_id],
             Lvalue::ReturnPointer => self.return_ptr.unwrap(),
             Lvalue::Projection(ref proj) => {
                 let base_index = self.find(&proj.base);
-                self.projections[base_index.0 as usize][&proj.elem.lift()]
+                self.projections[base_index.idx()][&proj.elem.lift()]
             }
         }
     }
@@ -418,8 +427,8 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
             match *lval {
                 Lvalue::Var(_) | Lvalue::Temp(_) | Lvalue::Arg(_) |
                 Lvalue::Static(_) | Lvalue::ReturnPointer => {
-                    sibling = INVALID_MOVE_PATH_INDEX;
-                    parent = INVALID_MOVE_PATH_INDEX;
+                    sibling = None;
+                    parent = None;
                 }
                 Lvalue::Projection(ref proj) => {
                     // Here, install new MovePath as new first_child.
@@ -428,14 +437,15 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
 
                     // Note: `parent` previously allocated (Projection
                     // case of match above established this).
-                    parent = self.move_path_for(&proj.base);
+                    let idx = self.move_path_for(&proj.base);
+                    parent = Some(idx);
 
                     pre_move_paths = self.pre_move_paths.borrow_mut();
-                    let parent_move_path = &mut pre_move_paths[parent.0];
+                    let parent_move_path = &mut pre_move_paths[idx.idx()];
 
                     // At last: Swap in the new first_child.
                     sibling = parent_move_path.first_child.get();
-                    parent_move_path.first_child.set(mpi);
+                    parent_move_path.first_child.set(Some(mpi));
                 }
             };
 
@@ -443,7 +453,7 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
                 next_sibling: sibling,
                 parent: parent,
                 lvalue: lval.clone(),
-                first_child: Cell::new(INVALID_MOVE_PATH_INDEX),
+                first_child: Cell::new(None),
             };
 
             pre_move_paths.push(move_path);
@@ -610,8 +620,8 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
         let mut seen: Vec<_> = move_paths.iter().map(|_| false).collect();
         for (j, &MoveOut { ref path, ref source }) in moves.iter().enumerate() {
             debug!("MovePathData moves[{}]: MoveOut {{ path: {:?} = {:?}, source: {:?} }}",
-                   j, path, move_paths[path.0], source);
-            seen[path.0] = true;
+                   j, path, move_paths[path.idx()], source);
+            seen[path.idx()] = true;
         }
         for (j, path) in move_paths.iter().enumerate() {
             if !seen[j] {
@@ -664,11 +674,11 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
             return;
         }
         let i = source.index;
-        let index = MoveOutIndex(self.moves.len());
+        let index = MoveOutIndex::new(self.moves.len());
 
         let path = builder.move_path_for(lval);
         self.moves.push(MoveOut { path: path, source: source.clone() });
-        self.path_map.fill_to(path.0);
+        self.path_map.fill_to(path.idx());
 
         debug!("ctxt: {:?} add consume of lval: {:?} \
                 at index: {:?} \
@@ -676,12 +686,12 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
                 to loc_map for loc: {:?}",
                stmt_kind, lval, index, path, source);
 
-        debug_assert!(path.0 < self.path_map.len());
+        debug_assert!(path.idx() < self.path_map.len());
         // this is actually a questionable assert; at the very
         // least, incorrect input code can probably cause it to
         // fire.
-        assert!(self.path_map[path.0].iter().find(|idx| **idx == index).is_none());
-        self.path_map[path.0].push(index);
+        assert!(self.path_map[path.idx()].iter().find(|idx| **idx == index).is_none());
+        self.path_map[path.idx()].push(index);
 
         debug_assert!(i < self.loc_map_bb.len());
         debug_assert!(self.loc_map_bb[i].iter().find(|idx| **idx == index).is_none());

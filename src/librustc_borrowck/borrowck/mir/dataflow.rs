@@ -56,7 +56,7 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
                                      &move_data.move_paths,
                                      move_path_index,
                                      &|in_out, mpi| {
-                                         in_out.clear_bit(mpi.idx().unwrap());
+                                         in_out.clear_bit(mpi.idx());
                                      });
             },
         };
@@ -109,7 +109,7 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
                                              move_paths,
                                              move_path_index,
                                              &|kill_set, mpi| {
-                                                 kill_set.set_bit(mpi.idx().unwrap());
+                                                 kill_set.set_bit(mpi.idx());
                                              });
                     }
                 }
@@ -124,7 +124,7 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
         }
 
         fn zero_to_one(gen_set: &mut [usize], move_index: MoveOutIndex) {
-            let retval = gen_set.set_bit(move_index.idx().unwrap());
+            let retval = gen_set.set_bit(move_index.idx());
             assert!(retval);
         }
     }
@@ -137,8 +137,6 @@ fn on_all_children_bits<Each>(set: &mut [usize],
                               each_child: &Each)
     where Each: Fn(&mut [usize], MoveOutIndex)
 {
-    assert!(move_path_index.idx().is_some());
-
     // 1. invoke `each_child` callback for all moves that directly
     //    influence path for `move_path_index`
     for move_index in &path_map[move_path_index] {
@@ -150,10 +148,10 @@ fn on_all_children_bits<Each>(set: &mut [usize],
     //
     // (Unnamed children are irrelevant to dataflow; by
     // definition they have no associated moves.)
-    let mut child_index = move_paths[move_path_index].first_child;
-    while let Some(_) = child_index.idx() {
+    let mut next_child_index = move_paths[move_path_index].first_child;
+    while let Some(child_index) = next_child_index {
         on_all_children_bits(set, path_map, move_paths, child_index, each_child);
-        child_index = move_paths[child_index].next_sibling;
+        next_child_index = move_paths[child_index].next_sibling;
     }
 }
 
