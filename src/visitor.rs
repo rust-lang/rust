@@ -21,8 +21,7 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::rewrite_macro;
-use items::{rewrite_static, rewrite_associated_static, rewrite_associated_type,
-            rewrite_type_alias, format_impl, format_trait};
+use items::{rewrite_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
 
 pub struct FmtVisitor<'a> {
     pub parse_session: &'a ParseSess,
@@ -267,7 +266,7 @@ impl<'a> FmtVisitor<'a> {
                                              item.ident,
                                              ty,
                                              mutability,
-                                             expr,
+                                             Some(expr),
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
@@ -277,7 +276,7 @@ impl<'a> FmtVisitor<'a> {
                                              item.ident,
                                              ty,
                                              ast::Mutability::Immutable,
-                                             expr,
+                                             Some(expr),
                                              &self.get_context());
                 self.push_rewrite(item.span, rewrite);
             }
@@ -315,14 +314,14 @@ impl<'a> FmtVisitor<'a> {
         }
 
         match ti.node {
-            ast::TraitItemKind::Const(ref ty, ref expr) => {
-                let rewrite = rewrite_associated_static("const",
-                                                        ast::Visibility::Inherited,
-                                                        ti.ident,
-                                                        ty,
-                                                        ast::Mutability::Immutable,
-                                                        expr,
-                                                        &self.get_context());
+            ast::TraitItemKind::Const(ref ty, ref expr_opt) => {
+                let rewrite = rewrite_static("const",
+                                             ast::Visibility::Inherited,
+                                             ti.ident,
+                                             ty,
+                                             ast::Mutability::Immutable,
+                                             expr_opt.as_ref(),
+                                             &self.get_context());
                 self.push_rewrite(ti.span, rewrite);
             }
             ast::TraitItemKind::Method(ref sig, None) => {
@@ -338,8 +337,7 @@ impl<'a> FmtVisitor<'a> {
                               ti.id);
             }
             ast::TraitItemKind::Type(ref type_param_bounds, _) => {
-                let rewrite = rewrite_associated_type("type",
-                                                      ti.ident,
+                let rewrite = rewrite_associated_type(ti.ident,
                                                       None,
                                                       Some(type_param_bounds),
                                                       &self.get_context(),
@@ -368,13 +366,12 @@ impl<'a> FmtVisitor<'a> {
                                              ii.ident,
                                              ty,
                                              ast::Mutability::Immutable,
-                                             &expr,
+                                             Some(expr),
                                              &self.get_context());
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Type(ref ty) => {
-                let rewrite = rewrite_associated_type("type",
-                                                      ii.ident,
+                let rewrite = rewrite_associated_type(ii.ident,
                                                       Some(ty),
                                                       None,
                                                       &self.get_context(),

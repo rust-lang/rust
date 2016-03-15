@@ -618,10 +618,6 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         result.push_str(&header);
 
-        // TODO: Add max_width checking
-        // let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
-        // let indent = offset + result.len();
-
         let body_lo = context.codemap.span_after(item.span, "{");
 
         let generics_str = try_opt!(rewrite_generics(context,
@@ -636,8 +632,10 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                             type_param_bounds,
                                                             offset,
                                                             context.config.max_width));
-
-        if offset.width() + result.len() + trait_bound_str.len() > context.config.max_width {
+        // If the trait, generics, and trait bound cannot fit on the same line,
+        // put the trait bounds on an indented new line
+        if offset.width() + last_line_width(&result) + trait_bound_str.len() >
+           context.config.ideal_width {
             result.push('\n');
             let width = context.block_indent.width() + context.config.tab_spaces;
             let trait_indent = Indent::new(0, width);
@@ -645,19 +643,39 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         }
         result.push_str(&trait_bound_str);
 
-        let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
+        let has_body = !trait_items.is_empty();
+
+        let where_density = if (context.config.where_density == Density::Compressed &&
+                                (!result.contains('\n') ||
+                                 context.config.fn_args_layout == StructLitStyle::Block)) ||
+                               (context.config.fn_args_layout == StructLitStyle::Block &&
+                                result.is_empty()) ||
+                               (context.config.where_density == Density::CompressedIfEmpty &&
+                                !has_body &&
+                                !result.contains('\n')) {
+            Density::Compressed
+        } else {
+            Density::Tall
+        };
+
+        let where_budget = try_opt!(context.config
+                                           .max_width
+                                           .checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
                                                              context.config,
                                                              context.config.item_brace_style,
                                                              context.block_indent,
                                                              where_budget,
-                                                             context.config.where_density,
+                                                             where_density,
                                                              "{",
-                                                             context.config.where_trailing_comma,
+                                                             has_body,
                                                              None));
+        // If the where clause cannot fit on the same line,
+        // put the where clause on a new line
         if !where_clause_str.contains('\n') &&
-           result.len() + where_clause_str.len() + offset.width() > context.config.max_width {
+           last_line_width(&result) + where_clause_str.len() + offset.width() >
+           context.config.ideal_width {
             result.push('\n');
             let width = context.block_indent.width() + context.config.tab_spaces - 1;
             let where_indent = Indent::new(0, width);
@@ -672,7 +690,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             }
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
-                if !where_clause_str.is_empty() {
+                if !where_clause_str.is_empty() &&
+                   (trait_items.len() > 0 || result.contains('\n')) {
                     result.push('\n');
                     result.push_str(&offset.to_string(context.config));
                 } else {
@@ -704,6 +723,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             result.push_str(&trim_newlines(&visitor.buffer.to_string().trim()));
             result.push('\n');
             result.push_str(&outer_indent_str);
+        } else if result.contains('\n') {
+            result.push('\n');
         }
 
         result.push('}');
@@ -1000,7 +1021,7 @@ pub fn rewrite_static(prefix: &str,
                       ident: ast::Ident,
                       ty: &ast::Ty,
                       mutability: ast::Mutability,
-                      expr: &ast::Expr,
+                      expr_opt: Option<&ptr::P<ast::Expr>>,
                       context: &RewriteContext)
                       -> Option<String> {
     let prefix = format!("{}{} {}{}: ",
@@ -1013,21 +1034,26 @@ pub fn rewrite_static(prefix: &str,
                                      context.config.max_width - context.block_indent.width() -
                                      prefix.len() - 2,
                                      context.block_indent));
-    let lhs = format!("{}{} =", prefix, ty_str);
 
-    // 1 = ;
-    let remaining_width = context.config.max_width - context.block_indent.width() - 1;
-    rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent).map(|s| s + ";")
+    if let Some(ref expr) = expr_opt {
+        let lhs = format!("{}{} =", prefix, ty_str);
+        // 1 = ;
+        let remaining_width = context.config.max_width - context.block_indent.width() - 1;
+        rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent)
+            .map(|s| s + ";")
+    } else {
+        let lhs = format!("{}{};", prefix, ty_str);
+        Some(lhs)
+    }
 }
 
-pub fn rewrite_associated_type(prefix: &str,
-                               ident: ast::Ident,
+pub fn rewrite_associated_type(ident: ast::Ident,
                                ty_opt: Option<&ptr::P<ast::Ty>>,
                                ty_param_bounds_opt: Option<&ast::TyParamBounds>,
                                context: &RewriteContext,
                                indent: Indent)
                                -> Option<String> {
-    let prefix = format!("{} {}", prefix, ident);
+    let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
         let bounds: &[_] = &ty_param_bounds.as_slice();
@@ -1055,37 +1081,6 @@ pub fn rewrite_associated_type(prefix: &str,
         Some(format!("{} = {};", prefix, ty_str))
     } else {
         Some(format!("{}{};", prefix, type_bounds_str))
-    }
-}
-
-pub fn rewrite_associated_static(prefix: &str,
-                                 vis: ast::Visibility,
-                                 ident: ast::Ident,
-                                 ty: &ast::Ty,
-                                 mutability: ast::Mutability,
-                                 expr_opt: &Option<ptr::P<ast::Expr>>,
-                                 context: &RewriteContext)
-                                 -> Option<String> {
-    let prefix = format!("{}{} {}{}: ",
-                         format_visibility(vis),
-                         prefix,
-                         format_mutability(mutability),
-                         ident);
-    // 2 = " =".len()
-    let ty_str = try_opt!(ty.rewrite(context,
-                                     context.config.max_width - context.block_indent.width() -
-                                     prefix.len() - 2,
-                                     context.block_indent));
-
-    if let &Some(ref expr) = expr_opt {
-        let lhs = format!("{}{} =", prefix, ty_str);
-        // 1 = ;
-        let remaining_width = context.config.max_width - context.block_indent.width() - 1;
-        rewrite_assign_rhs(context, lhs, expr, remaining_width, context.block_indent)
-            .map(|s| s + ";")
-    } else {
-        let lhs = format!("{}{};", prefix, ty_str);
-        Some(lhs)
     }
 }
 

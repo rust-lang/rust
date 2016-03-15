@@ -43,3 +43,13 @@ trait Foo { type Bar: Baz;}
 trait ConstCheck<T>:Foo   where   T: Baz { 
         const   J:   i32;
 }
+
+trait Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttt<T> 
+    where T: Foo {}
+
+trait Ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt<T> where T: Foo {}
+
+trait FooBar<T> : Tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt where J: Bar { fn test(); }
+
+trait WhereList<T, J> where T: Foo, J: Bar {}
+
