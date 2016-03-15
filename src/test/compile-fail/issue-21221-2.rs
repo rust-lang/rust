@@ -28,3 +28,4 @@ struct Foo;
 impl T for Foo { }
 //~^ ERROR trait `T` is not in scope
 //~| HELP you can to import it into scope: `use foo::bar::T;`.
+//~| HELP run `rustc --explain E0405` to see a detailed explanation

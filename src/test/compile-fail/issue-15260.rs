@@ -25,6 +25,7 @@ fn main() {
 
     let Foo {
         a, //~ NOTE field `a` previously bound here
+        //~^ NOTE field `a` previously bound here
         a: _, //~ ERROR field `a` bound multiple times in the pattern
         a: x //~ ERROR field `a` bound multiple times in the pattern
     } = Foo { a: 29 };

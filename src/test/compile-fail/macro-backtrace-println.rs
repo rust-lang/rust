@@ -22,7 +22,8 @@ macro_rules! myprint {
 
 macro_rules! myprintln {
     ($fmt:expr) => (myprint!(concat!($fmt, "\n"))); //~ ERROR invalid reference to argument `0`
-                                                    //~^ NOTE in this expansion of
+                                                    //~^ NOTE in this expansion of myprint!
+                                                    //~^^ NOTE in this expansion of concat!
 }
 
 fn main() {

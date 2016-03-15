@@ -17,6 +17,7 @@ fn a() {
     let mut vec = [box 1, box 2, box 3];
     match vec {
         [box ref _a, _, _] => {
+        //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
         }
     }
@@ -27,6 +28,7 @@ fn b() {
     let vec: &mut [Box<isize>] = &mut vec;
     match vec {
         [_b..] => {
+        //~^ borrow of `vec[..]` occurs here
             vec[0] = box 4; //~ ERROR cannot assign
         }
     }
@@ -48,6 +50,7 @@ fn c() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
+    //~^ NOTE attempting to move value to here
 }
 
 fn d() {
@@ -59,6 +62,7 @@ fn d() {
         _ => {}
     }
     let a = vec[0]; //~ ERROR cannot move out
+    //~^ NOTE attempting to move value to here
 }
 
 fn e() {

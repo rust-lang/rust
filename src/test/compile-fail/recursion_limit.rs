@@ -43,4 +43,15 @@ fn main() {
     is_send::<A>();
     //~^ ERROR overflow evaluating
     //~| NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
+    //~| NOTE required because it appears within the type `A`
+    //~| NOTE required because it appears within the type `B`
+    //~| NOTE required because it appears within the type `C`
+    //~| NOTE required because it appears within the type `D`
+    //~| NOTE required because it appears within the type `E`
+    //~| NOTE required because it appears within the type `F`
+    //~| NOTE required because it appears within the type `G`
+    //~| NOTE required because it appears within the type `H`
+    //~| NOTE required because it appears within the type `I`
+    //~| NOTE required because it appears within the type `J`
+    //~| NOTE required by `is_send`
 }
