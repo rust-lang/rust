@@ -78,6 +78,9 @@ impl<'a> ImportDirective<'a> {
         };
         if let GlobImport = self.subclass {
             modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
+        } else if self.is_public && binding.is_extern_crate() {
+            // `pub` single imports of private extern crates are public (see #31362).
+            modifiers = modifiers | DefModifiers::PUBLIC;
         }
 
         NameBinding {
