@@ -604,6 +604,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 }
 
 /// Return the pre-expansion span if is this comes from an expansion of the macro `name`.
+/// See also `is_direct_expn_of`.
 pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> {
     loop {
         let span_name_span = cx.tcx
@@ -616,6 +617,25 @@ pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> 
             None => return None,
             Some((_, new_span)) => span = new_span,
         }
+    }
+}
+
+/// Return the pre-expansion span if is this directly comes from an expansion of the macro `name`.
+/// The difference with `is_expn_of` is that in
+/// ```rust,ignore
+/// foo!(bar!(42));
+/// ```
+/// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only `bar!` by
+/// `is_direct_expn_of`.
+pub fn is_direct_expn_of(cx: &LateContext, span: Span, name: &str) -> Option<Span> {
+    let span_name_span = cx.tcx
+                           .sess
+                           .codemap()
+                           .with_expn_info(span.expn_id, |expn| expn.map(|ei| (ei.callee.name(), ei.call_site)));
+
+    match span_name_span {
+        Some((mac_name, new_span)) if mac_name.as_str() == name => Some(new_span),
+        _ => None,
     }
 }
 
