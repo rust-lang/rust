@@ -622,7 +622,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         // let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
         // let indent = offset + result.len();
 
-        let body_lo = span_after(item.span, "{", context.codemap);
+        let body_lo = context.codemap.span_after(item.span, "{");
 
         let generics_str = try_opt!(rewrite_generics(context,
                                                      generics,
