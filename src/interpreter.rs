@@ -62,15 +62,37 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
     }
 }
 
+struct Interpreter<'a, 'tcx: 'a> {
+    /// The results of the type checker, from rustc.
+    tcx: &'a TyCtxt<'tcx>,
+
+    /// A mapping from NodeIds to Mir, from rustc. Only contains MIR for crate-local items.
+    mir_map: &'a MirMap<'tcx>,
+
+    /// A local cache from DefIds to Mir for non-crate-local items.
+    mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
+
+    /// The virtual memory system.
+    memory: Memory,
+
+    /// The virtual call stack.
+    stack: Vec<Frame<'a, 'tcx>>,
+
+    /// Another stack containing the type substitutions for the current function invocation. Exists
+    /// separately from `stack` because it must contain the `Substs` for a function while
+    /// *creating* the `Frame` for that same function.
+    substs_stack: Vec<&'tcx Substs<'tcx>>,
+}
+
 /// A stack frame.
 struct Frame<'a, 'tcx: 'a> {
     /// The MIR for the function called on this frame.
     mir: CachedMir<'a, 'tcx>,
 
-    /// The block in the MIR this frame will execute once a fn call returns back to this frame.
+    /// The block this frame will execute when a function call returns back to this frame.
     next_block: mir::BasicBlock,
 
-    /// A pointer for writing the return value of the current call, if it's not a diverging call.
+    /// A pointer for writing the return value of the current call if it's not a diverging call.
     return_ptr: Option<Pointer>,
 
     /// The list of locals for the current function, stored in order as
@@ -85,27 +107,16 @@ struct Frame<'a, 'tcx: 'a> {
     temp_offset: usize,
 }
 
-impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
-    fn arg_ptr(&self, i: u32) -> Pointer {
-        self.locals[i as usize]
-    }
+/// Represents the action to be taken in the main loop as a result of executing a terminator.
+enum TerminatorTarget {
+    /// Make a local jump to the given block.
+    Block(mir::BasicBlock),
 
-    fn var_ptr(&self, i: u32) -> Pointer {
-        self.locals[self.var_offset + i as usize]
-    }
+    /// Start executing from the new current frame. (For function calls.)
+    Call,
 
-    fn temp_ptr(&self, i: u32) -> Pointer {
-        self.locals[self.temp_offset + i as usize]
-    }
-}
-
-struct Interpreter<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
-    mir_map: &'a MirMap<'tcx>,
-    mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
-    memory: Memory,
-    stack: Vec<Frame<'a, 'tcx>>,
-    substs_stack: Vec<&'tcx Substs<'tcx>>,
+    /// Stop executing the current frame and resume the previous frame.
+    Return,
 }
 
 impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
@@ -195,74 +206,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     try!(self.eval_assignment(lvalue, rvalue));
                 }
 
-                if TRACE_EXECUTION { println!("{:?}", block_data.terminator()); }
-
-                use rustc::mir::repr::Terminator::*;
-                match *block_data.terminator() {
-                    Return => break,
-
-                    Goto { target } => current_block = target,
-
-                    If { ref cond, targets: (then_target, else_target) } => {
-                        let (cond_ptr, _) = try!(self.eval_operand(cond));
-                        let cond_val = try!(self.memory.read_bool(cond_ptr));
-                        current_block = if cond_val { then_target } else { else_target };
-                    }
-
-                    SwitchInt { ref discr, ref values, ref targets, .. } => {
-                        let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
-                        let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
-
-                        // Branch to the `otherwise` case by default, if no match is found.
-                        current_block = targets[targets.len() - 1];
-
-                        for (index, val_const) in values.iter().enumerate() {
-                            let ptr = try!(self.const_to_ptr(val_const));
-                            let val = try!(self.memory.read_primval(ptr, &discr_repr));
-                            if discr_val == val {
-                                current_block = targets[index];
-                                break;
-                            }
-                        }
-                    }
-
-                    Switch { ref discr, ref targets, .. } => {
-                        let (adt_ptr, adt_repr) = try!(self.eval_lvalue(discr));
-                        let discr_repr = match adt_repr {
-                            Repr::Sum { ref discr, .. } => discr,
-                            _ => panic!("attmpted to switch on non-sum type"),
-                        };
-                        let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
-                        current_block = targets[discr_val.to_int() as usize];
-                    }
-
-                    Call { ref func, ref args, ref destination, .. } => {
-                        let mut return_ptr = None;
-                        if let Some((ref lv, target)) = *destination {
-                            self.current_frame_mut().next_block = target;
-                            return_ptr = Some(try!(self.eval_lvalue(lv)).0)
-                        }
-
-                        let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
-
-                        match func_ty.sty {
-                            ty::TyFnDef(def_id, substs, _) => {
-                                let mir = self.load_mir(def_id);
-                                self.substs_stack.push(substs);
-                                try!(self.push_stack_frame(mir, args, return_ptr));
-                                continue 'outer;
-                            }
-
-                            _ => panic!("can't handle callee of type {:?}", func_ty),
-                        }
-                    }
-
-                    Drop { target, .. } => {
-                        // TODO: Handle destructors and dynamic drop.
-                        current_block = target;
-                    }
-
-                    Resume => unimplemented!(),
+                let terminator = block_data.terminator();
+                if TRACE_EXECUTION { println!("{:?}", terminator); }
+                match try!(self.eval_terminator(terminator)) {
+                    TerminatorTarget::Block(block) => current_block = block,
+                    TerminatorTarget::Return => break,
+                    TerminatorTarget::Call => continue 'outer,
                 }
             }
 
@@ -271,6 +220,80 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
 
         Ok(())
+    }
+
+    fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<TerminatorTarget> {
+        use rustc::mir::repr::Terminator::*;
+        let target = match *terminator {
+            Return => TerminatorTarget::Return,
+
+            Goto { target } => TerminatorTarget::Block(target),
+
+            If { ref cond, targets: (then_target, else_target) } => {
+                let (cond_ptr, _) = try!(self.eval_operand(cond));
+                let cond_val = try!(self.memory.read_bool(cond_ptr));
+                TerminatorTarget::Block(if cond_val { then_target } else { else_target })
+            }
+
+            SwitchInt { ref discr, ref values, ref targets, .. } => {
+                let (discr_ptr, discr_repr) = try!(self.eval_lvalue(discr));
+                let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
+
+                // Branch to the `otherwise` case by default, if no match is found.
+                let mut target_block = targets[targets.len() - 1];
+
+                for (index, val_const) in values.iter().enumerate() {
+                    let ptr = try!(self.const_to_ptr(val_const));
+                    let val = try!(self.memory.read_primval(ptr, &discr_repr));
+                    if discr_val == val {
+                        target_block = targets[index];
+                        break;
+                    }
+                }
+
+                TerminatorTarget::Block(target_block)
+            }
+
+            Switch { ref discr, ref targets, .. } => {
+                let (adt_ptr, adt_repr) = try!(self.eval_lvalue(discr));
+                let discr_repr = match adt_repr {
+                    Repr::Sum { ref discr, .. } => discr,
+                    _ => panic!("attmpted to switch on non-sum type"),
+                };
+                let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
+                TerminatorTarget::Block(targets[discr_val.to_int() as usize])
+            }
+
+            Call { ref func, ref args, ref destination, .. } => {
+                let mut return_ptr = None;
+                if let Some((ref lv, target)) = *destination {
+                    self.current_frame_mut().next_block = target;
+                    return_ptr = Some(try!(self.eval_lvalue(lv)).0)
+                }
+
+                let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
+
+                match func_ty.sty {
+                    ty::TyFnDef(def_id, substs, _) => {
+                        let mir = self.load_mir(def_id);
+                        self.substs_stack.push(substs);
+                        try!(self.push_stack_frame(mir, args, return_ptr));
+                        TerminatorTarget::Call
+                    }
+
+                    _ => panic!("can't handle callee of type {:?}", func_ty),
+                }
+            }
+
+            Drop { target, .. } => {
+                // TODO: Handle destructors and dynamic drop.
+                TerminatorTarget::Block(target)
+            }
+
+            Resume => unimplemented!(),
+        };
+
+        Ok(target)
     }
 
     fn assign_to_product(&mut self, dest: Pointer, dest_repr: &Repr,
@@ -518,6 +541,20 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
     fn current_frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
+    }
+}
+
+impl<'a, 'tcx: 'a> Frame<'a, 'tcx> {
+    fn arg_ptr(&self, i: u32) -> Pointer {
+        self.locals[i as usize]
+    }
+
+    fn var_ptr(&self, i: u32) -> Pointer {
+        self.locals[self.var_offset + i as usize]
+    }
+
+    fn temp_ptr(&self, i: u32) -> Pointer {
+        self.locals[self.temp_offset + i as usize]
     }
 }
 
