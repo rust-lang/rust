@@ -25,6 +25,7 @@ fn main () {
         aa: 20, //~ ERROR structure `xc::B` has no field named `aa`
         //~^ HELP did you mean `a`?
         bb: 20, //~ ERROR structure `xc::B` has no field named `bb`
+        //~^ HELP did you mean `a`?
     };
     // local crate struct
     let l = A {

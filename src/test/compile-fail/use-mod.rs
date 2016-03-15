@@ -11,6 +11,7 @@
 use foo::bar::{
     self,
 //~^ ERROR `self` import can only appear once in the list
+//~^^ NOTE previous import of `bar` here
     Bar,
     self
 //~^ NOTE another `self` import appears here

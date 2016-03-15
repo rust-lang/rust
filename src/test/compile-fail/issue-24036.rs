@@ -14,17 +14,20 @@ fn closure_to_loc() {
     //~^ ERROR mismatched types
     //~| NOTE no two closures, even if identical, have the same type
     //~| HELP consider boxing your closure and/or using it as a trait object
+    //~| HELP run `rustc --explain E0308` to see a detailed explanation
 }
 
 fn closure_from_match() {
     let x = match 1usize {
         1 => |c| c + 1,
         2 => |c| c - 1,
+        //~^ NOTE match arm with an incompatible type
         _ => |c| c - 1
     };
-    //~^^^^^ ERROR match arms have incompatible types
+    //~^^^^^^ ERROR match arms have incompatible types
     //~| NOTE no two closures, even if identical, have the same type
     //~| HELP consider boxing your closure and/or using it as a trait object
+    //~| HELP run `rustc --explain E0308` to see a detailed explanation
 }
 
 fn main() { }
