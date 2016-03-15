@@ -107,41 +107,36 @@ pub fn some_ordering_collapsed(cx: &mut ExtCtxt,
 
 pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> P<Expr> {
-    let test_id = cx.ident_of("__test");
+    let test_id = cx.ident_of("cmp");
     let ordering = cx.path_global(span,
                                   cx.std_path(&["cmp", "Ordering", "Equal"]));
-    let ordering = cx.expr_path(ordering);
-    let equals_expr = cx.expr_some(span, ordering);
+    let ordering_expr = cx.expr_path(ordering.clone());
+    let equals_expr = cx.expr_some(span, ordering_expr);
 
     let partial_cmp_path = cx.std_path(&["cmp", "PartialOrd", "partial_cmp"]);
 
     /*
     Builds:
 
-    let __test = ::std::cmp::PartialOrd::partial_cmp(&self_field1, &other_field1);
-    if __test == ::std::option::Option::Some(::std::cmp::Ordering::Equal) {
-        let __test = ::std::cmp::PartialOrd::partial_cmp(&self_field2, &other_field2);
-        if __test == ::std::option::Option::Some(::std::cmp::Ordering::Equal) {
-            ...
-        } else {
-            __test
-        }
-    } else {
-        __test
+    match ::std::cmp::PartialOrd::partial_cmp(&self_field1, &other_field1) {
+        ::std::option::Option::Some(::std::cmp::Ordering::Equal) =>
+            match ::std::cmp::PartialOrd::partial_cmp(&self_field2, &other_field2) {
+                ::std::option::Option::Some(::std::cmp::Ordering::Equal) => {
+                    ...
+                }
+                cmp => cmp
+            },
+        cmp => cmp
     }
-
-    FIXME #6449: These `if`s could/should be `match`es.
     */
     cs_fold(
         // foldr nests the if-elses correctly, leaving the first field
         // as the outermost one, and the last as the innermost.
         false,
         |cx, span, old, self_f, other_fs| {
-            // let __test = new;
-            // if __test == Some(::std::cmp::Ordering::Equal) {
-            //    old
-            // } else {
-            //    __test
+            // match new {
+            //     Some(::std::cmp::Ordering::Equal) => old,
+            //     cmp => cmp
             // }
 
             let new = {
@@ -158,15 +153,17 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
                 cx.expr_call_global(span, partial_cmp_path.clone(), args)
             };
 
-            let assign = cx.stmt_let(span, false, test_id, new);
+            let eq_arm = cx.arm(span,
+                                vec![cx.pat_some(span,
+                                                 cx.pat_enum(span,
+                                                             ordering.clone(),
+                                                             vec![]))],
+                                old);
+            let neq_arm = cx.arm(span,
+                                 vec![cx.pat_ident(span, test_id)],
+                                 cx.expr_ident(span, test_id));
 
-            let cond = cx.expr_binary(span, BinOpKind::Eq,
-                                      cx.expr_ident(span, test_id),
-                                      equals_expr.clone());
-            let if_ = cx.expr_if(span,
-                                 cond,
-                                 old, Some(cx.expr_ident(span, test_id)));
-            cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
+            cx.expr_match(span, new, vec![eq_arm, neq_arm])
         },
         equals_expr.clone(),
         Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {

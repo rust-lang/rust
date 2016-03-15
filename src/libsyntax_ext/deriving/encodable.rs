@@ -88,6 +88,7 @@
 //! }
 //! ```
 
+use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -130,6 +131,8 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
         return;
     }
 
+    let typaram = &*deriving::hygienic_type_parameter(item, "__S");
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -142,18 +145,17 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                 name: "encode",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
-                    bounds: vec!(("__S", vec!(Path::new_(
-                                    vec!(krate, "Encoder"), None,
-                                    vec!(), true))))
+                    bounds: vec![(typaram,
+                                  vec![Path::new_(vec![krate, "Encoder"], None, vec!(), true)])]
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(Box::new(Literal(Path::new_local("__S"))),
+                args: vec!(Ptr(Box::new(Literal(Path::new_local(typaram))),
                             Borrowed(None, Mutability::Mutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
                     vec!(Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
-                        vec!["__S", "Error"], None, vec![], false
+                        vec![typaram, "Error"], None, vec![], false
                     )))),
                     true
                 )),
