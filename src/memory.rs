@@ -1,6 +1,7 @@
 use byteorder::{self, ByteOrder};
 use std::collections::{BTreeMap, HashMap};
 use std::collections::Bound::{Included, Excluded};
+use std::mem;
 use std::ptr;
 
 use error::{EvalError, EvalResult};
@@ -38,10 +39,8 @@ pub struct FieldRepr {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repr {
     Bool,
-    I8,
-    I16,
-    I32,
-    I64,
+    I8, I16, I32, I64,
+    U8, U16, U32, U64,
 
     /// The representation for product types including tuples, structs, and the contents of enum
     /// variants.
@@ -170,10 +169,14 @@ impl Memory {
     pub fn read_primval(&self, ptr: Pointer, repr: &Repr) -> EvalResult<PrimVal> {
         match *repr {
             Repr::Bool => self.read_bool(ptr).map(PrimVal::Bool),
-            Repr::I8 => self.read_i8(ptr).map(PrimVal::I8),
-            Repr::I16 => self.read_i16(ptr).map(PrimVal::I16),
-            Repr::I32 => self.read_i32(ptr).map(PrimVal::I32),
-            Repr::I64 => self.read_i64(ptr).map(PrimVal::I64),
+            Repr::I8   => self.read_i8(ptr).map(PrimVal::I8),
+            Repr::I16  => self.read_i16(ptr).map(PrimVal::I16),
+            Repr::I32  => self.read_i32(ptr).map(PrimVal::I32),
+            Repr::I64  => self.read_i64(ptr).map(PrimVal::I64),
+            Repr::U8   => self.read_u8(ptr).map(PrimVal::U8),
+            Repr::U16  => self.read_u16(ptr).map(PrimVal::U16),
+            Repr::U32  => self.read_u32(ptr).map(PrimVal::U32),
+            Repr::U64  => self.read_u64(ptr).map(PrimVal::U64),
             _ => panic!("primitive read of non-primitive: {:?}", repr),
         }
     }
@@ -181,10 +184,14 @@ impl Memory {
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<()> {
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
-            PrimVal::I8(n) => self.write_i8(ptr, n),
-            PrimVal::I16(n) => self.write_i16(ptr, n),
-            PrimVal::I32(n) => self.write_i32(ptr, n),
-            PrimVal::I64(n) => self.write_i64(ptr, n),
+            PrimVal::I8(n)   => self.write_i8(ptr, n),
+            PrimVal::I16(n)  => self.write_i16(ptr, n),
+            PrimVal::I32(n)  => self.write_i32(ptr, n),
+            PrimVal::I64(n)  => self.write_i64(ptr, n),
+            PrimVal::U8(n)   => self.write_u8(ptr, n),
+            PrimVal::U16(n)  => self.write_u16(ptr, n),
+            PrimVal::U32(n)  => self.write_u32(ptr, n),
+            PrimVal::U64(n)  => self.write_u64(ptr, n),
         }
     }
 
@@ -240,6 +247,44 @@ impl Memory {
         byteorder::NativeEndian::write_i64(bytes, n);
         Ok(())
     }
+
+    pub fn read_u8(&self, ptr: Pointer) -> EvalResult<u8> {
+        self.get_bytes(ptr, 1).map(|b| b[0] as u8)
+    }
+
+    pub fn write_u8(&mut self, ptr: Pointer, n: u8) -> EvalResult<()> {
+        self.get_bytes_mut(ptr, 1).map(|b| b[0] = n as u8)
+    }
+
+    pub fn read_u16(&self, ptr: Pointer) -> EvalResult<u16> {
+        self.get_bytes(ptr, 2).map(byteorder::NativeEndian::read_u16)
+    }
+
+    pub fn write_u16(&mut self, ptr: Pointer, n: u16) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 2));
+        byteorder::NativeEndian::write_u16(bytes, n);
+        Ok(())
+    }
+
+    pub fn read_u32(&self, ptr: Pointer) -> EvalResult<u32> {
+        self.get_bytes(ptr, 4).map(byteorder::NativeEndian::read_u32)
+    }
+
+    pub fn write_u32(&mut self, ptr: Pointer, n: u32) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 4));
+        byteorder::NativeEndian::write_u32(bytes, n);
+        Ok(())
+    }
+
+    pub fn read_u64(&self, ptr: Pointer) -> EvalResult<u64> {
+        self.get_bytes(ptr, 8).map(byteorder::NativeEndian::read_u64)
+    }
+
+    pub fn write_u64(&mut self, ptr: Pointer, n: u64) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, 8));
+        byteorder::NativeEndian::write_u64(bytes, n);
+        Ok(())
+    }
 }
 
 impl Allocation {
@@ -287,13 +332,31 @@ impl Pointer {
 }
 
 impl Repr {
+    // TODO(tsion): Choice is based on host machine's type size. Should this be how miri works?
+    pub fn isize() -> Self {
+        match mem::size_of::<isize>() {
+            4 => Repr::I32,
+            8 => Repr::I64,
+            _ => unimplemented!(),
+        }
+    }
+
+    // TODO(tsion): Choice is based on host machine's type size. Should this be how miri works?
+    pub fn usize() -> Self {
+        match mem::size_of::<isize>() {
+            4 => Repr::U32,
+            8 => Repr::U64,
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn size(&self) -> usize {
         match *self {
             Repr::Bool => 1,
-            Repr::I8 => 1,
-            Repr::I16 => 2,
-            Repr::I32 => 4,
-            Repr::I64 => 8,
+            Repr::I8  | Repr::U8  => 1,
+            Repr::I16 | Repr::U16 => 2,
+            Repr::I32 | Repr::U32 => 4,
+            Repr::I64 | Repr::U64 => 8,
             Repr::Product { size, .. } => size,
             Repr::Sum { ref discr, max_variant_size, .. } => discr.size() + max_variant_size,
             Repr::Pointer { .. } => POINTER_SIZE,

@@ -5,31 +5,29 @@ use memory::Repr;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PrimVal {
     Bool(bool),
-    I8(i8),
-    I16(i16),
-    I32(i32),
-    I64(i64),
+    I8(i8), I16(i16), I32(i32), I64(i64),
+    U8(u8), U16(u16), U32(u32), U64(u64),
 }
 
 impl PrimVal {
-    pub fn from_int(n: i64, repr: &Repr) -> Self {
+    pub fn from_usize(n: usize, repr: &Repr) -> Self {
         // TODO(tsion): Use checked casts.
         match *repr {
-            Repr::I8 => PrimVal::I8(n as i8),
-            Repr::I16 => PrimVal::I16(n as i16),
-            Repr::I32 => PrimVal::I32(n as i32),
-            Repr::I64 => PrimVal::I64(n),
-            _ => panic!("attempted to make integer primval from non-integer repr"),
+            Repr::U8  => PrimVal::U8(n as u8),
+            Repr::U16 => PrimVal::U16(n as u16),
+            Repr::U32 => PrimVal::U32(n as u32),
+            Repr::U64 => PrimVal::U64(n as u64),
+            _ => panic!("attempted to make usize primval from non-uint repr"),
         }
     }
 
-    pub fn to_int(self) -> i64 {
+    pub fn to_usize(self) -> usize {
         match self {
-            PrimVal::I8(n) => n as i64,
-            PrimVal::I16(n) => n as i64,
-            PrimVal::I32(n) => n as i64,
-            PrimVal::I64(n) => n,
-            _ => panic!("attempted to make integer from non-integer primval"),
+            PrimVal::U8(n)  => n as usize,
+            PrimVal::U16(n) => n as usize,
+            PrimVal::U32(n) => n as usize,
+            PrimVal::U64(n) => n as usize,
+            _ => panic!("attempted to make usize from non-uint primval"),
         }
     }
 }
@@ -65,10 +63,14 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {
 
     use self::PrimVal::*;
     match (left, right) {
-        (I8(l), I8(r)) => int_binops!(I8, l, r),
+        (I8(l),  I8(r))  => int_binops!(I8, l, r),
         (I16(l), I16(r)) => int_binops!(I16, l, r),
         (I32(l), I32(r)) => int_binops!(I32, l, r),
         (I64(l), I64(r)) => int_binops!(I64, l, r),
+        (U8(l),  U8(r))  => int_binops!(U8, l, r),
+        (U16(l), U16(r)) => int_binops!(U16, l, r),
+        (U32(l), U32(r)) => int_binops!(U32, l, r),
+        (U64(l), U64(r)) => int_binops!(U64, l, r),
         _ => unimplemented!(),
     }
 }
@@ -78,14 +80,18 @@ pub fn unary_op(un_op: mir::UnOp, val: PrimVal) -> PrimVal {
     use self::PrimVal::*;
     match (un_op, val) {
         (Not, Bool(b)) => Bool(!b),
-        (Not, I8(n)) => I8(!n),
-        (Neg, I8(n)) => I8(-n),
+        (Not, I8(n))  => I8(!n),
+        (Neg, I8(n))  => I8(-n),
         (Not, I16(n)) => I16(!n),
         (Neg, I16(n)) => I16(-n),
         (Not, I32(n)) => I32(!n),
         (Neg, I32(n)) => I32(-n),
         (Not, I64(n)) => I64(!n),
         (Neg, I64(n)) => I64(-n),
+        (Not, U8(n))  => U8(!n),
+        (Not, U16(n)) => U16(!n),
+        (Not, U32(n)) => U32(!n),
+        (Not, U64(n)) => U64(!n),
         _ => unimplemented!(),
     }
 }

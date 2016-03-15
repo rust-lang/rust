@@ -210,7 +210,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     _ => panic!("attmpted to switch on non-sum type"),
                 };
                 let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
-                TerminatorTarget::Block(targets[discr_val.to_int() as usize])
+                TerminatorTarget::Block(targets[discr_val.to_usize()])
             }
 
             Call { ref func, ref args, ref destination, .. } => {
@@ -298,7 +298,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         ty::AdtKind::Enum => match dest_repr {
                             Repr::Sum { ref discr, ref variants, .. } => {
                                 if discr.size() > 0 {
-                                    let discr_val = PrimVal::from_int(variant_idx as i64, discr);
+                                    let discr_val = PrimVal::from_usize(variant_idx, discr);
                                     try!(self.memory.write_primval(dest, discr_val));
                                 }
                                 self.assign_to_product(
@@ -442,11 +442,17 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match ty.subst(self.tcx, self.current_substs()).sty {
             ty::TyBool => Repr::Bool,
 
-            ty::TyInt(IntTy::Is) => unimplemented!(),
-            ty::TyInt(IntTy::I8) => Repr::I8,
+            ty::TyInt(IntTy::Is)  => Repr::isize(),
+            ty::TyInt(IntTy::I8)  => Repr::I8,
             ty::TyInt(IntTy::I16) => Repr::I16,
             ty::TyInt(IntTy::I32) => Repr::I32,
             ty::TyInt(IntTy::I64) => Repr::I64,
+
+            ty::TyUint(UintTy::Us)  => Repr::usize(),
+            ty::TyUint(UintTy::U8)  => Repr::U8,
+            ty::TyUint(UintTy::U16) => Repr::U16,
+            ty::TyUint(UintTy::U32) => Repr::U32,
+            ty::TyUint(UintTy::U64) => Repr::U64,
 
             ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
 
@@ -456,13 +462,13 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let discr = if num_variants <= 1 {
                     Repr::Product { size: 0, fields: vec![] }
                 } else if num_variants <= 1 << 8 {
-                    Repr::I8
+                    Repr::U8
                 } else if num_variants <= 1 << 16 {
-                    Repr::I16
+                    Repr::U16
                 } else if num_variants <= 1 << 32 {
-                    Repr::I32
+                    Repr::U32
                 } else {
-                    Repr::I64
+                    Repr::U64
                 };
 
                 let variants: Vec<Repr> = adt_def.variants.iter().map(|v| {
