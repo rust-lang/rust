@@ -81,6 +81,7 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
         }
 
         let mut cmd = Command::new(&rustdoc);
+        build.add_rustc_lib_path(&compiler, &mut cmd);
         cmd.arg("--html-after-content").arg(&footer)
            .arg("--html-before-content").arg(&version_info)
            .arg("--html-in-header").arg(&favicon)
@@ -107,14 +108,13 @@ pub fn standalone(build: &Build, stage: u32, host: &str, out: &Path) {
 pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} std ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let out_dir = build.stage_out(stage, host, Mode::Libstd)
+    let out_dir = build.stage_out(&compiler, Mode::Libstd)
                        .join(host).join("doc");
     let rustdoc = build.rustdoc(&compiler);
 
     build.clear_if_dirty(&out_dir, &rustdoc);
 
-    let mut cargo = build.cargo(stage, &compiler, Mode::Libstd, Some(host),
-                                "doc");
+    let mut cargo = build.cargo(&compiler, Mode::Libstd, host, "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
          .arg("--features").arg(build.std_features());
@@ -125,14 +125,13 @@ pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
 pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} compiler ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let out_dir = build.stage_out(stage, host, Mode::Librustc)
+    let out_dir = build.stage_out(&compiler, Mode::Librustc)
                        .join(host).join("doc");
     let rustdoc = build.rustdoc(&compiler);
     if !up_to_date(&rustdoc, &out_dir.join("rustc/index.html")) {
         t!(fs::remove_dir_all(&out_dir));
     }
-    let mut cargo = build.cargo(stage, &compiler, Mode::Librustc, Some(host),
-                                "doc");
+    let mut cargo = build.cargo(&compiler, Mode::Librustc, host, "doc");
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/rustc/Cargo.toml"))
          .arg("--features").arg(build.rustc_features());
@@ -143,7 +142,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
 pub fn error_index(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} error index ({})", stage, host);
     let compiler = Compiler::new(stage, host);
-    let mut index = Command::new(build.tool(&compiler, "error_index_generator"));
+    let mut index = build.tool_cmd(&compiler, "error_index_generator");
     index.arg("html");
     index.arg(out.join("error-index.html"));
 
