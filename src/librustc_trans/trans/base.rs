@@ -85,6 +85,7 @@ use trans::machine::{llalign_of_min, llsize_of, llsize_of_real};
 use trans::meth;
 use trans::mir;
 use trans::monomorphize::{self, Instance};
+use trans::symbol_names_test;
 use trans::tvec;
 use trans::type_::Type;
 use trans::type_of;
@@ -2758,6 +2759,8 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         }
 
         collector::print_collection_results(&ccx);
+
+        symbol_names_test::report_symbol_names(&ccx);
     }
 
     emit_link_guard_if_necessary(&shared_ccx);
