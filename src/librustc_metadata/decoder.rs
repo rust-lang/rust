@@ -1763,7 +1763,9 @@ pub fn closure_ty<'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: &TyCtxt<'tcx>)
         .parse_closure_ty()
 }
 
-fn def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
+pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
+    debug!("def_key: id={:?}", id);
+    let item_doc = cdata.lookup_item(id);
     match reader::maybe_get_doc(item_doc, tag_def_key) {
         Some(def_key_doc) => {
             let mut decoder = reader::Decoder::new(def_key_doc);

@@ -2222,11 +2222,14 @@ impl<'tcx> TyCtxt<'tcx> {
         self.with_path(id, |path| ast_map::path_to_string(path))
     }
 
+    /// Returns the `DefPath` of an item. Note that if `id` is not
+    /// local to this crate -- or is inlined into this crate -- the
+    /// result will be a non-local `DefPath`.
     pub fn def_path(&self, id: DefId) -> ast_map::DefPath {
         if id.is_local() {
             self.map.def_path(id)
         } else {
-            self.sess.cstore.def_path(id)
+            self.sess.cstore.relative_def_path(id)
         }
     }
 
@@ -2236,7 +2239,27 @@ impl<'tcx> TyCtxt<'tcx> {
         if let Some(id) = self.map.as_local_node_id(id) {
             self.map.with_path(id, f)
         } else {
-            f(self.sess.cstore.item_path(id).iter().cloned().chain(LinkedPath::empty()))
+            let mut path: Vec<_>;
+            if let Some(extern_crate) = self.sess.cstore.extern_crate(id.krate) {
+                if !extern_crate.direct {
+                    // this comes from some crate that we don't have a direct
+                    // path to; we'll settle for just prepending the name of
+                    // the crate.
+                    path = self.sess.cstore.extern_item_path(id)
+                } else {
+                    // start with the path to the extern crate, then
+                    // add the relative path to the actual item
+                    fn collector(elems: ast_map::PathElems) -> Vec<ast_map::PathElem> {
+                        elems.collect()
+                    }
+                    path = self.with_path(extern_crate.def_id, collector);
+                    path.extend(self.sess.cstore.relative_item_path(id));
+                }
+            } else {
+                // if this was injected, just make a path with name of crate
+                path = self.sess.cstore.extern_item_path(id);
+            }
+            f(path.iter().cloned().chain(LinkedPath::empty()))
         }
     }
 

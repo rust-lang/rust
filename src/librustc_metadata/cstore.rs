@@ -21,7 +21,7 @@ use index;
 use loader;
 
 use rustc::back::svh::Svh;
-use rustc::front::map as ast_map;
+use rustc::middle::cstore::{ExternCrate};
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
 use std::cell::{RefCell, Ref, Cell};
@@ -31,9 +31,7 @@ use flate::Bytes;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap;
-use syntax::parse::token;
 use syntax::parse::token::IdentInterner;
-use syntax::util::small_vector::SmallVector;
 
 pub use middle::cstore::{NativeLibraryKind, LinkagePreference};
 pub use middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
@@ -63,13 +61,16 @@ pub struct ImportedFileMap {
 
 pub struct crate_metadata {
     pub name: String,
-    pub local_path: RefCell<SmallVector<ast_map::PathElem>>,
-    pub local_def_path: RefCell<ast_map::DefPath>,
+
+    /// Information about the extern crate that caused this crate to
+    /// be loaded. If this is `None`, then the crate was injected
+    /// (e.g., by the allocator)
+    pub extern_crate: Cell<Option<ExternCrate>>,
+
     pub data: MetadataBlob,
     pub cnum_map: RefCell<cnum_map>,
     pub cnum: ast::CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
-    pub span: codemap::Span,
     pub staged_api: bool,
 
     pub index: index::Index,
@@ -265,50 +266,6 @@ impl crate_metadata {
             self.codemap_import_info.borrow()
         } else {
             filemaps
-        }
-    }
-
-    pub fn with_local_path<T, F>(&self, f: F) -> T
-        where F: Fn(&[ast_map::PathElem]) -> T
-    {
-        let cpath = self.local_path.borrow();
-        if cpath.is_empty() {
-            let name = ast_map::PathMod(token::intern(&self.name));
-            f(&[name])
-        } else {
-            f(cpath.as_slice())
-        }
-    }
-
-    pub fn update_local_path<'a, 'b>(&self, candidate: ast_map::PathElems<'a, 'b>) {
-        let mut cpath = self.local_path.borrow_mut();
-        let cap = cpath.len();
-        match cap {
-            0 => *cpath = candidate.collect(),
-            1 => (),
-            _ => {
-                let candidate: SmallVector<_> = candidate.collect();
-                if candidate.len() < cap {
-                    *cpath = candidate;
-                }
-            },
-        }
-    }
-
-    pub fn local_def_path(&self) -> ast_map::DefPath {
-        let local_def_path = self.local_def_path.borrow();
-        if local_def_path.is_empty() {
-            let name = ast_map::DefPathData::DetachedCrate(token::intern(&self.name));
-            vec![ast_map::DisambiguatedDefPathData { data: name, disambiguator: 0 }]
-        } else {
-            local_def_path.clone()
-        }
-    }
-
-    pub fn update_local_def_path(&self, candidate: ast_map::DefPath) {
-        let mut local_def_path = self.local_def_path.borrow_mut();
-        if local_def_path.is_empty() || candidate.len() < local_def_path.len() {
-            *local_def_path = candidate;
         }
     }
 
