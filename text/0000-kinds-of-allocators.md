@@ -360,9 +360,8 @@ impl<'a> Allocator for &'a DumbBumpPool {
         }
     }
 
-    unsafe fn dealloc(&mut self, _ptr: Address, _kind: &Self::Kind) -> Result<(), Self::Error> {
+    unsafe fn dealloc(&mut self, _ptr: Address, _kind: &Self::Kind) {
         // this bump-allocator just no-op's on dealloc
-        Ok(())
     }
 
     unsafe fn oom(&mut self) -> ! {
@@ -1092,13 +1091,6 @@ few motivating examples that *are* clearly feasible and useful.
    (In fact, most of the "Variations correspond to potentially
    unresolved questions.)
 
- * Should `dealloc` return a `Result` or not? (Under what
-   circumstances would we expect `dealloc` to fail in a manner worth
-   signalling? The main one I can think of is a transient failure,
-   which was in a previous version of the API but has since been removed.
-   Still, if errors *can* happen, maybe its best to provide *some* way
-   for a client to catch them and report them in context.)
-
  * Are the type definitions for `Size`, `Capacity`, `Alignment`, and
    `Address` an abuse of the `NonZero` type? (Or do we just need some
    constructor for `NonZero` that asserts that the input is non-zero)?
@@ -1772,17 +1764,7 @@ pub unsafe trait Allocator {
     /// `ptr` must have previously been provided via this allocator,
     /// and `kind` must *fit* the provided block (see above);
     /// otherwise yields undefined behavior.
-    ///
-    /// Returns `Err` only if deallocation fails in some fashion.
-    /// In this case callers must assume that ownership of the block has
-    /// been unrecoverably lost (memory may have been leaked).
-    ///
-    /// Note: Implementors are encouraged to avoid `Err`-failure from
-    /// `dealloc`; most memory allocation APIs do not support
-    /// signalling failure in their `free` routines, and clients are
-    /// likely to incorporate that assumption into their own code and
-    /// just `unwrap` the result of this call.
-    unsafe fn dealloc(&mut self, ptr: Address, kind: Kind) -> Result<(), Self::Error>;
+    unsafe fn dealloc(&mut self, ptr: Address, kind: Kind);
 
     /// Allocator-specific method for signalling an out-of-memory
     /// condition.
@@ -1913,22 +1895,7 @@ pub unsafe trait Allocator {
             let result = self.alloc(new_kind);
             if let Ok(new_ptr) = result {
                 ptr::copy(*ptr as *const u8, *new_ptr, cmp::min(*kind.size(), *new_kind.size()));
-                if let Err(_) = self.dealloc(ptr, kind) {
-                    // all we can do from the realloc abstraction
-                    // is either:
-                    //
-                    // 1. free the block we just finished copying
-                    //    into and pass the error up,
-                    // 2. panic (same as if we had called `unwrap`),
-                    // 3. try to dealloc again, or
-                    // 4. ignore the dealloc error.
-                    //
-                    // They are all terrible; (1.) and (2.) seem unjustifiable,
-                    // and (3.) seems likely to yield an infinite loop (unless
-                    // we add back in some notion of a transient error
-                    // into the API).
-                    // So we choose (4.): ignore the dealloc error.
-                }
+                self.dealloc(ptr, kind);
             }
             result
         }
@@ -1980,9 +1947,9 @@ pub unsafe trait Allocator {
     /// Deallocates a block suitable for holding an instance of `T`.
     ///
     /// Captures a common usage pattern for allocators.
-    unsafe fn dealloc_one<T>(&mut self, mut ptr: Unique<T>) -> Result<(), Self::Error> {
+    unsafe fn dealloc_one<T>(&mut self, mut ptr: Unique<T>) {
         let raw_ptr = NonZero::new(ptr.get_mut() as *mut T as *mut u8);
-        self.dealloc(raw_ptr, Kind::new::<T>().unwrap())
+        self.dealloc(raw_ptr, Kind::new::<T>().unwrap());
     }
 
     /// Allocates a block suitable for holding `n` instances of `T`.
@@ -2062,7 +2029,7 @@ pub unsafe trait Allocator {
     /// Otherwise yields undefined behavior.
     unsafe fn dealloc_unchecked(&mut self, ptr: Address, kind: Kind) {
         // (default implementation carries checks, but impl's are free to omit them.)
-        self.dealloc(ptr, kind).unwrap()
+        self.dealloc(ptr, kind).unwrap();
     }
 
     /// Returns a pointer suitable for holding data described by
