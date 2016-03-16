@@ -1118,6 +1118,11 @@ few motivating examples that *are* clearly feasible and useful.
    low-level allocators will behave well for large alignments.
    See https://github.com/rust-lang/rust/issues/30170
 
+ * Should `Allocator::oom` also take a `std::fmt::Arguments<'a>` parameter
+   so that clients can feed in context-specific information that is not
+   part of the original input `Layout` argument? (I have not done this
+   mainly because I do not want to introduce a dependency on `libstd`.)
+
 # Change History
 
 * Changed `fn usable_size` to return `(l, m)` rathern than just `m`.
@@ -1609,15 +1614,19 @@ pub trait AllocError {
     /// Construct an error that indicates operation failure due to
     /// invalid input values for the request.
     ///
-    /// This can be used, for example, to signal an overflow occurred
-    /// during arithmetic computation. (However, since overflows
-    /// frequently represent an allocation attempt that would exhaust
-    /// memory, clients are alternatively allowed to constuct an error
-    /// representing memory exhaustion in such scenarios.)
+    /// This can be used, for example, to signal that allocation of
+    /// a zero-sized type was requested.
+    ///
+    /// As another example, it might be used to signal that an overflow
+    /// occurred during arithmetic computation with the input. (However,
+    /// since overflows can also occur during large allocation requests
+    /// that would exhaust memory if arbitrary-precision arithmetic were
+    /// used, clients are alternatively allowed to constuct an error
+    /// representing memory exhaustion in this scenario.)
     fn invalid_input() -> Self;
 
     /// Returns true if the error is due to hitting some resource
-    /// limit or otherwise running out of memory. This condition
+    /// limit, or otherwise running out of memory. This condition
     /// serves as a hint that some series of deallocations *might*
     /// allow a subsequent reissuing of the original allocation
     /// request to succeed.
@@ -1626,23 +1635,27 @@ pub trait AllocError {
     /// e.g. usually when `malloc` returns `null`, it is because of
     /// hitting a user resource limit or system memory exhaustion.
     ///
-    /// Note that the resource exhaustion could be specific to the
+    /// Note that the resource exhaustion could be internal to the
     /// original allocator (i.e. the only way to free up memory is by
     /// deallocating memory attached to that allocator), or it could
-    /// be associated with some other state outside of the original
-    /// alloactor. The `AllocError` trait does not distinguish between
-    /// the two scenarios.
+    /// be associated with some other state external to the original
+    /// allocator (e.g. freeing up memory or reducing fragmentation
+    /// globally might allow a call to the system `malloc` to succeed).
+    /// The `AllocError` trait does not distinguish between the two
+    /// scenarios (but instances of the associated `Allocator::Error`
+    /// type might provide ways to distinguish them).
     ///
     /// Finally, error responses to allocation input requests that are
     /// *always* illegal for *any* allocator (e.g. zero-sized or
     /// arithmetic-overflowing requests) are allowed to respond `true`
-    /// here. (This is to allow `MemoryExhausted` as a valid error type
-    /// for an allocator that can handle all "sane" requests.)
+    /// here. (This is to allow `MemoryExhausted` as a valid
+    /// zero-sized error type for an allocator that can handle all
+    /// "sane" requests.)
     fn is_memory_exhausted(&self) -> bool;
 
     /// Returns true if the allocator is fundamentally incapable of
     /// satisfying the original request. This condition implies that
-    /// such an allocation request will never succeed on this
+    /// such an allocation request would never succeed on *this*
     /// allocator, regardless of environment, memory pressure, or
     /// other contextual condtions.
     ///
