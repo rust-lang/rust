@@ -803,25 +803,43 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
     let item_did = item_def_id(item_doc, cdata);
+    let parent_def_id = DefId {
+        krate: cdata.cnum,
+        index: def_key(cdata, id).parent.unwrap()
+    };
     let mut parent_path = item_path(item_doc);
     parent_path.pop();
     let mut parent_def_path = def_path(cdata, id);
     parent_def_path.pop();
     if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
-        let ii = decode_inlined_item(cdata, tcx, parent_path,
+        let ii = decode_inlined_item(cdata,
+                                     tcx,
+                                     parent_path,
                                      parent_def_path,
-                                     ast_doc, item_did);
+                                     parent_def_id,
+                                     ast_doc,
+                                     item_did);
         return FoundAst::Found(ii);
     } else if let Some(parent_did) = item_parent_item(cdata, item_doc) {
         // Remove the last element from the paths, since we are now
         // trying to inline the parent.
-        parent_path.pop();
-        parent_def_path.pop();
+        let grandparent_def_id = DefId {
+            krate: cdata.cnum,
+            index: def_key(cdata, parent_def_id.index).parent.unwrap()
+        };
+        let mut grandparent_path = parent_path;
+        grandparent_path.pop();
+        let mut grandparent_def_path = parent_def_path;
+        grandparent_def_path.pop();
         let parent_doc = cdata.lookup_item(parent_did.index);
         if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, tag_ast as usize) {
-            let ii = decode_inlined_item(cdata, tcx, parent_path,
-                                         parent_def_path,
-                                         ast_doc, parent_did);
+            let ii = decode_inlined_item(cdata,
+                                         tcx,
+                                         grandparent_path,
+                                         grandparent_def_path,
+                                         grandparent_def_id,
+                                         ast_doc,
+                                         parent_did);
             if let &InlinedItem::Item(ref i) = ii {
                 return FoundAst::FoundParent(parent_did, i);
             }

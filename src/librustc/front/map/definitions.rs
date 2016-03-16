@@ -60,13 +60,38 @@ pub struct DefData {
 }
 
 pub type DefPath = Vec<DisambiguatedDefPathData>;
+/// Root of an inlined item. We track the `DefPath` of the item within
+/// the original crate but also its def-id. This is kind of an
+/// augmented version of a `DefPath` that includes a `DefId`. This is
+/// all sort of ugly but the hope is that inlined items will be going
+/// away soon anyway.
+///
+/// Some of the constraints that led to the current approach:
+///
+/// - I don't want to have a `DefId` in the main `DefPath` because
+///   that gets serialized for incr. comp., and when reloaded the
+///   `DefId` is no longer valid. I'd rather maintain the invariant
+///   that every `DefId` is valid, and a potentially outdated `DefId` is
+///   represented as a `DefPath`.
+///   - (We don't serialize def-paths from inlined items, so it's ok to have one here.)
+/// - We need to be able to extract the def-id from inline items to
+///   make the symbol name. In theory we could retrace it from the
+///   data, but the metadata doesn't have the required indices, and I
+///   don't want to write the code to create one just for this.
+/// - It may be that we don't actually need `data` at all. We'll have
+///   to see about that.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct InlinedRootPath {
+    pub data: Vec<DisambiguatedDefPathData>,
+    pub def_id: DefId,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
     CrateRoot,
-    InlinedRoot(DefPath),
+    InlinedRoot(Box<InlinedRootPath>),
 
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
