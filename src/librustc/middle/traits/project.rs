@@ -885,19 +885,20 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
 
                 candidate_set.vec.push(ProjectionTyCandidate::Select);
             }
-            super::VtableImpl(impl_data) => {
+            super::VtableImpl(ref impl_data) if !selcx.projection_mode().is_any() => {
                 // We have to be careful when projecting out of an
                 // impl because of specialization. If we are not in
-                // trans, and the impl's type is declared as default,
-                // then we disable projection (even if the trait ref
-                // is fully monomorphic). In the case where trait ref
-                // is not fully monomorphic (i.e., includes type
-                // parameters), this is because those type parameters
-                // may ultimately be bound to types from other crates
-                // that may have specialized impls we can't see. In
-                // the case where the trait ref IS fully monomorphic,
-                // this is a policy decision that we made in the RFC
-                // in order to preserve flexibility for the crate that
+                // trans (i.e., projection mode is not "any"), and the
+                // impl's type is declared as default, then we disable
+                // projection (even if the trait ref is fully
+                // monomorphic). In the case where trait ref is not
+                // fully monomorphic (i.e., includes type parameters),
+                // this is because those type parameters may
+                // ultimately be bound to types from other crates that
+                // may have specialized impls we can't see. In the
+                // case where the trait ref IS fully monomorphic, this
+                // is a policy decision that we made in the RFC in
+                // order to preserve flexibility for the crate that
                 // defined the specializable impl to specialize later
                 // for existing types.
                 //
@@ -987,6 +988,11 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
                                           coherence checking, which is currently not supported.");
                 };
                 candidate_set.vec.extend(new_candidate);
+            }
+            super::VtableImpl(_) => {
+                // In trans mode, we can just project out of impls, no prob.
+                assert!(selcx.projection_mode().is_any());
+                candidate_set.vec.push(ProjectionTyCandidate::Select);
             }
             super::VtableParam(..) => {
                 // This case tell us nothing about the value of an
