@@ -1130,6 +1130,13 @@ few motivating examples that *are* clearly feasible and useful.
 * Removed `fn is_transient` from `trait AllocError`, and removed discussion
   of transient errors from the API.
 
+* Made `fn dealloc` method infallible (i.e. removed its `Result` return type).
+
+* Alpha-renamed `alloc::Kind` type to `alloc::Layout`, and made it non-`Copy`.
+
+* Revised `fn oom` method to take the `Self::Error` as an input (so that the
+  allocator can, indirectly, feed itself information about what went wrong).
+
 # Appendices
 
 ## Bibliography
