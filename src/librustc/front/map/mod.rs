@@ -19,7 +19,7 @@ use dep_graph::{DepGraph, DepNode};
 
 use middle::cstore::InlinedItem;
 use middle::cstore::InlinedItem as II;
-use middle::def_id::DefId;
+use middle::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
@@ -386,6 +386,15 @@ impl<'ast> Map<'ast> {
 
     pub fn krate(&self) -> &'ast Crate {
         self.forest.krate()
+    }
+
+    /// Get the attributes on the krate. This is preferable to
+    /// invoking `krate.attrs` because it registers a tighter
+    /// dep-graph access.
+    pub fn krate_attrs(&self) -> &'ast [ast::Attribute] {
+        let crate_root_def_id = DefId::local(CRATE_DEF_INDEX);
+        self.dep_graph.read(DepNode::Hir(crate_root_def_id));
+        &self.forest.krate.attrs
     }
 
     /// Retrieve the Node corresponding to `id`, panicking if it cannot
