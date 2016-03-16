@@ -42,6 +42,7 @@ use syntax::ast_util::{IdVisitingOperation};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::ptr::P;
+use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
@@ -203,8 +204,13 @@ pub trait CrateStore<'tcx> : Any {
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
-    fn crate_name(&self, cnum: ast::CrateNum) -> String;
+    /// The name of the crate as it is referred to in source code of the current
+    /// crate.
+    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString;
+    /// The name of the crate as it is stored in the crate's metadata.
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>;
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
@@ -236,7 +242,11 @@ pub trait CrateStore<'tcx> : Any {
     // utility functions
     fn metadata_filename(&self) -> &str;
     fn metadata_section_name(&self, target: &Target) -> &str;
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>;
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8>;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>;
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
@@ -378,8 +388,12 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
         { unimplemented!() }
-    fn crate_name(&self, cnum: ast::CrateNum) -> String { unimplemented!() }
+    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString {
+        unimplemented!()
+    }
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { unimplemented!() }
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
         { unimplemented!() }
@@ -419,8 +433,13 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // utility functions
     fn metadata_filename(&self) -> &str { unimplemented!() }
     fn metadata_section_name(&self, target: &Target) -> &str { unimplemented!() }
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
-        { unimplemented!() }
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8> {
+        unimplemented!()
+    }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
         { vec![] }
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource { unimplemented!() }

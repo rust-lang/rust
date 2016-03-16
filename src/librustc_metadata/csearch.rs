@@ -335,15 +335,26 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_crate_attributes(self.get_crate_data(cnum).data())
     }
 
-    fn crate_name(&self, cnum: ast::CrateNum) -> String
+    fn crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
     {
-        self.get_crate_data(cnum).name.clone()
+        token::intern_and_get_ident(&self.get_crate_data(cnum).name[..])
+    }
+
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
+    {
+        token::intern_and_get_ident(&self.get_crate_data(cnum).name())
     }
 
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
+    }
+
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> token::InternedString
+    {
+        let cdata = self.get_crate_data(cnum);
+        token::intern_and_get_ident(decoder::get_crate_disambiguator(cdata.data()))
     }
 
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
@@ -480,9 +491,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         loader::meta_section_name(target)
     }
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8>
     {
-        encoder::encoded_ty(tcx, ty)
+        encoder::encoded_ty(tcx, ty, def_id_to_string)
     }
 
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>

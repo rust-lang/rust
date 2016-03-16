@@ -29,8 +29,7 @@ pub use self::ValueOrigin::*;
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
-use back::link::mangle_exported_name;
-use back::{link, abi};
+use back::{link, abi, symbol_names};
 use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
@@ -78,6 +77,7 @@ use trans::expr;
 use trans::foreign;
 use trans::glue;
 use trans::intrinsic;
+use trans::link_guard;
 use trans::machine;
 use trans::machine::{llsize_of, llsize_of_real};
 use trans::meth;
@@ -2513,8 +2513,7 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                                                                 &item.attrs,
                                                                 llfn,
                                                                 empty_substs,
-                                                                item.id,
-                                                                None);
+                                                                item.id);
                     } else {
                         trans_fn(ccx,
                                  &decl,
@@ -2670,6 +2669,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
+            link_guard::insert_reference_to_link_guard(ccx, llbb);
             debuginfo::gdb::insert_reference_to_gdb_debug_scripts_section_global(ccx);
 
             let (start_fn, args) = if use_start_lang_item {
@@ -2733,16 +2733,17 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Use provided name
         Some(name) => name.to_string(),
         _ => {
-            let path = ccx.tcx().map.def_path_from_id(id);
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
+                let path = ccx.tcx().map.def_path_from_id(id);
                 path.last().unwrap().data.to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),
                     None => {
                         // Usual name mangling
-                        mangle_exported_name(ccx, path, ty, id)
+                        let def_id = ccx.tcx().map.local_def_id(id);
+                        symbol_names::exported_name(ccx, def_id, &[ty])
                     }
                 }
             }
@@ -2765,7 +2766,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val: id={} item={:?}", id, item);
     let val = match item {
         hir_map::NodeItem(i) => {
-            let ty = ccx.tcx().node_id_to_type(i.id);
+            let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(i.id));
             let sym = || exported_name(ccx, id, ty, &i.attrs);
 
             let v = match i.node {
@@ -2837,7 +2838,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match ni.node {
                 hir::ForeignItemFn(..) => {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
-                    let ty = ccx.tcx().node_id_to_type(ni.id);
+                    let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(ni.id));
                     let name = foreign::link_name(&ni);
                     foreign::register_foreign_item_fn(ccx, abi, ty, &name, &ni.attrs)
                 }
@@ -2855,7 +2856,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 v.node.data.fields()
             };
             assert!(!fields.is_empty());
-            let ty = ccx.tcx().node_id_to_type(id);
+            let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(id));
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);
             let sym = exported_name(ccx, id, ty, &enm.attrs);
@@ -2879,7 +2880,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             };
             let parent = ccx.tcx().map.get_parent(id);
             let struct_item = ccx.tcx().map.expect_item(parent);
-            let ty = ccx.tcx().node_id_to_type(ctor_id);
+            let ty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(ctor_id));
             let sym = exported_name(ccx, id, ty, &struct_item.attrs);
             let llfn = register_fn(ccx, struct_item.span, sym, ctor_id, ty);
             attributes::inline(llfn, attributes::InlineAttr::Hint);
@@ -2909,7 +2910,7 @@ fn register_method(ccx: &CrateContext,
                    attrs: &[ast::Attribute],
                    span: Span)
                    -> ValueRef {
-    let mty = ccx.tcx().node_id_to_type(id);
+    let mty = ccx.tcx().erase_regions(&ccx.tcx().node_id_to_type(id));
 
     let sym = exported_name(ccx, id, mty, &attrs);
 
@@ -3214,6 +3215,8 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         collector::print_collection_results(&ccx);
     }
 
+    emit_link_guard_if_necessary(&shared_ccx);
+
     for ccx in shared_ccx.iter() {
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
@@ -3274,6 +3277,8 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
     if sess.entry_fn.borrow().is_some() {
         reachable_symbols.push("main".to_string());
     }
+    reachable_symbols.push(link_guard::link_guard_name(&link_meta.crate_name,
+                                                       &link_meta.crate_hash));
 
     // For the purposes of LTO, we add to the reachable set all of the upstream
     // reachable extern fns. These functions are all part of the public ABI of
@@ -3314,6 +3319,24 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         metadata: metadata,
         reachable: reachable_symbols,
         no_builtins: no_builtins,
+    }
+}
+
+fn emit_link_guard_if_necessary(shared_ccx: &SharedCrateContext) {
+    let link_meta = shared_ccx.link_meta();
+    let link_guard_name = link_guard::link_guard_name(&link_meta.crate_name,
+                                                      &link_meta.crate_hash);
+    let link_guard_name = CString::new(link_guard_name).unwrap();
+
+    // Check if the link-guard has already been emitted in a codegen unit
+    let link_guard_already_emitted = shared_ccx.iter().any(|ccx| {
+        let link_guard = unsafe { llvm::LLVMGetNamedValue(ccx.llmod(),
+                                                          link_guard_name.as_ptr()) };
+        !link_guard.is_null()
+    });
+
+    if !link_guard_already_emitted {
+        link_guard::get_or_insert_link_guard(&shared_ccx.get_ccx(0));
     }
 }
 

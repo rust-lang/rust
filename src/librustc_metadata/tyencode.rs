@@ -37,7 +37,7 @@ use encoder;
 pub struct ctxt<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
     // Def -> str Callback:
-    pub ds: fn(DefId) -> String,
+    pub ds: fn(&TyCtxt<'tcx>, DefId) -> String,
     // The type context.
     pub tcx: &'a TyCtxt<'tcx>,
     pub abbrevs: &'a abbrev_map<'tcx>
@@ -99,7 +99,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             };
         }
         ty::TyEnum(def, substs) => {
-            write!(w, "t[{}|", (cx.ds)(def.did));
+            write!(w, "t[{}|", (cx.ds)(cx.tcx, def.did));
             enc_substs(w, cx, substs);
             write!(w, "]");
         }
@@ -137,7 +137,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         }
         ty::TyFnDef(def_id, substs, f) => {
             write!(w, "F");
-            write!(w, "{}|", (cx.ds)(def_id));
+            write!(w, "{}|", (cx.ds)(cx.tcx, def_id));
             enc_substs(w, cx, substs);
             enc_bare_fn_ty(w, cx, f);
         }
@@ -152,12 +152,12 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             write!(w, "p[{}|{}|{}]", idx, space.to_uint(), name);
         }
         ty::TyStruct(def, substs) => {
-            write!(w, "a[{}|", (cx.ds)(def.did));
+            write!(w, "a[{}|", (cx.ds)(cx.tcx, def.did));
             enc_substs(w, cx, substs);
             write!(w, "]");
         }
         ty::TyClosure(def, ref substs) => {
-            write!(w, "k[{}|", (cx.ds)(def));
+            write!(w, "k[{}|", (cx.ds)(cx.tcx, def));
             enc_substs(w, cx, &substs.func_substs);
             for ty in &substs.upvar_tys {
                 enc_ty(w, cx, ty);
@@ -322,7 +322,7 @@ fn enc_bound_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, br: ty::BoundRegion) {
         }
         ty::BrNamed(d, name) => {
             write!(w, "[{}|{}]",
-                     (cx.ds)(d),
+                     (cx.ds)(cx.tcx, d),
                      name);
         }
         ty::BrFresh(id) => {
@@ -336,7 +336,7 @@ fn enc_bound_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, br: ty::BoundRegion) {
 
 pub fn enc_trait_ref<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                                s: ty::TraitRef<'tcx>) {
-    write!(w, "{}|", (cx.ds)(s.def_id));
+    write!(w, "{}|", (cx.ds)(cx.tcx, s.def_id));
     enc_substs(w, cx, s.substs);
 }
 
@@ -420,8 +420,8 @@ pub fn enc_existential_bounds<'a,'tcx>(w: &mut Cursor<Vec<u8>>,
 pub fn enc_type_param_def<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                                     v: &ty::TypeParameterDef<'tcx>) {
     write!(w, "{}:{}|{}|{}|{}|",
-             v.name, (cx.ds)(v.def_id),
-             v.space.to_uint(), v.index, (cx.ds)(v.default_def_id));
+             v.name, (cx.ds)(cx.tcx, v.def_id),
+             v.space.to_uint(), v.index, (cx.ds)(cx.tcx, v.default_def_id));
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
 }
@@ -429,7 +429,7 @@ pub fn enc_type_param_def<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>
 pub fn enc_region_param_def(w: &mut Cursor<Vec<u8>>, cx: &ctxt,
                             v: &ty::RegionParameterDef) {
     write!(w, "{}:{}|{}|{}|",
-             v.name, (cx.ds)(v.def_id),
+             v.name, (cx.ds)(cx.tcx, v.def_id),
              v.space.to_uint(), v.index);
     for &r in &v.bounds {
         write!(w, "R");
@@ -489,7 +489,7 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
             enc_ty(w, cx, data);
         }
         ty::Predicate::ObjectSafe(trait_def_id) => {
-            write!(w, "O{}|", (cx.ds)(trait_def_id));
+            write!(w, "O{}|", (cx.ds)(cx.tcx, trait_def_id));
         }
     }
 }

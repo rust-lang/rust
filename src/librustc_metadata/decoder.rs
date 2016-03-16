@@ -1311,11 +1311,18 @@ pub fn get_crate_hash(data: &[u8]) -> Svh {
     Svh::new(hashdoc.as_str_slice())
 }
 
-pub fn maybe_get_crate_name(data: &[u8]) -> Option<String> {
+pub fn maybe_get_crate_name(data: &[u8]) -> Option<&str> {
     let cratedoc = rbml::Doc::new(data);
     reader::maybe_get_doc(cratedoc, tag_crate_crate_name).map(|doc| {
-        doc.as_str_slice().to_string()
+        doc.as_str_slice()
     })
+}
+
+pub fn get_crate_disambiguator<'a>(data: &'a [u8]) -> &'a str {
+    let crate_doc = rbml::Doc::new(data);
+    let disambiguator_doc = reader::get_doc(crate_doc, tag_crate_disambiguator);
+    let slice: &'a str = disambiguator_doc.as_str_slice();
+    slice
 }
 
 pub fn get_crate_triple(data: &[u8]) -> Option<String> {
@@ -1324,7 +1331,7 @@ pub fn get_crate_triple(data: &[u8]) -> Option<String> {
     triple_doc.map(|s| s.as_str().to_string())
 }
 
-pub fn get_crate_name(data: &[u8]) -> String {
+pub fn get_crate_name(data: &[u8]) -> &str {
     maybe_get_crate_name(data).expect("no crate name in crate")
 }
 

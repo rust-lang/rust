@@ -18,7 +18,7 @@ pub use self::CalleeData::*;
 pub use self::CallArgs::*;
 
 use arena::TypedArena;
-use back::link;
+use back::symbol_names;
 use llvm::{self, ValueRef, get_params};
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
@@ -298,8 +298,10 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
-    let function_name = link::mangle_internal_name_by_type_and_seq(ccx, bare_fn_ty,
-                                                                   "fn_pointer_shim");
+    let function_name = symbol_names::internal_name_from_type_and_suffix(ccx,
+                                                                         bare_fn_ty_maybe_ref,
+                                                                         "fn_pointer_shim");
+
     let llfn = declare::declare_internal_rust_fn(ccx, &function_name[..], tuple_fn_ty);
 
     //

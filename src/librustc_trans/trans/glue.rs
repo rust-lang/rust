@@ -14,7 +14,7 @@
 
 use std;
 
-use back::link::*;
+use back::symbol_names;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
@@ -256,7 +256,12 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     };
 
-    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
+    let suffix = match g {
+        DropGlueKind::Ty(_) => "drop",
+        DropGlueKind::TyContents(_) => "drop_contents",
+    };
+
+    let fn_nm = symbol_names::internal_name_from_type_and_suffix(ccx, t, suffix);
     let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ccx.tcx().mk_nil()).unwrap_or_else(||{
        ccx.sess().bug(&format!("symbol `{}` already defined", fn_nm));
     });
