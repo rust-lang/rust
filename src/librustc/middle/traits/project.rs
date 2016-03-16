@@ -476,11 +476,10 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
             // key changes (and we know it hasn't, because we just
             // fully resolved it). One exception though is closure
             // types, which can transition from having a fixed kind to
-            // no kind with no visible change in the key. We should
-            // probably refactor this.
+            // no kind with no visible change in the key.
             //
-            // TODO -- does OF have same problem? in particular around
-            // closures with no upvars!
+            // FIXME(#32286) refactor this so that closure type
+            // changes
             if !projection_ty.has_closure_types() {
                 return None;
             }
