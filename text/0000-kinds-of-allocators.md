@@ -730,7 +730,7 @@ Of course, real-world allocation often needs more than just
 `alloc`/`dealloc`: in particular, one often wants to avoid extra
 copying if the existing block of memory can be conceptually expanded
 in place to meet new allocation needs. In other words, we want
-`realloc`, plus alternatives to it that allow clients to avoid
+`realloc`, plus alternatives to it (`alloc_excess`) that allow clients to avoid
 round-tripping through the allocator API.
 
 For this, the [memory reuse][] family of methods is appropriate.
@@ -743,7 +743,8 @@ let my clients choose how the backing memory is chosen! Why do I have
 to wrestle with this `Kind` business?"
 
 I agree with the sentiment; that's why the `Allocator` trait provides
-a family of methods capturing [common usage patterns][].
+a family of methods capturing [common usage patterns][],
+for example, `a.alloc_one::<T>()` will return a `Unique<T>` (or error).
 
 ## Unchecked variants
 
@@ -758,7 +759,8 @@ via local invariants in their container type).
 
 For these clients, the `Allocator` trait provides
 ["unchecked" variants][unchecked variants] of nearly all of its
-methods.
+methods; so `a.alloc_unchecked(kind)` will return an `Option<Address>`
+(where `None` corresponds to allocation failure).
 
 The idea here is that `Allocator` implementors are encouraged
 to streamline the implmentations of such methods by assuming that all
