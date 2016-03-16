@@ -456,13 +456,11 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
            projection_ty,
            depth);
 
-    // TODO -- where to do the caching?
-    //
-    // For now, I am caching here, which is good, but it means we
-    // don't capture the type variables that are created in the case
-    // of ambiguity. Which means we may create a large stream of such
-    // variables. OTOH, if we move the caching up a level, we would
-    // not benefit from caching when proving `T: Trait<U=Foo>`
+    // FIXME(#20304) For now, I am caching here, which is good, but it
+    // means we don't capture the type variables that are created in
+    // the case of ambiguity. Which means we may create a large stream
+    // of such variables. OTOH, if we move the caching up a level, we
+    // would not benefit from caching when proving `T: Trait<U=Foo>`
     // bounds. It might be the case that we want two distinct caches,
     // or else another kind of cache entry.
 
