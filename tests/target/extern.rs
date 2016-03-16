@@ -45,3 +45,5 @@ extern "C" {
                    file: *mut FILE)
                    -> *mut FILE;
 }
+
+extern "C" {}

@@ -34,3 +34,7 @@ libc::c_long;
                                file: *mut FILE)
                               -> *mut FILE;
    }
+
+extern {
+
+}
