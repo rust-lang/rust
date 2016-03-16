@@ -202,10 +202,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     }
 }
 
-fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
-                             closure_expr_id: ast::NodeId,
-                             body_id: ast::NodeId)
-                             -> Ty<'tcx> {
+fn closure_self_ty<'tcx>(tcx: &TyCtxt<'tcx>,
+                         closure_expr_id: ast::NodeId,
+                         body_id: ast::NodeId)
+                         -> Ty<'tcx> {
     let closure_ty = tcx.node_id_to_type(closure_expr_id);
 
     // We're just hard-coding the idea that the signature will be

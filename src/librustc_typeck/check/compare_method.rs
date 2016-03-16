@@ -325,9 +325,9 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         debug!("compare_impl_method: trait_fty={:?}",
                trait_fty);
 
-        infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty)?;
+        infcx.sub_types(false, origin, impl_fty, trait_fty)?;
 
-        infcx.leak_check(&skol_map, snapshot)
+        infcx.leak_check(false, &skol_map, snapshot)
     });
 
     match err {
@@ -347,7 +347,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Check that all obligations are satisfied by the implementation's
     // version.
     match fulfillment_cx.select_all_or_error(&infcx) {
-        Err(ref errors) => { traits::report_fulfillment_errors(&infcx, errors) }
+        Err(ref errors) => { infcx.report_fulfillment_errors(errors) }
         Ok(_) => {}
     }
 
@@ -361,8 +361,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // anyway, so it shouldn't be needed there either. Anyway, we can
     // always add more relations later (it's backwards compat).
     let mut free_regions = FreeRegionMap::new();
-    free_regions.relate_free_regions_from_predicates(tcx,
-                                                     &infcx.parameter_environment.caller_bounds);
+    free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment.caller_bounds);
 
     infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
 
@@ -474,7 +473,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         debug!("compare_const_impl: trait_ty={:?}",
                trait_ty);
 
-        infer::mk_subty(&infcx, false, origin, impl_ty, trait_ty)
+        infcx.sub_types(false, origin, impl_ty, trait_ty)
     });
 
     match err {

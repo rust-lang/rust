@@ -22,7 +22,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::print as pprust;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::subst;
-use rustc::middle::stability;
 
 use rustc_const_eval::lookup_const_by_id;
 
@@ -124,8 +123,8 @@ fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
         attrs: load_attrs(cx, tcx, did),
         inner: inner,
         visibility: Some(clean::Public),
-        stability: stability::lookup_stability(tcx, did).clean(cx),
-        deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
+        stability: tcx.lookup_stability(did).clean(cx),
+        deprecation: tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
     });
     Some(ret)
@@ -305,8 +304,8 @@ pub fn build_impl(cx: &DocContext,
             name: None,
             attrs: attrs,
             visibility: Some(clean::Inherited),
-            stability: stability::lookup_stability(tcx, did).clean(cx),
-            deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
+            stability: tcx.lookup_stability(did).clean(cx),
+            deprecation: tcx.lookup_deprecation(did).clean(cx),
             def_id: did,
         });
     }
@@ -347,8 +346,8 @@ pub fn build_impl(cx: &DocContext,
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
-                    stability: stability::lookup_stability(tcx, did).clean(cx),
-                    deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
+                    stability: tcx.lookup_stability(did).clean(cx),
+                    deprecation: tcx.lookup_deprecation(did).clean(cx),
                     def_id: did
                 })
             }
@@ -396,8 +395,8 @@ pub fn build_impl(cx: &DocContext,
                     source: clean::Span::empty(),
                     attrs: vec![],
                     visibility: None,
-                    stability: stability::lookup_stability(tcx, did).clean(cx),
-                    deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
+                    stability: tcx.lookup_stability(did).clean(cx),
+                    deprecation: tcx.lookup_deprecation(did).clean(cx),
                     def_id: did
                 })
             }
@@ -436,8 +435,8 @@ pub fn build_impl(cx: &DocContext,
         name: None,
         attrs: attrs,
         visibility: Some(clean::Inherited),
-        stability: stability::lookup_stability(tcx, did).clean(cx),
-        deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
+        stability: tcx.lookup_stability(did).clean(cx),
+        deprecation: tcx.lookup_deprecation(did).clean(cx),
         def_id: did,
     });
 }

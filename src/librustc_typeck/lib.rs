@@ -201,10 +201,10 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 -> bool
 {
     let err = if let Some(infcx) = maybe_infcx {
-        infer::mk_eqty(infcx, false, TypeOrigin::Misc(span), t1, t2).err()
+        infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2).err()
     } else {
         let infcx = InferCtxt::new(ccx.tcx, &ccx.tcx.tables, None, ProjectionMode::AnyFinal);
-        infer::mk_eqty(&infcx, false, TypeOrigin::Misc(span), t1, t2).err()
+        infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2).err()
     };
 
     if let Some(ref terr) = err {

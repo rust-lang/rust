@@ -48,9 +48,8 @@ impl FreeRegionMap {
         }
     }
 
-    pub fn relate_free_regions_from_predicates<'tcx>(&mut self,
-                                                     _tcx: &TyCtxt<'tcx>,
-                                                     predicates: &[ty::Predicate<'tcx>]) {
+    pub fn relate_free_regions_from_predicates(&mut self,
+                                               predicates: &[ty::Predicate]) {
         debug!("relate_free_regions_from_predicates(predicates={:?})", predicates);
         for predicate in predicates {
             match *predicate {

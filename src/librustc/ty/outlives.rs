@@ -55,20 +55,18 @@ pub enum Component<'tcx> {
     EscapingProjection(Vec<Component<'tcx>>),
 }
 
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 /// Returns all the things that must outlive `'a` for the condition
 /// `ty0: 'a` to hold.
-pub fn components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                           ty0: Ty<'tcx>)
+pub fn outlives_components(&self, ty0: Ty<'tcx>)
                            -> Vec<Component<'tcx>> {
     let mut components = vec![];
-    compute_components(infcx, ty0, &mut components);
+    self.compute_components(ty0, &mut components);
     debug!("components({:?}) = {:?}", ty0, components);
     components
 }
 
-fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                               ty: Ty<'tcx>,
-                               out: &mut Vec<Component<'tcx>>) {
+fn compute_components(&self, ty: Ty<'tcx>, out: &mut Vec<Component<'tcx>>) {
     // Descend through the types, looking for the various "base"
     // components and collecting them into `out`. This is not written
     // with `collect()` because of the need to sometimes skip subtrees
@@ -114,7 +112,7 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             // taking into consideration UFCS and so forth.
 
             for &upvar_ty in &substs.upvar_tys {
-                compute_components(infcx, upvar_ty, out);
+                self.compute_components(upvar_ty, out);
             }
         }
 
@@ -145,7 +143,7 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                 // fallback case: hard code
                 // OutlivesProjectionComponents.  Continue walking
                 // through and constrain Pi.
-                let subcomponents = capture_components(infcx, ty);
+                let subcomponents = self.capture_components(ty);
                 out.push(Component::EscapingProjection(subcomponents));
             }
         }
@@ -154,11 +152,11 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
         // and proceed with resolved version. If we cannot resolve it,
         // then record the unresolved variable as a component.
         ty::TyInfer(_) => {
-            let ty = infcx.resolve_type_vars_if_possible(&ty);
+            let ty = self.resolve_type_vars_if_possible(&ty);
             if let ty::TyInfer(infer_ty) = ty.sty {
                 out.push(Component::UnresolvedInferenceVariable(infer_ty));
             } else {
-                compute_components(infcx, ty, out);
+                self.compute_components(ty, out);
             }
         }
 
@@ -194,21 +192,20 @@ fn compute_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 
             push_region_constraints(out, ty.regions());
             for subty in ty.walk_shallow() {
-                compute_components(infcx, subty, out);
+                self.compute_components(subty, out);
             }
         }
     }
 }
 
-fn capture_components<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                               ty: Ty<'tcx>)
-                               -> Vec<Component<'tcx>> {
+fn capture_components(&self, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
     let mut temp = vec![];
     push_region_constraints(&mut temp, ty.regions());
     for subty in ty.walk_shallow() {
-        compute_components(infcx, subty, &mut temp);
+        self.compute_components(subty, &mut temp);
     }
     temp
+}
 }
 
 fn push_region_constraints<'tcx>(out: &mut Vec<Component<'tcx>>, regions: Vec<ty::Region>) {

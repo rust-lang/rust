@@ -378,26 +378,6 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
     }).collect()
 }
 
-pub fn trait_ref_for_builtin_bound<'tcx>(
-    tcx: &TyCtxt<'tcx>,
-    builtin_bound: ty::BuiltinBound,
-    param_ty: Ty<'tcx>)
-    -> Result<ty::TraitRef<'tcx>, ErrorReported>
-{
-    match tcx.lang_items.from_builtin_kind(builtin_bound) {
-        Ok(def_id) => {
-            Ok(ty::TraitRef {
-                def_id: def_id,
-                substs: tcx.mk_substs(Substs::empty().with_self_ty(param_ty))
-            })
-        }
-        Err(e) => {
-            tcx.sess.err(&e);
-            Err(ErrorReported)
-        }
-    }
-}
-
 pub fn predicate_for_trait_ref<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_ref: ty::TraitRef<'tcx>,
@@ -411,8 +391,27 @@ pub fn predicate_for_trait_ref<'tcx>(
     }
 }
 
-pub fn predicate_for_trait_def<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+impl<'tcx> TyCtxt<'tcx> {
+pub fn trait_ref_for_builtin_bound(&self,
+    builtin_bound: ty::BuiltinBound,
+    param_ty: Ty<'tcx>)
+    -> Result<ty::TraitRef<'tcx>, ErrorReported>
+{
+    match self.lang_items.from_builtin_kind(builtin_bound) {
+        Ok(def_id) => {
+            Ok(ty::TraitRef {
+                def_id: def_id,
+                substs: self.mk_substs(Substs::empty().with_self_ty(param_ty))
+            })
+        }
+        Err(e) => {
+            self.sess.err(&e);
+            Err(ErrorReported)
+        }
+    }
+}
+
+pub fn predicate_for_trait_def(&self,
     cause: ObligationCause<'tcx>,
     trait_def_id: DefId,
     recursion_depth: usize,
@@ -422,36 +421,35 @@ pub fn predicate_for_trait_def<'tcx>(
 {
     let trait_ref = ty::TraitRef {
         def_id: trait_def_id,
-        substs: tcx.mk_substs(Substs::new_trait(ty_params, vec![], param_ty))
+        substs: self.mk_substs(Substs::new_trait(ty_params, vec![], param_ty))
     };
     predicate_for_trait_ref(cause, trait_ref, recursion_depth)
 }
 
-pub fn predicate_for_builtin_bound<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+pub fn predicate_for_builtin_bound(&self,
     cause: ObligationCause<'tcx>,
     builtin_bound: ty::BuiltinBound,
     recursion_depth: usize,
     param_ty: Ty<'tcx>)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
-    let trait_ref = trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty)?;
+    let trait_ref = self.trait_ref_for_builtin_bound(builtin_bound, param_ty)?;
     Ok(predicate_for_trait_ref(cause, trait_ref, recursion_depth))
 }
 
 /// Cast a trait reference into a reference to one of its super
 /// traits; returns `None` if `target_trait_def_id` is not a
 /// supertrait.
-pub fn upcast<'tcx>(tcx: &TyCtxt<'tcx>,
-                    source_trait_ref: ty::PolyTraitRef<'tcx>,
-                    target_trait_def_id: DefId)
-                    -> Vec<ty::PolyTraitRef<'tcx>>
+pub fn upcast_choices(&self,
+                      source_trait_ref: ty::PolyTraitRef<'tcx>,
+                      target_trait_def_id: DefId)
+                      -> Vec<ty::PolyTraitRef<'tcx>>
 {
     if source_trait_ref.def_id() == target_trait_def_id {
         return vec![source_trait_ref]; // shorcut the most common case
     }
 
-    supertraits(tcx, source_trait_ref)
+    supertraits(self, source_trait_ref)
         .filter(|r| r.def_id() == target_trait_def_id)
         .collect()
 }
@@ -459,13 +457,11 @@ pub fn upcast<'tcx>(tcx: &TyCtxt<'tcx>,
 /// Given a trait `trait_ref`, returns the number of vtable entries
 /// that come from `trait_ref`, excluding its supertraits. Used in
 /// computing the vtable base for an upcast trait of a trait object.
-pub fn count_own_vtable_entries<'tcx>(tcx: &TyCtxt<'tcx>,
-                                      trait_ref: ty::PolyTraitRef<'tcx>)
-                                      -> usize {
+pub fn count_own_vtable_entries(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> usize {
     let mut entries = 0;
     // Count number of methods and add them to the total offset.
     // Skip over associated types and constants.
-    for trait_item in &tcx.trait_items(trait_ref.def_id())[..] {
+    for trait_item in &self.trait_items(trait_ref.def_id())[..] {
         if let ty::MethodTraitItem(_) = *trait_item {
             entries += 1;
         }
@@ -476,14 +472,14 @@ pub fn count_own_vtable_entries<'tcx>(tcx: &TyCtxt<'tcx>,
 /// Given an upcast trait object described by `object`, returns the
 /// index of the method `method_def_id` (which should be part of
 /// `object.upcast_trait_ref`) within the vtable for `object`.
-pub fn get_vtable_index_of_object_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                                               object: &super::VtableObjectData<'tcx>,
-                                               method_def_id: DefId) -> usize {
+pub fn get_vtable_index_of_object_method(&self,
+                                         object: &super::VtableObjectData<'tcx>,
+                                         method_def_id: DefId) -> usize {
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
     // Skip over associated types and constants.
     let mut entries = object.vtable_base;
-    for trait_item in &tcx.trait_items(object.upcast_trait_ref.def_id())[..] {
+    for trait_item in &self.trait_items(object.upcast_trait_ref.def_id())[..] {
         if trait_item.def_id() == method_def_id {
             // The item with the ID we were given really ought to be a method.
             assert!(match *trait_item {
@@ -502,10 +498,7 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &TyCtxt<'tcx>,
          method_def_id);
 }
 
-pub enum TupleArgumentsFlag { Yes, No }
-
-pub fn closure_trait_ref_and_return_type<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+pub fn closure_trait_ref_and_return_type(&self,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
     sig: &ty::PolyFnSig<'tcx>,
@@ -514,12 +507,15 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
 {
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.0.inputs[0],
-        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.0.inputs.to_vec()),
+        TupleArgumentsFlag::Yes => self.mk_tup(sig.0.inputs.to_vec()),
     };
     let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
     let trait_ref = ty::TraitRef {
         def_id: fn_trait_def_id,
-        substs: tcx.mk_substs(trait_substs),
+        substs: self.mk_substs(trait_substs),
     };
-    ty::Binder((trait_ref, sig.0.output.unwrap_or(tcx.mk_nil())))
+    ty::Binder((trait_ref, sig.0.output.unwrap_or(self.mk_nil())))
 }
+}
+
+pub enum TupleArgumentsFlag { Yes, No }

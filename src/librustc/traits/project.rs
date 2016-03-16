@@ -11,7 +11,6 @@
 //! Code for projecting associated types out of trait references.
 
 use super::elaborate_predicates;
-use super::report_overflow_error;
 use super::specialization_graph;
 use super::translate_substs;
 use super::Obligation;
@@ -188,7 +187,7 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
         let skol_obligation = obligation.with(skol_predicate);
         match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
-                match infcx.leak_check(&skol_map, snapshot) {
+                match infcx.leak_check(false, &skol_map, snapshot) {
                     Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, &result)),
                     Err(e) => Err(MismatchedProjectionTypes { err: e }),
                 }
@@ -231,7 +230,7 @@ fn project_and_unify_type<'cx,'tcx>(
 
     let infcx = selcx.infcx();
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
-    match infer::mk_eqty(infcx, true, origin, normalized_ty, obligation.predicate.ty) {
+    match infcx.eq_types(true, origin, normalized_ty, obligation.predicate.ty) {
         Ok(InferOk { obligations: inferred_obligations, .. }) => {
             // FIXME(#32730) propagate obligations
             assert!(inferred_obligations.is_empty());
@@ -262,11 +261,10 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
             let closure_typer = selcx.closure_typer();
             let closure_type = closure_typer.closure_type(closure_def_id, substs);
             let ty::Binder((_, ret_type)) =
-                util::closure_trait_ref_and_return_type(infcx.tcx,
-                                                        def_id,
-                                                        self_ty,
-                                                        &closure_type.sig,
-                                                        util::TupleArgumentsFlag::No);
+                infcx.tcx.closure_trait_ref_and_return_type(def_id,
+                                                            self_ty,
+                                                            &closure_type.sig,
+                                                            util::TupleArgumentsFlag::No);
             // We don't have to normalize the return type here - this is only
             // reached for TyClosure: Fn inputs where the closure kind is
             // still unknown, which should only occur in typeck where the
@@ -281,7 +279,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
                    ret_type);
             let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
-            match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
+            match infcx.eq_types(true, origin, obligation_ty, ret_type) {
                 Ok(InferOk { obligations, .. }) => {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
@@ -578,7 +576,7 @@ fn project_type<'cx,'tcx>(
     let recursion_limit = selcx.tcx().sess.recursion_limit.get();
     if obligation.recursion_depth >= recursion_limit {
         debug!("project: overflow!");
-        report_overflow_error(selcx.infcx(), &obligation, true);
+        selcx.infcx().report_overflow_error(&obligation, true);
     }
 
     let obligation_trait_ref =
@@ -1053,11 +1051,10 @@ fn confirm_callable_candidate<'cx,'tcx>(
 
     // Note: we unwrap the binder here but re-create it below (1)
     let ty::Binder((trait_ref, ret_type)) =
-        util::closure_trait_ref_and_return_type(tcx,
-                                                fn_once_def_id,
-                                                obligation.predicate.trait_ref.self_ty(),
-                                                fn_sig,
-                                                flag);
+        tcx.closure_trait_ref_and_return_type(fn_once_def_id,
+                                              obligation.predicate.trait_ref.self_ty(),
+                                              fn_sig,
+                                              flag);
 
     let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
         projection_ty: ty::ProjectionTy {

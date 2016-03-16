@@ -64,7 +64,6 @@ use check::{FnCtxt, UnresolvedTypeAction};
 
 use rustc::infer::{Coercion, InferOk, TypeOrigin, TypeTrace};
 use rustc::traits::{self, ObligationCause};
-use rustc::traits::{predicate_for_trait_def, report_selection_error};
 use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use rustc::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
 use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
@@ -446,12 +445,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::misc(self.origin.span(), self.fcx.body_id);
-        queue.push_back(predicate_for_trait_def(self.tcx(),
-                                                cause,
-                                                coerce_unsized_did,
-                                                0,
-                                                source,
-                                                vec![target]));
+        queue.push_back(self.tcx().predicate_for_trait_def(cause,
+                                                           coerce_unsized_did,
+                                                           0,
+                                                           source,
+                                                           vec![target]));
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -477,7 +475,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    report_selection_error(self.fcx.infcx(), &obligation, &err, None);
+                    self.fcx.infcx().report_selection_error(&obligation, &err, None);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.

@@ -64,11 +64,11 @@ mod simplify;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: DefId) -> Option<Stability> {
-    cx.tcx_opt().and_then(|tcx| stability::lookup_stability(tcx, def_id)).clean(cx)
+    cx.tcx_opt().and_then(|tcx| tcx.lookup_stability(def_id)).clean(cx)
 }
 
 fn get_deprecation(cx: &DocContext, def_id: DefId) -> Option<Deprecation> {
-    cx.tcx_opt().and_then(|tcx| stability::lookup_deprecation(tcx, def_id)).clean(cx)
+    cx.tcx_opt().and_then(|tcx| tcx.lookup_deprecation(def_id)).clean(cx)
 }
 
 pub trait Clean<T> {
@@ -2878,8 +2878,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedType<'tcx> {
             inner: AssociatedTypeItem(bounds, self.ty.clean(cx)),
             visibility: self.vis.clean(cx),
             def_id: self.def_id,
-            stability: stability::lookup_stability(cx.tcx(), self.def_id).clean(cx),
-            deprecation: stability::lookup_deprecation(cx.tcx(), self.def_id).clean(cx),
+            stability: cx.tcx().lookup_stability(self.def_id).clean(cx),
+            deprecation: cx.tcx().lookup_deprecation(self.def_id).clean(cx),
         }
     }
 }

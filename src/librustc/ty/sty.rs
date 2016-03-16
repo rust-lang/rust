@@ -14,7 +14,6 @@ use middle::cstore;
 use hir::def_id::DefId;
 use middle::region;
 use ty::subst::{self, Substs};
-use traits;
 use ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
@@ -633,7 +632,7 @@ pub struct DebruijnIndex {
 /// to be used. These also support explicit bounds: both the internally-stored
 /// *scope*, which the region is assumed to outlive, as well as other
 /// relations stored in the `FreeRegionMap`. Note that these relations
-/// aren't checked when you `make_subregion` (or `mk_eqty`), only by
+/// aren't checked when you `make_subregion` (or `eq_types`), only by
 /// `resolve_regions_and_report_errors`.
 ///
 /// When working with higher-ranked types, some region relations aren't
@@ -778,7 +777,7 @@ impl BuiltinBounds {
                                tcx: &TyCtxt<'tcx>,
                                self_ty: Ty<'tcx>) -> Vec<ty::Predicate<'tcx>> {
         self.iter().filter_map(|builtin_bound|
-            match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, self_ty) {
+            match tcx.trait_ref_for_builtin_bound(builtin_bound, self_ty) {
                 Ok(trait_ref) => Some(trait_ref.to_predicate()),
                 Err(ErrorReported) => { None }
             }

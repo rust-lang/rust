@@ -22,7 +22,6 @@ use syntax::codemap::Span;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
-use rustc::middle::stability;
 use rustc::middle::privacy::AccessLevel;
 
 use rustc::hir;
@@ -64,7 +63,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn stability(&self, id: ast::NodeId) -> Option<attr::Stability> {
         self.cx.tcx_opt().and_then(|tcx| {
             self.cx.map.opt_local_def_id(id)
-                       .and_then(|def_id| stability::lookup_stability(tcx, def_id))
+                       .and_then(|def_id| tcx.lookup_stability(def_id))
                        .cloned()
         })
     }
@@ -72,7 +71,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     fn deprecation(&self, id: ast::NodeId) -> Option<attr::Deprecation> {
         self.cx.tcx_opt().and_then(|tcx| {
             self.cx.map.opt_local_def_id(id)
-                       .and_then(|def_id| stability::lookup_deprecation(tcx, def_id))
+                       .and_then(|def_id| tcx.lookup_deprecation(def_id))
         })
     }
 

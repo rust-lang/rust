@@ -84,14 +84,13 @@ use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::PatCtxt;
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
-use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
 use hir::def::{self, Def};
 use hir::def_id::DefId;
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin, TypeTrace, type_variable};
 use hir::pat_util::{self, pat_id_map};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
+use rustc::traits::{self, ProjectionMode};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -1158,7 +1157,7 @@ pub fn check_representable(tcx: &TyCtxt,
     match rty.is_representable(tcx, sp) {
         Representability::SelfRecursive => {
             let item_def_id = tcx.map.local_def_id(item_id);
-            traits::recursive_type_with_infinite_size_error(tcx, item_def_id).emit();
+            tcx.recursive_type_with_infinite_size_error(item_def_id).emit();
             return false
         }
         Representability::Representable | Representability::ContainsRecursive => (),
@@ -1803,35 +1802,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn mk_subty(&self,
-                    a_is_expected: bool,
-                    origin: TypeOrigin,
-                    sub: Ty<'tcx>,
-                    sup: Ty<'tcx>)
-                    -> Result<(), TypeError<'tcx>> {
-        infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
-            // FIXME(#32730) propagate obligations
-            .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
-    }
-
-    pub fn mk_eqty(&self,
-                   a_is_expected: bool,
-                   origin: TypeOrigin,
-                   sub: Ty<'tcx>,
-                   sup: Ty<'tcx>)
-                   -> Result<(), TypeError<'tcx>> {
-        infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
-            // FIXME(#32730) propagate obligations
-            .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
-    }
-
-    pub fn mk_subr(&self,
-                   origin: infer::SubregionOrigin<'tcx>,
-                   sub: ty::Region,
-                   sup: ty::Region) {
-        infer::mk_subr(self.infcx(), origin, sub, sup)
-    }
-
     pub fn type_error_message<M>(&self,
                                  sp: Span,
                                  mk_msg: M,
@@ -2119,9 +2089,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Neither => {
                                 if let Some(default) = default_map.get(ty) {
                                     let default = default.clone();
-                                    match infer::mk_eqty(self.infcx(), false,
-                                                         TypeOrigin::Misc(default.origin_span),
-                                                         ty, default.ty) {
+                                    match self.infcx().eq_types(false,
+                                            TypeOrigin::Misc(default.origin_span),
+                                            ty, default.ty) {
                                         Ok(InferOk { obligations, .. }) => {
                                             // FIXME(#32730) propagate obligations
                                             assert!(obligations.is_empty())
@@ -2215,9 +2185,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Neither => {
                         if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
-                            match infer::mk_eqty(self.infcx(), false,
-                                                 TypeOrigin::Misc(default.origin_span),
-                                                 ty, default.ty) {
+                            match self.infcx().eq_types(false,
+                                    TypeOrigin::Misc(default.origin_span),
+                                    ty, default.ty) {
                                 // FIXME(#32730) propagate obligations
                                 Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
                                 Err(_) => {
@@ -2239,18 +2209,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // upvar inference should have ensured that all deferred call
         // resolutions are handled by now.
         assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
-        let infcx = self.infcx();
 
         self.select_all_obligations_and_apply_defaults();
 
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        match fulfillment_cx.select_all_or_error(infcx) {
+        match fulfillment_cx.select_all_or_error(self.infcx()) {
             Ok(()) => { }
-            Err(errors) => { report_fulfillment_errors(infcx, &errors); }
+            Err(errors) => { self.infcx().report_fulfillment_errors(&errors); }
         }
 
-        if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(infcx) {
-            traits::report_fulfillment_errors_as_warnings(infcx, errors, self.body_id);
+        if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(self.infcx()) {
+            self.infcx().report_fulfillment_errors_as_warnings(errors, self.body_id);
         }
     }
 
@@ -2262,7 +2231,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .select_where_possible(self.infcx())
         {
             Ok(()) => { }
-            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
+            Err(errors) => { self.infcx().report_fulfillment_errors(&errors); }
         }
     }
 
@@ -3570,16 +3539,18 @@ fn check_expr_with_expectation_and_lvalue_pref(&self,
       hir::ExprRet(ref expr_opt) => {
         match self.ret_ty {
             ty::FnConverging(result_type) => {
-                match *expr_opt {
-                    None =>
-                        if let Err(_) = self.mk_eqty(false, TypeOrigin::Misc(expr.span),
-                                                     result_type, self.tcx().mk_nil()) {
-                            span_err!(tcx.sess, expr.span, E0069,
-                                "`return;` in a function whose return type is \
-                                 not `()`");
-                        },
-                    Some(ref e) => {
-                        self.check_expr_coercable_to_type(&e, result_type);
+                if let Some(ref e) = *expr_opt {
+                    self.check_expr_coercable_to_type(&e, result_type);
+                } else {
+                    let eq_result = self.infcx().eq_types(false,
+                                                          TypeOrigin::Misc(expr.span),
+                                                          result_type,
+                                                          self.tcx().mk_nil())
+                        // FIXME(#32730) propagate obligations
+                        .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()));
+                    if eq_result.is_err() {
+                        span_err!(tcx.sess, expr.span, E0069,
+                                  "`return;` in a function whose return type is not `()`");
                     }
                 }
             }
@@ -4370,7 +4341,7 @@ pub fn instantiate_path(&self,
                                                                  segment,
                                                                  &mut substs);
         } else {
-            prohibit_type_params(self.tcx(), slice::ref_slice(segment));
+            self.tcx().prohibit_type_params(slice::ref_slice(segment));
         }
     }
     if let Some(self_ty) = opt_self_ty {
@@ -4423,11 +4394,17 @@ pub fn instantiate_path(&self,
                    impl_scheme.generics.regions.len(subst::TypeSpace));
 
         let impl_ty = self.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
-        if self.mk_subty(false, TypeOrigin::Misc(span), self_ty, impl_ty).is_err() {
-            span_bug!(span,
-                "instantiate_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
-                self_ty,
-                impl_ty);
+        match self.infcx().sub_types(false, TypeOrigin::Misc(span), self_ty, impl_ty) {
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            }
+            Err(_) => {
+                span_bug!(span,
+                    "instantiate_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
+                    self_ty,
+                    impl_ty);
+            }
         }
     }
 

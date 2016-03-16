@@ -21,7 +21,7 @@ use super::{SelectionContext, FulfillmentContext};
 use super::util::{fresh_type_vars_for_impl, impl_trait_ref_and_oblig};
 
 use hir::def_id::DefId;
-use infer::{self, InferCtxt, TypeOrigin};
+use infer::{InferCtxt, TypeOrigin};
 use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, ProjectionMode, ObligationCause, Normalized};
@@ -177,11 +177,10 @@ fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                                                        &target_substs);
 
         // do the impls unify? If not, no specialization.
-        if let Err(_) = infer::mk_eq_trait_refs(&infcx,
-                                                true,
-                                                TypeOrigin::Misc(DUMMY_SP),
-                                                source_trait_ref,
-                                                target_trait_ref) {
+        if let Err(_) = infcx.eq_trait_refs(true,
+                                            TypeOrigin::Misc(DUMMY_SP),
+                                            source_trait_ref,
+                                            target_trait_ref) {
             debug!("fulfill_implication: {:?} does not unify with {:?}",
                    source_trait_ref,
                    target_trait_ref);
@@ -196,7 +195,7 @@ fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
             fulfill_cx.register_predicate_obligation(&infcx, oblig);
         }
 
-        if let Err(errors) = infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()) {
+        if let Err(errors) = infcx.drain_fulfillment_cx(&mut fulfill_cx, &()) {
             // no dice!
             debug!("fulfill_implication: for impls on {:?} and {:?}, could not fulfill: {:?} given \
                     {:?}",

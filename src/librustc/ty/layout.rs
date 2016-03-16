@@ -12,7 +12,7 @@ pub use self::Integer::*;
 pub use self::Layout::*;
 pub use self::Primitive::*;
 
-use infer::{InferCtxt, drain_fulfillment_cx_or_panic};
+use infer::InferCtxt;
 use session::Session;
 use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -754,7 +754,7 @@ fn normalize_associated_type<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         fulfill_cx.register_predicate_obligation(infcx, obligation);
     }
 
-    drain_fulfillment_cx_or_panic(DUMMY_SP, infcx, &mut fulfill_cx, &result)
+    infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
 }
 
 impl Layout {

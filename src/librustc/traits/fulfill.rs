@@ -21,16 +21,13 @@ use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
 use super::CodeSelectionError;
-use super::is_object_safe;
 use super::FulfillmentError;
 use super::FulfillmentErrorCode;
 use super::ObligationCause;
 use super::PredicateObligation;
 use super::project;
-use super::report_overflow_error_cycle;
 use super::select::SelectionContext;
 use super::Unimplemented;
-use super::util::predicate_for_builtin_bound;
 
 pub struct GlobalFulfilledPredicates<'tcx> {
     set: FnvHashSet<ty::PolyTraitPredicate<'tcx>>,
@@ -163,7 +160,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                       builtin_bound: ty::BuiltinBound,
                                       cause: ObligationCause<'tcx>)
     {
-        match predicate_for_builtin_bound(infcx.tcx, cause, builtin_bound, 0, ty) {
+        match infcx.tcx.predicate_for_builtin_bound(cause, builtin_bound, 0, ty) {
             Ok(predicate) => {
                 self.register_predicate_obligation(infcx, predicate);
             }
@@ -449,7 +446,7 @@ fn process_child_obligations<'a,'tcx>(
                     debug!("process_child_obligations: coinductive match");
                     None
                 } else {
-                    report_overflow_error_cycle(selcx.infcx(), &cycle);
+                    selcx.infcx().report_overflow_error_cycle(&cycle);
                 }
             } else {
                 // Not a cycle. Just ignore this obligation then,
@@ -677,7 +674,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         }
 
         ty::Predicate::ObjectSafe(trait_def_id) => {
-            if !is_object_safe(selcx.tcx(), trait_def_id) {
+            if !selcx.tcx().is_object_safe(trait_def_id) {
                 Err(CodeSelectionError(Unimplemented))
             } else {
                 Ok(Some(Vec::new()))

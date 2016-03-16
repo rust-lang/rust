@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use infer::InferCtxt;
-use ty::outlives::{self, Component};
+use ty::outlives::Component;
 use ty::subst::Substs;
 use traits;
 use ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
@@ -182,7 +182,7 @@ pub fn implied_bounds<'a,'tcx>(
                         match infcx.tcx.no_late_bound_regions(data) {
                             None => vec![],
                             Some(ty::OutlivesPredicate(ty_a, r_b)) => {
-                                let components = outlives::components(infcx, ty_a);
+                                let components = infcx.outlives_components(ty_a);
                                 implied_bounds_from_components(r_b, components)
                             }
                         },
@@ -288,9 +288,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                      rfc1592: bool) {
         if !subty.has_escaping_regions() {
             let cause = self.cause(cause);
-            match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
-                                                      ty::BoundSized,
-                                                      subty) {
+            match self.infcx.tcx.trait_ref_for_builtin_bound(ty::BoundSized, subty) {
                 Ok(trait_ref) => {
                     let predicate = trait_ref.to_predicate();
                     let predicate = if rfc1592 {

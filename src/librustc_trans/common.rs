@@ -19,7 +19,7 @@ use llvm::{True, False, Bool, OperandBundleDef};
 use rustc::cfg;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
-use rustc::infer::{self, InferCtxt};
+use rustc::infer::InferCtxt;
 use rustc::util::common::MemoizationMap;
 use middle::lang_items::LangItem;
 use rustc::ty::subst::Substs;
@@ -1107,9 +1107,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         let vtable = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
-        let vtable = infer::drain_fulfillment_cx_or_panic(
-            span, &infcx, &mut fulfill_cx, &vtable
-        );
+        let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
 
         info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
 
@@ -1142,7 +1140,7 @@ pub fn normalize_and_test_predicates<'tcx>(tcx: &TyCtxt<'tcx>,
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
 
-    infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
+    infcx.drain_fulfillment_cx(&mut fulfill_cx, &()).is_ok()
 }
 
 pub fn langcall(bcx: Block,

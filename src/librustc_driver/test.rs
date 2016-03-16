@@ -242,17 +242,14 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn make_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match infer::mk_subty(self.infcx, true, TypeOrigin::Misc(DUMMY_SP), a, b) {
+        match self.infcx.sub_types(true, TypeOrigin::Misc(DUMMY_SP), a, b) {
             Ok(_) => true,
             Err(ref e) => panic!("Encountered error: {}", e),
         }
     }
 
     pub fn is_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
-        match infer::can_mk_subty(self.infcx, a, b) {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        self.infcx.can_sub_types(a, b).is_ok()
     }
 
     pub fn assert_subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) {

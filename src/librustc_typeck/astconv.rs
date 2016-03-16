@@ -48,7 +48,6 @@
 //! case but `&a` in the second.  Basically, defaults that appear inside
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
-use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
 use middle::const_val::ConstVal;
 use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
 use rustc_const_eval::EvalHint::UncheckedExprHint;
@@ -338,7 +337,7 @@ pub fn ast_path_substs_for_ty<'tcx>(
         }
     };
 
-    assoc_bindings.first().map(|b| prohibit_projection(this.tcx(), b.span));
+    assoc_bindings.first().map(|b| this.tcx().prohibit_projection(b.span));
 
     create_substs_for_ast_path(this,
                                span,
@@ -825,7 +824,7 @@ fn ast_path_to_mono_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
                                         trait_def_id,
                                         self_ty,
                                         trait_segment);
-    assoc_bindings.first().map(|b| prohibit_projection(this.tcx(), b.span));
+    assoc_bindings.first().map(|b| this.tcx().prohibit_projection(b.span));
     ty::TraitRef::new(trait_def_id, substs)
 }
 
@@ -1141,10 +1140,10 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
     // most importantly, that the supertraits don't contain Self,
     // to avoid ICE-s.
     let object_safety_violations =
-        traits::astconv_object_safety_violations(tcx, principal.def_id());
+        tcx.astconv_object_safety_violations(principal.def_id());
     if !object_safety_violations.is_empty() {
-        traits::report_object_safety_error(
-            tcx, span, principal.def_id(), None, object_safety_violations)
+        tcx.report_object_safety_error(
+            span, principal.def_id(), None, object_safety_violations)
             .unwrap().emit();
         return tcx.types.err;
     }
@@ -1281,7 +1280,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     debug!("associated_path_def_to_ty: {:?}::{}", ty, assoc_name);
 
-    prohibit_type_params(tcx, slice::ref_slice(item_segment));
+    tcx.prohibit_type_params(slice::ref_slice(item_segment));
 
     // Find the type of the associated item, and the trait where the associated
     // item is declared.
@@ -1383,7 +1382,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
 {
     let tcx = this.tcx();
 
-    prohibit_type_params(tcx, slice::ref_slice(item_segment));
+    tcx.prohibit_type_params(slice::ref_slice(item_segment));
 
     let self_ty = if let Some(ty) = opt_self_ty {
         ty
@@ -1472,7 +1471,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                           base_segments.last().unwrap(),
                                                           &mut projection_bounds);
 
-            prohibit_type_params(tcx, base_segments.split_last().unwrap().1);
+            tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
             trait_ref_to_object_type(this,
                                      rscope,
                                      span,
@@ -1481,7 +1480,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                      &[])
         }
         Def::Enum(did) | Def::TyAlias(did) | Def::Struct(did) => {
-            prohibit_type_params(tcx, base_segments.split_last().unwrap().1);
+            tcx.prohibit_type_params(base_segments.split_last().unwrap().1);
             ast_path_to_ty(this,
                            rscope,
                            span,
@@ -1490,12 +1489,12 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                            base_segments.last().unwrap())
         }
         Def::TyParam(space, index, _, name) => {
-            prohibit_type_params(tcx, base_segments);
+            tcx.prohibit_type_params(base_segments);
             tcx.mk_param(space, index, name)
         }
         Def::SelfTy(_, Some((_, self_ty_id))) => {
             // Self in impl (we know the concrete type).
-            prohibit_type_params(tcx, base_segments);
+            tcx.prohibit_type_params(base_segments);
             if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&self_ty_id) {
                 if let Some(free_substs) = this.get_free_substs() {
                     ty.subst(tcx, free_substs)
@@ -1508,11 +1507,11 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         Def::SelfTy(Some(_), None) => {
             // Self in trait.
-            prohibit_type_params(tcx, base_segments);
+            tcx.prohibit_type_params(base_segments);
             tcx.mk_self_type()
         }
         Def::AssociatedTy(trait_did, _) => {
-            prohibit_type_params(tcx, &base_segments[..base_segments.len()-2]);
+            tcx.prohibit_type_params(&base_segments[..base_segments.len()-2]);
             qpath_to_ty(this,
                         rscope,
                         span,
@@ -1536,7 +1535,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             opt_self_ty.expect("missing T in <T>::a::b::c")
         }
         Def::PrimTy(prim_ty) => {
-            prim_ty_to_ty(tcx, base_segments, prim_ty)
+            tcx.prim_ty_to_ty(base_segments, prim_ty)
         }
         Def::Err => {
             this.set_tainted_by_errors();
@@ -2259,7 +2258,7 @@ impl<'tcx> Bounds<'tcx> {
         let mut vec = Vec::new();
 
         for builtin_bound in &self.builtin_bounds {
-            match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty) {
+            match tcx.trait_ref_for_builtin_bound(builtin_bound, param_ty) {
                 Ok(trait_ref) => { vec.push(trait_ref.to_predicate()); }
                 Err(ErrorReported) => { }
             }

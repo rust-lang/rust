@@ -19,7 +19,7 @@ use rustc::ty::{self, NoPreference, PreferMutLvalue, Ty, TyCtxt};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer;
-use rustc::infer::{InferCtxt, TypeOrigin};
+use rustc::infer::{InferCtxt, InferOk, TypeOrigin};
 use syntax::codemap::Span;
 use rustc::hir;
 
@@ -369,8 +369,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                        self_ty: Ty<'tcx>,
                        method_self_ty: Ty<'tcx>)
     {
-        match self.fcx.mk_subty(false, TypeOrigin::Misc(self.span), self_ty, method_self_ty) {
-            Ok(_) => {}
+        match self.fcx.infcx().sub_types(false, TypeOrigin::Misc(self.span),
+                                         self_ty, method_self_ty) {
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            }
             Err(_) => {
                 span_bug!(
                     self.span,
@@ -636,9 +640,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
               target_trait_def_id: DefId)
               -> ty::PolyTraitRef<'tcx>
     {
-        let upcast_trait_refs = traits::upcast(self.tcx(),
-                                               source_trait_ref.clone(),
-                                               target_trait_def_id);
+        let upcast_trait_refs = self.tcx().upcast_choices(source_trait_ref.clone(),
+                                                          target_trait_def_id);
 
         // must be exactly one trait ref or we'd get an ambig error etc
         if upcast_trait_refs.len() != 1 {

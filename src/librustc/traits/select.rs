@@ -20,7 +20,6 @@ use super::DerivedObligationCause;
 use super::project;
 use super::project::{normalize_with_depth, Normalized};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
-use super::report_overflow_error;
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{ObjectCastObligation, Obligation};
@@ -32,7 +31,6 @@ use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject, VtableDefaultImpl};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
             VtableClosureData, VtableDefaultImplData};
-use super::object_safety;
 use super::util;
 
 use hir::def_id::DefId;
@@ -455,7 +453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::Predicate::ObjectSafe(trait_def_id) => {
-                if object_safety::is_object_safe(self.tcx(), trait_def_id) {
+                if self.tcx().is_object_safe(trait_def_id) {
                     EvaluatedToOk
                 } else {
                     EvaluatedToErr
@@ -683,7 +681,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // not update) the cache.
         let recursion_limit = self.infcx.tcx.sess.recursion_limit.get();
         if stack.obligation.recursion_depth >= recursion_limit {
-            report_overflow_error(self.infcx(), &stack.obligation, true);
+            self.infcx().report_overflow_error(&stack.obligation, true);
         }
 
         // Check the cache. Note that we skolemize the trait-ref
@@ -1155,7 +1153,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Err(_) => { return false; }
         }
 
-        self.infcx.leak_check(skol_map, snapshot).is_ok()
+        self.infcx.leak_check(false, skol_map, snapshot).is_ok()
     }
 
     /// Given an obligation like `<SomeTrait for T>`, search the obligations that the caller
@@ -1397,7 +1395,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // these cases wind up being considered ambiguous due to a
         // (spurious) ambiguity introduced here.
         let predicate_trait_ref = obligation.predicate.to_poly_trait_ref();
-        if !object_safety::is_object_safe(self.tcx(), predicate_trait_ref.def_id()) {
+        if !self.tcx().is_object_safe(predicate_trait_ref.def_id()) {
             return;
         }
 
@@ -1855,7 +1853,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                   recursion_depth,
                                                   &skol_ty);
                 let skol_obligation =
-                    util::predicate_for_trait_def(self.tcx(),
+                    self.tcx().predicate_for_trait_def(
                                                   cause.clone(),
                                                   trait_def_id,
                                                   recursion_depth,
@@ -2226,7 +2224,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // entries, so that we can compute the offset for the selected
             // trait.
             vtable_base =
-                nonmatching.map(|t| util::count_own_vtable_entries(self.tcx(), t))
+                nonmatching.map(|t| self.tcx().count_own_vtable_entries(t))
                            .sum();
 
         }
@@ -2248,11 +2246,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig();
         let trait_ref =
-            util::closure_trait_ref_and_return_type(self.tcx(),
-                                                    obligation.predicate.def_id(),
-                                                    self_ty,
-                                                    sig,
-                                                    util::TupleArgumentsFlag::Yes)
+            self.tcx().closure_trait_ref_and_return_type(obligation.predicate.def_id(),
+                                                         self_ty,
+                                                         sig,
+                                                         util::TupleArgumentsFlag::Yes)
             .map_bound(|(trait_ref, _)| trait_ref);
 
         self.confirm_poly_trait_refs(obligation.cause.clone(),
@@ -2396,7 +2393,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 //                    })
 //                    .chain(Some(data.principal_def_id()));
                 if let Some(did) = object_dids.find(|did| {
-                    !object_safety::is_object_safe(tcx, *did)
+                    !tcx.is_object_safe(*did)
                 }) {
                     return Err(TraitNotObjectSafe(did))
                 }
@@ -2422,7 +2419,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // object type is Foo+Send, this would create an obligation
                 // for the Send check.)
                 for bound in &builtin_bounds {
-                    if let Ok(tr) = util::trait_ref_for_builtin_bound(tcx, bound, source) {
+                    if let Ok(tr) = tcx.trait_ref_for_builtin_bound(bound, source) {
                         push(tr.to_predicate());
                     } else {
                         return Err(Unimplemented);
@@ -2511,7 +2508,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 assert!(obligations.is_empty());
 
                 // Construct the nested Field<T>: Unsize<Field<U>> predicate.
-                nested.push(util::predicate_for_trait_def(tcx,
+                nested.push(tcx.predicate_for_trait_def(
                     obligation.cause.clone(),
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
@@ -2605,7 +2602,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // FIXME(#32730) propagate obligations
         assert!(obligations.is_empty());
 
-        if let Err(e) = self.infcx.leak_check(&skol_map, snapshot) {
+        if let Err(e) = self.infcx.leak_check(false, &skol_map, snapshot) {
             debug!("match_impl: failed leak check due to `{}`", e);
             return Err(());
         }
@@ -2710,11 +2707,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let closure_type = self.infcx.closure_type(closure_def_id, substs);
         let ty::Binder((trait_ref, _)) =
-            util::closure_trait_ref_and_return_type(self.tcx(),
-                                                    obligation.predicate.def_id(),
-                                                    obligation.predicate.0.self_ty(), // (1)
-                                                    &closure_type.sig,
-                                                    util::TupleArgumentsFlag::No);
+            self.tcx().closure_trait_ref_and_return_type(obligation.predicate.def_id(),
+                                                         obligation.predicate.0.self_ty(), // (1)
+                                                         &closure_type.sig,
+                                                         util::TupleArgumentsFlag::No);
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an unboxed closure type and hence is
         // in fact unparameterized (or at least does not reference any
