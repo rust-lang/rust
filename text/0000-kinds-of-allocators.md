@@ -1138,6 +1138,42 @@ few motivating examples that *are* clearly feasible and useful.
    (But the resulting uniformity of the whole API might shift the
    balance to "worth it".)
 
+ * Should the precondition of allocation methods be loosened to
+   accept zero-sized types?
+
+   Right now, there is a requirement that the allocation requests
+   denote non-zero sized types (this requirement is encoded in two
+   ways: for `Layout`-consuming methods like `alloc`, it is enforced
+   via the invariant that the `Size` is a `NonZero`, and this is
+   enforced by checks in the `Layout` construction code; for the
+   convenience methods like `alloc_one`, they will return `Err` if the
+   allocation request is zero-sized).
+
+   The main motivation for this restriction is some underlying system
+   allocators, like `jemalloc`, explicitly disallow zero-sized
+   inputs. Therefore, to remove all unnecessary control-flow branches
+   between the client and the underlying allocator, the `Allocator`
+   trait is bubbling that restriction up and imposing it onto the
+   clients, who will presumably enforce this invariant via
+   container-specific means.
+
+   But: pre-existing container types (like `Vec<T>`) already
+   *allow* zero-sized `T`. Therefore, there is an unfortunate mismatch
+   between the ideal API those container would prefer for their
+   allocators and the actual service that this `Allocator` trait is
+   providing.
+
+   So: Should we lift this precondition of the allocation methods, and allow
+   zero-sized requests (which might be handled by a global sentinel value, or
+   by an allocator-specific sentinel value, or via some other means -- this
+   would have to be specified as part of the Allocator API)?
+
+   (As a middle ground, we could lift the precondition solely for the convenience
+   methods like `fn alloc_one` and `fn alloc_array`; that way, the most low-level
+   methods like `fn alloc` would continue to minimize the overhead they add
+   over the underlying system allocator, while the convenience methods would truly
+   be convenient.)
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
@@ -2000,8 +2036,8 @@ pub unsafe trait Allocator {
 
 ```
 
-### Allocator common usage patterns
-[common usage patterns]: #allocator-common-usage-patterns
+### Allocator convenience methods for common usage patterns
+[common usage patterns]: #allocator-convenience-methods-for-common-usage-patterns
 
 ```rust
     // == COMMON USAGE PATTERNS ==
@@ -2013,6 +2049,8 @@ pub unsafe trait Allocator {
     ///
     /// The returned block is suitable for passing to the
     /// `alloc`/`realloc` methods of this allocator.
+    ///
+    /// Returns `Err` for zero-sized `T`.
     unsafe fn alloc_one<T>(&mut self) -> Result<Unique<T>, Self::Error> {
         if let Some(k) = Layout::new::<T>() {
             self.alloc(k).map(|p|Unique::new(*p as *mut T))
@@ -2024,6 +2062,11 @@ pub unsafe trait Allocator {
     }
 
     /// Deallocates a block suitable for holding an instance of `T`.
+    ///
+    /// The given block must have been produced by this allocator,
+    /// and must be suitable for storing a `T` (in terms of alignment
+    /// as well as minimum and maximum size); otherwise yields
+    /// undefined behavior.
     ///
     /// Captures a common usage pattern for allocators.
     unsafe fn dealloc_one<T>(&mut self, mut ptr: Unique<T>) {
@@ -2037,6 +2080,8 @@ pub unsafe trait Allocator {
     ///
     /// The returned block is suitable for passing to the
     /// `alloc`/`realloc` methods of this allocator.
+    ///
+    /// Returns `Err` for zero-sized `T` or `n == 0`.
     unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, Self::Error> {
         match Layout::array::<T>(n) {
             Some(layout) => self.alloc(layout).map(|p|Unique::new(*p as *mut T)),
