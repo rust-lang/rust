@@ -59,7 +59,54 @@ pub struct DefData {
     pub node_id: ast::NodeId,
 }
 
-pub type DefPath = Vec<DisambiguatedDefPathData>;
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct DefPath {
+    /// the path leading from the crate root to the item
+    pub data: Vec<DisambiguatedDefPathData>,
+
+    /// what krate root is this path relative to?
+    pub krate: ast::CrateNum,
+}
+
+impl DefPath {
+    pub fn is_local(&self) -> bool {
+        self.krate == LOCAL_CRATE
+    }
+
+    pub fn make<FN>(start_krate: ast::CrateNum,
+                    start_index: DefIndex,
+                    mut get_key: FN) -> DefPath
+        where FN: FnMut(DefIndex) -> DefKey
+    {
+        let mut krate = start_krate;
+        let mut data = vec![];
+        let mut index = Some(start_index);
+        loop {
+            let p = index.unwrap();
+            let key = get_key(p);
+            match key.disambiguated_data.data {
+                DefPathData::CrateRoot => {
+                    assert!(key.parent.is_none());
+                    break;
+                }
+                DefPathData::InlinedRoot(ref p) => {
+                    assert!(key.parent.is_none());
+                    assert!(!p.def_id.is_local());
+                    data.extend(p.data.iter().cloned().rev());
+                    krate = p.def_id.krate;
+                    break;
+                }
+                _ => {
+                    data.push(key.disambiguated_data);
+                    index = key.parent;
+                }
+            }
+        }
+        data.reverse();
+        DefPath { data: data, krate: krate }
+    }
+}
+
 /// Root of an inlined item. We track the `DefPath` of the item within
 /// the original crate but also its def-id. This is kind of an
 /// augmented version of a `DefPath` that includes a `DefId`. This is
@@ -141,7 +188,7 @@ impl Definitions {
     /// will be the path of the item in the external crate (but the
     /// path will begin with the path to the external crate).
     pub fn def_path(&self, index: DefIndex) -> DefPath {
-        make_def_path(index, |p| self.def_key(p))
+        DefPath::make(LOCAL_CRATE, index, |p| self.def_key(p))
     }
 
     pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
@@ -247,29 +294,3 @@ impl DefPathData {
     }
 }
 
-pub fn make_def_path<FN>(start_index: DefIndex, mut get_key: FN) -> DefPath
-    where FN: FnMut(DefIndex) -> DefKey
-{
-    let mut result = vec![];
-    let mut index = Some(start_index);
-    while let Some(p) = index {
-        let key = get_key(p);
-        match key.disambiguated_data.data {
-            DefPathData::CrateRoot => {
-                assert!(key.parent.is_none());
-                break;
-            }
-            DefPathData::InlinedRoot(ref p) => {
-                assert!(key.parent.is_none());
-                result.extend(p.iter().cloned().rev());
-                break;
-            }
-            _ => {
-                result.push(key.disambiguated_data);
-                index = key.parent;
-            }
-        }
-    }
-    result.reverse();
-    result
-}

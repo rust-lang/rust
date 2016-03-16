@@ -284,7 +284,7 @@ impl<'a> CrateReader<'a> {
 
         // Check for (potential) conflicts with the local crate
         if self.local_crate_name == crate_name &&
-           &self.sess.crate_disambiguator.borrow()[..] == disambiguator {
+           self.sess.crate_disambiguator.get().as_str() == disambiguator {
             span_fatal!(self.sess, span, E0519,
                         "the current crate is indistinguishable from one of its \
                          dependencies: it has the same crate-name `{}` and was \

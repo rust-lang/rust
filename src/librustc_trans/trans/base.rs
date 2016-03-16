@@ -2444,7 +2444,7 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
                 let path = ccx.tcx().map.def_path_from_id(id);
-                path.last().unwrap().data.to_string()
+                path.data.last().unwrap().data.to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),

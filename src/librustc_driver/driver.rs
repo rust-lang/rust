@@ -501,7 +501,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     })?;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
-    *sess.crate_disambiguator.borrow_mut() = compute_crate_disambiguator(sess);
+    sess.crate_disambiguator.set(token::intern(&compute_crate_disambiguator(sess)));
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_recursion_limit(sess, &krate);

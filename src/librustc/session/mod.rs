@@ -24,6 +24,7 @@ use syntax::diagnostics;
 use syntax::feature_gate;
 use syntax::parse;
 use syntax::parse::ParseSess;
+use syntax::parse::token;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 
@@ -69,7 +70,7 @@ pub struct Session {
     // forms a unique global identifier for the crate. It is used to allow
     // multiple crates with the same name to coexist. See the
     // trans::back::symbol_names module for more information.
-    pub crate_disambiguator: RefCell<String>,
+    pub crate_disambiguator: Cell<ast::Name>,
     pub features: RefCell<feature_gate::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
@@ -486,7 +487,7 @@ pub fn build_session_(sopts: config::Options,
         plugin_attributes: RefCell::new(Vec::new()),
         crate_types: RefCell::new(Vec::new()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        crate_disambiguator: RefCell::new(String::new()),
+        crate_disambiguator: Cell::new(token::intern("")),
         features: RefCell::new(feature_gate::Features::new()),
         recursion_limit: Cell::new(64),
         next_node_id: Cell::new(1),

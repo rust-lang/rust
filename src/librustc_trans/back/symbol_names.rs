@@ -111,23 +111,18 @@ use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
 
 pub fn def_id_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_id: DefId) -> String {
-
     let def_path = tcx.def_path(def_id);
-    let mut s = String::with_capacity(def_path.len() * 16);
+    def_path_to_string(tcx, &def_path)
+}
 
-    let def_path = if def_id.is_local() {
-        s.push_str(&tcx.crate_name[..]);
-        s.push_str("/");
-        s.push_str(&tcx.sess.crate_disambiguator.borrow()[..]);
-        &def_path[..]
-    } else {
-        s.push_str(&tcx.sess.cstore.crate_name(def_id.krate)[..]);
-        s.push_str("/");
-        s.push_str(&tcx.sess.cstore.crate_disambiguator(def_id.krate));
-        &def_path[1..]
-    };
+pub fn def_path_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_path: &DefPath) -> String {
+    let mut s = String::with_capacity(def_path.data.len() * 16);
 
-    for component in def_path {
+    s.push_str(&tcx.crate_name(def_path.krate));
+    s.push_str("/");
+    s.push_str(&tcx.crate_disambiguator(def_path.krate));
+
+    for component in &def_path.data {
         write!(s,
                "::{}[{}]",
                component.data.as_interned_str(),

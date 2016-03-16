@@ -130,7 +130,7 @@ pub fn build_link_meta(sess: &Session,
                        -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: Svh::calculate(&sess.crate_disambiguator.borrow()[..], krate),
+        crate_hash: Svh::calculate(&sess.crate_disambiguator.get().as_str(), krate),
     };
     info!("{:?}", r);
     return r;
