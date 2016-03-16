@@ -183,8 +183,6 @@ pub enum ResolutionError<'a> {
     UndeclaredLabel(&'a str),
     /// error E0427: cannot use `ref` binding mode with ...
     CannotUseRefBindingModeWith(&'a str),
-    /// error E0428: duplicate definition
-    DuplicateDefinition(&'a str, Name),
     /// error E0429: `self` imports are only allowed within a { } list
     SelfImportsOnlyAllowedWithin,
     /// error E0430: `self` import can only appear once in the list
@@ -489,14 +487,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              E0427,
                              "cannot use `ref` binding mode with {}",
                              descr)
-        }
-        ResolutionError::DuplicateDefinition(namespace, name) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0428,
-                             "duplicate definition of {} `{}`",
-                             namespace,
-                             name)
         }
         ResolutionError::SelfImportsOnlyAllowedWithin => {
             struct_span_err!(resolver.session,
@@ -3530,8 +3520,62 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
     }
-}
 
+    fn report_conflict(&self,
+                       parent: Module,
+                       name: Name,
+                       ns: Namespace,
+                       binding: &NameBinding,
+                       old_binding: &NameBinding) {
+        // Error on the second of two conflicting names
+        if old_binding.span.unwrap().lo > binding.span.unwrap().lo {
+            return self.report_conflict(parent, name, ns, old_binding, binding);
+        }
+
+        let container = match parent.def {
+            Some(Def::Mod(_)) => "module",
+            Some(Def::Trait(_)) => "trait",
+            None => "block",
+            _ => "enum",
+        };
+
+        let (participle, noun) = match old_binding.is_import() || old_binding.is_extern_crate() {
+            true => ("imported", "import"),
+            false => ("defined", "definition"),
+        };
+
+        let span = binding.span.unwrap();
+        let msg = {
+            let kind = match (ns, old_binding.module()) {
+                (ValueNS, _) => "a value",
+                (TypeNS, Some(module)) if module.extern_crate_id.is_some() => "an extern crate",
+                (TypeNS, Some(module)) if module.is_normal() => "a module",
+                (TypeNS, Some(module)) if module.is_trait() => "a trait",
+                (TypeNS, _) => "a type",
+            };
+            format!("{} named `{}` has already been {} in this {}",
+                    kind, name, participle, container)
+        };
+
+        let mut err = match (old_binding.is_extern_crate(), binding.is_extern_crate()) {
+            (true, true) => struct_span_err!(self.session, span, E0259, "{}", msg),
+            (true, _) | (_, true) if binding.is_import() || old_binding.is_import() =>
+                struct_span_err!(self.session, span, E0254, "{}", msg),
+            (true, _) | (_, true) => struct_span_err!(self.session, span, E0260, "{}", msg),
+            _ => match (old_binding.is_import(), binding.is_import()) {
+                (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
+                (true, true) => struct_span_err!(self.session, span, E0252, "{}", msg),
+                _ => struct_span_err!(self.session, span, E0255, "{}", msg),
+            },
+        };
+
+        let span = old_binding.span.unwrap();
+        if span != codemap::DUMMY_SP {
+            err.span_note(span, &format!("previous {} of `{}` here", noun, name));
+        }
+        err.emit();
+    }
+}
 
 fn names_to_string(names: &[Name]) -> String {
     let mut first = true;
