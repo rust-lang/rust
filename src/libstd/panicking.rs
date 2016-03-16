@@ -58,12 +58,11 @@ static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 ///
 /// Panics if called from a panicking thread.
 #[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
-pub fn set_hook<F>(hook: F) where F: Fn(&PanicInfo) + 'static + Sync + Send {
+pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
     if thread::panicking() {
         panic!("cannot modify the panic hook from a panicking thread");
     }
 
-    let hook = Box::new(hook);
     unsafe {
         let lock = HOOK_LOCK.write();
         let old_hook = HOOK;
