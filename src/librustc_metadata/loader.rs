@@ -440,14 +440,13 @@ impl<'a> Context<'a> {
             let slot = candidates.entry(hash_str)
                                  .or_insert_with(|| (HashMap::new(), HashMap::new()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
-            fs::canonicalize(path).map(|p| {
-                if rlib {
-                    rlibs.insert(p, kind);
-                } else {
-                    dylibs.insert(p, kind);
-                }
-                FileMatches
-            }).unwrap_or(FileDoesntMatch)
+            let p = path.to_path_buf();
+            if rlib {
+                rlibs.insert(p, kind);
+            } else {
+                dylibs.insert(p, kind);
+            }
+            FileMatches
         });
         self.rejected_via_kind.extend(staticlibs);
 
@@ -462,8 +461,8 @@ impl<'a> Context<'a> {
         let mut libraries = Vec::new();
         for (_hash, (rlibs, dylibs)) in candidates {
             let mut metadata = None;
-            let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
-            let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
+            let rlib = self.extract_one(rlibs, "rlib", &mut metadata, true);
+            let dylib = self.extract_one(dylibs, "dylib", &mut metadata, true);
             match metadata {
                 Some(metadata) => {
                     libraries.push(Library {
@@ -521,7 +520,8 @@ impl<'a> Context<'a> {
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
     fn extract_one(&mut self, m: HashMap<PathBuf, PathKind>, flavor: &str,
-                   slot: &mut Option<MetadataBlob>) -> Option<(PathBuf, PathKind)> {
+                   slot: &mut Option<MetadataBlob>, dups_ok: bool)
+                   -> Option<(PathBuf, PathKind)> {
         let mut ret = None::<(PathBuf, PathKind)>;
         let mut error = 0;
 
@@ -559,7 +559,7 @@ impl<'a> Context<'a> {
             // based on a hash, however, then if we've gotten this far both
             // candidates have the same hash, so they're not actually
             // duplicates that we should warn about.
-            if ret.is_some() && self.hash.is_none() {
+            if ret.is_some() && !dups_ok {
                 let mut e = struct_span_err!(self.sess, self.span, E0465,
                                              "multiple {} candidates for `{}` found",
                                              flavor, self.crate_name);
@@ -707,8 +707,8 @@ impl<'a> Context<'a> {
 
         // Extract the rlib/dylib pair.
         let mut metadata = None;
-        let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
-        let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
+        let rlib = self.extract_one(rlibs, "rlib", &mut metadata, false);
+        let dylib = self.extract_one(dylibs, "dylib", &mut metadata, false);
 
         if rlib.is_none() && dylib.is_none() { return None }
         match metadata {
