@@ -86,6 +86,7 @@ pub mod cast;
 pub mod error;
 pub mod fast_reject;
 pub mod fold;
+pub mod item_path;
 pub mod _match;
 pub mod maps;
 pub mod outlives;
@@ -2218,8 +2219,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.def_map.borrow().get(&tr.ref_id).expect("no def-map entry for trait").def_id()
     }
 
-    pub fn item_path_str(&self, id: DefId) -> String {
-        self.with_path(id, |path| ast_map::path_to_string(path))
+    pub fn def_key(&self, id: DefId) -> ast_map::DefKey {
+        if id.is_local() {
+            self.map.def_key(id)
+        } else {
+            self.sess.cstore.def_key(id)
+        }
     }
 
     /// Returns the `DefPath` of an item. Note that if `id` is not

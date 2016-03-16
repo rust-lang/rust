@@ -103,10 +103,10 @@ use util::sha2::{Digest, Sha256};
 use rustc::middle::cstore;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, TypeFoldable};
+use rustc::middle::ty::item_path::{ItemPathBuffer, RootMode};
 use rustc::front::map::definitions::DefPath;
 
 use std::fmt::Write;
-use syntax::ast;
 use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
 
@@ -135,29 +135,23 @@ pub fn def_path_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_path: &DefPath) -> S
 
 fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                              def_path: &DefPath,
-                             originating_crate: ast::CrateNum,
                              parameters: &[ty::Ty<'tcx>])
                              -> String {
+    debug!("get_symbol_hash(def_path={:?}, parameters={:?})",
+           def_path, parameters);
+
     let tcx = ccx.tcx();
 
     let mut hash_state = ccx.symbol_hasher().borrow_mut();
 
     hash_state.reset();
 
-    if originating_crate == cstore::LOCAL_CRATE {
-        hash_state.input_str(&tcx.sess.crate_disambiguator.borrow()[..]);
-    } else {
-        hash_state.input_str(&tcx.sess.cstore.crate_disambiguator(originating_crate));
-    }
+    // the main symbol name is not necessarily unique; hash in the
+    // compiler's internal def-path, guaranteeing each symbol has a
+    // truly unique path
+    hash_state.input_str(&def_path_to_string(tcx, def_path));
 
-    for component in def_path {
-        let disambiguator_bytes = [(component.disambiguator >>  0) as u8,
-                                   (component.disambiguator >>  8) as u8,
-                                   (component.disambiguator >> 16) as u8,
-                                   (component.disambiguator >> 24) as u8];
-        hash_state.input(&disambiguator_bytes);
-    }
-
+    // also include any type parameters (for generic items)
     for t in parameters {
        assert!(!t.has_erasable_regions());
        assert!(!t.needs_subst());
@@ -180,6 +174,9 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                            -> String {
     let &Instance { def: mut def_id, params: parameters } = instance;
 
+    debug!("exported_name_with_opt_suffix(def_id={:?}, parameters={:?}, suffix={:?})",
+           def_id, parameters, suffix);
+
     if let Some(node_id) = ccx.tcx().map.as_local_node_id(def_id) {
         if let Some(&src_def_id) = ccx.external_srcs().borrow().get(&node_id) {
             def_id = src_def_id;
@@ -187,21 +184,34 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     let def_path = ccx.tcx().def_path(def_id);
-    let hash = get_symbol_hash(ccx, &def_path, def_id.krate, parameters.as_slice());
+    assert_eq!(def_path.krate, def_id.krate);
+    let hash = get_symbol_hash(ccx, &def_path, parameters.as_slice());
 
-    let mut path = Vec::with_capacity(16);
-
-    if def_id.is_local() {
-        path.push(ccx.tcx().crate_name.clone());
-    }
-
-    path.extend(def_path.into_iter().map(|e| e.data.as_interned_str()));
+    let mut buffer = SymbolPathBuffer {
+        names: Vec::with_capacity(def_path.data.len())
+    };
+    ccx.tcx().push_item_path(&mut buffer, def_id);
 
     if let Some(suffix) = suffix {
-        path.push(token::intern_and_get_ident(suffix));
+        buffer.push(suffix);
     }
 
-    mangle(path.into_iter(), Some(&hash[..]))
+    mangle(buffer.names.into_iter(), Some(&hash[..]))
+}
+
+struct SymbolPathBuffer {
+    names: Vec<InternedString>,
+}
+
+impl ItemPathBuffer for SymbolPathBuffer {
+    fn root_mode(&self) -> &RootMode {
+        const ABSOLUTE: &'static RootMode = &RootMode::Absolute;
+        ABSOLUTE
+    }
+
+    fn push(&mut self, text: &str) {
+        self.names.push(token::intern(text).as_str());
+    }
 }
 
 pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -225,7 +235,11 @@ pub fn internal_name_from_type_and_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>
                                                     -> String {
     let path = [token::intern(&t.to_string()).as_str(),
                 gensym_name(suffix).as_str()];
-    let hash = get_symbol_hash(ccx, &Vec::new(), cstore::LOCAL_CRATE, &[t]);
+    let def_path = DefPath {
+        data: vec![],
+        krate: cstore::LOCAL_CRATE,
+    };
+    let hash = get_symbol_hash(ccx, &def_path, &[t]);
     mangle(path.iter().cloned(), Some(&hash[..]))
 }
 
