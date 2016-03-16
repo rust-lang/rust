@@ -21,7 +21,7 @@ use rustc::back::svh::Svh;
 use rustc::dep_graph::DepNode;
 use rustc::session::{config, Session};
 use rustc::session::search_paths::PathKind;
-use rustc::middle::cstore::{CrateStore, validate_crate_name};
+use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::nodemap::FnvHashMap;
 use rustc::front::map as hir_map;
 
@@ -38,7 +38,6 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::FatalError;
 use syntax::parse::token::InternedString;
-use syntax::util::small_vector::SmallVector;
 use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
 use log;
@@ -344,15 +343,13 @@ impl<'a> CrateReader<'a> {
 
         let cmeta = Rc::new(cstore::crate_metadata {
             name: name.to_string(),
-            local_path: RefCell::new(SmallVector::zero()),
-            local_def_path: RefCell::new(vec![]),
+            extern_crate: Cell::new(None),
             index: decoder::load_index(metadata.as_slice()),
             xref_index: decoder::load_xrefs(metadata.as_slice()),
             data: metadata,
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
-            span: span,
             staged_api: staged_api,
             explicitly_linked: Cell::new(explicitly_linked),
         });
@@ -386,8 +383,7 @@ impl<'a> CrateReader<'a> {
                      span: Span,
                      kind: PathKind,
                      explicitly_linked: bool)
-                         -> (ast::CrateNum, Rc<cstore::crate_metadata>,
-                             cstore::CrateSource) {
+                     -> (ast::CrateNum, Rc<cstore::crate_metadata>, cstore::CrateSource) {
         enum LookupResult {
             Previous(ast::CrateNum),
             Loaded(loader::Library),
@@ -444,23 +440,54 @@ impl<'a> CrateReader<'a> {
         }
     }
 
+    fn update_extern_crate(&mut self,
+                           cnum: ast::CrateNum,
+                           mut extern_crate: ExternCrate)
+    {
+        let cmeta = self.cstore.get_crate_data(cnum);
+        let old_extern_crate = cmeta.extern_crate.get();
+
+        // Prefer:
+        // - something over nothing (tuple.0);
+        // - direct extern crate to indirect (tuple.1);
+        // - shorter paths to longer (tuple.2).
+        let new_rank = (true, extern_crate.direct, !extern_crate.path_len);
+        let old_rank = match old_extern_crate {
+            None => (false, false, !0),
+            Some(ref c) => (true, c.direct, !c.path_len),
+        };
+
+        if old_rank >= new_rank {
+            return; // no change needed
+        }
+
+        cmeta.extern_crate.set(Some(extern_crate));
+
+        // Propagate the extern crate info to dependencies.
+        extern_crate.direct = false;
+        for &dep_cnum in cmeta.cnum_map.borrow().values() {
+            self.update_extern_crate(dep_cnum, extern_crate);
+        }
+    }
+
     // Go through the crate metadata and load any crates that it references
     fn resolve_crate_deps(&mut self,
                           root: &Option<CratePaths>,
-                          cdata: &[u8], span : Span)
-                       -> cstore::cnum_map {
+                          cdata: &[u8],
+                          span : Span)
+                          -> cstore::cnum_map {
         debug!("resolving deps of external crate");
         // The map from crate numbers in the crate we're resolving to local crate
         // numbers
         decoder::get_crate_deps(cdata).iter().map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
             let (local_cnum, _, _) = self.resolve_crate(root,
-                                                   &dep.name,
-                                                   &dep.name,
-                                                   Some(&dep.hash),
-                                                   span,
-                                                   PathKind::Dependency,
-                                                   dep.explicitly_linked);
+                                                        &dep.name,
+                                                        &dep.name,
+                                                        Some(&dep.hash),
+                                                        span,
+                                                        PathKind::Dependency,
+                                                        dep.explicitly_linked);
             (dep.cnum, local_cnum)
         }).collect()
     }
@@ -802,19 +829,24 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
 
                 match self.creader.extract_crate_info_hir(i) {
                     Some(info) => {
-                        let (cnum, cmeta, _) = self.creader.resolve_crate(&None,
-                                                              &info.ident,
-                                                              &info.name,
-                                                              None,
-                                                              i.span,
-                                                              PathKind::Crate,
-                                                              true);
+                        let (cnum, _, _) = self.creader.resolve_crate(&None,
+                                                                          &info.ident,
+                                                                          &info.name,
+                                                                          None,
+                                                                          i.span,
+                                                                          PathKind::Crate,
+                                                                          true);
                         let def_id = self.ast_map.local_def_id(i.id);
-                        let def_path = self.ast_map.def_path(def_id);
-                        cmeta.update_local_def_path(def_path);
-                        self.ast_map.with_path(i.id, |path| {
-                            cmeta.update_local_path(path)
-                        });
+
+                        let len = self.ast_map.def_path(def_id).data.len();
+
+                        self.creader.update_extern_crate(cnum,
+                                                         ExternCrate {
+                                                             def_id: def_id,
+                                                             span: i.span,
+                                                             direct: true,
+                                                             path_len: len,
+                                                         });
                         self.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
                     }
                     None => ()

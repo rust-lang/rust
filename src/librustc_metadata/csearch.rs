@@ -13,7 +13,7 @@ use decoder;
 use encoder;
 use loader;
 
-use middle::cstore::{CrateStore, CrateSource, ChildItem, FoundAst};
+use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
@@ -128,16 +128,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_method_arg_names(&cdata, did.index)
     }
 
-    fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
+    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
         let cdata = self.get_crate_data(def.krate);
-        let path = decoder::get_item_path(&cdata, def.index);
-
-        cdata.with_local_path(|cpath| {
-            let mut r = Vec::with_capacity(cpath.len() + path.len());
-            r.extend_from_slice(cpath);
-            r.extend_from_slice(&path);
-            r
-        })
+        decoder::get_item_path(&cdata, def.index)
     }
 
     fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
@@ -344,6 +337,11 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         token::intern_and_get_ident(&self.get_crate_data(cnum).name())
     }
 
+    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>
+    {
+        self.get_crate_data(cnum).extern_crate.get()
+    }
+
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh
     {
         let cdata = self.get_crate_data(cnum);
@@ -383,12 +381,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_reachable_ids(&cdata)
     }
 
-    fn def_path(&self, def: DefId) -> hir_map::DefPath
-    {
+    /// Returns the `DefKey` for a given `DefId`. This indicates the
+    /// parent `DefId` as well as some idea of what kind of data the
+    /// `DefId` refers to.
+    fn def_key(&self, def: DefId) -> hir_map::DefKey {
         let cdata = self.get_crate_data(def.krate);
-        let path = decoder::def_path(&cdata, def.index);
-        let local_path = cdata.local_def_path();
-        local_path.into_iter().chain(path).collect()
+        decoder::def_key(&cdata, def.index)
+    }
+
+    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::def_path(&cdata, def.index)
     }
 
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> {
