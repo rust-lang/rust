@@ -113,7 +113,7 @@ use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
 use middle::ty::{self, TyCtxt, ParameterEnvironment};
-use middle::traits;
+use middle::traits::{self, ProjectionMode};
 use middle::infer;
 use lint;
 use util::nodemap::NodeMap;
@@ -1497,7 +1497,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
                 let infcx = infer::new_infer_ctxt(&self.ir.tcx,
                                                   &self.ir.tcx.tables,
-                                                  Some(param_env));
+                                                  Some(param_env),
+                                                  ProjectionMode::Any);
                 let cause = traits::ObligationCause::dummy();
                 let norm = traits::fully_normalize(&infcx,
                                                    cause,
