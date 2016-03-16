@@ -28,6 +28,7 @@ use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::parse::token;
 use syntax::ast;
 use util::common::FN_OUTPUT_NAME;
@@ -152,14 +153,8 @@ enum ProjectionTyCandidate<'tcx> {
     // from the definition of `Trait` when you have something like <<A as Trait>::B as Trait2>::C
     TraitDef(ty::PolyProjectionPredicate<'tcx>),
 
-    // defined in an impl
-    Impl(VtableImplData<'tcx, PredicateObligation<'tcx>>),
-
-    // closure return type
-    Closure(VtableClosureData<'tcx, PredicateObligation<'tcx>>),
-
-    // fn pointer return type
-    FnPointer(Ty<'tcx>),
+    // from a "impl" (or a "pseudo-impl" returned by select)
+    Select,
 }
 
 struct ProjectionTyCandidateSet<'tcx> {
@@ -461,6 +456,73 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
            projection_ty,
            depth);
 
+    // FIXME(#20304) For now, I am caching here, which is good, but it
+    // means we don't capture the type variables that are created in
+    // the case of ambiguity. Which means we may create a large stream
+    // of such variables. OTOH, if we move the caching up a level, we
+    // would not benefit from caching when proving `T: Trait<U=Foo>`
+    // bounds. It might be the case that we want two distinct caches,
+    // or else another kind of cache entry.
+
+    let infcx = selcx.infcx();
+
+    let projection_ty = infcx.resolve_type_vars_if_possible(&projection_ty);
+
+    match infcx.projection_cache.borrow_mut().try_start(projection_ty) {
+        Ok(()) => { }
+        Err(ProjectionCacheEntry::Ambiguous) => {
+            // If we found ambiguity the last time, that generally
+            // means we will continue to do so until some type in the
+            // key changes (and we know it hasn't, because we just
+            // fully resolved it). One exception though is closure
+            // types, which can transition from having a fixed kind to
+            // no kind with no visible change in the key.
+            //
+            // FIXME(#32286) refactor this so that closure type
+            // changes
+            if !projection_ty.has_closure_types() {
+                return None;
+            }
+        }
+        Err(ProjectionCacheEntry::InProgress) => {
+            // If while normalized A::B, we are asked to normalize
+            // A::B, just return A::B itself. This is a conservative
+            // answer, in the sense that A::B *is* clearly equivalent
+            // to A::B, though there may be a better value we can
+            // find.
+
+            // Under lazy normalization, this can arise when
+            // bootstrapping.  That is, imagine an environment with a
+            // where-clause like `A::B == u32`. Now, if we are asked
+            // to normalize `A::B`, we will want to check the
+            // where-clauses in scope. So we will try to unify `A::B`
+            // with `A::B`, which can trigger a recursive
+            // normalization. In that case, I think we will want this code:
+            //
+            // ```
+            // let ty = selcx.tcx().mk_projection(projection_ty.trait_ref,
+            //                                    projection_ty.item_name);
+            // return Some(NormalizedTy { value: v, obligations: vec![] });
+            // ```
+
+            // But for now, let's classify this as an overflow:
+            let recursion_limit = selcx.tcx().sess.recursion_limit.get();
+            let obligation = Obligation::with_depth(cause.clone(),
+                                                    recursion_limit,
+                                                    projection_ty);
+            report_overflow_error(selcx.infcx(), &obligation, false);
+        }
+        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+            // If we find the value in the cache, then the obligations
+            // have already been returned from the previous entry (and
+            // should therefore have been honored).
+            return Some(NormalizedTy { value: ty, obligations: vec![] });
+        }
+        Err(ProjectionCacheEntry::Error) => {
+            return Some(normalize_to_error(selcx, projection_ty, cause, depth));
+        }
+    }
+
     let obligation = Obligation::with_depth(cause.clone(), depth, projection_ty.clone());
     match project_type(selcx, &obligation) {
         Ok(ProjectedTy::Progress(projected_ty, mut obligations)) => {
@@ -483,11 +545,15 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                        depth);
 
                 obligations.extend(normalizer.obligations);
+                infcx.projection_cache.borrow_mut()
+                                      .complete(projection_ty, normalized_ty);
                 Some(Normalized {
                     value: normalized_ty,
                     obligations: obligations,
                 })
             } else {
+                infcx.projection_cache.borrow_mut()
+                                      .complete(projection_ty, projected_ty);
                 Some(Normalized {
                     value: projected_ty,
                     obligations: obligations,
@@ -497,6 +563,8 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!("normalize_projection_type: projected_ty={:?} no progress",
                    projected_ty);
+            infcx.projection_cache.borrow_mut()
+                                  .complete(projection_ty, projected_ty);
             Some(Normalized {
                 value: projected_ty,
                 obligations: vec!()
@@ -504,6 +572,8 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!("normalize_projection_type: too many candidates");
+            infcx.projection_cache.borrow_mut()
+                                  .ambiguous(projection_ty);
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -513,6 +583,8 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
             // Trait`, which when processed will cause the error to be
             // reported later
 
+            infcx.projection_cache.borrow_mut()
+                                  .error(projection_ty);
             Some(normalize_to_error(selcx, projection_ty, cause, depth))
         }
     }
@@ -560,6 +632,9 @@ enum ProjectedTy<'tcx> {
 }
 
 /// Compute the result of a projection type (if we can).
+///
+/// IMPORTANT:
+/// - `obligation` must be fully normalized
 fn project_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>)
@@ -574,8 +649,7 @@ fn project_type<'cx,'tcx>(
         report_overflow_error(selcx.infcx(), &obligation, true);
     }
 
-    let obligation_trait_ref =
-        selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
+    let obligation_trait_ref = &obligation.predicate.trait_ref;
 
     debug!("project: obligation_trait_ref={:?}", obligation_trait_ref);
 
@@ -645,10 +719,8 @@ fn project_type<'cx,'tcx>(
         debug!("retaining param-env candidates only from {:?}", candidates.vec);
         candidates.vec.retain(|c| match *c {
             ProjectionTyCandidate::ParamEnv(..) => true,
-            ProjectionTyCandidate::Impl(..) |
-            ProjectionTyCandidate::Closure(..) |
             ProjectionTyCandidate::TraitDef(..) |
-            ProjectionTyCandidate::FnPointer(..) => false,
+            ProjectionTyCandidate::Select => false,
         });
         debug!("resulting candidate set: {:?}", candidates.vec);
         if candidates.vec.len() != 1 {
@@ -658,78 +730,12 @@ fn project_type<'cx,'tcx>(
 
     assert!(candidates.vec.len() <= 1);
 
-    let possible_candidate = candidates.vec.pop().and_then(|candidate| {
-        // In Any (i.e. trans) mode, all projections succeed;
-        // otherwise, we need to be sensitive to `default` and
-        // specialization.
-        if !selcx.projection_mode().is_any() {
-            if let ProjectionTyCandidate::Impl(ref impl_data) = candidate {
-                if let Some(node_item) = assoc_ty_def(selcx,
-                                                      impl_data.impl_def_id,
-                                                      obligation.predicate.item_name) {
-                    if node_item.node.is_from_trait() {
-                        if node_item.item.ty.is_some() {
-                            // If the associated type has a default from the
-                            // trait, that should be considered `default` and
-                            // hence not projected.
-                            //
-                            // Note, however, that we allow a projection from
-                            // the trait specifically in the case that the trait
-                            // does *not* give a default. This is purely to
-                            // avoid spurious errors: the situation can only
-                            // arise when *no* impl in the specialization chain
-                            // has provided a definition for the type. When we
-                            // confirm the candidate, we'll turn the projection
-                            // into a TyError, since the actual error will be
-                            // reported in `check_impl_items_against_trait`.
-                            return None;
-                        }
-                    } else if node_item.item.defaultness.is_default() {
-                        return None;
-                    }
-                } else {
-                    // Normally this situation could only arise througha
-                    // compiler bug, but at coherence-checking time we only look
-                    // at the topmost impl (we don't even consider the trait
-                    // itself) for the definition -- so we can fail to find a
-                    // definition of the type even if it exists.
-
-                    // For now, we just unconditionally ICE, because otherwise,
-                    // examples like the following will succeed:
-                    //
-                    // ```
-                    // trait Assoc {
-                    //     type Output;
-                    // }
-                    //
-                    // impl<T> Assoc for T {
-                    //     default type Output = bool;
-                    // }
-                    //
-                    // impl Assoc for u8 {}
-                    // impl Assoc for u16 {}
-                    //
-                    // trait Foo {}
-                    // impl Foo for <u8 as Assoc>::Output {}
-                    // impl Foo for <u16 as Assoc>::Output {}
-                    //     return None;
-                    // }
-                    // ```
-                    //
-                    // The essential problem here is that the projection fails,
-                    // leaving two unnormalized types, which appear not to unify
-                    // -- so the overlap check succeeds, when it should fail.
-                    selcx.tcx().sess.bug("Tried to project an inherited associated type during \
-                                          coherence checking, which is currently not supported.");
-                }
-            }
-        }
-        Some(candidate)
-    });
-
-    match possible_candidate {
+    match candidates.vec.pop() {
         Some(candidate) => {
-            let (ty, obligations) = confirm_candidate(selcx, obligation, candidate);
+            let (ty, obligations) = confirm_candidate(selcx,
+                                                      obligation,
+                                                      &obligation_trait_ref,
+                                                      candidate);
             Ok(ProjectedTy::Progress(ty, obligations))
         }
         None => {
@@ -845,11 +851,255 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
     }
 }
 
-fn assemble_candidates_from_object_type<'cx,'tcx>(
+fn assemble_candidates_from_impls<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation:  &ProjectionTyObligation<'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
     obligation_trait_ref: &ty::TraitRef<'tcx>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
+    -> Result<(), SelectionError<'tcx>>
+{
+    // If we are resolving `<T as TraitRef<...>>::Item == Type`,
+    // start out by selecting the predicate `T as TraitRef<...>`:
+    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
+    selcx.infcx().probe(|_| {
+        let vtable = match selcx.select(&trait_obligation) {
+            Ok(Some(vtable)) => vtable,
+            Ok(None) => {
+                candidate_set.ambiguous = true;
+                return Ok(());
+            }
+            Err(e) => {
+                debug!("assemble_candidates_from_impls: selection error {:?}",
+                       e);
+                return Err(e);
+            }
+        };
+
+        match vtable {
+            super::VtableClosure(_) |
+            super::VtableFnPointer(_) |
+            super::VtableObject(_) => {
+                debug!("assemble_candidates_from_impls: vtable={:?}",
+                       vtable);
+
+                candidate_set.vec.push(ProjectionTyCandidate::Select);
+            }
+            super::VtableImpl(ref impl_data) if !selcx.projection_mode().is_any() => {
+                // We have to be careful when projecting out of an
+                // impl because of specialization. If we are not in
+                // trans (i.e., projection mode is not "any"), and the
+                // impl's type is declared as default, then we disable
+                // projection (even if the trait ref is fully
+                // monomorphic). In the case where trait ref is not
+                // fully monomorphic (i.e., includes type parameters),
+                // this is because those type parameters may
+                // ultimately be bound to types from other crates that
+                // may have specialized impls we can't see. In the
+                // case where the trait ref IS fully monomorphic, this
+                // is a policy decision that we made in the RFC in
+                // order to preserve flexibility for the crate that
+                // defined the specializable impl to specialize later
+                // for existing types.
+                //
+                // In either case, we handle this by not adding a
+                // candidate for an impl if it contains a `default`
+                // type.
+                let opt_node_item = assoc_ty_def(selcx,
+                                                 impl_data.impl_def_id,
+                                                 obligation.predicate.item_name);
+                let new_candidate = if let Some(node_item) = opt_node_item {
+                    if node_item.node.is_from_trait() {
+                        if node_item.item.ty.is_some() {
+                            // The impl inherited a `type Foo =
+                            // Bar` given in the trait, which is
+                            // implicitly default. No candidate.
+                            None
+                        } else {
+                            // The impl did not specify `type` and neither
+                            // did the trait:
+                            //
+                            // ```rust
+                            // trait Foo { type T; }
+                            // impl Foo for Bar { }
+                            // ```
+                            //
+                            // This is an error, but it will be
+                            // reported in `check_impl_items_against_trait`.
+                            // We accept it here but will flag it as
+                            // an error when we confirm the candidate
+                            // (which will ultimately lead to `normalize_to_error`
+                            // being invoked).
+                            Some(ProjectionTyCandidate::Select)
+                        }
+                    } else if node_item.item.defaultness.is_default() {
+                        // The impl specified `default type Foo =
+                        // Bar`. No candidate.
+                        None
+                    } else {
+                        // The impl specified `type Foo = Bar`
+                        // with no default. Add a candidate.
+                        Some(ProjectionTyCandidate::Select)
+                    }
+                } else {
+                    // This is saying that neither the trait nor
+                    // the impl contain a definition for this
+                    // associated type.  Normally this situation
+                    // could only arise through a compiler bug --
+                    // if the user wrote a bad item name, it
+                    // should have failed in astconv. **However**,
+                    // at coherence-checking time, we only look at
+                    // the topmost impl (we don't even consider
+                    // the trait itself) for the definition -- and
+                    // so in that case it may be that the trait
+                    // *DOES* have a declaration, but we don't see
+                    // it, and we end up in this branch.
+                    //
+                    // This is kind of tricky to handle actually.
+                    // For now, we just unconditionally ICE,
+                    // because otherwise, examples like the
+                    // following will succeed:
+                    //
+                    // ```
+                    // trait Assoc {
+                    //     type Output;
+                    // }
+                    //
+                    // impl<T> Assoc for T {
+                    //     default type Output = bool;
+                    // }
+                    //
+                    // impl Assoc for u8 {}
+                    // impl Assoc for u16 {}
+                    //
+                    // trait Foo {}
+                    // impl Foo for <u8 as Assoc>::Output {}
+                    // impl Foo for <u16 as Assoc>::Output {}
+                    //     return None;
+                    // }
+                    // ```
+                    //
+                    // The essential problem here is that the
+                    // projection fails, leaving two unnormalized
+                    // types, which appear not to unify -- so the
+                    // overlap check succeeds, when it should
+                    // fail.
+                    selcx.tcx().sess.bug("Tried to project an inherited associated type during \
+                                          coherence checking, which is currently not supported.");
+                };
+                candidate_set.vec.extend(new_candidate);
+            }
+            super::VtableImpl(_) => {
+                // In trans mode, we can just project out of impls, no prob.
+                assert!(selcx.projection_mode().is_any());
+                candidate_set.vec.push(ProjectionTyCandidate::Select);
+            }
+            super::VtableParam(..) => {
+                // This case tell us nothing about the value of an
+                // associated type. Consider:
+                //
+                // ```
+                // trait SomeTrait { type Foo; }
+                // fn foo<T:SomeTrait>(...) { }
+                // ```
+                //
+                // If the user writes `<T as SomeTrait>::Foo`, then the `T
+                // : SomeTrait` binding does not help us decide what the
+                // type `Foo` is (at least, not more specifically than
+                // what we already knew).
+                //
+                // But wait, you say! What about an example like this:
+                //
+                // ```
+                // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
+                // ```
+                //
+                // Doesn't the `T : Sometrait<Foo=usize>` predicate help
+                // resolve `T::Foo`? And of course it does, but in fact
+                // that single predicate is desugared into two predicates
+                // in the compiler: a trait predicate (`T : SomeTrait`) and a
+                // projection. And the projection where clause is handled
+                // in `assemble_candidates_from_param_env`.
+            }
+            super::VtableDefaultImpl(..) |
+            super::VtableBuiltin(..) => {
+                // These traits have no associated types.
+                selcx.tcx().sess.span_bug(
+                    obligation.cause.span,
+                    &format!("Cannot project an associated type from `{:?}`",
+                             vtable));
+            }
+        }
+
+        Ok(())
+    })
+}
+
+fn confirm_candidate<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>,
+    candidate: ProjectionTyCandidate<'tcx>)
+    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+{
+    debug!("confirm_candidate(candidate={:?}, obligation={:?})",
+           candidate,
+           obligation);
+
+    match candidate {
+        ProjectionTyCandidate::ParamEnv(poly_projection) |
+        ProjectionTyCandidate::TraitDef(poly_projection) => {
+            confirm_param_env_candidate(selcx, obligation, poly_projection)
+        }
+
+        ProjectionTyCandidate::Select => {
+            confirm_select_candidate(selcx, obligation, obligation_trait_ref)
+        }
+    }
+}
+
+fn confirm_select_candidate<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>)
+    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
+{
+    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
+    let vtable = match selcx.select(&trait_obligation) {
+        Ok(Some(vtable)) => vtable,
+        _ => {
+            selcx.tcx().sess.span_bug(
+                obligation.cause.span,
+                &format!("Failed to select `{:?}`", trait_obligation));
+        }
+    };
+
+    match vtable {
+        super::VtableImpl(data) =>
+            confirm_impl_candidate(selcx, obligation, data),
+        super::VtableClosure(data) =>
+            confirm_closure_candidate(selcx, obligation, data),
+        super::VtableFnPointer(data) =>
+            confirm_fn_pointer_candidate(selcx, obligation, data),
+        super::VtableObject(_) =>
+            confirm_object_candidate(selcx, obligation, obligation_trait_ref),
+        super::VtableDefaultImpl(..) |
+        super::VtableParam(..) |
+        super::VtableBuiltin(..) =>
+            // we don't create Select candidates with this kind of resolution
+            selcx.tcx().sess.span_bug(
+                obligation.cause.span,
+                &format!("Cannot project an associated type from `{:?}`",
+                         vtable)),
+    }
+}
+
+fn confirm_object_candidate<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation:  &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &ty::TraitRef<'tcx>)
+    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
     let self_ty = obligation_trait_ref.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
@@ -868,127 +1118,49 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     let env_predicates = projection_bounds.iter()
                                           .map(|p| p.to_predicate())
                                           .collect();
-    let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
-    assemble_candidates_from_predicates(selcx,
-                                        obligation,
-                                        obligation_trait_ref,
-                                        candidate_set,
-                                        ProjectionTyCandidate::ParamEnv,
-                                        env_predicates)
-}
+    let env_predicate = {
+        let env_predicates = elaborate_predicates(selcx.tcx(), env_predicates);
 
-fn assemble_candidates_from_impls<'cx,'tcx>(
-    selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation: &ProjectionTyObligation<'tcx>,
-    obligation_trait_ref: &ty::TraitRef<'tcx>,
-    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
-    -> Result<(), SelectionError<'tcx>>
-{
-    // If we are resolving `<T as TraitRef<...>>::Item == Type`,
-    // start out by selecting the predicate `T as TraitRef<...>`:
-    let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
-    let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
-    let vtable = match selcx.select(&trait_obligation) {
-        Ok(Some(vtable)) => vtable,
-        Ok(None) => {
-            candidate_set.ambiguous = true;
-            return Ok(());
-        }
-        Err(e) => {
-            debug!("assemble_candidates_from_impls: selection error {:?}",
-                   e);
-            return Err(e);
+        // select only those projections that are actually projecting an
+        // item with the correct name
+        let env_predicates = env_predicates.filter_map(|p| match p {
+            ty::Predicate::Projection(data) =>
+                if data.item_name() == obligation.predicate.item_name {
+                    Some(data)
+                } else {
+                    None
+                },
+            _ => None
+        });
+
+        // select those with a relevant trait-ref
+        let mut env_predicates = env_predicates.filter(|data| {
+            let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
+            let data_poly_trait_ref = data.to_poly_trait_ref();
+            let obligation_poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
+            selcx.infcx().probe(|_| {
+                selcx.infcx().sub_poly_trait_refs(false,
+                                                  origin,
+                                                  data_poly_trait_ref,
+                                                  obligation_poly_trait_ref).is_ok()
+            })
+        });
+
+        // select the first matching one; there really ought to be one or
+        // else the object type is not WF, since an object type should
+        // include all of its projections explicitly
+        match env_predicates.next() {
+            Some(env_predicate) => env_predicate,
+            None => {
+                debug!("confirm_object_candidate: no env-predicate \
+                        found in object type `{:?}`; ill-formed",
+                       object_ty);
+                return (selcx.tcx().types.err, vec!());
+            }
         }
     };
 
-    match vtable {
-        super::VtableImpl(data) => {
-            debug!("assemble_candidates_from_impls: impl candidate {:?}",
-                   data);
-
-            candidate_set.vec.push(
-                ProjectionTyCandidate::Impl(data));
-        }
-        super::VtableObject(_) => {
-            assemble_candidates_from_object_type(
-                selcx, obligation, obligation_trait_ref, candidate_set);
-        }
-        super::VtableClosure(data) => {
-            candidate_set.vec.push(
-                ProjectionTyCandidate::Closure(data));
-        }
-        super::VtableFnPointer(fn_type) => {
-            candidate_set.vec.push(
-                ProjectionTyCandidate::FnPointer(fn_type));
-        }
-        super::VtableParam(..) => {
-            // This case tell us nothing about the value of an
-            // associated type. Consider:
-            //
-            // ```
-            // trait SomeTrait { type Foo; }
-            // fn foo<T:SomeTrait>(...) { }
-            // ```
-            //
-            // If the user writes `<T as SomeTrait>::Foo`, then the `T
-            // : SomeTrait` binding does not help us decide what the
-            // type `Foo` is (at least, not more specifically than
-            // what we already knew).
-            //
-            // But wait, you say! What about an example like this:
-            //
-            // ```
-            // fn bar<T:SomeTrait<Foo=usize>>(...) { ... }
-            // ```
-            //
-            // Doesn't the `T : Sometrait<Foo=usize>` predicate help
-            // resolve `T::Foo`? And of course it does, but in fact
-            // that single predicate is desugared into two predicates
-            // in the compiler: a trait predicate (`T : SomeTrait`) and a
-            // projection. And the projection where clause is handled
-            // in `assemble_candidates_from_param_env`.
-        }
-        super::VtableDefaultImpl(..) |
-        super::VtableBuiltin(..) => {
-            // These traits have no associated types.
-            selcx.tcx().sess.span_bug(
-                obligation.cause.span,
-                &format!("Cannot project an associated type from `{:?}`",
-                         vtable));
-        }
-    }
-
-    Ok(())
-}
-
-fn confirm_candidate<'cx,'tcx>(
-    selcx: &mut SelectionContext<'cx,'tcx>,
-    obligation: &ProjectionTyObligation<'tcx>,
-    candidate: ProjectionTyCandidate<'tcx>)
-    -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
-{
-    debug!("confirm_candidate(candidate={:?}, obligation={:?})",
-           candidate,
-           obligation);
-
-    match candidate {
-        ProjectionTyCandidate::ParamEnv(poly_projection) |
-        ProjectionTyCandidate::TraitDef(poly_projection) => {
-            confirm_param_env_candidate(selcx, obligation, poly_projection)
-        }
-
-        ProjectionTyCandidate::Impl(impl_vtable) => {
-            confirm_impl_candidate(selcx, obligation, impl_vtable)
-        }
-
-        ProjectionTyCandidate::Closure(closure_vtable) => {
-            confirm_closure_candidate(selcx, obligation, closure_vtable)
-        }
-
-        ProjectionTyCandidate::FnPointer(fn_type) => {
-            confirm_fn_pointer_candidate(selcx, obligation, fn_type)
-        }
-    }
+    confirm_param_env_candidate(selcx, obligation, env_predicate)
 }
 
 fn confirm_fn_pointer_candidate<'cx,'tcx>(
@@ -1160,5 +1332,79 @@ fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>,
             .ancestors(impl_def_id)
             .type_defs(selcx.tcx(), assoc_ty_name)
             .next()
+    }
+}
+
+// # Cache
+
+pub struct ProjectionCache<'tcx> {
+    map: SnapshotMap<ty::ProjectionTy<'tcx>, ProjectionCacheEntry<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ProjectionCacheEntry<'tcx> {
+    InProgress,
+    Ambiguous,
+    Error,
+    NormalizedTy(Ty<'tcx>),
+}
+
+// NB: intentionally not Clone
+pub struct ProjectionCacheSnapshot {
+    snapshot: Snapshot
+}
+
+impl<'tcx> ProjectionCache<'tcx> {
+    pub fn new() -> Self {
+        ProjectionCache {
+            map: SnapshotMap::new()
+        }
+    }
+
+    pub fn snapshot(&mut self) -> ProjectionCacheSnapshot {
+        ProjectionCacheSnapshot { snapshot: self.map.snapshot() }
+    }
+
+    pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.rollback_to(snapshot.snapshot);
+    }
+
+    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.commit(snapshot.snapshot);
+    }
+
+    /// Try to start normalize `key`; returns an error if
+    /// normalization already occured (this error corresponds to a
+    /// cache hit, so it's actually a good thing).
+    fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
+                 -> Result<(), ProjectionCacheEntry<'tcx>> {
+        if let Some(entry) = self.map.get(&key) {
+            return Err(*entry);
+        }
+
+        self.map.insert(key, ProjectionCacheEntry::InProgress);
+        Ok(())
+    }
+
+    /// Indicates that `key` was normalized to `value`.
+    fn complete(&mut self, key: ty::ProjectionTy<'tcx>, value: Ty<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
+        assert!(!fresh, "never started projecting `{:?}`", key);
+    }
+
+    /// Indicates that trying to normalize `key` resulted in
+    /// ambiguity. No point in trying it again then until we gain more
+    /// type information (in which case, the "fully resolved" key will
+    /// be different).
+    fn ambiguous(&mut self, key: ty::ProjectionTy<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::Ambiguous);
+        assert!(!fresh, "never started projecting `{:?}`", key);
+    }
+
+    /// Indicates that trying to normalize `key` resulted in
+    /// error.
+    fn error(&mut self, key: ty::ProjectionTy<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::Error);
+        assert!(!fresh, "never started projecting `{:?}`", key);
     }
 }

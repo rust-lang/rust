@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Trait Resolution. See the Book for more.
+//! Trait Resolution. See README.md for an overview of how this works.
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
@@ -36,8 +36,9 @@ pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
-pub use self::project::{MismatchedProjectionTypes, ProjectionMode};
+pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, Normalized};
+pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, ProjectionMode};
 pub use self::object_safety::is_object_safe;
 pub use self::object_safety::astconv_object_safety_violations;
 pub use self::object_safety::object_safety_violations;

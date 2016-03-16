@@ -170,8 +170,13 @@ impl FlagComputation {
 
     fn add_region(&mut self, r: ty::Region) {
         match r {
-            ty::ReVar(..) |
-            ty::ReSkolemized(..) => { self.add_flags(TypeFlags::HAS_RE_INFER); }
+            ty::ReVar(..) => {
+                self.add_flags(TypeFlags::HAS_RE_INFER);
+            }
+            ty::ReSkolemized(..) => {
+                self.add_flags(TypeFlags::HAS_RE_INFER);
+                self.add_flags(TypeFlags::HAS_RE_SKOL);
+            }
             ty::ReLateBound(debruijn, _) => { self.add_depth(debruijn.depth); }
             ty::ReEarlyBound(..) => { self.add_flags(TypeFlags::HAS_RE_EARLY_BOUND); }
             ty::ReStatic => {}

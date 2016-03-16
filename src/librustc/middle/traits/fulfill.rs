@@ -507,6 +507,8 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                     // also includes references to its upvars as part
                     // of its type, and those types are resolved at
                     // the same time.
+                    //
+                    // FIXME(#32286) logic seems false if no upvars
                     pending_obligation.stalled_on =
                         trait_ref_type_vars(selcx, data.to_poly_trait_ref());
 
