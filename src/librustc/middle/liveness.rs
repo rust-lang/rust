@@ -112,7 +112,9 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
-use middle::ty::{self, TyCtxt};
+use middle::ty::{self, TyCtxt, ParameterEnvironment};
+use middle::traits::{self, ProjectionMode};
+use middle::infer;
 use lint;
 use util::nodemap::NodeMap;
 
@@ -1490,9 +1492,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match fn_ret {
             ty::FnConverging(t_ret)
-                if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
+                    if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                if t_ret.is_nil() {
+                let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
+                let infcx = infer::new_infer_ctxt(&self.ir.tcx,
+                                                  &self.ir.tcx.tables,
+                                                  Some(param_env),
+                                                  ProjectionMode::Any);
+                let cause = traits::ObligationCause::dummy();
+                let norm = traits::fully_normalize(&infcx,
+                                                   cause,
+                                                   &t_ret);
+
+                if norm.unwrap().is_nil() {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {
