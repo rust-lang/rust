@@ -581,14 +581,6 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    pub fn get_foreign_vis(&self, id: NodeId) -> Visibility {
-        let vis = self.expect_foreign_item(id).vis; // read recorded by `expect_foreign_item`
-        match self.find(self.get_parent(id)) { // read recorded by `find`
-            Some(NodeItem(i)) => vis.inherit_from(i.vis),
-            _ => vis
-        }
-    }
-
     pub fn expect_item(&self, id: NodeId) -> &'ast Item {
         match self.find(id) { // read recorded by `find`
             Some(NodeItem(item)) => item,
