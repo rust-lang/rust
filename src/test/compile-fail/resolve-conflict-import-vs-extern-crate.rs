@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice as std; //~ ERROR import `std` conflicts with imported crate
+use std::slice as std; //~ ERROR an extern crate named `std` has already been imported
 
 fn main() {
 }

@@ -513,7 +513,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 let imported_binding = directive.import(binding, privacy_error);
                 let conflict = module_.try_define_child(target, ns, imported_binding);
                 if let Err(old_binding) = conflict {
-                    self.report_conflict(target, ns, &directive.import(binding, None), old_binding);
+                    let binding = &directive.import(binding, None);
+                    self.resolver.report_conflict(module_, target, ns, binding, old_binding);
                 }
             }
 
@@ -650,67 +651,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         return Success(());
     }
 
-    fn report_conflict(&mut self,
-                       name: Name,
-                       ns: Namespace,
-                       binding: &NameBinding,
-                       old_binding: &NameBinding) {
-        // Error on the second of two conflicting imports
-        if old_binding.is_import() && binding.is_import() &&
-           old_binding.span.unwrap().lo > binding.span.unwrap().lo {
-            self.report_conflict(name, ns, old_binding, binding);
-            return;
-        }
-
-        if old_binding.is_extern_crate() {
-            let msg = format!("import `{0}` conflicts with imported crate \
-                               in this module (maybe you meant `use {0}::*`?)",
-                              name);
-            span_err!(self.resolver.session, binding.span.unwrap(), E0254, "{}", &msg);
-        } else if old_binding.is_import() {
-            let ns_word = match (ns, old_binding.module()) {
-                (ValueNS, _) => "value",
-                (TypeNS, Some(module)) if module.is_normal() => "module",
-                (TypeNS, Some(module)) if module.is_trait() => "trait",
-                (TypeNS, _) => "type",
-            };
-            let mut err = struct_span_err!(self.resolver.session,
-                                           binding.span.unwrap(),
-                                           E0252,
-                                           "a {} named `{}` has already been imported \
-                                            in this module",
-                                           ns_word,
-                                           name);
-            err.span_note(old_binding.span.unwrap(),
-                          &format!("previous import of `{}` here", name));
-            err.emit();
-        } else if ns == ValueNS { // Check for item conflicts in the value namespace
-            let mut err = struct_span_err!(self.resolver.session,
-                                           binding.span.unwrap(),
-                                           E0255,
-                                           "import `{}` conflicts with value in this module",
-                                           name);
-            err.span_note(old_binding.span.unwrap(), "conflicting value here");
-            err.emit();
-        } else { // Check for item conflicts in the type namespace
-            let (what, note) = match old_binding.module() {
-                Some(ref module) if module.is_normal() =>
-                    ("existing submodule", "note conflicting module here"),
-                Some(ref module) if module.is_trait() =>
-                    ("trait in this module", "note conflicting trait here"),
-                _ => ("type in this module", "note conflicting type here"),
-            };
-            let mut err = struct_span_err!(self.resolver.session,
-                                           binding.span.unwrap(),
-                                           E0256,
-                                           "import `{}` conflicts with {}",
-                                           name,
-                                           what);
-            err.span_note(old_binding.span.unwrap(), note);
-            err.emit();
-        }
-    }
-
     // Miscellaneous post-processing, including recording reexports, recording shadowed traits,
     // reporting conflicts, reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
     fn finalize_resolutions(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
@@ -720,7 +660,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         let mut reexports = Vec::new();
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
-            resolution.report_conflicts(|b1, b2| self.report_conflict(name, ns, b1, b2));
+            resolution.report_conflicts(|b1, b2| {
+                self.resolver.report_conflict(module, name, ns, b1, b2)
+            });
+
             let binding = match resolution.binding {
                 Some(binding) => binding,
                 None => continue,

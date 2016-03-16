@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use self::A; //~ ERROR import `A` conflicts with existing submodule
-use self::B; //~ ERROR import `B` conflicts with existing submodule
-mod A {}
-pub mod B {}
+use self::A; //~ NOTE previous import of `A` here
+use self::B; //~ NOTE previous import of `B` here
+mod A {} //~ ERROR a module named `A` has already been imported in this module
+pub mod B {} //~ ERROR a module named `B` has already been imported in this module
 
 mod C {
-    use C::D; //~ ERROR import `D` conflicts with existing submodule
-    mod D {}
+    use C::D; //~ NOTE previous import of `D` here
+    mod D {} //~ ERROR a module named `D` has already been imported in this module
 }
 
 fn main() {}
