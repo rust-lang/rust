@@ -133,11 +133,16 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemDefaultImpl(..) | ItemImpl(..) => DefPathData::Impl(i.name),
-            ItemEnum(..) | ItemStruct(..) | ItemTrait(..) => DefPathData::Type(i.name),
-            ItemExternCrate(..) | ItemMod(..) => DefPathData::Mod(i.name),
-            ItemStatic(..) | ItemConst(..) | ItemFn(..) => DefPathData::Value(i.name),
-            _ => DefPathData::Misc,
+            ItemDefaultImpl(..) | ItemImpl(..) =>
+                DefPathData::Impl,
+            ItemEnum(..) | ItemStruct(..) | ItemTrait(..) |
+            ItemExternCrate(..) | ItemMod(..) | ItemForeignMod(..) |
+            ItemTy(..) =>
+                DefPathData::TypeNs(i.name),
+            ItemStatic(..) | ItemConst(..) | ItemFn(..) =>
+                DefPathData::ValueNs(i.name),
+            ItemUse(..) =>
+                DefPathData::Misc,
         };
 
         self.insert_def(i.id, NodeItem(i), def_data);
@@ -202,7 +207,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         self.insert_def(foreign_item.id,
                         NodeForeignItem(foreign_item),
-                        DefPathData::Value(foreign_item.name));
+                        DefPathData::ValueNs(foreign_item.name));
 
         let parent_node = self.parent_node;
         self.parent_node = foreign_item.id;
@@ -222,8 +227,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
         let def_data = match ti.node {
-            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::Value(ti.name),
-            TypeTraitItem(..) => DefPathData::Type(ti.name),
+            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::ValueNs(ti.name),
+            TypeTraitItem(..) => DefPathData::TypeNs(ti.name),
         };
 
         self.insert(ti.id, NodeTraitItem(ti));
@@ -246,8 +251,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
         let def_data = match ii.node {
-            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::Value(ii.name),
-            ImplItemKind::Type(..) => DefPathData::Type(ii.name),
+            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::ValueNs(ii.name),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name),
         };
 
         self.insert_def(ii.id, NodeImplItem(ii), def_data);

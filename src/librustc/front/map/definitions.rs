@@ -144,10 +144,9 @@ pub enum DefPathData {
     Misc,
 
     // Different kinds of items and item-like things:
-    Impl(ast::Name),
-    Type(ast::Name),
-    Mod(ast::Name),
-    Value(ast::Name),
+    Impl,
+    TypeNs(ast::Name), // something in the type NS
+    ValueNs(ast::Name), // something in the value NS
     MacroDef(ast::Name),
     ClosureExpr,
 
@@ -159,10 +158,6 @@ pub enum DefPathData {
     StructCtor, // implicit ctor for a tuple-like struct
     Initializer, // initializer for a const
     Binding(ast::Name), // pattern binding
-
-    // An external crate that does not have an `extern crate` in this
-    // crate.
-    DetachedCrate(ast::Name),
 }
 
 impl Definitions {
@@ -247,18 +242,19 @@ impl DefPathData {
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {
-            Impl(name) |
-            Type(name) |
-            Mod(name) |
-            Value(name) |
+            TypeNs(name) |
+            ValueNs(name) |
             MacroDef(name) |
             TypeParam(name) |
             LifetimeDef(name) |
             EnumVariant(name) |
-            DetachedCrate(name) |
             Binding(name) |
             Field(name) => {
                 name.as_str()
+            }
+
+            Impl => {
+                InternedString::new("{{impl}}")
             }
 
             // note that this does not show up in user printouts
