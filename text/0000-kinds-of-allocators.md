@@ -704,7 +704,7 @@ An instance of an allocator has many methods, but an implementor of
 the trait need only provide two method bodies: [alloc and dealloc][].
 
 (This is only *somewhat* analogous to the `Iterator` trait in Rust. It
-is currently very uncommon to override any methods of `Iterator` ecept
+is currently very uncommon to override any methods of `Iterator` except
 for `fn next`. However, I expect it will be much more common for
 `Allocator` to override at least some of the other methods, like `fn
 realloc`.)
