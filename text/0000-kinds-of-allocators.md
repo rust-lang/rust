@@ -803,7 +803,7 @@ to both the allocation and deallocation call sites.
   a simple value or array type is being allocated.
 
 * The `alloc_array_unchecked` and `dealloc_array_unchecked` likewise
-  capture a similar pattern, but are "less safe" in that they put more
+  capture a common pattern, but are "less safe" in that they put more
   of an onus on the caller to validate the input parameters before
   calling the methods.
 
@@ -854,8 +854,7 @@ out-of-memory (OOM) conditions on allocation failure.
 However, since I also suspect that some programs would benefit from
 contextual information about *which* allocator is reporting memory
 exhaustion, I have made `oom` a method of the `Allocator` trait, so
-that allocator clients can just call that on error (assuming they want
-to trust the failure behavior of the allocator).
+that allocator clients have the option of calling that on error.
 
 ### Why is `usable_size` ever needed? Why not call `kind.size()` directly, as is done in the default implementation?
 
@@ -1755,8 +1754,14 @@ pub unsafe trait Allocator {
     /// initialized. (Extension subtraits might restrict this
     /// behavior, e.g. to ensure initialization.)
     ///
-    /// Returns `Err` if allocation fails or if `kind` does
+    /// Returning `Err` indicates that either memory is exhausted or `kind` does
     /// not meet allocator's size or alignment constraints.
+    ///
+    /// Implementations are encouraged to return `Err` on memory
+    /// exhaustion rather than panicking or aborting, but this is
+    /// not a strict requirement. (Specifically: it is *legal* to use
+    /// this trait to wrap an underlying native allocation library
+    /// that aborts on memory exhaustion.)
     unsafe fn alloc(&mut self, kind: Kind) -> Result<Address, Self::Error>;
 
     /// Deallocate the memory referenced by `ptr`.
@@ -1774,13 +1779,12 @@ pub unsafe trait Allocator {
     /// practice this means implementors should eschew allocating,
     /// especially from `self` (directly or indirectly).
     ///
-    /// Implementors of this trait are discouraged from panicking or
-    /// aborting from other methods in the event of memory exhaustion;
+    /// Implementions of this trait's allocation methods are discouraged
+    /// from panicking (or aborting) in the event of memory exhaustion;
     /// instead they should return an appropriate error from the
     /// invoked method, and let the client decide whether to invoke
     /// this `oom` method.
     unsafe fn oom(&mut self) -> ! { ::core::intrinsics::abort() }
-
 ```
 
 ### Allocator-specific quantities and limits
