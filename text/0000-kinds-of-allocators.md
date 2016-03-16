@@ -460,6 +460,79 @@ fn main() {
 
 And that's all to the demo, folks.
 
+### What about standard library containers?
+
+The intention of this RFC is that the Rust standard library will be
+extended with parameteric allocator support: `Vec`, `HashMap`, etc
+should all eventually be extended with the ability to use an
+alternative allocator for their backing storage.
+
+However, this RFC does not prescribe when or how this should happen.
+
+Under the design of this RFC, Allocators parameters are specified via
+a *generic type parameter* on the container type. This strongly
+implies that `Vec<T>` and `HashMap<K, V>` will need to be extended
+with an allocator type parameter, i.e.: `Vec<T, A:Allocator>` and
+`HashMap<K, V, A:Allocator>`.
+
+There are two reasons why such extension is left to later work, after
+this RFC.
+
+#### Default type parameter fallback
+
+On its own, such a change would be backwards incompatible (i.e. a huge
+breaking change), and also would simply be just plain inconvenient for
+typical use cases. Therefore, the newly added type parameters will
+almost certainly require a *default type*: `Vec<T:
+A:Allocator=HeapAllocator>` and
+`HashMap<K,V,A:Allocator=HeapAllocator>`.
+
+Default type parameters themselves, in the context of type defintions,
+are a stable part of the Rust language.
+
+However, the exact semantics of how default type parameters interact
+with inference is still being worked out (in part *because* allocators
+are a motivating use case), as one can see by reading the following:
+
+* RFC 213, "Finalize defaulted type parameters": https://github.com/rust-lang/rfcs/blob/master/text/0213-defaulted-type-params.md
+
+ * Tracking Issue for RFC 213: Default Type Parameter Fallback: https://github.com/rust-lang/rust/issues/27336
+
+* Feature gate defaulted type parameters appearing outside of types: https://github.com/rust-lang/rust/pull/30724
+
+#### Fully general container integration needs Dropck Eyepatch
+
+The previous problem was largely one of programmer
+ergonomics. However, there is also a subtle soundness issue that
+arises due to an current implementation artifact.
+
+Standard library types like `Vec<T>` and `HashMap<K,V>` allow
+instantiating the generic parameters `T`, `K`, `V` with types holding
+lifetimes that do not strictly outlive that of the container itself.
+(I will refer to such instantiations of `Vec` and `HashMap`
+"same-lifetime instances" as a shorthand in this discussion.)
+
+Same-lifetime instance support is currently implemented for `Vec` and
+`HashMap` via an unstable attribute that is too
+coarse-grained. Therefore, we cannot soundly add the allocator
+parameter to `Vec` and `HashMap` while also continuing to allow
+same-lifetime instances without first addressing this overly coarse
+attribute. I have an open RFC to address this, the "Dropck Eyepatch"
+RFC; that RFC explains in more detail why this problem arises, using
+allocators as a specific motivating use case.
+
+ * Concrete code illustrating this exact example (part of Dropck Eyepatch RFC):
+   https://github.com/pnkfelix/rfcs/blob/dropck-eyepatch/text/0000-dropck-param-eyepatch.md#example-vect-aallocatordefaultallocator
+
+ * Nonparametric dropck RFC https://github.com/rust-lang/rfcs/blob/master/text/1238-nonparametric-dropck.md
+
+#### Standard library containers conclusion
+
+Rather than wait for the above issues to be resolved, this RFC
+proposes that we at least stabilize the `Allocator` trait interface;
+then we will at least have a starting point upon which to prototype
+standard library integration.
+
 ## Allocators and lifetimes
 [lifetimes]: #allocators-and-lifetimes
 
