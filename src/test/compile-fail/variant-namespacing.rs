@@ -10,22 +10,6 @@
 
 // aux-build:variant-namespacing.rs
 
-extern crate variant_namespacing;
-pub use variant_namespacing::XE::*;
-//~^ ERROR import `XStruct` conflicts with type in this module
-//~| ERROR import `XStruct` conflicts with value in this module
-//~| ERROR import `XTuple` conflicts with type in this module
-//~| ERROR import `XTuple` conflicts with value in this module
-//~| ERROR import `XUnit` conflicts with type in this module
-//~| ERROR import `XUnit` conflicts with value in this module
-pub use E::*;
-//~^ ERROR import `Struct` conflicts with type in this module
-//~| ERROR import `Struct` conflicts with value in this module
-//~| ERROR import `Tuple` conflicts with type in this module
-//~| ERROR import `Tuple` conflicts with value in this module
-//~| ERROR import `Unit` conflicts with type in this module
-//~| ERROR import `Unit` conflicts with value in this module
-
 enum E {
     Struct { a: u8 },
     Tuple(u8),
@@ -45,5 +29,21 @@ const Unit: u8 = 0;
 const XStruct: u8 = 0;
 const XTuple: u8 = 0;
 const XUnit: u8 = 0;
+
+extern crate variant_namespacing;
+pub use variant_namespacing::XE::*;
+//~^ ERROR `XStruct` has already been defined
+//~| ERROR `XStruct` has already been defined
+//~| ERROR `XTuple` has already been defined
+//~| ERROR `XTuple` has already been defined
+//~| ERROR `XUnit` has already been defined
+//~| ERROR `XUnit` has already been defined
+pub use E::*;
+//~^ ERROR `Struct` has already been defined
+//~| ERROR `Struct` has already been defined
+//~| ERROR `Tuple` has already been defined
+//~| ERROR `Tuple` has already been defined
+//~| ERROR `Unit` has already been defined
+//~| ERROR `Unit` has already been defined
 
 fn main() {}

@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use std::mem::transmute;
-//~^ ERROR import `transmute` conflicts with value in this module
+//~^ NOTE previous import of `transmute` here
 
 fn transmute() {}
+//~^ ERROR a value named `transmute` has already been imported in this module
 
 fn main() {
 }

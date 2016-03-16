@@ -12,8 +12,8 @@
 
 mod foo {
     use baz::bar;
-    //~^ ERROR import `bar` conflicts with existing submodule
     mod bar {}
+    //~^ ERROR a module named `bar` has already been imported
 }
 mod baz { pub mod bar {} }
 

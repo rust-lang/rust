@@ -10,6 +10,6 @@
 
 extern crate core;
 use core;
-//~^ ERROR import `core` conflicts with imported crate in this module
+//~^ ERROR an extern crate named `core` has already been imported in this module
 
 fn main() {}
