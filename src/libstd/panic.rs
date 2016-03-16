@@ -29,7 +29,7 @@ pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 #[rustc_deprecated(since = "1.9.0", reason = "renamed to set_hook")]
 #[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
 pub fn set_handler<F>(handler: F) where F: Fn(&PanicInfo) + 'static + Sync + Send {
-    set_hook(handler)
+    set_hook(Box::new(handler))
 }
 
 ///
