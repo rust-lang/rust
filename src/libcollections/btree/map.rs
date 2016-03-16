@@ -1467,7 +1467,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the VacantEntry.
-    #[unstable(feature = "map_entry_keys", issue = "1541")]
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -1517,7 +1517,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the key in the entry.
-    #[unstable(feature = "map_entry_keys", issue = "1541")]
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
     }
