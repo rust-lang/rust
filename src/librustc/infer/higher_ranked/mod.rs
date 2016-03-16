@@ -31,14 +31,6 @@ pub trait HigherRankedRelations<'a,'tcx> {
         where T: Relate<'a,'tcx>;
 }
 
-trait InferCtxtExt {
-    fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region>;
-
-    fn region_vars_confined_to_snapshot(&self,
-                                        snapshot: &CombinedSnapshot)
-                                        -> Vec<ty::RegionVid>;
-}
-
 impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
     fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
                             -> RelateResult<'tcx, Binder<T>>
@@ -79,23 +71,9 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
-            match leak_check(self.infcx, &skol_map, snapshot) {
-                Ok(()) => { }
-                Err((skol_br, tainted_region)) => {
-                    if self.a_is_expected {
-                        debug!("Not as polymorphic!");
-                        return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
-                                                                               tainted_region));
-                    } else {
-                        debug!("Overly polymorphic!");
-                        return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
-                                                                       tainted_region));
-                    }
-                }
-            }
+            self.infcx.leak_check(!self.a_is_expected, &skol_map, snapshot)?;
 
-            debug!("higher_ranked_sub: OK result={:?}",
-                   result);
+            debug!("higher_ranked_sub: OK result={:?}", result);
 
             Ok(ty::Binder(result))
         });
@@ -371,7 +349,7 @@ fn fold_regions_in<'tcx, T, F>(tcx: &TyCtxt<'tcx>,
     })
 }
 
-impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
+impl<'a,'tcx> InferCtxt<'a,'tcx> {
     fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region> {
         self.region_vars.tainted(&snapshot.region_vars_snapshot, r)
     }
@@ -452,12 +430,11 @@ impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
 
         region_vars
     }
-}
 
-pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                               binder: &ty::Binder<T>,
-                                               snapshot: &CombinedSnapshot)
-                                               -> (T, SkolemizationMap)
+pub fn skolemize_late_bound_regions<T>(&self,
+                                       binder: &ty::Binder<T>,
+                                       snapshot: &CombinedSnapshot)
+                                       -> (T, SkolemizationMap)
     where T : TypeFoldable<'tcx>
 {
     /*!
@@ -468,8 +445,8 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
      * details.
      */
 
-    let (result, map) = infcx.tcx.replace_late_bound_regions(binder, |br| {
-        infcx.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
+    let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
+        self.region_vars.new_skolemized(br, &snapshot.region_vars_snapshot)
     });
 
     debug!("skolemize_bound_regions(binder={:?}, result={:?}, map={:?})",
@@ -480,10 +457,11 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     (result, map)
 }
 
-pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
-                           skol_map: &SkolemizationMap,
-                           snapshot: &CombinedSnapshot)
-                           -> Result<(),(ty::BoundRegion,ty::Region)>
+pub fn leak_check(&self,
+                  overly_polymorphic: bool,
+                  skol_map: &SkolemizationMap,
+                  snapshot: &CombinedSnapshot)
+                  -> RelateResult<'tcx, ()>
 {
     /*!
      * Searches the region constriants created since `snapshot` was started
@@ -496,9 +474,9 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     debug!("leak_check: skol_map={:?}",
            skol_map);
 
-    let new_vars = infcx.region_vars_confined_to_snapshot(snapshot);
+    let new_vars = self.region_vars_confined_to_snapshot(snapshot);
     for (&skol_br, &skol) in skol_map {
-        let tainted = infcx.tainted_regions(snapshot, skol);
+        let tainted = self.tainted_regions(snapshot, skol);
         for &tainted_region in &tainted {
             // Each skolemized should only be relatable to itself
             // or new variables:
@@ -516,8 +494,15 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                    skol_br,
                    tainted_region);
 
-            // A is not as polymorphic as B:
-            return Err((skol_br, tainted_region));
+            if overly_polymorphic {
+                debug!("Overly polymorphic!");
+                return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
+                                                               tainted_region));
+            } else {
+                debug!("Not as polymorphic!");
+                return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
+                                                                       tainted_region));
+            }
         }
     }
     Ok(())
@@ -551,14 +536,13 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 /// replace `'0` with a late-bound region `'a`.  The depth is matched
 /// to the depth of the predicate, in this case 1, so that the final
 /// predicate is `for<'a> &'a int : Clone`.
-pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                             skol_map: SkolemizationMap,
-                             snapshot: &CombinedSnapshot,
-                             value: &T)
-                             -> T
+pub fn plug_leaks<T>(&self,
+                     skol_map: SkolemizationMap,
+                     snapshot: &CombinedSnapshot,
+                     value: &T) -> T
     where T : TypeFoldable<'tcx>
 {
-    debug_assert!(leak_check(infcx, &skol_map, snapshot).is_ok());
+    debug_assert!(self.leak_check(false, &skol_map, snapshot).is_ok());
 
     debug!("plug_leaks(skol_map={:?}, value={:?})",
            skol_map,
@@ -572,7 +556,7 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
         skol_map
         .into_iter()
         .flat_map(|(skol_br, skol)| {
-            infcx.tainted_regions(snapshot, skol)
+            self.tainted_regions(snapshot, skol)
                 .into_iter()
                 .map(move |tainted_region| (tainted_region, skol_br))
         })
@@ -583,14 +567,14 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
 
     // Remove any instantiated type variables from `value`; those can hide
     // references to regions from the `fold_regions` code below.
-    let value = infcx.resolve_type_vars_if_possible(value);
+    let value = self.resolve_type_vars_if_possible(value);
 
     // Map any skolemization byproducts back to a late-bound
     // region. Put that late-bound region at whatever the outermost
     // binder is that we encountered in `value`. The caller is
     // responsible for ensuring that (a) `value` contains at least one
     // binder and (b) that binder is the one we want to use.
-    let result = infcx.tcx.fold_regions(&value, &mut false, |r, current_depth| {
+    let result = self.tcx.fold_regions(&value, &mut false, |r, current_depth| {
         match inv_skol_map.get(&r) {
             None => r,
             Some(br) => {
@@ -611,4 +595,5 @@ pub fn plug_leaks<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
            result);
 
     result
+}
 }

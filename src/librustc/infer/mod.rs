@@ -366,19 +366,21 @@ pub enum FixupError {
     UnresolvedTy(TyVid)
 }
 
-pub fn fixup_err_to_string(f: FixupError) -> String {
-    use self::FixupError::*;
+impl fmt::Display for FixupError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::FixupError::*;
 
-    match f {
-      UnresolvedIntTy(_) => {
-          "cannot determine the type of this integer; add a suffix to \
-           specify the type explicitly".to_string()
-      }
-      UnresolvedFloatTy(_) => {
-          "cannot determine the type of this number; add a suffix to specify \
-           the type explicitly".to_string()
-      }
-      UnresolvedTy(_) => "unconstrained type".to_string(),
+        match *self {
+            UnresolvedIntTy(_) => {
+                write!(f, "cannot determine the type of this integer; \
+                           add a suffix to specify the type explicitly")
+            }
+            UnresolvedFloatTy(_) => {
+                write!(f, "cannot determine the type of this number; \
+                           add a suffix to specify the type explicitly")
+            }
+            UnresolvedTy(_) => write!(f, "unconstrained type")
+        }
     }
 }
 
@@ -414,103 +416,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 }
 
-pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                          a_is_expected: bool,
-                          origin: TypeOrigin,
-                          a: Ty<'tcx>,
-                          b: Ty<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_subty({:?} <: {:?})", a, b);
-    cx.sub_types(a_is_expected, origin, a, b)
-}
-
-pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
-    -> UnitResult<'tcx>
-{
-    debug!("can_mk_subty({:?} <: {:?})", a, b);
-    cx.probe(|_| {
-        let trace = TypeTrace {
-            origin: TypeOrigin::Misc(codemap::DUMMY_SP),
-            values: Types(expected_found(true, a, b))
-        };
-        cx.sub(true, trace, &a, &b).map(|_| ())
-    })
-}
-
-pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
-    -> UnitResult<'tcx>
-{
-    cx.can_equate(&a, &b)
-}
-
-pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                         origin: SubregionOrigin<'tcx>,
-                         a: ty::Region,
-                         b: ty::Region) {
-    debug!("mk_subr({:?} <: {:?})", a, b);
-    let snapshot = cx.region_vars.start_snapshot();
-    cx.region_vars.make_subregion(origin, a, b);
-    cx.region_vars.commit(snapshot);
-}
-
-pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                         a_is_expected: bool,
-                         origin: TypeOrigin,
-                         a: Ty<'tcx>,
-                         b: Ty<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_eqty({:?} <: {:?})", a, b);
-    cx.eq_types(a_is_expected, origin, a, b)
-}
-
-pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                  a_is_expected: bool,
-                                  origin: TypeOrigin,
-                                  a: ty::TraitRef<'tcx>,
-                                  b: ty::TraitRef<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_eq_trait_refs({:?} = {:?})", a, b);
-    cx.eq_trait_refs(a_is_expected, origin, a, b)
-}
-
-pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                        a_is_expected: bool,
-                                        origin: TypeOrigin,
-                                        a: ty::PolyTraitRef<'tcx>,
-                                        b: ty::PolyTraitRef<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_sub_poly_trait_refs({:?} <: {:?})", a, b);
-    cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
-}
-
-pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                    a_is_expected: bool,
-                                    origin: TypeOrigin,
-                                    a: &ty::ImplHeader<'tcx>,
-                                    b: &ty::ImplHeader<'tcx>)
-    -> InferResult<'tcx, ()>
-{
-    debug!("mk_eq_impl_header({:?} = {:?})", a, b);
-    match (a.trait_ref, b.trait_ref) {
-        (Some(a_ref), Some(b_ref)) => mk_eq_trait_refs(cx, a_is_expected, origin, a_ref, b_ref),
-        (None, None) => mk_eqty(cx, a_is_expected, origin, a.self_ty, b.self_ty),
-        _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+impl<T> ExpectedFound<T> {
+    fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound {expected: a, found: b}
+        } else {
+            ExpectedFound {expected: b, found: a}
+        }
     }
 }
 
-fn expected_found<T>(a_is_expected: bool,
-                     a: T,
-                     b: T)
-                     -> ExpectedFound<T>
-{
-    if a_is_expected {
-        ExpectedFound {expected: a, found: b}
-    } else {
-        ExpectedFound {expected: b, found: a}
+impl<'tcx, T> InferOk<'tcx, T> {
+    fn unit(self) -> InferOk<'tcx, ()> {
+        InferOk { value: (), obligations: self.obligations }
     }
 }
 
@@ -551,18 +469,19 @@ impl<'tcx> TyCtxt<'tcx> {
             fulfill_cx.register_predicate_obligation(&infcx, obligation);
         }
 
-        drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result)
+        infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
     }
 }
 
-pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
-                                                infcx: &InferCtxt<'a,'tcx>,
-                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                                result: &T)
-                                                -> T
+impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+pub fn drain_fulfillment_cx_or_panic<T>(&self,
+                                        span: Span,
+                                        fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                        result: &T)
+                                        -> T
     where T : TypeFoldable<'tcx>
 {
-    match drain_fulfillment_cx(infcx, fulfill_cx, result) {
+    match self.drain_fulfillment_cx(fulfill_cx, result) {
         Ok(v) => v,
         Err(errors) => {
             span_bug!(
@@ -580,10 +499,10 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
 /// inference variables that appear in `result` to be unified, and
 /// hence we need to process those obligations to get the complete
 /// picture of the type.
-pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                       result: &T)
-                                       -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
+pub fn drain_fulfillment_cx<T>(&self,
+                               fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                               result: &T)
+                               -> Result<T,Vec<traits::FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx>
 {
     debug!("drain_fulfillment_cx(result={:?})",
@@ -592,24 +511,12 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    match fulfill_cx.select_all_or_error(infcx) {
-        Ok(()) => { }
-        Err(errors) => {
-            return Err(errors);
-        }
-    }
+    fulfill_cx.select_all_or_error(self)?;
 
-    let result = infcx.resolve_type_vars_if_possible(result);
-    Ok(infcx.tcx.erase_regions(&result))
+    let result = self.resolve_type_vars_if_possible(result);
+    Ok(self.tcx.erase_regions(&result))
 }
 
-impl<'tcx, T> InferOk<'tcx, T> {
-    fn unit(self) -> InferOk<'tcx, ()> {
-        InferOk { value: (), obligations: self.obligations }
-    }
-}
-
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn projection_mode(&self) -> ProjectionMode {
         self.projection_mode
     }
@@ -896,6 +803,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         })
     }
 
+    pub fn can_sub_types(&self,
+                         a: Ty<'tcx>,
+                         b: Ty<'tcx>)
+                         -> UnitResult<'tcx>
+    {
+        self.probe(|_| {
+            let origin = TypeOrigin::Misc(codemap::DUMMY_SP);
+            let trace = TypeTrace::types(origin, true, a, b);
+            self.sub(true, trace, &a, &b).map(|_| ())
+        })
+    }
+
     pub fn eq_types(&self,
                     a_is_expected: bool,
                     origin: TypeOrigin,
@@ -916,16 +835,29 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                           b: ty::TraitRef<'tcx>)
         -> InferResult<'tcx, ()>
     {
-        debug!("eq_trait_refs({:?} <: {:?})",
-               a,
-               b);
+        debug!("eq_trait_refs({:?} = {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
-                values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+                values: TraitRefs(ExpectedFound::new(a_is_expected, a, b))
             };
             self.equate(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
+    }
+
+    pub fn eq_impl_headers(&self,
+                           a_is_expected: bool,
+                           origin: TypeOrigin,
+                           a: &ty::ImplHeader<'tcx>,
+                           b: &ty::ImplHeader<'tcx>)
+                           -> InferResult<'tcx, ()>
+    {
+        debug!("eq_impl_header({:?} = {:?})", a, b);
+        match (a.trait_ref, b.trait_ref) {
+            (Some(a_ref), Some(b_ref)) => self.eq_trait_refs(a_is_expected, origin, a_ref, b_ref),
+            (None, None) => self.eq_types(a_is_expected, origin, a.self_ty, b.self_ty),
+            _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
+        }
     }
 
     pub fn sub_poly_trait_refs(&self,
@@ -935,52 +867,22 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                b: ty::PolyTraitRef<'tcx>)
         -> InferResult<'tcx, ()>
     {
-        debug!("sub_poly_trait_refs({:?} <: {:?})",
-               a,
-               b);
+        debug!("sub_poly_trait_refs({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
-                values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
+                values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b))
             };
             self.sub(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
     }
 
-    pub fn skolemize_late_bound_regions<T>(&self,
-                                           value: &ty::Binder<T>,
-                                           snapshot: &CombinedSnapshot)
-                                           -> (T, SkolemizationMap)
-        where T : TypeFoldable<'tcx>
-    {
-        /*! See `higher_ranked::skolemize_late_bound_regions` */
-
-        higher_ranked::skolemize_late_bound_regions(self, value, snapshot)
-    }
-
-    pub fn leak_check(&self,
-                      skol_map: &SkolemizationMap,
-                      snapshot: &CombinedSnapshot)
-                      -> UnitResult<'tcx>
-    {
-        /*! See `higher_ranked::leak_check` */
-
-        match higher_ranked::leak_check(self, skol_map, snapshot) {
-            Ok(()) => Ok(()),
-            Err((br, r)) => Err(TypeError::RegionsInsufficientlyPolymorphic(br, r))
-        }
-    }
-
-    pub fn plug_leaks<T>(&self,
-                         skol_map: SkolemizationMap,
-                         snapshot: &CombinedSnapshot,
-                         value: &T)
-                         -> T
-        where T : TypeFoldable<'tcx>
-    {
-        /*! See `higher_ranked::plug_leaks` */
-
-        higher_ranked::plug_leaks(self, skol_map, snapshot, value)
+    pub fn sub_regions(&self,
+                       origin: SubregionOrigin<'tcx>,
+                       a: ty::Region,
+                       b: ty::Region) {
+        debug!("sub_regions({:?} <: {:?})", a, b);
+        self.region_vars.make_subregion(origin, a, b);
     }
 
     pub fn equality_predicate(&self,
@@ -992,8 +894,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
-            let eqty_ok = mk_eqty(self, false, origin, a, b)?;
-            self.leak_check(&skol_map, snapshot).map(|_| eqty_ok.unit())
+            let eqty_ok = self.eq_types(false, origin, a, b)?;
+            self.leak_check(false, &skol_map, snapshot).map(|_| eqty_ok.unit())
         })
     }
 
@@ -1006,8 +908,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = RelateRegionParamBound(span);
-            let () = mk_subr(self, origin, r_b, r_a); // `b : a` ==> `a <= b`
-            self.leak_check(&skol_map, snapshot)
+            self.sub_regions(origin, r_b, r_a); // `b : a` ==> `a <= b`
+            self.leak_check(false, &skol_map, snapshot)
         })
     }
 
@@ -1509,12 +1411,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // anyhow. We should make this typetrace stuff more
             // generic so we don't have to do anything quite this
             // terrible.
-            let e = self.tcx.types.err;
-            let trace = TypeTrace {
-                origin: TypeOrigin::Misc(codemap::DUMMY_SP),
-                values: Types(expected_found(true, e, e))
-            };
-            self.equate(true, trace, a, b)
+            self.equate(true, TypeTrace::dummy(self.tcx), a, b)
         }).map(|_| ())
     }
 
@@ -1638,7 +1535,7 @@ impl<'tcx> TypeTrace<'tcx> {
                  -> TypeTrace<'tcx> {
         TypeTrace {
             origin: origin,
-            values: Types(expected_found(a_is_expected, a, b))
+            values: Types(ExpectedFound::new(a_is_expected, a, b))
         }
     }
 

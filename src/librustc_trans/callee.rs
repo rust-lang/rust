@@ -202,8 +202,7 @@ impl<'tcx> Callee<'tcx> {
             }
             traits::VtableObject(ref data) => {
                 Callee {
-                    data: Virtual(traits::get_vtable_index_of_object_method(
-                        tcx, data, def_id)),
+                    data: Virtual(tcx.get_vtable_index_of_object_method(data, def_id)),
                     ty: def_ty(tcx, def_id, substs)
                 }
             }

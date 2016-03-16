@@ -440,28 +440,24 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
             match self.reason {
                 ResolvingExpr(span) => {
                     span_err!(self.tcx.sess, span, E0101,
-                        "cannot determine a type for this expression: {}",
-                        infer::fixup_err_to_string(e));
+                        "cannot determine a type for this expression: {}", e);
                 }
 
                 ResolvingLocal(span) => {
                     span_err!(self.tcx.sess, span, E0102,
-                        "cannot determine a type for this local variable: {}",
-                        infer::fixup_err_to_string(e));
+                        "cannot determine a type for this local variable: {}", e);
                 }
 
                 ResolvingPattern(span) => {
                     span_err!(self.tcx.sess, span, E0103,
-                        "cannot determine a type for this pattern binding: {}",
-                        infer::fixup_err_to_string(e));
+                        "cannot determine a type for this pattern binding: {}", e);
                 }
 
                 ResolvingUpvar(upvar_id) => {
                     let span = self.reason.span(self.tcx);
                     span_err!(self.tcx.sess, span, E0104,
                         "cannot resolve lifetime for captured variable `{}`: {}",
-                        self.tcx.local_var_name_str(upvar_id.var_id).to_string(),
-                        infer::fixup_err_to_string(e));
+                        self.tcx.local_var_name_str(upvar_id.var_id), e);
                 }
 
                 ResolvingClosure(_) => {

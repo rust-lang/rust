@@ -16,7 +16,7 @@ use middle::cstore::LOCAL_CRATE;
 use hir::def_id::DefId;
 use ty::subst::TypeSpace;
 use ty::{self, Ty, TyCtxt};
-use infer::{self, InferCtxt, TypeOrigin};
+use infer::{InferCtxt, TypeOrigin};
 use syntax::codemap::DUMMY_SP;
 
 #[derive(Copy, Clone)]
@@ -57,11 +57,10 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
     debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
-    if let Err(_) = infer::mk_eq_impl_headers(selcx.infcx(),
-                                              true,
-                                              TypeOrigin::Misc(DUMMY_SP),
-                                              &a_impl_header,
-                                              &b_impl_header) {
+    if let Err(_) = selcx.infcx().eq_impl_headers(true,
+                                                  TypeOrigin::Misc(DUMMY_SP),
+                                                  &a_impl_header,
+                                                  &b_impl_header) {
         return None;
     }
 

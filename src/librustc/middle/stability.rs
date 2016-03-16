@@ -625,9 +625,9 @@ fn maybe_do_stability_check(tcx: &TyCtxt, id: DefId, span: Span,
         return;
     }
     let (stability, deprecation) = if is_staged_api(tcx, id) {
-        (lookup_stability(tcx, id), None)
+        (tcx.lookup_stability(id), None)
     } else {
-        (None, lookup_deprecation(tcx, id))
+        (None, tcx.lookup_deprecation(id))
     };
     debug!("maybe_do_stability_check: \
             inspecting id={:?} span={:?} of stability={:?}", id, span, stability);
@@ -651,44 +651,46 @@ fn is_staged_api(tcx: &TyCtxt, id: DefId) -> bool {
     }
 }
 
+impl<'tcx> TyCtxt<'tcx> {
 /// Lookup the stability for a node, loading external crate
 /// metadata as necessary.
-pub fn lookup_stability<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
-    if let Some(st) = tcx.stability.borrow().stab_map.get(&id) {
+pub fn lookup_stability(&self, id: DefId) -> Option<&'tcx Stability> {
+    if let Some(st) = self.stability.borrow().stab_map.get(&id) {
         return *st;
     }
 
-    let st = lookup_stability_uncached(tcx, id);
-    tcx.stability.borrow_mut().stab_map.insert(id, st);
+    let st = self.lookup_stability_uncached(id);
+    self.stability.borrow_mut().stab_map.insert(id, st);
     st
 }
 
-pub fn lookup_deprecation<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<Deprecation> {
-    if let Some(depr) = tcx.stability.borrow().depr_map.get(&id) {
+pub fn lookup_deprecation(&self, id: DefId) -> Option<Deprecation> {
+    if let Some(depr) = self.stability.borrow().depr_map.get(&id) {
         return depr.clone();
     }
 
-    let depr = lookup_deprecation_uncached(tcx, id);
-    tcx.stability.borrow_mut().depr_map.insert(id, depr.clone());
+    let depr = self.lookup_deprecation_uncached(id);
+    self.stability.borrow_mut().depr_map.insert(id, depr.clone());
     depr
 }
 
-fn lookup_stability_uncached<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<&'tcx Stability> {
+fn lookup_stability_uncached(&self, id: DefId) -> Option<&'tcx Stability> {
     debug!("lookup(id={:?})", id);
     if id.is_local() {
         None // The stability cache is filled partially lazily
     } else {
-        tcx.sess.cstore.stability(id).map(|st| tcx.intern_stability(st))
+        self.sess.cstore.stability(id).map(|st| self.intern_stability(st))
     }
 }
 
-fn lookup_deprecation_uncached<'tcx>(tcx: &TyCtxt<'tcx>, id: DefId) -> Option<Deprecation> {
+fn lookup_deprecation_uncached(&self, id: DefId) -> Option<Deprecation> {
     debug!("lookup(id={:?})", id);
     if id.is_local() {
         None // The stability cache is filled partially lazily
     } else {
-        tcx.sess.cstore.deprecation(id)
+        self.sess.cstore.deprecation(id)
     }
+}
 }
 
 /// Given the list of enabled features that were not language features (i.e. that

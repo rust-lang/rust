@@ -19,46 +19,31 @@ use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst;
 use ty::{self, Ty, TypeFoldable};
-use infer::{fixup_err_to_string, InferCtxt};
+use infer::InferCtxt;
 
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
 pub use self::error_reporting::TraitErrorKey;
-pub use self::error_reporting::recursive_type_with_infinite_size_error;
-pub use self::error_reporting::report_fulfillment_errors;
-pub use self::error_reporting::report_fulfillment_errors_as_warnings;
-pub use self::error_reporting::report_overflow_error;
-pub use self::error_reporting::report_overflow_error_cycle;
-pub use self::error_reporting::report_selection_error;
-pub use self::error_reporting::report_object_safety_error;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
 pub use self::project::{MismatchedProjectionTypes, ProjectionMode};
 pub use self::project::{normalize, Normalized};
-pub use self::object_safety::is_object_safe;
-pub use self::object_safety::astconv_object_safety_violations;
-pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
-pub use self::object_safety::is_vtable_safe_method;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
 pub use self::specialize::{Overlap, specialization_graph, specializes, translate_substs};
 pub use self::util::elaborate_predicates;
-pub use self::util::get_vtable_index_of_object_method;
-pub use self::util::trait_ref_for_builtin_bound;
-pub use self::util::predicate_for_trait_def;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
 pub use self::util::supertrait_def_ids;
 pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
-pub use self::util::upcast;
 
 mod coherence;
 mod error_reporting;
@@ -343,7 +328,7 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 
     let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
     let obligation =
-        util::predicate_for_builtin_bound(infcx.tcx, cause, bound, 0, ty);
+        infcx.tcx.predicate_for_builtin_bound(cause, bound, 0, ty);
     let obligation = match obligation {
         Ok(o) => o,
         Err(..) => return false
@@ -444,7 +429,7 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
                                            &infcx.parameter_environment.caller_bounds) {
         Ok(predicates) => predicates,
         Err(errors) => {
-            report_fulfillment_errors(&infcx, &errors);
+            infcx.report_fulfillment_errors(&errors);
             return infcx.parameter_environment; // an unnormalized env is better than nothing
         }
     };
@@ -464,8 +449,7 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
             // represents a legitimate failure due to some kind of
             // unconstrained variable, and it seems better not to ICE,
             // all things considered.
-            let err_msg = fixup_err_to_string(fixup_err);
-            tcx.sess.span_err(span, &err_msg);
+            tcx.sess.span_err(span, &fixup_err.to_string());
             return infcx.parameter_environment; // an unnormalized env is better than nothing
         }
     };

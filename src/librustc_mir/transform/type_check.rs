@@ -237,7 +237,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 let fty = self.sanitize_type(lvalue, fty);
                 match self.field_ty(lvalue, base, field) {
                     Ok(ty) => {
-                        if let Err(terr) = self.cx.mk_eqty(span, ty, fty) {
+                        if let Err(terr) = self.cx.eq_types(span, ty, fty) {
                             span_mirbug!(
                                 self, lvalue, "bad field access ({:?}: {:?}): {:?}",
                                 ty, fty, terr);
@@ -333,20 +333,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn mk_subty(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
-                -> infer::UnitResult<'tcx>
+    fn sub_types(&self, span: Span, sup: Ty<'tcx>, sub: Ty<'tcx>)
+                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                        sup, sub)
+        self.infcx.sub_types(false, infer::TypeOrigin::Misc(span), sup, sub)
             // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
-    fn mk_eqty(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
+    fn eq_types(&self, span: Span, a: Ty<'tcx>, b: Ty<'tcx>)
                 -> infer::UnitResult<'tcx>
     {
-        infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span),
-                       a, b)
+        self.infcx.eq_types(false, infer::TypeOrigin::Misc(span), a, b)
             // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
@@ -363,7 +361,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let lv_ty = mir.lvalue_ty(tcx, lv).to_ty(tcx);
                 let rv_ty = mir.rvalue_ty(tcx, rv);
                 if let Some(rv_ty) = rv_ty {
-                    if let Err(terr) = self.mk_subty(self.last_span, rv_ty, lv_ty) {
+                    if let Err(terr) = self.sub_types(self.last_span, rv_ty, lv_ty) {
                         span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                      lv_ty, rv_ty, terr);
                     }
@@ -399,7 +397,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
                 let discr_ty = mir.lvalue_ty(tcx, discr).to_ty(tcx);
-                if let Err(terr) = self.mk_subty(self.last_span, discr_ty, switch_ty) {
+                if let Err(terr) = self.sub_types(self.last_span, discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
                 }
@@ -456,7 +454,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
             (&Some((ref dest, _)), ty::FnConverging(ty)) => {
                 let dest_ty = mir.lvalue_ty(tcx, dest).to_ty(tcx);
-                if let Err(terr) = self.mk_subty(self.last_span, ty, dest_ty) {
+                if let Err(terr) = self.sub_types(self.last_span, ty, dest_ty) {
                     span_mirbug!(self, term,
                                  "call dest mismatch ({:?} <- {:?}): {:?}",
                                  dest_ty, ty, terr);
@@ -482,7 +480,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs.iter().zip(args).enumerate() {
             let op_arg_ty = mir.operand_ty(self.tcx(), op_arg);
-            if let Err(terr) = self.mk_subty(self.last_span, op_arg_ty, fn_arg) {
+            if let Err(terr) = self.sub_types(self.last_span, op_arg_ty, fn_arg) {
                 span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
             }
@@ -537,7 +535,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         };
 
-        if let Err(terr) = self.mk_subty(self.last_span, arg_ty, pointee_ty) {
+        if let Err(terr) = self.sub_types(self.last_span, arg_ty, pointee_ty) {
             span_mirbug!(self, term, "bad box_free arg ({:?} <- {:?}): {:?}",
                          pointee_ty, arg_ty, terr);
         }

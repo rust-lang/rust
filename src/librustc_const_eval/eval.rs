@@ -26,7 +26,6 @@ use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt, subst};
 use rustc::ty::util::IntTypeExt;
 use rustc::traits::ProjectionMode;
-use rustc::middle::astconv_util::ast_ty_to_prim_ty;
 use rustc::util::nodemap::NodeMap;
 use rustc::lint;
 
@@ -100,7 +99,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 hir::ItemConst(ref ty, ref const_expr) => {
-                    Some((&const_expr, ast_ty_to_prim_ty(tcx, ty)))
+                    Some((&const_expr, tcx.ast_ty_to_prim_ty(ty)))
                 }
                 _ => None
             },
@@ -126,7 +125,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             },
             Some(ast_map::NodeImplItem(ii)) => match ii.node {
                 hir::ImplItemKind::Const(ref ty, ref expr) => {
-                    Some((&expr, ast_ty_to_prim_ty(tcx, ty)))
+                    Some((&expr, tcx.ast_ty_to_prim_ty(ty)))
                 }
                 _ => None
             },
@@ -144,7 +143,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
         let expr_ty = match tcx.sess.cstore.maybe_get_item_ast(tcx, def_id) {
             cstore::FoundAst::Found(&InlinedItem::Item(ref item)) => match item.node {
                 hir::ItemConst(ref ty, ref const_expr) => {
-                    Some((&**const_expr, ast_ty_to_prim_ty(tcx, ty)))
+                    Some((&**const_expr, tcx.ast_ty_to_prim_ty(ty)))
                 },
                 _ => None
             },
@@ -165,7 +164,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
             },
             cstore::FoundAst::Found(&InlinedItem::ImplItem(_, ref ii)) => match ii.node {
                 hir::ImplItemKind::Const(ref ty, ref expr) => {
-                    Some((&**expr, ast_ty_to_prim_ty(tcx, ty)))
+                    Some((&**expr, tcx.ast_ty_to_prim_ty(ty)))
                 },
                 _ => None
             },
@@ -679,7 +678,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
         }
       }
       hir::ExprCast(ref base, ref target_ty) => {
-        let ety = ast_ty_to_prim_ty(tcx, &target_ty).or_else(|| ety)
+        let ety = tcx.ast_ty_to_prim_ty(&target_ty).or(ety)
                 .unwrap_or_else(|| {
                     tcx.sess.span_fatal(target_ty.span,
                                         "target type not found for const cast")
@@ -1041,7 +1040,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                 Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
                 None => match ti.node {
                     hir::ConstTraitItem(ref ty, Some(ref expr)) => {
-                        Some((&*expr, ast_ty_to_prim_ty(tcx, ty)))
+                        Some((&*expr, tcx.ast_ty_to_prim_ty(ty)))
                     },
                     _ => None,
                 },

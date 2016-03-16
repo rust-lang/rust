@@ -256,7 +256,7 @@ pub fn get_vtable_methods<'tcx>(tcx: &TyCtxt<'tcx>,
             let name = trait_method_type.name;
 
             // Some methods cannot be called on an object; skip those.
-            if !traits::is_vtable_safe_method(tcx, trt_id, &trait_method_type) {
+            if !tcx.is_vtable_safe_method(trt_id, &trait_method_type) {
                 debug!("get_vtable_methods: not vtable safe");
                 return None;
             }

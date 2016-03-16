@@ -96,7 +96,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         infcx.fresh_substs_for_generics(drop_impl_span, drop_impl_generics);
     let fresh_impl_self_ty = drop_impl_ty.subst(tcx, &fresh_impl_substs);
 
-    if let Err(_) = infer::mk_eqty(&infcx, true, infer::TypeOrigin::Misc(drop_impl_span),
+    if let Err(_) = infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
                                    named_type, fresh_impl_self_ty) {
         let item_span = tcx.map.span(self_type_node_id);
         struct_span_err!(tcx.sess, drop_impl_span, E0366,
@@ -110,13 +110,12 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 
     if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
         // this could be reached when we get lazy normalization
-        traits::report_fulfillment_errors(&infcx, errors);
+        infcx.report_fulfillment_errors(errors);
         return Err(());
     }
 
     if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
-        traits::report_fulfillment_errors_as_warnings(&infcx, errors,
-                                                      drop_impl_node_id);
+        infcx.report_fulfillment_errors_as_warnings(errors, drop_impl_node_id);
     }
 
     let free_regions = FreeRegionMap::new();

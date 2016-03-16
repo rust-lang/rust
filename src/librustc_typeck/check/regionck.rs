@@ -131,8 +131,7 @@ pub fn regionck_item(&self,
                      wf_tys: &[Ty<'tcx>]) {
     debug!("regionck_item(item.id={:?}, wf_tys={:?}", item_id, wf_tys);
     let mut rcx = Rcx::new(self, RepeatingScope(item_id), item_id, Subject(item_id));
-    let tcx = self.tcx();
-    rcx.free_region_map.relate_free_regions_from_predicates(tcx,
+    rcx.free_region_map.relate_free_regions_from_predicates(
         &self.infcx().parameter_environment.caller_bounds);
     rcx.relate_free_regions(wf_tys, item_id, span);
     rcx.visit_region_obligations(item_id);
@@ -152,8 +151,7 @@ pub fn regionck_fn(&self,
         rcx.visit_fn_body(fn_id, decl, blk, fn_span);
     }
 
-    let tcx = self.tcx();
-    rcx.free_region_map.relate_free_regions_from_predicates(tcx,
+    rcx.free_region_map.relate_free_regions_from_predicates(
         &self.infcx().parameter_environment.caller_bounds);
 
     rcx.resolve_regions_and_report_errors();
@@ -844,7 +842,7 @@ fn constrain_cast(rcx: &mut Rcx,
             /*From:*/ (&ty::TyRef(from_r, ref from_mt),
             /*To:  */  &ty::TyRef(to_r, ref to_mt)) => {
                 // Target cannot outlive source, naturally.
-                rcx.fcx.mk_subr(infer::Reborrow(cast_expr.span), *to_r, *from_r);
+                rcx.fcx.infcx().sub_regions(infer::Reborrow(cast_expr.span), *to_r, *from_r);
                 walk_cast(rcx, cast_expr, from_mt.ty, to_mt.ty);
             }
 
@@ -1038,8 +1036,8 @@ pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
                                        deref_span: Span,
                                        minimum_lifetime: ty::Region,
                                        maximum_lifetime: ty::Region) {
-    rcx.fcx.mk_subr(infer::DerefPointer(deref_span),
-                    minimum_lifetime, maximum_lifetime)
+    rcx.fcx.infcx().sub_regions(infer::DerefPointer(deref_span),
+                                minimum_lifetime, maximum_lifetime)
 }
 
 fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
@@ -1081,8 +1079,8 @@ fn constrain_index<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
     if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
         match mt.ty.sty {
             ty::TySlice(_) | ty::TyStr => {
-                rcx.fcx.mk_subr(infer::IndexSlice(index_expr.span),
-                                r_index_expr, *r_ptr);
+                rcx.fcx.infcx().sub_regions(infer::IndexSlice(index_expr.span),
+                                            r_index_expr, *r_ptr);
             }
             _ => {}
         }
@@ -1410,7 +1408,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     debug!("link_reborrowed_region: {:?} <= {:?}",
            borrow_region,
            ref_region);
-    rcx.fcx.mk_subr(cause, *borrow_region, ref_region);
+    rcx.fcx.infcx().sub_regions(cause, *borrow_region, ref_region);
 
     // If we end up needing to recurse and establish a region link
     // with `ref_cmt`, calculate what borrow kind we will end up
@@ -1492,7 +1490,7 @@ pub fn substs_wf_in_scope<'a,'tcx>(rcx: &mut Rcx<'a,'tcx>,
     let origin = infer::ParameterInScope(origin, expr_span);
 
     for &region in &substs.regions {
-        rcx.fcx.mk_subr(origin.clone(), expr_region, region);
+        rcx.fcx.infcx().sub_regions(origin.clone(), expr_region, region);
     }
 
     for &ty in &substs.types {
@@ -1518,7 +1516,7 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 
     assert!(!ty.has_escaping_regions());
 
-    let components = ty::outlives::components(rcx.infcx(), ty);
+    let components = rcx.infcx().outlives_components(ty);
     components_must_outlive(rcx, origin, components, region);
 }
 
@@ -1531,7 +1529,7 @@ fn components_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
         let origin = origin.clone();
         match component {
             ty::outlives::Component::Region(region1) => {
-                rcx.fcx.mk_subr(origin, region, region1);
+                rcx.fcx.infcx().sub_regions(origin, region, region1);
             }
             ty::outlives::Component::Param(param_ty) => {
                 param_ty_must_outlive(rcx, origin, region, param_ty);
@@ -1629,7 +1627,7 @@ fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
         }
 
         for &r in &projection_ty.trait_ref.substs.regions {
-            rcx.fcx.mk_subr(origin.clone(), region, r);
+            rcx.fcx.infcx().sub_regions(origin.clone(), region, r);
         }
 
         return;
@@ -1650,7 +1648,7 @@ fn projection_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                          .any(|r| env_bounds.contains(r))
         {
             debug!("projection_must_outlive: unique declared bound appears in trait ref");
-            rcx.fcx.mk_subr(origin.clone(), region, unique_bound);
+            rcx.fcx.infcx().sub_regions(origin.clone(), region, unique_bound);
             return;
         }
     }
@@ -1840,7 +1838,7 @@ fn declared_projection_bounds_from_trait<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
                        outlives);
 
                 // check whether this predicate applies to our current projection
-                match infer::mk_eqty(infcx, false, TypeOrigin::Misc(span), ty, outlives.0) {
+                match infcx.eq_types(false, TypeOrigin::Misc(span), ty, outlives.0) {
                     Ok(InferOk { obligations, .. }) => {
                         // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());

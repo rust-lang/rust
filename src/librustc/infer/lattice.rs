@@ -29,7 +29,6 @@
 //! over a `LatticeValue`, which is a value defined with respect to
 //! a lattice.
 
-use super::combine;
 use super::InferCtxt;
 
 use ty::TyVar;
@@ -78,7 +77,7 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
         }
 
         _ => {
-            combine::super_combine_tys(this.infcx(), this, a, b)
+            infcx.super_combine_tys(this, a, b)
         }
     }
 }

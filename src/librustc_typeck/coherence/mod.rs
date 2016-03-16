@@ -46,11 +46,28 @@ mod orphan;
 mod overlap;
 mod unsafety;
 
+struct CoherenceChecker<'a, 'tcx: 'a> {
+    crate_context: &'a CrateCtxt<'a, 'tcx>,
+    inference_context: InferCtxt<'a, 'tcx>,
+    inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<DefId>>>>>,
+}
+
+struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
+    cc: &'a CoherenceChecker<'a, 'tcx>
+}
+
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, item: &Item) {
+        if let ItemImpl(..) = item.node {
+            self.cc.check_implementation(item)
+        }
+    }
+}
+
+impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
+
 // Returns the def ID of the base type, if there is one.
-fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
-                                  span: Span,
-                                  ty: Ty<'tcx>)
-                                  -> Option<DefId> {
+fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
     match ty.sty {
         TyEnum(def, _) |
         TyStruct(def, _) => {
@@ -62,7 +79,7 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         }
 
         TyBox(_) => {
-            inference_context.tcx.lang_items.owned_box()
+            self.inference_context.tcx.lang_items.owned_box()
         }
 
         TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
@@ -83,25 +100,6 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
     }
 }
 
-struct CoherenceChecker<'a, 'tcx: 'a> {
-    crate_context: &'a CrateCtxt<'a, 'tcx>,
-    inference_context: InferCtxt<'a, 'tcx>,
-    inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<DefId>>>>>,
-}
-
-struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
-    cc: &'a CoherenceChecker<'a, 'tcx>
-}
-
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &Item) {
-        if let ItemImpl(..) = item.node {
-            self.cc.check_implementation(item)
-        }
-    }
-}
-
-impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     fn check(&self) {
         // Check implementations and traits. This populates the tables
         // containing the inherent methods and extension methods. It also
@@ -167,9 +165,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
-            if let Some(base_type_def_id) = get_base_type_def_id(
-                    &self.inference_context, item.span, self_type.ty) {
-                self.add_inherent_impl(base_type_def_id, impl_did);
+            if let Some(base_def_id) = self.get_base_type_def_id(item.span, self_type.ty) {
+                self.add_inherent_impl(base_def_id, impl_did);
             }
         }
 
@@ -394,7 +391,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 (&ty::TyBox(a), &ty::TyBox(b)) => (a, b, unsize_trait, None),
 
                 (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
-                    infer::mk_subr(&infcx, infer::RelateObjectBound(span), *r_b, *r_a);
+                    infcx.sub_regions(infer::RelateObjectBound(span), *r_b, *r_a);
                     check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
                 }
 
@@ -466,19 +463,19 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             // Register an obligation for `A: Trait<B>`.
             let cause = traits::ObligationCause::misc(span, impl_node_id);
-            let predicate = traits::predicate_for_trait_def(tcx, cause, trait_def_id,
-                                                            0, source, vec![target]);
+            let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0,
+                                                        source, vec![target]);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
 
             // Check that all transitive obligations are satisfied.
             if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
-                traits::report_fulfillment_errors(&infcx, &errors);
+                infcx.report_fulfillment_errors(&errors);
             }
 
             // Finally, resolve all regions.
             let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(tcx, &infcx.parameter_environment
-                                                                        .caller_bounds);
+            free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
+                                                                   .caller_bounds);
             infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
 
             if let Some(kind) = kind {
