@@ -671,7 +671,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
       }
       hir::ExprBinary(op, ref a, ref b) => {
         let b_ty = match op.node {
-            hir::BiShl | hir::BiShr => ty_hint.checked_or(tcx.types.usize),
+            hir::BiShl | hir::BiShr => ty_hint.erase_hint(),
             _ => ty_hint
         };
         // technically, if we don't have type hints, but integral eval
