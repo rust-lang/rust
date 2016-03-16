@@ -55,11 +55,11 @@ impl LateLintPass for IdentityOp {
 
 
 fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
-    if let Some(Constant::Int(v)) = constant_simple(e) {
+    if let Some(v @ Constant::Int(_)) = constant_simple(e) {
         if match m {
-            0 => v == ConstInt::Infer(0),
-            -1 => v == ConstInt::InferSigned(-1),
-            1 => v == ConstInt::Infer(1),
+            0 => v == Constant::Int(ConstInt::Infer(0)),
+            -1 => v == Constant::Int(ConstInt::InferSigned(-1)),
+            1 => v == Constant::Int(ConstInt::Infer(1)),
             _ => unreachable!(),
         } {
             span_lint(cx,
