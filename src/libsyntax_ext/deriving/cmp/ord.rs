@@ -64,7 +64,7 @@ pub fn ordering_collapsed(cx: &mut ExtCtxt,
 
 pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> P<Expr> {
-    let test_id = cx.ident_of("cmp");
+    let test_id = cx.ident_of("__cmp");
     let equals_path = cx.path_global(span,
                                      cx.std_path(&["cmp", "Ordering", "Equal"]));
 
@@ -79,9 +79,9 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
                 ::std::cmp::Ordering::Equal => {
                     ...
                 }
-                cmp => cmp
+                __cmp => __cmp
             },
-        cmp => cmp
+        __cmp => __cmp
     }
     */
     cs_fold(
@@ -91,7 +91,7 @@ pub fn cs_cmp(cx: &mut ExtCtxt, span: Span,
         |cx, span, old, self_f, other_fs| {
             // match new {
             //     ::std::cmp::Ordering::Equal => old,
-            //     cmp => cmp
+            //     __cmp => __cmp
             // }
 
             let new = {
