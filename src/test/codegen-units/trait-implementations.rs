@@ -20,7 +20,7 @@ pub trait SomeTrait {
 
 impl SomeTrait for i64 {
 
-    //~ TRANS_ITEM fn trait_implementations::i64.SomeTrait[0]::foo[0]
+    //~ TRANS_ITEM fn trait_implementations::{{impl}}[0]::foo[0]
     fn foo(&self) {}
 
     fn bar<T>(&self, _: T) {}
@@ -28,7 +28,7 @@ impl SomeTrait for i64 {
 
 impl SomeTrait for i32 {
 
-    //~ TRANS_ITEM fn trait_implementations::i32.SomeTrait[0]::foo[0]
+    //~ TRANS_ITEM fn trait_implementations::{{impl}}[1]::foo[0]
     fn foo(&self) {}
 
     fn bar<T>(&self, _: T) {}
@@ -42,7 +42,7 @@ pub trait SomeGenericTrait<T> {
 // Concrete impl of generic trait
 impl SomeGenericTrait<u32> for f64 {
 
-    //~ TRANS_ITEM fn trait_implementations::f64.SomeGenericTrait<u32>[0]::foo[0]
+    //~ TRANS_ITEM fn trait_implementations::{{impl}}[2]::foo[0]
     fn foo(&self, _: u32) {}
 
     fn bar<T2>(&self, _: u32, _: T2) {}
@@ -57,25 +57,25 @@ impl<T> SomeGenericTrait<T> for f32 {
 
 //~ TRANS_ITEM fn trait_implementations::main[0]
 fn main() {
-   //~ TRANS_ITEM fn trait_implementations::i32.SomeTrait[0]::bar[0]<char>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[1]::bar[0]<char>
    0i32.bar('x');
 
-   //~ TRANS_ITEM fn trait_implementations::f64.SomeGenericTrait<u32>[0]::bar[0]<&str>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[2]::bar[0]<&str>
    0f64.bar(0u32, "&str");
 
-   //~ TRANS_ITEM fn trait_implementations::f64.SomeGenericTrait<u32>[0]::bar[0]<()>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[2]::bar[0]<()>
    0f64.bar(0u32, ());
 
-   //~ TRANS_ITEM fn trait_implementations::f32.SomeGenericTrait<T>[0]::foo[0]<char>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[3]::foo[0]<char>
    0f32.foo('x');
 
-   //~ TRANS_ITEM fn trait_implementations::f32.SomeGenericTrait<T>[0]::foo[0]<i64>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[3]::foo[0]<i64>
    0f32.foo(-1i64);
 
-   //~ TRANS_ITEM fn trait_implementations::f32.SomeGenericTrait<T>[0]::bar[0]<u32, ()>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[3]::bar[0]<u32, ()>
    0f32.bar(0u32, ());
 
-   //~ TRANS_ITEM fn trait_implementations::f32.SomeGenericTrait<T>[0]::bar[0]<&str, &str>
+   //~ TRANS_ITEM fn trait_implementations::{{impl}}[3]::bar[0]<&str, &str>
    0f32.bar("&str", "&str");
 }
 

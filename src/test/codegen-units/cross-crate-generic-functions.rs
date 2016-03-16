@@ -19,12 +19,12 @@ extern crate cgu_generic_function;
 //~ TRANS_ITEM fn cross_crate_generic_functions::main[0]
 fn main()
 {
-    //~ TRANS_ITEM fn cgu_generic_function[0]::bar[0]<u32>
-    //~ TRANS_ITEM fn cgu_generic_function[0]::foo[0]<u32>
+    //~ TRANS_ITEM fn cgu_generic_function::bar[0]<u32>
+    //~ TRANS_ITEM fn cgu_generic_function::foo[0]<u32>
     let _ = cgu_generic_function::foo(1u32);
 
-    //~ TRANS_ITEM fn cgu_generic_function[0]::bar[0]<u64>
-    //~ TRANS_ITEM fn cgu_generic_function[0]::foo[0]<u64>
+    //~ TRANS_ITEM fn cgu_generic_function::bar[0]<u64>
+    //~ TRANS_ITEM fn cgu_generic_function::foo[0]<u64>
     let _ = cgu_generic_function::foo(2u64);
 
     // This should not introduce a codegen item
