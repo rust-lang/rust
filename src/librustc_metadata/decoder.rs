@@ -1779,9 +1779,5 @@ fn def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
 
 pub fn def_path(cdata: Cmd, id: DefIndex) -> hir_map::DefPath {
     debug!("def_path(id={:?})", id);
-    hir_map::definitions::make_def_path(id, |parent| {
-        debug!("def_path: parent={:?}", parent);
-        let parent_doc = cdata.lookup_item(parent);
-        def_key(parent_doc)
-    })
+    hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent))
 }

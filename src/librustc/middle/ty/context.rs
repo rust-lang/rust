@@ -15,7 +15,7 @@ use front::map as ast_map;
 use session::Session;
 use lint;
 use middle;
-use middle::cstore::CrateStore;
+use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def::DefMap;
 use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
@@ -422,6 +422,22 @@ pub struct TyCtxt<'tcx> {
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn crate_name(&self, cnum: ast::CrateNum) -> token::InternedString {
+        if cnum == LOCAL_CRATE {
+            self.crate_name.clone()
+        } else {
+            self.sess.cstore.crate_name(cnum)
+        }
+    }
+
+    pub fn crate_disambiguator(&self, cnum: ast::CrateNum) -> token::InternedString {
+        if cnum == LOCAL_CRATE {
+            self.sess.crate_disambiguator.get().as_str()
+        } else {
+            self.sess.cstore.crate_name(cnum)
+        }
+    }
+
     pub fn type_parameter_def(&self,
                               node_id: NodeId)
                               -> ty::TypeParameterDef<'tcx>
