@@ -27,8 +27,6 @@
 extern crate rustc;
 extern crate rustc_front;
 
-use self::FieldName::*;
-
 use std::cmp;
 use std::mem::replace;
 
@@ -384,11 +382,6 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     in_foreign: bool,
 }
 
-enum FieldName {
-    UnnamedField(usize), // index
-    NamedField(ast::Name),
-}
-
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn item_is_visible(&self, did: DefId) -> bool {
         let visibility = match self.tcx.map.as_local_node_id(did) {
@@ -407,30 +400,12 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a field is in scope.
-    fn check_field(&mut self,
-                   span: Span,
-                   def: ty::AdtDef<'tcx>,
-                   v: ty::VariantDef<'tcx>,
-                   name: FieldName) {
-        let field = match name {
-            NamedField(f_name) => v.field_named(f_name),
-            UnnamedField(idx) => &v.fields[idx]
-        };
-        if field.vis == hir::Public || self.private_accessible(def.did) {
-            return;
+    fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
+        if def.adt_kind() == ty::AdtKind::Struct &&
+                field.vis != hir::Public && !self.private_accessible(def.did) {
+            span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
+                      field.name, self.tcx.item_path_str(def.did));
         }
-
-        let struct_desc = match def.adt_kind() {
-            ty::AdtKind::Struct =>
-                format!("struct `{}`", self.tcx.item_path_str(def.did)),
-            // struct variant fields have inherited visibility
-            ty::AdtKind::Enum => return
-        };
-        let msg = match name {
-            NamedField(name) => format!("field `{}` of {} is private", name, struct_desc),
-            UnnamedField(idx) => format!("field #{} of {} is private", idx, struct_desc),
-        };
-        span_err!(self.tcx.sess, span, E0451, "{}", msg);
     }
 
     // Checks that a method is in scope.
@@ -476,7 +451,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 // Rather than computing the set of unmentioned fields
                 // (i.e. `all_fields - fields`), just check them all.
                 for field in &variant.fields {
-                    self.check_field(expr.span, adt, variant, NamedField(field.name));
+                    self.check_field(expr.span, adt, field);
                 }
             }
             hir::ExprPath(..) => {
@@ -518,8 +493,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 let def = self.tcx.def_map.borrow().get(&pattern.id).unwrap().full_def();
                 let variant = adt.variant_of_def(def);
                 for field in fields {
-                    self.check_field(pattern.span, adt, variant,
-                                     NamedField(field.node.name));
+                    self.check_field(pattern.span, adt, variant.field_named(field.node.name));
                 }
             }
 
@@ -532,10 +506,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             if let PatKind::Wild = field.node {
                                 continue
                             }
-                            self.check_field(field.span,
-                                             def,
-                                             def.struct_variant(),
-                                             UnnamedField(i));
+                            self.check_field(field.span, def, &def.struct_variant().fields[i]);
                         }
                     }
                     ty::TyEnum(..) => {
