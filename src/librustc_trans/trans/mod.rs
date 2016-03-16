@@ -60,6 +60,7 @@ mod meth;
 mod mir;
 mod monomorphize;
 mod collector;
+mod symbol_names_test;
 mod tvec;
 mod type_;
 mod type_of;
