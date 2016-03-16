@@ -105,36 +105,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
         let binding = def.to_name_binding();
-        let old_binding = match parent.try_define_child(name, ns, binding.clone()) {
-            Ok(()) => return,
-            Err(old_binding) => old_binding,
-        };
-
-        let span = binding.span.unwrap_or(DUMMY_SP);
-        if !old_binding.is_extern_crate() && !binding.is_extern_crate() {
-            // Record an error here by looking up the namespace that had the duplicate
-            let ns_str = match ns { TypeNS => "type or module", ValueNS => "value" };
-            let resolution_error = ResolutionError::DuplicateDefinition(ns_str, name);
-            let mut err = resolve_struct_error(self, span, resolution_error);
-
-            if let Some(sp) = old_binding.span {
-                let note = format!("first definition of {} `{}` here", ns_str, name);
-                err.span_note(sp, &note);
-            }
-            err.emit();
-        } else if old_binding.is_extern_crate() && binding.is_extern_crate() {
-            span_err!(self.session,
-                      span,
-                      E0259,
-                      "an external crate named `{}` has already been imported into this module",
-                      name);
-        } else {
-            span_err!(self.session,
-                      span,
-                      E0260,
-                      "the name `{}` conflicts with an external crate \
-                      that has been imported into this module",
-                      name);
+        if let Err(old_binding) = parent.try_define_child(name, ns, binding.clone()) {
+            self.report_conflict(parent, name, ns, old_binding, &binding);
         }
     }
 

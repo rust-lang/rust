@@ -12,7 +12,7 @@ fn a(x: String) -> String {
     format!("First function with {}", x)
 }
 
-fn a(x: String, y: String) -> String { //~ ERROR duplicate definition of value `a`
+fn a(x: String, y: String) -> String { //~ ERROR a value named `a` has already been defined
     format!("Second function with {} and {}", x, y)
 }
 

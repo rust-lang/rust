@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use std::slice::Iter;
-//~^ ERROR import `Iter` conflicts with type in this module
 
 struct Iter;
+//~^ ERROR a type named `Iter` has already been imported in this module
 
 fn main() {
 }
