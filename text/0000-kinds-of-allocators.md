@@ -1092,6 +1092,18 @@ few motivating examples that *are* clearly feasible and useful.
      repeatedly in a linear fashion (e.g. vector that needs to
      reallocate its backing storage).
 
+ * Should the types representing allocated storage have lifetimes attached?
+   (E.g. `fn alloc<'a>(&mut self, layout: &alloc::Layout) -> Address<'a>`.)
+
+   I think Gankro [put it best](https://github.com/rust-lang/rfcs/pull/1398#issuecomment-164003160):
+
+   > This is a low-level unsafe interface, and the expected usecases make it
+   > both quite easy to avoid misuse, and impossible to use lifetimes
+   > (you want a struct to store the allocator and the allocated elements).
+   > Any time we've tried to shove more lifetimes into these kinds of
+   > interfaces have just been an annoying nuisance necessitating
+   > copy-lifetime/transmute nonsense.
+
  * Should `Allocator::alloc` be safe instead of `unsafe fn`?
  
    * Clearly `fn dealloc` and `fn realloc` need to be `unsafe`, since
