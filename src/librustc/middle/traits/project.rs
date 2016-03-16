@@ -28,6 +28,7 @@ use middle::infer::{self, TypeOrigin};
 use middle::subst::Subst;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
+use rustc_data_structures::snapshot_map::{Snapshot, SnapshotMap};
 use syntax::parse::token;
 use syntax::ast;
 use util::common::FN_OUTPUT_NAME;
@@ -455,6 +456,76 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
            projection_ty,
            depth);
 
+    // TODO -- where to do the caching?
+    //
+    // For now, I am caching here, which is good, but it means we
+    // don't capture the type variables that are created in the case
+    // of ambiguity. Which means we may create a large stream of such
+    // variables. OTOH, if we move the caching up a level, we would
+    // not benefit from caching when proving `T: Trait<U=Foo>`
+    // bounds. It might be the case that we want two distinct caches,
+    // or else another kind of cache entry.
+
+    let infcx = selcx.infcx();
+
+    let projection_ty = infcx.resolve_type_vars_if_possible(&projection_ty);
+
+    match infcx.projection_cache.borrow_mut().try_start(projection_ty) {
+        Ok(()) => { }
+        Err(ProjectionCacheEntry::Ambiguous) => {
+            // If we found ambiguity the last time, that generally
+            // means we will continue to do so until some type in the
+            // key changes (and we know it hasn't, because we just
+            // fully resolved it). One exception though is closure
+            // types, which can transition from having a fixed kind to
+            // no kind with no visible change in the key. We should
+            // probably refactor this.
+            //
+            // TODO -- does OF have same problem? in particular around
+            // closures with no upvars!
+            if !projection_ty.has_closure_types() {
+                return None;
+            }
+        }
+        Err(ProjectionCacheEntry::InProgress) => {
+            // If while normalized A::B, we are asked to normalize
+            // A::B, just return A::B itself. This is a conservative
+            // answer, in the sense that A::B *is* clearly equivalent
+            // to A::B, though there may be a better value we can
+            // find.
+
+            // Under lazy normalization, this can arise when
+            // bootstrapping.  That is, imagine an environment with a
+            // where-clause like `A::B == u32`. Now, if we are asked
+            // to normalize `A::B`, we will want to check the
+            // where-clauses in scope. So we will try to unify `A::B`
+            // with `A::B`, which can trigger a recursive
+            // normalization. In that case, I think we will want this code:
+            //
+            // ```
+            // let ty = selcx.tcx().mk_projection(projection_ty.trait_ref,
+            //                                    projection_ty.item_name);
+            // return Some(NormalizedTy { value: v, obligations: vec![] });
+            // ```
+
+            // But for now, let's classify this as an overflow:
+            let recursion_limit = selcx.tcx().sess.recursion_limit.get();
+            let obligation = Obligation::with_depth(cause.clone(),
+                                                    recursion_limit,
+                                                    projection_ty);
+            report_overflow_error(selcx.infcx(), &obligation, false);
+        }
+        Err(ProjectionCacheEntry::NormalizedTy(ty)) => {
+            // If we find the value in the cache, then the obligations
+            // have already been returned from the previous entry (and
+            // should therefore have been honored).
+            return Some(NormalizedTy { value: ty, obligations: vec![] });
+        }
+        Err(ProjectionCacheEntry::Error) => {
+            return Some(normalize_to_error(selcx, projection_ty, cause, depth));
+        }
+    }
+
     let obligation = Obligation::with_depth(cause.clone(), depth, projection_ty.clone());
     match project_type(selcx, &obligation) {
         Ok(ProjectedTy::Progress(projected_ty, mut obligations)) => {
@@ -477,11 +548,15 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
                        depth);
 
                 obligations.extend(normalizer.obligations);
+                infcx.projection_cache.borrow_mut()
+                                      .complete(projection_ty, normalized_ty);
                 Some(Normalized {
                     value: normalized_ty,
                     obligations: obligations,
                 })
             } else {
+                infcx.projection_cache.borrow_mut()
+                                      .complete(projection_ty, projected_ty);
                 Some(Normalized {
                     value: projected_ty,
                     obligations: obligations,
@@ -491,6 +566,8 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
             debug!("normalize_projection_type: projected_ty={:?} no progress",
                    projected_ty);
+            infcx.projection_cache.borrow_mut()
+                                  .complete(projection_ty, projected_ty);
             Some(Normalized {
                 value: projected_ty,
                 obligations: vec!()
@@ -498,6 +575,8 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
         }
         Err(ProjectionTyError::TooManyCandidates) => {
             debug!("normalize_projection_type: too many candidates");
+            infcx.projection_cache.borrow_mut()
+                                  .ambiguous(projection_ty);
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
@@ -507,6 +586,8 @@ fn opt_normalize_projection_type<'a,'b,'tcx>(
             // Trait`, which when processed will cause the error to be
             // reported later
 
+            infcx.projection_cache.borrow_mut()
+                                  .error(projection_ty);
             Some(normalize_to_error(selcx, projection_ty, cause, depth))
         }
     }
@@ -554,6 +635,9 @@ enum ProjectedTy<'tcx> {
 }
 
 /// Compute the result of a projection type (if we can).
+///
+/// IMPORTANT:
+/// - `obligation` must be fully normalized
 fn project_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionTyObligation<'tcx>)
@@ -568,8 +652,7 @@ fn project_type<'cx,'tcx>(
         report_overflow_error(selcx.infcx(), &obligation, true);
     }
 
-    let obligation_trait_ref =
-        selcx.infcx().resolve_type_vars_if_possible(&obligation.predicate.trait_ref);
+    let obligation_trait_ref = &obligation.predicate.trait_ref;
 
     debug!("project: obligation_trait_ref={:?}", obligation_trait_ref);
 
@@ -1213,5 +1296,79 @@ fn assoc_ty_def<'cx, 'tcx>(selcx: &SelectionContext<'cx, 'tcx>,
             .ancestors(impl_def_id)
             .type_defs(selcx.tcx(), assoc_ty_name)
             .next()
+    }
+}
+
+// # Cache
+
+pub struct ProjectionCache<'tcx> {
+    map: SnapshotMap<ty::ProjectionTy<'tcx>, ProjectionCacheEntry<'tcx>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+enum ProjectionCacheEntry<'tcx> {
+    InProgress,
+    Ambiguous,
+    Error,
+    NormalizedTy(Ty<'tcx>),
+}
+
+// NB: intentionally not Clone
+pub struct ProjectionCacheSnapshot {
+    snapshot: Snapshot
+}
+
+impl<'tcx> ProjectionCache<'tcx> {
+    pub fn new() -> Self {
+        ProjectionCache {
+            map: SnapshotMap::new()
+        }
+    }
+
+    pub fn snapshot(&mut self) -> ProjectionCacheSnapshot {
+        ProjectionCacheSnapshot { snapshot: self.map.snapshot() }
+    }
+
+    pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.rollback_to(snapshot.snapshot);
+    }
+
+    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.commit(snapshot.snapshot);
+    }
+
+    /// Try to start normalize `key`; returns an error if
+    /// normalization already occured (this error corresponds to a
+    /// cache hit, so it's actually a good thing).
+    fn try_start(&mut self, key: ty::ProjectionTy<'tcx>)
+                 -> Result<(), ProjectionCacheEntry<'tcx>> {
+        if let Some(entry) = self.map.get(&key) {
+            return Err(*entry);
+        }
+
+        self.map.insert(key, ProjectionCacheEntry::InProgress);
+        Ok(())
+    }
+
+    /// Indicates that `key` was normalized to `value`.
+    fn complete(&mut self, key: ty::ProjectionTy<'tcx>, value: Ty<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
+        assert!(!fresh, "never started projecting `{:?}`", key);
+    }
+
+    /// Indicates that trying to normalize `key` resulted in
+    /// ambiguity. No point in trying it again then until we gain more
+    /// type information (in which case, the "fully resolved" key will
+    /// be different).
+    fn ambiguous(&mut self, key: ty::ProjectionTy<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::Ambiguous);
+        assert!(!fresh, "never started projecting `{:?}`", key);
+    }
+
+    /// Indicates that trying to normalize `key` resulted in
+    /// error.
+    fn error(&mut self, key: ty::ProjectionTy<'tcx>) {
+        let fresh = self.map.insert(key, ProjectionCacheEntry::Error);
+        assert!(!fresh, "never started projecting `{:?}`", key);
     }
 }

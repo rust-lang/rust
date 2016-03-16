@@ -43,26 +43,28 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
-    pub fn insert(&mut self, key: K, value: V) {
+    pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.map.insert(key.clone(), value) {
             None => {
                 if !self.undo_log.is_empty() {
                     self.undo_log.push(UndoLog::Inserted(key));
                 }
+                true
             }
             Some(old_value) => {
                 if !self.undo_log.is_empty() {
                     self.undo_log.push(UndoLog::Overwrite(key, old_value));
                 }
+                false
             }
         }
     }
 
-    pub fn get(&mut self, key: &K) -> Option<&V> {
+    pub fn get(&self, key: &K) -> Option<&V> {
         self.map.get(key)
     }
 
-    pub fn start_snapshot(&mut self) -> Snapshot {
+    pub fn snapshot(&mut self) -> Snapshot {
         self.undo_log.push(UndoLog::OpenSnapshot);
         let len = self.undo_log.len() - 1;
         Snapshot { len: len }
