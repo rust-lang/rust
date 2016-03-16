@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use CrateCtxt;
-use check::regionck::{self, Rcx};
+use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
@@ -274,7 +274,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
 ///
-pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut RegionCtxt<'a, 'tcx>,
                                                          typ: ty::Ty<'tcx>,
                                                          span: Span,
                                                          scope: region::CodeExtent) {
@@ -344,7 +344,7 @@ enum TypeContext {
 }
 
 struct DropckContext<'a, 'b: 'a, 'tcx: 'b> {
-    rcx: &'a mut Rcx<'b, 'tcx>,
+    rcx: &'a mut RegionCtxt<'b, 'tcx>,
     /// types that have already been traversed
     breadcrumbs: FnvHashSet<Ty<'tcx>>,
     /// span for error reporting
@@ -416,10 +416,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
                (0..depth).map(|_| ' ').collect::<String>(),
                ty);
 
-        regionck::type_must_outlive(cx.rcx,
-                                    infer::SubregionOrigin::SafeDestructor(cx.span),
-                                    ty,
-                                    ty::ReScope(cx.parent_scope));
+        cx.rcx.type_must_outlive(infer::SubregionOrigin::SafeDestructor(cx.span),
+                                 ty, ty::ReScope(cx.parent_scope));
 
         return Ok(());
     }
