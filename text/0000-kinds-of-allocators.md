@@ -1338,7 +1338,7 @@ fn size_align<T>() -> (usize, usize) {
 ///
 /// All layouts have an associated positive size; note that this implies
 /// zero-sized types have no corresponding layout.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Layout {
     // size of the requested block of memory, measured in bytes.
     size: Size,
