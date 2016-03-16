@@ -115,24 +115,24 @@ individual sections of code.)
      allocators can inject more specific error types to indicate
      why an allocation failed.
 
- * The metadata for any allocation is captured in a `Kind`
+ * The metadata for any allocation is captured in a `Layout`
    abstraction. This type carries (at minimum) the size and alignment
    requirements for a memory request.
 
-   * The `Kind` type provides a large family of functional construction
+   * The `Layout` type provides a large family of functional construction
      methods for building up the description of how memory is laid out.
 
-     * Any sized type `T` can be mapped to its `Kind`, via `Kind::new::<T>()`,
+     * Any sized type `T` can be mapped to its `Layout`, via `Layout::new::<T>()`,
 
-     * Heterogenous structure; e.g. `kind1.extend(kind2)`,
+     * Heterogenous structure; e.g. `layout1.extend(layout2)`,
 
-     * Homogenous array types: `kind.repeat(n)` (for `n: usize`),
+     * Homogenous array types: `layout.repeat(n)` (for `n: usize`),
 
      * There are packed and unpacked variants for the latter two methods.
 
    * Helper `Allocator` methods like `fn alloc_one` and `fn
      alloc_array` allow client code to interact with an allocator
-     without ever directly constructing a `Kind`.
+     without ever directly constructing a `Layout`.
 
  * Once an `Allocator` implementor has the `fn alloc` and `fn dealloc`
    methods working, it can provide overrides of the other methods,
@@ -335,14 +335,14 @@ Here is the demo implementation of `Allocator` for the type.
 
 ```rust
 impl<'a> Allocator for &'a DumbBumpPool {
-    type Kind = alloc::Kind;
+    type Layout = alloc::Layout;
     type Error = BumpAllocError;
 
-    unsafe fn alloc(&mut self, kind: &Self::Kind) -> Result<Address, Self::Error> {
+    unsafe fn alloc(&mut self, layout: &Self::Layout) -> Result<Address, Self::Error> {
         let curr = self.avail.load(Ordering::Relaxed) as usize;
-        let align = *kind.align();
+        let align = *layout.align();
         let curr_aligned = (curr.overflowing_add(align - 1)) & !(align - 1);
-        let size = *kind.size();
+        let size = *layout.size();
         let remaining = (self.end as usize) - curr_aligned;
         if remaining <= size {
             return Err(BumpAllocError::MemoryExhausted);
@@ -360,7 +360,7 @@ impl<'a> Allocator for &'a DumbBumpPool {
         }
     }
 
-    unsafe fn dealloc(&mut self, _ptr: Address, _kind: &Self::Kind) {
+    unsafe fn dealloc(&mut self, _ptr: Address, _layout: &Self::Layout) {
         // this bump-allocator just no-op's on dealloc
     }
 
@@ -711,17 +711,17 @@ realloc`.)
 The `alloc` method returns an `Address` when it succeeds, and
 `dealloc` takes such an address as its input. But the client must also
 provide metadata for the allocated block like its size and alignment.
-This is encapsulated in the `Kind` argument to `alloc` and `dealloc`.
+This is encapsulated in the `Layout` argument to `alloc` and `dealloc`.
 
-### Kinds of allocations
+### Memory layouts
 
-A `Kind` just carries the metadata necessary for satisfying an
+A `Layout` just carries the metadata necessary for satisfying an
 allocation request. Its (current, private) representation is just a
 size and alignment.
 
-The more interesting thing about `Kind` is the
-family of public methods associated with it for building new kinds via
-composition; these are shown in the [kind api][].
+The more interesting thing about `Layout` is the
+family of public methods associated with it for building new layouts via
+composition; these are shown in the [layout api][].
 
 ### Reallocation Methods
 
@@ -736,10 +736,10 @@ For this, the [memory reuse][] family of methods is appropriate.
 
 ### Type-based Helper Methods
 
-Some readers might skim over the `Kind` API and immediately say "yuck,
+Some readers might skim over the `Layout` API and immediately say "yuck,
 all I wanted to do was allocate some nodes for a tree-structure and
 let my clients choose how the backing memory is chosen! Why do I have
-to wrestle with this `Kind` business?"
+to wrestle with this `Layout` business?"
 
 I agree with the sentiment; that's why the `Allocator` trait provides
 a family of methods capturing [common usage patterns][],
@@ -758,7 +758,7 @@ via local invariants in their container type).
 
 For these clients, the `Allocator` trait provides
 ["unchecked" variants][unchecked variants] of nearly all of its
-methods; so `a.alloc_unchecked(kind)` will return an `Option<Address>`
+methods; so `a.alloc_unchecked(layout)` will return an `Option<Address>`
 (where `None` corresponds to allocation failure).
 
 The idea here is that `Allocator` implementors are encouraged
@@ -811,12 +811,12 @@ to both the allocation and deallocation call sites.
   callers who can make use of excess memory to avoid unnecessary calls
   to `realloc`.
 
-### Why the `Kind` abstraction?
+### Why the `Layout` abstraction?
 
 While we do want to require clients to hand the allocator the size and
 alignment, we have found that the code to compute such things follows
 regular patterns. It makes more sense to factor those patterns out
-into a common abstraction; this is what `Kind` provides: a high-level
+into a common abstraction; this is what `Layout` provides: a high-level
 API for describing the memory layout of a composite structure by
 composing the layout of its subparts.
 
@@ -856,14 +856,14 @@ contextual information about *which* allocator is reporting memory
 exhaustion, I have made `oom` a method of the `Allocator` trait, so
 that allocator clients have the option of calling that on error.
 
-### Why is `usable_size` ever needed? Why not call `kind.size()` directly, as is done in the default implementation?
+### Why is `usable_size` ever needed? Why not call `layout.size()` directly, as is done in the default implementation?
 
-`kind.size()` returns the minimum required size that the client needs.
+`layout.size()` returns the minimum required size that the client needs.
 In a block-based allocator, this may be less than the *actual* size
-that the allocator would ever provide to satisfy that `kind` of
+that the allocator would ever provide to satisfy that kind of
 request. Therefore, `usable_size` provides a way for clients to
 observe what the minimum actual size of an allocated block for
-that`kind` would be, for a given allocator.
+that`layout` would be, for a given allocator.
 
 (Note that the documentation does say that in general it is better for
 clients to use `alloc_excess` and `realloc_excess` instead, if they
@@ -899,19 +899,23 @@ designs come around. But the same is not true for user-defined
 allocators: we want to ensure that adding support for them does not
 inadvertantly kill any chance for adding GC later.
 
-### The inspiration for Kind
+### The inspiration for Layout
 
 Some aspects of the design of this RFC were selected in the hopes that
 it would make such integration easier. In particular, the introduction
 of the relatively high-level `Kind` abstraction was developed, in
 part, as a way that a GC-aware allocator would build up a tracing
-method associated with a kind.
+method associated with a layout.
 
 Then I realized that the `Kind` abstraction may be valuable on its
 own, without GC: It encapsulates important patterns when working with
 representing data as memory records.
 
-So, this RFC offers the `Kind` abstraction without promising that it
+(Later we decided to rename `Kind` to `Layout`, in part to avoid
+confusion with the use of the word "kind" in the context of
+higher-kinded types (HKT).)
+
+So, this RFC offers the `Layout` abstraction without promising that it
 solves the GC problem. (It might, or it might not; we don't know yet.)
 
 ### Forwards-compatibility
@@ -964,7 +968,7 @@ from [RFC PR 39][].
 
 While that is true, it seems like it would be a little short-sighted.
 In particular, I have neither proven *nor* disproven the value of
-`Kind` system described here with respect to GC integration.
+`Layout` system described here with respect to GC integration.
 
 As far as I know, it is the closest thing we have to a workable system
 for allowing client code of allocators to accurately describe the
@@ -972,15 +976,15 @@ layout of values they are planning to allocate, which is the main
 ingredient I believe to be necessary for the kind of dynamic
 reflection that a GC will require of a user-defined allocator.
 
-## Make `Kind` an associated type of `Allocator` trait
+## Make `Layout` an associated type of `Allocator` trait
 
-I explored making an `AllocKind` bound and then having
+I explored making an `AllocLayout` bound and then having
 
 ```rust
 pub unsafe trait Allocator {
     /// Describes the sort of records that this allocator can
     /// construct.
-    type Kind: AllocKind;
+    type Layout: AllocLayout;
 
     ...
 }
@@ -994,28 +998,28 @@ But the question is: What benefit does it bring?
 The main one I could imagine is that it might allow us to introduce a
 division, at the type-system level, between two kinds of allocators:
 those that are integrated with the GC (i.e., have an associated
-`Allocator::Kind` that ensures that all allocated blocks are scannable
+`Allocator::Layout` that ensures that all allocated blocks are scannable
 by a GC) and allocators that are *not* integrated with the GC (i.e.,
-have an associated `Allocator::Kind` that makes no guarantees about
+have an associated `Allocator::Layout` that makes no guarantees about
 one will know how to scan the allocated blocks.
 
 However, no such design has proven itself to be "obviously feasible to
-implement," and therefore it would be unreasonable to make the `Kind`
+implement," and therefore it would be unreasonable to make the `Layout`
 an associated type of the `Allocator` trait without having at least a
 few motivating examples that *are* clearly feasible and useful.
 
-## Variations on the `Kind` API
+## Variations on the `Layout` API
 
- * Should `Kind` offer a `fn resize(&self, new_size: usize) -> Kind` constructor method?
-   (Such a method would rule out deriving GC tracers from kinds; but we could
+ * Should `Layout` offer a `fn resize(&self, new_size: usize) -> Layout` constructor method?
+   (Such a method would rule out deriving GC tracers from layouts; but we could
     maybe provide it as an `unsafe` method.)
 
- * Should `Kind` ensure an invariant that its associated size is
+ * Should `Layout` ensure an invariant that its associated size is
    always a multiple of its alignment?
 
    * Doing this would allow simplifying a small part of the API,
-     namely the distinct `Kind::repeat` (returns both a kind and an
-     offset) versus `Kind::array` (where the offset is derivable from
+     namely the distinct `Layout::repeat` (returns both a layout and an
+     offset) versus `Layout::array` (where the offset is derivable from
      the input `T`).
 
    * Such a constraint would have precendent; in particular, the
@@ -1027,21 +1031,21 @@ few motivating examples that *are* clearly feasible and useful.
      invariant implies a certain loss of expressiveness over what we
      already provide today.
 
- * Should `Kind` ensure an invariant that its associated size is always positive?
+ * Should `Layout` ensure an invariant that its associated size is always positive?
 
    * Pro: Removes something that allocators would need to check about
-     input kinds (the backing memory allocators will tend to require
+     input layouts (the backing memory allocators will tend to require
      that the input sizes are positive).
 
    * Con: Requiring positive size means that zero-sized types do not have an associated
-     `Kind`. That's not the end of the world, but it does make the `Kind` API slightly
-     less convenient (e.g. one cannot use `extend` with a zero-sized kind to
-     forcibly inject padding, because zero-sized kinds do not exist).
+     `Layout`. That's not the end of the world, but it does make the `Layout` API slightly
+     less convenient (e.g. one cannot use `extend` with a zero-sized layout to
+     forcibly inject padding, because zero-sized layouts do not exist).
 
- * Should `Kind::align_to` add padding to the associated size? (Probably not; this would
+ * Should `Layout::align_to` add padding to the associated size? (Probably not; this would
    make it impossible to express certain kinds of patteerns.)
 
- * Should the `Kind` methods that might "fail" return `Result` instead of `Option`?
+ * Should the `Layout` methods that might "fail" return `Result` instead of `Option`?
 
 ## Variations on the `Allocator` API
 
@@ -1050,15 +1054,15 @@ few motivating examples that *are* clearly feasible and useful.
    * Clearly `fn dealloc` and `fn realloc` need to be `unsafe`, since
      feeding in improper inputs could cause unsound behavior. But is
      there any analogous input to `fn alloc` that could cause
-     unsoundness (assuming that the `Kind` struct enforces invariants
+     unsoundness (assuming that the `Layout` struct enforces invariants
      like "the associated size is non-zero")?
 
    * (I left it as `unsafe fn alloc` just to keep the API uniform with
      `dealloc` and `realloc`.)
 
- * Should `Allocator::realloc` not require that `new_kind.align()`
-   evenly divide `kind.align()`? In particular, it is not too
-   expensive to check if the two kinds are not compatible, and fall
+ * Should `Allocator::realloc` not require that `new_layout.align()`
+   evenly divide `layout.align()`? In particular, it is not too
+   expensive to check if the two layouts are not compatible, and fall
    back on `alloc`/`dealloc` in that case.
 
  * Should `Allocator` not provide unchecked variants on `fn alloc`,
@@ -1085,7 +1089,7 @@ few motivating examples that *are* clearly feasible and useful.
  * Since we cannot do `RefCell<Pool>` (see FIXME above), what is
    our standard recommendation for what to do instead?
 
- * Should `Kind` be an associated type of `Allocator` (see
+ * Should `Layout` be an associated type of `Allocator` (see
    [alternatives][] section for discussion).
    (In fact, most of the "Variations correspond to potentially
    unresolved questions.)
@@ -1323,25 +1327,25 @@ fn size_align<T>() -> (usize, usize) {
 
 ```
 
-### Kind API
-[kind api]: #kind-api
+### Layout API
+[layout api]: #layout-api
 
 ```rust
 /// Category for a memory record.
 ///
-/// An instance of `Kind` describes a particular layout of memory.
-/// You build a `Kind` up as an input to give to an allocator.
+/// An instance of `Layout` describes a particular layout of memory.
+/// You build a `Layout` up as an input to give to an allocator.
 ///
-/// All kinds have an associated positive size; note that this implies
-/// zero-sized types have no corresponding kind.
+/// All layouts have an associated positive size; note that this implies
+/// zero-sized types have no corresponding layout.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct Kind {
+pub struct Layout {
     // size of the requested block of memory, measured in bytes.
     size: Size,
     // alignment of the requested block of memory, measured in bytes.
     // we ensure that this is always a power-of-two, because API's
     ///like `posix_memalign` require it and it is a reasonable
-    // constraint to impose on Kind constructors.
+    // constraint to impose on Layout constructors.
     //
     // (However, we do not analogously require `align >= sizeof(void*)`,
     //  even though that is *also* a requirement of `posix_memalign`.)
@@ -1353,59 +1357,59 @@ pub struct Kind {
 // (potentially switching to overflowing_add and
 //  overflowing_mul as necessary).
 
-impl Kind {
+impl Layout {
     // (private constructor)
-    fn from_size_align(size: usize, align: usize) -> Kind {
+    fn from_size_align(size: usize, align: usize) -> Layout {
         assert!(align.is_power_of_two()); 
         let size = unsafe { assert!(size > 0); NonZero::new(size) };
         let align = unsafe { assert!(align > 0); NonZero::new(align) };
-        Kind { size: size, align: align }
+        Layout { size: size, align: align }
     }
 
-    /// The minimum size in bytes for a memory block of this kind.
+    /// The minimum size in bytes for a memory block of this layout.
     pub fn size(&self) -> NonZero<usize> { self.size }
 
-    /// The minimum byte alignment for a memory block of this kind.
+    /// The minimum byte alignment for a memory block of this layout.
     pub fn align(&self) -> NonZero<usize> { self.align }
 
-    /// Constructs a `Kind` suitable for holding a value of type `T`.
-    /// Returns `None` if no such kind exists (e.g. for zero-sized `T`).
+    /// Constructs a `Layout` suitable for holding a value of type `T`.
+    /// Returns `None` if no such layout exists (e.g. for zero-sized `T`).
     pub fn new<T>() -> Option<Self> {
         let (size, align) = size_align::<T>();
-        if size > 0 { Some(Kind::from_size_align(size, align)) } else { None }
+        if size > 0 { Some(Layout::from_size_align(size, align)) } else { None }
     }
 
-    /// Produces kind describing a record that could be used to
+    /// Produces layout describing a record that could be used to
     /// allocate backing structure for `T` (which could be a trait
     /// or other unsized type like a slice).
     ///
-    /// Returns `None` when no such kind exists; for example, when `x`
+    /// Returns `None` when no such layout exists; for example, when `x`
     /// is a reference to a zero-sized type.
     pub fn for_value<T: ?Sized>(t: &T) -> Option<Self> {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
         if size > 0 {
-            Some(Kind::from_size_align(size, align))
+            Some(Layout::from_size_align(size, align))
         } else {
             None
         }
     }
 
-    /// Creates a kind describing the record that can hold a value
-    /// of the same kind as `self`, but that also is aligned to
+    /// Creates a layout describing the record that can hold a value
+    /// of the same layout as `self`, but that also is aligned to
     /// alignment `align` (measured in bytes).
     ///
     /// If `self` already meets the prescribed alignment, then returns
     /// `self`.
     ///
     /// Note that this method does not add any padding to the overall
-    /// size, regardless of whether the returned kind has a different
+    /// size, regardless of whether the returned layout has a different
     /// alignment. In other words, if `K` has size 16, `K.align_to(32)`
     /// will *still* have size 16.
     pub fn align_to(&self, align: Alignment) -> Self {
         if align > self.align {
             let pow2_align = align.checked_next_power_of_two().unwrap();
             debug_assert!(pow2_align > 0); // (this follows from self.align > 0...)
-            Kind { align: unsafe { NonZero::new(pow2_align) },
+            Layout { align: unsafe { NonZero::new(pow2_align) },
                    ..*self }
         } else {
             *self
@@ -1430,11 +1434,11 @@ impl Kind {
         return len_rounded_up - len;
     }
 
-    /// Creates a kind describing the record for `n` instances of
+    /// Creates a layout describing the record for `n` instances of
     /// `self`, with a suitable amount of padding between each to
     /// ensure that each instance is given its requested size and
     /// alignment. On success, returns `(k, offs)` where `k` is the
-    /// kind of the array and `offs` is the distance between the start
+    /// layout of the array and `offs` is the distance between the start
     /// of each element in the array.
     ///
     /// On zero `n` or arithmetic overflow, returns `None`.
@@ -1448,15 +1452,15 @@ impl Kind {
             None => return None,
             Some(alloc_size) => alloc_size,
         };
-        Some((Kind::from_size_align(alloc_size, *self.align), padded_size))
+        Some((Layout::from_size_align(alloc_size, *self.align), padded_size))
     }
 
-    /// Creates a kind describing the record for `self` followed by
+    /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned. Note that the result kind will
+    /// will be properly aligned. Note that the result layout will
     /// satisfy the alignment properties of both `self` and `next`.
     ///
-    /// Returns `Some((k, offset))`, where `k` is kind of the concatenated
+    /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded witnin the concatenated record
     /// (assuming that the record itself starts at offset 0).
@@ -1464,14 +1468,14 @@ impl Kind {
     /// On arithmetic overflow, returns `None`.
     pub fn extend(&self, next: Self) -> Option<(Self, usize)> {
         let new_align = unsafe { NonZero::new(cmp::max(*self.align, *next.align)) };
-        let realigned = Kind { align: new_align, ..*self };
+        let realigned = Layout { align: new_align, ..*self };
         let pad = realigned.padding_needed_for(new_align);
         let offset = *self.size() + pad;
         let new_size = offset + *next.size();
-        Some((Kind::from_size_align(new_size, *new_align), offset))
+        Some((Layout::from_size_align(new_size, *new_align), offset))
     }
 
-    /// Creates a kind describing the record for `n` instances of
+    /// Creates a layout describing the record for `n` instances of
     /// `self`, with no padding between each instance.
     ///
     /// On zero `n` or overflow, returns `None`.
@@ -1481,15 +1485,15 @@ impl Kind {
             Some(scaled) => scaled,
         };
         let size = unsafe { assert!(scaled > 0); NonZero::new(scaled) };
-        Some(Kind { size: size, align: self.align })
+        Some(Layout { size: size, align: self.align })
     }
 
-    /// Creates a kind describing the record for `self` followed by
+    /// Creates a layout describing the record for `self` followed by
     /// `next` with no additional padding between the two. Since no
     /// padding is inserted, the alignment of `next` is irrelevant,
-    /// and is not incoporated *at all* into the resulting kind.
+    /// and is not incoporated *at all* into the resulting layout.
     ///
-    /// Returns `(k, offset)`, where `k` is kind of the concatenated
+    /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded witnin the concatenated record
     /// (assuming that the record itself starts at offset 0).
@@ -1505,7 +1509,7 @@ impl Kind {
             Some(new_size) => new_size,
         };
         let new_size = unsafe { NonZero::new(new_size) };
-        Some((Kind { size: new_size, ..*self }, *self.size()))
+        Some((Layout { size: new_size, ..*self }, *self.size()))
     }
 
     // Below family of methods *assume* inputs are pre- or
@@ -1513,23 +1517,23 @@ impl Kind {
     ///do indirectly validate, but that is not part of their
     /// specification.)
     //
-    // Since invalid inputs could yield ill-formed kinds, these
+    // Since invalid inputs could yield ill-formed layouts, these
     // methods are `unsafe`.
 
-    /// Creates kind describing the record for a single instance of `T`.
+    /// Creates layout describing the record for a single instance of `T`.
     /// Requires `T` has non-zero size.
     pub unsafe fn new_unchecked<T>() -> Self {
         let (size, align) = size_align::<T>();
-        Kind::from_size_align(size, align)
+        Layout::from_size_align(size, align)
     }
 
 
-    /// Creates a kind describing the record for `self` followed by
+    /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned. Note that the result kind will
+    /// will be properly aligned. Note that the result layout will
     /// satisfy the alignment properties of both `self` and `next`.
     ///
-    /// Returns `(k, offset)`, where `k` is kind of the concatenated
+    /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded witnin the concatenated record
     /// (assuming that the record itself starts at offset 0).
@@ -1539,7 +1543,7 @@ impl Kind {
         self.extend(next).unwrap()
     }
 
-    /// Creates a kind describing the record for `n` instances of
+    /// Creates a layout describing the record for `n` instances of
     /// `self`, with a suitable amount of padding between each.
     ///
     /// Requires non-zero `n` and no arithmetic overflow from inputs.
@@ -1548,7 +1552,7 @@ impl Kind {
         self.repeat(n).unwrap()
     }
 
-    /// Creates a kind describing the record for `n` instances of
+    /// Creates a layout describing the record for `n` instances of
     /// `self`, with no padding between each instance.
     ///
     /// Requires non-zero `n` and no arithmetic overflow from inputs.
@@ -1557,12 +1561,12 @@ impl Kind {
         self.repeat_packed(n).unwrap()
     }
 
-    /// Creates a kind describing the record for `self` followed by
+    /// Creates a layout describing the record for `self` followed by
     /// `next` with no additional padding between the two. Since no
     /// padding is inserted, the alignment of `next` is irrelevant,
-    /// and is not incoporated *at all* into the resulting kind.
+    /// and is not incoporated *at all* into the resulting layout.
     ///
-    /// Returns `(k, offset)`, where `k` is kind of the concatenated
+    /// Returns `(k, offset)`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded witnin the concatenated record
     /// (assuming that the record itself starts at offset 0).
@@ -1577,11 +1581,11 @@ impl Kind {
         self.extend_packed(next).unwrap()
     }
 
-    /// Creates a kind describing the record for a `[T; n]`.
+    /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On zero `n`, zero-sized `T`, or arithmetic overflow, returns `None`.
     pub fn array<T>(n: usize) -> Option<Self> {
-        Kind::new::<T>()
+        Layout::new::<T>()
             .and_then(|k| k.repeat(n))
             .map(|(k, offs)| {
                 debug_assert!(offs == mem::size_of::<T>());
@@ -1589,12 +1593,12 @@ impl Kind {
             })
     }
 
-    /// Creates a kind describing the record for a `[T; n]`.
+    /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// Requires nonzero `n`, nonzero-sized `T`, and no arithmetic
     /// overflow; otherwise behavior undefined.
     pub fn array_unchecked<T>(n: usize) -> Self {
-        Kind::array::<T>(n).unwrap()
+        Layout::array::<T>(n).unwrap()
     }
 
 }
@@ -1709,17 +1713,17 @@ impl AllocError for AllocErr {
 
 ```rust
 /// An implementation of `Allocator` can allocate, reallocate, and
-/// deallocate arbitrary blocks of data described via `Kind`.
+/// deallocate arbitrary blocks of data described via `Layout`.
 ///
-/// Some of the methods require that a kind *fit* a memory block.
-/// What it means for a kind to "fit" a memory block means is that
+/// Some of the methods require that a layout *fit* a memory block.
+/// What it means for a layout to "fit" a memory block means is that
 /// the following two conditions must hold:
 ///
-/// 1. The block's starting address must be aligned to `kind.align()`.
+/// 1. The block's starting address must be aligned to `layout.align()`.
 ///
 /// 2. The block's size must fall in the range `[use_min, use_max]`, where:
 ///
-///    * `use_min` is `self.usable_size(kind).0`, and
+///    * `use_min` is `self.usable_size(layout).0`, and
 ///
 ///    * `use_max` is the capacity that was (or would have been)
 ///      returned when (if) the block was allocated via a call to
@@ -1727,7 +1731,7 @@ impl AllocError for AllocErr {
 ///
 /// Note that:
 ///
-///  * the size of the kind most recently used to allocate the block
+///  * the size of the layout most recently used to allocate the block
 ///    is guaranteed to be in the range `[use_min, use_max]`, and
 ///
 ///  * a lower-bound on `use_max` can be safely approximated by a call to
@@ -1748,13 +1752,13 @@ pub unsafe trait Allocator {
 
 ```rust
     /// Returns a pointer suitable for holding data described by
-    /// `kind`, meeting its size and alignment guarantees.
+    /// `layout`, meeting its size and alignment guarantees.
     ///
     /// The returned block of storage may or may not have its contents
     /// initialized. (Extension subtraits might restrict this
     /// behavior, e.g. to ensure initialization.)
     ///
-    /// Returning `Err` indicates that either memory is exhausted or `kind` does
+    /// Returning `Err` indicates that either memory is exhausted or `layout` does
     /// not meet allocator's size or alignment constraints.
     ///
     /// Implementations are encouraged to return `Err` on memory
@@ -1762,14 +1766,14 @@ pub unsafe trait Allocator {
     /// not a strict requirement. (Specifically: it is *legal* to use
     /// this trait to wrap an underlying native allocation library
     /// that aborts on memory exhaustion.)
-    unsafe fn alloc(&mut self, kind: Kind) -> Result<Address, Self::Error>;
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<Address, Self::Error>;
 
     /// Deallocate the memory referenced by `ptr`.
     ///
     /// `ptr` must have previously been provided via this allocator,
-    /// and `kind` must *fit* the provided block (see above);
+    /// and `layout` must *fit* the provided block (see above);
     /// otherwise yields undefined behavior.
-    unsafe fn dealloc(&mut self, ptr: Address, kind: Kind);
+    unsafe fn dealloc(&mut self, ptr: Address, layout: Layout);
 
     /// Allocator-specific method for signalling an out-of-memory
     /// condition.
@@ -1812,10 +1816,10 @@ pub unsafe trait Allocator {
     fn max_align(&self) -> Option<Alignment> { None }
 
     /// Returns bounds on the guaranteed usable size of a successful
-    /// allocation created with the specified `kind`.
+    /// allocation created with the specified `layout`.
     ///
-    /// In particular, for a given kind `k`, if `usable_size(k)` returns
-    /// `(l, m)`, then one can use a block of kind `k` as if it has any
+    /// In particular, for a given layout `k`, if `usable_size(k)` returns
+    /// `(l, m)`, then one can use a block of layout `k` as if it has any
     /// size in the range `[l, m]` (inclusive).
     ///
     /// (All implementors of `fn usable_size` must ensure that
@@ -1835,8 +1839,8 @@ pub unsafe trait Allocator {
     /// However, for clients that do not wish to track the capacity
     /// returned by `alloc_excess` locally, this method is likely to
     /// produce useful results.
-    unsafe fn usable_size(&self, kind: Kind) -> (Capacity, Capacity) {
-        (kind.size(), kind.size())
+    unsafe fn usable_size(&self, layout: Layout) -> (Capacity, Capacity) {
+        (layout.size(), layout.size())
     }
 
 ```
@@ -1849,21 +1853,21 @@ pub unsafe trait Allocator {
     // realloc. alloc_excess, realloc_excess
     
     /// Returns a pointer suitable for holding data described by
-    /// `new_kind`, meeting its size and alignment guarantees. To
+    /// `new_layout`, meeting its size and alignment guarantees. To
     /// accomplish this, this may extend or shrink the allocation
-    /// referenced by `ptr` to fit `new_kind`.
+    /// referenced by `ptr` to fit `new_layout`.
     ///
     /// * `ptr` must have previously been provided via this allocator.
     ///
-    /// * `kind` must *fit* the `ptr` (see above). (The `new_kind`
+    /// * `layout` must *fit* the `ptr` (see above). (The `new_layout`
     ///   argument need not fit it.)
     ///
     /// Behavior undefined if either of latter two constraints are unmet.
     ///
-    /// In addition, `new_kind` should not impose a stronger alignment
-    /// constraint than `kind`. (In other words, `new_kind.align()`
-    /// must evenly divide `kind.align()`; note this implies the
-    /// alignment of `new_kind` must not exceed that of `kind`.)
+    /// In addition, `new_layout` should not impose a stronger alignment
+    /// constraint than `layout`. (In other words, `new_layout.align()`
+    /// must evenly divide `layout.align()`; note this implies the
+    /// alignment of `new_layout` must not exceed that of `layout`.)
     /// However, behavior is well-defined (though underspecified) when
     /// this constraint is violated; further discussion below.
     ///
@@ -1874,12 +1878,12 @@ pub unsafe trait Allocator {
     /// transferred back to the caller again via the return value of
     /// this method).
     ///
-    /// Returns `Err` only if `new_kind` does not meet the allocator's
+    /// Returns `Err` only if `new_layout` does not meet the allocator's
     /// size and alignment constraints of the allocator or the
-    /// alignment of `kind`, or if reallocation otherwise fails. (Note
+    /// alignment of `layout`, or if reallocation otherwise fails. (Note
     /// that did not say "if and only if" -- in particular, an
     /// implementation of this method *can* return `Ok` if
-    /// `new_kind.align() > old_kind.align()`; or it can return `Err`
+    /// `new_layout.align() > old_layout.align()`; or it can return `Err`
     /// in that scenario.)
     ///
     /// If this method returns `Err`, then ownership of the memory
@@ -1887,40 +1891,40 @@ pub unsafe trait Allocator {
     /// contents of the memory block are unaltered.
     unsafe fn realloc(&mut self,
                       ptr: Address,
-                      kind: Kind,
-                      new_kind: Kind) -> Result<Address, Self::Error> {
-        let (min, max) = self.usable_size(kind);
-        let s = new_kind.size();
-        // All Kind alignments are powers of two, so a comparison
+                      layout: Layout,
+                      new_layout: Layout) -> Result<Address, Self::Error> {
+        let (min, max) = self.usable_size(layout);
+        let s = new_layout.size();
+        // All Layout alignments are powers of two, so a comparison
         // suffices here (rather than resorting to a `%` operation).
-        if min <= s && s <= max && new_kind.align() <= kind.align() {
+        if min <= s && s <= max && new_layout.align() <= layout.align() {
             return Ok(ptr);
         } else {
-            let result = self.alloc(new_kind);
+            let result = self.alloc(new_layout);
             if let Ok(new_ptr) = result {
-                ptr::copy(*ptr as *const u8, *new_ptr, cmp::min(*kind.size(), *new_kind.size()));
-                self.dealloc(ptr, kind);
+                ptr::copy(*ptr as *const u8, *new_ptr, cmp::min(*layout.size(), *new_layout.size()));
+                self.dealloc(ptr, layout);
             }
             result
         }
     }
 
     /// Behaves like `fn alloc`, but also returns the whole size of
-    /// the returned block. For some `kind` inputs, like arrays, this
+    /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
-    unsafe fn alloc_excess(&mut self, kind: Kind) -> Result<Excess, Self::Error> {
-        self.alloc(kind).map(|p| Excess(p, self.usable_size(kind).1))
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, Self::Error> {
+        self.alloc(layout).map(|p| Excess(p, self.usable_size(layout).1))
     }
 
     /// Behaves like `fn realloc`, but also returns the whole size of
-    /// the returned block. For some `kind` inputs, like arrays, this
+    /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
     unsafe fn realloc_excess(&mut self,
                              ptr: Address,
-                             kind: Kind,
-                             new_kind: Kind) -> Result<Excess, Self::Error> {
-        self.realloc(ptr, kind, new_kind)
-            .map(|p| Excess(p, self.usable_size(new_kind).1))
+                             layout: Layout,
+                             new_layout: Layout) -> Result<Excess, Self::Error> {
+        self.realloc(ptr, layout, new_layout)
+            .map(|p| Excess(p, self.usable_size(new_layout).1))
     }
 
 ```
@@ -1939,7 +1943,7 @@ pub unsafe trait Allocator {
     /// The returned block is suitable for passing to the
     /// `alloc`/`realloc` methods of this allocator.
     unsafe fn alloc_one<T>(&mut self) -> Result<Unique<T>, Self::Error> {
-        if let Some(k) = Kind::new::<T>() {
+        if let Some(k) = Layout::new::<T>() {
             self.alloc(k).map(|p|Unique::new(*p as *mut T))
         } else {
             // (only occurs for zero-sized T)
@@ -1953,7 +1957,7 @@ pub unsafe trait Allocator {
     /// Captures a common usage pattern for allocators.
     unsafe fn dealloc_one<T>(&mut self, mut ptr: Unique<T>) {
         let raw_ptr = NonZero::new(ptr.get_mut() as *mut T as *mut u8);
-        self.dealloc(raw_ptr, Kind::new::<T>().unwrap());
+        self.dealloc(raw_ptr, Layout::new::<T>().unwrap());
     }
 
     /// Allocates a block suitable for holding `n` instances of `T`.
@@ -1963,8 +1967,8 @@ pub unsafe trait Allocator {
     /// The returned block is suitable for passing to the
     /// `alloc`/`realloc` methods of this allocator.
     unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, Self::Error> {
-        match Kind::array::<T>(n) {
-            Some(kind) => self.alloc(kind).map(|p|Unique::new(*p as *mut T)),
+        match Layout::array::<T>(n) {
+            Some(layout) => self.alloc(layout).map(|p|Unique::new(*p as *mut T)),
             None => Err(Self::Error::invalid_input()),
         }
     }
@@ -1981,7 +1985,7 @@ pub unsafe trait Allocator {
                                ptr: Unique<T>,
                                n_old: usize,
                                n_new: usize) -> Result<Unique<T>, Self::Error> {
-        let old_new_ptr = (Kind::array::<T>(n_old), Kind::array::<T>(n_new), *ptr);
+        let old_new_ptr = (Layout::array::<T>(n_old), Layout::array::<T>(n_new), *ptr);
         if let (Some(k_old), Some(k_new), ptr) = old_new_ptr {
             self.realloc(NonZero::new(ptr as *mut u8), k_old, k_new)
                 .map(|p|Unique::new(*p as *mut T))
@@ -1995,7 +1999,7 @@ pub unsafe trait Allocator {
     /// Captures a common usage pattern for allocators.
     unsafe fn dealloc_array<T>(&mut self, ptr: Unique<T>, n: usize) -> Result<(), Self::Error> {
         let raw_ptr = NonZero::new(*ptr as *mut u8);
-        if let Some(k) = Kind::array::<T>(n) {
+        if let Some(k) = Layout::array::<T>(n) {
             self.dealloc(raw_ptr, k)
         } else {
             Err(Self::Error::invalid_input())
@@ -2011,7 +2015,7 @@ pub unsafe trait Allocator {
     // UNCHECKED METHOD VARIANTS
 
     /// Returns a pointer suitable for holding data described by
-    /// `kind`, meeting its size and alignment guarantees.
+    /// `layout`, meeting its size and alignment guarantees.
     ///
     /// The returned block of storage may or may not have its contents
     /// initialized. (Extension subtraits might restrict this
@@ -2021,25 +2025,25 @@ pub unsafe trait Allocator {
     ///
     /// Behavior undefined if input does not meet size or alignment
     /// constraints of this allocator.
-    unsafe fn alloc_unchecked(&mut self, kind: Kind) -> Option<Address> {
+    unsafe fn alloc_unchecked(&mut self, layout: Layout) -> Option<Address> {
         // (default implementation carries checks, but impl's are free to omit them.)
-        self.alloc(kind).ok()
+        self.alloc(layout).ok()
     }
 
     /// Deallocate the memory referenced by `ptr`.
     ///
     /// `ptr` must have previously been provided via this allocator,
-    /// and `kind` must *fit* the provided block (see above).
+    /// and `layout` must *fit* the provided block (see above).
     /// Otherwise yields undefined behavior.
-    unsafe fn dealloc_unchecked(&mut self, ptr: Address, kind: Kind) {
+    unsafe fn dealloc_unchecked(&mut self, ptr: Address, layout: Layout) {
         // (default implementation carries checks, but impl's are free to omit them.)
-        self.dealloc(ptr, kind).unwrap();
+        self.dealloc(ptr, layout).unwrap();
     }
 
     /// Returns a pointer suitable for holding data described by
-    /// `new_kind`, meeting its size and alignment guarantees. To
+    /// `new_layout`, meeting its size and alignment guarantees. To
     /// accomplish this, may extend or shrink the allocation
-    /// referenced by `ptr` to fit `new_kind`.
+    /// referenced by `ptr` to fit `new_layout`.
     ////
     /// (In other words, ownership of the memory block associated with
     /// `ptr` is first transferred back to this allocator, but the
@@ -2048,12 +2052,12 @@ pub unsafe trait Allocator {
     ///
     /// * `ptr` must have previously been provided via this allocator.
     ///
-    /// * `kind` must *fit* the `ptr` (see above). (The `new_kind`
+    /// * `layout` must *fit* the `ptr` (see above). (The `new_layout`
     ///   argument need not fit it.)
     ///
-    /// * `new_kind` must meet the allocator's size and alignment
-    ///    constraints. In addition, `new_kind.align()` must equal
-    ///    `kind.align()`. (Note that this is a stronger constraint
+    /// * `new_layout` must meet the allocator's size and alignment
+    ///    constraints. In addition, `new_layout.align()` must equal
+    ///    `layout.align()`. (Note that this is a stronger constraint
     ///    that that imposed by `fn realloc`.)
     ///
     /// Behavior undefined if any of latter three constraints are unmet.
@@ -2065,25 +2069,25 @@ pub unsafe trait Allocator {
     /// original memory block referenced by `ptr` is unaltered.
     unsafe fn realloc_unchecked(&mut self,
                                 ptr: Address,
-                                kind: Kind,
-                                new_kind: Kind) -> Option<Address> {
+                                layout: Layout,
+                                new_layout: Layout) -> Option<Address> {
         // (default implementation carries checks, but impl's are free to omit them.)
-        self.realloc(ptr, kind, new_kind).ok()
+        self.realloc(ptr, layout, new_layout).ok()
     }
 
     /// Behaves like `fn alloc_unchecked`, but also returns the whole
     /// size of the returned block. 
-    unsafe fn alloc_excess_unchecked(&mut self, kind: Kind) -> Option<Excess> {
-        self.alloc_excess(kind).ok()
+    unsafe fn alloc_excess_unchecked(&mut self, layout: Layout) -> Option<Excess> {
+        self.alloc_excess(layout).ok()
     }
 
     /// Behaves like `fn realloc_unchecked`, but also returns the
     /// whole size of the returned block.
     unsafe fn realloc_excess_unchecked(&mut self,
                                        ptr: Address,
-                                       kind: Kind,
-                                       new_kind: Kind) -> Option<Excess> {
-        self.realloc_excess(ptr, kind, new_kind).ok()
+                                       layout: Layout,
+                                       new_layout: Layout) -> Option<Excess> {
+        self.realloc_excess(ptr, layout, new_layout).ok()
     }
 
 
@@ -2095,8 +2099,8 @@ pub unsafe trait Allocator {
     /// overflow, and `T` is not zero sized; otherwise yields
     /// undefined behavior.
     unsafe fn alloc_array_unchecked<T>(&mut self, n: usize) -> Option<Unique<T>> {
-        let kind = Kind::array_unchecked::<T>(n);
-        self.alloc_unchecked(kind).map(|p|Unique::new(*p as *mut T))
+        let layout = Layout::array_unchecked::<T>(n);
+        self.alloc_unchecked(layout).map(|p|Unique::new(*p as *mut T))
     }
 
     /// Reallocates a block suitable for holding `n_old` instances of `T`,
@@ -2111,8 +2115,8 @@ pub unsafe trait Allocator {
                                          ptr: Unique<T>,
                                          n_old: usize,
                                          n_new: usize) -> Option<Unique<T>> {
-        let (k_old, k_new, ptr) = (Kind::array_unchecked::<T>(n_old),
-                                   Kind::array_unchecked::<T>(n_new),
+        let (k_old, k_new, ptr) = (Layout::array_unchecked::<T>(n_old),
+                                   Layout::array_unchecked::<T>(n_new),
                                    *ptr);
         self.realloc_unchecked(NonZero::new(ptr as *mut u8), k_old, k_new)
             .map(|p|Unique::new(*p as *mut T))
@@ -2126,8 +2130,8 @@ pub unsafe trait Allocator {
     /// overflow, and `T` is not zero sized; otherwise yields
     /// undefined behavior.
     unsafe fn dealloc_array_unchecked<T>(&mut self, ptr: Unique<T>, n: usize) {
-        let kind = Kind::array_unchecked::<T>(n);
-        self.dealloc_unchecked(NonZero::new(*ptr as *mut u8), kind);
+        let layout = Layout::array_unchecked::<T>(n);
+        self.dealloc_unchecked(NonZero::new(*ptr as *mut u8), layout);
     }
 }
 ```
