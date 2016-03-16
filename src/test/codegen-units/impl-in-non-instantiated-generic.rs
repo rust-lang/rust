@@ -21,7 +21,7 @@ trait SomeTrait {
 // discovered.
 pub fn generic_function<T>(x: T) -> (T, i32) {
     impl SomeTrait for i64 {
-        //~ TRANS_ITEM fn impl_in_non_instantiated_generic::generic_function[0]::i64.SomeTrait[0]::foo[0]
+        //~ TRANS_ITEM fn impl_in_non_instantiated_generic::generic_function[0]::{{impl}}[0]::foo[0]
         fn foo(&self) {}
     }
 

@@ -57,11 +57,11 @@ fn main()
 {
     // simple case
     let bool_sized = &true;
-    //~ TRANS_ITEM fn unsizing::bool.Trait[0]::foo[0]
+    //~ TRANS_ITEM fn unsizing::{{impl}}[0]::foo[0]
     let _bool_unsized = bool_sized as &Trait;
 
     let char_sized = &true;
-    //~ TRANS_ITEM fn unsizing::char.Trait[0]::foo[0]
+    //~ TRANS_ITEM fn unsizing::{{impl}}[1]::foo[0]
     let _char_unsized = char_sized as &Trait;
 
     // struct field
@@ -70,11 +70,11 @@ fn main()
         _b: 2,
         _c: 3.0f64
     };
-    //~ TRANS_ITEM fn unsizing::f64.Trait[0]::foo[0]
+    //~ TRANS_ITEM fn unsizing::{{impl}}[2]::foo[0]
     let _struct_unsized = struct_sized as &Struct<Trait>;
 
     // custom coercion
     let wrapper_sized = Wrapper(&0u32);
-    //~ TRANS_ITEM fn unsizing::u32.Trait[0]::foo[0]
+    //~ TRANS_ITEM fn unsizing::{{impl}}[3]::foo[0]
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
 }

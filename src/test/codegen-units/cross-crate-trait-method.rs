@@ -29,31 +29,31 @@ fn main()
     // Currently, no object code is generated for trait methods with default
     // implemenations, unless they are actually called from somewhere. Therefore
     // we cannot import the implementations and have to create our own inline.
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::Trait[0]::with_default_impl[0]<u32>
+    //~ TRANS_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl[0]<u32>
     let _ = Trait::with_default_impl(0u32);
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::Trait[0]::with_default_impl[0]<char>
+    //~ TRANS_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl[0]<char>
     let _ = Trait::with_default_impl('c');
 
 
 
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::Trait[0]::with_default_impl_generic[0]<u32, &str>
+    //~ TRANS_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl_generic[0]<u32, &str>
     let _ = Trait::with_default_impl_generic(0u32, "abc");
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::Trait[0]::with_default_impl_generic[0]<u32, bool>
+    //~ TRANS_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl_generic[0]<u32, bool>
     let _ = Trait::with_default_impl_generic(0u32, false);
 
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::Trait[0]::with_default_impl_generic[0]<char, i16>
+    //~ TRANS_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl_generic[0]<char, i16>
     let _ = Trait::with_default_impl_generic('x', 1i16);
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::Trait[0]::with_default_impl_generic[0]<char, i32>
+    //~ TRANS_ITEM fn cgu_export_trait_method::Trait[0]::with_default_impl_generic[0]<char, i32>
     let _ = Trait::with_default_impl_generic('y', 0i32);
 
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::u32.Trait[0]::without_default_impl_generic[0]<char>
+    //~ TRANS_ITEM fn cgu_export_trait_method::{{impl}}[1]::without_default_impl_generic[0]<char>
     let _: (u32, char) = Trait::without_default_impl_generic('c');
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::u32.Trait[0]::without_default_impl_generic[0]<bool>
+    //~ TRANS_ITEM fn cgu_export_trait_method::{{impl}}[1]::without_default_impl_generic[0]<bool>
     let _: (u32, bool) = Trait::without_default_impl_generic(false);
 
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::char.Trait[0]::without_default_impl_generic[0]<char>
+    //~ TRANS_ITEM fn cgu_export_trait_method::{{impl}}[0]::without_default_impl_generic[0]<char>
     let _: (char, char) = Trait::without_default_impl_generic('c');
-    //~ TRANS_ITEM fn cgu_export_trait_method[0]::char.Trait[0]::without_default_impl_generic[0]<bool>
+    //~ TRANS_ITEM fn cgu_export_trait_method::{{impl}}[0]::without_default_impl_generic[0]<bool>
     let _: (char, bool) = Trait::without_default_impl_generic(false);
 }
 
