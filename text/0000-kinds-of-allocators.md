@@ -1078,6 +1078,11 @@ few motivating examples that *are* clearly feasible and useful.
      support `Clone` (and thus support sharing in general, as
      discussed in the [Allocators and lifetimes][lifetimes] section).
 
+     (Remember, I'm thinking about allocator-parametric code like
+      `Vec<T, A:Allocator>`, which does not know if the `A` is a
+      `&mut`-reference. In that context, therefore one cannot assume
+      that reborrowing machinery is available to the client code.)
+
      Put more simply, requiring that allocators implement `Clone` means
      that it will *not* be pratical to do
      `impl<'a> Allocator for &'a mut MyUniqueAlloc`.
