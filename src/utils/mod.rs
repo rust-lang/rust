@@ -2,6 +2,7 @@ use reexport::*;
 use rustc::front::map::Node;
 use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::middle::def_id::DefId;
+use rustc::middle::traits::ProjectionMode;
 use rustc::middle::{cstore, def, infer, ty, traits};
 use rustc::session::Session;
 use rustc_front::hir::*;
@@ -269,7 +270,7 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
                                   -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
-    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None);
+    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None, ProjectionMode::Any);
     let obligation = traits::predicate_for_trait_def(cx.tcx,
                                                      traits::ObligationCause::dummy(),
                                                      trait_id,
@@ -753,6 +754,6 @@ pub fn return_ty(fun: ty::Ty) -> Option<ty::Ty> {
 // FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
 // not for type parameters.
 pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> bool {
-    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None);
+    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None, ProjectionMode::Any);
     infcx.can_equate(&cx.tcx.erase_regions(&a), &cx.tcx.erase_regions(&b)).is_ok()
 }

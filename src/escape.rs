@@ -3,6 +3,7 @@ use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::infer;
 use rustc::middle::mem_categorization::{cmt, Categorization};
+use rustc::middle::traits::ProjectionMode;
 use rustc::middle::ty::adjustment::AutoAdjustment;
 use rustc::middle::ty;
 use rustc::util::nodemap::NodeSet;
@@ -54,7 +55,7 @@ impl LintPass for EscapePass {
 impl LateLintPass for EscapePass {
     fn check_fn(&mut self, cx: &LateContext, _: visit::FnKind, decl: &FnDecl, body: &Block, _: Span, id: NodeId) {
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, id);
-        let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(param_env));
+        let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(param_env), ProjectionMode::Any);
         let mut v = EscapeDelegate {
             cx: cx,
             set: NodeSet(),
