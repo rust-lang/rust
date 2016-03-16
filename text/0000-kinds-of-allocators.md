@@ -307,7 +307,7 @@ will expose:
 
 ```rust
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum BumpAllocError { Invalid, MemoryExhausted, Interference }
+enum BumpAllocError { Invalid, MemoryExhausted(alloc::Layout), Interference }
 
 impl BumpAllocError {
     fn is_transient(&self) { *self == BumpAllocError::Interference }
@@ -315,7 +315,7 @@ impl BumpAllocError {
 
 impl alloc::AllocError for BumpAllocError {
     fn invalid_input() -> Self { BumpAllocError::MemoryExhausted }
-    fn is_memory_exhausted(&self) -> bool { *self == BumpAllocError::MemoryExhausted  }
+    fn is_memory_exhausted(&self) -> bool { if let BumpAllocError::MemoryExhausted(_) = *self { true } else { false }  }
     fn is_request_unsupported(&self) -> bool { false }
 }
 ```
@@ -335,17 +335,16 @@ Here is the demo implementation of `Allocator` for the type.
 
 ```rust
 impl<'a> Allocator for &'a DumbBumpPool {
-    type Layout = alloc::Layout;
     type Error = BumpAllocError;
 
-    unsafe fn alloc(&mut self, layout: &Self::Layout) -> Result<Address, Self::Error> {
+    unsafe fn alloc(&mut self, layout: &alloc::Layout) -> Result<Address, Self::Error> {
         let curr = self.avail.load(Ordering::Relaxed) as usize;
         let align = *layout.align();
         let curr_aligned = (curr.overflowing_add(align - 1)) & !(align - 1);
         let size = *layout.size();
         let remaining = (self.end as usize) - curr_aligned;
         if remaining <= size {
-            return Err(BumpAllocError::MemoryExhausted);
+            return Err(BumpAllocError::MemoryExhausted(layout.clone()));
         }
 
         let curr = curr as *mut u8;
@@ -360,12 +359,12 @@ impl<'a> Allocator for &'a DumbBumpPool {
         }
     }
 
-    unsafe fn dealloc(&mut self, _ptr: Address, _layout: &Self::Layout) {
+    unsafe fn dealloc(&mut self, _ptr: Address, _layout: &alloc::Layout) {
         // this bump-allocator just no-op's on dealloc
     }
 
-    unsafe fn oom(&mut self) -> ! {
-        panic!("exhausted memory in {}", self.name);
+    fn oom(&mut self, err: Self::Error) -> ! {
+        panic!("exhausted memory in {} on request {:?}", self.name, err);
     }
 
 }
@@ -1098,10 +1097,6 @@ few motivating examples that *are* clearly feasible and useful.
    `Address` an abuse of the `NonZero` type? (Or do we just need some
    constructor for `NonZero` that asserts that the input is non-zero)?
 
- * Should `fn oom(&self)` take in more arguments (e.g. to allow the
-   client to provide more contextual information about the OOM
-   condition)?
-
  * Should we get rid of the `AllocError` bound entirely? Is the given set
    of methods actually worth providing to all generic clients?
 
@@ -1778,8 +1773,8 @@ pub unsafe trait Allocator {
     /// Allocator-specific method for signalling an out-of-memory
     /// condition.
     ///
-    /// Any activity done by the `oom` method should ensure that it
-    /// does not infinitely regress in nested calls to `oom`. In
+    /// Implementations of the `oom` method are discouraged from
+    /// infinitely regressing in nested calls to `oom`. In
     /// practice this means implementors should eschew allocating,
     /// especially from `self` (directly or indirectly).
     ///
@@ -1788,7 +1783,7 @@ pub unsafe trait Allocator {
     /// instead they should return an appropriate error from the
     /// invoked method, and let the client decide whether to invoke
     /// this `oom` method.
-    unsafe fn oom(&mut self) -> ! { ::core::intrinsics::abort() }
+    fn oom(&mut self, _: Self::Error) -> ! { ::core::intrinsics::abort() }
 ```
 
 ### Allocator-specific quantities and limits
