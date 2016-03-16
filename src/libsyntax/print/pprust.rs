@@ -752,7 +752,8 @@ pub trait PrintState<'a> {
         }
         try!(self.maybe_print_comment(attr.span.lo));
         if attr.node.is_sugared_doc {
-            word(self.writer(), &attr.value_str().unwrap())
+            try!(word(self.writer(), &attr.value_str().unwrap()));
+            hardbreak(self.writer())
         } else {
             match attr.node.style {
                 ast::AttrStyle::Inner => try!(word(self.writer(), "#![")),
