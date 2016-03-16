@@ -125,6 +125,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &TyCtxt<'tcx>,
                                  parent_path: Vec<ast_map::PathElem>,
                                  parent_def_path: ast_map::DefPath,
+                                 parent_did: DefId,
                                  ast_doc: rbml::Doc,
                                  orig_did: DefId)
                                  -> &'tcx InlinedItem {
@@ -149,6 +150,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
     let ii = ast_map::map_decoded_item(&dcx.tcx.map,
                                        parent_path,
                                        parent_def_path,
+                                       parent_did,
                                        decode_ast(ast_doc),
                                        dcx);
     let name = match *ii {
@@ -349,8 +351,8 @@ fn simplify_ast(ii: InlinedItemRef) -> InlinedItem {
     }
 }
 
-fn decode_ast(par_doc: rbml::Doc) -> InlinedItem {
-    let chi_doc = par_doc.get(c::tag_tree as usize);
+fn decode_ast(item_doc: rbml::Doc) -> InlinedItem {
+    let chi_doc = item_doc.get(c::tag_tree as usize);
     let mut rbml_r = reader::Decoder::new(chi_doc);
     rbml_r.read_opaque(|decoder, _| Decodable::decode(decoder)).unwrap()
 }
@@ -1280,8 +1282,8 @@ fn encode_item_ast(rbml_w: &mut Encoder, item: &hir::Item) {
 }
 
 #[cfg(test)]
-fn decode_item_ast(par_doc: rbml::Doc) -> hir::Item {
-    let chi_doc = par_doc.get(c::tag_tree as usize);
+fn decode_item_ast(item_doc: rbml::Doc) -> hir::Item {
+    let chi_doc = item_doc.get(c::tag_tree as usize);
     let mut d = reader::Decoder::new(chi_doc);
     Decodable::decode(&mut d).unwrap()
 }

@@ -12,7 +12,8 @@ pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
-pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
+pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
+                            DisambiguatedDefPathData, InlinedRootPath};
 
 use dep_graph::{DepGraph, DepNode};
 
@@ -322,7 +323,8 @@ impl<'ast> Map<'ast> {
                     id = p,
 
                 RootCrate |
-                RootInlinedParent(_) => // FIXME(#2369) clarify story about cross-crate dep tracking
+                RootInlinedParent(_) =>
+                    // FIXME(#32015) clarify story about cross-crate dep tracking
                     return DepNode::Krate,
 
                 NotPresent =>
@@ -958,6 +960,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           parent_path: Vec<PathElem>,
                                           parent_def_path: DefPath,
+                                          parent_def_id: DefId,
                                           ii: InlinedItem,
                                           fold_ops: F)
                                           -> &'ast InlinedItem {
@@ -987,6 +990,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             ii_parent,
             ii_parent_id,
             parent_def_path,
+            parent_def_id,
             mem::replace(&mut *map.map.borrow_mut(), vec![]),
             mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
     ii_parent.ii.visit(&mut collector);

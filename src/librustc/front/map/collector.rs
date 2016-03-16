@@ -14,7 +14,7 @@ use super::MapEntry::*;
 use rustc_front::hir::*;
 use rustc_front::util;
 use rustc_front::intravisit::{self, Visitor};
-use middle::def_id::{CRATE_DEF_INDEX, DefIndex};
+use middle::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;
@@ -50,6 +50,7 @@ impl<'ast> NodeCollector<'ast> {
                   parent: &'ast InlinedParent,
                   parent_node: NodeId,
                   parent_def_path: DefPath,
+                  parent_def_id: DefId,
                   map: Vec<MapEntry<'ast>>,
                   definitions: Definitions)
                   -> NodeCollector<'ast> {
@@ -60,8 +61,14 @@ impl<'ast> NodeCollector<'ast> {
             definitions: definitions,
         };
 
+        assert_eq!(parent_def_path.krate, parent_def_id.krate);
+        let root_path = Box::new(InlinedRootPath {
+            data: parent_def_path.data,
+            def_id: parent_def_id,
+        });
+
         collector.insert_entry(parent_node, RootInlinedParent(parent));
-        collector.create_def(parent_node, DefPathData::InlinedRoot(parent_def_path));
+        collector.create_def(parent_node, DefPathData::InlinedRoot(root_path));
 
         collector
     }
