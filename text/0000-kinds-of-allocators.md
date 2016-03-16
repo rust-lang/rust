@@ -1048,6 +1048,45 @@ few motivating examples that *are* clearly feasible and useful.
 
 ## Variations on the `Allocator` API
 
+ * Should the allocator methods take `&self` or `self` rather than `&mut self`.
+
+   As noted during in the RFC comments, nearly every trait goes through a bit
+   of an identity crisis in terms of deciding what kind of `self` parameter is
+   appropriate.
+
+   The justification for `&mut self` is this:
+
+   * It does not restrict allocator implementors from making sharable allocators:
+     to do so, just do `impl<'a> Allocator for &'a MySharedAlloc`, as illustrated
+     in the `DumbBumpPool` example.
+
+   * `&mut self` is better than `&self` for simple allocators that are *not* sharable.
+     `&mut self` ensures that the allocation methods have exclusive
+     access to the underlying allocator state, without resorting to a
+     lock. (Another way of looking at it: It moves the onus of using a
+     lock outward, to the allocator clients.)
+
+   * One might think that the points made
+     above apply equally well to `self` (i.e., if you want to implement an allocator
+     that wants to take itself via a `&mut`-reference when the methods take `self`,
+     then do `impl<'a> Allocator for &'a mut MyUniqueAlloc`).
+
+     However, the problem with `self` is that if you want to use an
+     allocator for *more than one* allocation, you will need to call
+     `clone()` (or make the allocator parameter implement
+     `Copy`). This means in practice all allocators will need to
+     support `Clone` (and thus support sharing in general, as
+     discussed in the [Allocators and lifetimes][lifetimes] section).
+
+     Put more simply, requiring that allocators implement `Clone` means
+     that it will *not* be pratical to do
+     `impl<'a> Allocator for &'a mut MyUniqueAlloc`.
+
+     By using `&mut self` for the allocation methods, we can encode
+     the expected use case of an *unshared* allocator that is used
+     repeatedly in a linear fashion (e.g. vector that needs to
+     reallocate its backing storage).
+
  * Should `Allocator::alloc` be safe instead of `unsafe fn`?
  
    * Clearly `fn dealloc` and `fn realloc` need to be `unsafe`, since
