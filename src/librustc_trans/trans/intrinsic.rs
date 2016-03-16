@@ -955,7 +955,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 }
             };
 
-            match intr.output {
+            match *intr.output {
                 intrinsics::Type::Aggregate(flatten, ref elems) => {
                     // the output is a tuple so we need to munge it properly
                     assert!(!flatten);
