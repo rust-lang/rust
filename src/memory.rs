@@ -43,6 +43,9 @@ pub enum Repr {
     I8, I16, I32, I64,
     U8, U16, U32, U64,
 
+    Pointer,
+    FatPointer,
+
     /// The representation for product types including tuples, structs, and the contents of enum
     /// variants.
     Product {
@@ -65,10 +68,6 @@ pub enum Repr {
         /// Number of elements.
         length: usize,
     },
-
-    Pointer {
-        target: Box<Repr>,
-    }
 }
 
 impl Memory {
@@ -362,7 +361,8 @@ impl Repr {
             Repr::Product { size, .. } => size,
             Repr::Sum { ref discr, max_variant_size, .. } => discr.size() + max_variant_size,
             Repr::Array { ref elem, length } => elem.size() * length,
-            Repr::Pointer { .. } => POINTER_SIZE,
+            Repr::Pointer => POINTER_SIZE,
+            Repr::FatPointer => POINTER_SIZE * 2,
         }
     }
 }

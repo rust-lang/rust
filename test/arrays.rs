@@ -7,16 +7,6 @@ fn empty_array() -> [u16; 0] {
 }
 
 #[miri_run]
-fn singular_array() -> [u16; 1] {
-    [42]
-}
-
-#[miri_run]
-fn deuce_array() -> [u16; 2] {
-    [42, 53]
-}
-
-#[miri_run]
 fn big_array() -> [u16; 5] {
     [5, 4, 3, 2, 1]
 }
@@ -24,4 +14,10 @@ fn big_array() -> [u16; 5] {
 #[miri_run]
 fn array_array() -> [[u8; 2]; 3] {
     [[5, 4], [3, 2], [1, 0]]
+}
+
+#[miri_run]
+fn indexing() -> i32 {
+    let a = [0, 10, 20, 30];
+    unsafe { *a.get_unchecked(2) }
 }

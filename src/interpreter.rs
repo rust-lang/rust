@@ -1,6 +1,7 @@
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
 use rustc::middle::subst::{self, Subst, Substs};
+use rustc::middle::traits;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
@@ -8,6 +9,7 @@ use rustc::util::nodemap::DefIdMap;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
+use syntax::codemap::DUMMY_SP;
 
 use error::EvalResult;
 use memory::{self, FieldRepr, Memory, Pointer, Repr};
@@ -226,32 +228,57 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
 
                 match func_ty.sty {
-                    ty::TyFnDef(def_id, substs, bare_fn_ty) => {
+                    ty::TyFnDef(def_id, substs, fn_ty) => {
+                        let substs = self.tcx.mk_substs(
+                            substs.subst(self.tcx, self.current_substs()));
+
                         use syntax::abi::Abi;
-                        match bare_fn_ty.abi {
-                            Abi::RustIntrinsic => match &self.tcx.item_name(def_id).as_str()[..] {
-                                "size_of" => {
-                                    let ty = *substs.types.get(subst::FnSpace, 0);
-                                    let ret_ptr = &mir::Lvalue::ReturnPointer;
-                                    let dest = try!(self.eval_lvalue(ret_ptr));
-                                    let dest_repr = self.lvalue_repr(ret_ptr);
-                                    let size = PrimVal::from_usize(self.ty_to_repr(ty).size(),
-                                                                   &dest_repr);
-                                    try!(self.memory.write_primval(dest, size));
+                        match fn_ty.abi {
+                            Abi::RustIntrinsic => {
+                                let ret_ptr = &mir::Lvalue::ReturnPointer;
+                                let dest = try!(self.eval_lvalue(ret_ptr));
+                                let dest_repr = self.lvalue_repr(ret_ptr);
 
-                                    // Since we pushed no stack frame, the main loop will act as if
-                                    // the call just completed and it's returning to the current
-                                    // frame.
-                                    TerminatorTarget::Call
-                                },
+                                match &self.tcx.item_name(def_id).as_str()[..] {
+                                    "size_of" => {
+                                        let ty = *substs.types.get(subst::FnSpace, 0);
+                                        let size = PrimVal::from_usize(
+                                            self.ty_to_repr(ty).size(),
+                                            &dest_repr
+                                        );
+                                        try!(self.memory.write_primval(dest, size));
+                                    }
 
-                                name => panic!("can't handle intrinsic named {}", name),
-                            },
+                                    "offset" => {
+                                        let pointee_ty = *substs.types.get(subst::FnSpace, 0);
+                                        let pointee_size = self.ty_to_repr(pointee_ty).size() as isize;
+                                        let ptr_arg = try!(self.eval_operand(&args[0]));
+                                        let offset_arg = try!(self.eval_operand(&args[1]));
+                                        let ptr = try!(self.memory.read_ptr(ptr_arg));
+                                        // TODO(tsion): read_isize
+                                        let offset = try!(self.memory.read_i64(offset_arg));
+                                        let result_ptr = ptr.offset(offset as isize * pointee_size);
+                                        try!(self.memory.write_ptr(dest, result_ptr));
+                                    }
+
+                                    name => panic!("can't handle intrinsic named {}", name),
+                                }
+
+                                // Since we pushed no stack frame, the main loop will act
+                                // as if the call just completed and it's returning to the
+                                // current frame.
+                                TerminatorTarget::Call
+                            }
 
                             Abi::Rust => {
+                                // Only trait methods can have a Self parameter.
+                                let (def_id, substs) = if substs.self_ty().is_some() {
+                                    self.trait_method(def_id, substs)
+                                } else {
+                                    (def_id, substs)
+                                };
+
                                 let mir = self.load_mir(def_id);
-                                let substs = self.tcx.mk_substs(
-                                    substs.subst(self.tcx, self.current_substs()));
                                 self.substs_stack.push(substs);
                                 try!(self.push_stack_frame(mir, args, return_ptr));
                                 TerminatorTarget::Call
@@ -370,6 +397,51 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let repr = self.ty_to_repr(ty);
                 let ptr = self.memory.allocate(repr.size());
                 self.memory.write_ptr(dest, ptr)
+            }
+
+            Cast(kind, ref operand, dest_ty) => {
+                fn pointee_type<'tcx>(ptr_ty: ty::Ty<'tcx>) -> Option<ty::Ty<'tcx>> {
+                    match ptr_ty.sty {
+                        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+                        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+                        ty::TyBox(ty) => {
+                            Some(ty)
+                        }
+
+                        _ => None,
+                    }
+                }
+
+                let src = try!(self.eval_operand(operand));
+                let src_ty = self.current_frame().mir.operand_ty(self.tcx, operand);
+
+                use rustc::mir::repr::CastKind::*;
+                match kind {
+                    Unsize => {
+                        try!(self.memory.copy(src, dest, 8));
+                        let src_pointee_ty = pointee_type(src_ty).unwrap();
+                        let dest_pointee_ty = pointee_type(dest_ty).unwrap();
+
+                        match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
+                            (&ty::TyArray(_, length), &ty::TySlice(_)) =>
+                                // TODO(tsion): Add write_usize? (Host/target issues.)
+                                self.memory.write_u64(dest.offset(8), length as u64),
+
+                            _ => panic!("can't handle cast: {:?}", rvalue),
+                        }
+                    }
+
+                    Misc => {
+                        if pointee_type(src_ty).is_some() && pointee_type(dest_ty).is_some() {
+                            self.memory.copy(src, dest, 8)
+                        } else {
+                            self.memory.copy(src, dest, 8)
+                            // panic!("can't handle cast: {:?}", rvalue);
+                        }
+                    }
+
+                    _ => panic!("can't handle cast: {:?}", rvalue),
+                }
             }
 
             ref r => panic!("can't handle rvalue: {:?}", r),
@@ -544,9 +616,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 length: length,
             },
 
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) | ty::TyBox(ty) => Repr::Pointer {
-                target: Box::new(self.ty_to_repr(ty))
-            },
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+            ty::TyBox(ty) => {
+                if ty.is_sized(&self.tcx.empty_parameter_environment(), DUMMY_SP) {
+                    Repr::Pointer
+                } else {
+                    Repr::FatPointer
+                }
+            }
 
             ref t => panic!("can't convert type to repr: {:?}", t),
         }
@@ -580,6 +658,95 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 mir_cache.insert(def_id, cached.clone());
                 CachedMir::Owned(cached)
             }
+        }
+    }
+
+    fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
+        use rustc::middle::infer;
+        use syntax::ast;
+
+        // Do the initial selection for the obligation. This yields the shallow result we are
+        // looking for -- that is, what specific impl.
+        let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables);
+        let mut selcx = traits::SelectionContext::new(&infcx);
+
+        let obligation = traits::Obligation::new(
+            traits::ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID),
+            trait_ref.to_poly_trait_predicate(),
+        );
+        let selection = selcx.select(&obligation).unwrap().unwrap();
+
+        // Currently, we use a fulfillment context to completely resolve all nested obligations.
+        // This is because they can inform the inference of the impl's type parameters.
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+        let vtable = selection.map(|predicate| {
+            fulfill_cx.register_predicate_obligation(&infcx, predicate);
+        });
+        let vtable = infer::drain_fulfillment_cx_or_panic(
+            DUMMY_SP, &infcx, &mut fulfill_cx, &vtable
+        );
+
+        vtable
+    }
+
+    /// Trait method, which has to be resolved to an impl method.
+    pub fn trait_method(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
+            -> (DefId, &'tcx Substs<'tcx>) {
+        let method_item = self.tcx.impl_or_trait_item(def_id);
+        let trait_id = method_item.container().id();
+        let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
+        match self.fulfill_obligation(trait_ref) {
+            traits::VtableImpl(vtable_impl) => {
+                let impl_did = vtable_impl.impl_def_id;
+                let mname = self.tcx.item_name(def_id);
+                // Create a concatenated set of substitutions which includes those from the
+                // impl and those from the method:
+                let impl_substs = vtable_impl.substs.with_method_from(&substs);
+                let substs = self.tcx.mk_substs(impl_substs);
+                let mth = self.tcx.get_impl_method(impl_did, substs, mname);
+
+                println!("{:?} {:?}", mth.method.def_id, mth.substs);
+                (mth.method.def_id, mth.substs)
+            }
+            traits::VtableClosure(vtable_closure) => {
+                // The substitutions should have no type parameters remaining after passing
+                // through fulfill_obligation
+                let trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                unimplemented!()
+                // vtable_closure.closure_def_id
+                // vtable_closure.substs
+                // trait_closure_kind
+
+                // let method_ty = def_ty(tcx, def_id, substs);
+                // let fn_ptr_ty = match method_ty.sty {
+                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                //     _ => unreachable!("expected fn item type, found {}",
+                //                       method_ty)
+                // };
+                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            }
+            traits::VtableFnPointer(fn_ty) => {
+                let trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                unimplemented!()
+                // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
+
+                // let method_ty = def_ty(tcx, def_id, substs);
+                // let fn_ptr_ty = match method_ty.sty {
+                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                //     _ => unreachable!("expected fn item type, found {}",
+                //                       method_ty)
+                // };
+                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
+            }
+            traits::VtableObject(ref data) => {
+                unimplemented!()
+                // Callee {
+                //     data: Virtual(traits::get_vtable_index_of_object_method(
+                //                   tcx, data, def_id)),
+                //                   ty: def_ty(tcx, def_id, substs)
+                // }
+            }
+            vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
         }
     }
 }
