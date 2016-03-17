@@ -155,7 +155,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let mut locals = Vec::with_capacity(num_args + num_vars + num_temps);
 
         for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
-            let size = self.ty_to_repr(arg_decl.ty).size();
+            let size = self.ty_size(arg_decl.ty);
             let dest = self.memory.allocate(size);
             let src = try!(self.eval_operand(arg_operand));
             try!(self.memory.copy(src, dest, size));
@@ -165,7 +165,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
         locals.extend(var_tys.chain(temp_tys).map(|ty| {
-            let size = self.ty_to_repr(ty).size();
+            let size = self.ty_size(ty);
             self.memory.allocate(size)
         }));
 
@@ -255,13 +255,13 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 match &self.tcx.item_name(def_id).as_str()[..] {
                                     "size_of" => {
                                         let ty = *substs.types.get(subst::FnSpace, 0);
-                                        let size = self.ty_to_repr(ty).size() as u64;
+                                        let size = self.ty_size(ty) as u64;
                                         try!(self.memory.write_uint(dest, size, dest_repr.size()));
                                     }
 
                                     "offset" => {
                                         let pointee_ty = *substs.types.get(subst::FnSpace, 0);
-                                        let pointee_size = self.ty_to_repr(pointee_ty).size() as isize;
+                                        let pointee_size = self.ty_size(pointee_ty) as isize;
                                         let ptr_arg = try!(self.eval_operand(&args[0]));
                                         let offset_arg = try!(self.eval_operand(&args[1]));
                                         let ptr = try!(self.memory.read_ptr(ptr_arg));
@@ -397,7 +397,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Box(ty) => {
-                let size = self.ty_to_repr(ty).size();
+                let size = self.ty_size(ty);
                 let ptr = self.memory.allocate(size);
                 self.memory.write_ptr(dest, ptr)
             }
@@ -561,40 +561,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
-    fn make_aggregate_repr<V>(&self, variant_fields: V) -> Repr
-        where V: IntoIterator, V::Item: IntoIterator<Item = ty::Ty<'tcx>>
-    {
-        let mut variants = Vec::new();
-        let mut max_variant_size = 0;
-
-        for field_tys in variant_fields {
-            let mut fields = Vec::new();
-            let mut size = 0;
-
-            for ty in field_tys {
-                let field_size = self.ty_to_repr(ty).size();
-                let offest = size;
-                size += field_size;
-                fields.push(FieldRepr { offset: offest, size: field_size });
-            }
-
-            if size > max_variant_size { max_variant_size = size; }
-            variants.push(fields);
-        }
-
-        let discr_size = match variants.len() {
-            n if n <= 1       => 0,
-            n if n <= 1 << 8  => 1,
-            n if n <= 1 << 16 => 2,
-            n if n <= 1 << 32 => 4,
-            _                 => 8,
-        };
-        Repr::Aggregate {
-            discr_size: discr_size,
-            size: max_variant_size + discr_size,
-            variants: variants,
-        }
-
+    fn ty_size(&self, ty: ty::Ty<'tcx>) -> usize {
+        self.ty_to_repr(ty).size()
     }
 
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
@@ -630,7 +598,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             ty::TyArray(ref elem_ty, length) => Repr::Array {
-                elem_size: self.ty_to_repr(elem_ty).size(),
+                elem_size: self.ty_size(elem_ty),
                 length: length,
             },
 
@@ -650,6 +618,42 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let repr_ref = self.repr_arena.alloc(repr);
         self.repr_cache.borrow_mut().insert(ty, repr_ref);
         repr_ref
+    }
+
+    fn make_aggregate_repr<V>(&self, variant_fields: V) -> Repr
+        where V: IntoIterator, V::Item: IntoIterator<Item = ty::Ty<'tcx>>
+    {
+        let mut variants = Vec::new();
+        let mut max_variant_size = 0;
+
+        for field_tys in variant_fields {
+            let mut fields = Vec::new();
+            let mut size = 0;
+
+            for ty in field_tys {
+                let field_size = self.ty_size(ty);
+                let offest = size;
+                size += field_size;
+                fields.push(FieldRepr { offset: offest, size: field_size });
+            }
+
+            if size > max_variant_size { max_variant_size = size; }
+            variants.push(fields);
+        }
+
+        let discr_size = match variants.len() {
+            n if n <= 1       => 0,
+            n if n <= 1 << 8  => 1,
+            n if n <= 1 << 16 => 2,
+            n if n <= 1 << 32 => 4,
+            _                 => 8,
+        };
+        Repr::Aggregate {
+            discr_size: discr_size,
+            size: max_variant_size + discr_size,
+            variants: variants,
+        }
+
     }
 
     fn current_frame(&self) -> &Frame<'a, 'tcx> {
@@ -805,7 +809,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 let mut miri = Interpreter::new(tcx, mir_map, &repr_arena);
                 let return_ptr = match mir.return_ty {
                     ty::FnConverging(ty) => {
-                        let size = miri.ty_to_repr(ty).size();
+                        let size = miri.ty_size(ty);
                         Some(miri.memory.allocate(size))
                     }
                     ty::FnDiverging => None,
