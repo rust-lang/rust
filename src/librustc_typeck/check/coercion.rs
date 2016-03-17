@@ -113,7 +113,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     /// Unify two types (using sub or lub) and produce a noop coercion.
-    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn unify_and_identity(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
         let infcx = self.fcx.infcx();
         infcx.commit_if_ok(|_| {
             let trace = TypeTrace::types(self.origin, false, a, b);
@@ -187,7 +187,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => {
                 // Otherwise, just use unification rules.
-                self.unify(a, b)
+                self.unify_and_identity(a, b)
             }
         }
     }
@@ -219,7 +219,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
                 (r_a, mt_a.mutbl)
             }
-            _ => return self.unify(a, b)
+            _ => return self.unify_and_identity(a, b)
         };
 
         let span = self.origin.span();
@@ -251,7 +251,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             let ty = self.tcx().mk_ref(r_borrow,
                                         TypeAndMut {ty: inner_ty, mutbl: mutbl_b});
-            match self.unify(ty, b) {
+            match self.unify_and_identity(ty, b) {
                 Err(err) => {
                     if first_error.is_none() {
                         first_error = Some(err);
@@ -404,14 +404,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
                 (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
                     let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
-                    return self.unify(unsafe_a, b).map(|(ty, _)| {
+                    return self.unify_and_identity(unsafe_a, b).map(|(ty, _)| {
                         (ty, AdjustUnsafeFnPointer)
                     });
                 }
                 _ => {}
             }
         }
-        self.unify(a, b)
+        self.unify_and_identity(a, b)
     }
 
     fn coerce_from_fn_item(&self,
@@ -430,11 +430,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match b.sty {
             ty::TyFnPtr(_) => {
                 let a_fn_pointer = self.tcx().mk_ty(ty::TyFnPtr(fn_ty_a));
-                self.unify(a_fn_pointer, b).map(|(ty, _)| {
+                self.unify_and_identity(a_fn_pointer, b).map(|(ty, _)| {
                     (ty, AdjustReifyFnPointer)
                 })
             }
-            _ => self.unify(a, b)
+            _ => self.unify_and_identity(a, b)
         }
     }
 
@@ -451,13 +451,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::TyRef(_, mt) => (true, mt),
             ty::TyRawPtr(mt) => (false, mt),
             _ => {
-                return self.unify(a, b);
+                return self.unify_and_identity(a, b);
             }
         };
 
         // Check that the types which they point at are compatible.
         let a_unsafe = self.tcx().mk_ptr(ty::TypeAndMut{ mutbl: mutbl_b, ty: mt_a.ty });
-        let (ty, noop) = try!(self.unify(a_unsafe, b));
+        let (ty, noop) = try!(self.unify_and_identity(a_unsafe, b));
         try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
 
         // Although references and unsafe ptrs have the same
