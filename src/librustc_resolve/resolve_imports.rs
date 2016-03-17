@@ -68,24 +68,6 @@ pub struct ImportDirective<'a> {
 }
 
 impl<'a> ImportDirective<'a> {
-    pub fn new(module_path: Vec<Name>,
-               subclass: ImportDirectiveSubclass,
-               span: Span,
-               id: NodeId,
-               is_public: bool,
-               is_prelude: bool)
-               -> Self {
-        ImportDirective {
-            module_path: module_path,
-            target_module: Cell::new(None),
-            subclass: subclass,
-            span: span,
-            id: id,
-            is_public: is_public,
-            is_prelude: is_prelude,
-        }
-    }
-
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
     fn import(&self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
@@ -111,15 +93,50 @@ impl<'a> ImportDirective<'a> {
 }
 
 #[derive(Clone, Default)]
-/// Records information about the resolution of a name in a module.
+/// Records information about the resolution of a name in a namespace of a module.
 pub struct NameResolution<'a> {
-    /// The number of unresolved single imports of any visibility that could define the name.
-    outstanding_references: u32,
-    /// The number of unresolved `pub` single imports that could define the name.
-    pub_outstanding_references: u32,
+    /// The single imports that define the name in the namespace.
+    single_imports: SingleImports<'a>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<&'a NameBinding<'a>>,
     duplicate_globs: Vec<&'a NameBinding<'a>>,
+}
+
+#[derive(Clone, Debug)]
+enum SingleImports<'a> {
+    /// No single imports can define the name in the namespace.
+    None,
+    /// Only the given single import can define the name in the namespace.
+    MaybeOne(&'a ImportDirective<'a>),
+    /// At least one single import will define the name in the namespace.
+    AtLeastOne,
+}
+
+impl<'a> Default for SingleImports<'a> {
+    fn default() -> Self {
+        SingleImports::None
+    }
+}
+
+impl<'a> SingleImports<'a> {
+    fn add_directive(&mut self, directive: &'a ImportDirective<'a>) {
+        match *self {
+            SingleImports::None => *self = SingleImports::MaybeOne(directive),
+            // If two single imports can define the name in the namespace, we can assume that at
+            // least one of them will define it since otherwise both would have to define only one
+            // namespace, leading to a duplicate error.
+            SingleImports::MaybeOne(_) => *self = SingleImports::AtLeastOne,
+            SingleImports::AtLeastOne => {}
+        };
+    }
+
+    fn directive_failed(&mut self) {
+        match *self {
+            SingleImports::None => unreachable!(),
+            SingleImports::MaybeOne(_) => *self = SingleImports::None,
+            SingleImports::AtLeastOne => {}
+        }
+    }
 }
 
 impl<'a> NameResolution<'a> {
@@ -140,40 +157,43 @@ impl<'a> NameResolution<'a> {
         Ok(())
     }
 
+    // Returns the binding for the name if it is known or None if it not known.
+    fn binding(&self) -> Option<&'a NameBinding<'a>> {
+        self.binding.and_then(|binding| match self.single_imports {
+            SingleImports::None => Some(binding),
+            _ if !binding.defined_with(DefModifiers::GLOB_IMPORTED) => Some(binding),
+            _ => None, // The binding could be shadowed by a single import, so it is not known.
+        })
+    }
+
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
     fn try_result(&self, allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
         match self.binding {
             Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) =>
-                Some(Success(binding)),
-            // If (1) we don't allow private imports, (2) no public single import can define the
-            // name, and (3) no public glob has defined the name, the resolution depends on globs.
-            _ if !allow_private_imports && self.pub_outstanding_references == 0 &&
-                 !self.binding.map(NameBinding::is_public).unwrap_or(false) => None,
-            _ if self.outstanding_references > 0 => Some(Indeterminate),
-            Some(binding) => Some(Success(binding)),
-            None => None,
-        }
-    }
-
-    fn increment_outstanding_references(&mut self, is_public: bool) {
-        self.outstanding_references += 1;
-        if is_public {
-            self.pub_outstanding_references += 1;
-        }
-    }
-
-    fn decrement_outstanding_references(&mut self, is_public: bool) {
-        let decrement_references = |count: &mut _| {
-            assert!(*count > 0);
-            *count -= 1;
+                return Some(Success(binding)),
+            _ => {} // Items and single imports are not shadowable
         };
 
-        decrement_references(&mut self.outstanding_references);
-        if is_public {
-            decrement_references(&mut self.pub_outstanding_references);
+        // Check if a single import can still define the name.
+        match self.single_imports {
+            SingleImports::None => {},
+            SingleImports::AtLeastOne => return Some(Indeterminate),
+            SingleImports::MaybeOne(directive) => {
+                // If (1) we don't allow private imports, (2) no public single import can define
+                // the name, and (3) no public glob has defined the name, the resolution depends
+                // on whether more globs can define the name.
+                if !allow_private_imports && !directive.is_public &&
+                   !self.binding.map(NameBinding::is_public).unwrap_or(false) {
+                    return None;
+                }
+
+                return Indeterminate;
+            }
         }
+
+        self.binding.map(Success)
     }
 
     fn report_conflicts<F: FnMut(&NameBinding, &NameBinding)>(&self, mut report: F) {
@@ -245,21 +265,37 @@ impl<'a> ::ModuleS<'a> {
         })
     }
 
-    pub fn add_import_directive(&self, directive: ImportDirective<'a>) {
-        let directive = self.arenas.alloc_import_directive(directive);
+    pub fn add_import_directive(&self,
+                                module_path: Vec<Name>,
+                                subclass: ImportDirectiveSubclass,
+                                span: Span,
+                                id: NodeId,
+                                is_public: bool,
+                                is_prelude: bool) {
+        let directive = self.arenas.alloc_import_directive(ImportDirective {
+            module_path: module_path,
+            target_module: Cell::new(None),
+            subclass: subclass,
+            span: span,
+            id: id,
+            is_public: is_public,
+            is_prelude: is_prelude,
+        });
+
         self.unresolved_imports.borrow_mut().push(directive);
-        if let GlobImport = directive.subclass {
+        match directive.subclass {
+            SingleImport { target, .. } => {
+                let mut resolutions = self.resolutions.borrow_mut();
+                for &ns in &[ValueNS, TypeNS] {
+                    resolutions.entry((target, ns)).or_insert_with(Default::default)
+                               .single_imports.add_directive(directive);
+                }
+            }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
-            if !directive.is_prelude {
-                self.globs.borrow_mut().push(directive);
-            }
+            GlobImport if directive.is_prelude => {}
+            GlobImport => self.globs.borrow_mut().push(directive),
         }
-    }
-
-    pub fn increment_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
-        self.resolutions.borrow_mut().entry((name, ns)).or_insert_with(Default::default)
-            .increment_outstanding_references(is_public);
     }
 
     // Use `update` to mutate the resolution for the name.
@@ -269,11 +305,11 @@ impl<'a> ::ModuleS<'a> {
     {
         let mut resolutions = self.resolutions.borrow_mut();
         let resolution = resolutions.entry((name, ns)).or_insert_with(Default::default);
-        let was_success = resolution.try_result(false).and_then(ResolveResult::success).is_some();
+        let was_known = resolution.binding().is_some();
 
         let t = update(resolution);
-        if !was_success {
-            if let Some(Success(binding)) = resolution.try_result(false) {
+        if !was_known {
+            if let Some(binding) = resolution.binding() {
                 self.define_in_glob_importers(name, ns, binding);
             }
         }
@@ -454,12 +490,13 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // (as opposed to being indeterminate) when it can only be defined by the directive.
                 if !determined {
                     module_.resolutions.borrow_mut().get_mut(&(target, ns)).unwrap()
-                           .decrement_outstanding_references(directive.is_public);
+                           .single_imports.directive_failed();
                 }
                 let result =
                     self.resolver.resolve_name_in_module(target_module, source, ns, false, true);
                 if !determined {
-                    module_.increment_outstanding_references_for(target, ns, directive.is_public)
+                    module_.resolutions.borrow_mut().get_mut(&(target, ns)).unwrap()
+                           .single_imports.add_directive(directive);
                 }
                 result
             };
@@ -491,11 +528,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     let binding = &directive.import(binding, None);
                     self.resolver.report_conflict(module_, target, ns, binding, old_binding);
                 }
+            } else {
+                module_.update_resolution(target, ns, |resolution| {
+                    resolution.single_imports.directive_failed();
+                });
             }
-
-            module_.update_resolution(target, ns, |resolution| {
-                resolution.decrement_outstanding_references(directive.is_public);
-            })
         }
 
         match (&value_result, &type_result) {
@@ -605,7 +642,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         target_module.glob_importers.borrow_mut().push((module_, directive));
 
         for (&(name, ns), resolution) in target_module.resolutions.borrow().iter() {
-            if let Some(Success(binding)) = resolution.try_result(false) {
+            if let Some(binding) = resolution.binding() {
                 if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
                     let _ = module_.try_define_child(name, ns, directive.import(binding, None));
                 }
