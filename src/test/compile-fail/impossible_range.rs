@@ -19,7 +19,9 @@ pub fn main() {
     0..1;
 
     ...; //~ERROR inclusive range with no end
-    0...; //~ERROR unexpected token
+         //~^HELP 28237
+    0...; //~ERROR inclusive range with no end
+          //~^HELP 28237
     ...1;
     0...1;
 }
