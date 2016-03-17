@@ -1511,7 +1511,7 @@ impl Layout {
             Layout { align: unsafe { NonZero::new(pow2_align) },
                    ..*self }
         } else {
-            *self
+            self.clone()
         }
     }
 
@@ -1948,7 +1948,7 @@ pub unsafe trait Allocator {
     /// However, for clients that do not wish to track the capacity
     /// returned by `alloc_excess` locally, this method is likely to
     /// produce useful results.
-    unsafe fn usable_size(&self, layout: Layout) -> (Capacity, Capacity) {
+    unsafe fn usable_size(&self, layout: &Layout) -> (Capacity, Capacity) {
         (layout.size(), layout.size())
     }
 
@@ -2002,16 +2002,18 @@ pub unsafe trait Allocator {
                       ptr: Address,
                       layout: Layout,
                       new_layout: Layout) -> Result<Address, Self::Error> {
-        let (min, max) = self.usable_size(layout);
+        let (min, max) = self.usable_size(&layout);
         let s = new_layout.size();
         // All Layout alignments are powers of two, so a comparison
         // suffices here (rather than resorting to a `%` operation).
         if min <= s && s <= max && new_layout.align() <= layout.align() {
             return Ok(ptr);
         } else {
+            let new_size = new_layout.size();
+            let old_size = layout.size();
             let result = self.alloc(new_layout);
             if let Ok(new_ptr) = result {
-                ptr::copy(*ptr as *const u8, *new_ptr, cmp::min(*layout.size(), *new_layout.size()));
+                ptr::copy(*ptr as *const u8, *new_ptr, cmp::min(*old_size, *new_size));
                 self.dealloc(ptr, layout);
             }
             result
@@ -2022,7 +2024,8 @@ pub unsafe trait Allocator {
     /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
     unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, Self::Error> {
-        self.alloc(layout).map(|p| Excess(p, self.usable_size(layout).1))
+        let usable_size = self.usable_size(&layout);
+        self.alloc(layout).map(|p| Excess(p, usable_size.1))
     }
 
     /// Behaves like `fn realloc`, but also returns the whole size of
@@ -2032,8 +2035,9 @@ pub unsafe trait Allocator {
                              ptr: Address,
                              layout: Layout,
                              new_layout: Layout) -> Result<Excess, Self::Error> {
+        let usable_size = self.usable_size(&new_layout);
         self.realloc(ptr, layout, new_layout)
-            .map(|p| Excess(p, self.usable_size(new_layout).1))
+            .map(|p| Excess(p, usable_size.1))
     }
 
 ```
