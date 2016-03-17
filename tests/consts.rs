@@ -5,8 +5,10 @@ extern crate clippy;
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_front;
+extern crate rustc_const_eval;
 
 use rustc_front::hir::*;
+use rustc_const_eval::ConstInt;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
@@ -15,7 +17,7 @@ use syntax::ast::LitKind;
 use syntax::ast::LitIntType;
 use syntax::ast::StrStyle;
 
-use clippy::consts::{constant_simple, Constant, FloatWidth, Sign};
+use clippy::consts::{constant_simple, Constant, FloatWidth};
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned{ node: t, span: COMMAND_LINE_SP }
@@ -44,9 +46,9 @@ fn check(expect: Constant, expr: &Expr) {
 
 const TRUE : Constant = Constant::Bool(true);
 const FALSE : Constant = Constant::Bool(false);
-const ZERO : Constant = Constant::Int(0, LitIntType::Unsuffixed, Sign::Plus);
-const ONE : Constant = Constant::Int(1, LitIntType::Unsuffixed, Sign::Plus);
-const TWO : Constant = Constant::Int(2, LitIntType::Unsuffixed, Sign::Plus);
+const ZERO : Constant = Constant::Int(ConstInt::Infer(0));
+const ONE : Constant = Constant::Int(ConstInt::Infer(1));
+const TWO : Constant = Constant::Int(ConstInt::Infer(2));
 
 #[test]
 fn test_lit() {
@@ -84,4 +86,8 @@ fn test_ops() {
     assert_eq!(half_any, half32);
     assert_eq!(half_any, half64);
     assert_eq!(half32, half64); // for transitivity
+
+    assert_eq!(Constant::Int(ConstInt::Infer(0)), Constant::Int(ConstInt::U8(0)));
+    assert_eq!(Constant::Int(ConstInt::Infer(0)), Constant::Int(ConstInt::I8(0)));
+    assert_eq!(Constant::Int(ConstInt::InferSigned(-1)), Constant::Int(ConstInt::I8(-1)));
 }
