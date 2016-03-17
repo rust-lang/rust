@@ -278,6 +278,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             //   want to use that target type region (`'b`) because --
             //   for the program to type-check -- it must be the
             //   smaller of the two.
+            //   - One fine point. It may be surprising that we can
+            //     use `'b` without relating `'a` and `'b`. The reason
+            //     that this is ok is that what we produce is
+            //     effectively a `&'b *x` expression (if you could
+            //     annotate the region of a borrow), and regionck has
+            //     code that adds edges from the region of a borrow
+            //     (`'b`, here) into the regions in the borrowed
+            //     expression (`*x`, here).  (Search for "link".)
             // - if in lub mode, things can get fairly complicated. The
             //   easiest thing is just to make a fresh
             //   region variable [4], which effectively means we defer
