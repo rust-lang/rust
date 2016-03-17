@@ -68,7 +68,7 @@ pub enum Repr {
     },
 
     Array {
-        elem: Box<Repr>,
+        elem_size: usize,
 
         /// Number of elements.
         length: usize,
@@ -386,7 +386,7 @@ impl Repr {
             Repr::I64 | Repr::U64 => 8,
             Repr::Product { size, .. } => size,
             Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
-            Repr::Array { ref elem, length } => elem.size() * length,
+            Repr::Array { elem_size, length } => elem_size * length,
             Repr::Pointer => POINTER_SIZE,
             Repr::FatPointer => POINTER_SIZE * 2,
         }

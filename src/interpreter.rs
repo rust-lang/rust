@@ -372,9 +372,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     },
 
                     Vec => match dest_repr {
-                        Repr::Array { ref elem, length } => {
+                        Repr::Array { elem_size, length } => {
                             assert_eq!(length, operands.len());
-                            let elem_size = elem.size();
                             for (i, operand) in operands.iter().enumerate() {
                                 let src = try!(self.eval_operand(operand));
                                 let offset = i * elem_size;
@@ -396,8 +395,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             Box(ty) => {
-                let repr = self.ty_to_repr(ty);
-                let ptr = self.memory.allocate(repr.size());
+                let size = self.ty_to_repr(ty).size();
+                let ptr = self.memory.allocate(size);
                 self.memory.write_ptr(dest, ptr)
             }
 
@@ -538,7 +537,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Str(ref _s) => unimplemented!(),
             ByteStr(ref _bs) => unimplemented!(),
             Bool(b) => {
-                let ptr = self.memory.allocate(Repr::Bool.size());
+                let ptr = self.memory.allocate(1);
                 try!(self.memory.write_bool(ptr, b));
                 Ok(ptr)
             }
@@ -616,7 +615,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             ty::TyArray(ref elem_ty, length) => Repr::Array {
-                elem: Box::new(self.ty_to_repr(elem_ty)),
+                elem_size: self.ty_to_repr(elem_ty).size(),
                 length: length,
             },
 
@@ -786,8 +785,8 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 let mut miri = Interpreter::new(tcx, mir_map);
                 let return_ptr = match mir.return_ty {
                     ty::FnConverging(ty) => {
-                        let repr = miri.ty_to_repr(ty).size();
-                        Some(miri.memory.allocate(repr))
+                        let size = miri.ty_to_repr(ty).size();
+                        Some(miri.memory.allocate(size))
                     }
                     ty::FnDiverging => None,
                 };
