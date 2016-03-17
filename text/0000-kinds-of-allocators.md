@@ -2238,7 +2238,7 @@ pub unsafe trait Allocator {
     /// undefined behavior.
     unsafe fn dealloc_array_unchecked<T>(&mut self, ptr: Unique<T>, n: usize) {
         let layout = Layout::array_unchecked::<T>(n);
-        self.dealloc_unchecked(NonZero::new(*ptr as *mut u8), layout);
+        self.dealloc(NonZero::new(*ptr as *mut u8), layout);
     }
 }
 ```
