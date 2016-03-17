@@ -71,7 +71,7 @@ use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, TyCtxt};
 use middle::ty::fold::TypeFoldable;
 use middle::ty::error::TypeError;
-use middle::ty::relate::{relate_substs, RelateResult, TypeRelation};
+use middle::ty::relate::{relate_substs, Relate, RelateResult, TypeRelation};
 use util::common::indent;
 
 use std::cell::RefCell;
@@ -112,8 +112,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         self.fcx.tcx()
     }
 
-    /// Unify two types (using sub or lub) and produce a noop coercion.
-    fn unify_and_identity(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let infcx = self.fcx.infcx();
         infcx.commit_if_ok(|_| {
             let trace = TypeTrace::types(self.origin, false, a, b);
@@ -122,7 +121,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             } else {
                 infcx.sub(false, trace).relate(&a, &b)
             }
-        }).and_then(|ty| self.identity(ty))
+        })
+    }
+
+    /// Unify two types (using sub or lub) and produce a noop coercion.
+    fn unify_and_identity(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+        self.unify(&a, &b).and_then(|ty| self.identity(ty))
     }
 
     /// Synthesize an identity adjustment.
@@ -167,7 +171,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
 
             ty::TyRef(r_b, mt_b) => {
-                return self.coerce_borrowed_pointer(exprs, a, b, r_b, mt_b.mutbl);
+                return self.coerce_borrowed_pointer(exprs, a, b, r_b, mt_b);
             }
 
             _ => {}
@@ -200,7 +204,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                          a: Ty<'tcx>,
                                          b: Ty<'tcx>,
                                          r_b: &'tcx ty::Region,
-                                         mutbl_b: hir::Mutability)
+                                         mt_b: TypeAndMut<'tcx>)
                                          -> CoerceResult<'tcx>
         // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
         where E: Fn() -> I,
@@ -214,68 +218,107 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        let (_r_a, _mutbl_a) = match a.sty {
+        let r_a = match a.sty {
             ty::TyRef(r_a, mt_a) => {
-                try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
-                (r_a, mt_a.mutbl)
+                try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
+                r_a
             }
             _ => return self.unify_and_identity(a, b)
         };
 
         let span = self.origin.span();
-        let coercion = Coercion(span);
-        let r_borrow = {
-            // If are coercing from `&'a T` to `&'b U`, then we want to
-            // reborrow the contents of `'a` for the lifetime `'b`
-            // (which ought to be a sublifetime of `'a`).
-            if !self.use_lub {
-                r_b
-            } else {
-                // With LUB, we need more flexibility.
-                let r_borrow = self.fcx.infcx().next_region_var(coercion);
-                self.tcx().mk_region(r_borrow)
-            }
-        };
-        let autoref = Some(AutoPtr(r_borrow, mutbl_b));
 
-        let lvalue_pref = LvaluePreference::from_mutbl(mutbl_b);
+        let lvalue_pref = LvaluePreference::from_mutbl(mt_b.mutbl);
         let mut first_error = None;
         let (_, autoderefs, success) = autoderef(self.fcx, span, a, exprs,
                                                  UnresolvedTypeAction::Ignore,
                                                  lvalue_pref,
-                                                 |inner_ty, autoderef| {
+                                                 |referent_ty, autoderef|
+        {
             if autoderef == 0 {
                 // Don't let this pass, otherwise it would cause
                 // &T to autoref to &&T.
                 return None;
             }
-            let ty = self.tcx().mk_ref(r_borrow,
-                                        TypeAndMut {ty: inner_ty, mutbl: mutbl_b});
-            match self.unify_and_identity(ty, b) {
+
+            // At this point, we have deref'd `a` to `referent_ty`.  So
+            // imagine we are coercing from `&'a mut Vec<T>` to `&'b mut [T]`.
+            // In the autoderef loop for `&'a mut Vec<T>`, we would get
+            // three callbacks:
+            //
+            // - `&'a mut Vec<T>` -- 0 derefs, just ignore it
+            // - `Vec<T>` -- 1 deref
+            // - `[T]` -- 2 deref
+            //
+            // At each point after the first callback, we want to
+            // check to see whether this would match out target type
+            // (`&'b mut [T]`) if we autoref'd it. We can't just
+            // compare the referent types, though, because we still
+            // have to consider the mutability. E.g., in the case
+            // we've been considering, we have an `&mut` reference, so
+            // the `T` in `[T]` needs to be unified with equality.
+            //
+            // Therefore, we construct reference types reflecting what
+            // the types will be after we do the final auto-ref and
+            // compare those. Note that this means we use the target
+            // mutability [1], since it may be that we are coercing
+            // from `&mut T` to `&U`.
+            //
+            // One fine point concerns the region that we use [2]. We
+            // choose the region such that the region of the final
+            // type that results from `unify` will be the region we
+            // want for the autoref:
+            //
+            // - if in lub mode, that means we want to unify `&'a mut [T]`
+            //   (from source) and `&'b mut [T]` (target).
+            // - if in sub mode, that means we want to use `'b` for
+            //   both pointers. This is because sub mode (somewhat
+            //   arbitrarily) returns the subtype region.  In the case
+            //   where we are coercing to a target type, we know we
+            //   want to use that target type region (`'b`) because --
+            //   for the program to type-check -- it must be the
+            //   smaller of the two.
+            let r = if self.use_lub {r_a} else {r_b}; // [2] above
+            let derefd_ty_a = self.tcx().mk_ref(r, TypeAndMut {
+                ty: referent_ty,
+                mutbl: mt_b.mutbl // [1] above
+            });
+            match self.unify(derefd_ty_a, b) {
+                Ok(ty) => Some(ty),
                 Err(err) => {
                     if first_error.is_none() {
                         first_error = Some(err);
                     }
                     None
                 }
-                Ok((ty, _)) => Some(ty)
             }
         });
 
-        match success {
-            Some(ty) => {
-                Ok((ty, AdjustDerefRef(AutoDerefRef {
-                    autoderefs: autoderefs,
-                    autoref: autoref,
-                    unsize: None
-                })))
-            }
+        // Extract type or return an error. We return the first error
+        // we got, which should be from relating the "base" type
+        // (e.g., in example above, the failure from relating `Vec<T>`
+        // to the target type), since that should be the least
+        // confusing.
+        let ty = match success {
+            Some(ty) => ty,
             None => {
-                // Return original error as if overloaded deref was never
-                // attempted, to avoid irrelevant/confusing error messages.
-                Err(first_error.expect("coerce_borrowed_pointer failed with no error?"))
+                return Err(first_error.expect("coerce_borrowed_pointer had no error"));
             }
-        }
+        };
+
+        // Now apply the autoref. We have to extract the region out of
+        // the final ref type we got.
+        let r_borrow = match ty.sty {
+            ty::TyRef(r, _) => r,
+            _ => self.tcx().sess.span_bug(span,
+                                          &format!("expected a ref type, got {:?}", ty))
+        };
+        let autoref = Some(AutoPtr(r_borrow, mt_b.mutbl));
+        Ok((ty, AdjustDerefRef(AutoDerefRef {
+            autoderefs: autoderefs,
+            autoref: autoref,
+            unsize: None
+        })))
     }
 
 
