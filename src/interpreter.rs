@@ -546,8 +546,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn make_aggregate_repr<V, F>(&self, variant_fields: V) -> Repr
-        where V: IntoIterator<Item = F>, F: IntoIterator<Item = ty::Ty<'tcx>>
+    fn make_aggregate_repr<V>(&self, variant_fields: V) -> Repr
+        where V: IntoIterator, V::Item: IntoIterator<Item = ty::Ty<'tcx>>
     {
         let mut variants = Vec::new();
         let mut max_variant_size = 0;
@@ -563,22 +563,17 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 fields.push(FieldRepr { offset: offest, size: field_size });
             }
 
-            if size > max_variant_size {
-                max_variant_size = size;
-            }
+            if size > max_variant_size { max_variant_size = size; }
             variants.push(fields);
         }
 
-        let num_variants = variants.len();
-
-        let discr_size = match num_variants {
+        let discr_size = match variants.len() {
             n if n <= 1       => 0,
             n if n <= 1 << 8  => 1,
             n if n <= 1 << 16 => 2,
             n if n <= 1 << 32 => 4,
             _                 => 8,
         };
-
         Repr::Aggregate {
             discr_size: discr_size,
             max_variant_size: max_variant_size,
