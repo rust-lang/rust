@@ -38,3 +38,7 @@ standalone-docs:
 	$(Q)$(BOOTSTRAP) --step doc-standalone
 check:
 	$(Q)$(BOOTSTRAP) --step check
+dist:
+	$(Q)$(BOOTSTRAP) --step dist
+
+.PHONY: dist

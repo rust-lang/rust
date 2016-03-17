@@ -34,6 +34,7 @@ mod check;
 mod clean;
 mod compile;
 mod config;
+mod dist;
 mod doc;
 mod flags;
 mod native;
@@ -76,6 +77,7 @@ pub struct Build {
     short_ver_hash: Option<String>,
     ver_date: Option<String>,
     version: String,
+    package_vers: String,
     bootstrap_key: String,
 
     // Runtime state filled in later on
@@ -121,6 +123,7 @@ impl Build {
             ver_date: None,
             version: String::new(),
             bootstrap_key: String::new(),
+            package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
             compiler_rt_built: RefCell::new(HashMap::new()),
@@ -208,6 +211,12 @@ impl Build {
                     check::linkcheck(self, stage, target.target);
                 }
 
+                DistDocs { stage } => dist::docs(self, stage, target.target),
+                DistMingw { _dummy } => dist::mingw(self, target.target),
+                DistRustc { stage } => dist::rustc(self, stage, target.target),
+                DistStd { compiler } => dist::std(self, &compiler, target.target),
+
+                Dist { .. } |
                 Doc { .. } | // pseudo-steps
                 Check { .. } => {}
             }
