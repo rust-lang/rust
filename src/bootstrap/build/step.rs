@@ -73,6 +73,13 @@ macro_rules! targets {
             // target to depend on a bunch of others.
             (check, Check { stage: u32, compiler: Compiler<'a> }),
             (check_linkcheck, CheckLinkcheck { stage: u32 }),
+
+            // Distribution targets, creating tarballs
+            (dist, Dist { stage: u32 }),
+            (dist_docs, DistDocs { stage: u32 }),
+            (dist_mingw, DistMingw { _dummy: () }),
+            (dist_rustc, DistRustc { stage: u32 }),
+            (dist_std, DistStd { compiler: Compiler<'a> }),
         }
     }
 }
@@ -279,7 +286,8 @@ impl<'a> Step<'a> {
                      self.doc_error_index(stage)]
             }
             Source::Check { stage, compiler: _ } => {
-                vec![self.check_linkcheck(stage)]
+                vec![self.check_linkcheck(stage),
+                     self.dist(stage)]
             }
             Source::CheckLinkcheck { stage } => {
                 vec![self.tool_linkchecker(stage), self.doc(stage)]
@@ -291,6 +299,34 @@ impl<'a> Step<'a> {
             Source::ToolErrorIndex { stage } |
             Source::ToolRustbook { stage } => {
                 vec![self.librustc(self.compiler(stage))]
+            }
+
+            Source::DistDocs { stage } => vec![self.doc(stage)],
+            Source::DistMingw { _dummy: _ } => Vec::new(),
+            Source::DistRustc { stage } => {
+                vec![self.rustc(stage)]
+            }
+            Source::DistStd { compiler } => {
+                vec![self.libstd(compiler)]
+            }
+
+            Source::Dist { stage } => {
+                let mut base = Vec::new();
+                base.push(self.dist_docs(stage));
+
+                for host in build.config.host.iter() {
+                    let host = self.target(host);
+                    base.push(host.dist_rustc(stage));
+                    if host.target.contains("windows-gnu") {
+                        base.push(host.dist_mingw(()));
+                    }
+
+                    let compiler = self.compiler(stage);
+                    for target in build.config.target.iter() {
+                        base.push(self.target(target).dist_std(compiler));
+                    }
+                }
+                return base
             }
         }
     }
