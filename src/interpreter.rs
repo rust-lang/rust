@@ -305,8 +305,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let ptr_arg = try!(self.eval_operand(&args[0]));
                 let offset_arg = try!(self.eval_operand(&args[1]));
                 let ptr = try!(self.memory.read_ptr(ptr_arg));
-                // TODO(tsion): read_isize
-                let offset = try!(self.memory.read_int(offset_arg, 8));
+                let offset = try!(self.memory.read_int(offset_arg, self.memory.pointer_size));
                 let result_ptr = ptr.offset(offset as isize * pointee_size);
                 try!(self.memory.write_ptr(dest, result_ptr));
             }
@@ -433,9 +432,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
-                            (&ty::TyArray(_, length), &ty::TySlice(_)) =>
-                                // TODO(tsion): Add write_usize? (Host/target issues.)
-                                self.memory.write_uint(dest.offset(8), length as u64, 8),
+                            (&ty::TyArray(_, length), &ty::TySlice(_)) => {
+                                let size = self.memory.pointer_size;
+                                self.memory.write_uint(
+                                    dest.offset(size as isize),
+                                    length as u64,
+                                    size,
+                                )
+                            }
 
                             _ => panic!("can't handle cast: {:?}", rvalue),
                         }
