@@ -59,6 +59,7 @@ impl ImportDirectiveSubclass {
 #[derive(Debug,Clone)]
 pub struct ImportDirective<'a> {
     module_path: Vec<Name>,
+    target_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     subclass: ImportDirectiveSubclass,
     span: Span,
     id: NodeId,
@@ -76,6 +77,7 @@ impl<'a> ImportDirective<'a> {
                -> Self {
         ImportDirective {
             module_path: module_path,
+            target_module: Cell::new(None),
             subclass: subclass,
             span: span,
             id: id,
@@ -435,6 +437,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             Indeterminate => return Indeterminate,
             Failed(err) => return Failed(err),
         };
+        directive.target_module.set(Some(target_module));
 
         let (source, target, value_determined, type_determined) = match directive.subclass {
             SingleImport { source, target, ref value_determined, ref type_determined } =>
