@@ -1,7 +1,7 @@
-- Feature Name: unix_socket
+- Feature Name: `unix_socket`
 - Start Date: 2016-01-25
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1479](https://github.com/rust-lang/rfcs/pull/1479)
+- Rust Issue: [rust-lang/rust#32312](https://github.com/rust-lang/rust/issues/32312)
 
 # Summary
 [summary]: #summary
