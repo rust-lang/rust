@@ -576,7 +576,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         };
         Repr::Aggregate {
             discr_size: discr_size,
-            max_variant_size: max_variant_size,
+            size: max_variant_size + discr_size,
             variants: variants,
         }
 

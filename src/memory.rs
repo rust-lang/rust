@@ -54,8 +54,8 @@ pub enum Repr {
         /// structs and tuples.
         discr_size: usize,
 
-        /// The size of the largest variant in bytes.
-        max_variant_size: usize,
+        /// The size of the entire aggregate, including the discriminant.
+        size: usize,
 
         /// The representations of the contents of each variant.
         variants: Vec<Vec<FieldRepr>>,
@@ -366,7 +366,7 @@ impl Repr {
     pub fn size(&self) -> usize {
         match *self {
             Repr::Primitive { size } => size,
-            Repr::Aggregate { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
+            Repr::Aggregate { size, .. } => size,
             Repr::Array { elem_size, length } => elem_size * length,
             Repr::Pointer => POINTER_SIZE,
             Repr::FatPointer => POINTER_SIZE * 2,
