@@ -95,7 +95,7 @@ use resolve_imports::{ImportDirective, NameResolution};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostics;
+mod diagnostics;
 
 mod check_unused;
 mod build_reduced_graph;
@@ -119,12 +119,12 @@ enum SuggestionType {
 }
 
 /// Candidates for a name resolution failure
-pub struct SuggestedCandidates {
+struct SuggestedCandidates {
     name: String,
     candidates: Vec<Path>,
 }
 
-pub enum ResolutionError<'a> {
+enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
     /// error E0402: cannot use an outer type parameter in this context
@@ -201,7 +201,7 @@ pub enum ResolutionError<'a> {
 
 /// Context of where `ResolutionError::UnresolvedName` arose.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum UnresolvedNameContext {
+enum UnresolvedNameContext {
     /// `PathIsMod(id)` indicates that a given path, used in
     /// expression context, actually resolved to a module rather than
     /// a value. The `id` attached to the variant is the node id of
@@ -1131,7 +1131,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
     arenas: &'a ResolverArenas<'a>,
 }
 
-pub struct ResolverArenas<'a> {
+struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective>,
@@ -2584,12 +2584,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Skips `path_depth` trailing segments, which is also reflected in the
     /// returned value. See `middle::def::PathResolution` for more info.
-    pub fn resolve_path(&mut self,
-                        id: NodeId,
-                        path: &Path,
-                        path_depth: usize,
-                        namespace: Namespace)
-                        -> Option<PathResolution> {
+    fn resolve_path(&mut self, id: NodeId, path: &Path, path_depth: usize, namespace: Namespace)
+                    -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
@@ -3658,13 +3654,13 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
 /// preserving the ribs + current module. This allows resolve_path
 /// calls to be made with the correct scope info. The node in the
 /// callback corresponds to the current node in the walk.
-pub fn create_resolver<'a, 'tcx>(session: &'a Session,
-                                 ast_map: &'a hir_map::Map<'tcx>,
-                                 krate: &'a Crate,
-                                 make_glob_map: MakeGlobMap,
-                                 arenas: &'a ResolverArenas<'a>,
-                                 callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
-                                 -> Resolver<'a, 'tcx> {
+fn create_resolver<'a, 'tcx>(session: &'a Session,
+                             ast_map: &'a hir_map::Map<'tcx>,
+                             krate: &'a Crate,
+                             make_glob_map: MakeGlobMap,
+                             arenas: &'a ResolverArenas<'a>,
+                             callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
+                             -> Resolver<'a, 'tcx> {
     let mut resolver = Resolver::new(session, ast_map, make_glob_map, arenas);
 
     resolver.callback = callback;

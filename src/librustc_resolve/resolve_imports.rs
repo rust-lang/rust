@@ -58,12 +58,12 @@ impl ImportDirectiveSubclass {
 /// One import directive.
 #[derive(Debug,Clone)]
 pub struct ImportDirective {
-    pub module_path: Vec<Name>,
-    pub subclass: ImportDirectiveSubclass,
-    pub span: Span,
-    pub id: NodeId,
-    pub is_public: bool, // see note in ImportResolutionPerNamespace about how to use this
-    pub is_prelude: bool,
+    module_path: Vec<Name>,
+    subclass: ImportDirectiveSubclass,
+    span: Span,
+    id: NodeId,
+    is_public: bool, // see note in ImportResolutionPerNamespace about how to use this
+    is_prelude: bool,
 }
 
 impl ImportDirective {
