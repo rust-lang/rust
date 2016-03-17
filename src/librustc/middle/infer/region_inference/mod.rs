@@ -530,16 +530,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         assert!(self.values_are_none());
 
         debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
-        match (a, b) {
-            (ReStatic, _) | (_, ReStatic) => {
-                ReStatic // nothing lives longer than static
-            }
-
-            _ => {
-                self.combine_vars(Lub, a, b, origin.clone(), |this, old_r, new_r| {
-                    this.make_subregion(origin.clone(), old_r, new_r)
-                })
-            }
+        if a == ty::ReStatic || b == ty::ReStatic {
+            ReStatic // nothing lives longer than static
+        } else if a == b {
+            a // LUB(a,a) = a
+        } else {
+            self.combine_vars(Lub, a, b, origin.clone(), |this, old_r, new_r| {
+                this.make_subregion(origin.clone(), old_r, new_r)
+            })
         }
     }
 
@@ -550,8 +548,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
             (ReStatic, r) | (r, ReStatic) => {
-                // static lives longer than everything else
-                r
+                r // static lives longer than everything else
+            }
+
+            _ if a == b => {
+                a // GLB(a,a) = a
             }
 
             _ => {
