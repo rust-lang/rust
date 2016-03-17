@@ -48,24 +48,17 @@ pub enum Repr {
     Pointer,
     FatPointer,
 
-    /// The representation for product types including tuples, structs, and the contents of enum
-    /// variants.
-    Product {
-        /// Size in bytes.
-        size: usize,
-        fields: Vec<FieldRepr>,
-    },
-
-    /// The representation for a sum type, i.e. a Rust enum.
-    Sum {
-        /// The size of the discriminant (an integer). Should be between 0 and 8.
+    /// The representation for aggregate types including structs, enums, and tuples.
+    Aggregate {
+        /// The size of the discriminant (an integer). Should be between 0 and 8. Always 0 for
+        /// structs and tuples.
         discr_size: usize,
 
         /// The size of the largest variant in bytes.
         max_variant_size: usize,
 
         /// The representations of the contents of each variant.
-        variants: Vec<Repr>,
+        variants: Vec<Vec<FieldRepr>>,
     },
 
     Array {
@@ -373,8 +366,7 @@ impl Repr {
     pub fn size(&self) -> usize {
         match *self {
             Repr::Primitive { size } => size,
-            Repr::Product { size, .. } => size,
-            Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
+            Repr::Aggregate { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
             Repr::Array { elem_size, length } => elem_size * length,
             Repr::Pointer => POINTER_SIZE,
             Repr::FatPointer => POINTER_SIZE * 2,

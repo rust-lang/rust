@@ -7,6 +7,7 @@ use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::util::nodemap::DefIdMap;
 use std::cell::RefCell;
+use std::iter;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax::codemap::DUMMY_SP;
@@ -211,8 +212,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let adt_ptr = try!(self.eval_lvalue(discr));
                 let adt_repr = self.lvalue_repr(discr);
                 let discr_size = match adt_repr {
-                    Repr::Sum { discr_size, .. } => discr_size,
-                    _ => panic!("attmpted to switch on non-sum type"),
+                    Repr::Aggregate { discr_size, .. } => discr_size,
+                    _ => panic!("attmpted to switch on non-aggregate type"),
                 };
                 let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size));
                 TerminatorTarget::Block(targets[discr_val as usize])
@@ -300,17 +301,22 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         Ok(target)
     }
 
-    fn assign_to_product(&mut self, dest: Pointer, dest_repr: &Repr,
+    fn assign_to_aggregate(&mut self, dest: Pointer, dest_repr: &Repr, variant: usize,
                          operands: &[mir::Operand<'tcx>]) -> EvalResult<()> {
         match *dest_repr {
-            Repr::Product { ref fields, .. } => {
-                for (field, operand) in fields.iter().zip(operands) {
+            Repr::Aggregate { discr_size, ref variants, .. } => {
+                if discr_size > 0 {
+                    let discr = variant as u64;
+                    try!(self.memory.write_uint(dest, discr, discr_size));
+                }
+                let after_discr = dest.offset(discr_size as isize);
+                for (field, operand) in variants[variant].iter().zip(operands) {
                     let src = try!(self.eval_operand(operand));
-                    let field_dest = dest.offset(field.offset as isize);
+                    let field_dest = after_discr.offset(field.offset as isize);
                     try!(self.memory.copy(src, field_dest, field.size));
                 }
             }
-            _ => panic!("expected Repr::Product target"),
+            _ => panic!("expected Repr::Aggregate target"),
         }
         Ok(())
     }
@@ -350,26 +356,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Aggregate(ref kind, ref operands) => {
                 use rustc::mir::repr::AggregateKind::*;
                 match *kind {
-                    Tuple => self.assign_to_product(dest, &dest_repr, operands),
+                    Tuple => self.assign_to_aggregate(dest, &dest_repr, 0, operands),
 
-                    Adt(ref adt_def, variant_idx, _) => match adt_def.adt_kind() {
-                        ty::AdtKind::Struct => self.assign_to_product(dest, &dest_repr, operands),
-
-                        ty::AdtKind::Enum => match dest_repr {
-                            Repr::Sum { discr_size, ref variants, .. } => {
-                                if discr_size > 0 {
-                                    let discr = variant_idx as u64;
-                                    try!(self.memory.write_uint(dest, discr, discr_size));
-                                }
-                                self.assign_to_product(
-                                    dest.offset(discr_size as isize),
-                                    &variants[variant_idx],
-                                    operands
-                                )
-                            }
-                            _ => panic!("expected Repr::Sum target"),
-                        }
-                    },
+                    Adt(_, variant_idx, _) =>
+                        self.assign_to_aggregate(dest, &dest_repr, variant_idx, operands),
 
                     Vec => match dest_repr {
                         Repr::Array { elem_size, length } => {
@@ -480,8 +470,11 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         use rustc::mir::tcx::LvalueTy;
         match self.current_frame().mir.lvalue_ty(self.tcx, lvalue) {
             LvalueTy::Ty { ty } => self.ty_to_repr(ty),
-            LvalueTy::Downcast { ref adt_def, substs, variant_index } =>
-                self.make_variant_repr(&adt_def.variants[variant_index], substs),
+            LvalueTy::Downcast { ref adt_def, substs, variant_index } => {
+                let field_tys = adt_def.variants[variant_index].fields.iter()
+                    .map(|f| f.ty(self.tcx, substs));
+                self.make_aggregate_repr(iter::once(field_tys))
+            }
         }
     }
 
@@ -502,14 +495,16 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
                     Field(field, _) => match base_repr {
-                        Repr::Product { ref fields, .. } =>
-                            base_ptr.offset(fields[field.index()].offset as isize),
+                        Repr::Aggregate { discr_size: 0, ref variants, .. } => {
+                            let fields = &variants[0];
+                            base_ptr.offset(fields[field.index()].offset as isize)
+                        }
                         _ => panic!("field access on non-product type: {:?}", base_repr),
                     },
 
                     Downcast(..) => match base_repr {
-                        Repr::Sum { discr_size, .. } => base_ptr.offset(discr_size as isize),
-                        _ => panic!("variant downcast on non-sum type"),
+                        Repr::Aggregate { discr_size, .. } => base_ptr.offset(discr_size as isize),
+                        _ => panic!("variant downcast on non-aggregate type: {:?}", base_repr),
                     },
 
                     Deref => try!(self.memory.read_ptr(base_ptr)),
@@ -551,20 +546,45 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn make_product_repr<I>(&self, iter: I) -> Repr where I: IntoIterator<Item = ty::Ty<'tcx>> {
-        let mut size = 0;
-        let fields = iter.into_iter().map(|ty| {
-            let field_size = self.ty_to_repr(ty).size();
-            let old_size = size;
-            size += field_size;
-            FieldRepr { offset: old_size, size: field_size }
-        }).collect();
-        Repr::Product { size: size, fields: fields }
-    }
+    fn make_aggregate_repr<V, F>(&self, variant_fields: V) -> Repr
+        where V: IntoIterator<Item = F>, F: IntoIterator<Item = ty::Ty<'tcx>>
+    {
+        let mut variants = Vec::new();
+        let mut max_variant_size = 0;
 
-    fn make_variant_repr(&self, v: ty::VariantDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Repr {
-        let field_tys = v.fields.iter().map(|f| f.ty(self.tcx, substs));
-        self.make_product_repr(field_tys)
+        for field_tys in variant_fields {
+            let mut fields = Vec::new();
+            let mut size = 0;
+
+            for ty in field_tys {
+                let field_size = self.ty_to_repr(ty).size();
+                let offest = size;
+                size += field_size;
+                fields.push(FieldRepr { offset: offest, size: field_size });
+            }
+
+            if size > max_variant_size {
+                max_variant_size = size;
+            }
+            variants.push(fields);
+        }
+
+        let num_variants = variants.len();
+
+        let discr_size = match num_variants {
+            n if n <= 1       => 0,
+            n if n <= 1 << 8  => 1,
+            n if n <= 1 << 16 => 2,
+            n if n <= 1 << 32 => 4,
+            _                 => 8,
+        };
+
+        Repr::Aggregate {
+            discr_size: discr_size,
+            max_variant_size: max_variant_size,
+            variants: variants,
+        }
+
     }
 
     // TODO(tsion): Cache these outputs.
@@ -584,33 +604,14 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ty::TyUint(UintTy::U32) => Repr::Primitive { size: 4 },
             ty::TyUint(UintTy::U64) => Repr::Primitive { size: 8 },
 
-            ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
+            ty::TyTuple(ref fields) =>
+                self.make_aggregate_repr(iter::once(fields.iter().cloned())),
 
-            ty::TyEnum(adt_def, substs) => {
-                let num_variants = adt_def.variants.len();
-
-                let discr_size = match num_variants {
-                    n if n <= 1       => 0,
-                    n if n <= 1 << 8  => 1,
-                    n if n <= 1 << 16 => 2,
-                    n if n <= 1 << 32 => 4,
-                    _                 => 8,
-                };
-
-                let variants: Vec<Repr> = adt_def.variants.iter().map(|v| {
-                    self.make_variant_repr(v, substs)
-                }).collect();
-
-                Repr::Sum {
-                    discr_size: discr_size,
-                    max_variant_size: variants.iter().map(Repr::size).max().unwrap_or(0),
-                    variants: variants,
-                }
-            }
-
-            ty::TyStruct(adt_def, substs) => {
-                assert_eq!(adt_def.variants.len(), 1);
-                self.make_variant_repr(&adt_def.variants[0], substs)
+            ty::TyEnum(adt_def, substs) | ty::TyStruct(adt_def, substs) => {
+                let variants = adt_def.variants.iter().map(|v| {
+                    v.fields.iter().map(|f| f.ty(self.tcx, substs))
+                });
+                self.make_aggregate_repr(variants)
             }
 
             ty::TyArray(ref elem_ty, length) => Repr::Array {
