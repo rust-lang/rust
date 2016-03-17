@@ -247,13 +247,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                         use syntax::abi::Abi;
                         match fn_ty.abi {
-                            Abi::RustIntrinsic =>
-                                try!(self.call_intrinsic(
-                                    &self.tcx.item_name(def_id).as_str(),
-                                    fn_ty,
-                                    substs,
-                                    args,
-                                )),
+                            Abi::RustIntrinsic => {
+                                let name = self.tcx.item_name(def_id).as_str();
+                                try!(self.call_intrinsic(&name, substs, args))
+                            }
 
                             Abi::Rust => {
                                 // Only trait methods can have a Self parameter.
@@ -288,8 +285,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(target)
     }
 
-    fn call_intrinsic(&mut self, name: &str, _fn_ty: &'tcx ty::BareFnTy<'tcx>,
-        substs: &'tcx Substs<'tcx>, args: &[mir::Operand<'tcx>]) -> EvalResult<TerminatorTarget>
+    fn call_intrinsic(&mut self, name: &str, substs: &'tcx Substs<'tcx>,
+        args: &[mir::Operand<'tcx>]) -> EvalResult<TerminatorTarget>
     {
         let ret_ptr = &mir::Lvalue::ReturnPointer;
         let dest = try!(self.eval_lvalue(ret_ptr));
