@@ -1,7 +1,7 @@
-- Feature Name: ipaddr_octet_arrays
+- Feature Name: `ipaddr_octet_arrays`
 - Start Date: 2016-02-12
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1498](https://github.com/rust-lang/rfcs/pull/1498)
+- Rust Issue: [rust-lang/rust#32313](https://github.com/rust-lang/rust/issues/32313)
 
 # Summary
 [summary]: #summary
