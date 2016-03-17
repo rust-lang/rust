@@ -7,6 +7,7 @@ pub enum EvalError {
     InvalidBool,
     PointerOutOfBounds,
     InvalidPointerAccess,
+    ReadBytesAsPointer,
 }
 
 pub type EvalResult<T> = Result<T, EvalError>;
@@ -19,6 +20,8 @@ impl Error for EvalError {
             EvalError::PointerOutOfBounds => "pointer offset outside bounds of allocation",
             EvalError::InvalidPointerAccess =>
                 "a raw memory access tried to access part of a pointer value as bytes",
+            EvalError::ReadBytesAsPointer =>
+                "attempted to read some raw bytes as a pointer address",
         }
     }
 

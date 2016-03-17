@@ -149,10 +149,10 @@ impl Memory {
         let bytes = &alloc.bytes[ptr.offset..ptr.offset + POINTER_SIZE];
         let offset = byteorder::NativeEndian::read_u64(bytes) as usize;
 
-        // TODO(tsion): Return an EvalError here instead of panicking.
-        let alloc_id = *alloc.relocations.get(&ptr.offset).unwrap();
-
-        Ok(Pointer { alloc_id: alloc_id, offset: offset })
+        match alloc.relocations.get(&ptr.offset) {
+            Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
+            None => Err(EvalError::ReadBytesAsPointer),
+        }
     }
 
     // TODO(tsion): Detect invalid writes here and elsewhere.
