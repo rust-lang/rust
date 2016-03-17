@@ -1,3 +1,4 @@
+use arena::TypedArena;
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
 use rustc::middle::subst::{self, Subst, Substs};
@@ -6,6 +7,7 @@ use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::util::nodemap::DefIdMap;
+use rustc_data_structures::fnv::FnvHashMap;
 use std::cell::RefCell;
 use std::iter;
 use std::ops::Deref;
@@ -18,7 +20,7 @@ use primval;
 
 const TRACE_EXECUTION: bool = true;
 
-struct Interpreter<'a, 'tcx: 'a> {
+struct Interpreter<'a, 'tcx: 'a, 'arena> {
     /// The results of the type checker, from rustc.
     tcx: &'a TyCtxt<'tcx>,
 
@@ -27,6 +29,12 @@ struct Interpreter<'a, 'tcx: 'a> {
 
     /// A local cache from DefIds to Mir for non-crate-local items.
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
+
+    /// An arena allocator for type representations.
+    repr_arena: &'arena TypedArena<Repr>,
+
+    /// A cache for in-memory representations of types.
+    repr_cache: RefCell<FnvHashMap<ty::Ty<'tcx>, &'arena Repr>>,
 
     /// The virtual memory system.
     memory: Memory,
@@ -81,12 +89,16 @@ enum TerminatorTarget {
     Return,
 }
 
-impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
+impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
+    fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>, repr_arena: &'arena TypedArena<Repr>)
+        -> Self
+    {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
+            repr_arena: repr_arena,
+            repr_cache: RefCell::new(FnvHashMap()),
             memory: Memory::new(),
             stack: Vec::new(),
             substs_stack: Vec::new(),
@@ -211,7 +223,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Switch { ref discr, ref targets, .. } => {
                 let adt_ptr = try!(self.eval_lvalue(discr));
                 let adt_repr = self.lvalue_repr(discr);
-                let discr_size = match adt_repr {
+                let discr_size = match *adt_repr {
                     Repr::Aggregate { discr_size, .. } => discr_size,
                     _ => panic!("attmpted to switch on non-aggregate type"),
                 };
@@ -361,7 +373,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     Adt(_, variant_idx, _) =>
                         self.assign_to_aggregate(dest, &dest_repr, variant_idx, operands),
 
-                    Vec => match dest_repr {
+                    Vec => match *dest_repr {
                         Repr::Array { elem_size, length } => {
                             assert_eq!(length, operands.len());
                             for (i, operand) in operands.iter().enumerate() {
@@ -449,7 +461,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         self.eval_operand_and_repr(op).map(|(p, _)| p)
     }
 
-    fn eval_operand_and_repr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<(Pointer, Repr)> {
+    fn eval_operand_and_repr(&mut self, op: &mir::Operand<'tcx>)
+        -> EvalResult<(Pointer, &'arena Repr)>
+    {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => Ok((try!(self.eval_lvalue(lvalue)), self.lvalue_repr(lvalue))),
@@ -466,14 +480,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn lvalue_repr(&self, lvalue: &mir::Lvalue<'tcx>) -> Repr {
+    // TODO(tsion): Replace this inefficient hack with a wrapper like LvalueTy (e.g. LvalueRepr).
+    fn lvalue_repr(&self, lvalue: &mir::Lvalue<'tcx>) -> &'arena Repr {
         use rustc::mir::tcx::LvalueTy;
         match self.current_frame().mir.lvalue_ty(self.tcx, lvalue) {
             LvalueTy::Ty { ty } => self.ty_to_repr(ty),
             LvalueTy::Downcast { ref adt_def, substs, variant_index } => {
                 let field_tys = adt_def.variants[variant_index].fields.iter()
                     .map(|f| f.ty(self.tcx, substs));
-                self.make_aggregate_repr(iter::once(field_tys))
+                self.repr_arena.alloc(self.make_aggregate_repr(iter::once(field_tys)))
             }
         }
     }
@@ -494,7 +509,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 let base_repr = self.lvalue_repr(&proj.base);
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
-                    Field(field, _) => match base_repr {
+                    Field(field, _) => match *base_repr {
                         Repr::Aggregate { discr_size: 0, ref variants, .. } => {
                             let fields = &variants[0];
                             base_ptr.offset(fields[field.index()].offset as isize)
@@ -502,7 +517,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         _ => panic!("field access on non-product type: {:?}", base_repr),
                     },
 
-                    Downcast(..) => match base_repr {
+                    Downcast(..) => match *base_repr {
                         Repr::Aggregate { discr_size, .. } => base_ptr.offset(discr_size as isize),
                         _ => panic!("variant downcast on non-aggregate type: {:?}", base_repr),
                     },
@@ -583,9 +598,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     }
 
     // TODO(tsion): Cache these outputs.
-    fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
+    fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
+        let ty = ty.subst(self.tcx, self.current_substs());
+
+        if let Some(repr) =  self.repr_cache.borrow().get(ty) {
+            return repr;
+        }
+
         use syntax::ast::{IntTy, UintTy};
-        match ty.subst(self.tcx, self.current_substs()).sty {
+        let repr = match ty.sty {
             ty::TyBool => Repr::Primitive { size: 1 },
             ty::TyInt(IntTy::Is)  => Repr::isize(),
             ty::TyInt(IntTy::I8)  => Repr::Primitive { size: 1 },
@@ -625,7 +646,11 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             ref t => panic!("can't convert type to repr: {:?}", t),
-        }
+        };
+
+        let repr_ref = self.repr_arena.alloc(repr);
+        self.repr_cache.borrow_mut().insert(ty, repr_ref);
+        repr_ref
     }
 
     fn current_frame(&self) -> &Frame<'a, 'tcx> {
@@ -777,7 +802,8 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
 
                 println!("Interpreting: {}", item.name);
 
-                let mut miri = Interpreter::new(tcx, mir_map);
+                let repr_arena = TypedArena::new();
+                let mut miri = Interpreter::new(tcx, mir_map, &repr_arena);
                 let return_ptr = match mir.return_ty {
                     ty::FnConverging(ty) => {
                         let size = miri.ty_to_repr(ty).size();
