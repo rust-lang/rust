@@ -247,38 +247,13 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                         use syntax::abi::Abi;
                         match fn_ty.abi {
-                            Abi::RustIntrinsic => {
-                                let ret_ptr = &mir::Lvalue::ReturnPointer;
-                                let dest = try!(self.eval_lvalue(ret_ptr));
-                                let dest_repr = self.lvalue_repr(ret_ptr);
-
-                                match &self.tcx.item_name(def_id).as_str()[..] {
-                                    "size_of" => {
-                                        let ty = *substs.types.get(subst::FnSpace, 0);
-                                        let size = self.ty_size(ty) as u64;
-                                        try!(self.memory.write_uint(dest, size, dest_repr.size()));
-                                    }
-
-                                    "offset" => {
-                                        let pointee_ty = *substs.types.get(subst::FnSpace, 0);
-                                        let pointee_size = self.ty_size(pointee_ty) as isize;
-                                        let ptr_arg = try!(self.eval_operand(&args[0]));
-                                        let offset_arg = try!(self.eval_operand(&args[1]));
-                                        let ptr = try!(self.memory.read_ptr(ptr_arg));
-                                        // TODO(tsion): read_isize
-                                        let offset = try!(self.memory.read_i64(offset_arg));
-                                        let result_ptr = ptr.offset(offset as isize * pointee_size);
-                                        try!(self.memory.write_ptr(dest, result_ptr));
-                                    }
-
-                                    name => panic!("can't handle intrinsic named {}", name),
-                                }
-
-                                // Since we pushed no stack frame, the main loop will act
-                                // as if the call just completed and it's returning to the
-                                // current frame.
-                                TerminatorTarget::Call
-                            }
+                            Abi::RustIntrinsic =>
+                                try!(self.call_intrinsic(
+                                    &self.tcx.item_name(def_id).as_str(),
+                                    fn_ty,
+                                    substs,
+                                    args,
+                                )),
 
                             Abi::Rust => {
                                 // Only trait methods can have a Self parameter.
@@ -311,6 +286,41 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         };
 
         Ok(target)
+    }
+
+    fn call_intrinsic(&mut self, name: &str, _fn_ty: &'tcx ty::BareFnTy<'tcx>,
+        substs: &'tcx Substs<'tcx>, args: &[mir::Operand<'tcx>]) -> EvalResult<TerminatorTarget>
+    {
+        let ret_ptr = &mir::Lvalue::ReturnPointer;
+        let dest = try!(self.eval_lvalue(ret_ptr));
+        let dest_size = self.lvalue_repr(ret_ptr).size();
+
+        match name {
+            "size_of" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.ty_size(ty) as u64;
+                try!(self.memory.write_uint(dest, size, dest_size));
+            }
+
+            "offset" => {
+                let pointee_ty = *substs.types.get(subst::FnSpace, 0);
+                let pointee_size = self.ty_size(pointee_ty) as isize;
+                let ptr_arg = try!(self.eval_operand(&args[0]));
+                let offset_arg = try!(self.eval_operand(&args[1]));
+                let ptr = try!(self.memory.read_ptr(ptr_arg));
+                // TODO(tsion): read_isize
+                let offset = try!(self.memory.read_i64(offset_arg));
+                let result_ptr = ptr.offset(offset as isize * pointee_size);
+                try!(self.memory.write_ptr(dest, result_ptr));
+            }
+
+            name => panic!("can't handle intrinsic: {}", name),
+        }
+
+        // Since we pushed no stack frame, the main loop will act
+        // as if the call just completed and it's returning to the
+        // current frame.
+        Ok(TerminatorTarget::Call)
     }
 
     fn assign_to_aggregate(&mut self, dest: Pointer, dest_repr: &Repr, variant: usize,
