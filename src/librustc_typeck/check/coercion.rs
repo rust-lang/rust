@@ -166,8 +166,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 return self.coerce_unsafe_ptr(a, b, mt_b.mutbl);
             }
 
-            ty::TyRef(_, mt_b) => {
-                return self.coerce_borrowed_pointer(exprs, a, b, mt_b.mutbl);
+            ty::TyRef(r_b, mt_b) => {
+                return self.coerce_borrowed_pointer(exprs, a, b, r_b, mt_b.mutbl);
             }
 
             _ => {}
@@ -199,6 +199,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                          exprs: &E,
                                          a: Ty<'tcx>,
                                          b: Ty<'tcx>,
+                                         r_b: &'tcx ty::Region,
                                          mutbl_b: hir::Mutability)
                                          -> CoerceResult<'tcx>
         // FIXME(eddyb) use copyable iterators when that becomes ergonomic.
@@ -213,17 +214,28 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        match a.sty {
-            ty::TyRef(_, mt_a) => {
+        let (_r_a, _mutbl_a) = match a.sty {
+            ty::TyRef(r_a, mt_a) => {
                 try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
+                (r_a, mt_a.mutbl)
             }
             _ => return self.unify(a, b)
-        }
+        };
 
         let span = self.origin.span();
         let coercion = Coercion(span);
-        let r_borrow = self.fcx.infcx().next_region_var(coercion);
-        let r_borrow = self.tcx().mk_region(r_borrow);
+        let r_borrow = {
+            // If are coercing from `&'a T` to `&'b U`, then we want to
+            // reborrow the contents of `'a` for the lifetime `'b`
+            // (which ought to be a sublifetime of `'a`).
+            if !self.use_lub {
+                r_b
+            } else {
+                // With LUB, we need more flexibility.
+                let r_borrow = self.fcx.infcx().next_region_var(coercion);
+                self.tcx().mk_region(r_borrow)
+            }
+        };
         let autoref = Some(AutoPtr(r_borrow, mutbl_b));
 
         let lvalue_pref = LvaluePreference::from_mutbl(mutbl_b);
