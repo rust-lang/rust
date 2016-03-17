@@ -40,4 +40,5 @@ fn main() {
 //~| found `(_, _)`
 //~| expected &-ptr
 //~| found tuple
+//~| HELP run `rustc --explain E0308` to see a detailed explanation
 }

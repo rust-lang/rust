@@ -23,5 +23,6 @@ const _MAX: usize = -1;
 fn main() {
     let x = 5u8;
     let _y = -x; //~ ERROR unary negation of unsigned integer
+    //~^ HELP use a cast or the `!` operator
     -S; // should not trigger the gate; issue 26840
 }

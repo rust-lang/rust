@@ -23,3 +23,5 @@ fn main() {
     //~^ ERROR cannot borrow `foo` (here through borrowing `foo.b`) as immutable
     //~^^ NOTE previous borrow of `foo` occurs here (through borrowing `foo.a`)
 }
+//~^ NOTE previous borrow ends here
+//~^^ NOTE previous borrow ends here
