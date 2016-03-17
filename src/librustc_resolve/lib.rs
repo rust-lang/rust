@@ -828,7 +828,7 @@ pub struct ModuleS<'a> {
     extern_crate_id: Option<NodeId>,
 
     resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
-    unresolved_imports: RefCell<Vec<&'a ImportDirective>>,
+    unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // The module children of this node, including normal modules and anonymous modules.
     // Anonymous children are pseudo-modules that are implicitly created around items
@@ -848,7 +848,7 @@ pub struct ModuleS<'a> {
 
     prelude: RefCell<Option<Module<'a>>>,
 
-    glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective)>>,
+    glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
     resolved_globs: RefCell<(Vec<Module<'a>> /* public */, Vec<Module<'a>> /* private */)>,
 
     // The number of public glob imports in this module.
@@ -891,7 +891,7 @@ impl<'a> ModuleS<'a> {
         }
     }
 
-    fn add_import_directive(&self, import_directive: ImportDirective) {
+    fn add_import_directive(&self, import_directive: ImportDirective<'a>) {
         let import_directive = self.arenas.alloc_import_directive(import_directive);
         self.unresolved_imports.borrow_mut().push(import_directive);
     }
@@ -1134,7 +1134,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
-    import_directives: arena::TypedArena<ImportDirective>,
+    import_directives: arena::TypedArena<ImportDirective<'a>>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1144,7 +1144,8 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
     }
-    fn alloc_import_directive(&'a self, import_directive: ImportDirective) -> &'a ImportDirective {
+    fn alloc_import_directive(&'a self, import_directive: ImportDirective<'a>)
+                              -> &'a ImportDirective {
         self.import_directives.alloc(import_directive)
     }
 }
