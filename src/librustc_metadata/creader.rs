@@ -298,7 +298,7 @@ impl<'a> CrateReader<'a> {
             if other.name() == crate_name && // same crate-name
                other.disambiguator() == disambiguator &&  // same crate-disambiguator
                other.hash() != svh { // but different SVH
-                span_fatal!(self.sess, span, E0521,
+                span_fatal!(self.sess, span, E0522,
                         "found two different crates with name `{}` that are \
                          not distinguished by differing `-C metadata`. This \
                          will result in symbol conflicts between the two.",
