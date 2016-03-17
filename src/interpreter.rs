@@ -142,18 +142,18 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         let mut locals = Vec::with_capacity(num_args + num_vars + num_temps);
 
         for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
-            let repr = self.ty_to_repr(arg_decl.ty);
-            let dest = self.memory.allocate(repr.size());
+            let size = self.ty_to_repr(arg_decl.ty).size();
+            let dest = self.memory.allocate(size);
             let src = try!(self.eval_operand(arg_operand));
-            try!(self.memory.copy(src, dest, repr.size()));
+            try!(self.memory.copy(src, dest, size));
             locals.push(dest);
         }
 
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
         locals.extend(var_tys.chain(temp_tys).map(|ty| {
-            let repr = self.ty_to_repr(ty).size();
-            self.memory.allocate(repr)
+            let size = self.ty_to_repr(ty).size();
+            self.memory.allocate(size)
         }));
 
         self.stack.push(Frame {
@@ -189,15 +189,15 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = try!(self.eval_lvalue(discr));
-                let discr_repr = self.lvalue_repr(discr);
-                let discr_val = try!(self.memory.read_primval(discr_ptr, &discr_repr));
+                let discr_size = self.lvalue_repr(discr).size();
+                let discr_val = try!(self.memory.read_uint(discr_ptr, discr_size));
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
                 for (index, val_const) in values.iter().enumerate() {
                     let ptr = try!(self.const_to_ptr(val_const));
-                    let val = try!(self.memory.read_primval(ptr, &discr_repr));
+                    let val = try!(self.memory.read_uint(ptr, discr_size));
                     if discr_val == val {
                         target_block = targets[index];
                         break;
@@ -210,12 +210,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Switch { ref discr, ref targets, .. } => {
                 let adt_ptr = try!(self.eval_lvalue(discr));
                 let adt_repr = self.lvalue_repr(discr);
-                let discr_repr = match adt_repr {
-                    Repr::Sum { ref discr, .. } => discr,
+                let discr_size = match adt_repr {
+                    Repr::Sum { discr_size, .. } => discr_size,
                     _ => panic!("attmpted to switch on non-sum type"),
                 };
-                let discr_val = try!(self.memory.read_primval(adt_ptr, &discr_repr));
-                TerminatorTarget::Block(targets[discr_val.to_usize()])
+                let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size));
+                TerminatorTarget::Block(targets[discr_val as usize])
             }
 
             Call { ref func, ref args, ref destination, .. } => {
@@ -332,16 +332,21 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let (left_ptr, left_repr) = try!(self.eval_operand_and_repr(left));
-                let (right_ptr, right_repr) = try!(self.eval_operand_and_repr(right));
-                let left_val = try!(self.memory.read_primval(left_ptr, &left_repr));
-                let right_val = try!(self.memory.read_primval(right_ptr, &right_repr));
+                let left_ptr = try!(self.eval_operand(left));
+                let left_ty = self.operand_ty(left);
+                let left_val = try!(self.memory.read_primval(left_ptr, left_ty));
+
+                let right_ptr = try!(self.eval_operand(right));
+                let right_ty = self.operand_ty(right);
+                let right_val = try!(self.memory.read_primval(right_ptr, right_ty));
+
                 self.memory.write_primval(dest, primval::binary_op(bin_op, left_val, right_val))
             }
 
             UnaryOp(un_op, ref operand) => {
-                let (ptr, repr) = try!(self.eval_operand_and_repr(operand));
-                let val = try!(self.memory.read_primval(ptr, &repr));
+                let ptr = try!(self.eval_operand(operand));
+                let ty = self.operand_ty(operand);
+                let val = try!(self.memory.read_primval(ptr, ty));
                 self.memory.write_primval(dest, primval::unary_op(un_op, val))
             }
 
@@ -354,13 +359,13 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         ty::AdtKind::Struct => self.assign_to_product(dest, &dest_repr, operands),
 
                         ty::AdtKind::Enum => match dest_repr {
-                            Repr::Sum { ref discr, ref variants, .. } => {
-                                if discr.size() > 0 {
-                                    let discr_val = PrimVal::from_usize(variant_idx, discr);
-                                    try!(self.memory.write_primval(dest, discr_val));
+                            Repr::Sum { discr_size, ref variants, .. } => {
+                                if discr_size > 0 {
+                                    let discr = variant_idx as u64;
+                                    try!(self.memory.write_uint(dest, discr, discr_size));
                                 }
                                 self.assign_to_product(
-                                    dest.offset(discr.size() as isize),
+                                    dest.offset(discr_size as isize),
                                     &variants[variant_idx],
                                     operands
                                 )
@@ -450,6 +455,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
+    fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
+        self.current_frame().mir.operand_ty(self.tcx, operand)
+    }
+
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
         self.eval_operand_and_repr(op).map(|(p, _)| p)
     }
@@ -503,7 +512,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     },
 
                     Downcast(..) => match base_repr {
-                        Repr::Sum { ref discr, .. } => base_ptr.offset(discr.size() as isize),
+                        Repr::Sum { discr_size, .. } => base_ptr.offset(discr_size as isize),
                         _ => panic!("variant downcast on non-sum type"),
                     },
 
@@ -585,16 +594,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             ty::TyEnum(adt_def, substs) => {
                 let num_variants = adt_def.variants.len();
 
-                let discr = if num_variants <= 1 {
-                    Repr::Product { size: 0, fields: vec![] }
-                } else if num_variants <= 1 << 8 {
-                    Repr::U8
-                } else if num_variants <= 1 << 16 {
-                    Repr::U16
-                } else if num_variants <= 1 << 32 {
-                    Repr::U32
-                } else {
-                    Repr::U64
+                let discr_size = match num_variants {
+                    n if n <= 1       => 0,
+                    n if n <= 1 << 8  => 1,
+                    n if n <= 1 << 16 => 2,
+                    n if n <= 1 << 32 => 4,
+                    _                 => 8,
                 };
 
                 let variants: Vec<Repr> = adt_def.variants.iter().map(|v| {
@@ -602,7 +607,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 }).collect();
 
                 Repr::Sum {
-                    discr: Box::new(discr),
+                    discr_size: discr_size,
                     max_variant_size: variants.iter().map(Repr::size).max().unwrap_or(0),
                     variants: variants,
                 }
@@ -710,10 +715,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 println!("{:?} {:?}", mth.method.def_id, mth.substs);
                 (mth.method.def_id, mth.substs)
             }
-            traits::VtableClosure(vtable_closure) => {
+            traits::VtableClosure(_vtable_closure) => {
                 // The substitutions should have no type parameters remaining after passing
                 // through fulfill_obligation
-                let trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
                 unimplemented!()
                 // vtable_closure.closure_def_id
                 // vtable_closure.substs
@@ -727,8 +732,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 // };
                 // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
-            traits::VtableFnPointer(fn_ty) => {
-                let trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+            traits::VtableFnPointer(_fn_ty) => {
+                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
                 unimplemented!()
                 // let llfn = trans_fn_pointer_shim(ccx, trait_closure_kind, fn_ty);
 
@@ -740,7 +745,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 // };
                 // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
-            traits::VtableObject(ref data) => {
+            traits::VtableObject(ref _data) => {
                 unimplemented!()
                 // Callee {
                 //     data: Virtual(traits::get_vtable_index_of_object_method(

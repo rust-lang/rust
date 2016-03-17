@@ -1,4 +1,5 @@
-use byteorder::{self, ByteOrder};
+use byteorder::{self, ByteOrder, NativeEndian, ReadBytesExt, WriteBytesExt};
+use rustc::middle::ty;
 use std::collections::{BTreeMap, HashMap};
 use std::collections::Bound::{Included, Excluded};
 use std::mem;
@@ -56,10 +57,14 @@ pub enum Repr {
 
     /// The representation for a sum type, i.e. a Rust enum.
     Sum {
+        /// The size of the discriminant (an integer). Should be between 0 and 8.
+        discr_size: usize,
+
         /// The size of the largest variant in bytes.
         max_variant_size: usize,
+
+        /// The represenations of the contents of each variant.
         variants: Vec<Repr>,
-        discr: Box<Repr>,
     },
 
     Array {
@@ -167,18 +172,19 @@ impl Memory {
         Ok(())
     }
 
-    pub fn read_primval(&self, ptr: Pointer, repr: &Repr) -> EvalResult<PrimVal> {
-        match *repr {
-            Repr::Bool => self.read_bool(ptr).map(PrimVal::Bool),
-            Repr::I8   => self.read_i8(ptr).map(PrimVal::I8),
-            Repr::I16  => self.read_i16(ptr).map(PrimVal::I16),
-            Repr::I32  => self.read_i32(ptr).map(PrimVal::I32),
-            Repr::I64  => self.read_i64(ptr).map(PrimVal::I64),
-            Repr::U8   => self.read_u8(ptr).map(PrimVal::U8),
-            Repr::U16  => self.read_u16(ptr).map(PrimVal::U16),
-            Repr::U32  => self.read_u32(ptr).map(PrimVal::U32),
-            Repr::U64  => self.read_u64(ptr).map(PrimVal::U64),
-            _ => panic!("primitive read of non-primitive: {:?}", repr),
+    pub fn read_primval(&self, ptr: Pointer, ty: ty::Ty) -> EvalResult<PrimVal> {
+        use syntax::ast::{IntTy, UintTy};
+        match ty.sty {
+            ty::TyBool              => self.read_bool(ptr).map(PrimVal::Bool),
+            ty::TyInt(IntTy::I8)    => self.read_i8(ptr).map(PrimVal::I8),
+            ty::TyInt(IntTy::I16)   => self.read_i16(ptr).map(PrimVal::I16),
+            ty::TyInt(IntTy::I32)   => self.read_i32(ptr).map(PrimVal::I32),
+            ty::TyInt(IntTy::I64)   => self.read_i64(ptr).map(PrimVal::I64),
+            ty::TyUint(UintTy::U8)  => self.read_u8(ptr).map(PrimVal::U8),
+            ty::TyUint(UintTy::U16) => self.read_u16(ptr).map(PrimVal::U16),
+            ty::TyUint(UintTy::U32) => self.read_u32(ptr).map(PrimVal::U32),
+            ty::TyUint(UintTy::U64) => self.read_u64(ptr).map(PrimVal::U64),
+            _ => panic!("primitive read of non-primitive type: {:?}", ty),
         }
     }
 
@@ -286,6 +292,14 @@ impl Memory {
         byteorder::NativeEndian::write_u64(bytes, n);
         Ok(())
     }
+
+    pub fn read_uint(&self, ptr: Pointer, size: usize) -> EvalResult<u64> {
+        self.get_bytes(ptr, size).map(|mut b| b.read_uint::<NativeEndian>(size).unwrap())
+    }
+
+    pub fn write_uint(&mut self, ptr: Pointer, n: u64, size: usize) -> EvalResult<()> {
+        self.get_bytes_mut(ptr, size).map(|mut b| b.write_uint::<NativeEndian>(n, size).unwrap())
+    }
 }
 
 impl Allocation {
@@ -359,7 +373,7 @@ impl Repr {
             Repr::I32 | Repr::U32 => 4,
             Repr::I64 | Repr::U64 => 8,
             Repr::Product { size, .. } => size,
-            Repr::Sum { ref discr, max_variant_size, .. } => discr.size() + max_variant_size,
+            Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
             Repr::Array { ref elem, length } => elem.size() * length,
             Repr::Pointer => POINTER_SIZE,
             Repr::FatPointer => POINTER_SIZE * 2,
