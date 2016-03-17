@@ -597,7 +597,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
     }
 
-    // TODO(tsion): Cache these outputs.
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
         let ty = ty.subst(self.tcx, self.current_substs());
 
