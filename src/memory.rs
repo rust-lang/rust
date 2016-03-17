@@ -40,9 +40,10 @@ pub struct FieldRepr {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repr {
-    Bool,
-    I8, I16, I32, I64,
-    U8, U16, U32, U64,
+    /// Representation for a primitive type such as a boolean, integer, or character.
+    Primitive {
+        size: usize
+    },
 
     Pointer,
     FatPointer,
@@ -361,29 +362,17 @@ impl Pointer {
 impl Repr {
     // TODO(tsion): Choice is based on host machine's type size. Should this be how miri works?
     pub fn isize() -> Self {
-        match mem::size_of::<isize>() {
-            4 => Repr::I32,
-            8 => Repr::I64,
-            _ => unimplemented!(),
-        }
+        Repr::Primitive { size: mem::size_of::<isize>() }
     }
 
     // TODO(tsion): Choice is based on host machine's type size. Should this be how miri works?
     pub fn usize() -> Self {
-        match mem::size_of::<isize>() {
-            4 => Repr::U32,
-            8 => Repr::U64,
-            _ => unimplemented!(),
-        }
+        Repr::Primitive { size: mem::size_of::<usize>() }
     }
 
     pub fn size(&self) -> usize {
         match *self {
-            Repr::Bool => 1,
-            Repr::I8  | Repr::U8  => 1,
-            Repr::I16 | Repr::U16 => 2,
-            Repr::I32 | Repr::U32 => 4,
-            Repr::I64 | Repr::U64 => 8,
+            Repr::Primitive { size } => size,
             Repr::Product { size, .. } => size,
             Repr::Sum { discr_size, max_variant_size, .. } => discr_size + max_variant_size,
             Repr::Array { elem_size, length } => elem_size * length,

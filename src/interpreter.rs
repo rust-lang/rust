@@ -571,19 +571,18 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> Repr {
         use syntax::ast::{IntTy, UintTy};
         match ty.subst(self.tcx, self.current_substs()).sty {
-            ty::TyBool => Repr::Bool,
-
+            ty::TyBool => Repr::Primitive { size: 1 },
             ty::TyInt(IntTy::Is)  => Repr::isize(),
-            ty::TyInt(IntTy::I8)  => Repr::I8,
-            ty::TyInt(IntTy::I16) => Repr::I16,
-            ty::TyInt(IntTy::I32) => Repr::I32,
-            ty::TyInt(IntTy::I64) => Repr::I64,
+            ty::TyInt(IntTy::I8)  => Repr::Primitive { size: 1 },
+            ty::TyInt(IntTy::I16) => Repr::Primitive { size: 2 },
+            ty::TyInt(IntTy::I32) => Repr::Primitive { size: 4 },
+            ty::TyInt(IntTy::I64) => Repr::Primitive { size: 8 },
 
             ty::TyUint(UintTy::Us)  => Repr::usize(),
-            ty::TyUint(UintTy::U8)  => Repr::U8,
-            ty::TyUint(UintTy::U16) => Repr::U16,
-            ty::TyUint(UintTy::U32) => Repr::U32,
-            ty::TyUint(UintTy::U64) => Repr::U64,
+            ty::TyUint(UintTy::U8)  => Repr::Primitive { size: 1 },
+            ty::TyUint(UintTy::U16) => Repr::Primitive { size: 2 },
+            ty::TyUint(UintTy::U32) => Repr::Primitive { size: 4 },
+            ty::TyUint(UintTy::U64) => Repr::Primitive { size: 8 },
 
             ty::TyTuple(ref fields) => self.make_product_repr(fields.iter().cloned()),
 
