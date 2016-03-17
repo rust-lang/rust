@@ -160,108 +160,6 @@ pub trait AsciiExt {
     /// ```
     #[unstable(feature = "ascii", issue = "27809")]
     fn make_ascii_lowercase(&mut self);
-
-    /// Converts this type to its ASCII upper case,
-    /// consuming the value to avoid allocating memory where `to_ascii_uppercase` would.
-    ///
-    /// See `to_ascii_uppercase` for more information.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let ascii: String = "a".to_owned();
-    ///
-    /// let upper = ascii.into_ascii_uppercase();
-    ///
-    /// assert_eq!(upper, "A");
-    /// ```
-    #[stable(feature = "into_ascii", since = "1.8.0")]
-    fn into_ascii_uppercase(self) -> Self::Owned where Self: Sized {
-        self.to_ascii_uppercase()
-    }
-
-    /// Converts this type to its ASCII lower case,
-    /// consuming the value to avoid allocating memory where `to_ascii_lowercase` would.
-    ///
-    /// See `to_ascii_lowercase` for more information.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::ascii::AsciiExt;
-    ///
-    /// let ascii: String = "A".to_owned();
-    ///
-    /// let lower = ascii.into_ascii_lowercase();
-    ///
-    /// assert_eq!(lower, "a");
-    /// ```
-    #[stable(feature = "into_ascii", since = "1.8.0")]
-    fn into_ascii_lowercase(self) -> Self::Owned where Self: Sized {
-        self.to_ascii_lowercase()
-    }
-}
-
-/// Implement `into_ascii_lowercase` and `into_ascii_uppercase` without memory allocation,
-/// defer other methods to `str`.
-#[stable(feature = "into_ascii", since = "1.8.0")]
-impl AsciiExt for String {
-    type Owned = Self;
-
-    #[inline] fn is_ascii(&self) -> bool { (**self).is_ascii() }
-    #[inline] fn to_ascii_uppercase(&self) -> Self { (**self).to_ascii_uppercase() }
-    #[inline] fn to_ascii_lowercase(&self) -> Self { (**self).to_ascii_lowercase() }
-    #[inline] fn eq_ignore_ascii_case(&self, o: &Self) -> bool { (**self).eq_ignore_ascii_case(o) }
-    #[inline] fn make_ascii_uppercase(&mut self) { (**self).make_ascii_uppercase() }
-    #[inline] fn make_ascii_lowercase(&mut self) { (**self).make_ascii_lowercase() }
-
-    fn into_ascii_lowercase(mut self) -> Self {
-        unsafe {
-            for byte in self.as_mut_vec() {
-                *byte = byte.to_ascii_lowercase()
-            }
-        }
-        self
-    }
-
-    fn into_ascii_uppercase(mut self) -> Self {
-        unsafe {
-            for byte in self.as_mut_vec() {
-                *byte = byte.to_ascii_uppercase()
-            }
-        }
-        self
-    }
-}
-
-/// Implement `into_ascii_lowercase` and `into_ascii_uppercase` without memory allocation,
-/// defer other methods to `[u8]`.
-#[stable(feature = "into_ascii", since = "1.8.0")]
-impl AsciiExt for Vec<u8> {
-    type Owned = Self;
-
-    #[inline] fn is_ascii(&self) -> bool { (**self).is_ascii() }
-    #[inline] fn to_ascii_uppercase(&self) -> Self { (**self).to_ascii_uppercase() }
-    #[inline] fn to_ascii_lowercase(&self) -> Self { (**self).to_ascii_lowercase() }
-    #[inline] fn eq_ignore_ascii_case(&self, o: &Self) -> bool { (**self).eq_ignore_ascii_case(o) }
-    #[inline] fn make_ascii_uppercase(&mut self) { (**self).make_ascii_uppercase() }
-    #[inline] fn make_ascii_lowercase(&mut self) { (**self).make_ascii_lowercase() }
-
-    fn into_ascii_lowercase(mut self) -> Self {
-        for byte in &mut self {
-            *byte = byte.to_ascii_lowercase()
-        }
-        self
-    }
-
-    fn into_ascii_uppercase(mut self) -> Self {
-        for byte in &mut self {
-            *byte = byte.to_ascii_uppercase()
-        }
-        self
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -402,6 +300,52 @@ impl AsciiExt for char {
     fn make_ascii_uppercase(&mut self) { *self = self.to_ascii_uppercase(); }
     #[inline]
     fn make_ascii_lowercase(&mut self) { *self = self.to_ascii_lowercase(); }
+}
+
+/// Extension methods for ASCII-subset only operations on owned strings
+#[unstable(feature = "owned_ascii_ext", reason = "recently (re) added", issue = "27809")]
+pub trait OwnedAsciiExt {
+    /// Converts the string to ASCII upper case:
+    /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
+    /// but non-ASCII letters are unchanged.
+    #[unstable(feature = "owned_ascii_ext", reason = "recently (re) added", issue = "27809")]
+    fn into_ascii_uppercase(self) -> Self;
+
+    /// Converts the string to ASCII lower case:
+    /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
+    /// but non-ASCII letters are unchanged.
+    #[unstable(feature = "owned_ascii_ext", reason = "recently (re) added", issue = "27809")]
+    fn into_ascii_lowercase(self) -> Self;
+}
+
+#[unstable(feature = "owned_ascii_ext", reason = "recently (re) added", issue = "27809")]
+impl OwnedAsciiExt for String {
+    #[inline]
+    fn into_ascii_uppercase(self) -> String {
+        // Vec<u8>::into_ascii_uppercase() preserves the UTF-8 invariant.
+        unsafe { String::from_utf8_unchecked(self.into_bytes().into_ascii_uppercase()) }
+    }
+
+    #[inline]
+    fn into_ascii_lowercase(self) -> String {
+        // Vec<u8>::into_ascii_lowercase() preserves the UTF-8 invariant.
+        unsafe { String::from_utf8_unchecked(self.into_bytes().into_ascii_lowercase()) }
+    }
+}
+
+#[unstable(feature = "owned_ascii_ext", reason = "recently (re) added", issue = "27809")]
+impl OwnedAsciiExt for Vec<u8> {
+    #[inline]
+    fn into_ascii_uppercase(mut self) -> Vec<u8> {
+        self.make_ascii_uppercase();
+        self
+    }
+
+    #[inline]
+    fn into_ascii_lowercase(mut self) -> Vec<u8> {
+        self.make_ascii_lowercase();
+        self
+    }
 }
 
 /// An iterator over the escaped version of a byte, constructed via
@@ -668,5 +612,12 @@ mod tests {
             assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(
                     &from_u32(lower).unwrap().to_string()));
         }
+    }
+
+    #[test]
+    /// https://github.com/rust-lang/rust/issues/32074
+    fn test_issue_32074_regression() {
+        let x = "a".to_string();
+        assert!(x.eq_ignore_ascii_case("A"));
     }
 }
