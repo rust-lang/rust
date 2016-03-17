@@ -746,14 +746,14 @@ for example, `a.alloc_one::<T>()` will return a `Unique<T>` (or error).
 
 ## Unchecked variants
 
-Finally, all of the methods above return `Result`, and guarantee some
+Finally, almost all of the methods above return `Result`, and guarantee some
 amount of input validation. (This is largely because I observed code
 duplication doing such validation on the client side; or worse, such
 validation accidentally missing.)
 
 However, some clients will want to bypass such checks (and do it
-without risking undefined behavior by ensuring the preconditions hold
-via local invariants in their container type).
+without risking undefined behavior, namely by ensuring the method preconditions
+hold via local invariants in their container type).
 
 For these clients, the `Allocator` trait provides
 ["unchecked" variants][unchecked variants] of nearly all of its
@@ -2116,7 +2116,8 @@ pub unsafe trait Allocator {
     unsafe fn dealloc_array<T>(&mut self, ptr: Unique<T>, n: usize) -> Result<(), Self::Error> {
         let raw_ptr = NonZero::new(*ptr as *mut u8);
         if let Some(k) = Layout::array::<T>(n) {
-            self.dealloc(raw_ptr, k)
+            self.dealloc(raw_ptr, k);
+            Ok(())
         } else {
             Err(Self::Error::invalid_input())
         }
@@ -2144,16 +2145,6 @@ pub unsafe trait Allocator {
     unsafe fn alloc_unchecked(&mut self, layout: Layout) -> Option<Address> {
         // (default implementation carries checks, but impl's are free to omit them.)
         self.alloc(layout).ok()
-    }
-
-    /// Deallocate the memory referenced by `ptr`.
-    ///
-    /// `ptr` must have previously been provided via this allocator,
-    /// and `layout` must *fit* the provided block (see above).
-    /// Otherwise yields undefined behavior.
-    unsafe fn dealloc_unchecked(&mut self, ptr: Address, layout: Layout) {
-        // (default implementation carries checks, but impl's are free to omit them.)
-        self.dealloc(ptr, layout).unwrap();
     }
 
     /// Returns a pointer suitable for holding data described by
