@@ -248,7 +248,7 @@ For this demo I want to try to minimize cleverness, so we will use
 
 ```rust
 impl DumbBumpPool {
-    fn new(name: &'static str,
+    pub fn new(name: &'static str,
            size_in_bytes: usize,
            start_align: usize) -> DumbBumpPool {
         unsafe {
@@ -310,7 +310,7 @@ will expose:
 pub enum BumpAllocError { Invalid, MemoryExhausted(alloc::Layout), Interference }
 
 impl BumpAllocError {
-    fn is_transient(&self) -> bool { *self == BumpAllocError::Interference }
+    pub fn is_transient(&self) -> bool { *self == BumpAllocError::Interference }
 }
 
 impl alloc::AllocError for BumpAllocError {
@@ -330,6 +330,20 @@ With that out of the way, here are some other design choices of note:
  * Since we want to be able to share the bump-allocator amongst multiple
    (lifetime-scoped) threads, we will implement the `Allocator` interface
    as a *handle* pointing to the pool; in this case, a simple reference.
+
+ * Since the whole point of this particular bump-allocator is to
+   shared across threads (otherwise there would be no need to use
+   `AtomicPtr` for the `avail` field), we will want to implement the
+   (unsafe) `Sync` trait on it (doing this signals that it is safe to
+   send `&DumbBumpPool` to other threads).
+
+Here is that `impl Sync`.
+
+```rust
+/// Note of course that this impl implies we must review all other
+/// code for DumbBumpPool even more carefully.
+unsafe impl Sync for DumbBumpPool { }
+```
 
 Here is the demo implementation of `Allocator` for the type.
 
