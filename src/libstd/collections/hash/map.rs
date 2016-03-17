@@ -1313,6 +1313,7 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
         match self {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
+                    key: Some(key),
                     elem: elem
                 }))
             }
@@ -1347,6 +1348,7 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 /// A view into a single occupied location in a HashMap.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
+    key: Option<K>,
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
@@ -1552,6 +1554,12 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     pub fn remove(self) -> V {
         pop_internal(self.elem).1
     }
+    /// Returns a key that was used for search.
+    ///
+    /// The key was retained for further use.
+    fn take_key(&mut self) -> Option<K> {
+        self.key.take()
+    }
 }
 
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
@@ -1661,20 +1669,16 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
     }
 
     fn replace(&mut self, key: K) -> Option<K> {
-        let hash = self.make_hash(&key);
         self.reserve(1);
 
-        match search_hashed(&mut self.table, hash, |k| *k == key) {
-            InternalEntry::Occupied { mut elem } => {
-                Some(mem::replace(elem.read_mut().0, key))
+        match self.entry(key) {
+            Occupied(mut occupied) => {
+                let key = occupied.take_key().unwrap();
+                Some(mem::replace(occupied.elem.read_mut().0, key))
             }
-            other => {
-                if let Some(Vacant(vacant)) = other.into_entry(key) {
-                    vacant.insert(());
-                    None
-                } else {
-                    unreachable!()
-                }
+            Vacant(vacant) => {
+                vacant.insert(());
+                None
             }
         }
     }
