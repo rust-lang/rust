@@ -210,9 +210,7 @@ impl Memory {
     }
 
     pub fn write_bool(&mut self, ptr: Pointer, b: bool) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 1));
-        bytes[0] = b as u8;
-        Ok(())
+        self.get_bytes_mut(ptr, 1).map(|bytes| bytes[0] = b as u8)
     }
 
     pub fn read_int(&self, ptr: Pointer, size: usize) -> EvalResult<i64> {

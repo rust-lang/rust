@@ -8,12 +8,14 @@ fn boolean() -> bool {
 
 #[miri_run]
 fn if_false() -> i64 {
-    if false { 1 } else { 0 }
+    let c = false;
+    if c { 1 } else { 0 }
 }
 
 #[miri_run]
 fn if_true() -> i64 {
-    if true { 1 } else { 0 }
+    let c = true;
+    if c { 1 } else { 0 }
 }
 
 #[miri_run]
