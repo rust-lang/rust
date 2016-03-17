@@ -57,7 +57,7 @@ impl ImportDirectiveSubclass {
 
 /// One import directive.
 #[derive(Debug,Clone)]
-pub struct ImportDirective {
+pub struct ImportDirective<'a> {
     module_path: Vec<Name>,
     subclass: ImportDirectiveSubclass,
     span: Span,
@@ -66,14 +66,14 @@ pub struct ImportDirective {
     is_prelude: bool,
 }
 
-impl ImportDirective {
+impl<'a> ImportDirective<'a> {
     pub fn new(module_path: Vec<Name>,
                subclass: ImportDirectiveSubclass,
                span: Span,
                id: NodeId,
                is_public: bool,
                is_prelude: bool)
-               -> ImportDirective {
+               -> Self {
         ImportDirective {
             module_path: module_path,
             subclass: subclass,
@@ -86,9 +86,8 @@ impl ImportDirective {
 
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
-    fn import<'a>(&self,
-                  binding: &'a NameBinding<'a>,
-                  privacy_error: Option<Box<PrivacyError<'a>>>) -> NameBinding<'a> {
+    fn import(&self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
+              -> NameBinding<'a> {
         let mut modifiers = match self.is_public {
             true => DefModifiers::PUBLIC | DefModifiers::IMPORTABLE,
             false => DefModifiers::empty(),
@@ -292,7 +291,7 @@ impl<'a> ::ModuleS<'a> {
 struct ImportResolvingError<'a> {
     /// Module where the error happened
     source_module: Module<'a>,
-    import_directive: &'a ImportDirective,
+    import_directive: &'a ImportDirective<'a>,
     span: Span,
     help: String,
 }
@@ -424,7 +423,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     /// don't know whether the name exists at the moment due to other
     /// currently-unresolved imports, or success if we know the name exists.
     /// If successful, the resolved bindings are written into the module.
-    fn resolve_import(&mut self, directive: &'b ImportDirective) -> ResolveResult<()> {
+    fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> ResolveResult<()> {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&directive.module_path),
                module_to_string(self.resolver.current_module));
@@ -579,7 +578,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     // succeeds or bails out (as importing * from an empty module or a module
     // that exports nothing is valid). target_module is the module we are
     // actually importing, i.e., `foo` in `use foo::*`.
-    fn resolve_glob_import(&mut self, target_module: Module<'b>, directive: &'b ImportDirective)
+    fn resolve_glob_import(&mut self, target_module: Module<'b>, directive: &'b ImportDirective<'b>)
                            -> ResolveResult<()> {
         if let Some(Def::Trait(_)) = target_module.def {
             self.resolver.session.span_err(directive.span, "items in traits are not importable.");
