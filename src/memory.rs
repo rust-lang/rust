@@ -170,14 +170,14 @@ impl Memory {
         use syntax::ast::{IntTy, UintTy};
         match ty.sty {
             ty::TyBool              => self.read_bool(ptr).map(PrimVal::Bool),
-            ty::TyInt(IntTy::I8)    => self.read_i8(ptr).map(PrimVal::I8),
-            ty::TyInt(IntTy::I16)   => self.read_i16(ptr).map(PrimVal::I16),
-            ty::TyInt(IntTy::I32)   => self.read_i32(ptr).map(PrimVal::I32),
-            ty::TyInt(IntTy::I64)   => self.read_i64(ptr).map(PrimVal::I64),
-            ty::TyUint(UintTy::U8)  => self.read_u8(ptr).map(PrimVal::U8),
-            ty::TyUint(UintTy::U16) => self.read_u16(ptr).map(PrimVal::U16),
-            ty::TyUint(UintTy::U32) => self.read_u32(ptr).map(PrimVal::U32),
-            ty::TyUint(UintTy::U64) => self.read_u64(ptr).map(PrimVal::U64),
+            ty::TyInt(IntTy::I8)    => self.read_int(ptr, 1).map(|n| PrimVal::I8(n as i8)),
+            ty::TyInt(IntTy::I16)   => self.read_int(ptr, 2).map(|n| PrimVal::I16(n as i16)),
+            ty::TyInt(IntTy::I32)   => self.read_int(ptr, 4).map(|n| PrimVal::I32(n as i32)),
+            ty::TyInt(IntTy::I64)   => self.read_int(ptr, 8).map(|n| PrimVal::I64(n as i64)),
+            ty::TyUint(UintTy::U8)  => self.read_uint(ptr, 1).map(|n| PrimVal::U8(n as u8)),
+            ty::TyUint(UintTy::U16) => self.read_uint(ptr, 2).map(|n| PrimVal::U16(n as u16)),
+            ty::TyUint(UintTy::U32) => self.read_uint(ptr, 4).map(|n| PrimVal::U32(n as u32)),
+            ty::TyUint(UintTy::U64) => self.read_uint(ptr, 8).map(|n| PrimVal::U64(n as u64)),
 
             // TODO(tsion): Pick the PrimVal dynamically.
             ty::TyInt(IntTy::Is)    => self.read_int(ptr, POINTER_SIZE).map(PrimVal::I64),
@@ -189,14 +189,14 @@ impl Memory {
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<()> {
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
-            PrimVal::I8(n)   => self.write_i8(ptr, n),
-            PrimVal::I16(n)  => self.write_i16(ptr, n),
-            PrimVal::I32(n)  => self.write_i32(ptr, n),
-            PrimVal::I64(n)  => self.write_i64(ptr, n),
-            PrimVal::U8(n)   => self.write_u8(ptr, n),
-            PrimVal::U16(n)  => self.write_u16(ptr, n),
-            PrimVal::U32(n)  => self.write_u32(ptr, n),
-            PrimVal::U64(n)  => self.write_u64(ptr, n),
+            PrimVal::I8(n)   => self.write_int(ptr, n as i64, 1),
+            PrimVal::I16(n)  => self.write_int(ptr, n as i64, 2),
+            PrimVal::I32(n)  => self.write_int(ptr, n as i64, 4),
+            PrimVal::I64(n)  => self.write_int(ptr, n as i64, 8),
+            PrimVal::U8(n)   => self.write_uint(ptr, n as u64, 1),
+            PrimVal::U16(n)  => self.write_uint(ptr, n as u64, 2),
+            PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
+            PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
         }
     }
 
@@ -215,88 +215,12 @@ impl Memory {
         Ok(())
     }
 
-    pub fn read_i8(&self, ptr: Pointer) -> EvalResult<i8> {
-        self.get_bytes(ptr, 1).map(|b| b[0] as i8)
-    }
-
-    pub fn write_i8(&mut self, ptr: Pointer, n: i8) -> EvalResult<()> {
-        self.get_bytes_mut(ptr, 1).map(|b| b[0] = n as u8)
-    }
-
-    pub fn read_i16(&self, ptr: Pointer) -> EvalResult<i16> {
-        self.get_bytes(ptr, 2).map(byteorder::NativeEndian::read_i16)
-    }
-
-    pub fn write_i16(&mut self, ptr: Pointer, n: i16) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 2));
-        byteorder::NativeEndian::write_i16(bytes, n);
-        Ok(())
-    }
-
-    pub fn read_i32(&self, ptr: Pointer) -> EvalResult<i32> {
-        self.get_bytes(ptr, 4).map(byteorder::NativeEndian::read_i32)
-    }
-
-    pub fn write_i32(&mut self, ptr: Pointer, n: i32) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 4));
-        byteorder::NativeEndian::write_i32(bytes, n);
-        Ok(())
-    }
-
-    pub fn read_i64(&self, ptr: Pointer) -> EvalResult<i64> {
-        self.get_bytes(ptr, 8).map(byteorder::NativeEndian::read_i64)
-    }
-
-    pub fn write_i64(&mut self, ptr: Pointer, n: i64) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 8));
-        byteorder::NativeEndian::write_i64(bytes, n);
-        Ok(())
-    }
-
     pub fn read_int(&self, ptr: Pointer, size: usize) -> EvalResult<i64> {
         self.get_bytes(ptr, size).map(|mut b| b.read_int::<NativeEndian>(size).unwrap())
     }
 
     pub fn write_int(&mut self, ptr: Pointer, n: i64, size: usize) -> EvalResult<()> {
         self.get_bytes_mut(ptr, size).map(|mut b| b.write_int::<NativeEndian>(n, size).unwrap())
-    }
-
-    pub fn read_u8(&self, ptr: Pointer) -> EvalResult<u8> {
-        self.get_bytes(ptr, 1).map(|b| b[0] as u8)
-    }
-
-    pub fn write_u8(&mut self, ptr: Pointer, n: u8) -> EvalResult<()> {
-        self.get_bytes_mut(ptr, 1).map(|b| b[0] = n as u8)
-    }
-
-    pub fn read_u16(&self, ptr: Pointer) -> EvalResult<u16> {
-        self.get_bytes(ptr, 2).map(byteorder::NativeEndian::read_u16)
-    }
-
-    pub fn write_u16(&mut self, ptr: Pointer, n: u16) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 2));
-        byteorder::NativeEndian::write_u16(bytes, n);
-        Ok(())
-    }
-
-    pub fn read_u32(&self, ptr: Pointer) -> EvalResult<u32> {
-        self.get_bytes(ptr, 4).map(byteorder::NativeEndian::read_u32)
-    }
-
-    pub fn write_u32(&mut self, ptr: Pointer, n: u32) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 4));
-        byteorder::NativeEndian::write_u32(bytes, n);
-        Ok(())
-    }
-
-    pub fn read_u64(&self, ptr: Pointer) -> EvalResult<u64> {
-        self.get_bytes(ptr, 8).map(byteorder::NativeEndian::read_u64)
-    }
-
-    pub fn write_u64(&mut self, ptr: Pointer, n: u64) -> EvalResult<()> {
-        let bytes = try!(self.get_bytes_mut(ptr, 8));
-        byteorder::NativeEndian::write_u64(bytes, n);
-        Ok(())
     }
 
     pub fn read_uint(&self, ptr: Pointer, size: usize) -> EvalResult<u64> {

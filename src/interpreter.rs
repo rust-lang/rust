@@ -306,7 +306,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let offset_arg = try!(self.eval_operand(&args[1]));
                 let ptr = try!(self.memory.read_ptr(ptr_arg));
                 // TODO(tsion): read_isize
-                let offset = try!(self.memory.read_i64(offset_arg));
+                let offset = try!(self.memory.read_int(offset_arg, 8));
                 let result_ptr = ptr.offset(offset as isize * pointee_size);
                 try!(self.memory.write_ptr(dest, result_ptr));
             }
@@ -435,7 +435,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) =>
                                 // TODO(tsion): Add write_usize? (Host/target issues.)
-                                self.memory.write_u64(dest.offset(8), length as u64),
+                                self.memory.write_uint(dest.offset(8), length as u64, 8),
 
                             _ => panic!("can't handle cast: {:?}", rvalue),
                         }
@@ -548,7 +548,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             Integral(int) => {
                 // TODO(tsion): Check int constant type.
                 let ptr = self.memory.allocate(8);
-                try!(self.memory.write_u64(ptr, int.to_u64_unchecked()));
+                try!(self.memory.write_uint(ptr, int.to_u64_unchecked(), 8));
                 Ok(ptr)
             }
             Str(ref _s) => unimplemented!(),
