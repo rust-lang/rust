@@ -230,6 +230,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let lvalue_pref = LvaluePreference::from_mutbl(mt_b.mutbl);
         let mut first_error = None;
+        let mut r_borrow_var = None;
         let (_, autoderefs, success) = autoderef(self.fcx, span, a, exprs,
                                                  UnresolvedTypeAction::Ignore,
                                                  lvalue_pref,
@@ -264,21 +265,57 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // mutability [1], since it may be that we are coercing
             // from `&mut T` to `&U`.
             //
-            // One fine point concerns the region that we use [2]. We
+            // One fine point concerns the region that we use. We
             // choose the region such that the region of the final
             // type that results from `unify` will be the region we
             // want for the autoref:
             //
-            // - if in lub mode, that means we want to unify `&'a mut [T]`
-            //   (from source) and `&'b mut [T]` (target).
-            // - if in sub mode, that means we want to use `'b` for
-            //   both pointers. This is because sub mode (somewhat
+            // - if in sub mode, that means we want to use `'b` (the
+            //   region from the target reference) for both
+            //   pointers [2]. This is because sub mode (somewhat
             //   arbitrarily) returns the subtype region.  In the case
             //   where we are coercing to a target type, we know we
             //   want to use that target type region (`'b`) because --
             //   for the program to type-check -- it must be the
             //   smaller of the two.
-            let r = if self.use_lub {r_a} else {r_b}; // [2] above
+            // - if in lub mode, things can get fairly complicated. The
+            //   easiest thing is just to make a fresh
+            //   region variable [4], which effectively means we defer
+            //   the decision to region inference (and regionck, which will add
+            //   some more edges to this variable). However, this can wind up
+            //   creating a crippling number of variables in some cases --
+            //   e.g. #32278 -- so we optimize one particular case [3].
+            //   Let me try to explain with some examples:
+            //   - The "running example" above represents the simple case,
+            //     where we have one `&` reference at the outer level and
+            //     ownership all the rest of the way down. In this case,
+            //     we want `LUB('a, 'b)` as the resulting region.
+            //   - However, if there are nested borrows, that region is
+            //     too strong. Consider a coercion from `&'a &'x Rc<T>` to
+            //     `&'b T`. In this case, `'a` is actually irrelevant.
+            //     The pointer we want is `LUB('x, 'b`). If we choose `LUB('a,'b)`
+            //     we get spurious errors (`run-pass/regions-lub-ref-ref-rc.rs`).
+            //     (The errors actually show up in borrowck, typically, because
+            //     this extra edge causes the region `'a` to be inferred to something
+            //     too big, which then results in borrowck errors.)
+            //   - We could track the innermost shared reference, but there is already
+            //     code in regionck that has the job of creating links between
+            //     the region of a borrow and the regions in the thing being
+            //     borrowed (here, `'a` and `'x`), and it knows how to handle
+            //     all the various cases. So instead we just make a region variable
+            //     and let regionck figure it out.
+            let r = if !self.use_lub {
+                r_b // [2] above
+            } else if autoderef == 1 {
+                r_a // [3] above
+            } else {
+                if r_borrow_var.is_none() { // create var lazilly, at most once
+                    let coercion = Coercion(span);
+                    let r = self.fcx.infcx().next_region_var(coercion);
+                    r_borrow_var = Some(self.tcx().mk_region(r)); // [4] above
+                }
+                r_borrow_var.unwrap()
+            };
             let derefd_ty_a = self.tcx().mk_ref(r, TypeAndMut {
                 ty: referent_ty,
                 mutbl: mt_b.mutbl // [1] above
@@ -302,18 +339,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let ty = match success {
             Some(ty) => ty,
             None => {
-                return Err(first_error.expect("coerce_borrowed_pointer had no error"));
+                let err = first_error.expect("coerce_borrowed_pointer had no error");
+                debug!("coerce_borrowed_pointer: failed with err = {:?}", err);
+                return Err(err);
             }
         };
 
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
         let r_borrow = match ty.sty {
-            ty::TyRef(r, _) => r,
+            ty::TyRef(r_borrow, _) => r_borrow,
             _ => self.tcx().sess.span_bug(span,
                                           &format!("expected a ref type, got {:?}", ty))
         };
         let autoref = Some(AutoPtr(r_borrow, mt_b.mutbl));
+        debug!("coerce_borrowed_pointer: succeeded ty={:?} autoderefs={:?} autoref={:?}",
+               ty, autoderefs, autoref);
         Ok((ty, AdjustDerefRef(AutoDerefRef {
             autoderefs: autoderefs,
             autoref: autoref,
