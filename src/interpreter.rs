@@ -310,7 +310,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 for (field, operand) in fields.iter().zip(operands) {
                     let src = try!(self.eval_operand(operand));
                     let field_dest = dest.offset(field.offset as isize);
-                    try!(self.memory.copy(src, field_dest, field.repr.size()));
+                    try!(self.memory.copy(src, field_dest, field.size));
                 }
             }
             _ => panic!("expected Repr::Product target"),
@@ -558,10 +558,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     fn make_product_repr<I>(&self, iter: I) -> Repr where I: IntoIterator<Item = ty::Ty<'tcx>> {
         let mut size = 0;
         let fields = iter.into_iter().map(|ty| {
-            let repr = self.ty_to_repr(ty);
+            let field_size = self.ty_to_repr(ty).size();
             let old_size = size;
-            size += repr.size();
-            FieldRepr { offset: old_size, repr: repr }
+            size += field_size;
+            FieldRepr { offset: old_size, size: field_size }
         }).collect();
         Repr::Product { size: size, fields: fields }
     }

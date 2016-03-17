@@ -35,7 +35,7 @@ pub struct Pointer {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldRepr {
     pub offset: usize,
-    pub repr: Repr,
+    pub size: usize,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
