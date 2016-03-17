@@ -1,6 +1,15 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![deny(clippy)]
+//~^ NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
 #![allow(unused)]
 
 fn main() {
@@ -8,8 +17,13 @@ fn main() {
     let spectre: i32;
 
     let apple: i32; //~ NOTE: existing binding defined here
+    //~^ NOTE: existing binding defined here
     let bpple: i32; //~ ERROR: name is too similar
+    //~| HELP: separate the discriminating character by an underscore like: `b_pple`
+    //~| HELP: for further information visit
     let cpple: i32; //~ ERROR: name is too similar
+    //~| HELP: separate the discriminating character by an underscore like: `c_pple`
+    //~| HELP: for further information visit
 
     let a_bar: i32;
     let b_bar: i32;
@@ -31,14 +45,17 @@ fn main() {
 
     let blubrhs: i32; //~ NOTE: existing binding defined here
     let blublhs: i32; //~ ERROR: name is too similar
+    //~| HELP: for further information visit
 
     let blubx: i32; //~ NOTE: existing binding defined here
     let bluby: i32; //~ ERROR: name is too similar
+    //~| HELP: for further information visit
     //~| HELP: separate the discriminating character by an underscore like: `blub_y`
 
     let cake: i32; //~ NOTE: existing binding defined here
     let cakes: i32;
     let coke: i32; //~ ERROR: name is too similar
+    //~| HELP: for further information visit
 
     match 5 {
         cheese @ 1 => {},
@@ -84,14 +101,18 @@ fn bla() {
         }
         {
             let e: i32; //~ ERROR: 5th binding whose name is just one char
+            //~| HELP: for further information visit
         }
         {
             let e: i32; //~ ERROR: 5th binding whose name is just one char
+            //~| HELP: for further information visit
             let f: i32; //~ ERROR: 6th binding whose name is just one char
+            //~| HELP: for further information visit
         }
         match 5 {
             1 => println!(""),
             e => panic!(), //~ ERROR: 5th binding whose name is just one char
+            //~| HELP: for further information visit
         }
         match 5 {
             1 => println!(""),
