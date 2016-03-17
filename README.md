@@ -110,8 +110,8 @@ options covering different styles. File an issue, or even better, submit a PR.
 * For things you do not want rustfmt to mangle, use one of
 
     ```rust
-    #[rustfmt_skip]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt_skip]  // requires nightly and #![feature(custom_attribute)] in crate root
+    #[cfg_attr(rustfmt, rustfmt_skip)]  // works in stable
     ```
 * When you run rustfmt, place a file named rustfmt.toml in target file
   directory or its parents to override the default settings of rustfmt.
