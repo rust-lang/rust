@@ -433,8 +433,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
                     Misc => {
                         if pointee_type(src_ty).is_some() && pointee_type(dest_ty).is_some() {
+                            // FIXME(tsion): Wrong for fat pointers.
                             self.memory.copy(src, dest, 8)
                         } else {
+                            // FIXME(tsion): Wrong for almost everything.
                             self.memory.copy(src, dest, 8)
                             // panic!("can't handle cast: {:?}", rvalue);
                         }
