@@ -8,12 +8,10 @@ use std::ptr;
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
-// TODO(tsion): How should this get set? Host or target pointer size?
-const POINTER_SIZE: usize = 8;
-
 pub struct Memory {
-    next_id: u64,
     alloc_map: HashMap<u64, Allocation>,
+    next_id: u64,
+    pub pointer_size: usize,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -40,13 +38,10 @@ pub struct FieldRepr {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Repr {
-    /// Representation for a primitive type such as a boolean, integer, or character.
+    /// Representation for a non-aggregate type such as a boolean, integer, character or pointer.
     Primitive {
         size: usize
     },
-
-    Pointer,
-    FatPointer,
 
     /// The representation for aggregate types including structs, enums, and tuples.
     Aggregate {
@@ -71,7 +66,13 @@ pub enum Repr {
 
 impl Memory {
     pub fn new() -> Self {
-        Memory { next_id: 0, alloc_map: HashMap::new() }
+        Memory {
+            alloc_map: HashMap::new(),
+            next_id: 0,
+
+            // TODO(tsion): Should this be host's or target's usize?
+            pointer_size: mem::size_of::<usize>(),
+        }
     }
 
     pub fn allocate(&mut self, size: usize) -> Pointer {
@@ -145,8 +146,8 @@ impl Memory {
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {
         let alloc = try!(self.get(ptr.alloc_id));
-        try!(alloc.check_relocation_edges(ptr.offset, ptr.offset + POINTER_SIZE));
-        let bytes = &alloc.bytes[ptr.offset..ptr.offset + POINTER_SIZE];
+        try!(alloc.check_relocation_edges(ptr.offset, ptr.offset + self.pointer_size));
+        let bytes = &alloc.bytes[ptr.offset..ptr.offset + self.pointer_size];
         let offset = byteorder::NativeEndian::read_u64(bytes) as usize;
 
         match alloc.relocations.get(&ptr.offset) {
@@ -158,7 +159,8 @@ impl Memory {
     // TODO(tsion): Detect invalid writes here and elsewhere.
     pub fn write_ptr(&mut self, dest: Pointer, ptr_val: Pointer) -> EvalResult<()> {
         {
-            let bytes = try!(self.get_bytes_mut(dest, POINTER_SIZE));
+            let size = self.pointer_size;
+            let bytes = try!(self.get_bytes_mut(dest, size));
             byteorder::NativeEndian::write_u64(bytes, ptr_val.offset as u64);
         }
         let alloc = try!(self.get_mut(dest.alloc_id));
@@ -180,8 +182,8 @@ impl Memory {
             ty::TyUint(UintTy::U64) => self.read_uint(ptr, 8).map(|n| PrimVal::U64(n as u64)),
 
             // TODO(tsion): Pick the PrimVal dynamically.
-            ty::TyInt(IntTy::Is)    => self.read_int(ptr, POINTER_SIZE).map(PrimVal::I64),
-            ty::TyUint(UintTy::Us)  => self.read_uint(ptr, POINTER_SIZE).map(PrimVal::U64),
+            ty::TyInt(IntTy::Is)    => self.read_int(ptr, self.pointer_size).map(PrimVal::I64),
+            ty::TyUint(UintTy::Us)  => self.read_uint(ptr, self.pointer_size).map(PrimVal::U64),
             _ => panic!("primitive read of non-primitive type: {:?}", ty),
         }
     }
@@ -241,7 +243,8 @@ impl Allocation {
 
     fn count_overlapping_relocations(&self, start: usize, end: usize) -> usize {
         self.relocations.range(
-            Included(&start.saturating_sub(POINTER_SIZE - 1)),
+            // FIXME(tsion): Assuming pointer size is 8. Move this method to Memory.
+            Included(&start.saturating_sub(8 - 1)),
             Excluded(&end)
         ).count()
     }
@@ -275,23 +278,11 @@ impl Pointer {
 }
 
 impl Repr {
-    // TODO(tsion): Choice is based on host machine's type size. Should this be how miri works?
-    pub fn isize() -> Self {
-        Repr::Primitive { size: mem::size_of::<isize>() }
-    }
-
-    // TODO(tsion): Choice is based on host machine's type size. Should this be how miri works?
-    pub fn usize() -> Self {
-        Repr::Primitive { size: mem::size_of::<usize>() }
-    }
-
     pub fn size(&self) -> usize {
         match *self {
             Repr::Primitive { size } => size,
             Repr::Aggregate { size, .. } => size,
             Repr::Array { elem_size, length } => elem_size * length,
-            Repr::Pointer => POINTER_SIZE,
-            Repr::FatPointer => POINTER_SIZE * 2,
         }
     }
 }
