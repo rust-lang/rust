@@ -88,5 +88,5 @@ register_diagnostics! {
     E0469, // imported macro not found
     E0470, // reexported macro not found
     E0519, // local crate and dependency have same (crate-name, disambiguator)
-    E0521, // two dependencies have same (crate-name, disambiguator) but different SVH
+    E0522, // two dependencies have same (crate-name, disambiguator) but different SVH
 }
