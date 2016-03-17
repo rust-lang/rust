@@ -24,7 +24,7 @@ struct Evil<'a, 'b: 'a>(Option<&'a &'b ()>);
 impl<'a, 'b> Foo<'a, 'b, Evil<'a, 'b>> for () {
     fn make_me() -> Self { }
     fn static_evil(u: &'b u32) -> &'a u32 {
-        u //~ ERROR cannot infer an appropriate lifetime
+        u //~ ERROR E0312
     }
 }
 
@@ -40,7 +40,7 @@ impl<'a, 'b> Foo<'a, 'b, ()> for IndirectEvil<'a, 'b> {
 
 impl<'a, 'b> Evil<'a, 'b> {
     fn inherent_evil(u: &'b u32) -> &'a u32 {
-        u //~ ERROR cannot infer an appropriate lifetime
+        u //~ ERROR E0312
     }
 }
 

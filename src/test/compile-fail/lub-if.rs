@@ -35,14 +35,14 @@ pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
         "(none)"
     } else {
         let s: &'a str = maybestr.as_ref().unwrap();
-        s  //~ ERROR cannot infer an appropriate lifetime for automatic coercion due to conflicting
+        s  //~ ERROR E0312
     }
 }
 
 pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
     if maybestr.is_some() {
         let s: &'a str = maybestr.as_ref().unwrap();
-        s  //~ ERROR cannot infer an appropriate lifetime for automatic coercion due to conflicting
+        s  //~ ERROR E0312
     } else {
         "(none)"
     }

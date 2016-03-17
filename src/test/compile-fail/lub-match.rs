@@ -37,8 +37,7 @@ pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
         None => "(none)",
         Some(ref s) => {
             let s: &'a str = s;
-            s
-            //~^ ERROR cannot infer an appropriate lifetime
+            s //~ ERROR E0312
         }
     }
 }
@@ -47,8 +46,7 @@ pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
     match *maybestr {
         Some(ref s) => {
             let s: &'a str = s;
-            s
-            //~^ ERROR cannot infer an appropriate lifetime
+            s //~ ERROR E0312
         }
         None => "(none)",
     }
