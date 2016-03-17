@@ -25,6 +25,7 @@ struct Foo;
 impl OuterTrait for Foo {}
 //~^ ERROR trait `OuterTrait` is not in scope
 //~| HELP you can to import it into scope: `use issue_21221_3::outer::OuterTrait;`.
+//~| HELP run `rustc --explain E0405` to see a detailed explanation
 fn main() {
     println!("Hello, world!");
 }

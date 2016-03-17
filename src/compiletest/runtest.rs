@@ -1013,8 +1013,8 @@ fn check_expected_errors(revision: Option<&str>,
         expected_errors.iter()
                         .fold((false, false),
                               |(acc_help, acc_note), ee|
-                                  (acc_help || ee.kind == "help:", acc_note ||
-                                   ee.kind == "note:"));
+                                  (acc_help || ee.kind == "help:" || ee.kind == "help",
+                                   acc_note || ee.kind == "note:" || ee.kind == "note"));
 
     // Scan and extract our error/warning messages,
     // which look like:

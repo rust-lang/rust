@@ -29,6 +29,7 @@ fn make_bar<T:Bar>(t: &T) -> &Bar {
 
 fn make_bar_explicit<T:Bar>(t: &T) -> &Bar {
     //~^ ERROR E0038
+    //~^^ NOTE method `bar` has generic type parameters
     t as &Bar
 }
 

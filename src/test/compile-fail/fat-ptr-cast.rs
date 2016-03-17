@@ -18,6 +18,7 @@ fn main() {
     let q = a.as_ptr();
 
     a as usize; //~ ERROR casting
+    //~^ HELP cast through a raw pointer first
     b as usize; //~ ERROR non-scalar cast
     p as usize;
     //~^ ERROR casting
