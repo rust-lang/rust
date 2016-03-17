@@ -378,11 +378,27 @@ impl FnType {
         if abi == Abi::Rust || abi == Abi::RustCall ||
            abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             let fixup = |arg: &mut ArgType| {
-                if !arg.ty.is_aggregate() {
+                let mut llty = arg.ty;
+
+                // Replace newtypes with their inner-most type.
+                while llty.kind() == llvm::TypeKind::Struct {
+                    let inner = llty.field_types();
+                    if inner.len() != 1 {
+                        break;
+                    }
+                    llty = inner[0];
+                }
+
+                if !llty.is_aggregate() {
                     // Scalars and vectors, always immediate.
+                    if llty != arg.ty {
+                        // Needs a cast as we've unpacked a newtype.
+                        arg.cast = Some(llty);
+                    }
                     return;
                 }
-                let size = llsize_of_real(ccx, arg.ty);
+
+                let size = llsize_of_real(ccx, llty);
                 if size > llsize_of_real(ccx, ccx.int_type()) {
                     arg.make_indirect(ccx);
                 } else if size > 0 {
