@@ -57,13 +57,17 @@ impl Socket {
             SocketAddr::V4(..) => libc::AF_INET,
             SocketAddr::V6(..) => libc::AF_INET6,
         };
+        Socket::new_raw(fam, ty)
+    }
+
+    pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             // On linux we first attempt to pass the SOCK_CLOEXEC flag to
             // atomically create the socket and set it as CLOEXEC. Support for
             // this option, however, was added in 2.6.27, and we still support
             // 2.6.18 as a kernel, so if the returned error is EINVAL we
             // fallthrough to the fallback.
-            if cfg!(target_os = "linux") {
+            if cfg!(linux) {
                 match cvt(libc::socket(fam, ty | SOCK_CLOEXEC, 0)) {
                     Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
                     Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {}
@@ -75,6 +79,30 @@ impl Socket {
             let fd = FileDesc::new(fd);
             fd.set_cloexec();
             Ok(Socket(fd))
+        }
+    }
+
+    pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
+        unsafe {
+            let mut fds = [0, 0];
+
+            // Like above, see if we can set cloexec atomically
+            if cfg!(linux) {
+                match cvt(libc::socketpair(fam, ty | SOCK_CLOEXEC, 0, fds.as_mut_ptr())) {
+                    Ok(_) => {
+                        return Ok((Socket(FileDesc::new(fds[0])), Socket(FileDesc::new(fds[1]))));
+                    }
+                    Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {},
+                    Err(e) => return Err(e),
+                }
+            }
+
+            try!(cvt(libc::socketpair(fam, ty, 0, fds.as_mut_ptr())));
+            let a = FileDesc::new(fds[0]);
+            a.set_cloexec();
+            let b = FileDesc::new(fds[1]);
+            b.set_cloexec();
+            Ok((Socket(a), Socket(b)))
         }
     }
 
@@ -118,6 +146,10 @@ impl Socket {
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.0.read_to_end(buf)
+    }
+
+    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
@@ -185,6 +217,15 @@ impl Socket {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_ulong;
         cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) }).map(|_| ())
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        let raw: c_int = try!(getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR));
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
     }
 }
 

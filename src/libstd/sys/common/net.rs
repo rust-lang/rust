@@ -257,12 +257,7 @@ impl TcpStream {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
-        if raw == 0 {
-            Ok(None)
-        } else {
-            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
-        }
+        self.inner.take_error()
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -367,12 +362,7 @@ impl TcpListener {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
-        if raw == 0 {
-            Ok(None)
-        } else {
-            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
-        }
+        self.inner.take_error()
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -564,12 +554,7 @@ impl UdpSocket {
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
-        if raw == 0 {
-            Ok(None)
-        } else {
-            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
-        }
+        self.inner.take_error()
     }
 
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
