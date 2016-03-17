@@ -184,6 +184,10 @@ impl Memory {
             ty::TyUint(UintTy::U16) => self.read_u16(ptr).map(PrimVal::U16),
             ty::TyUint(UintTy::U32) => self.read_u32(ptr).map(PrimVal::U32),
             ty::TyUint(UintTy::U64) => self.read_u64(ptr).map(PrimVal::U64),
+
+            // TODO(tsion): Pick the PrimVal dynamically.
+            ty::TyInt(IntTy::Is)    => self.read_int(ptr, POINTER_SIZE).map(PrimVal::I64),
+            ty::TyUint(UintTy::Us)  => self.read_uint(ptr, POINTER_SIZE).map(PrimVal::U64),
             _ => panic!("primitive read of non-primitive type: {:?}", ty),
         }
     }
@@ -253,6 +257,14 @@ impl Memory {
         let bytes = try!(self.get_bytes_mut(ptr, 8));
         byteorder::NativeEndian::write_i64(bytes, n);
         Ok(())
+    }
+
+    pub fn read_int(&self, ptr: Pointer, size: usize) -> EvalResult<i64> {
+        self.get_bytes(ptr, size).map(|mut b| b.read_int::<NativeEndian>(size).unwrap())
+    }
+
+    pub fn write_int(&mut self, ptr: Pointer, n: i64, size: usize) -> EvalResult<()> {
+        self.get_bytes_mut(ptr, size).map(|mut b| b.write_int::<NativeEndian>(n, size).unwrap())
     }
 
     pub fn read_u8(&self, ptr: Pointer) -> EvalResult<u8> {

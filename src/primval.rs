@@ -1,35 +1,10 @@
 use rustc::mir::repr as mir;
 
-use memory::Repr;
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PrimVal {
     Bool(bool),
     I8(i8), I16(i16), I32(i32), I64(i64),
     U8(u8), U16(u16), U32(u32), U64(u64),
-}
-
-impl PrimVal {
-    pub fn from_usize(n: usize, repr: &Repr) -> Self {
-        // TODO(tsion): Use checked casts.
-        match *repr {
-            Repr::U8  => PrimVal::U8(n as u8),
-            Repr::U16 => PrimVal::U16(n as u16),
-            Repr::U32 => PrimVal::U32(n as u32),
-            Repr::U64 => PrimVal::U64(n as u64),
-            _ => panic!("attempted to make usize primval from non-uint repr"),
-        }
-    }
-
-    pub fn to_usize(self) -> usize {
-        match self {
-            PrimVal::U8(n)  => n as usize,
-            PrimVal::U16(n) => n as usize,
-            PrimVal::U32(n) => n as usize,
-            PrimVal::U64(n) => n as usize,
-            _ => panic!("attempted to make usize from non-uint primval"),
-        }
-    }
 }
 
 pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {

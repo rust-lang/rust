@@ -13,7 +13,7 @@ use syntax::codemap::DUMMY_SP;
 
 use error::EvalResult;
 use memory::{self, FieldRepr, Memory, Pointer, Repr};
-use primval::{self, PrimVal};
+use primval;
 
 const TRACE_EXECUTION: bool = true;
 
@@ -242,11 +242,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                                 match &self.tcx.item_name(def_id).as_str()[..] {
                                     "size_of" => {
                                         let ty = *substs.types.get(subst::FnSpace, 0);
-                                        let size = PrimVal::from_usize(
-                                            self.ty_to_repr(ty).size(),
-                                            &dest_repr
-                                        );
-                                        try!(self.memory.write_primval(dest, size));
+                                        let size = self.ty_to_repr(ty).size() as u64;
+                                        try!(self.memory.write_uint(dest, size, dest_repr.size()));
                                     }
 
                                     "offset" => {
