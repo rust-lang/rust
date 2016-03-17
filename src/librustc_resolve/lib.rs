@@ -849,13 +849,7 @@ pub struct ModuleS<'a> {
     prelude: RefCell<Option<Module<'a>>>,
 
     glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
-    resolved_globs: RefCell<(Vec<Module<'a>> /* public */, Vec<Module<'a>> /* private */)>,
-
-    // The number of public glob imports in this module.
-    public_glob_count: Cell<usize>,
-
-    // The number of private glob imports in this module.
-    private_glob_count: Cell<usize>,
+    globs: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
@@ -883,17 +877,10 @@ impl<'a> ModuleS<'a> {
             module_children: RefCell::new(NodeMap()),
             prelude: RefCell::new(None),
             glob_importers: RefCell::new(Vec::new()),
-            resolved_globs: RefCell::new((Vec::new(), Vec::new())),
-            public_glob_count: Cell::new(0),
-            private_glob_count: Cell::new(0),
+            globs: RefCell::new((Vec::new())),
             populated: Cell::new(!external),
             arenas: arenas
         }
-    }
-
-    fn add_import_directive(&self, import_directive: ImportDirective<'a>) {
-        let import_directive = self.arenas.alloc_import_directive(import_directive);
-        self.unresolved_imports.borrow_mut().push(import_directive);
     }
 
     fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
@@ -927,11 +914,6 @@ impl<'a> ModuleS<'a> {
             ParentLink::ModuleParentLink(parent, _) => self.is_ancestor_of(parent),
             _ => false,
         }
-    }
-
-    fn inc_glob_count(&self, is_public: bool) {
-        let glob_count = if is_public { &self.public_glob_count } else { &self.private_glob_count };
-        glob_count.set(glob_count.get() + 1);
     }
 }
 

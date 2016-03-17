@@ -212,29 +212,15 @@ impl<'a> ::ModuleS<'a> {
             });
         }
 
-        let (ref mut public_globs, ref mut private_globs) = *self.resolved_globs.borrow_mut();
-
-        // Check if the public globs are determined
-        if public_globs.len() < self.public_glob_count.get() {
-            return Indeterminate;
-        }
-        for module in public_globs.iter() {
-            if let Indeterminate = module.resolve_name(name, ns, false) {
-                return Indeterminate;
-            }
-        }
-
-        if !allow_private_imports {
-            return Failed(None);
-        }
-
-        // Check if the private globs are determined
-        if private_globs.len() < self.private_glob_count.get() {
-            return Indeterminate;
-        }
-        for module in private_globs.iter() {
-            if let Indeterminate = module.resolve_name(name, ns, false) {
-                return Indeterminate;
+        // Check if the globs are determined
+        for directive in self.globs.borrow().iter() {
+            if !allow_private_imports && !directive.is_public { continue }
+            match directive.target_module.get() {
+                None => return Indeterminate,
+                Some(target_module) => match target_module.resolve_name(name, ns, false) {
+                    Indeterminate => return Indeterminate,
+                    _ => {}
+                }
             }
         }
 
@@ -257,6 +243,18 @@ impl<'a> ::ModuleS<'a> {
         self.update_resolution(name, ns, |resolution| {
             resolution.try_define(self.arenas.alloc_name_binding(binding))
         })
+    }
+
+    pub fn add_import_directive(&self, directive: ImportDirective<'a>) {
+        let directive = self.arenas.alloc_import_directive(directive);
+        self.unresolved_imports.borrow_mut().push(directive);
+        if let GlobImport = directive.subclass {
+            // We don't add prelude imports to the globs since they only affect lexical scopes,
+            // which are not relevant to import resolution.
+            if !directive.is_prelude {
+                self.globs.borrow_mut().push(directive);
+            }
+        }
     }
 
     pub fn increment_outstanding_references_for(&self, name: Name, ns: Namespace, is_public: bool) {
@@ -603,12 +601,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             return Success(());
         }
 
-        // Add to target_module's glob_importers and module_'s resolved_globs
+        // Add to target_module's glob_importers
         target_module.glob_importers.borrow_mut().push((module_, directive));
-        match *module_.resolved_globs.borrow_mut() {
-            (ref mut public_globs, _) if directive.is_public => public_globs.push(target_module),
-            (_, ref mut private_globs) => private_globs.push(target_module),
-        }
 
         for (&(name, ns), resolution) in target_module.resolutions.borrow().iter() {
             if let Some(Success(binding)) = resolution.try_result(false) {
@@ -635,8 +629,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
     // reporting conflicts, reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
     fn finalize_resolutions(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
         // Since import resolution is finished, globs will not define any more names.
-        module.public_glob_count.set(0); module.private_glob_count.set(0);
-        *module.resolved_globs.borrow_mut() = (Vec::new(), Vec::new());
+        *module.globs.borrow_mut() = Vec::new();
 
         let mut reexports = Vec::new();
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {

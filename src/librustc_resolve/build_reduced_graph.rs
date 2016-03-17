@@ -538,13 +538,6 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 module_.increment_outstanding_references_for(target, ValueNS, is_public);
                 module_.increment_outstanding_references_for(target, TypeNS, is_public);
             }
-            GlobImport if !is_prelude => {
-                // Set the glob flag. This tells us that we don't know the
-                // module's exports ahead of time.
-                module_.inc_glob_count(is_public)
-            }
-            // Prelude imports are not included in the glob counts since they do not get added to
-            // `resolved_globs` -- they are handled separately in `resolve_imports`.
             GlobImport => {}
         }
 
