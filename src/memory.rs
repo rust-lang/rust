@@ -328,8 +328,8 @@ impl Allocation {
 }
 
 impl Pointer {
-    pub fn offset(self, i: usize) -> Self {
-        Pointer { offset: self.offset + i, ..self }
+    pub fn offset(self, i: isize) -> Self {
+        Pointer { offset: (self.offset as isize + i) as usize, ..self }
     }
 }
 

@@ -142,7 +142,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
             let repr = self.ty_to_repr(arg_decl.ty);
             let dest = self.memory.allocate(repr.size());
-            let (src, _) = try!(self.eval_operand(arg_operand));
+            let src = try!(self.eval_operand(arg_operand));
             try!(self.memory.copy(src, dest, repr.size()));
             locals.push(dest);
         }
@@ -171,7 +171,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         // TODO(tsion): Deallocate local variables.
     }
 
-    fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> EvalResult<TerminatorTarget> {
+    fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
+            -> EvalResult<TerminatorTarget> {
         use rustc::mir::repr::Terminator::*;
         let target = match *terminator {
             Return => TerminatorTarget::Return,
@@ -179,7 +180,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Goto { target } => TerminatorTarget::Block(target),
 
             If { ref cond, targets: (then_target, else_target) } => {
-                let (cond_ptr, _) = try!(self.eval_operand(cond));
+                let cond_ptr = try!(self.eval_operand(cond));
                 let cond_val = try!(self.memory.read_bool(cond_ptr));
                 TerminatorTarget::Block(if cond_val { then_target } else { else_target })
             }
@@ -280,8 +281,9 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match *dest_repr {
             Repr::Product { ref fields, .. } => {
                 for (field, operand) in fields.iter().zip(operands) {
-                    let (src, _) = try!(self.eval_operand(operand));
-                    try!(self.memory.copy(src, dest.offset(field.offset), field.repr.size()));
+                    let src = try!(self.eval_operand(operand));
+                    let field_dest = dest.offset(field.offset as isize);
+                    try!(self.memory.copy(src, field_dest, field.repr.size()));
                 }
             }
             _ => panic!("expected Repr::Product target"),
@@ -298,20 +300,20 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
-                let (src, _) = try!(self.eval_operand(operand));
+                let src = try!(self.eval_operand(operand));
                 self.memory.copy(src, dest, dest_repr.size())
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let (left_ptr, left_repr) = try!(self.eval_operand(left));
-                let (right_ptr, right_repr) = try!(self.eval_operand(right));
+                let (left_ptr, left_repr) = try!(self.eval_operand_and_repr(left));
+                let (right_ptr, right_repr) = try!(self.eval_operand_and_repr(right));
                 let left_val = try!(self.memory.read_primval(left_ptr, &left_repr));
                 let right_val = try!(self.memory.read_primval(right_ptr, &right_repr));
                 self.memory.write_primval(dest, primval::binary_op(bin_op, left_val, right_val))
             }
 
             UnaryOp(un_op, ref operand) => {
-                let (ptr, repr) = try!(self.eval_operand(operand));
+                let (ptr, repr) = try!(self.eval_operand_and_repr(operand));
                 let val = try!(self.memory.read_primval(ptr, &repr));
                 self.memory.write_primval(dest, primval::unary_op(un_op, val))
             }
@@ -331,7 +333,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                                     try!(self.memory.write_primval(dest, discr_val));
                                 }
                                 self.assign_to_product(
-                                    dest.offset(discr.size()),
+                                    dest.offset(discr.size() as isize),
                                     &variants[variant_idx],
                                     operands
                                 )
@@ -345,9 +347,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                             assert_eq!(length, operands.len());
                             let elem_size = elem.size();
                             for (i, operand) in operands.iter().enumerate() {
-                                let (src, _) = try!(self.eval_operand(operand));
+                                let src = try!(self.eval_operand(operand));
                                 let offset = i * elem_size;
-                                try!(self.memory.copy(src, dest.offset(offset), elem_size));
+                                let elem_dest = dest.offset(offset as isize);
+                                try!(self.memory.copy(src, elem_dest, elem_size));
                             }
                             Ok(())
                         }
@@ -373,11 +376,14 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         }
     }
 
-    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<(Pointer, Repr)> {
+    fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
+        self.eval_operand_and_repr(op).map(|(p, _)| p)
+    }
+
+    fn eval_operand_and_repr(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<(Pointer, Repr)> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) => Ok((try!(self.eval_lvalue(lvalue)), self.lvalue_repr(lvalue))),
-
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
@@ -418,12 +424,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                 match proj.elem {
                     Field(field, _) => match base_repr {
                         Repr::Product { ref fields, .. } =>
-                            base_ptr.offset(fields[field.index()].offset),
+                            base_ptr.offset(fields[field.index()].offset as isize),
                         _ => panic!("field access on non-product type: {:?}", base_repr),
                     },
 
                     Downcast(..) => match base_repr {
-                        Repr::Sum { ref discr, .. } => base_ptr.offset(discr.size()),
+                        Repr::Sum { ref discr, .. } => base_ptr.offset(discr.size() as isize),
                         _ => panic!("variant downcast on non-sum type"),
                     },
 
