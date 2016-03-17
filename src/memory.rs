@@ -63,7 +63,7 @@ pub enum Repr {
         /// The size of the largest variant in bytes.
         max_variant_size: usize,
 
-        /// The represenations of the contents of each variant.
+        /// The representations of the contents of each variant.
         variants: Vec<Repr>,
     },
 
