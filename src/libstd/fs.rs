@@ -1457,12 +1457,12 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
 
-    use env;
     use fs::{self, File, OpenOptions};
     use io::{ErrorKind, SeekFrom};
-    use path::{Path, PathBuf};
-    use rand::{self, StdRng, Rng};
+    use path::Path;
+    use rand::{StdRng, Rng};
     use str;
+    use sys_common::io::test::{TempDir, tmpdir};
 
     #[cfg(windows)]
     use os::windows::fs::{symlink_dir, symlink_file};
@@ -1489,37 +1489,6 @@ mod tests {
                                     format!("`{}` did not contain `{}`", err, $s))
         }
     ) }
-
-    pub struct TempDir(PathBuf);
-
-    impl TempDir {
-        fn join(&self, path: &str) -> PathBuf {
-            let TempDir(ref p) = *self;
-            p.join(path)
-        }
-
-        fn path<'a>(&'a self) -> &'a Path {
-            let TempDir(ref p) = *self;
-            p
-        }
-    }
-
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            // Gee, seeing how we're testing the fs module I sure hope that we
-            // at least implement this correctly!
-            let TempDir(ref p) = *self;
-            check!(fs::remove_dir_all(p));
-        }
-    }
-
-    pub fn tmpdir() -> TempDir {
-        let p = env::temp_dir();
-        let mut r = rand::thread_rng();
-        let ret = p.join(&format!("rust-{}", r.next_u32()));
-        check!(fs::create_dir(&ret));
-        TempDir(ret)
-    }
 
     // Several test fail on windows if the user does not have permission to
     // create symlinks (the `SeCreateSymbolicLinkPrivilege`). Instead of

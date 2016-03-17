@@ -52,13 +52,52 @@ pub unsafe fn read_to_end_uninitialized(r: &mut Read, buf: &mut Vec<u8>) -> io::
 }
 
 #[cfg(test)]
+pub mod test {
+    use prelude::v1::*;
+    use path::{Path, PathBuf};
+    use env;
+    use rand::{self, Rng};
+    use fs;
+
+    pub struct TempDir(PathBuf);
+
+    impl TempDir {
+        pub fn join(&self, path: &str) -> PathBuf {
+            let TempDir(ref p) = *self;
+            p.join(path)
+        }
+
+        pub fn path<'a>(&'a self) -> &'a Path {
+            let TempDir(ref p) = *self;
+            p
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            // Gee, seeing how we're testing the fs module I sure hope that we
+            // at least implement this correctly!
+            let TempDir(ref p) = *self;
+            fs::remove_dir_all(p).unwrap();
+        }
+    }
+
+    pub fn tmpdir() -> TempDir {
+        let p = env::temp_dir();
+        let mut r = rand::thread_rng();
+        let ret = p.join(&format!("rust-{}", r.next_u32()));
+        fs::create_dir(&ret).unwrap();
+        TempDir(ret)
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use prelude::v1::*;
     use io::prelude::*;
     use super::*;
     use io;
     use io::{ErrorKind, Take, Repeat, repeat};
-    use test;
     use slice::from_raw_parts;
 
     struct ErrorRepeat {
@@ -129,7 +168,7 @@ mod tests {
     }
 
     #[bench]
-    fn bench_uninitialized(b: &mut test::Bencher) {
+    fn bench_uninitialized(b: &mut ::test::Bencher) {
         b.iter(|| {
             let mut lr = repeat(1).take(10000000);
             let mut vec = Vec::with_capacity(1024);
