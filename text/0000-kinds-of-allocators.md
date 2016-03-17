@@ -1895,7 +1895,9 @@ pub unsafe trait Allocator {
     /// instead they should return an appropriate error from the
     /// invoked method, and let the client decide whether to invoke
     /// this `oom` method.
-    fn oom(&mut self, _: Self::Error) -> ! { ::core::intrinsics::abort() }
+    fn oom(&mut self, _: Self::Error) -> ! {
+        unsafe { ::core::intrinsics::abort() }
+    }
 ```
 
 ### Allocator-specific quantities and limits
