@@ -306,15 +306,15 @@ will expose:
     method.
 
 ```rust
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-enum BumpAllocError { Invalid, MemoryExhausted(alloc::Layout), Interference }
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum BumpAllocError { Invalid, MemoryExhausted(alloc::Layout), Interference }
 
 impl BumpAllocError {
-    fn is_transient(&self) { *self == BumpAllocError::Interference }
+    fn is_transient(&self) -> bool { *self == BumpAllocError::Interference }
 }
 
 impl alloc::AllocError for BumpAllocError {
-    fn invalid_input() -> Self { BumpAllocError::MemoryExhausted }
+    fn invalid_input() -> Self { BumpAllocError::Invalid }
     fn is_memory_exhausted(&self) -> bool { if let BumpAllocError::MemoryExhausted(_) = *self { true } else { false }  }
     fn is_request_unsupported(&self) -> bool { false }
 }
@@ -337,13 +337,14 @@ Here is the demo implementation of `Allocator` for the type.
 impl<'a> Allocator for &'a DumbBumpPool {
     type Error = BumpAllocError;
 
-    unsafe fn alloc(&mut self, layout: &alloc::Layout) -> Result<Address, Self::Error> {
+    unsafe fn alloc(&mut self, layout: alloc::Layout) -> Result<Address, Self::Error> {
         let curr = self.avail.load(Ordering::Relaxed) as usize;
         let align = *layout.align();
-        let curr_aligned = (curr.overflowing_add(align - 1)) & !(align - 1);
+        let (sum, oflo) = curr.overflowing_add(align - 1);
+        let curr_aligned = sum & !(align - 1);
         let size = *layout.size();
         let remaining = (self.end as usize) - curr_aligned;
-        if remaining <= size {
+        if oflo || remaining <= size {
             return Err(BumpAllocError::MemoryExhausted(layout.clone()));
         }
 
@@ -359,7 +360,7 @@ impl<'a> Allocator for &'a DumbBumpPool {
         }
     }
 
-    unsafe fn dealloc(&mut self, _ptr: Address, _layout: &alloc::Layout) {
+    unsafe fn dealloc(&mut self, _ptr: Address, _layout: alloc::Layout) {
         // this bump-allocator just no-op's on dealloc
     }
 
