@@ -1,7 +1,7 @@
-- Feature Name: contains_method
+- Feature Name: `contains_method`
 - Start Date: 2015-12-28
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1434](https://github.com/rust-lang/rfcs/pull/1434)
+- Rust Issue: [rust-lang/rust#32311](https://github.com/rust-lang/rust/issues/32311)
 
 # Summary
 [summary]: #summary
