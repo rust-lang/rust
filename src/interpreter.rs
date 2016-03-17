@@ -600,7 +600,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
         let ty = ty.subst(self.tcx, self.current_substs());
 
-        if let Some(repr) =  self.repr_cache.borrow().get(ty) {
+        if let Some(repr) = self.repr_cache.borrow().get(ty) {
             return repr;
         }
 
