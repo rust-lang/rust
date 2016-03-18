@@ -257,10 +257,10 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
     }
 
     match {
-        let b_sess = AssertRecoverSafe::new(&sess);
-        let b_cstore = AssertRecoverSafe::new(&cstore);
-        let b_cfg = AssertRecoverSafe::new(cfg.clone());
-        let b_control = AssertRecoverSafe::new(&control);
+        let b_sess = AssertRecoverSafe(&sess);
+        let b_cstore = AssertRecoverSafe(&cstore);
+        let b_cfg = AssertRecoverSafe(cfg.clone());
+        let b_control = AssertRecoverSafe(&control);
 
         panic::recover(|| {
             driver::compile_input(&b_sess, &b_cstore, (*b_cfg).clone(),

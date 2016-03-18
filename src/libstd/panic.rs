@@ -147,7 +147,7 @@ pub trait RefRecoverSafe {}
 /// // });
 ///
 /// // This, however, will compile due to the `AssertRecoverSafe` wrapper
-/// let result = panic::recover(AssertRecoverSafe::new(|| {
+/// let result = panic::recover(AssertRecoverSafe(|| {
 ///     variable += 3;
 /// }));
 /// // ...
@@ -171,7 +171,7 @@ pub trait RefRecoverSafe {}
 /// let other_capture = 3;
 ///
 /// let result = {
-///     let mut wrapper = AssertRecoverSafe::new(&mut variable);
+///     let mut wrapper = AssertRecoverSafe(&mut variable);
 ///     panic::recover(move || {
 ///         **wrapper += other_capture;
 ///     })
@@ -179,7 +179,7 @@ pub trait RefRecoverSafe {}
 /// // ...
 /// ```
 #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-pub struct AssertRecoverSafe<T>(T);
+pub struct AssertRecoverSafe<T>(pub T);
 
 // Implementations of the `RecoverSafe` trait:
 //
@@ -216,12 +216,14 @@ impl<T> RefRecoverSafe for AssertRecoverSafe<T> {}
 impl<T> AssertRecoverSafe<T> {
     /// Creates a new `AssertRecoverSafe` wrapper around the provided type.
     #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
+    #[rustc_deprecated(reason = "the type's field is now public, construct it directly")]
     pub fn new(t: T) -> AssertRecoverSafe<T> {
         AssertRecoverSafe(t)
     }
 
     /// Consumes the `AssertRecoverSafe`, returning the wrapped value.
     #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
+    #[rustc_deprecated(reason = "the type's field is now public, access it directly")]
     pub fn into_inner(self) -> T {
         self.0
     }
