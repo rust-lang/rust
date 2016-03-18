@@ -168,7 +168,7 @@ impl<'a> NameResolution<'a> {
 
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
-    fn try_result(&self, allow_private_imports: bool)
+    fn try_result(&self, ns: Namespace, allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
         match self.binding {
             Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) =>
@@ -189,7 +189,18 @@ impl<'a> NameResolution<'a> {
                     return None;
                 }
 
-                return Indeterminate;
+                let target_module = match directive.target_module.get() {
+                    Some(target_module) => target_module,
+                    None => return Some(Indeterminate),
+                };
+                let name = match directive.subclass {
+                    SingleImport { source, target, .. } if source == target => target,
+                    _ => return Some(Indeterminate),
+                };
+                match target_module.resolve_name(name, ns, false) {
+                    Failed(_) => {}
+                    _ => return Some(Indeterminate),
+                }
             }
         }
 
@@ -224,7 +235,7 @@ impl<'a> ::ModuleS<'a> {
         };
 
         let resolution = resolutions.get(&(name, ns)).cloned().unwrap_or_default();
-        if let Some(result) = resolution.try_result(allow_private_imports) {
+        if let Some(result) = resolution.try_result(ns, allow_private_imports) {
             // If the resolution doesn't depend on glob definability, check privacy and return.
             return result.and_then(|binding| {
                 let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
@@ -483,27 +494,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         };
 
         // We need to resolve both namespaces for this to succeed.
-        let module_ = self.resolver.current_module;
-        let (value_result, type_result) = {
-            let mut resolve_in_ns = |ns, determined: bool| {
-                // Temporarily count the directive as determined so that the resolution fails
-                // (as opposed to being indeterminate) when it can only be defined by the directive.
-                if !determined {
-                    module_.resolutions.borrow_mut().get_mut(&(target, ns)).unwrap()
-                           .single_imports.directive_failed();
-                }
-                let result =
-                    self.resolver.resolve_name_in_module(target_module, source, ns, false, true);
-                if !determined {
-                    module_.resolutions.borrow_mut().get_mut(&(target, ns)).unwrap()
-                           .single_imports.add_directive(directive);
-                }
-                result
-            };
-            (resolve_in_ns(ValueNS, value_determined.get()),
-             resolve_in_ns(TypeNS, type_determined.get()))
-        };
+        let value_result =
+            self.resolver.resolve_name_in_module(target_module, source, ValueNS, false, true);
+        let type_result =
+            self.resolver.resolve_name_in_module(target_module, source, TypeNS, false, true);
 
+        let module_ = self.resolver.current_module;
         for &(ns, result, determined) in &[(ValueNS, &value_result, value_determined),
                                            (TypeNS, &type_result, type_determined)] {
             if determined.get() { continue }
