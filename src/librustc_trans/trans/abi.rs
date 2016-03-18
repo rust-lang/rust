@@ -250,7 +250,16 @@ impl FnType {
             extra_args
         };
 
-        let arg_of = |ty: Ty<'tcx>| {
+        let target = &ccx.sess().target.target;
+        let win_x64_gnu = target.target_os == "windows"
+                       && target.arch == "x86_64"
+                       && target.target_env == "gnu";
+        let rust_abi = match abi {
+            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
+            _ => false
+        };
+
+        let arg_of = |ty: Ty<'tcx>, is_return: bool| {
             if ty.is_bool() {
                 let llty = Type::i1(ccx);
                 let mut arg = ArgType::new(llty, llty);
@@ -260,7 +269,11 @@ impl FnType {
                 let mut arg = ArgType::new(type_of::type_of(ccx, ty),
                                            type_of::sizing_type_of(ccx, ty));
                 if llsize_of_real(ccx, arg.ty) == 0 {
-                    arg.ignore();
+                    // For some forsaken reason, x86_64-pc-windows-gnu
+                    // doesn't ignore zero-sized struct arguments.
+                    if is_return || rust_abi || !win_x64_gnu {
+                        arg.ignore();
+                    }
                 }
                 arg
             }
@@ -270,7 +283,7 @@ impl FnType {
             ty::FnConverging(ret_ty) => ret_ty,
             ty::FnDiverging => ccx.tcx().mk_nil()
         };
-        let mut ret = arg_of(ret_ty);
+        let mut ret = arg_of(ret_ty, true);
 
         if !type_is_fat_ptr(ccx.tcx(), ret_ty) {
             // The `noalias` attribute on the return value is useful to a
@@ -335,7 +348,7 @@ impl FnType {
         };
 
         for ty in inputs.iter().chain(extra_args.iter()) {
-            let mut arg = arg_of(ty);
+            let mut arg = arg_of(ty, false);
 
             if type_is_fat_ptr(ccx.tcx(), ty) {
                 let original_tys = arg.original_ty.field_types();
