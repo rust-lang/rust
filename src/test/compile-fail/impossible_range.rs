@@ -19,9 +19,9 @@ pub fn main() {
     0..1;
 
     ...; //~ERROR inclusive range with no end
-         //~^HELP 28237
+         //~^HELP bounded at the end
     0...; //~ERROR inclusive range with no end
-          //~^HELP 28237
+          //~^HELP bounded at the end
     ...1;
     0...1;
 }

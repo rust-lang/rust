@@ -14,6 +14,6 @@
 
 pub fn main() {
     for _ in 1... {} //~ERROR inclusive range with no end
-                     //~^HELP 28237
+                     //~^HELP bounded at the end
 }
 
