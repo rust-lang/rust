@@ -277,7 +277,7 @@ pub fn main_args(args: &[String]) -> isize {
                                                  !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
     }
-    let out = match acquire_input(input, externs, &matches) {
+    let out = match acquire_input(input, externs, &matches, args) {
         Ok(out) => out,
         Err(s) => {
             println!("input error: {}", s);
@@ -311,16 +311,17 @@ pub fn main_args(args: &[String]) -> isize {
 /// and files and then generates the necessary rustdoc output for formatting.
 fn acquire_input(input: &str,
                  externs: core::Externs,
-                 matches: &getopts::Matches) -> Result<Output, String> {
+                 matches: &getopts::Matches,
+                 cmdline_args: &[String]) -> Result<Output, String> {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
-        Some("rust") => Ok(rust_input(input, externs, matches)),
+        Some("rust") => Ok(rust_input(input, externs, matches, cmdline_args)),
         Some("json") => json_input(input),
         Some(s) => Err(format!("unknown input format: {}", s)),
         None => {
             if input.ends_with(".json") {
                 json_input(input)
             } else {
-                Ok(rust_input(input, externs, matches))
+                Ok(rust_input(input, externs, matches, cmdline_args))
             }
         }
     }
@@ -348,7 +349,8 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matches) -> Output {
+fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matches,
+              cmdline_args: &[String]) -> Output {
     let mut default_passes = !matches.opt_present("no-defaults");
     let mut passes = matches.opt_strs("passes");
     let mut plugins = matches.opt_strs("plugins");
@@ -365,7 +367,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     info!("starting to run rustc");
 
     let (tx, rx) = channel();
-    rustc_driver::monitor(move || {
+    rustc_driver::monitor(cmdline_args, move || {
         use rustc::session::config::Input;
 
         tx.send(core::run_core(paths, cfgs, externs, Input::File(cr),

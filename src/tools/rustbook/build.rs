@@ -137,7 +137,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
 
         fs::create_dir_all(&out_path)?;
 
-        let rustdoc_args: &[String] = &[
+        let rustdoc_args = vec![
             "".to_string(),
             preprocessed_path.display().to_string(),
             format!("-o{}", out_path.display()),
@@ -147,7 +147,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             format!("--markdown-css={}", item.path_to_root.join("rustbook.css").display()),
             "--markdown-no-toc".to_string(),
         ];
-        let output_result = rustdoc::main_args(rustdoc_args);
+        let output_result = rustdoc::main_args(&rustdoc_args);
         if output_result != 0 {
             let message = format!("Could not execute `rustdoc` with {:?}: {}",
                                   rustdoc_args, output_result);
