@@ -1554,6 +1554,12 @@ impl<'a, K, V> Entry<'a, K, V> {
 }
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
+    /// Gets a reference to the key in the entry.
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    pub fn key(&self) -> &K {
+        self.elem.read().0
+    }
+
     /// Gets a reference to the value in the entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
@@ -1589,6 +1595,13 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
 }
 
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
+    /// Gets a reference to the key that would be used when inserting a value
+    /// through the VacantEntry.
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    pub fn key(&self) -> &K {
+        &self.key
+    }
+
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -2433,5 +2446,41 @@ mod test_map {
         // Insert at capacity should cause allocation.
         a.insert(item, 0);
         assert!(a.capacity() > a.len());
+    }
+
+    #[test]
+    fn test_occupied_entry_key() {
+        let mut a = HashMap::new();
+        let key = "hello there";
+        let value = "value goes here";
+        assert!(a.is_empty());
+        a.insert(key.clone(), value.clone());
+        assert_eq!(a.len(), 1);
+        assert_eq!(a[key], value);
+
+        match a.entry(key.clone()) {
+            Vacant(_) => panic!(),
+            Occupied(e) => assert_eq!(key, *e.key()),
+        }
+        assert_eq!(a.len(), 1);
+        assert_eq!(a[key], value);
+    }
+
+    #[test]
+    fn test_vacant_entry_key() {
+        let mut a = HashMap::new();
+        let key = "hello there";
+        let value = "value goes here";
+
+        assert!(a.is_empty());
+        match a.entry(key.clone()) {
+            Occupied(_) => panic!(),
+            Vacant(e) => {
+                assert_eq!(key, *e.key());
+                e.insert(value.clone());
+            },
+        }
+        assert_eq!(a.len(), 1);
+        assert_eq!(a[key], value);
     }
 }

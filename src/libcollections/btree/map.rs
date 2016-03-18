@@ -1465,6 +1465,13 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
+    /// Gets a reference to the key that would be used when inserting a value
+    /// through the VacantEntry.
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    pub fn key(&self) -> &K {
+        &self.key
+    }
+
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1509,6 +1516,12 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
+    /// Gets a reference to the key in the entry.
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    pub fn key(&self) -> &K {
+        self.handle.reborrow().into_kv().0
+    }
+
     /// Gets a reference to the value in the entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
