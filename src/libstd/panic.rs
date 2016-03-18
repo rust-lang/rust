@@ -23,7 +23,21 @@ use sync::{Arc, Mutex, RwLock};
 use sys_common::unwind;
 use thread::Result;
 
-pub use panicking::{take_handler, set_handler, PanicInfo, Location};
+pub use panicking::{take_hook, set_hook, PanicInfo, Location};
+
+///
+#[rustc_deprecated(since = "1.9.0", reason = "renamed to set_hook")]
+#[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
+pub fn set_handler<F>(handler: F) where F: Fn(&PanicInfo) + 'static + Sync + Send {
+    set_hook(Box::new(handler))
+}
+
+///
+#[rustc_deprecated(since = "1.9.0", reason = "renamed to take_hook")]
+#[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
+pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
+    take_hook()
+}
 
 /// A marker trait which represents "panic safe" types in Rust.
 ///

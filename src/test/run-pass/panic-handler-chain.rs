@@ -17,12 +17,12 @@ static A: AtomicUsize = AtomicUsize::new(0);
 static B: AtomicUsize = AtomicUsize::new(0);
 
 fn main() {
-    panic::set_handler(|_| { A.fetch_add(1, Ordering::SeqCst); });
-    let handler = panic::take_handler();
-    panic::set_handler(move |info| {
+    panic::set_hook(Box::new(|_| { A.fetch_add(1, Ordering::SeqCst); }));
+    let hook = panic::take_hook();
+    panic::set_hook(Box::new(move |info| {
         B.fetch_add(1, Ordering::SeqCst);
-        handler(info);
-    });
+        hook(info);
+    }));
 
     let _ = thread::spawn(|| {
         panic!();

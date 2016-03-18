@@ -32,73 +32,71 @@ thread_local! {
 }
 
 #[derive(Copy, Clone)]
-enum Handler {
+enum Hook {
     Default,
     Custom(*mut (Fn(&PanicInfo) + 'static + Sync + Send)),
 }
 
-static HANDLER_LOCK: StaticRwLock = StaticRwLock::new();
-static mut HANDLER: Handler = Handler::Default;
+static HOOK_LOCK: StaticRwLock = StaticRwLock::new();
+static mut HOOK: Hook = Hook::Default;
 static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
-/// Registers a custom panic handler, replacing any that was previously
-/// registered.
+/// Registers a custom panic hook, replacing any that was previously registered.
 ///
-/// The panic handler is invoked when a thread panics, but before it begins
-/// unwinding the stack. The default handler prints a message to standard error
+/// The panic hook is invoked when a thread panics, but before it begins
+/// unwinding the stack. The default hook prints a message to standard error
 /// and generates a backtrace if requested, but this behavior can be customized
-/// with the `set_handler` and `take_handler` functions.
+/// with the `set_hook` and `take_hook` functions.
 ///
-/// The handler is provided with a `PanicInfo` struct which contains information
+/// The hook is provided with a `PanicInfo` struct which contains information
 /// about the origin of the panic, including the payload passed to `panic!` and
 /// the source code location from which the panic originated.
 ///
-/// The panic handler is a global resource.
+/// The panic hook is a global resource.
 ///
 /// # Panics
 ///
 /// Panics if called from a panicking thread.
 #[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
-pub fn set_handler<F>(handler: F) where F: Fn(&PanicInfo) + 'static + Sync + Send {
+pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
     if thread::panicking() {
-        panic!("cannot modify the panic handler from a panicking thread");
+        panic!("cannot modify the panic hook from a panicking thread");
     }
 
-    let handler = Box::new(handler);
     unsafe {
-        let lock = HANDLER_LOCK.write();
-        let old_handler = HANDLER;
-        HANDLER = Handler::Custom(Box::into_raw(handler));
+        let lock = HOOK_LOCK.write();
+        let old_hook = HOOK;
+        HOOK = Hook::Custom(Box::into_raw(hook));
         drop(lock);
 
-        if let Handler::Custom(ptr) = old_handler {
+        if let Hook::Custom(ptr) = old_hook {
             Box::from_raw(ptr);
         }
     }
 }
 
-/// Unregisters the current panic handler, returning it.
+/// Unregisters the current panic hook, returning it.
 ///
-/// If no custom handler is registered, the default handler will be returned.
+/// If no custom hook is registered, the default hook will be returned.
 ///
 /// # Panics
 ///
 /// Panics if called from a panicking thread.
 #[unstable(feature = "panic_handler", reason = "awaiting feedback", issue = "30449")]
-pub fn take_handler() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
+pub fn take_hook() -> Box<Fn(&PanicInfo) + 'static + Sync + Send> {
     if thread::panicking() {
-        panic!("cannot modify the panic handler from a panicking thread");
+        panic!("cannot modify the panic hook from a panicking thread");
     }
 
     unsafe {
-        let lock = HANDLER_LOCK.write();
-        let handler = HANDLER;
-        HANDLER = Handler::Default;
+        let lock = HOOK_LOCK.write();
+        let hook = HOOK;
+        HOOK = Hook::Default;
         drop(lock);
 
-        match handler {
-            Handler::Default => Box::new(default_handler),
-            Handler::Custom(ptr) => {Box::from_raw(ptr)} // FIXME #30530
+        match hook {
+            Hook::Default => Box::new(default_hook),
+            Hook::Custom(ptr) => {Box::from_raw(ptr)} // FIXME #30530
         }
     }
 }
@@ -151,7 +149,7 @@ impl<'a> Location<'a> {
     }
 }
 
-fn default_handler(info: &PanicInfo) {
+fn default_hook(info: &PanicInfo) {
     let panics = PANIC_COUNT.with(|s| s.get());
 
     // If this is a double panic, make sure that we print a backtrace
@@ -224,10 +222,10 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
     };
 
     unsafe {
-        let _lock = HANDLER_LOCK.read();
-        match HANDLER {
-            Handler::Default => default_handler(&info),
-            Handler::Custom(ptr) => (*ptr)(&info),
+        let _lock = HOOK_LOCK.read();
+        match HOOK {
+            Hook::Default => default_hook(&info),
+            Hook::Custom(ptr) => (*ptr)(&info),
         }
     }
 
