@@ -11,10 +11,14 @@
 // Test that you cannot define items with the same name in overlapping inherent
 // impl blocks.
 
+#![feature(rustc_attrs)]
+#![allow(dead_code)]
+
 struct Foo;
 
 impl Foo {
-    fn id() {} //~ ERROR E0201
+    fn id() {} //~ WARN duplicate definitions
+    //~^ WARN previously accepted
 }
 
 impl Foo {
@@ -24,7 +28,8 @@ impl Foo {
 struct Bar<T>(T);
 
 impl<T> Bar<T> {
-    fn bar(&self) {} //~ ERROR E0201
+    fn bar(&self) {} //~ WARN duplicate definitions
+    //~^ WARN previously accepted
 }
 
 impl Bar<u32> {
@@ -34,11 +39,13 @@ impl Bar<u32> {
 struct Baz<T>(T);
 
 impl<T: Copy> Baz<T> {
-    fn baz(&self) {} //~ ERROR E0201
+    fn baz(&self) {} //~ WARN duplicate definitions
+    //~^ WARN previously accepted
 }
 
 impl<T> Baz<Vec<T>> {
     fn baz(&self) {}
 }
 
-fn main() {}
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful

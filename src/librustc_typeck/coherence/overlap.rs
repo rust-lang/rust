@@ -18,11 +18,11 @@ use middle::traits::{self, ProjectionMode};
 use middle::infer;
 use middle::ty::{self, TyCtxt};
 use syntax::ast;
-use syntax::codemap::Span;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use rustc_front::intravisit;
 use util::nodemap::DefIdMap;
+use lint;
 
 pub fn check(tcx: &TyCtxt) {
     let mut overlap = OverlapChecker { tcx: tcx,
@@ -41,11 +41,6 @@ struct OverlapChecker<'cx, 'tcx:'cx> {
 }
 
 impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
-    fn span_of_def_id(&self, did: DefId) -> Span {
-        let node_id = self.tcx.map.as_local_node_id(did).unwrap();
-        self.tcx.map.span(node_id)
-    }
-
     fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId) {
         #[derive(Copy, Clone, PartialEq)]
         enum Namespace { Type, Value }
@@ -68,11 +63,12 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
             for item2 in &impl_items[&impl2] {
                 if (name, namespace) == name_and_namespace(&self.tcx, item2) {
-                    let mut err = super::report_duplicate_item(
-                        &self.tcx, self.span_of_def_id(item1.def_id()), name);
-                    span_note!(&mut err, self.span_of_def_id(item2.def_id()),
-                               "conflicting definition is here:");
-                    err.emit();
+                    let msg = format!("duplicate definitions with name `{}`", name);
+                    let node_id = self.tcx.map.as_local_node_id(item1.def_id()).unwrap();
+                    self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
+                                           node_id,
+                                           self.tcx.span_of_impl(item1.def_id()).unwrap(),
+                                           msg);
                 }
             }
         }
