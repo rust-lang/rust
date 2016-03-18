@@ -44,9 +44,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     StmtKind::Expr { scope, expr } => {
                         unpack!(block = this.in_scope(scope, block, |this, _| {
                             let expr = this.hir.mirror(expr);
+                            let expr_span = expr.span;
                             let temp = this.temp(expr.ty.clone());
                             unpack!(block = this.into(&temp, block, expr));
-                            unpack!(block = this.build_drop(block, temp));
+                            unpack!(block = this.build_drop(block, expr_span, temp));
                             block.unit()
                         }));
                     }

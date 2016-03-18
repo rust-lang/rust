@@ -230,6 +230,8 @@ pub struct BasicBlockData<'tcx> {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct Terminator<'tcx> {
+    pub span: Span,
+    pub scope: ScopeId,
     pub kind: TerminatorKind<'tcx>
 }
 

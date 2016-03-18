@@ -83,11 +83,15 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn terminate(&mut self,
                      block: BasicBlock,
+                     scope: ScopeId,
+                     span: Span,
                      kind: TerminatorKind<'tcx>) {
         debug_assert!(self.block_data(block).terminator.is_none(),
                       "terminate: block {:?} already has a terminator set", block);
         self.block_data_mut(block).terminator = Some(Terminator {
-            kind: kind
+            span: span,
+            scope: scope,
+            kind: kind,
         });
     }
 }

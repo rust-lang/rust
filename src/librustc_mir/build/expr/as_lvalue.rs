@@ -68,6 +68,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                 let (success, failure) = (this.cfg.start_new_block(), this.cfg.start_new_block());
                 this.cfg.terminate(block,
+                                   scope_id,
+                                   expr_span,
                                    TerminatorKind::If {
                                        cond: Operand::Consume(lt),
                                        targets: (success, failure),
