@@ -270,6 +270,7 @@ pub fn implements_trait<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, 
                                   -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
+    let ty = cx.tcx.erase_regions(&ty);
     let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None, ProjectionMode::Any);
     let obligation = traits::predicate_for_trait_def(cx.tcx,
                                                      traits::ObligationCause::dummy(),
