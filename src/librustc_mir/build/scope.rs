@@ -116,6 +116,7 @@ pub struct Scope<'tcx> {
 }
 
 struct DropData<'tcx> {
+    span: Span,
     value: Lvalue<'tcx>,
     // NB: per-drop “cache” is necessary for the build_scope_drops function below.
     /// The cached block for the cleanups-on-diverge path. This block contains code to run the
@@ -288,14 +289,19 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             if let Some(ref free_data) = scope.free {
                 let next = self.cfg.start_new_block();
                 let free = build_free(self.hir.tcx(), tmp.clone(), free_data, next);
-                self.cfg.terminate(block, free);
+                self.cfg.terminate(block, scope.id, span, free);
                 block = next;
             }
             self.scope_auxiliary[scope.id.index()]
                 .postdoms
                 .push(self.cfg.current_location(block));
         }
-        self.cfg.terminate(block, TerminatorKind::Goto { target: target });
+
+        let scope_id = self.innermost_scope_id();
+        self.cfg.terminate(block,
+                           scope_id,
+                           span,
+                           TerminatorKind::Goto { target: target });
     }
 
     // Finding scopes
@@ -351,6 +357,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // No need to invalidate any caches here. The just-scheduled drop will branch into
                 // the drop that comes before it in the vector.
                 scope.drops.push(DropData {
+                    span: span,
                     value: lvalue.clone(),
                     cached_block: None
                 });
@@ -429,14 +436,22 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
-    pub fn build_drop(&mut self, block: BasicBlock, value: Lvalue<'tcx>) -> BlockAnd<()> {
+    pub fn build_drop(&mut self,
+                      block: BasicBlock,
+                      span: Span,
+                      value: Lvalue<'tcx>)
+                      -> BlockAnd<()> {
+        let scope_id = self.innermost_scope_id();
         let next_target = self.cfg.start_new_block();
         let diverge_target = self.diverge_cleanup();
-        self.cfg.terminate(block, TerminatorKind::Drop {
-            value: value,
-            target: next_target,
-            unwind: diverge_target,
-        });
+        self.cfg.terminate(block,
+                           scope_id,
+                           span,
+                           TerminatorKind::Drop {
+                               value: value,
+                               target: next_target,
+                               unwind: diverge_target,
+                           });
         next_target.unit()
     }
 
@@ -445,10 +460,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     // =========
     // FIXME: should be moved into their own module
     pub fn panic_bounds_check(&mut self,
-                             block: BasicBlock,
-                             index: Operand<'tcx>,
-                             len: Operand<'tcx>,
-                             span: Span) {
+                              block: BasicBlock,
+                              index: Operand<'tcx>,
+                              len: Operand<'tcx>,
+                              span: Span) {
         // fn(&(filename: &'static str, line: u32), index: usize, length: usize) -> !
         let region = ty::ReStatic; // FIXME(mir-borrowck): use a better region?
         let func = self.lang_function(lang_items::PanicBoundsCheckFnLangItem);
@@ -474,7 +489,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, TerminatorKind::Call {
+        self.cfg.terminate(block, scope_id, span, TerminatorKind::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref), index, len],
             destination: None,
@@ -516,7 +531,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
         let cleanup = self.diverge_cleanup();
-        self.cfg.terminate(block, TerminatorKind::Call {
+        self.cfg.terminate(block, scope_id, span, TerminatorKind::Call {
             func: Operand::Constant(func),
             args: vec![Operand::Consume(tuple_ref)],
             cleanup: cleanup,
@@ -575,7 +590,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
             earlier_scopes.iter().rev().flat_map(|s| s.cached_block()).next()
         });
         let next = cfg.start_new_block();
-        cfg.terminate(block, TerminatorKind::Drop {
+        cfg.terminate(block, scope.id, drop_data.span, TerminatorKind::Drop {
             value: drop_data.value.clone(),
             target: next,
             unwind: on_diverge
@@ -599,12 +614,15 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
     let mut last_drop_block = None;
     for drop_data in scope.drops.iter_mut().rev() {
         if let Some(cached_block) = drop_data.cached_block {
-            if let Some((previous_block, previous_value)) = previous {
-                cfg.terminate(previous_block, TerminatorKind::Drop {
-                    value: previous_value,
-                    target: cached_block,
-                    unwind: None
-                });
+            if let Some((previous_block, previous_span, previous_value)) = previous {
+                cfg.terminate(previous_block,
+                              scope.id,
+                              previous_span,
+                              TerminatorKind::Drop {
+                                  value: previous_value,
+                                  target: cached_block,
+                                  unwind: None
+                              });
                 return last_drop_block.unwrap();
             } else {
                 return cached_block;
@@ -612,23 +630,26 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
         } else {
             let block = cfg.start_new_cleanup_block();
             drop_data.cached_block = Some(block);
-            if let Some((previous_block, previous_value)) = previous {
-                cfg.terminate(previous_block, TerminatorKind::Drop {
-                    value: previous_value,
-                    target: block,
-                    unwind: None
-                });
+            if let Some((previous_block, previous_span, previous_value)) = previous {
+                cfg.terminate(previous_block,
+                              scope.id,
+                              previous_span,
+                              TerminatorKind::Drop {
+                                  value: previous_value,
+                                  target: block,
+                                  unwind: None
+                              });
             } else {
                 last_drop_block = Some(block);
             }
-            previous = Some((block, drop_data.value.clone()));
+            previous = Some((block, drop_data.span, drop_data.value.clone()));
         }
     }
 
     // Prepare the end target for this chain.
     let mut target = target.unwrap_or_else(||{
         let b = cfg.start_new_cleanup_block();
-        cfg.terminate(b, TerminatorKind::Resume);
+        cfg.terminate(b, scope.id, DUMMY_SP, TerminatorKind::Resume); // TODO
         b
     });
 
@@ -638,19 +659,25 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
             cached_block
         } else {
             let into = cfg.start_new_cleanup_block();
-            cfg.terminate(into, build_free(tcx, unit_temp, free_data, target));
+            cfg.terminate(into,
+                          scope.id,
+                          free_data.span,
+                          build_free(tcx, unit_temp, free_data, target));
             free_data.cached_block = Some(into);
             into
         }
     };
 
-    if let Some((previous_block, previous_value)) = previous {
+    if let Some((previous_block, previous_span, previous_value)) = previous {
         // Finally, branch into that just-built `target` from the `previous_block`.
-        cfg.terminate(previous_block, TerminatorKind::Drop {
-            value: previous_value,
-            target: target,
-            unwind: None
-        });
+        cfg.terminate(previous_block,
+                      scope.id,
+                      previous_span,
+                      TerminatorKind::Drop {
+                          value: previous_value,
+                          target: target,
+                          unwind: None
+                      });
         last_drop_block.unwrap()
     } else {
         // If `previous.is_none()`, there were no drops in this scope – we return the

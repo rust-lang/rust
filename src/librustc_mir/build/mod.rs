@@ -160,14 +160,17 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     assert_eq!(builder.cfg.start_new_block(), END_BLOCK);
 
     let mut block = START_BLOCK;
-    let arg_decls = unpack!(block = builder.args_and_body(block,
-                                                          implicit_arguments,
-                                                          explicit_arguments,
-                                                          argument_extent,
-                                                          ast_block));
+    let (arg_decls, arg_scope_id) =
+        unpack!(block = builder.args_and_body(block,
+                                              implicit_arguments,
+                                              explicit_arguments,
+                                              argument_extent,
+                                              ast_block));
 
-    builder.cfg.terminate(block, TerminatorKind::Goto { target: END_BLOCK });
-    builder.cfg.terminate(END_BLOCK, TerminatorKind::Return);
+    builder.cfg.terminate(block, arg_scope_id, span,
+                          TerminatorKind::Goto { target: END_BLOCK });
+    builder.cfg.terminate(END_BLOCK, arg_scope_id, span,
+                          TerminatorKind::Return);
 
     MirPlusPlus {
         mir: Mir {
@@ -190,7 +193,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      explicit_arguments: Vec<(Ty<'tcx>, &'tcx hir::Pat)>,
                      argument_extent: CodeExtent,
                      ast_block: &'tcx hir::Block)
-                     -> BlockAnd<Vec<ArgDecl<'tcx>>>
+                     -> BlockAnd<(Vec<ArgDecl<'tcx>>, ScopeId)>
     {
         self.in_scope(argument_extent, block, |this, argument_scope_id| {
             // to start, translate the argument patterns and collect the argument types.
@@ -219,7 +222,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             // start the first basic block and translate the body
             unpack!(block = this.ast_block(&Lvalue::ReturnPointer, block, ast_block));
 
-            block.and(arg_decls)
+            block.and((arg_decls, argument_scope_id))
         })
     }
 

@@ -71,6 +71,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 })
                 .map(|(arm_index, pattern, guard)| {
                     Candidate {
+                        span: pattern.span,
                         match_pairs: vec![MatchPair::new(discriminant_lvalue.clone(), pattern)],
                         bindings: vec![],
                         guard: guard,
@@ -87,7 +88,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // an empty vector to be returned here, but the algorithm is
         // not entirely precise
         if !otherwise.is_empty() {
-            let join_block = self.join_otherwise_blocks(otherwise);
+            let join_block = self.join_otherwise_blocks(span, otherwise);
             self.panic(join_block, "something about matches algorithm not being precise", span);
         }
 
@@ -97,7 +98,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         for (arm_index, arm_body) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
             unpack!(arm_block = self.into(destination, arm_block, arm_body));
-            self.cfg.terminate(arm_block, TerminatorKind::Goto { target: end_block });
+            self.cfg.terminate(arm_block,
+                               var_scope_id,
+                               span,
+                               TerminatorKind::Goto { target: end_block });
         }
 
         end_block.unit()
@@ -146,6 +150,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // create a dummy candidate
         let mut candidate = Candidate {
+            span: irrefutable_pat.span,
             match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             guard: None,
@@ -206,6 +211,9 @@ struct ArmBlocks {
 
 #[derive(Clone, Debug)]
 pub struct Candidate<'pat, 'tcx:'pat> {
+    // span of the original pattern that gave rise to this candidate
+    span: Span,
+
     // all of these must be satisfied...
     match_pairs: Vec<MatchPair<'pat, 'tcx>>,
 
@@ -370,20 +378,25 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
 
         // Otherwise, let's process those remaining candidates.
-        let join_block = self.join_otherwise_blocks(otherwise);
+        let join_block = self.join_otherwise_blocks(span, otherwise);
         self.match_candidates(span, arm_blocks, untested_candidates, join_block)
     }
 
     fn join_otherwise_blocks(&mut self,
+                             span: Span,
                              otherwise: Vec<BasicBlock>)
                              -> BasicBlock
     {
+        let scope_id = self.innermost_scope_id();
         if otherwise.len() == 1 {
             otherwise[0]
         } else {
             let join_block = self.cfg.start_new_block();
             for block in otherwise {
-                self.cfg.terminate(block, TerminatorKind::Goto { target: join_block });
+                self.cfg.terminate(block,
+                                   scope_id,
+                                   span,
+                                   TerminatorKind::Goto { target: join_block });
             }
             join_block
         }
@@ -550,16 +563,25 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         let arm_block = arm_blocks.blocks[candidate.arm_index];
 
+        let scope_id = self.innermost_scope_id();
         if let Some(guard) = candidate.guard {
             // the block to branch to if the guard fails; if there is no
             // guard, this block is simply unreachable
+            let guard = self.hir.mirror(guard);
+            let guard_span = guard.span;
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
-            self.cfg.terminate(block, TerminatorKind::If { cond: cond,
-                                                       targets: (arm_block, otherwise)});
+            self.cfg.terminate(block,
+                               scope_id,
+                               guard_span,
+                               TerminatorKind::If { cond: cond,
+                                                    targets: (arm_block, otherwise)});
             Some(otherwise)
         } else {
-            self.cfg.terminate(block, TerminatorKind::Goto { target: arm_block });
+            self.cfg.terminate(block,
+                               scope_id,
+                               candidate.span,
+                               TerminatorKind::Goto { target: arm_block });
             None
         }
     }

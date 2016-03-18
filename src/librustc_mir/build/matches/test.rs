@@ -153,7 +153,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let target_blocks: Vec<_> =
                     (0..num_enum_variants).map(|_| self.cfg.start_new_block())
                                           .collect();
-                self.cfg.terminate(block, TerminatorKind::Switch {
+                self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Switch {
                     discr: lvalue.clone(),
                     adt_def: adt_def,
                     targets: target_blocks.clone()
@@ -168,12 +168,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            .map(|_| self.cfg.start_new_block())
                            .chain(Some(otherwise))
                            .collect();
-                self.cfg.terminate(block, TerminatorKind::SwitchInt {
-                    discr: lvalue.clone(),
-                    switch_ty: switch_ty,
-                    values: options.clone(),
-                    targets: targets.clone(),
-                });
+                self.cfg.terminate(block,
+                                   scope_id,
+                                   test.span,
+                                   TerminatorKind::SwitchInt {
+                                       discr: lvalue.clone(),
+                                       switch_ty: switch_ty,
+                                       values: options.clone(),
+                                       targets: targets.clone(),
+                                   });
                 targets
             }
 
@@ -226,7 +229,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     let eq_result = self.temp(bool_ty);
                     let eq_block = self.cfg.start_new_block();
                     let cleanup = self.diverge_cleanup();
-                    self.cfg.terminate(block, Terminator::Call {
+                    self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Call {
                         func: Operand::Constant(Constant {
                             span: test.span,
                             ty: mty,
@@ -239,7 +242,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                     // check the result
                     let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, Terminator::If {
+                    self.cfg.terminate(eq_block, scope_id, test.span, TerminatorKind::If {
                         cond: Operand::Consume(eq_result),
                         targets: (block, fail),
                     });
@@ -286,7 +289,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
                                                  self.cfg.start_new_block()];
-                self.cfg.terminate(block, TerminatorKind::If {
+                self.cfg.terminate(block, scope_id, test.span, TerminatorKind::If {
                     cond: Operand::Consume(result),
                     targets: (target_blocks[0], target_blocks[1])
                 });
@@ -313,7 +316,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, TerminatorKind::If {
+        self.cfg.terminate(block, scope_id, span, TerminatorKind::If {
             cond: Operand::Consume(result),
             targets: (target_block, fail_block)
         });
@@ -466,6 +469,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                  .map(|(_, mp)| mp.clone())
                                  .collect();
         Candidate {
+            span: candidate.span,
             match_pairs: other_match_pairs,
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
@@ -507,6 +511,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let all_match_pairs = consequent_match_pairs.chain(other_match_pairs).collect();
 
         Candidate {
+            span: candidate.span,
             match_pairs: all_match_pairs,
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
