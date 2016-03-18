@@ -352,6 +352,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_uint(dest, size, dest_size));
             }
 
+            "transmute" => {
+                let src = try!(self.eval_operand(&args[0]));
+                try!(self.memory.copy(src, dest, dest_size));
+            }
+
             "uninit" => {}
 
             name => panic!("can't handle intrinsic: {}", name),
