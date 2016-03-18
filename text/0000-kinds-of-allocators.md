@@ -1737,7 +1737,7 @@ pub trait AllocError: fmt::Debug {
     /// that would exhaust memory if arbitrary-precision arithmetic were
     /// used, clients are alternatively allowed to constuct an error
     /// representing memory exhaustion in this scenario.)
-    fn invalid_input() -> Self;
+    fn invalid_input(details: &'static str) -> Self where Self: Sized;
 
     /// Returns true if the error is due to hitting some resource
     /// limit, or otherwise running out of memory. This condition
@@ -1800,32 +1800,38 @@ pub struct MemoryExhausted;
 /// Allocators that only support certain classes of inputs might choose this
 /// as their associated error type, so that clients can respond appropriately
 /// to specific error failure scenarios.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AllocErr {
     /// Error due to hitting some resource limit or otherwise running
     /// out of memory. This condition strongly implies that *some*
     /// series of deallocations would allow a subsequent reissuing of
     /// the original allocation request to succeed.
-    Exhausted,
+    Exhausted { request: Layout },
 
     /// Error due to allocator being fundamentally incapable of
     /// satisfying the original request. This condition implies that
     /// such an allocation request will never succeed on the given
     /// allocator, regardless of environment, memory pressure, or
     /// other contextual condtions.
-    Unsupported,
+    Unsupported { details: &'static str },
 }
 
 impl AllocError for MemoryExhausted {
-    fn invalid_input() -> Self { MemoryExhausted }
+    fn invalid_input(_details: &'static str) -> Self { MemoryExhausted }
     fn is_memory_exhausted(&self) -> bool { true }
     fn is_request_unsupported(&self) -> bool { false }
 }
 
 impl AllocError for AllocErr {
-    fn invalid_input() -> Self { AllocErr::Unsupported }
-    fn is_memory_exhausted(&self) -> bool { *self == AllocErr::Exhausted }
-    fn is_request_unsupported(&self) -> bool { *self == AllocErr::Unsupported }
+    fn invalid_input(details: &'static str) -> Self {
+        AllocErr::Unsupported { details: details }
+    }
+    fn is_memory_exhausted(&self) -> bool {
+        if let AllocErr::Exhausted { .. } = *self { true } else { false }
+    }
+    fn is_request_unsupported(&self) -> bool {
+        if let AllocErr::Unsupported { .. } = *self { true } else { false }
+    }
 }
 
 ```
@@ -2078,7 +2084,7 @@ pub unsafe trait Allocator {
         } else {
             // (only occurs for zero-sized T)
             debug_assert!(mem::size_of::<T>() == 0);
-            Err(Self::Error::invalid_input())
+            Err(Self::Error::invalid_input("zero-sized type invalid for alloc_one"))
         }
     }
 
@@ -2106,7 +2112,7 @@ pub unsafe trait Allocator {
     unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, Self::Error> {
         match Layout::array::<T>(n) {
             Some(layout) => self.alloc(layout).map(|p|Unique::new(*p as *mut T)),
-            None => Err(Self::Error::invalid_input()),
+            None => Err(Self::Error::invalid_input("invalid layout for alloc_array")),
         }
     }
 
@@ -2127,7 +2133,7 @@ pub unsafe trait Allocator {
             self.realloc(NonZero::new(ptr as *mut u8), k_old, k_new)
                 .map(|p|Unique::new(*p as *mut T))
         } else {
-            Err(Self::Error::invalid_input())
+            Err(Self::Error::invalid_input("invalid layout for realloc_array"))
         }
     }
 
@@ -2140,7 +2146,7 @@ pub unsafe trait Allocator {
             self.dealloc(raw_ptr, k);
             Ok(())
         } else {
-            Err(Self::Error::invalid_input())
+            Err(Self::Error::invalid_input("invalid layout for dealloc_array"))
         }
     }
 
