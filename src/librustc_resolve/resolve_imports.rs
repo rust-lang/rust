@@ -430,15 +430,18 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                names_to_string(&directive.module_path),
                module_to_string(self.resolver.current_module));
 
-        let target_module = match self.resolver.resolve_module_path(&directive.module_path,
-                                                                    DontUseLexicalScope,
-                                                                    directive.span) {
-            Success(module) => module,
-            Indeterminate => return Indeterminate,
-            Failed(err) => return Failed(err),
+        let target_module = match directive.target_module.get() {
+            Some(module) => module,
+            _ => match self.resolver.resolve_module_path(&directive.module_path,
+                                                         DontUseLexicalScope,
+                                                         directive.span) {
+                Success(module) => module,
+                Indeterminate => return Indeterminate,
+                Failed(err) => return Failed(err),
+            },
         };
-        directive.target_module.set(Some(target_module));
 
+        directive.target_module.set(Some(target_module));
         let (source, target, value_determined, type_determined) = match directive.subclass {
             SingleImport { source, target, ref value_determined, ref type_determined } =>
                 (source, target, value_determined, type_determined),
