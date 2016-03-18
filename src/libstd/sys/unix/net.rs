@@ -116,6 +116,10 @@ impl Socket {
         self.0.read(buf)
     }
 
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
+    }
+
     pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
@@ -167,6 +171,20 @@ impl Socket {
         };
         try!(cvt(unsafe { libc::shutdown(self.0.raw(), how) }));
         Ok(())
+    }
+
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY, nodelay as c_int)
+    }
+
+    pub fn nodelay(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(self, libc::IPPROTO_TCP, libc::TCP_NODELAY));
+        Ok(raw != 0)
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        let mut nonblocking = nonblocking as libc::c_ulong;
+        cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) }).map(|_| ())
     }
 }
 

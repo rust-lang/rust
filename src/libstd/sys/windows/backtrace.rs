@@ -26,22 +26,22 @@
 
 use io::prelude::*;
 
-use dynamic_lib::DynamicLibrary;
 use io;
 use libc::c_void;
 use mem;
-use path::Path;
 use ptr;
 use sync::StaticMutex;
 use sys::c;
+use sys::dynamic_lib::DynamicLibrary;
 
-macro_rules! sym{ ($lib:expr, $e:expr, $t:ident) => (unsafe {
-    let lib = $lib;
-    match lib.symbol($e) {
-        Ok(f) => $crate::mem::transmute::<*mut u8, $t>(f),
-        Err(..) => return Ok(())
-    }
-}) }
+macro_rules! sym {
+    ($lib:expr, $e:expr, $t:ident) => (
+        match $lib.symbol($e) {
+            Ok(f) => $crate::mem::transmute::<usize, $t>(f),
+            Err(..) => return Ok(())
+        }
+    )
+}
 
 #[cfg(target_env = "msvc")]
 #[path = "printing/msvc.rs"]
@@ -52,16 +52,16 @@ mod printing;
 mod printing;
 
 type SymInitializeFn =
-    extern "system" fn(c::HANDLE, *mut c_void,
-                       c::BOOL) -> c::BOOL;
+    unsafe extern "system" fn(c::HANDLE, *mut c_void,
+                              c::BOOL) -> c::BOOL;
 type SymCleanupFn =
-    extern "system" fn(c::HANDLE) -> c::BOOL;
+    unsafe extern "system" fn(c::HANDLE) -> c::BOOL;
 
 type StackWalk64Fn =
-    extern "system" fn(c::DWORD, c::HANDLE, c::HANDLE,
-                       *mut c::STACKFRAME64, *mut c::CONTEXT,
-                       *mut c_void, *mut c_void,
-                       *mut c_void, *mut c_void) -> c::BOOL;
+    unsafe extern "system" fn(c::DWORD, c::HANDLE, c::HANDLE,
+                              *mut c::STACKFRAME64, *mut c::CONTEXT,
+                              *mut c_void, *mut c_void,
+                              *mut c_void, *mut c_void) -> c::BOOL;
 
 #[cfg(target_arch = "x86")]
 pub fn init_frame(frame: &mut c::STACKFRAME64,
@@ -93,7 +93,9 @@ struct Cleanup {
 }
 
 impl Drop for Cleanup {
-    fn drop(&mut self) { (self.SymCleanup)(self.handle); }
+    fn drop(&mut self) {
+        unsafe { (self.SymCleanup)(self.handle); }
+    }
 }
 
 pub fn write(w: &mut Write) -> io::Result<()> {
@@ -102,52 +104,50 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     static LOCK: StaticMutex = StaticMutex::new();
     let _g = LOCK.lock();
 
-    // Open up dbghelp.dll, we don't link to it explicitly because it can't
-    // always be found. Additionally, it's nice having fewer dependencies.
-    let path = Path::new("dbghelp.dll");
-    let dbghelp = match DynamicLibrary::open(Some(&path)) {
+    let dbghelp = match DynamicLibrary::open("dbghelp.dll") {
         Ok(lib) => lib,
         Err(..) => return Ok(()),
     };
+    unsafe {
+        // Fetch the symbols necessary from dbghelp.dll
+        let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn);
+        let SymCleanup = sym!(dbghelp, "SymCleanup", SymCleanupFn);
+        let StackWalk64 = sym!(dbghelp, "StackWalk64", StackWalk64Fn);
 
-    // Fetch the symbols necessary from dbghelp.dll
-    let SymInitialize = sym!(&dbghelp, "SymInitialize", SymInitializeFn);
-    let SymCleanup = sym!(&dbghelp, "SymCleanup", SymCleanupFn);
-    let StackWalk64 = sym!(&dbghelp, "StackWalk64", StackWalk64Fn);
+        // Allocate necessary structures for doing the stack walk
+        let process = c::GetCurrentProcess();
+        let thread = c::GetCurrentThread();
+        let mut context: c::CONTEXT = mem::zeroed();
+        c::RtlCaptureContext(&mut context);
+        let mut frame: c::STACKFRAME64 = mem::zeroed();
+        let image = init_frame(&mut frame, &context);
 
-    // Allocate necessary structures for doing the stack walk
-    let process = unsafe { c::GetCurrentProcess() };
-    let thread = unsafe { c::GetCurrentThread() };
-    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
-    unsafe { c::RtlCaptureContext(&mut context); }
-    let mut frame: c::STACKFRAME64 = unsafe { mem::zeroed() };
-    let image = init_frame(&mut frame, &context);
+        // Initialize this process's symbols
+        let ret = SymInitialize(process, ptr::null_mut(), c::TRUE);
+        if ret != c::TRUE { return Ok(()) }
+        let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
 
-    // Initialize this process's symbols
-    let ret = SymInitialize(process, ptr::null_mut(), c::TRUE);
-    if ret != c::TRUE { return Ok(()) }
-    let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
+        // And now that we're done with all the setup, do the stack walking!
+        // Start from -1 to avoid printing this stack frame, which will
+        // always be exactly the same.
+        let mut i = -1;
+        try!(write!(w, "stack backtrace:\n"));
+        while StackWalk64(image, process, thread, &mut frame, &mut context,
+                          ptr::null_mut(),
+                          ptr::null_mut(),
+                          ptr::null_mut(),
+                          ptr::null_mut()) == c::TRUE {
+            let addr = frame.AddrPC.Offset;
+            if addr == frame.AddrReturn.Offset || addr == 0 ||
+               frame.AddrReturn.Offset == 0 { break }
 
-    // And now that we're done with all the setup, do the stack walking!
-    // Start from -1 to avoid printing this stack frame, which will
-    // always be exactly the same.
-    let mut i = -1;
-    try!(write!(w, "stack backtrace:\n"));
-    while StackWalk64(image, process, thread, &mut frame, &mut context,
-                      ptr::null_mut(),
-                      ptr::null_mut(),
-                      ptr::null_mut(),
-                      ptr::null_mut()) == c::TRUE {
-        let addr = frame.AddrPC.Offset;
-        if addr == frame.AddrReturn.Offset || addr == 0 ||
-           frame.AddrReturn.Offset == 0 { break }
+            i += 1;
 
-        i += 1;
-
-        if i >= 0 {
-            try!(printing::print(w, i, addr-1, &dbghelp, process));
+            if i >= 0 {
+                try!(printing::print(w, i, addr - 1, process, &dbghelp));
+            }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }

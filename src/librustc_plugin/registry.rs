@@ -13,7 +13,7 @@
 use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
 use rustc::session::Session;
 
-use rustc::mir::transform::MirPass;
+use rustc::mir::transform::MirMapPass;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, MultiModifier, MultiDecorator};
@@ -56,7 +56,7 @@ pub struct Registry<'a> {
     pub late_lint_passes: Vec<LateLintPassObject>,
 
     #[doc(hidden)]
-    pub mir_passes: Vec<Box<MirPass>>,
+    pub mir_passes: Vec<Box<for<'pcx> MirMapPass<'pcx>>>,
 
     #[doc(hidden)]
     pub lint_groups: HashMap<&'static str, Vec<LintId>>,
@@ -141,7 +141,7 @@ impl<'a> Registry<'a> {
     }
 
     /// Register a MIR pass
-    pub fn register_mir_pass(&mut self, pass: Box<MirPass>) {
+    pub fn register_mir_pass(&mut self, pass: Box<for<'pcx> MirMapPass<'pcx>>) {
         self.mir_passes.push(pass);
     }
 

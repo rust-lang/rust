@@ -10,7 +10,7 @@
 
 // ignore-emscripten no threads support
 
-#![feature(rand, num_bits_bytes)]
+#![feature(rand)]
 #![feature(const_fn)]
 
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -47,7 +47,6 @@ impl Drop for DropCounter {
 }
 
 pub fn main() {
-    assert!(MAX_LEN <= std::usize::BITS);
     // len can't go above 64.
     for len in 2..MAX_LEN {
         for _ in 0..REPEATS {

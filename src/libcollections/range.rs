@@ -35,6 +35,7 @@ pub trait RangeArgument<T> {
     }
 }
 
+// FIXME add inclusive ranges to RangeArgument
 
 impl<T> RangeArgument<T> for RangeFull {}
 

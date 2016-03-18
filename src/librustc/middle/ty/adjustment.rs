@@ -11,7 +11,7 @@
 pub use self::AutoAdjustment::*;
 pub use self::AutoRef::*;
 
-use middle::ty::{self, Ty, TypeAndMut, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeFoldable};
 use middle::ty::LvaluePreference::{NoPreference};
 
 use syntax::ast;
@@ -138,7 +138,7 @@ pub enum CustomCoerceUnsized {
 
 impl<'tcx> ty::TyS<'tcx> {
     /// See `expr_ty_adjusted`
-    pub fn adjust<F>(&'tcx self, cx: &ty::ctxt<'tcx>,
+    pub fn adjust<F>(&'tcx self, cx: &TyCtxt<'tcx>,
                      span: Span,
                      expr_id: ast::NodeId,
                      adjustment: Option<&AutoAdjustment<'tcx>>,
@@ -155,8 +155,8 @@ impl<'tcx> ty::TyS<'tcx> {
                 match *adjustment {
                     AdjustReifyFnPointer => {
                         match self.sty {
-                            ty::TyBareFn(Some(_), b) => {
-                                cx.mk_fn(None, b)
+                            ty::TyFnDef(_, _, b) => {
+                                cx.mk_ty(ty::TyFnPtr(b))
                             }
                             _ => {
                                 cx.sess.bug(
@@ -168,7 +168,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
                     AdjustUnsafeFnPointer => {
                         match self.sty {
-                            ty::TyBareFn(None, b) => cx.safe_to_unsafe_fn_ty(b),
+                            ty::TyFnPtr(b) => cx.safe_to_unsafe_fn_ty(b),
                             ref b => {
                                 cx.sess.bug(
                                     &format!("AdjustUnsafeFnPointer adjustment on non-fn-ptr: \
@@ -220,7 +220,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 
     pub fn adjust_for_autoderef<F>(&'tcx self,
-                                   cx: &ty::ctxt<'tcx>,
+                                   cx: &TyCtxt<'tcx>,
                                    expr_id: ast::NodeId,
                                    expr_span: Span,
                                    autoderef: u32, // how many autoderefs so far?
@@ -249,7 +249,7 @@ impl<'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn adjust_for_autoref(&'tcx self, cx: &ty::ctxt<'tcx>,
+    pub fn adjust_for_autoref(&'tcx self, cx: &TyCtxt<'tcx>,
                               autoref: Option<AutoRef<'tcx>>)
                               -> Ty<'tcx> {
         match autoref {

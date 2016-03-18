@@ -12,21 +12,6 @@
 
 macro_rules! uint_module { ($T:ty, $bits:expr) => (
 
-#[unstable(feature = "num_bits_bytes",
-           reason = "may want to be an associated function",
-           issue = "27753")]
-#[rustc_deprecated(since = "1.7.0",
-                   reason = "will be replaced via const fn or associated constants")]
-#[allow(missing_docs)]
-pub const BITS : usize = $bits;
-#[unstable(feature = "num_bits_bytes",
-           reason = "may want to be an associated function",
-           issue = "27753")]
-#[rustc_deprecated(since = "1.7.0",
-                   reason = "will be replaced via const fn or associated constants")]
-#[allow(missing_docs)]
-pub const BYTES : usize = ($bits / 8);
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_docs)]
 pub const MIN: $T = 0 as $T;

@@ -32,9 +32,10 @@ use middle::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
 
+use trans::abi::Abi;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
-use trans::{monomorphize, type_of};
+use trans::monomorphize;
 use middle::infer;
 use middle::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -49,7 +50,6 @@ use std::rc::Rc;
 
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
-use syntax::abi::Abi;
 use syntax::attr::IntType;
 use syntax::parse::token::{self, special_idents};
 
@@ -430,7 +430,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let fn_type = monomorphize::apply_param_substs(cx.tcx(), param_substs, &fn_type);
 
         let (sig, abi) = match fn_type.sty {
-            ty::TyBareFn(_, ref barefnty) => {
+            ty::TyFnDef(_, _, ref barefnty) | ty::TyFnPtr(ref barefnty) => {
                 let sig = cx.tcx().erase_late_bound_regions(&barefnty.sig);
                 let sig = infer::normalize_associated_type(cx.tcx(), &sig);
                 (sig, barefnty.abi)
@@ -456,15 +456,23 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             ty::FnDiverging => diverging_type_metadata(cx)
         });
 
-        let inputs = &if abi == Abi::RustCall {
-            type_of::untuple_arguments(cx, &sig.inputs)
+        let inputs = if abi == Abi::RustCall {
+            &sig.inputs[..sig.inputs.len()-1]
         } else {
-            sig.inputs
+            &sig.inputs[..]
         };
 
         // Arguments types
         for &argument_type in inputs {
             signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
+        }
+
+        if abi == Abi::RustCall && !sig.inputs.is_empty() {
+            if let ty::TyTuple(ref args) = sig.inputs[sig.inputs.len() - 1].sty {
+                for &argument_type in args {
+                    signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
+                }
+            }
         }
 
         return create_DIArray(DIB(cx), &signature[..]);

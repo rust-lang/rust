@@ -50,6 +50,7 @@ pub extern crate rustc_llvm as llvm;
 extern crate rustc_mir;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate serialize;
+extern crate rustc_const_eval;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -60,7 +61,6 @@ pub use rustc::lint;
 pub use rustc::util;
 
 pub mod back {
-    pub use rustc_back::abi;
     pub use rustc_back::rpath;
     pub use rustc_back::svh;
 

@@ -14,9 +14,9 @@
  */
 
 use mir::repr::*;
-use middle::const_eval::ConstVal;
 use middle::subst::{Subst, Substs};
-use middle::ty::{self, AdtDef, Ty};
+use middle::ty::{self, AdtDef, Ty, TyCtxt};
+use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_front::hir;
 
 #[derive(Copy, Clone, Debug)]
@@ -35,7 +35,7 @@ impl<'tcx> LvalueTy<'tcx> {
         LvalueTy::Ty { ty: ty }
     }
 
-    pub fn to_ty(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             LvalueTy::Ty { ty } =>
                 ty,
@@ -45,7 +45,7 @@ impl<'tcx> LvalueTy<'tcx> {
     }
 
     pub fn projection_ty(self,
-                         tcx: &ty::ctxt<'tcx>,
+                         tcx: &TyCtxt<'tcx>,
                          elem: &LvalueElem<'tcx>)
                          -> LvalueTy<'tcx>
     {
@@ -78,9 +78,32 @@ impl<'tcx> LvalueTy<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
+            LvalueTy::Downcast { adt_def, substs, variant_index } => {
+                let substs = substs.fold_with(folder);
+                LvalueTy::Downcast {
+                    adt_def: adt_def,
+                    substs: folder.tcx().mk_substs(substs),
+                    variant_index: variant_index
+                }
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            LvalueTy::Ty { ty } => ty.visit_with(visitor),
+            LvalueTy::Downcast { substs, .. } => substs.visit_with(visitor)
+        }
+    }
+}
+
 impl<'tcx> Mir<'tcx> {
     pub fn operand_ty(&self,
-                      tcx: &ty::ctxt<'tcx>,
+                      tcx: &TyCtxt<'tcx>,
                       operand: &Operand<'tcx>)
                       -> Ty<'tcx>
     {
@@ -91,7 +114,7 @@ impl<'tcx> Mir<'tcx> {
     }
 
     pub fn binop_ty(&self,
-                    tcx: &ty::ctxt<'tcx>,
+                    tcx: &TyCtxt<'tcx>,
                     op: BinOp,
                     lhs_ty: Ty<'tcx>,
                     rhs_ty: Ty<'tcx>)
@@ -116,7 +139,7 @@ impl<'tcx> Mir<'tcx> {
     }
 
     pub fn lvalue_ty(&self,
-                     tcx: &ty::ctxt<'tcx>,
+                     tcx: &TyCtxt<'tcx>,
                      lvalue: &Lvalue<'tcx>)
                      -> LvalueTy<'tcx>
     {
@@ -137,19 +160,17 @@ impl<'tcx> Mir<'tcx> {
     }
 
     pub fn rvalue_ty(&self,
-                     tcx: &ty::ctxt<'tcx>,
+                     tcx: &TyCtxt<'tcx>,
                      rvalue: &Rvalue<'tcx>)
                      -> Option<Ty<'tcx>>
     {
         match *rvalue {
             Rvalue::Use(ref operand) => Some(self.operand_ty(tcx, operand)),
             Rvalue::Repeat(ref operand, ref count) => {
-                if let ConstVal::Uint(u) = count.value {
-                    let op_ty = self.operand_ty(tcx, operand);
-                    Some(tcx.mk_array(op_ty, u as usize))
-                } else {
-                    None
-                }
+                let op_ty = self.operand_ty(tcx, operand);
+                let count = count.value.as_u64(tcx.sess.target.uint_type);
+                assert_eq!(count as usize as u64, count);
+                Some(tcx.mk_array(op_ty, count as usize))
             }
             Rvalue::Ref(reg, bk, ref lv) => {
                 let lv_ty = self.lvalue_ty(tcx, lv).to_ty(tcx);
@@ -199,7 +220,7 @@ impl<'tcx> Mir<'tcx> {
                 }
             }
             Rvalue::Slice { .. } => None,
-            Rvalue::InlineAsm(..) => None
+            Rvalue::InlineAsm { .. } => None
         }
     }
 }

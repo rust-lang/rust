@@ -15,12 +15,12 @@
  */
 
 use middle::def::Def;
-use middle::ty::{self, Ty};
+use middle::ty::{Ty, TyCtxt};
 
 use syntax::codemap::Span;
 use rustc_front::hir as ast;
 
-pub fn prohibit_type_params(tcx: &ty::ctxt, segments: &[ast::PathSegment]) {
+pub fn prohibit_type_params(tcx: &TyCtxt, segments: &[ast::PathSegment]) {
     for segment in segments {
         for typ in segment.parameters.types() {
             span_err!(tcx.sess, typ.span, E0109,
@@ -39,13 +39,13 @@ pub fn prohibit_type_params(tcx: &ty::ctxt, segments: &[ast::PathSegment]) {
     }
 }
 
-pub fn prohibit_projection(tcx: &ty::ctxt, span: Span)
+pub fn prohibit_projection(tcx: &TyCtxt, span: Span)
 {
     span_err!(tcx.sess, span, E0229,
               "associated type bindings are not allowed here");
 }
 
-pub fn prim_ty_to_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn prim_ty_to_ty<'tcx>(tcx: &TyCtxt<'tcx>,
                            segments: &[ast::PathSegment],
                            nty: ast::PrimTy)
                            -> Ty<'tcx> {
@@ -62,7 +62,7 @@ pub fn prim_ty_to_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 /// If a type in the AST is a primitive type, return the ty::Ty corresponding
 /// to it.
-pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
+pub fn ast_ty_to_prim_ty<'tcx>(tcx: &TyCtxt<'tcx>, ast_ty: &ast::Ty)
                                -> Option<Ty<'tcx>> {
     if let ast::TyPath(None, ref path) = ast_ty.node {
         let def = match tcx.def_map.borrow().get(&ast_ty.id) {

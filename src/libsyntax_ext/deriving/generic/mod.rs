@@ -381,6 +381,22 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
     visitor.types
 }
 
+/// Replacement for expr_unreachable which generates intrinsics::unreachable()
+/// instead of unreachable!()
+fn expr_unreachable_intrinsic(cx: &ExtCtxt, sp: Span) -> P<Expr> {
+    let path = cx.std_path(&["intrinsics", "unreachable"]);
+    let call = cx.expr_call_global(
+        sp, path, vec![]);
+    let unreachable = cx.expr_block(P(ast::Block {
+        stmts: vec![],
+        expr: Some(call),
+        id: ast::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
+        span: sp }));
+
+    unreachable
+}
+
 impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   cx: &mut ExtCtxt,
@@ -476,6 +492,7 @@ impl<'a> TraitDef<'a> {
                 span: self.span,
                 ident: ident,
                 vis: ast::Visibility::Inherited,
+                defaultness: ast::Defaultness::Final,
                 attrs: Vec::new(),
                 node: ast::ImplItemKind::Type(type_def.to_ty(cx,
                     self.span,
@@ -893,6 +910,7 @@ impl<'a> MethodDef<'a> {
             attrs: self.attributes.clone(),
             span: trait_.span,
             vis: ast::Visibility::Inherited,
+            defaultness: ast::Defaultness::Final,
             ident: method_ident,
             node: ast::ImplItemKind::Method(ast::MethodSig {
                 generics: fn_generics,
@@ -1023,8 +1041,8 @@ impl<'a> MethodDef<'a> {
     ///     fn eq(&self, __arg_1: &A) -> ::bool {
     ///         match (&*self, &*__arg_1) {
     ///             (&A1, &A1) => true,
-    ///             (&A2(ref __self_0),
-    ///              &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
+    ///             (&A2(ref self_0),
+    ///              &A2(ref __arg_1_0)) => (*self_0).eq(&(*__arg_1_0)),
     ///             _ => {
     ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
     ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0, A2(..) => 1 };
@@ -1072,9 +1090,9 @@ impl<'a> MethodDef<'a> {
     /// let __self0_vi = unsafe {
     ///     std::intrinsics::discriminant_value(&self) } as i32;
     /// let __self1_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&__arg1) } as i32;
+    ///     std::intrinsics::discriminant_value(&arg1) } as i32;
     /// let __self2_vi = unsafe {
-    ///     std::intrinsics::discriminant_value(&__arg2) } as i32;
+    ///     std::intrinsics::discriminant_value(&arg2) } as i32;
     ///
     /// if __self0_vi == __self1_vi && __self0_vi == __self2_vi && ... {
     ///     match (...) {
@@ -1246,9 +1264,9 @@ impl<'a> MethodDef<'a> {
             // let __self0_vi = unsafe {
             //     std::intrinsics::discriminant_value(&self) } as i32;
             // let __self1_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&__arg1) } as i32;
+            //     std::intrinsics::discriminant_value(&arg1) } as i32;
             // let __self2_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&__arg2) } as i32;
+            //     std::intrinsics::discriminant_value(&arg2) } as i32;
             // ```
             let mut index_let_stmts: Vec<ast::Stmt> = Vec::new();
 
@@ -1297,16 +1315,7 @@ impl<'a> MethodDef<'a> {
             //Since we know that all the arguments will match if we reach the match expression we
             //add the unreachable intrinsics as the result of the catch all which should help llvm
             //in optimizing it
-            let path = cx.std_path(&["intrinsics", "unreachable"]);
-            let call = cx.expr_call_global(
-                sp, path, vec![]);
-            let unreachable = cx.expr_block(P(ast::Block {
-                stmts: vec![],
-                expr: Some(call),
-                id: ast::DUMMY_NODE_ID,
-                rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-                span: sp }));
-            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], unreachable));
+            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], expr_unreachable_intrinsic(cx, sp)));
 
             // Final wrinkle: the self_args are expressions that deref
             // down to desired l-values, but we cannot actually deref
@@ -1382,7 +1391,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            cx.expr_unreachable(sp)
+            expr_unreachable_intrinsic(cx, sp)
         }
         else {
 

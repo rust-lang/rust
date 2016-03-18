@@ -304,6 +304,44 @@ fn test_iterator_skip() {
 }
 
 #[test]
+fn test_iterator_skip_doubleended() {
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+    let mut it = xs.iter().rev().skip(5);
+    assert_eq!(it.next(), Some(&15));
+    assert_eq!(it.by_ref().rev().next(), Some(&0));
+    assert_eq!(it.next(), Some(&13));
+    assert_eq!(it.by_ref().rev().next(), Some(&1));
+    assert_eq!(it.next(), Some(&5));
+    assert_eq!(it.by_ref().rev().next(), Some(&2));
+    assert_eq!(it.next(), Some(&3));
+    assert_eq!(it.next(), None);
+    let mut it = xs.iter().rev().skip(5).rev();
+    assert_eq!(it.next(), Some(&0));
+    assert_eq!(it.rev().next(), Some(&15));
+    let mut it_base = xs.iter();
+    {
+        let mut it = it_base.by_ref().skip(5).rev();
+        assert_eq!(it.next(), Some(&30));
+        assert_eq!(it.next(), Some(&20));
+        assert_eq!(it.next(), Some(&19));
+        assert_eq!(it.next(), Some(&17));
+        assert_eq!(it.next(), Some(&16));
+        assert_eq!(it.next(), Some(&15));
+        assert_eq!(it.next(), Some(&13));
+        assert_eq!(it.next(), None);
+    }
+    // make sure the skipped parts have not been consumed
+    assert_eq!(it_base.next(), Some(&0));
+    assert_eq!(it_base.next(), Some(&1));
+    assert_eq!(it_base.next(), Some(&2));
+    assert_eq!(it_base.next(), Some(&3));
+    assert_eq!(it_base.next(), Some(&5));
+    assert_eq!(it_base.next(), None);
+    let it = xs.iter().skip(5).rev();
+    assert_eq!(it.last(), Some(&13));
+}
+
+#[test]
 fn test_iterator_skip_nth() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
 
@@ -639,7 +677,7 @@ fn test_rev() {
 
 #[test]
 fn test_cloned() {
-    let xs = [2u8, 4, 6, 8];
+    let xs = [2, 4, 6, 8];
 
     let mut it = xs.iter().cloned();
     assert_eq!(it.len(), 4);
@@ -823,8 +861,8 @@ fn test_range() {
     assert_eq!((-10..-1).size_hint(), (9, Some(9)));
     assert_eq!((-1..-10).size_hint(), (0, Some(0)));
 
-    assert_eq!((-70..58i8).size_hint(), (128, Some(128)));
-    assert_eq!((-128..127i8).size_hint(), (255, Some(255)));
+    assert_eq!((-70..58).size_hint(), (128, Some(128)));
+    assert_eq!((-128..127).size_hint(), (255, Some(255)));
     assert_eq!((-2..isize::MAX).size_hint(),
                (isize::MAX as usize + 2, Some(isize::MAX as usize + 2)));
 }
@@ -975,7 +1013,7 @@ fn bench_max_by_key2(b: &mut Bencher) {
         array.iter().enumerate().max_by_key(|&(_, item)| item).unwrap().0
     }
 
-    let mut data = vec![0i32; 1638];
+    let mut data = vec![0; 1638];
     data[514] = 9999;
 
     b.iter(|| max_index_iter(&data));

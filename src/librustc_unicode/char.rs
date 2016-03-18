@@ -19,7 +19,7 @@
 //! [Unicode code point]: http://www.unicode.org/glossary/#code_point
 //!
 //! This module exists for technical reasons, the primary documentation for
-//! `char` is directly on [the `char` primitive type](../primitive.char.html)
+//! `char` is directly on [the `char` primitive type](../../std/primitive.char.html)
 //! itself.
 //!
 //! This module is the home of the iterator implementations for the iterators
@@ -46,8 +46,8 @@ pub use tables::UNICODE_VERSION;
 /// This `struct` is created by the [`to_lowercase()`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_lowercase()`]: ../primitive.char.html#method.to_lowercase
-/// [`char`]: ../primitive.char.html
+/// [`to_lowercase()`]: ../../std/primitive.char.html#method.to_lowercase
+/// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToLowercase(CaseMappingIter);
 
@@ -64,8 +64,8 @@ impl Iterator for ToLowercase {
 /// This `struct` is created by the [`to_uppercase()`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_uppercase()`]: ../primitive.char.html#method.to_uppercase
-/// [`char`]: ../primitive.char.html
+/// [`to_uppercase()`]: ../../std/primitive.char.html#method.to_uppercase
+/// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToUppercase(CaseMappingIter);
 
@@ -968,6 +968,6 @@ impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
 
 /// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a decoding error.
 /// It can occur, for example, when giving ill-formed UTF-8 bytes to
-/// [`String::from_utf8_lossy`](../string/struct.String.html#method.from_utf8_lossy).
+/// [`String::from_utf8_lossy`](../../std/string/struct.String.html#method.from_utf8_lossy).
 #[unstable(feature = "decode_utf16", reason = "recently added", issue = "27830")]
 pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';

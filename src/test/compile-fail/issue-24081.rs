@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::ops::Add; //~ ERROR import `Add` conflicts with type in this module
-use std::ops::Sub; //~ ERROR import `Sub` conflicts with type in this module
-use std::ops::Mul; //~ ERROR import `Mul` conflicts with type in this module
-use std::ops::Div; //~ ERROR import `Div` conflicts with existing submodule
-use std::ops::Rem; //~ ERROR import `Rem` conflicts with trait in this module
+use std::ops::Add; //~ NOTE previous import
+use std::ops::Sub; //~ NOTE previous import
+use std::ops::Mul; //~ NOTE previous import
+use std::ops::Div; //~ NOTE previous import
+use std::ops::Rem; //~ NOTE previous import
 
-type Add = bool;
-struct Sub { x: f32 }
-enum Mul { A, B }
-mod Div { }
-trait Rem { }
+type Add = bool; //~ ERROR a trait named `Add` has already been imported in this module
+struct Sub { x: f32 } //~ ERROR a trait named `Sub` has already been imported in this module
+enum Mul { A, B } //~ ERROR a trait named `Mul` has already been imported in this module
+mod Div { } //~ ERROR a trait named `Div` has already been imported in this module
+trait Rem {  } //~ ERROR a trait named `Rem` has already been imported in this module
 
 fn main() {}

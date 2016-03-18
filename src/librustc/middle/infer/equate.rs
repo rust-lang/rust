@@ -13,7 +13,7 @@ use super::higher_ranked::HigherRankedRelations;
 use super::{Subtype};
 use super::type_variable::{EqTo};
 
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::TyVar;
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
@@ -31,7 +31,7 @@ impl<'a, 'tcx> Equate<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Equate" }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

@@ -12,13 +12,13 @@ use middle::def::{self, Def};
 use middle::infer::{self, TypeOrigin};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
-use middle::privacy::{AllPublic, LastMod};
 use middle::subst::Substs;
 use middle::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
-use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
+use check::{demand, FnCtxt, Expectation};
 use check::{check_expr_with_lvalue_pref};
 use check::{instantiate_path, resolve_ty_and_def_ufcs, structurally_resolved_type};
+use check::coercion;
 use lint;
 use require_same_types;
 use util::nodemap::FnvHashMap;
@@ -204,7 +204,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_enum(pcx, pat, path, subpats.as_ref().map(|v| &v[..]), expected, true);
         }
         PatKind::Path(ref path) => {
-            check_pat_enum(pcx, pat, path, None, expected, false);
+            check_pat_enum(pcx, pat, path, Some(&[]), expected, false);
         }
         PatKind::QPath(ref qself, ref path) => {
             let self_ty = fcx.to_ty(&qself.ty);
@@ -219,7 +219,6 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 let sentinel = fcx.tcx().map.local_def_id(ast::CRATE_NODE_ID);
                 def::PathResolution {
                     base_def: Def::Mod(sentinel),
-                    last_private: LastMod(AllPublic),
                     depth: path.segments.len()
                 }
             } else {
@@ -494,54 +493,67 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // of execution reach it, we will panic, so bottom is an appropriate
     // type in that case)
     let expected = expected.adjust_for_branches(fcx);
-    let result_ty = arms.iter().fold(fcx.infcx().next_diverging_ty_var(), |result_ty, arm| {
-        let bty = match expected {
-            // We don't coerce to `()` so that if the match expression is a
-            // statement it's branches can have any consistent type. That allows
-            // us to give better error messages (pointing to a usually better
-            // arm for inconsistent arms or to the whole match when a `()` type
-            // is required).
-            Expectation::ExpectHasType(ety) if ety != fcx.tcx().mk_nil() => {
-                check_expr_coercable_to_type(fcx, &arm.body, ety);
-                ety
+    let mut result_ty = fcx.infcx().next_diverging_ty_var();
+    let coerce_first = match expected {
+        // We don't coerce to `()` so that if the match expression is a
+        // statement it's branches can have any consistent type. That allows
+        // us to give better error messages (pointing to a usually better
+        // arm for inconsistent arms or to the whole match when a `()` type
+        // is required).
+        Expectation::ExpectHasType(ety) if ety != fcx.tcx().mk_nil() => {
+            ety
+        }
+        _ => result_ty
+    };
+    for (i, arm) in arms.iter().enumerate() {
+        if let Some(ref e) = arm.guard {
+            check_expr_has_type(fcx, e, tcx.types.bool);
+        }
+        check_expr_with_expectation(fcx, &arm.body, expected);
+        let arm_ty = fcx.expr_ty(&arm.body);
+
+        if result_ty.references_error() || arm_ty.references_error() {
+            result_ty = tcx.types.err;
+            continue;
+        }
+
+        // Handle the fallback arm of a desugared if-let like a missing else.
+        let is_if_let_fallback = match match_src {
+            hir::MatchSource::IfLetDesugar { contains_else_clause: false } => {
+                i == arms.len() - 1 && arm_ty.is_nil()
             }
-            _ => {
-                check_expr_with_expectation(fcx, &arm.body, expected);
-                fcx.node_ty(arm.body.id)
-            }
+            _ => false
         };
 
-        if let Some(ref e) = arm.guard {
-            check_expr_has_type(fcx, &e, tcx.types.bool);
-        }
-
-        if result_ty.references_error() || bty.references_error() {
-            tcx.types.err
+        let origin = if is_if_let_fallback {
+            TypeOrigin::IfExpressionWithNoElse(expr.span)
         } else {
-            let (origin, expected, found) = match match_src {
-                /* if-let construct without an else block */
-                hir::MatchSource::IfLetDesugar { contains_else_clause }
-                if !contains_else_clause => (
-                    TypeOrigin::IfExpressionWithNoElse(expr.span),
-                    bty,
-                    result_ty,
-                ),
-                _ => (
-                    TypeOrigin::MatchExpressionArm(expr.span, arm.body.span, match_src),
-                    result_ty,
-                    bty,
-                ),
-            };
+            TypeOrigin::MatchExpressionArm(expr.span, arm.body.span, match_src)
+        };
 
-            infer::common_supertype(
-                fcx.infcx(),
-                origin,
-                true,
-                expected,
-                found,
-            )
-        }
-    });
+        let result = if is_if_let_fallback {
+            fcx.infcx().eq_types(true, origin, arm_ty, result_ty).map(|_| arm_ty)
+        } else if i == 0 {
+            // Special-case the first arm, as it has no "previous expressions".
+            coercion::try(fcx, &arm.body, coerce_first)
+        } else {
+            let prev_arms = || arms[..i].iter().map(|arm| &*arm.body);
+            coercion::try_find_lub(fcx, origin, prev_arms, result_ty, &arm.body)
+        };
+
+        result_ty = match result {
+            Ok(ty) => ty,
+            Err(e) => {
+                let (expected, found) = if is_if_let_fallback {
+                    (arm_ty, result_ty)
+                } else {
+                    (result_ty, arm_ty)
+                };
+                fcx.infcx().report_mismatched_types(origin, expected, found, e);
+                fcx.tcx().types.err
+            }
+        };
+    }
 
     fcx.write_ty(expr.id, result_ty);
 }
@@ -599,12 +611,12 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
     }
 }
 
-pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                                pat: &hir::Pat,
-                                path: &hir::Path,
-                                subpats: Option<&'tcx [P<hir::Pat>]>,
-                                expected: Ty<'tcx>,
-                                is_tuple_struct_pat: bool)
+fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                            pat: &hir::Pat,
+                            path: &hir::Path,
+                            subpats: Option<&'tcx [P<hir::Pat>]>,
+                            expected: Ty<'tcx>,
+                            is_tuple_struct_pat: bool)
 {
     // Typecheck the path.
     let fcx = pcx.fcx;
@@ -687,46 +699,14 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     demand::eqtype(fcx, pat.span, expected, pat_ty);
 
     let real_path_ty = fcx.node_ty(pat.id);
-    let (arg_tys, kind_name): (Vec<_>, &'static str) = match real_path_ty.sty {
+    let (kind_name, variant, expected_substs) = match real_path_ty.sty {
         ty::TyEnum(enum_def, expected_substs) => {
             let variant = enum_def.variant_of_def(def);
-            if variant.kind() == ty::VariantKind::Struct {
-                report_bad_struct_kind(false);
-                return;
-            }
-            if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                // Matching unit variants with tuple variant patterns (`UnitVariant(..)`)
-                // is allowed for backward compatibility.
-                let is_special_case = variant.kind() == ty::VariantKind::Unit;
-                report_bad_struct_kind(is_special_case);
-                if !is_special_case {
-                    return
-                }
-            }
-            (variant.fields
-                    .iter()
-                    .map(|f| fcx.instantiate_type_scheme(pat.span,
-                                                         expected_substs,
-                                                         &f.unsubst_ty()))
-                    .collect(),
-             "variant")
+            ("variant", variant, expected_substs)
         }
         ty::TyStruct(struct_def, expected_substs) => {
             let variant = struct_def.struct_variant();
-            if is_tuple_struct_pat && variant.kind() != ty::VariantKind::Tuple {
-                // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
-                // is allowed for backward compatibility.
-                let is_special_case = variant.kind() == ty::VariantKind::Unit;
-                report_bad_struct_kind(is_special_case);
-                return;
-            }
-            (variant.fields
-                    .iter()
-                    .map(|f| fcx.instantiate_type_scheme(pat.span,
-                                                         expected_substs,
-                                                         &f.unsubst_ty()))
-                    .collect(),
-             "struct")
+            ("struct", variant, expected_substs)
         }
         _ => {
             report_bad_struct_kind(false);
@@ -734,12 +714,26 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
     };
 
+    match (is_tuple_struct_pat, variant.kind()) {
+        (true, ty::VariantKind::Unit) => {
+            // Matching unit structs with tuple variant patterns (`UnitVariant(..)`)
+            // is allowed for backward compatibility.
+            report_bad_struct_kind(true);
+        }
+        (_, ty::VariantKind::Struct) => {
+            report_bad_struct_kind(false);
+            return
+        }
+        _ => {}
+    }
+
     if let Some(subpats) = subpats {
-        if subpats.len() == arg_tys.len() {
-            for (subpat, arg_ty) in subpats.iter().zip(arg_tys) {
-                check_pat(pcx, &subpat, arg_ty);
+        if subpats.len() == variant.fields.len() {
+            for (subpat, field) in subpats.iter().zip(&variant.fields) {
+                let field_ty = fcx.field_ty(subpat.span, field, expected_substs);
+                check_pat(pcx, &subpat, field_ty);
             }
-        } else if arg_tys.is_empty() {
+        } else if variant.fields.is_empty() {
             span_err!(tcx.sess, pat.span, E0024,
                       "this pattern has {} field{}, but the corresponding {} has no fields",
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
@@ -752,7 +746,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                       "this pattern has {} field{}, but the corresponding {} has {} field{}",
                       subpats.len(), if subpats.len() == 1 {""} else {"s"},
                       kind_name,
-                      arg_tys.len(), if arg_tys.len() == 1 {""} else {"s"});
+                      variant.fields.len(), if variant.fields.len() == 1 {""} else {"s"});
 
             for pat in subpats {
                 check_pat(pcx, &pat, tcx.types.err);

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 trait Foo {
-    fn orange(&self);
-    fn orange(&self);   //~ ERROR error: duplicate definition of value `orange`
+    fn orange(&self); //~ NOTE previous definition of `orange` here
+    fn orange(&self); //~ ERROR a value named `orange` has already been defined in this trait
 }
 
 fn main() {}

@@ -784,10 +784,6 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(main_expression);
             visitor.visit_expr(index_expression)
         }
-        ExprRange(ref start, ref end) => {
-            walk_list!(visitor, visit_expr, start);
-            walk_list!(visitor, visit_expr, end);
-        }
         ExprPath(ref maybe_qself, ref path) => {
             if let Some(ref qself) = *maybe_qself {
                 visitor.visit_ty(&qself.ty);
@@ -802,12 +798,12 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprRet(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
-        ExprInlineAsm(ref ia) => {
-            for &(_, ref input) in &ia.inputs {
-                visitor.visit_expr(&input)
+        ExprInlineAsm(_, ref outputs, ref inputs) => {
+            for output in outputs {
+                visitor.visit_expr(output)
             }
-            for output in &ia.outputs {
-                visitor.visit_expr(&output.expr)
+            for input in inputs {
+                visitor.visit_expr(input)
             }
         }
     }

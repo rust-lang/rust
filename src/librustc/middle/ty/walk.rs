@@ -98,7 +98,11 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         ty::TyTuple(ref ts) => {
             push_reversed(stack, ts);
         }
-        ty::TyBareFn(_, ref ft) => {
+        ty::TyFnDef(_, substs, ref ft) => {
+            push_reversed(stack, substs.types.as_slice());
+            push_sig_subtypes(stack, &ft.sig);
+        }
+        ty::TyFnPtr(ref ft) => {
             push_sig_subtypes(stack, &ft.sig);
         }
     }

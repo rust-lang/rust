@@ -13,7 +13,6 @@ mod a {
 
     impl Default for A {
         pub fn default() -> A {
-            //~^ ERROR E0449
             A;
         }
     }
@@ -22,5 +21,5 @@ mod a {
 
 fn main() {
     a::A::default();
-    //~^ ERROR method `default` is inaccessible
+    //~^ ERROR struct `A` is private
  }

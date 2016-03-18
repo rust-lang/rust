@@ -9,11 +9,11 @@
 // except according to those terms.
 
 mod Y {
-    type X = usize;
+    pub type X = usize;
     extern {
-        static x: *const usize;
+        pub static x: *const usize;
     }
-    fn foo(value: *const X) -> *const X {
+    pub fn foo(value: *const X) -> *const X {
         value
     }
 }

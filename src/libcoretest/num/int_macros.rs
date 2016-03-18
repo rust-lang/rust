@@ -208,11 +208,11 @@ mod tests {
     fn test_pow() {
         let mut r = 2 as $T;
 
-        assert_eq!(r.pow(2u32), 4 as $T);
-        assert_eq!(r.pow(0u32), 1 as $T);
+        assert_eq!(r.pow(2), 4 as $T);
+        assert_eq!(r.pow(0), 1 as $T);
         r = -2 as $T;
-        assert_eq!(r.pow(2u32), 4 as $T);
-        assert_eq!(r.pow(3u32), -8 as $T);
+        assert_eq!(r.pow(2), 4 as $T);
+        assert_eq!(r.pow(3), -8 as $T);
     }
 }
 

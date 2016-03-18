@@ -346,11 +346,6 @@ fn walk_expr(cx: &CrateContext,
             walk_expr(cx, &rhs, scope_stack, scope_map);
         }
 
-        hir::ExprRange(ref start, ref end) => {
-            start.as_ref().map(|e| walk_expr(cx, &e, scope_stack, scope_map));
-            end.as_ref().map(|e| walk_expr(cx, &e, scope_stack, scope_map));
-        }
-
         hir::ExprVec(ref init_expressions) |
         hir::ExprTup(ref init_expressions) => {
             for ie in init_expressions {
@@ -473,16 +468,13 @@ fn walk_expr(cx: &CrateContext,
             }
         }
 
-        hir::ExprInlineAsm(hir::InlineAsm { ref inputs,
-                                            ref outputs,
-                                            .. }) => {
-            // inputs, outputs: Vec<(String, P<Expr>)>
-            for &(_, ref exp) in inputs {
-                walk_expr(cx, &exp, scope_stack, scope_map);
+        hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+            for output in outputs {
+                walk_expr(cx, output, scope_stack, scope_map);
             }
 
-            for out in outputs {
-                walk_expr(cx, &out.expr, scope_stack, scope_map);
+            for input in inputs {
+                walk_expr(cx, input, scope_stack, scope_map);
             }
         }
     }

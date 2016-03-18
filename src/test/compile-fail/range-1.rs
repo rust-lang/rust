@@ -13,7 +13,7 @@
 pub fn main() {
     // Mixed types.
     let _ = 0u32..10i32;
-    //~^ ERROR start and end of range have incompatible types
+    //~^ ERROR mismatched types
 
     // Bool => does not implement iterator.
     for i in false..true {}

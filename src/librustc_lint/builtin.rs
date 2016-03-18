@@ -33,8 +33,9 @@ use middle::def::Def;
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::subst::Substs;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::adjustment;
+use middle::traits::ProjectionMode;
 use rustc::front::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
@@ -774,7 +775,7 @@ impl LateLintPass for UnconditionalRecursion {
         // Functions for identifying if the given Expr NodeId `id`
         // represents a call to the function `fn_id`/method `method`.
 
-        fn expr_refers_to_this_fn(tcx: &ty::ctxt,
+        fn expr_refers_to_this_fn(tcx: &TyCtxt,
                                   fn_id: ast::NodeId,
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
@@ -790,7 +791,7 @@ impl LateLintPass for UnconditionalRecursion {
         }
 
         // Check if the expression `id` performs a call to `method`.
-        fn expr_refers_to_this_method(tcx: &ty::ctxt,
+        fn expr_refers_to_this_method(tcx: &TyCtxt,
                                       method: &ty::Method,
                                       id: ast::NodeId) -> bool {
             // Check for method calls and overloaded operators.
@@ -838,7 +839,7 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
-        fn method_call_refers_to_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+        fn method_call_refers_to_method<'tcx>(tcx: &TyCtxt<'tcx>,
                                               method: &ty::Method,
                                               callee_id: DefId,
                                               callee_substs: &Substs<'tcx>,
@@ -868,7 +869,10 @@ impl LateLintPass for UnconditionalRecursion {
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
                     let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
-                    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(param_env));
+                    let infcx = infer::new_infer_ctxt(tcx,
+                                                      &tcx.tables,
+                                                      Some(param_env),
+                                                      ProjectionMode::AnyFinal);
                     let mut selcx = traits::SelectionContext::new(&infcx);
                     match selcx.select(&obligation) {
                         // The method comes from a `T: Trait` bound.
@@ -1065,7 +1069,7 @@ impl LateLintPass for MutableTransmutes {
                 }
                 let typ = cx.tcx.node_id_to_type(expr.id);
                 match typ.sty {
-                    ty::TyBareFn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                    ty::TyFnDef(_, _, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
                         if let ty::FnConverging(to) = bare_fn.sig.0.output {
                             let from = bare_fn.sig.0.inputs[0];
                             return Some((&from.sty, &to.sty));
@@ -1079,7 +1083,7 @@ impl LateLintPass for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
             match cx.tcx.lookup_item_type(def_id).ty.sty {
-                ty::TyBareFn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyFnDef(_, _, ref bfty) if bfty.abi == RustIntrinsic => (),
                 _ => return false
             }
             cx.tcx.with_path(def_id, |path| match path.last() {

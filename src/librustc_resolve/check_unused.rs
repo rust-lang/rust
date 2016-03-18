@@ -23,7 +23,6 @@ use Resolver;
 use Namespace::{TypeNS, ValueNS};
 
 use rustc::lint;
-use rustc::middle::privacy::{DependsOn, LastImport, Used, Unused};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -69,45 +68,6 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                                   span,
                                   "unused import".to_string());
         }
-
-        let mut def_map = self.def_map.borrow_mut();
-        let path_res = if let Some(r) = def_map.get_mut(&id) {
-            r
-        } else {
-            return;
-        };
-        let (v_priv, t_priv) = match path_res.last_private {
-            LastImport { value_priv, type_priv, .. } => (value_priv, type_priv),
-            _ => {
-                panic!("we should only have LastImport for `use` directives")
-            }
-        };
-
-        let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
-            Used
-        } else {
-            Unused
-        };
-        let t_used = if self.used_imports.contains(&(id, TypeNS)) {
-            Used
-        } else {
-            Unused
-        };
-
-        match (v_priv, t_priv) {
-            // Since some items may be both in the value _and_ type namespaces (e.g., structs)
-            // we might have two LastPrivates pointing at the same thing. There is no point
-            // checking both, so lets not check the value one.
-            (Some(DependsOn(def_v)), Some(DependsOn(def_t))) if def_v == def_t => v_used = Unused,
-            _ => {}
-        }
-
-        path_res.last_private = LastImport {
-            value_priv: v_priv,
-            value_used: v_used,
-            type_priv: t_priv,
-            type_used: t_used,
-        };
     }
 }
 

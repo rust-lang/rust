@@ -140,81 +140,6 @@ radix! { LowerHex, 16, "0x", x @  0 ...  9 => b'0' + x,
 radix! { UpperHex, 16, "0x", x @  0 ...  9 => b'0' + x,
                              x @ 10 ... 15 => b'A' + (x - 10) }
 
-/// A radix with in the range of `2..36`.
-#[derive(Clone, Copy, PartialEq)]
-#[unstable(feature = "fmt_radix",
-           reason = "may be renamed or move to a different module",
-           issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-pub struct Radix {
-    base: u8,
-}
-
-impl Radix {
-    fn new(base: u8) -> Radix {
-        assert!(2 <= base && base <= 36,
-                "the base must be in the range of 2..36: {}",
-                base);
-        Radix { base: base }
-    }
-}
-
-impl GenericRadix for Radix {
-    fn base(&self) -> u8 {
-        self.base
-    }
-    fn digit(&self, x: u8) -> u8 {
-        match x {
-            x @  0 ... 9 => b'0' + x,
-            x if x < self.base() => b'a' + (x - 10),
-            x => panic!("number not in the range 0..{}: {}", self.base() - 1, x),
-        }
-    }
-}
-
-/// A helper type for formatting radixes.
-#[unstable(feature = "fmt_radix",
-           reason = "may be renamed or move to a different module",
-           issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-#[derive(Copy, Clone)]
-pub struct RadixFmt<T, R>(T, R);
-
-/// Constructs a radix formatter in the range of `2..36`.
-///
-/// # Examples
-///
-/// ```
-/// #![feature(fmt_radix)]
-///
-/// use std::fmt::radix;
-/// assert_eq!(format!("{}", radix(55, 36)), "1j".to_string());
-/// ```
-#[unstable(feature = "fmt_radix",
-           reason = "may be renamed or move to a different module",
-           issue = "27728")]
-#[rustc_deprecated(since = "1.7.0", reason = "not used enough to stabilize")]
-pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
-    RadixFmt(x, Radix::new(base))
-}
-
-macro_rules! radix_fmt {
-    ($T:ty as $U:ty, $fmt:ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Debug for RadixFmt<$T, Radix> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                fmt::Display::fmt(self, f)
-            }
-        }
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl fmt::Display for RadixFmt<$T, Radix> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                match *self { RadixFmt(ref x, radix) => radix.$fmt(*x as $U, f) }
-            }
-        }
-    }
-}
-
 macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -243,14 +168,12 @@ macro_rules! integer {
         int_base! { Octal    for $Int as $Uint  -> Octal }
         int_base! { LowerHex for $Int as $Uint  -> LowerHex }
         int_base! { UpperHex for $Int as $Uint  -> UpperHex }
-        radix_fmt! { $Int as $Int, fmt_int }
         debug! { $Int }
 
         int_base! { Binary   for $Uint as $Uint -> Binary }
         int_base! { Octal    for $Uint as $Uint -> Octal }
         int_base! { LowerHex for $Uint as $Uint -> LowerHex }
         int_base! { UpperHex for $Uint as $Uint -> UpperHex }
-        radix_fmt! { $Uint as $Uint, fmt_int }
         debug! { $Uint }
     }
 }

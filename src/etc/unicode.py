@@ -398,7 +398,7 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
-                ["White_Space", "Join_Control", "Noncharacter_Code_Point"])
+                ["White_Space", "Join_Control", "Noncharacter_Code_Point", "Pattern_White_Space"])
         norm_props = load_properties("DerivedNormalizationProps.txt",
                      ["Full_Composition_Exclusion"])
 
@@ -408,7 +408,7 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         # category tables
         for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc"]), \
                                   ("derived_property", derived, want_derived), \
-                                  ("property", props, ["White_Space"]):
+                                  ("property", props, ["White_Space", "Pattern_White_Space"]):
             emit_property_module(rf, name, cat, pfuns)
 
         # normalizations and conversions module

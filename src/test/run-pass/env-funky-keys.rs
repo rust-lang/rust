@@ -15,7 +15,6 @@
 // ignore-emscripten
 // no-prefer-dynamic
 
-#![feature(convert)]
 #![feature(libc)]
 
 extern crate libc;
@@ -23,7 +22,8 @@ extern crate libc;
 use libc::c_char;
 use libc::execve;
 use std::env;
-use std::ffi::OsStr;
+use std::ffi::CString;
+use std::os::unix::prelude::*;
 use std::ptr;
 
 fn main() {
@@ -34,8 +34,11 @@ fn main() {
         return;
     }
 
-    let current_exe = env::current_exe().unwrap().into_os_string().to_cstring().unwrap();
-    let new_env_var = OsStr::new("FOOBAR").to_cstring().unwrap();
+    let current_exe = CString::new(env::current_exe()
+                                       .unwrap()
+                                       .as_os_str()
+                                       .as_bytes()).unwrap();
+    let new_env_var = CString::new("FOOBAR").unwrap();
     let filename: *const c_char = current_exe.as_ptr();
     let argv: &[*const c_char] = &[filename, filename, ptr::null()];
     let envp: &[*const c_char] = &[new_env_var.as_ptr(), ptr::null()];

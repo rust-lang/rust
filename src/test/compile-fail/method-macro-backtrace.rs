@@ -29,7 +29,7 @@ impl S {
 
     // Cause an error. It shouldn't have any macro backtrace frames.
     fn bar(&self) { }
-    fn bar(&self) { } //~ ERROR duplicate method
+    fn bar(&self) { } //~ ERROR duplicate definitions
 }
 
 fn main() { }

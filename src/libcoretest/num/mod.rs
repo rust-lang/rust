@@ -99,8 +99,8 @@ mod tests {
 
     #[test]
     fn test_leading_plus() {
-        assert_eq!("+127".parse::<u8>().ok(), Some(127u8));
-        assert_eq!("+9223372036854775807".parse::<i64>().ok(), Some(9223372036854775807i64));
+        assert_eq!("+127".parse::<u8>().ok(), Some(127));
+        assert_eq!("+9223372036854775807".parse::<i64>().ok(), Some(9223372036854775807));
     }
 
     #[test]

@@ -168,8 +168,8 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
     let n: usize = 3 * linewidth;
     debug!("mk_printer {}", linewidth);
     let token = vec![Token::Eof; n];
-    let size = vec![0_isize; n];
-    let scan_stack = vec![0_usize; n];
+    let size = vec![0; n];
+    let scan_stack = vec![0; n];
     Printer {
         out: out,
         buf_len: n,

@@ -10,7 +10,7 @@
 
 #![no_std]
 
-extern crate core; //~ ERROR: an external crate named `core` has already
+extern crate core; //~ ERROR: an extern crate named `core` has already
 extern crate std;
 
 fn main() {}

@@ -11,6 +11,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 
 pub struct Bytes {
   a: u8,
@@ -23,25 +24,20 @@ pub struct Bytes {
 // The array is stored as i32, but its alignment is lower, go with 1 byte to avoid target
 // dependent alignment
 #[no_mangle]
-pub fn small_array_alignment(x: &mut [i8; 4]) {
-// CHECK: [[VAR:%[0-9]+]] = load {{(\[4 x i8\]\*, )?}}[4 x i8]** %x
-// CHECK: [[VAR2:%[0-9]+]] = bitcast [4 x i8]* [[VAR]] to i32*
-// CHECK: store i32 %{{.*}}, i32* [[VAR2]], align 1
-    *x = [0; 4];
+#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
+pub fn small_array_alignment(x: &mut [i8; 4], y: [i8; 4]) {
+// CHECK: [[VAR:%[0-9]+]] = bitcast [4 x i8]* %y to i32*
+// CHECK: store i32 %{{.*}}, i32* [[VAR]], align 1
+    *x = y;
 }
 
 // CHECK-LABEL: small_struct_alignment
 // The struct is stored as i32, but its alignment is lower, go with 1 byte to avoid target
 // dependent alignment
 #[no_mangle]
-pub fn small_struct_alignment(x: &mut Bytes) {
-// CHECK: [[VAR:%[0-9]+]] = load {{(%Bytes\*, )?}}%Bytes** %x
-// CHECK: [[VAR2:%[0-9]+]] = bitcast %Bytes* [[VAR]] to i32*
-// CHECK: store i32 %{{.*}}, i32* [[VAR2]], align 1
-    *x = Bytes {
-        a: 0,
-        b: 0,
-        c: 0,
-        d: 0,
-    };
+#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
+pub fn small_struct_alignment(x: &mut Bytes, y: Bytes) {
+// CHECK: [[VAR:%[0-9]+]] = bitcast %Bytes* %y to i32*
+// CHECK: store i32 %{{.*}}, i32* [[VAR]], align 1
+    *x = y;
 }

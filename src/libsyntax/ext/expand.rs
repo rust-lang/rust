@@ -1061,6 +1061,7 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             ident: ii.ident,
             attrs: ii.attrs,
             vis: ii.vis,
+            defaultness: ii.defaultness,
             node: match ii.node  {
                 ast::ImplItemKind::Method(sig, body) => {
                     let (sig, body) = expand_and_rename_method(sig, body, fld);
@@ -1183,6 +1184,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 }
 
 impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
+    fn fold_crate(&mut self, c: Crate) -> Crate {
+        self.cx.filename = Some(self.cx.parse_sess.codemap().span_to_filename(c.span));
+        noop_fold_crate(c, self)
+    }
+
     fn fold_expr(&mut self, expr: P<ast::Expr>) -> P<ast::Expr> {
         expand_expr(expr, self)
     }
@@ -1192,7 +1198,27 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        expand_item(item, self)
+        use std::mem::replace;
+        let result;
+        if let ast::ItemKind::Mod(ast::Mod { inner, .. }) = item.node {
+            if item.span.contains(inner) {
+                self.push_mod_path(item.ident, &item.attrs);
+                result = expand_item(item, self);
+                self.pop_mod_path();
+            } else {
+                let filename = if inner != codemap::DUMMY_SP {
+                    Some(self.cx.parse_sess.codemap().span_to_filename(inner))
+                } else { None };
+                let orig_filename = replace(&mut self.cx.filename, filename);
+                let orig_mod_path_stack = replace(&mut self.cx.mod_path_stack, Vec::new());
+                result = expand_item(item, self);
+                self.cx.filename = orig_filename;
+                self.cx.mod_path_stack = orig_mod_path_stack;
+            }
+        } else {
+            result = expand_item(item, self);
+        }
+        result
     }
 
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
@@ -1204,7 +1230,10 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
-        expand_block(block, self)
+        let was_in_block = ::std::mem::replace(&mut self.cx.in_block, true);
+        let result = expand_block(block, self);
+        self.cx.in_block = was_in_block;
+        result
     }
 
     fn fold_arm(&mut self, arm: ast::Arm) -> ast::Arm {
@@ -1227,6 +1256,21 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn new_span(&mut self, span: Span) -> Span {
         new_span(self.cx, span)
+    }
+}
+
+impl<'a, 'b> MacroExpander<'a, 'b> {
+    fn push_mod_path(&mut self, id: Ident, attrs: &[ast::Attribute]) {
+        let default_path = id.name.as_str();
+        let file_path = match ::attr::first_attr_value_str_by_name(attrs, "path") {
+            Some(d) => d,
+            None => default_path,
+        };
+        self.cx.mod_path_stack.push(file_path)
+    }
+
+    fn pop_mod_path(&mut self) {
+        self.cx.mod_path_stack.pop().unwrap();
     }
 }
 
@@ -1476,7 +1520,7 @@ mod tests {
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
-            Vec::new(), &sess);
+            Vec::new(), &sess).unwrap();
         // should fail:
         let mut gated_cfgs = vec![];
         let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
@@ -1492,7 +1536,7 @@ mod tests {
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
-            Vec::new(), &sess);
+            Vec::new(), &sess).unwrap();
         let mut gated_cfgs = vec![];
         let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
         expand_crate(ecx, vec![], vec![], crate_ast);
@@ -1506,7 +1550,7 @@ mod tests {
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
             src,
-            Vec::new(), &sess);
+            Vec::new(), &sess).unwrap();
         let mut gated_cfgs = vec![];
         let ecx = ExtCtxt::new(&sess, vec![], test_ecfg(), &mut gated_cfgs);
         expand_crate(ecx, vec![], vec![], crate_ast);

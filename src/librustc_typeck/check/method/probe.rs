@@ -19,7 +19,7 @@ use middle::def_id::DefId;
 use middle::subst;
 use middle::subst::Subst;
 use middle::traits;
-use middle::ty::{self, NoPreference, Ty, ToPolyTraitRef, TraitRef, TypeFoldable};
+use middle::ty::{self, NoPreference, Ty, TyCtxt, ToPolyTraitRef, TraitRef, TypeFoldable};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeOrigin};
 use syntax::ast;
@@ -200,7 +200,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let (final_ty, dereferences, _) = check::autoderef(fcx,
                                                        span,
                                                        self_ty,
-                                                       None,
+                                                       || None,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
                                                        |t, d| {
@@ -258,7 +258,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.static_candidates.clear();
     }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.fcx.tcx()
     }
 
@@ -697,11 +697,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
         let tcx = self.tcx();
         let kind = if Some(trait_def_id) == tcx.lang_items.fn_trait() {
-            ty::FnClosureKind
+            ty::ClosureKind::Fn
         } else if Some(trait_def_id) == tcx.lang_items.fn_mut_trait() {
-            ty::FnMutClosureKind
+            ty::ClosureKind::FnMut
         } else if Some(trait_def_id) == tcx.lang_items.fn_once_trait() {
-            ty::FnOnceClosureKind
+            ty::ClosureKind::FnOnce
         } else {
             return Ok(());
         };
@@ -1278,7 +1278,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     }
 }
 
-fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn impl_item<'tcx>(tcx: &TyCtxt<'tcx>,
                    impl_def_id: DefId,
                    item_name: ast::Name)
                    -> Option<ty::ImplOrTraitItem<'tcx>>
@@ -1293,7 +1293,7 @@ fn impl_item<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 /// Find item with name `item_name` defined in `trait_def_id`
 /// and return it, or `None`, if no such item.
-fn trait_item<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn trait_item<'tcx>(tcx: &TyCtxt<'tcx>,
                     trait_def_id: DefId,
                     item_name: ast::Name)
                     -> Option<ty::ImplOrTraitItem<'tcx>>

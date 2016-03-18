@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def_id::DefId;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 
 use self::SimplifiedType::*;
@@ -43,7 +43,7 @@ pub enum SimplifiedType {
 /// then we can't say much about whether two types would unify. Put another way,
 /// `can_simplify_params` should be true if type parameters appear free in `ty` and `false` if they
 /// are to be considered bound.
-pub fn simplify_type(tcx: &ty::ctxt,
+pub fn simplify_type(tcx: &TyCtxt,
                      ty: Ty,
                      can_simplify_params: bool)
                      -> Option<SimplifiedType>
@@ -83,7 +83,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::TyTuple(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))
         }
-        ty::TyBareFn(_, ref f) => {
+        ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
             Some(FunctionSimplifiedType(f.sig.0.inputs.len()))
         }
         ty::TyProjection(_) | ty::TyParam(_) => {

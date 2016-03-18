@@ -14,25 +14,25 @@ pub mod testtypes {
     use std::any::TypeId;
 
     pub fn type_ids() -> Vec<TypeId> {
-        let mut ids = vec!();
-        ids.push(TypeId::of::<FooNil>());
-        ids.push(TypeId::of::<FooBool>());
-        ids.push(TypeId::of::<FooInt>());
-        ids.push(TypeId::of::<FooUint>());
-        ids.push(TypeId::of::<FooFloat>());
-        ids.push(TypeId::of::<FooEnum>());
-        ids.push(TypeId::of::<FooUniq>());
-        ids.push(TypeId::of::<FooPtr>());
-        ids.push(TypeId::of::<&'static FooTrait>());
-        ids.push(TypeId::of::<FooStruct>());
-        ids.push(TypeId::of::<FooTuple>());
-        ids
+        vec![
+            TypeId::of::<FooBool>(),
+            TypeId::of::<FooInt>(),
+            TypeId::of::<FooUint>(),
+            TypeId::of::<FooFloat>(),
+            TypeId::of::<FooStr>(),
+            TypeId::of::<FooArray>(),
+            TypeId::of::<FooSlice>(),
+            TypeId::of::<FooBox>(),
+            TypeId::of::<FooPtr>(),
+            TypeId::of::<FooRef>(),
+            TypeId::of::<FooFnPtr>(),
+            TypeId::of::<FooNil>(),
+            TypeId::of::<FooTuple>(),
+            TypeId::of::<FooTrait>(),
+            TypeId::of::<FooStruct>(),
+            TypeId::of::<FooEnum>()
+        ]
     }
-
-    // Tests ty_nil
-    pub type FooNil = ();
-
-    // Skipping ty_bot
 
     // Tests TyBool
     pub type FooBool = bool;
@@ -49,25 +49,26 @@ pub mod testtypes {
     // Tests TyFloat (does not test all variants of FloatTy)
     pub type FooFloat = f64;
 
-    // For TyStr, what kind of string should I use? &'static str? String? Raw str?
+    // Tests TyStr
+    pub type FooStr = str;
 
-    // Tests TyEnum
-    pub enum FooEnum {
-        VarA(usize),
-        VarB(usize, usize)
-    }
+    // Tests TyArray
+    pub type FooArray = [u8; 1];
+
+    // Tests TySlice
+    pub type FooSlice = [u8];
 
     // Tests TyBox (of u8)
-    pub type FooUniq = Box<u8>;
-
-    // As with TyStr, what type should be used for TyArray?
+    pub type FooBox = Box<u8>;
 
     // Tests TyRawPtr
     pub type FooPtr = *const u8;
 
-    // Skipping TyRef
+    // Tests TyRef
+    pub type FooRef = &'static u8;
 
-    // Skipping TyBareFn (how do you get a bare function type, rather than proc or closure?)
+    // Tests TyFnPtr
+    pub type FooFnPtr = fn(u8) -> bool;
 
     // Tests TyTrait
     pub trait FooTrait {
@@ -80,14 +81,17 @@ pub mod testtypes {
         foo_field: usize
     }
 
+    // Tests TyEnum
+    pub enum FooEnum {
+        VarA(usize),
+        VarB(usize, usize)
+    }
+
     // Tests TyTuple
+    pub type FooNil = ();
     pub type FooTuple = (u8, i8, bool);
 
-    // Skipping ty_param
-
-    // Skipping ty_self
-
-    // Skipping ty_self
+    // Skipping TyParam
 
     // Skipping TyInfer
 

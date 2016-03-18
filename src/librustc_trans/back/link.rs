@@ -23,7 +23,7 @@ use session::Session;
 use middle::cstore::{self, CrateStore, LinkMeta};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
-use middle::ty::{self, Ty};
+use middle::ty::{Ty, TyCtxt};
 use rustc::front::map::DefPath;
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use util::common::time;
@@ -202,7 +202,7 @@ fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
 
 
 // This calculates STH for a symbol, as defined above
-fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn symbol_hash<'tcx>(tcx: &TyCtxt<'tcx>,
                      symbol_hasher: &mut Sha256,
                      t: Ty<'tcx>,
                      link_meta: &LinkMeta)

@@ -26,6 +26,7 @@ use trans::expr;
 use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
+use trans::value::Value;
 use middle::ty::{self, Ty};
 
 use rustc_front::hir;
@@ -33,18 +34,10 @@ use rustc_front::hir;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct VecTypes<'tcx> {
     unit_ty: Ty<'tcx>,
     llunit_ty: Type
-}
-
-impl<'tcx> VecTypes<'tcx> {
-    pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("VecTypes {{unit_ty={}, llunit_ty={}}}",
-                self.unit_ty,
-                ccx.tn().type_to_string(self.llunit_ty))
-    }
 }
 
 pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -58,8 +51,7 @@ pub fn trans_fixed_vstore<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // to store the array of the suitable size, so all we have to do is
     // generate the content.
 
-    debug!("trans_fixed_vstore(expr={:?}, dest={})",
-           expr, dest.to_string(bcx.ccx()));
+    debug!("trans_fixed_vstore(expr={:?}, dest={:?})", expr, dest);
 
     let vt = vec_types_from_expr(bcx, expr);
 
@@ -82,7 +74,6 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    content_expr: &hir::Expr)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     let fcx = bcx.fcx;
-    let ccx = fcx.ccx;
     let mut bcx = bcx;
 
     debug!("trans_slice_vec(slice_expr={:?})",
@@ -105,7 +96,7 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // Handle the &[...] case:
     let vt = vec_types_from_expr(bcx, content_expr);
     let count = elements_required(bcx, content_expr);
-    debug!("    vt={}, count={}", vt.to_string(ccx), count);
+    debug!("    vt={:?}, count={}", vt, count);
 
     let fixed_ty = bcx.tcx().mk_array(vt.unit_ty, count);
 
@@ -144,9 +135,7 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  str_lit: InternedString,
                                  dest: Dest)
                                  -> Block<'blk, 'tcx> {
-    debug!("trans_lit_str(lit_expr={:?}, dest={})",
-           lit_expr,
-           dest.to_string(bcx.ccx()));
+    debug!("trans_lit_str(lit_expr={:?}, dest={:?})", lit_expr, dest);
 
     match dest {
         Ignore => bcx,
@@ -172,10 +161,8 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
     let mut bcx = bcx;
 
-    debug!("write_content(vt={}, dest={}, vstore_expr={:?})",
-           vt.to_string(bcx.ccx()),
-           dest.to_string(bcx.ccx()),
-           vstore_expr);
+    debug!("write_content(vt={:?}, dest={:?}, vstore_expr={:?})",
+           vt, dest, vstore_expr);
 
     match content_expr.node {
         hir::ExprLit(ref lit) => {
@@ -187,11 +174,9 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             let bytes = s.len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
                             let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
-                            base::call_memcpy(bcx,
-                                              lldest,
-                                              llcstr,
-                                              llbytes,
-                                              1);
+                            if !bcx.unreachable.get() {
+                                base::call_memcpy(&B(bcx), lldest, llcstr, llbytes, 1);
+                            }
                             return bcx;
                         }
                     }
@@ -214,8 +199,8 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     let temp_scope = fcx.push_custom_cleanup_scope();
                     for (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, &[i]);
-                        debug!("writing index {} with lleltptr={}",
-                               i, bcx.val_to_string(lleltptr));
+                        debug!("writing index {} with lleltptr={:?}",
+                               i, Value(lleltptr));
                         bcx = expr::trans_into(bcx, &element,
                                                SaveIn(lleltptr));
                         let scope = cleanup::CustomScope(temp_scope);

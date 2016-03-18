@@ -25,7 +25,6 @@ fn main() {
 
     let x2: i8 = -128; // should be OK
     let x1: i8 = 128; //~ error: literal out of range for i8
-    let x2: i8 = --128; //~ error: literal out of range for i8
 
     let x3: i8 = -129; //~ error: literal out of range for i8
     let x3: i8 = -(129); //~ error: literal out of range for i8
@@ -54,9 +53,4 @@ fn main() {
     let x = 18446744073709551615_i64; //~ error: literal out of range for i64
     let x: i64 = -9223372036854775809; //~ error: literal out of range for i64
     let x = -9223372036854775809_i64; //~ error: literal out of range for i64
-
-    let x = -3.40282348e+38_f32; //~ error: literal out of range for f32
-    let x =  3.40282348e+38_f32; //~ error: literal out of range for f32
-    let x = -1.7976931348623159e+308_f64; //~ error: literal out of range for f64
-    let x =  1.7976931348623159e+308_f64; //~ error: literal out of range for f64
 }

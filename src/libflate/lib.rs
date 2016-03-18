@@ -27,7 +27,7 @@
 #![feature(libc)]
 #![feature(staged_api)]
 #![feature(unique)]
-#![cfg_attr(test, feature(rustc_private, rand, vec_push_all))]
+#![cfg_attr(test, feature(rustc_private, rand))]
 
 #[cfg(test)]
 #[macro_use]
@@ -173,7 +173,7 @@ mod tests {
         for _ in 0..20 {
             let mut input = vec![];
             for _ in 0..2000 {
-                input.push_all(r.choose(&words).unwrap());
+                input.extend_from_slice(r.choose(&words).unwrap());
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());

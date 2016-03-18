@@ -31,12 +31,14 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(box_syntax)]
+#![feature(const_fn)]
 #![feature(copy_from_slice)]
 #![feature(libc)]
 #![feature(rand)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(step_by)]
+#![cfg_attr(unix, feature(static_mutex))]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;
@@ -46,10 +48,10 @@ extern crate rustc_llvm;
 extern crate rustc_front;
 #[macro_use] extern crate log;
 
-pub mod abi;
 pub mod tempdir;
 pub mod rpath;
 pub mod sha2;
 pub mod svh;
 pub mod target;
 pub mod slice;
+pub mod dynamic_lib;

@@ -10,7 +10,7 @@
 
 // FIXME: talk about offset, copy_memory, copy_nonoverlapping_memory
 
-//! Raw, unsafe pointers, `*const T`, and `*mut T`
+//! Raw, unsafe pointers, `*const T`, and `*mut T`.
 //!
 //! *[See also the pointer primitive types](../../std/primitive.pointer.html).*
 

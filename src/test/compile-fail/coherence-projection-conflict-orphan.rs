@@ -21,8 +21,8 @@ pub trait Bar {
     type Output: 'static;
 }
 
-impl Foo<i32> for i32 { } //~ ERROR E0119
+impl Foo<i32> for i32 { }
 
-impl<A:Iterator> Foo<A::Item> for A { }
+impl<A:Iterator> Foo<A::Item> for A { }  //~ ERROR E0119
 
 fn main() {}

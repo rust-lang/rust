@@ -12,7 +12,7 @@
 //
 // Test std::num::Wrapping<T> for {uN, iN, usize, isize}
 
-#![feature(num_bits_bytes, test)]
+#![feature(test)]
 
 extern crate test;
 
@@ -22,8 +22,39 @@ use std::ops::{
     AddAssign, SubAssign, MulAssign, DivAssign, RemAssign, BitXorAssign, BitOrAssign, BitAndAssign,
     Shl, Shr, ShlAssign, ShrAssign
 };
-use std::{i8, i16, i32, i64, isize, u8, u16, u32, u64, usize};
 use test::black_box;
+
+macro_rules! int_modules {
+    ($(($name:ident, $size:expr),)*) => ($(
+        mod $name {
+            pub const BITS: usize = $size;
+            pub use std::$name::*;
+        }
+    )*)
+}
+
+int_modules! {
+    (i8, 8),
+    (i16, 16),
+    (i32, 32),
+    (i64, 64),
+    (u8, 8),
+    (u16, 16),
+    (u32, 32),
+    (u64, 64),
+}
+
+#[cfg(target_pointer_width = "32")]
+int_modules! {
+    (isize, 32),
+    (usize, 32),
+}
+
+#[cfg(target_pointer_width = "64")]
+int_modules! {
+    (isize, 64),
+    (usize, 64),
+}
 
 fn main() {
     test_ops();

@@ -22,6 +22,12 @@ pub trait IntoCow<'a, B: ?Sized> {
     fn into_cow(self) -> Cow<'a, B>;
 }
 
+impl<'a, B: ?Sized> IntoCow<'a, B> for <B as ToOwned>::Owned where B: ToOwned {
+    fn into_cow(self) -> Cow<'a, B> {
+        Cow(PhantomData)
+    }
+}
+
 impl<'a, B: ?Sized> IntoCow<'a, B> for Cow<'a, B> where B: ToOwned {
 //~^ ERROR E0119
     fn into_cow(self) -> Cow<'a, B> {
@@ -29,14 +35,8 @@ impl<'a, B: ?Sized> IntoCow<'a, B> for Cow<'a, B> where B: ToOwned {
     }
 }
 
-impl<'a, B: ?Sized> IntoCow<'a, B> for <B as ToOwned>::Owned where B: ToOwned {
-//~^ ERROR E0119
-    fn into_cow(self) -> Cow<'a, B> {
-        Cow(PhantomData)
-    }
-}
-
 impl<'a, B: ?Sized> IntoCow<'a, B> for &'a B where B: ToOwned {
+//~^ ERROR E0119
     fn into_cow(self) -> Cow<'a, B> {
         Cow(PhantomData)
     }

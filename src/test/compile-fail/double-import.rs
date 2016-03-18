@@ -14,11 +14,11 @@
 // when reporting the error.
 
 mod sub1 {
-    fn foo() {} // implementation 1
+    pub fn foo() {} // implementation 1
 }
 
 mod sub2 {
-    fn foo() {} // implementation 2
+    pub fn foo() {} // implementation 2
 }
 
 use sub1::foo; //~ NOTE previous import of `foo` here

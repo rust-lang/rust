@@ -26,7 +26,7 @@ impl ::std::ops::BitAnd for Disr {
 
 impl From<::middle::ty::Disr> for Disr {
     fn from(i: ::middle::ty::Disr) -> Disr {
-        Disr(i)
+        Disr(i.to_u64_unchecked())
     }
 }
 

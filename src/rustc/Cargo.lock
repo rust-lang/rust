@@ -2,7 +2,6 @@
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
- "rustbook 0.0.0",
  "rustc_back 0.0.0",
  "rustc_driver 0.0.0",
  "rustdoc 0.0.0",
@@ -67,14 +66,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rustbook"
-version = "0.0.0"
-dependencies = [
- "rustc_back 0.0.0",
- "rustdoc 0.0.0",
-]
-
-[[package]]
 name = "rustc"
 version = "0.0.0"
 dependencies = [
@@ -87,6 +78,7 @@ dependencies = [
  "rbml 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
+ "rustc_const_eval 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_front 0.0.0",
  "rustc_llvm 0.0.0",
@@ -117,6 +109,15 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_const_eval"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "serialize 0.0.0",
  "syntax 0.0.0",
 ]
 
@@ -196,6 +197,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
+ "rustc_const_eval 0.0.0",
  "rustc_front 0.0.0",
  "rustc_llvm 0.0.0",
  "serialize 0.0.0",
@@ -210,6 +212,7 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
+ "rustc_const_eval 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_front 0.0.0",
  "syntax 0.0.0",
@@ -239,6 +242,7 @@ version = "0.0.0"
 dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
+ "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_front 0.0.0",
  "rustc_metadata 0.0.0",
@@ -279,6 +283,7 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
+ "rustc_const_eval 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_front 0.0.0",
  "rustc_llvm 0.0.0",
@@ -297,6 +302,7 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
+ "rustc_const_eval 0.0.0",
  "rustc_front 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
  "syntax 0.0.0",
@@ -358,7 +364,6 @@ name = "test"
 version = "0.0.0"
 dependencies = [
  "getopts 0.0.0",
- "serialize 0.0.0",
  "term 0.0.0",
 ]
 

@@ -41,12 +41,13 @@
 #[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
 macro_rules! vec {
     ($elem:expr; $n:expr) => (
         $crate::vec::from_elem($elem, $n)
     );
     ($($x:expr),*) => (
-        <[_]>::into_vec($crate::boxed::Box::new([$($x),*]))
+        <[_]>::into_vec(box [$($x),*])
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }
@@ -61,7 +62,7 @@ macro_rules! vec {
         $crate::vec::from_elem($elem, $n)
     );
     ($($x:expr),*) => (
-        $crate::slice::into_vec($crate::boxed::Box::new([$($x),*]))
+        $crate::slice::into_vec(box [$($x),*])
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }

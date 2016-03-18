@@ -11,4 +11,3 @@ crate-type = ["dylib", "rlib"]
 [dependencies]
 getopts = { path = "../libgetopts" }
 term = { path = "../libterm" }
-serialize = { path = "../libserialize" }

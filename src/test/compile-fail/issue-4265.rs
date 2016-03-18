@@ -17,7 +17,7 @@ impl Foo {
         Foo { baz: 0 }.bar();
     }
 
-    fn bar() { //~ ERROR duplicate associated function
+    fn bar() { //~ ERROR duplicate definitions
     }
 }
 

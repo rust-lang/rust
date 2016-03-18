@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::def_id::DefId;
-use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
@@ -65,7 +64,6 @@ pub enum Def {
 #[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
     pub base_def: Def,
-    pub last_private: LastPrivate,
     pub depth: usize
 }
 
@@ -84,12 +82,10 @@ impl PathResolution {
     }
 
     pub fn new(base_def: Def,
-               last_private: LastPrivate,
                depth: usize)
                -> PathResolution {
         PathResolution {
             base_def: base_def,
-            last_private: last_private,
             depth: depth,
         }
     }
@@ -150,6 +146,31 @@ impl Def {
                 Some((enum_id, var_id))
             }
             _ => None
+        }
+    }
+
+    pub fn kind_name(&self) -> &'static str {
+        match *self {
+            Def::Fn(..) => "function",
+            Def::Mod(..) => "module",
+            Def::ForeignMod(..) => "foreign module",
+            Def::Static(..) => "static",
+            Def::Variant(..) => "variant",
+            Def::Enum(..) => "enum",
+            Def::TyAlias(..) => "type",
+            Def::AssociatedTy(..) => "associated type",
+            Def::Struct(..) => "struct",
+            Def::Trait(..) => "trait",
+            Def::Method(..) => "method",
+            Def::Const(..) => "const",
+            Def::AssociatedConst(..) => "associated const",
+            Def::TyParam(..) => "type parameter",
+            Def::PrimTy(..) => "builtin type",
+            Def::Local(..) => "local variable",
+            Def::Upvar(..) => "closure capture",
+            Def::Label(..) => "label",
+            Def::SelfTy(..) => "self type",
+            Def::Err => "unresolved item",
         }
     }
 }

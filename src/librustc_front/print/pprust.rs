@@ -1014,6 +1014,11 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
+
+        if let hir::Defaultness::Default = ii.defaultness {
+            try!(self.word_nbsp("default"));
+        }
+
         match ii.node {
             hir::ImplItemKind::Const(ref ty, ref expr) => {
                 try!(self.print_associated_const(ii.name, &ty, Some(&expr), ii.vis));
@@ -1449,15 +1454,6 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&index));
                 try!(word(&mut self.s, "]"));
             }
-            hir::ExprRange(ref start, ref end) => {
-                if let &Some(ref e) = start {
-                    try!(self.print_expr(&e));
-                }
-                try!(word(&mut self.s, ".."));
-                if let &Some(ref e) = end {
-                    try!(self.print_expr(&e));
-                }
-            }
             hir::ExprPath(None, ref path) => {
                 try!(self.print_path(path, true, 0))
             }
@@ -1490,12 +1486,13 @@ impl<'a> State<'a> {
                     _ => (),
                 }
             }
-            hir::ExprInlineAsm(ref a) => {
+            hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
                 try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
                 try!(self.print_string(&a.asm, a.asm_str_style));
                 try!(self.word_space(":"));
 
+                let mut out_idx = 0;
                 try!(self.commasep(Inconsistent, &a.outputs, |s, out| {
                     match out.constraint.slice_shift_char() {
                         Some(('=', operand)) if out.is_rw => {
@@ -1504,18 +1501,21 @@ impl<'a> State<'a> {
                         _ => try!(s.print_string(&out.constraint, ast::StrStyle::Cooked)),
                     }
                     try!(s.popen());
-                    try!(s.print_expr(&out.expr));
+                    try!(s.print_expr(&outputs[out_idx]));
                     try!(s.pclose());
+                    out_idx += 1;
                     Ok(())
                 }));
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.inputs, |s, &(ref co, ref o)| {
+                let mut in_idx = 0;
+                try!(self.commasep(Inconsistent, &a.inputs, |s, co| {
                     try!(s.print_string(&co, ast::StrStyle::Cooked));
                     try!(s.popen());
-                    try!(s.print_expr(&o));
+                    try!(s.print_expr(&inputs[in_idx]));
                     try!(s.pclose());
+                    in_idx += 1;
                     Ok(())
                 }));
                 try!(space(&mut self.s));

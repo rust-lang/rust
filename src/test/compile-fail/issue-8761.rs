@@ -10,13 +10,13 @@
 
 enum Foo {
     A = 1i64,
-    //~^ ERROR mismatched types
-    //~| expected `isize`
-    //~| found `i64`
+    //~^ ERROR mismatched types:
+    //~| expected `isize`,
+    //~| found `i64` [E0080]
     B = 2u8
-    //~^ ERROR mismatched types
-    //~| expected `isize`
-    //~| found `u8`
+    //~^ ERROR mismatched types:
+    //~| expected `isize`,
+    //~| found `u8` [E0080]
 }
 
 fn main() {}

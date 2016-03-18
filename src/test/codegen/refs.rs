@@ -11,6 +11,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]])
@@ -20,6 +21,7 @@ fn helper(_: usize) {
 
 // CHECK-LABEL: @ref_dst
 #[no_mangle]
+#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn ref_dst(s: &[u8]) {
     // We used to generate an extra alloca and memcpy to ref the dst, so check that we copy
     // directly to the alloca for "x"

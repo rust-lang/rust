@@ -23,7 +23,7 @@ use self::UndoLog::*;
 use std::mem;
 use std::ops;
 
-pub enum UndoLog<D:SnapshotVecDelegate> {
+pub enum UndoLog<D: SnapshotVecDelegate> {
     /// Indicates where a snapshot started.
     OpenSnapshot,
 
@@ -37,10 +37,10 @@ pub enum UndoLog<D:SnapshotVecDelegate> {
     SetElem(usize, D::Value),
 
     /// Extensible set of actions
-    Other(D::Undo)
+    Other(D::Undo),
 }
 
-pub struct SnapshotVec<D:SnapshotVecDelegate> {
+pub struct SnapshotVec<D: SnapshotVecDelegate> {
     values: Vec<D::Value>,
     undo_log: Vec<UndoLog<D>>,
 }
@@ -58,7 +58,7 @@ pub trait SnapshotVecDelegate {
     fn reverse(values: &mut Vec<Self::Value>, action: Self::Undo);
 }
 
-impl<D:SnapshotVecDelegate> SnapshotVec<D> {
+impl<D: SnapshotVecDelegate> SnapshotVec<D> {
     pub fn new() -> SnapshotVec<D> {
         SnapshotVec {
             values: Vec::new(),
@@ -117,9 +117,7 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         Snapshot { length: length }
     }
 
-    pub fn actions_since_snapshot(&self,
-                                  snapshot: &Snapshot)
-                                  -> &[UndoLog<D>] {
+    pub fn actions_since_snapshot(&self, snapshot: &Snapshot) -> &[UndoLog<D>] {
         &self.undo_log[snapshot.length..]
     }
 
@@ -128,11 +126,10 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         assert!(self.undo_log.len() > snapshot.length);
 
         // Invariant established by start_snapshot():
-        assert!(
-            match self.undo_log[snapshot.length] {
-                OpenSnapshot => true,
-                _ => false
-            });
+        assert!(match self.undo_log[snapshot.length] {
+            OpenSnapshot => true,
+            _ => false,
+        });
     }
 
     pub fn rollback_to(&mut self, snapshot: Snapshot) {
@@ -168,7 +165,10 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         }
 
         let v = self.undo_log.pop().unwrap();
-        assert!(match v { OpenSnapshot => true, _ => false });
+        assert!(match v {
+            OpenSnapshot => true,
+            _ => false,
+        });
         assert!(self.undo_log.len() == snapshot.length);
     }
 
@@ -188,20 +188,28 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
     }
 }
 
-impl<D:SnapshotVecDelegate> ops::Deref for SnapshotVec<D> {
+impl<D: SnapshotVecDelegate> ops::Deref for SnapshotVec<D> {
     type Target = [D::Value];
-    fn deref(&self) -> &[D::Value] { &*self.values }
+    fn deref(&self) -> &[D::Value] {
+        &*self.values
+    }
 }
 
-impl<D:SnapshotVecDelegate> ops::DerefMut for SnapshotVec<D> {
-    fn deref_mut(&mut self) -> &mut [D::Value] { &mut *self.values }
+impl<D: SnapshotVecDelegate> ops::DerefMut for SnapshotVec<D> {
+    fn deref_mut(&mut self) -> &mut [D::Value] {
+        &mut *self.values
+    }
 }
 
-impl<D:SnapshotVecDelegate> ops::Index<usize> for SnapshotVec<D> {
+impl<D: SnapshotVecDelegate> ops::Index<usize> for SnapshotVec<D> {
     type Output = D::Value;
-    fn index(&self, index: usize) -> &D::Value { self.get(index) }
+    fn index(&self, index: usize) -> &D::Value {
+        self.get(index)
+    }
 }
 
-impl<D:SnapshotVecDelegate> ops::IndexMut<usize> for SnapshotVec<D> {
-    fn index_mut(&mut self, index: usize) -> &mut D::Value { self.get_mut(index) }
+impl<D: SnapshotVecDelegate> ops::IndexMut<usize> for SnapshotVec<D> {
+    fn index_mut(&mut self, index: usize) -> &mut D::Value {
+        self.get_mut(index)
+    }
 }

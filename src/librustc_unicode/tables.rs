@@ -1180,6 +1180,15 @@ pub mod derived_property {
 }
 
 pub mod property {
+    pub const Pattern_White_Space_table: &'static [(char, char)] = &[
+        ('\u{9}', '\u{d}'), ('\u{20}', '\u{20}'), ('\u{85}', '\u{85}'), ('\u{200e}', '\u{200f}'),
+        ('\u{2028}', '\u{2029}')
+    ];
+
+    pub fn Pattern_White_Space(c: char) -> bool {
+        super::bsearch_range_table(c, Pattern_White_Space_table)
+    }
+
     pub const White_Space_table: &'static [(char, char)] = &[
         ('\u{9}', '\u{d}'), ('\u{20}', '\u{20}'), ('\u{85}', '\u{85}'), ('\u{a0}', '\u{a0}'),
         ('\u{1680}', '\u{1680}'), ('\u{2000}', '\u{200a}'), ('\u{2028}', '\u{2029}'), ('\u{202f}',

@@ -18,7 +18,7 @@ extern crate coherence_copy_like_lib as lib;
 struct MyType { x: i32 }
 
 trait MyTrait { }
-impl<T: lib::MyCopy> MyTrait for T { } //~ ERROR E0119
+impl<T: lib::MyCopy> MyTrait for T { }
 
 // `MyStruct` is not declared fundamental, therefore this would
 // require that
@@ -26,6 +26,6 @@ impl<T: lib::MyCopy> MyTrait for T { } //~ ERROR E0119
 //     MyStruct<MyType>: !MyTrait
 //
 // which we cannot approve.
-impl MyTrait for lib::MyStruct<MyType> { }
+impl MyTrait for lib::MyStruct<MyType> { } //~ ERROR E0119
 
 fn main() { }

@@ -23,7 +23,8 @@ use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
+use rustc::middle::traits::ProjectionMode;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -55,7 +56,10 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = infer::new_infer_ctxt(bccx.tcx, &bccx.tcx.tables, Some(param_env));
+    let infcx = infer::new_infer_ctxt(bccx.tcx,
+                                      &bccx.tcx.tables,
+                                      Some(param_env),
+                                      ProjectionMode::AnyFinal);
     {
         let mut euv = euv::ExprUseVisitor::new(&mut glcx, &infcx);
         euv.walk_fn(decl, body);
@@ -253,7 +257,7 @@ fn check_mutability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
-    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.bccx.tcx }
+    pub fn tcx(&self) -> &'a TyCtxt<'tcx> { self.bccx.tcx }
 
     /// Guarantees that `cmt` is assignable, or reports an error.
     fn guarantee_assignment_valid(&mut self,
@@ -525,7 +529,10 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
-            let infcx = infer::new_infer_ctxt(self.bccx.tcx, &self.bccx.tcx.tables, None);
+            let infcx = infer::new_infer_ctxt(self.bccx.tcx,
+                                              &self.bccx.tcx.tables,
+                                              None,
+                                              ProjectionMode::AnyFinal);
             let mc = mc::MemCategorizationContext::new(&infcx);
             let base_cmt = mc.cat_expr(&base).unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);

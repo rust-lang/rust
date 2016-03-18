@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait me {
+pub trait me {
     fn me(&self) -> usize;
 }
 impl me for usize { fn me(&self) -> usize { *self } }

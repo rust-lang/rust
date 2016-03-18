@@ -26,14 +26,12 @@ use std::cell::Cell;
 /// suffices for the current purposes.
 #[derive(PartialEq)]
 pub struct Ivar<T: Copy> {
-    data: Cell<Option<T>>
+    data: Cell<Option<T>>,
 }
 
 impl<T: Copy> Ivar<T> {
     pub fn new() -> Ivar<T> {
-        Ivar {
-            data: Cell::new(None)
-        }
+        Ivar { data: Cell::new(None) }
     }
 
     pub fn get(&self) -> Option<T> {
@@ -41,8 +39,7 @@ impl<T: Copy> Ivar<T> {
     }
 
     pub fn fulfill(&self, value: T) {
-        assert!(self.data.get().is_none(),
-                "Value already set!");
+        assert!(self.data.get().is_none(), "Value already set!");
         self.data.set(Some(value));
     }
 
@@ -55,11 +52,11 @@ impl<T: Copy> Ivar<T> {
     }
 }
 
-impl<T: Copy+fmt::Debug> fmt::Debug for Ivar<T> {
+impl<T: Copy + fmt::Debug> fmt::Debug for Ivar<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.get() {
             Some(val) => write!(f, "Ivar({:?})", val),
-            None => f.write_str("Ivar(<unfulfilled>)")
+            None => f.write_str("Ivar(<unfulfilled>)"),
         }
     }
 }
@@ -68,7 +65,7 @@ impl<T: Copy> Clone for Ivar<T> {
     fn clone(&self) -> Ivar<T> {
         match self.get() {
             Some(val) => Ivar { data: Cell::new(Some(val)) },
-            None => Ivar::new()
+            None => Ivar::new(),
         }
     }
 }

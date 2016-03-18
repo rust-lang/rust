@@ -24,7 +24,7 @@ fn f_i8() {
     enum A {
         Ok = i8::MAX - 1,
         Ok2,
-        OhNo, //~ ERROR enum discriminant overflowed on value after 127: i8; set explicitly via OhNo = -128 if that is desired outcome
+        OhNo, //~ ERROR enum discriminant overflowed on value after 127i8; set explicitly via OhNo = -128i8 if that is desired outcome
     }
 }
 
@@ -33,7 +33,7 @@ fn f_u8() {
     enum A {
         Ok = u8::MAX - 1,
         Ok2,
-        OhNo, //~ ERROR enum discriminant overflowed on value after 255: u8; set explicitly via OhNo = 0 if that is desired outcome
+        OhNo, //~ ERROR enum discriminant overflowed on value after 255u8; set explicitly via OhNo = 0u8 if that is desired outcome
     }
 }
 

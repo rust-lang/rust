@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo { pub mod foo {  } }
+mod foo { pub mod foo {  } } //~ NOTE previous definition of `foo` here
 
-use foo::foo; //~ ERROR import `foo` conflicts with existing submodule
+use foo::foo; //~ ERROR a module named `foo` has already been defined in this module
 
 fn main() {}

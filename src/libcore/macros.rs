@@ -206,8 +206,8 @@ macro_rules! try {
 ///
 /// See [`std::fmt`][fmt] for more information on format syntax.
 ///
-/// [fmt]: fmt/index.html
-/// [write]: io/trait.Write.html
+/// [fmt]: ../std/fmt/index.html
+/// [write]: ../std/io/trait.Write.html
 ///
 /// # Examples
 ///
@@ -232,8 +232,8 @@ macro_rules! write {
 ///
 /// See [`std::fmt`][fmt] for more information on format syntax.
 ///
-/// [fmt]: fmt/index.html
-/// [write]: io/trait.Write.html
+/// [fmt]: ../std/fmt/index.html
+/// [write]: ../std/io/trait.Write.html
 ///
 /// # Examples
 ///

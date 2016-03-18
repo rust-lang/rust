@@ -28,7 +28,7 @@
 use super::combine::{self, CombineFields};
 use super::type_variable::{BiTo};
 
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::TyVar;
 use middle::ty::relate::{Relate, RelateResult, TypeRelation};
 
@@ -45,7 +45,7 @@ impl<'a, 'tcx> Bivariate<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Bivariate" }
 
-    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

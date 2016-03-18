@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode string slices
+//! Unicode string slices.
 //!
-//! *[See also the `str` primitive type](../primitive.str.html).*
+//! *[See also the `str` primitive type](../../std/primitive.str.html).*
 
 
 #![stable(feature = "rust1", since = "1.0.0")]

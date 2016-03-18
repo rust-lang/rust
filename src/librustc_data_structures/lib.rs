@@ -32,7 +32,8 @@
 #![cfg_attr(test, feature(test))]
 
 extern crate core;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod bitvec;

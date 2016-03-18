@@ -379,6 +379,10 @@ Examples of integer literals of various forms:
 0usize;                            // type usize
 ```
 
+Note that the Rust syntax considers `-1i8` as an application of the [unary minus
+operator](#unary-operator-expressions) to an integer literal `1i8`, rather than
+a single integer literal.
+
 ##### Floating-point literals
 
 A _floating-point literal_ has one of two forms:
@@ -1114,6 +1118,16 @@ type Point = (u8, u8);
 let p: Point = (41, 68);
 ```
 
+Currently a type alias to an enum type cannot be used to qualify the
+constructors:
+
+```
+enum E { A }
+type F = E;
+let _: F = E::A;  // OK
+// let _: F = F::A;  // Doesn't work
+```
+
 ### Structs
 
 A _struct_ is a nominal [struct type](#struct-types) defined with the
@@ -1191,7 +1205,8 @@ a = Animal::Cat { name: "Spotty".to_string(), weight: 2.7 };
 In this example, `Cat` is a _struct-like enum variant_,
 whereas `Dog` is simply called an enum variant.
 
-Enums have a discriminant. You can assign them explicitly:
+Each enum value has a _discriminant_ which is an integer associated to it. You
+can specify it explicitly:
 
 ```
 enum Foo {
@@ -1199,10 +1214,15 @@ enum Foo {
 }
 ```
 
-If a discriminant isn't assigned, they start at zero, and add one for each
+The right hand side of the specification is interpreted as an `isize` value,
+but the compiler is allowed to use a smaller type in the actual memory layout.
+The [`repr` attribute](#ffi-attributes) can be added in order to change
+the type of the right hand side and specify the memory layout.
+
+If a discriminant isn't specified, they start at zero, and add one for each
 variant, in order.
 
-You can cast an enum to get this value:
+You can cast an enum to get its discriminant:
 
 ```
 # enum Foo { Bar = 123 }
@@ -2277,6 +2297,10 @@ The currently implemented features of the reference compiler are:
                     `#[derive_Foo] #[derive_Bar]`, which can be user-defined syntax
                     extensions.
 
+* `inclusive_range_syntax` - Allows use of the `a...b` and `...b` syntax for inclusive ranges.
+
+* `inclusive_range` - Allows use of the types that represent desugared inclusive ranges.
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
@@ -2747,13 +2771,34 @@ let y = 0..10;
 assert_eq!(x, y);
 ```
 
+Similarly, the `...` operator will construct an object of one of the
+`std::ops::RangeInclusive` variants.
+
+```
+# #![feature(inclusive_range_syntax)]
+1...2;   // std::ops::RangeInclusive
+...4;    // std::ops::RangeToInclusive
+```
+
+The following expressions are equivalent.
+
+```
+# #![feature(inclusive_range_syntax, inclusive_range)]
+let x = std::ops::RangeInclusive::NonEmpty {start: 0, end: 10};
+let y = 0...10;
+
+assert_eq!(x, y);
+```
+
 ### Unary operator expressions
 
 Rust defines the following unary operators. They are all written as prefix operators,
 before the expression they apply to.
 
 * `-`
-  : Negation. May only be applied to numeric types.
+  : Negation. Signed integer types and floating-point types support negation. It
+    is an error to apply negation to unsigned types; for example, the compiler
+    rejects `-1u32`.
 * `*`
   : Dereference. When applied to a [pointer](#pointer-types) it denotes the
     pointed-to location. For pointers to mutable locations, the resulting
@@ -3283,6 +3328,10 @@ The primitive types are the following:
 * The boolean type `bool` with values `true` and `false`.
 * The machine types (integer and floating-point).
 * The machine-dependent integer types.
+* Arrays
+* Tuples
+* Slices
+* Function pointers
 
 #### Machine types
 

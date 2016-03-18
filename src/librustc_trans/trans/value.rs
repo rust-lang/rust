@@ -12,10 +12,21 @@ use llvm;
 use llvm::{UseRef, ValueRef};
 use trans::basic_block::BasicBlock;
 use trans::common::Block;
+
+use std::fmt;
+
 use libc::c_uint;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Value(pub ValueRef);
+
+impl fmt::Debug for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&llvm::build_string(|s| unsafe {
+            llvm::LLVMWriteValueToString(self.0, s);
+        }).expect("nun-UTF8 value description from LLVM"))
+    }
+}
 
 macro_rules! opt_val { ($e:expr) => (
     unsafe {

@@ -259,14 +259,16 @@ impl<'a> CrateReader<'a> {
                             metadata: &MetadataBlob) {
         let crate_rustc_version = decoder::crate_rustc_version(metadata.as_slice());
         if crate_rustc_version != Some(rustc_version()) {
-            span_fatal!(self.sess, span, E0514,
-                        "the crate `{}` has been compiled with {}, which is \
-                         incompatible with this version of rustc",
-                        name,
-                        crate_rustc_version
-                            .as_ref().map(|s| &**s)
-                            .unwrap_or("an old version of rustc")
-            );
+            let mut err = struct_span_fatal!(self.sess, span, E0514,
+                                             "the crate `{}` has been compiled with {}, which is \
+                                              incompatible with this version of rustc",
+                                              name,
+                                              crate_rustc_version
+                                              .as_ref().map(|s| &**s)
+                                              .unwrap_or("an old version of rustc"));
+            err.fileline_help(span, "consider removing the compiled binaries and recompiling \
+                                     with your current version of rustc");
+            err.emit();
         }
     }
 

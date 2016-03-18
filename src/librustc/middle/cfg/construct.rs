@@ -12,14 +12,14 @@ use rustc_data_structures::graph;
 use middle::cfg::*;
 use middle::def::Def;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;
 
 use rustc_front::hir::{self, PatKind};
 
 struct CFGBuilder<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
@@ -32,7 +32,7 @@ struct LoopScope {
     break_index: CFGIndex,    // where to go on a `break
 }
 
-pub fn construct(tcx: &ty::ctxt,
+pub fn construct(tcx: &TyCtxt,
                  blk: &hir::Block) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = graph.add_node(CFGNodeData::Entry);
@@ -317,12 +317,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.call(expr, pred, &l, Some(&**r).into_iter())
             }
 
-            hir::ExprRange(ref start, ref end) => {
-                let fields = start.as_ref().map(|e| &**e).into_iter()
-                    .chain(end.as_ref().map(|e| &**e));
-                self.straightline(expr, pred, fields)
-            }
-
             hir::ExprUnary(_, ref e) if self.tcx.is_method_call(expr.id) => {
                 self.call(expr, pred, &e, None::<hir::Expr>.iter())
             }
@@ -360,19 +354,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.straightline(expr, pred, Some(&**e).into_iter())
             }
 
-            hir::ExprInlineAsm(ref inline_asm) => {
-                let inputs = inline_asm.inputs.iter();
-                let outputs = inline_asm.outputs.iter();
-                let post_inputs = self.exprs(inputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} input:{:?}", expr.id, a);
-                    let &(_, ref expr) = a;
-                    &**expr
-                }), pred);
-                let post_outputs = self.exprs(outputs.map(|a| {
-                    debug!("cfg::construct InlineAsm id:{} output:{:?}", expr.id, a);
-                    &*a.expr
-                }), post_inputs);
-                self.add_ast_node(expr.id, &[post_outputs])
+            hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+                let post_outputs = self.exprs(outputs.iter().map(|e| &**e), pred);
+                let post_inputs = self.exprs(inputs.iter().map(|e| &**e), post_outputs);
+                self.add_ast_node(expr.id, &[post_inputs])
             }
 
             hir::ExprClosure(..) |

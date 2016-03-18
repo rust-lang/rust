@@ -11,7 +11,6 @@
 #![crate_type = "bin"]
 
 #![feature(box_syntax)]
-#![feature(dynamic_lib)]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(str_char)]
@@ -78,6 +77,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS"),
           optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
+          optflag("", "quiet", "print one character per test instead of one line"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
@@ -117,12 +117,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         }
     }
 
-    let filter = if !matches.free.is_empty() {
-        Some(matches.free[0].clone())
-    } else {
-        None
-    };
-
     Config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
@@ -138,7 +132,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: matches.opt_str("mode").unwrap().parse().ok().expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
-        filter: filter,
+        filter: matches.free.first().cloned(),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
@@ -158,6 +152,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
+        quiet: matches.opt_present("quiet"),
     }
 }
 
@@ -191,6 +186,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("adb_device_status: {}",
                     config.adb_device_status));
     logv(c, format!("verbose: {}", config.verbose));
+    logv(c, format!("quiet: {}", config.quiet));
     logv(c, format!("\n"));
 }
 
@@ -252,11 +248,9 @@ pub fn run_tests(config: &Config) {
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
-        filter: match config.filter {
-            None => None,
-            Some(ref filter) => Some(filter.clone()),
-        },
+        filter: config.filter.clone(),
         run_ignored: config.run_ignored,
+        quiet: config.quiet,
         logfile: config.logfile.clone(),
         run_tests: true,
         bench_benchmarks: true,
@@ -354,11 +348,25 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 }
 
 pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
+    let early_props = header::early_props(config, &testpaths.file);
+
+    // The `should-fail` annotation doesn't apply to pretty tests,
+    // since we run the pretty printer across all tests by default.
+    // If desired, we could add a `should-fail-pretty` annotation.
+    let should_panic = match config.mode {
+        Pretty => test::ShouldPanic::No,
+        _ => if early_props.should_fail {
+            test::ShouldPanic::Yes
+        } else {
+            test::ShouldPanic::No
+        }
+    };
+
     test::TestDescAndFn {
         desc: test::TestDesc {
             name: make_test_name(config, testpaths),
-            ignore: header::is_test_ignored(config, &testpaths.file),
-            should_panic: test::ShouldPanic::No,
+            ignore: early_props.ignore,
+            should_panic: should_panic,
         },
         testfn: make_test_closure(config, testpaths),
     }

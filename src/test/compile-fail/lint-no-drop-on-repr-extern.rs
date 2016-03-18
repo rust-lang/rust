@@ -15,6 +15,8 @@
 
 #![feature(unsafe_no_drop_flag)]
 #![deny(drop_with_repr_extern)]
+//~^ NOTE lint level defined here
+//~| NOTE lint level defined here
 
 #[repr(C)] struct As { x: Box<i8> }
 #[repr(C)] enum Ae { Ae(Box<i8>), _None }

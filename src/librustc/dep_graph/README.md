@@ -51,7 +51,7 @@ could invalidate work done for other items. So, for example:
    not shared state, because if it changes it does not itself
    invalidate other functions (though it may be that it causes new
    monomorphizations to occur, but that's handled independently).
-   
+
 Put another way: if the HIR for an item changes, we are going to
 recompile that item for sure. But we need the dep tracking map to tell
 us what *else* we have to recompile. Shared state is anything that is
@@ -177,7 +177,7 @@ reads from `item`, there would be missing edges in the graph:
       |                                 ^
       |                                 |
       +---------------------------------+ // added by `visit_all_items_in_krate`
-    
+
 In particular, the edge from `Hir(X)` to `ItemSignature(X)` is only
 present because we called `read` ourselves when entering the `ItemSignature(X)`
 task.
@@ -273,8 +273,8 @@ should not exist.  In contrast, using the memoized helper, you get:
     ... -> MapVariant(key) -> A
                  |
                  +----------> B
-                 
-which is much cleaner.                 
+
+which is much cleaner.
 
 **Be aware though that the closure is executed with `MapVariant(key)`
 pushed onto the stack as the current task!** That means that you must
@@ -387,4 +387,3 @@ RUST_DEP_GRAPH_FILTER='Hir&foo -> TypeckItemBody & bar'
 This will dump out all the nodes that lead from `Hir(foo)` to
 `TypeckItemBody(bar)`, from which you can (hopefully) see the source
 of the erroneous edge.
-

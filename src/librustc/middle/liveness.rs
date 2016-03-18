@@ -112,7 +112,9 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
-use middle::ty;
+use middle::ty::{self, TyCtxt, ParameterEnvironment};
+use middle::traits::{self, ProjectionMode};
+use middle::infer;
 use lint;
 use util::nodemap::NodeMap;
 
@@ -166,7 +168,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &ty::ctxt) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &TyCtxt) -> String {
     let cm = cx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
@@ -192,7 +194,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &hir::Arm) { visit_arm(self, a); }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
@@ -260,7 +262,7 @@ enum VarKind {
 }
 
 struct IrMaps<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     num_live_nodes: usize,
     num_vars: usize,
@@ -272,7 +274,7 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: &'a TyCtxt<'tcx>) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx: tcx,
             num_live_nodes: 0,
@@ -498,7 +500,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       hir::ExprBlock(..) | hir::ExprAssign(..) | hir::ExprAssignOp(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprInlineAsm(..) | hir::ExprBox(..) |
-      hir::ExprRange(..) | hir::ExprType(..) => {
+      hir::ExprType(..) => {
           intravisit::walk_expr(ir, expr);
       }
     }
@@ -1086,11 +1088,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprAssignOp(_, ref l, ref r) => {
-            // see comment on lvalues in
-            // propagate_through_lvalue_components()
-            let succ = self.write_lvalue(&l, succ, ACC_WRITE|ACC_READ);
-            let succ = self.propagate_through_expr(&r, succ);
-            self.propagate_through_lvalue_components(&l, succ)
+            // an overloaded assign op is like a method call
+            if self.ir.tcx.is_method_call(expr.id) {
+                let succ = self.propagate_through_expr(&l, succ);
+                self.propagate_through_expr(&r, succ)
+            } else {
+                // see comment on lvalues in
+                // propagate_through_lvalue_components()
+                let succ = self.write_lvalue(&l, succ, ACC_WRITE|ACC_READ);
+                let succ = self.propagate_through_expr(&r, succ);
+                self.propagate_through_lvalue_components(&l, succ)
+            }
           }
 
           // Uninteresting cases: just propagate in rev exec order
@@ -1154,11 +1162,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&l, r_succ)
           }
 
-          hir::ExprRange(ref e1, ref e2) => {
-            let succ = e2.as_ref().map_or(succ, |e| self.propagate_through_expr(&e, succ));
-            e1.as_ref().map_or(succ, |e| self.propagate_through_expr(&e, succ))
-          }
-
           hir::ExprBox(ref e) |
           hir::ExprAddrOf(_, ref e) |
           hir::ExprCast(ref e, _) |
@@ -1167,25 +1170,21 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprInlineAsm(ref ia) => {
-
-            let succ = ia.outputs.iter().rev().fold(succ,
-                |succ, out| {
-                    // see comment on lvalues
-                    // in propagate_through_lvalue_components()
-                    if out.is_indirect {
-                        self.propagate_through_expr(&out.expr, succ)
-                    } else {
-                        let acc = if out.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
-                        let succ = self.write_lvalue(&out.expr, succ, acc);
-                        self.propagate_through_lvalue_components(&out.expr, succ)
-                    }
+          hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+            let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
+                // see comment on lvalues
+                // in propagate_through_lvalue_components()
+                if o.is_indirect {
+                    self.propagate_through_expr(output, succ)
+                } else {
+                    let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
+                    let succ = self.write_lvalue(output, succ, acc);
+                    self.propagate_through_lvalue_components(output, succ)
                 }
-            );
+            });
+
             // Inputs are executed first. Propagate last because of rev order
-            ia.inputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
-                self.propagate_through_expr(&expr, succ)
-            })
+            self.propagate_through_exprs(inputs, succ)
           }
 
           hir::ExprLit(..) => {
@@ -1415,22 +1414,24 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
 
       hir::ExprAssignOp(_, ref l, _) => {
-        this.check_lvalue(&l);
+        if !this.ir.tcx.is_method_call(expr.id) {
+            this.check_lvalue(&l);
+        }
 
         intravisit::walk_expr(this, expr);
       }
 
-      hir::ExprInlineAsm(ref ia) => {
-        for &(_, ref input) in &ia.inputs {
-          this.visit_expr(&input);
+      hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+        for input in inputs {
+          this.visit_expr(input);
         }
 
         // Output operands must be lvalues
-        for out in &ia.outputs {
-          if !out.is_indirect {
-            this.check_lvalue(&out.expr);
+        for (o, output) in ia.outputs.iter().zip(outputs) {
+          if !o.is_indirect {
+            this.check_lvalue(output);
           }
-          this.visit_expr(&out.expr);
+          this.visit_expr(output);
         }
 
         intravisit::walk_expr(this, expr);
@@ -1446,7 +1447,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       hir::ExprBlock(..) | hir::ExprAddrOf(..) |
       hir::ExprStruct(..) | hir::ExprRepeat(..) |
       hir::ExprClosure(..) | hir::ExprPath(..) | hir::ExprBox(..) |
-      hir::ExprRange(..) | hir::ExprType(..) => {
+      hir::ExprType(..) => {
         intravisit::walk_expr(this, expr);
       }
     }
@@ -1487,9 +1488,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         match fn_ret {
             ty::FnConverging(t_ret)
-                if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
+                    if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                if t_ret.is_nil() {
+                let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
+                let infcx = infer::new_infer_ctxt(&self.ir.tcx,
+                                                  &self.ir.tcx.tables,
+                                                  Some(param_env),
+                                                  ProjectionMode::Any);
+                let cause = traits::ObligationCause::dummy();
+                let norm = traits::fully_normalize(&infcx,
+                                                   cause,
+                                                   &t_ret);
+
+                if norm.unwrap().is_nil() {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {

@@ -36,7 +36,9 @@ pub struct FnvHasher(u64);
 
 impl Default for FnvHasher {
     #[inline]
-    fn default() -> FnvHasher { FnvHasher(0xcbf29ce484222325) }
+    fn default() -> FnvHasher {
+        FnvHasher(0xcbf29ce484222325)
+    }
 }
 
 impl Hasher for FnvHasher {
@@ -51,5 +53,7 @@ impl Hasher for FnvHasher {
     }
 
     #[inline]
-    fn finish(&self) -> u64 { self.0 }
+    fn finish(&self) -> u64 {
+        self.0
+    }
 }

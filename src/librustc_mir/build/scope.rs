@@ -90,10 +90,12 @@ use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::lang_items;
 use rustc::middle::subst::{Substs, Subst, VecPerParamSpace};
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;
+use rustc::middle::const_eval::ConstVal;
+use rustc_const_eval::ConstInt;
 
 pub struct Scope<'tcx> {
     extent: CodeExtent,
@@ -503,7 +505,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ty: self.hir.tcx().lookup_item_type(funcdid).ty,
             literal: Literal::Item {
                 def_id: funcdid,
-                kind: ItemKind::Function,
                 substs: self.hir.tcx().mk_substs(Substs::empty())
             }
         }
@@ -518,7 +519,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }, Constant {
             span: span,
             ty: self.hir.tcx().types.u32,
-            literal: self.hir.usize_literal(span_lines.line)
+            literal: Literal::Value {
+                value: ConstVal::Integral(ConstInt::U32(span_lines.line as u32)),
+            },
         })
     }
 
@@ -551,7 +554,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
                              cfg: &mut CFG<'tcx>,
                              unit_temp: Lvalue<'tcx>,
                              scope: &mut Scope<'tcx>,
@@ -625,7 +628,7 @@ fn build_diverge_scope<'tcx>(tcx: &ty::ctxt<'tcx>,
     }
 }
 
-fn build_free<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
                     unit_temp: Lvalue<'tcx>,
                     data: &FreeData<'tcx>,
                     target: BasicBlock) -> Terminator<'tcx> {
@@ -641,7 +644,6 @@ fn build_free<'tcx>(tcx: &ty::ctxt<'tcx>,
             ty: tcx.lookup_item_type(free_func).ty.subst(tcx, substs),
             literal: Literal::Item {
                 def_id: free_func,
-                kind: ItemKind::Function,
                 substs: substs
             }
         }),

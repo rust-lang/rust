@@ -27,7 +27,7 @@ use self::TargetLint::*;
 
 use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
-use middle::ty;
+use middle::ty::TyCtxt;
 use session::{config, early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
 use lint::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};
@@ -298,7 +298,7 @@ impl LintStore {
 /// Context for lint checking after type checking.
 pub struct LateContext<'a, 'tcx: 'a> {
     /// Type context we're checking in.
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
 
     /// The crate being checked.
     pub krate: &'a hir::Crate,
@@ -489,9 +489,14 @@ pub trait LintContext: Sized {
 
     fn level_src(&self, lint: &'static Lint) -> Option<LevelSource> {
         self.lints().levels.get(&LintId::of(lint)).map(|ls| match ls {
-            &(Warn, src) => {
+            &(Warn, _) => {
                 let lint_id = LintId::of(builtin::WARNINGS);
-                (self.lints().get_level_source(lint_id).0, src)
+                let warn_src = self.lints().get_level_source(lint_id);
+                if warn_src.0 != Warn {
+                    warn_src
+                } else {
+                    *ls
+                }
             }
             _ => *ls
         })
@@ -662,7 +667,7 @@ impl<'a> EarlyContext<'a> {
 }
 
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>,
+    fn new(tcx: &'a TyCtxt<'tcx>,
            krate: &'a hir::Crate,
            access_levels: &'a AccessLevels) -> LateContext<'a, 'tcx> {
         // We want to own the lint store, so move it out of the session.
@@ -1249,7 +1254,7 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 /// Perform lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
-pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
+pub fn check_crate(tcx: &TyCtxt, access_levels: &AccessLevels) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
 
     let krate = tcx.map.krate();
@@ -1282,6 +1287,9 @@ pub fn check_crate(tcx: &ty::ctxt, access_levels: &AccessLevels) {
     }
 
     *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
+
+    // Put the lint store back in the session.
+    mem::replace(&mut *tcx.sess.lint_store.borrow_mut(), cx.lints);
 }
 
 pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {

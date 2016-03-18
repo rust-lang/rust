@@ -28,7 +28,7 @@ use self::tree_index::TreeIndex;
 #[cfg(test)]
 mod test;
 
-pub struct ObligationForest<O,T> {
+pub struct ObligationForest<O, T> {
     /// The list of obligations. In between calls to
     /// `process_obligations`, this list only contains nodes in the
     /// `Pending` or `Success` state (with a non-zero number of
@@ -43,7 +43,7 @@ pub struct ObligationForest<O,T> {
     /// backtrace iterator (which uses `split_at`).
     nodes: Vec<Node<O>>,
     trees: Vec<Tree<T>>,
-    snapshots: Vec<usize>
+    snapshots: Vec<usize>,
 }
 
 pub struct Snapshot {
@@ -67,7 +67,9 @@ struct Node<O> {
 #[derive(Debug)]
 enum NodeState<O> {
     /// Obligation not yet resolved to success or error.
-    Pending { obligation: O },
+    Pending {
+        obligation: O,
+    },
 
     /// Obligation resolved to success; `num_incomplete_children`
     /// indicates the number of children still in an "incomplete"
@@ -77,7 +79,10 @@ enum NodeState<O> {
     ///
     /// Once all children have completed, success nodes are removed
     /// from the vector by the compression step.
-    Success { obligation: O, num_incomplete_children: usize },
+    Success {
+        obligation: O,
+        num_incomplete_children: usize,
+    },
 
     /// This obligation was resolved to an error. Error nodes are
     /// removed from the vector by the compression step.
@@ -85,13 +90,13 @@ enum NodeState<O> {
 }
 
 #[derive(Debug)]
-pub struct Outcome<O,E> {
+pub struct Outcome<O, E> {
     /// Obligations that were completely evaluated, including all
     /// (transitive) subobligations.
     pub completed: Vec<O>,
 
     /// Backtrace of obligations that were found to be in error.
-    pub errors: Vec<Error<O,E>>,
+    pub errors: Vec<Error<O, E>>,
 
     /// If true, then we saw no successful obligations, which means
     /// there is no point in further iteration. This is based on the
@@ -103,7 +108,7 @@ pub struct Outcome<O,E> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Error<O,E> {
+pub struct Error<O, E> {
     pub error: E,
     pub backtrace: Vec<O>,
 }
@@ -113,7 +118,7 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
         ObligationForest {
             trees: vec![],
             nodes: vec![],
-            snapshots: vec![]
+            snapshots: vec![],
         }
     }
 
@@ -148,11 +153,12 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
         // snapshot but pushing trees, all nodes after that should be
         // roots of other trees as well
         let first_root_index = self.trees[trees_len].root.get();
-        debug_assert!(
-            self.nodes[first_root_index..]
-                .iter()
-                .zip(first_root_index..)
-                .all(|(root, root_index)| self.trees[root.tree.get()].root.get() == root_index));
+        debug_assert!(self.nodes[first_root_index..]
+                          .iter()
+                          .zip(first_root_index..)
+                          .all(|(root, root_index)| {
+                              self.trees[root.tree.get()].root.get() == root_index
+                          }));
 
         // Pop off tree/root pairs pushed during snapshot.
         self.trees.truncate(trees_len);
@@ -169,14 +175,17 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     pub fn push_tree(&mut self, obligation: O, tree_state: T) {
         let index = NodeIndex::new(self.nodes.len());
         let tree = TreeIndex::new(self.trees.len());
-        self.trees.push(Tree { root: index, state: tree_state });
+        self.trees.push(Tree {
+            root: index,
+            state: tree_state,
+        });
         self.nodes.push(Node::new(tree, None, obligation));
     }
 
     /// Convert all remaining obligations to the given error.
     ///
     /// This cannot be done during a snapshot.
-    pub fn to_errors<E:Clone>(&mut self, error: E) -> Vec<Error<O,E>> {
+    pub fn to_errors<E: Clone>(&mut self, error: E) -> Vec<Error<O, E>> {
         assert!(!self.in_snapshot());
         let mut errors = vec![];
         for index in 0..self.nodes.len() {
@@ -184,7 +193,10 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
             self.inherit_error(index);
             if let NodeState::Pending { .. } = self.nodes[index].state {
                 let backtrace = self.backtrace(index);
-                errors.push(Error { error: error.clone(), backtrace: backtrace });
+                errors.push(Error {
+                    error: error.clone(),
+                    backtrace: backtrace,
+                });
             }
         }
         let successful_obligations = self.compress();
@@ -193,21 +205,27 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
     }
 
     /// Returns the set of obligations that are in a pending state.
-    pub fn pending_obligations(&self) -> Vec<O> where O: Clone {
-        self.nodes.iter()
-                  .filter_map(|n| match n.state {
-                      NodeState::Pending { ref obligation } => Some(obligation),
-                      _ => None,
-                  })
-                  .cloned()
-                  .collect()
+    pub fn pending_obligations(&self) -> Vec<O>
+        where O: Clone
+    {
+        self.nodes
+            .iter()
+            .filter_map(|n| {
+                match n.state {
+                    NodeState::Pending { ref obligation } => Some(obligation),
+                    _ => None,
+                }
+            })
+            .cloned()
+            .collect()
     }
 
     /// Process the obligations.
     ///
     /// This CANNOT be unrolled (presently, at least).
-    pub fn process_obligations<E,F>(&mut self, mut action: F) -> Outcome<O,E>
-        where E: Debug, F: FnMut(&mut O, &mut T, Backtrace<O>) -> Result<Option<Vec<O>>, E>
+    pub fn process_obligations<E, F>(&mut self, mut action: F) -> Outcome<O, E>
+        where E: Debug,
+              F: FnMut(&mut O, &mut T, Backtrace<O>) -> Result<Option<Vec<O>>, E>
     {
         debug!("process_obligations(len={})", self.nodes.len());
         assert!(!self.in_snapshot()); // cannot unroll this action
@@ -228,7 +246,8 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
             self.inherit_error(index);
 
             debug!("process_obligations: node {} == {:?}",
-                   index, self.nodes[index].state);
+                   index,
+                   self.nodes[index].state);
 
             let result = {
                 let Node { tree, parent, .. } = self.nodes[index];
@@ -236,14 +255,16 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
                 let backtrace = Backtrace::new(prefix, parent);
                 match suffix[0].state {
                     NodeState::Error |
-                    NodeState::Success { .. } =>
-                        continue,
-                    NodeState::Pending { ref mut obligation } =>
-                        action(obligation, &mut self.trees[tree.get()].state, backtrace),
+                    NodeState::Success { .. } => continue,
+                    NodeState::Pending { ref mut obligation } => {
+                        action(obligation, &mut self.trees[tree.get()].state, backtrace)
+                    }
                 }
             };
 
-            debug!("process_obligations: node {} got result {:?}", index, result);
+            debug!("process_obligations: node {} got result {:?}",
+                   index,
+                   result);
 
             match result {
                 Ok(None) => {
@@ -256,7 +277,10 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
                 }
                 Err(err) => {
                     let backtrace = self.backtrace(index);
-                    errors.push(Error { error: err, backtrace: backtrace });
+                    errors.push(Error {
+                        error: err,
+                        backtrace: backtrace,
+                    });
                 }
             }
         }
@@ -291,20 +315,21 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
             // create child work
             let tree_index = self.nodes[index].tree;
             let node_index = NodeIndex::new(index);
-            self.nodes.extend(
-                children.into_iter()
-                        .map(|o| Node::new(tree_index, Some(node_index), o)));
+            self.nodes.extend(children.into_iter()
+                                      .map(|o| Node::new(tree_index, Some(node_index), o)));
         }
 
         // change state from `Pending` to `Success`, temporarily swapping in `Error`
         let state = mem::replace(&mut self.nodes[index].state, NodeState::Error);
         self.nodes[index].state = match state {
-            NodeState::Pending { obligation } =>
-                NodeState::Success { obligation: obligation,
-                                     num_incomplete_children: num_incomplete_children },
+            NodeState::Pending { obligation } => {
+                NodeState::Success {
+                    obligation: obligation,
+                    num_incomplete_children: num_incomplete_children,
+                }
+            }
             NodeState::Success { .. } |
-            NodeState::Error =>
-                unreachable!()
+            NodeState::Error => unreachable!(),
         };
     }
 
@@ -358,14 +383,19 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
                     // there was an error in the ancestors, it should
                     // have been propagated down and we should never
                     // have tried to process this obligation
-                    panic!("encountered error in node {:?} when collecting stack trace", p);
+                    panic!("encountered error in node {:?} when collecting stack trace",
+                           p);
                 }
             }
 
             // loop to the parent
             match self.nodes[p].parent {
-                Some(q) => { p = q.get(); }
-                None => { return trace; }
+                Some(q) => {
+                    p = q.get();
+                }
+                None => {
+                    return trace;
+                }
             }
         }
     }
@@ -427,18 +457,19 @@ impl<O: Debug, T: Debug> ObligationForest<O, T> {
 
         // Pop off all the nodes we killed and extract the success
         // stories.
-        let successful =
-            (0 .. dead_nodes)
-            .map(|_| self.nodes.pop().unwrap())
-            .flat_map(|node| match node.state {
-                NodeState::Error => None,
-                NodeState::Pending { .. } => unreachable!(),
-                NodeState::Success { obligation, num_incomplete_children } => {
-                    assert_eq!(num_incomplete_children, 0);
-                    Some(obligation)
-                }
-            })
-            .collect();
+        let successful = (0..dead_nodes)
+                             .map(|_| self.nodes.pop().unwrap())
+                             .flat_map(|node| {
+                                 match node.state {
+                                     NodeState::Error => None,
+                                     NodeState::Pending { .. } => unreachable!(),
+                                     NodeState::Success { obligation, num_incomplete_children } => {
+                                         assert_eq!(num_incomplete_children, 0);
+                                         Some(obligation)
+                                     }
+                                 }
+                             })
+                             .collect();
 
         // Adjust the various indices, since we compressed things.
         for tree in &mut self.trees {
@@ -484,7 +515,10 @@ pub struct Backtrace<'b, O: 'b> {
 
 impl<'b, O> Backtrace<'b, O> {
     fn new(nodes: &'b [Node<O>], pointer: Option<NodeIndex>) -> Backtrace<'b, O> {
-        Backtrace { nodes: nodes, pointer: pointer }
+        Backtrace {
+            nodes: nodes,
+            pointer: pointer,
+        }
     }
 }
 
@@ -497,9 +531,7 @@ impl<'b, O> Iterator for Backtrace<'b, O> {
             self.pointer = self.nodes[p.get()].parent;
             match self.nodes[p.get()].state {
                 NodeState::Pending { ref obligation } |
-                NodeState::Success { ref obligation, .. } => {
-                    Some(obligation)
-                }
+                NodeState::Success { ref obligation, .. } => Some(obligation),
                 NodeState::Error => {
                     panic!("Backtrace encountered an error.");
                 }

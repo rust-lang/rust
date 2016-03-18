@@ -299,9 +299,6 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-cfail-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pfail-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-valgrind-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-rfail-full-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-rustdocck-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-crates-exec \
@@ -316,6 +313,15 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
 # Only test the compiler-dependent crates when the target is
 # able to build a compiler (when the target triple is in the set of host triples)
 ifneq ($$(findstring $(2),$$(CFG_HOST)),)
+
+check-stage$(1)-T-$(2)-H-$(3)-exec: \
+	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rfail-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec
+
+check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-full-exec
 
 check-stage$(1)-T-$(2)-H-$(3)-crates-exec: \
 	$$(foreach crate,$$(TEST_CRATES), \
@@ -340,9 +346,7 @@ check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
 check-stage$(1)-T-$(2)-H-$(3)-pretty-exec: \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-exec \
     check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-valgrind-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-rpass-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-exec \
-	check-stage$(1)-T-$(2)-H-$(3)-pretty-rfail-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-pretty-pretty-exec
 
 endef

@@ -11,10 +11,6 @@ path = "rustc.rs"
 name = "rustdoc"
 path = "rustdoc.rs"
 
-[[bin]]
-name = "rustbook"
-path = "rustbook.rs"
-
 [profile.release]
 opt-level = 2
 
@@ -27,10 +23,9 @@ debug-assertions = false
 # All optional dependencies so the features passed to this Cargo.toml select
 # what should actually be built.
 [dependencies]
-rustbook = { path = "../rustbook", optional = true }
 rustc_back = { path = "../librustc_back" }
 rustc_driver = { path = "../librustc_driver" }
-rustdoc = { path = "../librustdoc", optional = true }
+rustdoc = { path = "../librustdoc" }
 
 [features]
 jemalloc = ["rustc_back/jemalloc"]

@@ -100,8 +100,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use ascii::*;
-#[allow(deprecated)]
-use borrow::{Borrow, IntoCow, ToOwned, Cow};
+use borrow::{Borrow, ToOwned, Cow};
 use cmp;
 use error::Error;
 use fmt;
@@ -781,14 +780,6 @@ impl<'a> Components<'a> {
             }
         }
     }
-
-    /// Examine the next component without consuming it.
-    #[unstable(feature = "path_components_peek", issue = "27727")]
-    #[rustc_deprecated(reason = "use peekable() instead",
-                       since = "1.6.0")]
-    pub fn peek(&self) -> Option<Component<'a>> {
-        self.clone().next()
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1218,22 +1209,6 @@ impl Borrow<Path> for PathBuf {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl IntoCow<'static, Path> for PathBuf {
-    fn into_cow(self) -> Cow<'static, Path> {
-        Cow::Owned(self)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a> IntoCow<'a, Path> for &'a Path {
-    fn into_cow(self) -> Cow<'a, Path> {
-        Cow::Borrowed(self)
-    }
-}
-
 #[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<&'a Path> for Cow<'a, Path> {
     #[inline]
@@ -1474,17 +1449,7 @@ impl Path {
         !self.is_absolute()
     }
 
-    /// Returns the *prefix* of a path, if any.
-    ///
-    /// Prefixes are relevant only for Windows paths, and consist of volumes
-    /// like `C:`, UNC prefixes like `\\server`, and others described in more
-    /// detail in `std::os::windows::PathExt`.
-    #[unstable(feature = "path_prefix",
-               reason = "uncertain whether to expose this convenience",
-               issue = "27722")]
-    #[rustc_deprecated(since = "1.7.0",
-                       reason = "inspect components().next() instead")]
-    pub fn prefix(&self) -> Option<Prefix> {
+    fn prefix(&self) -> Option<Prefix> {
         self.components().prefix
     }
 
@@ -1564,17 +1529,6 @@ impl Path {
                 _ => None,
             }
         })
-    }
-
-    /// Returns a path that, when joined onto `base`, yields `self`.
-    ///
-    /// If `base` is not a prefix of `self` (i.e. `starts_with`
-    /// returns false), then `relative_from` returns `None`.
-    #[unstable(feature = "path_relative_from", reason = "see #23284",
-               issue = "23284")]
-    #[rustc_deprecated(since = "1.7.0", reason = "renamed to strip_prefix")]
-    pub fn relative_from<'a, P: ?Sized + AsRef<Path>>(&'a self, base: &'a P) -> Option<&Path> {
-        self._strip_prefix(base.as_ref()).ok()
     }
 
     /// Returns a path that, when joined onto `base`, yields `self`.
@@ -2235,27 +2189,6 @@ mod tests {
             }
         );
     );
-
-    #[test]
-    #[allow(deprecated)]
-    fn into_cow() {
-        use borrow::{Cow, IntoCow};
-
-        let static_path = Path::new("/home/foo");
-        let static_cow_path: Cow<'static, Path> = static_path.into_cow();
-        let pathbuf = PathBuf::from("/home/foo");
-
-        {
-            let path: &Path = &pathbuf;
-            let borrowed_cow_path: Cow<Path> = path.into_cow();
-
-            assert_eq!(static_cow_path, borrowed_cow_path);
-        }
-
-        let owned_cow_path: Cow<'static, Path> = pathbuf.into_cow();
-
-        assert_eq!(static_cow_path, owned_cow_path);
-    }
 
     #[test]
     fn into() {

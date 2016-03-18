@@ -10,7 +10,7 @@
 
 use middle::def::*;
 use middle::def_id::DefId;
-use middle::ty;
+use middle::ty::TyCtxt;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
@@ -210,7 +210,7 @@ pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
     }
 }
 
-pub fn def_to_path(tcx: &ty::ctxt, id: DefId) -> hir::Path {
+pub fn def_to_path(tcx: &TyCtxt, id: DefId) -> hir::Path {
     tcx.with_path(id, |path| hir::Path {
         global: false,
         segments: path.last().map(|elem| hir::PathSegment {

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // ignore-windows - this is a unix-specific test
+// no-prefer-dynamic - this test breaks with dynamic linking as
+// some LD_LIBRARY_PATH entries are relative and it cd's to /.
 
 #![feature(process_exec, libc)]
 

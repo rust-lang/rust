@@ -15,7 +15,7 @@ pub use self::RegionSubsts::*;
 
 use middle::cstore;
 use middle::def_id::DefId;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
@@ -148,11 +148,11 @@ impl<'tcx> Substs<'tcx> {
         Substs { types: types, regions: regions }
     }
 
-    pub fn with_method_from(self,
+    pub fn with_method_from(&self,
                             meth_substs: &Substs<'tcx>)
                             -> Substs<'tcx>
     {
-        let Substs { types, regions } = self;
+        let Substs { types, regions } = self.clone();
         let types = types.with_slice(FnSpace, meth_substs.types.get_slice(FnSpace));
         let regions = regions.map(|r| {
             r.with_slice(FnSpace, meth_substs.regions().get_slice(FnSpace))
@@ -160,8 +160,17 @@ impl<'tcx> Substs<'tcx> {
         Substs { types: types, regions: regions }
     }
 
+    pub fn with_method_from_subst(self, other: &Substs<'tcx>) -> Substs<'tcx> {
+        let Substs { types, regions } = self;
+        let types = types.with_slice(FnSpace, other.types.get_slice(FnSpace));
+        let regions = regions.map(|r| {
+            r.with_slice(FnSpace, other.regions().get_slice(FnSpace))
+        });
+        Substs { types: types, regions: regions }
+    }
+
     /// Creates a trait-ref out of this substs, ignoring the FnSpace substs
-    pub fn to_trait_ref(&self, tcx: &ty::ctxt<'tcx>, trait_id: DefId)
+    pub fn to_trait_ref(&self, tcx: &TyCtxt<'tcx>, trait_id: DefId)
                         -> ty::TraitRef<'tcx> {
         let Substs { mut types, regions } = self.clone();
         types.truncate(FnSpace, 0);
@@ -589,11 +598,11 @@ impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
 // there is more information available (for better errors).
 
 pub trait Subst<'tcx> : Sized {
-    fn subst(&self, tcx: &ty::ctxt<'tcx>, substs: &Substs<'tcx>) -> Self {
+    fn subst(&self, tcx: &TyCtxt<'tcx>, substs: &Substs<'tcx>) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
-    fn subst_spanned(&self, tcx: &ty::ctxt<'tcx>,
+    fn subst_spanned(&self, tcx: &TyCtxt<'tcx>,
                      substs: &Substs<'tcx>,
                      span: Option<Span>)
                      -> Self;
@@ -601,7 +610,7 @@ pub trait Subst<'tcx> : Sized {
 
 impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
     fn subst_spanned(&self,
-                     tcx: &ty::ctxt<'tcx>,
+                     tcx: &TyCtxt<'tcx>,
                      substs: &Substs<'tcx>,
                      span: Option<Span>)
                      -> T
@@ -620,7 +629,7 @@ impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
 // The actual substitution engine itself is a type folder.
 
 struct SubstFolder<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     substs: &'a Substs<'tcx>,
 
     // The location for which the substitution is performed, if available.
@@ -637,7 +646,7 @@ struct SubstFolder<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> { self.tcx }
+    fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
 
     fn enter_region_binder(&mut self) {
         self.region_binders_passed += 1;

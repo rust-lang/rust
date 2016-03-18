@@ -18,13 +18,14 @@ fn main() {
     let q = a.as_ptr();
 
     a as usize; //~ ERROR casting
+    //~^ HELP cast through a raw pointer first
     b as usize; //~ ERROR non-scalar cast
     p as usize;
     //~^ ERROR casting
     //~^^ HELP cast through a thin pointer
 
     // #22955
-    q as *const [i32]; //~ ERROR casting
+    q as *const [i32]; //~ ERROR cannot cast
 
     // #21397
     let t: *mut (Trait + 'static) = 0 as *mut _; //~ ERROR casting

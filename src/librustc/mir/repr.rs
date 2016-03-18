@@ -10,9 +10,11 @@
 
 use graphviz::IntoCow;
 use middle::const_eval::ConstVal;
+use rustc_const_eval::{ConstUsize, ConstInt};
 use middle::def_id::DefId;
 use middle::subst::Substs;
 use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
+use util::ppaux;
 use rustc_back::slice;
 use rustc_front::hir::InlineAsm;
 use std::ascii;
@@ -176,6 +178,10 @@ pub struct TempDecl<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ArgDecl<'tcx> {
     pub ty: Ty<'tcx>,
+
+    /// If true, this argument is a tuple after monomorphization,
+    /// and has to be collected from multiple actual arguments.
+    pub spread: bool
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -207,7 +213,7 @@ impl Debug for BasicBlock {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// BasicBlock and Terminator
+// BasicBlockData and Terminator
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
@@ -674,7 +680,11 @@ pub enum Rvalue<'tcx> {
         from_end: usize,
     },
 
-    InlineAsm(InlineAsm),
+    InlineAsm {
+        asm: InlineAsm,
+        outputs: Vec<Lvalue<'tcx>>,
+        inputs: Vec<Operand<'tcx>>
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -759,7 +769,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Box(ref t) => write!(fmt, "Box({:?})", t),
-            InlineAsm(ref asm) => write!(fmt, "InlineAsm({:?})", asm),
+            InlineAsm { ref asm, ref outputs, ref inputs } => {
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            }
             Slice { ref input, from_start, from_end } =>
                 write!(fmt, "{:?}[{:?}..-{:?}]", input, from_start, from_end),
 
@@ -774,8 +786,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Aggregate(ref kind, ref lvs) => {
                 use self::AggregateKind::*;
 
-                fn fmt_tuple(fmt: &mut Formatter, name: &str, lvs: &[Operand]) -> fmt::Result {
-                    let mut tuple_fmt = fmt.debug_tuple(name);
+                fn fmt_tuple(fmt: &mut Formatter, lvs: &[Operand]) -> fmt::Result {
+                    let mut tuple_fmt = fmt.debug_tuple("");
                     for lv in lvs {
                         tuple_fmt.field(lv);
                     }
@@ -789,19 +801,24 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         match lvs.len() {
                             0 => write!(fmt, "()"),
                             1 => write!(fmt, "({:?},)", lvs[0]),
-                            _ => fmt_tuple(fmt, "", lvs),
+                            _ => fmt_tuple(fmt, lvs),
                         }
                     }
 
-                    Adt(adt_def, variant, _) => {
+                    Adt(adt_def, variant, substs) => {
                         let variant_def = &adt_def.variants[variant];
-                        let name = ty::tls::with(|tcx| tcx.item_path_str(variant_def.did));
+
+                        try!(ppaux::parameterized(fmt, substs, variant_def.did,
+                                                  ppaux::Ns::Value, &[],
+                                                  |tcx| {
+                            tcx.lookup_item_type(variant_def.did).generics
+                        }));
 
                         match variant_def.kind() {
-                            ty::VariantKind::Unit => write!(fmt, "{}", name),
-                            ty::VariantKind::Tuple => fmt_tuple(fmt, &name, lvs),
+                            ty::VariantKind::Unit => Ok(()),
+                            ty::VariantKind::Tuple => fmt_tuple(fmt, lvs),
                             ty::VariantKind::Struct => {
-                                let mut struct_fmt = fmt.debug_struct(&name);
+                                let mut struct_fmt = fmt.debug_struct("");
                                 for (field, lv) in variant_def.fields.iter().zip(lvs) {
                                     struct_fmt.field(&field.name.as_str(), lv);
                                 }
@@ -851,30 +868,19 @@ pub struct Constant<'tcx> {
 pub struct TypedConstVal<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
-    pub value: ConstVal
+    pub value: ConstUsize,
 }
 
 impl<'tcx> Debug for TypedConstVal<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        try!(write!(fmt, "const "));
-        fmt_const_val(fmt, &self.value)
+        write!(fmt, "const {}", ConstInt::Usize(self.value))
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum ItemKind {
-    Constant,
-    /// This is any sort of callable (usually those that have a type of `fn(…) -> …`). This
-    /// includes functions, constructors, but not methods which have their own ItemKind.
-    Function,
-    Method,
 }
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,
-        kind: ItemKind,
         substs: &'tcx Substs<'tcx>,
     },
     Value {
@@ -892,8 +898,10 @@ impl<'tcx> Debug for Literal<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         use self::Literal::*;
         match *self {
-            Item { def_id, .. } =>
-                write!(fmt, "{}", item_path_str(def_id)),
+            Item { def_id, substs } => {
+                ppaux::parameterized(fmt, substs, def_id, ppaux::Ns::Value, &[],
+                                     |tcx| tcx.lookup_item_type(def_id).generics)
+            }
             Value { ref value } => {
                 try!(write!(fmt, "const "));
                 fmt_const_val(fmt, value)
@@ -907,8 +915,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
     use middle::const_eval::ConstVal::*;
     match *const_val {
         Float(f) => write!(fmt, "{:?}", f),
-        Int(n) => write!(fmt, "{:?}", n),
-        Uint(n) => write!(fmt, "{:?}", n),
+        Integral(n) => write!(fmt, "{}", n),
         Str(ref s) => write!(fmt, "{:?}", s),
         ByteStr(ref bytes) => {
             let escaped: String = bytes
@@ -921,6 +928,8 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
             write!(fmt, "{}", node_to_string(node_id)),
+        Char(c) => write!(fmt, "{:?}", c),
+        Dummy => unreachable!(),
     }
 }
 

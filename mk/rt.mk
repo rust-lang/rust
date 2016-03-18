@@ -253,7 +253,7 @@ COMPRT_AR_$(1) := $$(AR_$(1))
 # We chomp -Werror here because GCC warns about the type signature of
 # builtins not matching its own and the build fails. It's a bit hacky,
 # but what can we do, we're building libclang-rt using GCC ......
-COMPRT_CFLAGS_$(1) := $$(filter-out -Werror -Werror=*,$$(CFG_GCCISH_CFLAGS_$(1))) -std=c99
+COMPRT_CFLAGS_$(1) := $$(CFG_GCCISH_CFLAGS_$(1)) -Wno-error -std=c99
 
 # FreeBSD Clang's packaging is problematic; it doesn't copy unwind.h to
 # the standard include directory. This should really be in our changes to
@@ -361,7 +361,7 @@ $$(BACKTRACE_BUILD_DIR_$(1))/Makefile: $$(BACKTRACE_DEPS) $$(MKFILE_DEPS)
 	      CC="$$(CC_$(1))" \
 	      AR="$$(AR_$(1))" \
 	      RANLIB="$$(AR_$(1)) s" \
-	      CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1):-Werror=) -fno-stack-protector" \
+	      CFLAGS="$$(CFG_GCCISH_CFLAGS_$(1)) -Wno-error -fno-stack-protector" \
 	      $(S)src/libbacktrace/configure --build=$(CFG_GNU_TRIPLE_$(CFG_BUILD)) --host=$(CFG_GNU_TRIPLE_$(1)))
 	$$(Q)echo '#undef HAVE_ATOMIC_FUNCTIONS' >> \
 	      $$(BACKTRACE_BUILD_DIR_$(1))/config.h

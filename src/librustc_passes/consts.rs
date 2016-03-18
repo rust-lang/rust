@@ -35,8 +35,8 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::middle::traits;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::middle::traits::{self, ProjectionMode};
 use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
@@ -65,7 +65,7 @@ enum Mode {
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     mode: Mode,
     qualif: ConstQualif,
     rvalue_borrows: NodeMap<hir::Mutability>
@@ -92,7 +92,10 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             None => self.tcx.empty_parameter_environment()
         };
 
-        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env));
+        let infcx = infer::new_infer_ctxt(self.tcx,
+                                          &self.tcx.tables,
+                                          Some(param_env),
+                                          ProjectionMode::AnyFinal);
 
         f(&mut euv::ExprUseVisitor::new(self, &infcx))
     }
@@ -247,7 +250,10 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
 
     fn check_static_type(&self, e: &hir::Expr) {
         let ty = self.tcx.node_id_to_type(e.id);
-        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, None);
+        let infcx = infer::new_infer_ctxt(self.tcx,
+                                          &self.tcx.tables,
+                                          None,
+                                          ProjectionMode::AnyFinal);
         let cause = traits::ObligationCause::new(e.span, e.id, traits::SharedStatic);
         let mut fulfillment_cx = traits::FulfillmentContext::new();
         fulfillment_cx.register_builtin_bound(&infcx, ty, ty::BoundSync, cause);
@@ -582,7 +588,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                 }
                 Some(Def::Struct(..)) => {
-                    if let ty::TyBareFn(..) = node_ty.sty {
+                    if let ty::TyFnDef(..) = node_ty.sty {
                         // Count the function pointer.
                         v.add_qualif(ConstQualif::NON_ZERO_SIZED);
                     }
@@ -604,9 +610,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
                 Some(Def::Const(did)) |
                 Some(Def::AssociatedConst(did)) => {
-                    if let Some(expr) = const_eval::lookup_const_by_id(v.tcx, did,
-                                                                       Some(e.id),
-                                                                       None) {
+                    let substs = Some(v.tcx.node_id_item_substs(e.id).substs);
+                    if let Some((expr, _)) = const_eval::lookup_const_by_id(v.tcx, did, substs) {
                         let inner = v.global_expr(Mode::Const, expr);
                         v.add_qualif(inner);
                     }
@@ -747,13 +752,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprAgain(_) |
         hir::ExprRet(_) |
 
-        // Miscellaneous expressions that could be implemented.
-        hir::ExprRange(..) |
-
         // Expressions with side-effects.
         hir::ExprAssign(..) |
         hir::ExprAssignOp(..) |
-        hir::ExprInlineAsm(_) => {
+        hir::ExprInlineAsm(..) => {
             v.add_qualif(ConstQualif::NOT_CONST);
             if v.mode != Mode::Var {
                 span_err!(v.tcx.sess, e.span, E0019,
@@ -788,7 +790,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     tcx.visit_all_items_in_krate(DepNode::CheckConst, &mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,

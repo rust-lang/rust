@@ -51,7 +51,7 @@ fn foo() {
 }
 ```
 
-When `v` comes into scope, a new [vector] is created on [the stack][stack],
+When `v` comes into scope, a new [vector][vectors] is created on [the stack][stack],
 and it allocates space on [the heap][heap] for its elements. When `v` goes out
 of scope at the end of `foo()`, Rust will clean up everything related to the
 vector, even the heap-allocated memory. This happens deterministically, at the

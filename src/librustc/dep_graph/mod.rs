@@ -10,7 +10,8 @@
 
 use self::thread::{DepGraphThreadData, DepMessage};
 use middle::def_id::DefId;
-use middle::ty;
+use syntax::ast::NodeId;
+use middle::ty::TyCtxt;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
 use std::rc::Rc;
@@ -58,6 +59,7 @@ pub enum DepNode {
     CoherenceCheckImpl(DefId),
     CoherenceOverlapCheck(DefId),
     CoherenceOverlapCheckSpecial(DefId),
+    CoherenceOverlapInherentCheck(DefId),
     CoherenceOrphanCheck(DefId),
     Variance,
     WfCheck(DefId),
@@ -70,6 +72,7 @@ pub enum DepNode {
     IntrinsicCheck(DefId),
     MatchCheck(DefId),
     MirMapConstruction(DefId),
+    MirTypeck(NodeId),
     BorrowCheck(DefId),
     RvalueCheck(DefId),
     Reachability,
@@ -181,13 +184,13 @@ pub use self::query::DepGraphQuery;
 /// read edge from the corresponding AST node. This is used in
 /// compiler passes to automatically record the item that they are
 /// working on.
-pub fn visit_all_items_in_krate<'tcx,V,F>(tcx: &ty::ctxt<'tcx>,
+pub fn visit_all_items_in_krate<'tcx,V,F>(tcx: &TyCtxt<'tcx>,
                                           mut dep_node_fn: F,
                                           visitor: &mut V)
     where F: FnMut(DefId) -> DepNode, V: Visitor<'tcx>
 {
     struct TrackingVisitor<'visit, 'tcx: 'visit, F: 'visit, V: 'visit> {
-        tcx: &'visit ty::ctxt<'tcx>,
+        tcx: &'visit TyCtxt<'tcx>,
         dep_node_fn: &'visit mut F,
         visitor: &'visit mut V
     }

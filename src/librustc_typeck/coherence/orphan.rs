@@ -14,20 +14,20 @@
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
 use middle::traits;
-use middle::ty;
+use middle::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc::dep_graph::DepNode;
 use rustc_front::intravisit;
 use rustc_front::hir;
 
-pub fn check(tcx: &ty::ctxt) {
+pub fn check(tcx: &TyCtxt) {
     let mut orphan = OrphanChecker { tcx: tcx };
     tcx.visit_all_items_in_krate(DepNode::CoherenceOrphanCheck, &mut orphan);
 }
 
 struct OrphanChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx ty::ctxt<'tcx>
+    tcx: &'cx TyCtxt<'tcx>
 }
 
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {

@@ -10,29 +10,24 @@
 
 //! See `README.md` for high-level documentation
 
-use super::Normalized;
-use super::SelectionContext;
-use super::ObligationCause;
-use super::PredicateObligation;
-use super::project;
-use super::util;
+use super::{SelectionContext, Obligation, ObligationCause};
 
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
-use middle::subst::{Subst, Substs, TypeSpace};
-use middle::ty::{self, Ty};
+use middle::subst::TypeSpace;
+use middle::ty::{self, Ty, TyCtxt};
 use middle::infer::{self, InferCtxt, TypeOrigin};
-use syntax::codemap::{DUMMY_SP, Span};
+use syntax::codemap::DUMMY_SP;
 
 #[derive(Copy, Clone)]
 struct InferIsLocal(bool);
 
-/// If there are types that satisfy both impls, returns a `TraitRef`
-/// with those types substituted (by updating the given `infcx`)
+/// If there are types that satisfy both impls, returns a suitably-freshened
+/// `ImplHeader` with those types substituted
 pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
                                     impl1_def_id: DefId,
                                     impl2_def_id: DefId)
-                                    -> Option<ty::TraitRef<'tcx>>
+                                    -> Option<ty::ImplHeader<'tcx>>
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={:?}, \
@@ -45,34 +40,28 @@ pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
 }
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
-/// `where` clauses)? If so, returns a `TraitRef` that unifies the two impls.
+/// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
 fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
                       a_def_id: DefId,
                       b_def_id: DefId)
-                      -> Option<ty::TraitRef<'tcx>>
+                      -> Option<ty::ImplHeader<'tcx>>
 {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})",
            a_def_id,
            b_def_id);
 
-    let (a_trait_ref, a_obligations) = impl_trait_ref_and_oblig(selcx,
-                                                                a_def_id,
-                                                                util::fresh_type_vars_for_impl);
+    let a_impl_header = ty::ImplHeader::with_fresh_ty_vars(selcx, a_def_id);
+    let b_impl_header = ty::ImplHeader::with_fresh_ty_vars(selcx, b_def_id);
 
-    let (b_trait_ref, b_obligations) = impl_trait_ref_and_oblig(selcx,
-                                                                b_def_id,
-                                                                util::fresh_type_vars_for_impl);
-
-    debug!("overlap: a_trait_ref={:?} a_obligations={:?}", a_trait_ref, a_obligations);
-
-    debug!("overlap: b_trait_ref={:?} b_obligations={:?}", b_trait_ref, b_obligations);
+    debug!("overlap: a_impl_header={:?}", a_impl_header);
+    debug!("overlap: b_impl_header={:?}", b_impl_header);
 
     // Do `a` and `b` unify? If not, no overlap.
-    if let Err(_) = infer::mk_eq_trait_refs(selcx.infcx(),
-                                            true,
-                                            TypeOrigin::Misc(DUMMY_SP),
-                                            a_trait_ref,
-                                            b_trait_ref) {
+    if let Err(_) = infer::mk_eq_impl_headers(selcx.infcx(),
+                                              true,
+                                              TypeOrigin::Misc(DUMMY_SP),
+                                              &a_impl_header,
+                                              &b_impl_header) {
         return None;
     }
 
@@ -81,9 +70,13 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
     // Are any of the obligations unsatisfiable? If so, no overlap.
     let infcx = selcx.infcx();
     let opt_failing_obligation =
-        a_obligations.iter()
-                     .chain(&b_obligations)
-                     .map(|o| infcx.resolve_type_vars_if_possible(o))
+        a_impl_header.predicates
+                     .iter()
+                     .chain(&b_impl_header.predicates)
+                     .map(|p| infcx.resolve_type_vars_if_possible(p))
+                     .map(|p| Obligation { cause: ObligationCause::dummy(),
+                                           recursion_depth: 0,
+                                           predicate: p })
                      .find(|o| !selcx.evaluate_obligation(o));
 
     if let Some(failing_obligation) = opt_failing_obligation {
@@ -91,10 +84,10 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
         return None
     }
 
-    Some(selcx.infcx().resolve_type_vars_if_possible(&a_trait_ref))
+    Some(selcx.infcx().resolve_type_vars_if_possible(&a_impl_header))
 }
 
-pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> bool
+pub fn trait_ref_is_knowable<'tcx>(tcx: &TyCtxt<'tcx>, trait_ref: &ty::TraitRef<'tcx>) -> bool
 {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
 
@@ -125,44 +118,6 @@ pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRe
     orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(true)).is_err()
 }
 
-type SubstsFn = for<'a,'tcx> fn(infcx: &InferCtxt<'a, 'tcx>,
-                                span: Span,
-                                impl_def_id: DefId)
-                                -> Substs<'tcx>;
-
-/// Instantiate fresh variables for all bound parameters of the impl
-/// and return the impl trait ref with those variables substituted.
-fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                                     impl_def_id: DefId,
-                                     substs_fn: SubstsFn)
-                                     -> (ty::TraitRef<'tcx>,
-                                         Vec<PredicateObligation<'tcx>>)
-{
-    let impl_substs =
-        &substs_fn(selcx.infcx(), DUMMY_SP, impl_def_id);
-    let impl_trait_ref =
-        selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
-    let impl_trait_ref =
-        impl_trait_ref.subst(selcx.tcx(), impl_substs);
-    let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
-        project::normalize(selcx, ObligationCause::dummy(), &impl_trait_ref);
-
-    let predicates = selcx.tcx().lookup_predicates(impl_def_id);
-    let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
-    let Normalized { value: predicates, obligations: normalization_obligations2 } =
-        project::normalize(selcx, ObligationCause::dummy(), &predicates);
-    let impl_obligations =
-        util::predicates_for_generics(ObligationCause::dummy(), 0, &predicates);
-
-    let impl_obligations: Vec<_> =
-        impl_obligations.into_iter()
-        .chain(normalization_obligations1)
-        .chain(normalization_obligations2)
-        .collect();
-
-    (impl_trait_ref, impl_obligations)
-}
-
 pub enum OrphanCheckErr<'tcx> {
     NoLocalInputType,
     UncoveredTy(Ty<'tcx>),
@@ -174,7 +129,7 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn orphan_check<'tcx>(tcx: &TyCtxt<'tcx>,
                           impl_def_id: DefId)
                           -> Result<(), OrphanCheckErr<'tcx>>
 {
@@ -195,7 +150,7 @@ pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
     orphan_check_trait_ref(tcx, &trait_ref, InferIsLocal(false))
 }
 
-fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn orphan_check_trait_ref<'tcx>(tcx: &TyCtxt<'tcx>,
                                 trait_ref: &ty::TraitRef<'tcx>,
                                 infer_is_local: InferIsLocal)
                                 -> Result<(), OrphanCheckErr<'tcx>>
@@ -243,7 +198,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
     return Err(OrphanCheckErr::NoLocalInputType);
 }
 
-fn uncovered_tys<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn uncovered_tys<'tcx>(tcx: &TyCtxt<'tcx>,
                        ty: Ty<'tcx>,
                        infer_is_local: InferIsLocal)
                        -> Vec<Ty<'tcx>>
@@ -267,13 +222,13 @@ fn is_type_parameter<'tcx>(ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, infer_is_local: InferIsLocal) -> bool
+fn ty_is_local<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>, infer_is_local: InferIsLocal) -> bool
 {
     ty_is_local_constructor(tcx, ty, infer_is_local) ||
         fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, infer_is_local))
 }
 
-fn fundamental_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool
+fn fundamental_ty<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool
 {
     match ty.sty {
         ty::TyBox(..) | ty::TyRef(..) =>
@@ -287,7 +242,7 @@ fn fundamental_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool
     }
 }
 
-fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn ty_is_local_constructor<'tcx>(tcx: &TyCtxt<'tcx>,
                                  ty: Ty<'tcx>,
                                  infer_is_local: InferIsLocal)
                                  -> bool
@@ -301,7 +256,8 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
         ty::TyUint(..) |
         ty::TyFloat(..) |
         ty::TyStr |
-        ty::TyBareFn(..) |
+        ty::TyFnDef(..) |
+        ty::TyFnPtr(_) |
         ty::TyArray(..) |
         ty::TySlice(..) |
         ty::TyRawPtr(..) |

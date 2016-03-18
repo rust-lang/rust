@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test for issue #31788
+// note-pattern: first defined in crate `std`.
 
-// error-pattern: duplicate entry for `panic_fmt`, first definition found in `std`
+// Test for issue #31788 and E0152
 
 #![feature(lang_items)]
 
 #[lang = "panic_fmt"]
 fn panic_fmt() -> ! {
+//~^ ERROR: duplicate lang item found: `panic_fmt`.
     loop {}
 }
 

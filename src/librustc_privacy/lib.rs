@@ -38,14 +38,11 @@ use rustc_front::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
 use rustc::lint;
+use rustc::middle::cstore::CrateStore;
 use rustc::middle::def::{self, Def};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::middle::privacy::ImportUse::*;
-use rustc::middle::privacy::LastPrivate::*;
-use rustc::middle::privacy::PrivateDep::*;
-use rustc::middle::privacy::ExternalExports;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 use rustc::front::map as ast_map;
 
@@ -66,7 +63,7 @@ type CheckResult = Option<(Span, String, Option<(Span, String)>)>;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ParentVisitor<'a, 'tcx:'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     parents: NodeMap<ast::NodeId>,
     curparent: ast::NodeId,
 }
@@ -158,7 +155,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ParentVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     export_map: &'a def::ExportMap,
 
     // Accessibility levels for reachable nodes
@@ -475,11 +472,10 @@ impl<'b, 'a, 'tcx: 'a, 'v> Visitor<'v> for ReachEverythingInTheInterfaceVisitor<
 ////////////////////////////////////////////////////////////////////////////////
 
 struct PrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     curitem: ast::NodeId,
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
-    external_exports: ExternalExports,
 }
 
 #[derive(Debug)]
@@ -495,18 +491,13 @@ enum FieldName {
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
-    // used when debugging
-    fn nodestr(&self, id: ast::NodeId) -> String {
-        self.tcx.map.node_to_string(id).to_string()
-    }
-
     // Determines whether the given definition is public from the point of view
     // of the current item.
     fn def_privacy(&self, did: DefId) -> PrivacyResult {
         let node_id = if let Some(node_id) = self.tcx.map.as_local_node_id(did) {
             node_id
         } else {
-            if self.external_exports.contains(&did) {
+            if self.tcx.sess.cstore.visibility(did) == hir::Public {
                 debug!("privacy - {:?} was externally exported", did);
                 return Allowable;
             }
@@ -607,75 +598,44 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             return Allowable;
         }
 
-        // We now know that there is at least one private member between the
-        // destination and the root.
-        let mut closest_private_id = node_id;
-        loop {
-            debug!("privacy - examining {}", self.nodestr(closest_private_id));
-            let vis = match self.tcx.map.find(closest_private_id) {
-                // If this item is a method, then we know for sure that it's an
-                // actual method and not a static method. The reason for this is
-                // that these cases are only hit in the ExprMethodCall
-                // expression, and ExprCall will have its path checked later
-                // (the path of the trait/impl) if it's a static method.
-                //
-                // With this information, then we can completely ignore all
-                // trait methods. The privacy violation would be if the trait
-                // couldn't get imported, not if the method couldn't be used
-                // (all trait methods are public).
-                //
-                // However, if this is an impl method, then we dictate this
-                // decision solely based on the privacy of the method
-                // invocation.
-                // FIXME(#10573) is this the right behavior? Why not consider
-                //               where the method was defined?
-                Some(ast_map::NodeImplItem(ii)) => {
-                    match ii.node {
-                        hir::ImplItemKind::Const(..) |
-                        hir::ImplItemKind::Method(..) => {
-                            let imp = self.tcx.map
-                                          .get_parent_did(closest_private_id);
-                            match self.tcx.impl_trait_ref(imp) {
-                                Some(..) => return Allowable,
-                                _ if ii.vis == hir::Public => {
-                                    return Allowable
-                                }
-                                _ => ii.vis
-                            }
-                        }
-                        hir::ImplItemKind::Type(_) => return Allowable,
-                    }
+        let vis = match self.tcx.map.find(node_id) {
+            // If this item is a method, then we know for sure that it's an
+            // actual method and not a static method. The reason for this is
+            // that these cases are only hit in the ExprMethodCall
+            // expression, and ExprCall will have its path checked later
+            // (the path of the trait/impl) if it's a static method.
+            //
+            // With this information, then we can completely ignore all
+            // trait methods. The privacy violation would be if the trait
+            // couldn't get imported, not if the method couldn't be used
+            // (all trait methods are public).
+            //
+            // However, if this is an impl method, then we dictate this
+            // decision solely based on the privacy of the method
+            // invocation.
+            Some(ast_map::NodeImplItem(ii)) => {
+                let imp = self.tcx.map.get_parent_did(node_id);
+                match self.tcx.impl_trait_ref(imp) {
+                    Some(..) => hir::Public,
+                    _ => ii.vis,
                 }
-                Some(ast_map::NodeTraitItem(_)) => {
-                    return Allowable;
-                }
+            }
+            Some(ast_map::NodeTraitItem(_)) => hir::Public,
 
-                // This is not a method call, extract the visibility as one
-                // would normally look at it
-                Some(ast_map::NodeItem(it)) => it.vis,
-                Some(ast_map::NodeForeignItem(_)) => {
-                    self.tcx.map.get_foreign_vis(closest_private_id)
-                }
-                Some(ast_map::NodeVariant(..)) => {
-                    hir::Public // need to move up a level (to the enum)
-                }
-                _ => hir::Public,
-            };
-            if vis != hir::Public { break }
-            // if we've reached the root, then everything was allowable and this
-            // access is public.
-            if closest_private_id == ast::CRATE_NODE_ID { return Allowable }
-            closest_private_id = *self.parents.get(&closest_private_id).unwrap();
+            // This is not a method call, extract the visibility as one
+            // would normally look at it
+            Some(ast_map::NodeItem(it)) => it.vis,
+            Some(ast_map::NodeForeignItem(_)) => {
+                self.tcx.map.get_foreign_vis(node_id)
+            }
+            _ => hir::Public,
+        };
+        if vis == hir::Public { return Allowable }
 
-            // If we reached the top, then we were public all the way down and
-            // we can allow this access.
-            if closest_private_id == ast::DUMMY_NODE_ID { return Allowable }
-        }
-        debug!("privacy - closest priv {}", self.nodestr(closest_private_id));
-        if self.private_accessible(closest_private_id) {
+        if self.private_accessible(node_id) {
             Allowable
         } else {
-            DisallowedBy(closest_private_id)
+            DisallowedBy(node_id)
         }
     }
 
@@ -692,32 +652,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     /// whether the node is accessible by the current module that iteration is
     /// inside.
     fn private_accessible(&self, id: ast::NodeId) -> bool {
-        let parent = *self.parents.get(&id).unwrap();
-        debug!("privacy - accessible parent {}", self.nodestr(parent));
-
-        // After finding `did`'s closest private member, we roll ourselves back
-        // to see if this private member's parent is anywhere in our ancestry.
-        // By the privacy rules, we can access all of our ancestor's private
-        // members, so that's why we test the parent, and not the did itself.
-        let mut cur = self.curitem;
-        loop {
-            debug!("privacy - questioning {}, {}", self.nodestr(cur), cur);
-            match cur {
-                // If the relevant parent is in our history, then we're allowed
-                // to look inside any of our ancestor's immediate private items,
-                // so this access is valid.
-                x if x == parent => return true,
-
-                // If we've reached the root, then we couldn't access this item
-                // in the first place
-                ast::DUMMY_NODE_ID => return false,
-
-                // Keep going up
-                _ => {}
-            }
-
-            cur = *self.parents.get(&cur).unwrap();
-        }
+        self.tcx.map.private_item_is_visible_from(id, self.curitem)
     }
 
     fn report_error(&self, result: CheckResult) -> bool {
@@ -743,7 +678,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                      source_did: Option<DefId>,
                      msg: &str)
                      -> CheckResult {
-        use rustc_front::hir::Item_::ItemExternCrate;
         debug!("ensure_public(span={:?}, to_check={:?}, source_did={:?}, msg={:?})",
                span, to_check, source_did, msg);
         let def_privacy = self.def_privacy(to_check);
@@ -764,20 +698,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // be local.)
         let def_id = source_did.unwrap_or(to_check);
         let node_id = self.tcx.map.as_local_node_id(def_id);
-
-        // Warn when using a inaccessible extern crate.
-        if let Some(node_id) = self.tcx.map.as_local_node_id(to_check) {
-            match self.tcx.map.get(node_id) {
-                ast_map::Node::NodeItem(&hir::Item { node: ItemExternCrate(_), name, .. }) => {
-                    self.tcx.sess.add_lint(lint::builtin::INACCESSIBLE_EXTERN_CRATE,
-                                           node_id,
-                                           span,
-                                           format!("extern crate `{}` is private", name));
-                    return None;
-                }
-                _ => {}
-            }
-        }
 
         let (err_span, err_msg) = if Some(id) == node_id {
             return Some((span, format!("{} is private", msg), None));
@@ -835,7 +755,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             }
             UnnamedField(idx) => &v.fields[idx]
         };
-        if field.vis == hir::Public || self.local_private_accessible(field.did) {
+        if field.vis == hir::Public || self.local_private_accessible(def.did) {
             return;
         }
 
@@ -867,100 +787,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                                      name)));
     }
 
-    // Checks that a path is in scope.
-    fn check_path(&mut self, span: Span, path_id: ast::NodeId, last: ast::Name) {
-        debug!("privacy - path {}", self.nodestr(path_id));
-        let path_res = *self.tcx.def_map.borrow().get(&path_id).unwrap();
-        let ck = |tyname: &str| {
-            let ck_public = |def: DefId| {
-                debug!("privacy - ck_public {:?}", def);
-                let origdid = path_res.def_id();
-                self.ensure_public(span,
-                                   def,
-                                   Some(origdid),
-                                   &format!("{} `{}`", tyname, last))
-            };
-
-            match path_res.last_private {
-                LastMod(AllPublic) => {},
-                LastMod(DependsOn(def)) => {
-                    self.report_error(ck_public(def));
-                },
-                LastImport { value_priv,
-                             value_used: check_value,
-                             type_priv,
-                             type_used: check_type } => {
-                    // This dance with found_error is because we don't want to
-                    // report a privacy error twice for the same directive.
-                    let found_error = match (type_priv, check_type) {
-                        (Some(DependsOn(def)), Used) => {
-                            !self.report_error(ck_public(def))
-                        },
-                        _ => false,
-                    };
-                    if !found_error {
-                        match (value_priv, check_value) {
-                            (Some(DependsOn(def)), Used) => {
-                                self.report_error(ck_public(def));
-                            },
-                            _ => {},
-                        }
-                    }
-                    // If an import is not used in either namespace, we still
-                    // want to check that it could be legal. Therefore we check
-                    // in both namespaces and only report an error if both would
-                    // be illegal. We only report one error, even if it is
-                    // illegal to import from both namespaces.
-                    match (value_priv, check_value, type_priv, check_type) {
-                        (Some(p), Unused, None, _) |
-                        (None, _, Some(p), Unused) => {
-                            let p = match p {
-                                AllPublic => None,
-                                DependsOn(def) => ck_public(def),
-                            };
-                            if p.is_some() {
-                                self.report_error(p);
-                            }
-                        },
-                        (Some(v), Unused, Some(t), Unused) => {
-                            let v = match v {
-                                AllPublic => None,
-                                DependsOn(def) => ck_public(def),
-                            };
-                            let t = match t {
-                                AllPublic => None,
-                                DependsOn(def) => ck_public(def),
-                            };
-                            if let (Some(_), Some(t)) = (v, t) {
-                                self.report_error(Some(t));
-                            }
-                        },
-                        _ => {},
-                    }
-                },
-            }
-        };
-        // FIXME(#12334) Imports can refer to definitions in both the type and
-        // value namespaces. The privacy information is aware of this, but the
-        // def map is not. Therefore the names we work out below will not always
-        // be accurate and we can get slightly wonky error messages (but type
-        // checking is always correct).
-        match path_res.full_def() {
-            Def::Fn(..) => ck("function"),
-            Def::Static(..) => ck("static"),
-            Def::Const(..) => ck("const"),
-            Def::AssociatedConst(..) => ck("associated const"),
-            Def::Variant(..) => ck("variant"),
-            Def::TyAlias(..) => ck("type"),
-            Def::Enum(..) => ck("enum"),
-            Def::Trait(..) => ck("trait"),
-            Def::Struct(..) => ck("struct"),
-            Def::Method(..) => ck("method"),
-            Def::Mod(..) => ck("module"),
-            _ => {}
-        }
-    }
-
     // Checks that a method is in scope.
     fn check_method(&mut self, span: Span, method_def_id: DefId,
                     name: ast::Name) {
@@ -971,8 +797,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             ty::TraitContainer(trait_def_id) => {
-                self.report_error(self.ensure_public(span, trait_def_id,
-                                                     None, "source trait"));
+                let msg = format!("source trait `{}`", self.tcx.item_path_str(trait_def_id));
+                self.report_error(self.ensure_public(span, trait_def_id, None, &msg));
             }
         }
     }
@@ -1030,13 +856,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 if let Def::Struct(..) = self.tcx.resolve_expr(expr) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
-                        ty::TyBareFn(_, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
+                        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
                             output: ty::FnConverging(ty), ..
                         }), ..}) => ty,
                         _ => expr_ty
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
-                        f.vis != hir::Public && !self.local_private_accessible(f.did)
+                        f.vis != hir::Public && !self.local_private_accessible(def.did)
                     });
                     if any_priv {
                         span_err!(self.tcx.sess, expr.span, E0450,
@@ -1102,25 +928,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         intravisit::walk_foreign_item(self, fi);
         self.in_foreign = false;
     }
-
-    fn visit_path(&mut self, path: &hir::Path, id: ast::NodeId) {
-        if !path.segments.is_empty() {
-            self.check_path(path.span, id, path.segments.last().unwrap().identifier.name);
-            intravisit::walk_path(self, path);
-        }
-    }
-
-    fn visit_path_list_item(&mut self, prefix: &hir::Path, item: &hir::PathListItem) {
-        let name = if let hir::PathListIdent { name, .. } = item.node {
-            name
-        } else if !prefix.segments.is_empty() {
-            prefix.segments.last().unwrap().identifier.name
-        } else {
-            self.tcx.sess.bug("`self` import in an import list with empty prefix");
-        };
-        self.check_path(item.span, item.node.id(), name);
-        intravisit::walk_path_list_item(self, prefix, item);
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1128,7 +935,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct SanePrivacyVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for SanePrivacyVisitor<'a, 'tcx> {
@@ -1199,7 +1006,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////////
 
 struct ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     access_levels: &'a AccessLevels,
     in_variant: bool,
     // set of errors produced by this obsolete visitor
@@ -1538,7 +1345,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
 ///////////////////////////////////////////////////////////////////////////////
 
 struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     // Do not report an error when a private type is found
     is_quiet: bool,
     // Is private component found?
@@ -1669,7 +1476,7 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
 }
 
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     old_error_set: &'a NodeSet,
 }
 
@@ -1759,10 +1566,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt,
-                   export_map: &def::ExportMap,
-                   external_exports: ExternalExports)
-                   -> AccessLevels {
+pub fn check_crate(tcx: &TyCtxt, export_map: &def::ExportMap) -> AccessLevels {
     let _task = tcx.dep_graph.in_task(DepNode::Privacy);
 
     let krate = tcx.map.krate();
@@ -1785,7 +1589,6 @@ pub fn check_crate(tcx: &ty::ctxt,
         in_foreign: false,
         tcx: tcx,
         parents: visitor.parents,
-        external_exports: external_exports,
     };
     intravisit::walk_crate(&mut visitor, krate);
 

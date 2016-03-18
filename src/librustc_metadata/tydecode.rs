@@ -22,7 +22,7 @@ use middle::def_id::{DefId, DefIndex};
 use middle::region;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
-use middle::ty::{self, ToPredicate, Ty, TypeFoldable};
+use middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
 use rbml::leb128;
@@ -41,12 +41,12 @@ pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
     krate: ast::CrateNum,
     pos: usize,
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     conv_def_id: DefIdConvert<'a>,
 }
 
 impl<'a,'tcx> TyDecoder<'a,'tcx> {
-    pub fn with_doc(tcx: &'a ty::ctxt<'tcx>,
+    pub fn with_doc(tcx: &'a TyCtxt<'tcx>,
                     crate_num: ast::CrateNum,
                     doc: rbml::Doc<'a>,
                     conv: DefIdConvert<'a>)
@@ -57,7 +57,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     pub fn new(data: &'a [u8],
                crate_num: ast::CrateNum,
                pos: usize,
-               tcx: &'a ty::ctxt<'tcx>,
+               tcx: &'a TyCtxt<'tcx>,
                conv: DefIdConvert<'a>)
                -> TyDecoder<'a, 'tcx> {
         TyDecoder {
@@ -380,10 +380,11 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'F' => {
                 let def_id = self.parse_def();
-                return tcx.mk_fn(Some(def_id), tcx.mk_bare_fn(self.parse_bare_fn_ty()));
+                let substs = self.tcx.mk_substs(self.parse_substs());
+                return tcx.mk_fn_def(def_id, substs, self.parse_bare_fn_ty());
             }
             'G' => {
-                return tcx.mk_fn(None, tcx.mk_bare_fn(self.parse_bare_fn_ty()));
+                return tcx.mk_fn_ptr(self.parse_bare_fn_ty());
             }
             '#' => {
                 // This is a hacky little caching scheme. The idea is that if we encode

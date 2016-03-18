@@ -32,10 +32,9 @@ use middle::ty::cast;
 use middle::const_qualif::ConstQualif;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
-use middle::privacy::{AllPublic, LastMod};
 use middle::region;
 use middle::subst;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 
 use syntax::{ast, ast_util, codemap};
 use syntax::ast::NodeIdAssigner;
@@ -60,7 +59,7 @@ use serialize::EncoderHelpers;
 #[cfg(test)] use rustc_front::lowering::{lower_item, LoweringContext};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     cdata: &'b cstore::crate_metadata,
     from_id_range: ast_util::IdRange,
     to_id_range: ast_util::IdRange,
@@ -123,64 +122,54 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
 /// Decodes an item from its AST in the cdata's metadata and adds it to the
 /// ast-map.
 pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
-                                 tcx: &ty::ctxt<'tcx>,
+                                 tcx: &TyCtxt<'tcx>,
                                  parent_path: Vec<ast_map::PathElem>,
                                  parent_def_path: ast_map::DefPath,
-                                 par_doc: rbml::Doc,
+                                 ast_doc: rbml::Doc,
                                  orig_did: DefId)
-                                 -> Result<&'tcx InlinedItem, (Vec<ast_map::PathElem>,
-                                                               ast_map::DefPath)> {
-    match par_doc.opt_child(c::tag_ast) {
-      None => Err((parent_path, parent_def_path)),
-      Some(ast_doc) => {
-        let mut path_as_str = None;
-        debug!("> Decoding inlined fn: {:?}::?",
-        {
-            // Do an Option dance to use the path after it is moved below.
-            let s = ast_map::path_to_string(parent_path.iter().cloned());
-            path_as_str = Some(s);
-            path_as_str.as_ref().map(|x| &x[..])
-        });
-        let mut ast_dsr = reader::Decoder::new(ast_doc);
-        let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
-        let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
-        let dcx = &DecodeContext {
-            cdata: cdata,
-            tcx: tcx,
-            from_id_range: from_id_range,
-            to_id_range: to_id_range,
-            last_filemap_index: Cell::new(0)
-        };
-        let raw_ii = decode_ast(ast_doc);
-        let ii = ast_map::map_decoded_item(&dcx.tcx.map,
-                                           parent_path,
-                                           parent_def_path,
-                                           raw_ii,
-                                           dcx);
-        let name = match *ii {
-            InlinedItem::Item(ref i) => i.name,
-            InlinedItem::Foreign(ref i) => i.name,
-            InlinedItem::TraitItem(_, ref ti) => ti.name,
-            InlinedItem::ImplItem(_, ref ii) => ii.name
-        };
-        debug!("Fn named: {}", name);
-        debug!("< Decoded inlined fn: {}::{}",
-               path_as_str.unwrap(),
-               name);
-        region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
-        decode_side_tables(dcx, ast_doc);
-        copy_item_types(dcx, ii, orig_did);
-        match *ii {
-          InlinedItem::Item(ref i) => {
-            debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-                   ::rustc_front::print::pprust::item_to_string(&i));
-          }
-          _ => { }
-        }
-
-        Ok(ii)
-      }
+                                 -> &'tcx InlinedItem {
+    let mut path_as_str = None;
+    debug!("> Decoding inlined fn: {:?}::?",
+    {
+        // Do an Option dance to use the path after it is moved below.
+        let s = ast_map::path_to_string(parent_path.iter().cloned());
+        path_as_str = Some(s);
+        path_as_str.as_ref().map(|x| &x[..])
+    });
+    let mut ast_dsr = reader::Decoder::new(ast_doc);
+    let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
+    let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
+    let dcx = &DecodeContext {
+        cdata: cdata,
+        tcx: tcx,
+        from_id_range: from_id_range,
+        to_id_range: to_id_range,
+        last_filemap_index: Cell::new(0)
+    };
+    let ii = ast_map::map_decoded_item(&dcx.tcx.map,
+                                       parent_path,
+                                       parent_def_path,
+                                       decode_ast(ast_doc),
+                                       dcx);
+    let name = match *ii {
+        InlinedItem::Item(ref i) => i.name,
+        InlinedItem::Foreign(ref i) => i.name,
+        InlinedItem::TraitItem(_, ref ti) => ti.name,
+        InlinedItem::ImplItem(_, ref ii) => ii.name
+    };
+    debug!("Fn named: {}", name);
+    debug!("< Decoded inlined fn: {}::{}",
+            path_as_str.unwrap(),
+            name);
+    region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
+    decode_side_tables(dcx, ast_doc);
+    copy_item_types(dcx, ii, orig_did);
+    if let InlinedItem::Item(ref i) = *ii {
+        debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
+               ::rustc_front::print::pprust::item_to_string(&i));
     }
+
+    ii
 }
 
 // ______________________________________________________________________
@@ -254,7 +243,7 @@ trait def_id_encoder_helpers {
 }
 
 impl<S:serialize::Encoder> def_id_encoder_helpers for S
-    where <S as serialize::serialize::Encoder>::Error: Debug
+    where <S as serialize::Encoder>::Error: Debug
 {
     fn emit_def_id(&mut self, did: DefId) {
         did.encode(self).unwrap()
@@ -268,7 +257,7 @@ trait def_id_decoder_helpers {
 }
 
 impl<D:serialize::Decoder> def_id_decoder_helpers for D
-    where <D as serialize::serialize::Decoder>::Error: Debug
+    where <D as serialize::Decoder>::Error: Debug
 {
     fn read_def_id(&mut self, dcx: &DecodeContext) -> DefId {
         let did: DefId = Decodable::decode(self).unwrap();
@@ -879,18 +868,18 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     // Versions of the type reading functions that don't need the full
     // DecodeContext.
     fn read_ty_nodcx(&mut self,
-                     tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata) -> Ty<'tcx>;
+                     tcx: &TyCtxt<'tcx>, cdata: &cstore::crate_metadata) -> Ty<'tcx>;
     fn read_tys_nodcx(&mut self,
-                      tcx: &ty::ctxt<'tcx>,
+                      tcx: &TyCtxt<'tcx>,
                       cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>>;
-    fn read_substs_nodcx(&mut self, tcx: &ty::ctxt<'tcx>,
+    fn read_substs_nodcx(&mut self, tcx: &TyCtxt<'tcx>,
                          cdata: &cstore::crate_metadata)
                          -> subst::Substs<'tcx>;
 }
 
 impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_ty_nodcx(&mut self,
-                     tcx: &ty::ctxt<'tcx>,
+                     tcx: &TyCtxt<'tcx>,
                      cdata: &cstore::crate_metadata)
                      -> Ty<'tcx> {
         self.read_opaque(|_, doc| {
@@ -902,7 +891,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_tys_nodcx(&mut self,
-                      tcx: &ty::ctxt<'tcx>,
+                      tcx: &TyCtxt<'tcx>,
                       cdata: &cstore::crate_metadata) -> Vec<Ty<'tcx>> {
         self.read_to_vec(|this| Ok(this.read_ty_nodcx(tcx, cdata)) )
             .unwrap()
@@ -911,7 +900,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     }
 
     fn read_substs_nodcx(&mut self,
-                         tcx: &ty::ctxt<'tcx>,
+                         tcx: &TyCtxt<'tcx>,
                          cdata: &cstore::crate_metadata)
                          -> subst::Substs<'tcx>
     {
@@ -1161,8 +1150,6 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let def = decode_def(dcx, val_dsr);
                         dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
                             base_def: def,
-                            // This doesn't matter cross-crate.
-                            last_private: LastMod(AllPublic),
                             depth: 0
                         });
                     }

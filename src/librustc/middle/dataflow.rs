@@ -16,7 +16,7 @@
 
 use middle::cfg;
 use middle::cfg::CFGIndex;
-use middle::ty;
+use middle::ty::TyCtxt;
 use std::io;
 use std::mem;
 use std::usize;
@@ -38,7 +38,7 @@ pub enum EntryOrExit {
 
 #[derive(Clone)]
 pub struct DataFlowContext<'a, 'tcx: 'a, O> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 
     /// a name for the analysis using this dataflow instance
     analysis_name: &'static str,
@@ -223,7 +223,7 @@ pub enum KillFrom {
 }
 
 impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>,
+    pub fn new(tcx: &'a TyCtxt<'tcx>,
                analysis_name: &'static str,
                decl: Option<&hir::FnDecl>,
                cfg: &cfg::CFG,

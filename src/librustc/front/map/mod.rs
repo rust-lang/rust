@@ -22,6 +22,7 @@ use middle::def_id::DefId;
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
+use syntax::attr::ThinAttributesExt;
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
 
@@ -495,6 +496,30 @@ impl<'ast> Map<'ast> {
         }
     }
 
+    /// Returns the NodeId of `id`'s nearest module parent, or `id` itself if no
+    /// module parent is in this map.
+    fn get_module_parent(&self, id: NodeId) -> NodeId {
+        match self.walk_parent_nodes(id, |node| match *node {
+            NodeItem(&Item { node: Item_::ItemMod(_), .. }) => true,
+            _ => false,
+        }) {
+            Ok(id) => id,
+            Err(id) => id,
+        }
+    }
+
+    pub fn private_item_is_visible_from(&self, item: NodeId, block: NodeId) -> bool {
+        // A private item is visible from everything in its nearest module parent.
+        let visibility = self.get_module_parent(item);
+        let mut block_ancestor = self.get_module_parent(block);
+        loop {
+            if block_ancestor == visibility { return true }
+            let block_ancestor_parent = self.get_module_parent(block_ancestor);
+            if block_ancestor_parent == block_ancestor { return false }
+            block_ancestor = block_ancestor_parent;
+        }
+    }
+
     /// Returns the nearest enclosing scope. A scope is an item or block.
     /// FIXME it is not clear to me that all items qualify as scopes - statics
     /// and associated types probably shouldn't, for example. Behaviour in this
@@ -694,6 +719,8 @@ impl<'ast> Map<'ast> {
             Some(NodeTraitItem(ref ti)) => Some(&ti.attrs[..]),
             Some(NodeImplItem(ref ii)) => Some(&ii.attrs[..]),
             Some(NodeVariant(ref v)) => Some(&v.node.attrs[..]),
+            Some(NodeExpr(ref e)) => Some(e.attrs.as_attr_slice()),
+            Some(NodeStmt(ref s)) => Some(s.node.attrs()),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
             Some(NodeStructCtor(_)) => {

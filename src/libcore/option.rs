@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Optional values
+//! Optional values.
 //!
 //! Type `Option` represents an optional value: every `Option`
 //! is either `Some` and contains a value, or `None`, and

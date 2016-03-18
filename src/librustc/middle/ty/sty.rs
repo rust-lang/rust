@@ -15,7 +15,7 @@ use middle::def_id::DefId;
 use middle::region;
 use middle::subst::{self, Substs};
 use middle::traits;
-use middle::ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyS, TypeFoldable};
+use middle::ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;
 
 use collections::enum_set::{self, EnumSet, CLike};
@@ -127,14 +127,14 @@ pub enum TypeVariants<'tcx> {
     /// `&a mut T` or `&'a T`.
     TyRef(&'tcx Region, TypeAndMut<'tcx>),
 
-    /// If the def-id is Some(_), then this is the type of a specific
-    /// fn item. Otherwise, if None(_), it is a fn pointer type.
-    ///
-    /// FIXME: Conflating function pointers and the type of a
-    /// function is probably a terrible idea; a function pointer is a
-    /// value with a specific type, but a function can be polymorphic
-    /// or dynamically dispatched.
-    TyBareFn(Option<DefId>, &'tcx BareFnTy<'tcx>),
+    /// The anonymous type of a function declaration/definition. Each
+    /// function has a unique type.
+    TyFnDef(DefId, &'tcx Substs<'tcx>, &'tcx BareFnTy<'tcx>),
+
+    /// A pointer to a function.  Written as `fn() -> i32`.
+    /// FIXME: This is currently also used to represent the callee of a method;
+    /// see ty::MethodCallee etc.
+    TyFnPtr(&'tcx BareFnTy<'tcx>),
 
     /// A trait, defined with `trait`.
     TyTrait(Box<TraitTy<'tcx>>),
@@ -281,7 +281,7 @@ impl<'tcx> TraitTy<'tcx> {
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
     pub fn principal_trait_ref_with_self_ty(&self,
-                                            tcx: &ty::ctxt<'tcx>,
+                                            tcx: &TyCtxt<'tcx>,
                                             self_ty: Ty<'tcx>)
                                             -> ty::PolyTraitRef<'tcx>
     {
@@ -295,7 +295,7 @@ impl<'tcx> TraitTy<'tcx> {
     }
 
     pub fn projection_bounds_with_self_ty(&self,
-                                          tcx: &ty::ctxt<'tcx>,
+                                          tcx: &TyCtxt<'tcx>,
                                           self_ty: Ty<'tcx>)
                                           -> Vec<ty::PolyProjectionPredicate<'tcx>>
     {
@@ -540,7 +540,7 @@ impl ParamTy {
         ParamTy::new(def.space, def.index, def.name)
     }
 
-    pub fn to_ty<'tcx>(self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty<'tcx>(self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         tcx.mk_param(self.space, self.idx, self.name)
     }
 
@@ -775,7 +775,7 @@ impl BuiltinBounds {
     }
 
     pub fn to_predicates<'tcx>(&self,
-                               tcx: &ty::ctxt<'tcx>,
+                               tcx: &TyCtxt<'tcx>,
                                self_ty: Ty<'tcx>) -> Vec<ty::Predicate<'tcx>> {
         self.iter().filter_map(|builtin_bound|
             match traits::trait_ref_for_builtin_bound(tcx, builtin_bound, self_ty) {
@@ -822,7 +822,7 @@ impl CLike for BuiltinBound {
     }
 }
 
-impl<'tcx> ty::ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn try_add_builtin_trait(&self,
                                  trait_def_id: DefId,
                                  builtin_bounds: &mut EnumSet<BuiltinBound>)
@@ -902,7 +902,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_empty(&self, _cx: &ty::ctxt) -> bool {
+    pub fn is_empty(&self, _cx: &TyCtxt) -> bool {
         // FIXME(#24885): be smarter here
         match self.sty {
             TyEnum(def, _) | TyStruct(def, _) => def.is_empty(),
@@ -948,7 +948,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    fn is_slice(&self) -> bool {
+    pub fn is_slice(&self) -> bool {
         match self.sty {
             TyRawPtr(mt) | TyRef(_, mt) => match mt.ty.sty {
                 TySlice(_) | TyStr => true,
@@ -974,7 +974,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn sequence_element_type(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn sequence_element_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
             TyStr => cx.mk_mach_uint(ast::UintTy::U8),
@@ -983,7 +983,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_type(&self, cx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn simd_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyStruct(def, substs) => {
                 def.struct_variant().fields[0].ty(cx, substs)
@@ -992,7 +992,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_size(&self, _cx: &ty::ctxt) -> usize {
+    pub fn simd_size(&self, _cx: &TyCtxt) -> usize {
         match self.sty {
             TyStruct(def, _) => def.struct_variant().fields.len(),
             _ => panic!("simd_size called on invalid type")
@@ -1029,7 +1029,7 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             TyBool | TyChar | TyInt(_) | TyFloat(_) | TyUint(_) |
             TyInfer(IntVar(_)) | TyInfer(FloatVar(_)) |
-            TyBareFn(..) | TyRawPtr(_) => true,
+            TyFnDef(..) | TyFnPtr(_) | TyRawPtr(_) => true,
             _ => false
         }
     }
@@ -1080,20 +1080,6 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn is_bare_fn(&self) -> bool {
-        match self.sty {
-            TyBareFn(..) => true,
-            _ => false
-        }
-    }
-
-    pub fn is_bare_fn_item(&self) -> bool {
-        match self.sty {
-            TyBareFn(Some(_), _) => true,
-            _ => false
-        }
-    }
-
     pub fn is_fp(&self) -> bool {
         match self.sty {
             TyInfer(FloatVar(_)) | TyFloat(_) => true,
@@ -1117,6 +1103,13 @@ impl<'tcx> TyS<'tcx> {
             TyInt(ast::IntTy::Is) | TyUint(ast::UintTy::Us) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
             _ => false
+        }
+    }
+
+    pub fn has_concrete_skeleton(&self) -> bool {
+        match self.sty {
+            TyParam(_) | TyInfer(_) | TyError => false,
+            _ => true,
         }
     }
 
@@ -1154,7 +1147,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
         match self.sty {
-            TyBareFn(_, ref f) => &f.sig,
+            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => &f.sig,
             _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
@@ -1162,7 +1155,7 @@ impl<'tcx> TyS<'tcx> {
     /// Returns the ABI of the given function.
     pub fn fn_abi(&self) -> abi::Abi {
         match self.sty {
-            TyBareFn(_, ref f) => f.abi,
+            TyFnDef(_, _, ref f) | TyFnPtr(ref f) => f.abi,
             _ => panic!("Ty::fn_abi() called on non-fn type"),
         }
     }
@@ -1178,7 +1171,7 @@ impl<'tcx> TyS<'tcx> {
 
     pub fn is_fn(&self) -> bool {
         match self.sty {
-            TyBareFn(..) => true,
+            TyFnDef(..) | TyFnPtr(_) => true,
             _ => false
         }
     }
@@ -1224,7 +1217,8 @@ impl<'tcx> TyS<'tcx> {
             TyProjection(ref data) => {
                 data.trait_ref.substs.regions().as_slice().to_vec()
             }
-            TyBareFn(..) |
+            TyFnDef(..) |
+            TyFnPtr(_) |
             TyBool |
             TyChar |
             TyInt(_) |

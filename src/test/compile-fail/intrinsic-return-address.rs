@@ -15,15 +15,10 @@ extern "rust-intrinsic" {
     fn return_address() -> *const u8;
 }
 
-unsafe fn f() {
-    let _ = return_address();
-    //~^ ERROR invalid use of `return_address` intrinsic: function does not use out pointer
-}
+unsafe fn f() { let _ = return_address(); }
+//~^ ERROR invalid use of `return_address` intrinsic: function does not use out pointer
 
-unsafe fn g() -> isize {
-    let _ = return_address();
-    //~^ ERROR invalid use of `return_address` intrinsic: function does not use out pointer
-    0
-}
+unsafe fn g() -> isize { let _ = return_address(); 0 }
+//~^ ERROR invalid use of `return_address` intrinsic: function does not use out pointer
 
 fn main() {}

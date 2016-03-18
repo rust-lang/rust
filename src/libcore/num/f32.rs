@@ -141,7 +141,7 @@ pub mod consts {
 
 #[unstable(feature = "core_float",
            reason = "stable interface is via `impl f{32,64}` in later crates",
-           issue = "27702")]
+           issue = "32110")]
 impl Float for f32 {
     #[inline]
     fn nan() -> f32 { NAN }

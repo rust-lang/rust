@@ -18,13 +18,13 @@ extern crate coherence_copy_like_lib as lib;
 struct MyType { x: i32 }
 
 trait MyTrait { }
-impl<T: lib::MyCopy> MyTrait for T { } //~ ERROR E0119
+impl<T: lib::MyCopy> MyTrait for T { }
 
 // Tuples are not fundamental, therefore this would require that
 //
 //     (MyType,): !MyTrait
 //
 // which we cannot approve.
-impl MyTrait for (MyType,) { }
+impl MyTrait for (MyType,) { } //~ ERROR E0119
 
 fn main() { }

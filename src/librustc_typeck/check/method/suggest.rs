@@ -45,7 +45,7 @@ fn is_fn_ty<'a, 'tcx>(ty: &Ty<'tcx>, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> bool
     match ty.sty {
         // Not all of these (e.g. unsafe fns) implement FnOnce
         // so we look for these beforehand
-        ty::TyClosure(..) | ty::TyBareFn(..) => true,
+        ty::TyClosure(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => true,
         // If it's not a simple function, look for things which implement FnOnce
         _ => {
             if let Ok(fn_once_trait_did) =
@@ -160,7 +160,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if !static_sources.is_empty() {
                 err.fileline_note(
                     span,
-                    "found defined static methods, maybe a `self` is missing?");
+                    "found the following associated functions; to be used as \
+                     methods, functions must have a `self` parameter");
 
                 report_candidates(fcx, &mut err, span, item_name, static_sources);
             }
@@ -370,7 +371,7 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         return is_local(fcx.resolve_type_vars_if_possible(rcvr_ty));
     }
 
-    check::autoderef(fcx, span, rcvr_ty, None,
+    check::autoderef(fcx, span, rcvr_ty, || None,
                      check::UnresolvedTypeAction::Ignore, ty::NoPreference,
                      |ty, _| {
         if is_local(ty) {

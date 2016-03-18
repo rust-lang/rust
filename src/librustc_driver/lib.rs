@@ -89,12 +89,12 @@ use std::thread;
 use rustc::session::{early_error, early_warn};
 
 use syntax::ast;
-use syntax::parse;
+use syntax::parse::{self, PResult};
 use syntax::errors;
 use syntax::errors::emitter::Emitter;
 use syntax::diagnostics;
 use syntax::parse::token;
-use syntax::feature_gate::UnstableFeatures;
+use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 
 #[cfg(test)]
 pub mod test;
@@ -223,7 +223,8 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
         if ifile == "-" {
             let mut src = String::new();
             io::stdin().read_to_string(&mut src).unwrap();
-            Some((Input::Str(src), None))
+            Some((Input::Str { name: driver::anon_src(), input: src },
+                  None))
         } else {
             Some((Input::File(PathBuf::from(ifile)),
                   Some(PathBuf::from(ifile))))
@@ -511,7 +512,7 @@ impl RustcDefaultCalls {
                         .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
                 }
-                &Input::Str(_) => {
+                &Input::Str { .. } => {
                     early_error(ErrorOutputType::default(), "cannot list metadata for stdin");
                 }
             }
@@ -531,7 +532,19 @@ impl RustcDefaultCalls {
             return Compilation::Continue;
         }
 
-        let attrs = input.map(|input| parse_crate_attrs(sess, input));
+        let attrs = match input {
+            None => None,
+            Some(input) => {
+                let result = parse_crate_attrs(sess, input);
+                match result {
+                    Ok(attrs) => Some(attrs),
+                    Err(mut parse_error) => {
+                        parse_error.emit();
+                        return Compilation::Stop;
+                    }
+                }
+            }
+        };
         for req in &sess.opts.prints {
             match *req {
                 PrintRequest::TargetList => {
@@ -565,7 +578,18 @@ impl RustcDefaultCalls {
                     }
                 }
                 PrintRequest::Cfg => {
-                    for cfg in config::build_configuration(sess) {
+                    let mut cfg = config::build_configuration(&sess);
+                    target_features::add_configuration(&mut cfg, &sess);
+
+                    let allow_unstable_cfg = match get_unstable_features_setting() {
+                        UnstableFeatures::Disallow => false,
+                        _ => true,
+                    };
+
+                    for cfg in cfg {
+                        if !allow_unstable_cfg && GatedCfg::gate(&*cfg).is_some() {
+                            continue;
+                        }
                         match cfg.node {
                             ast::MetaItemKind::Word(ref word) => println!("{}", word),
                             ast::MetaItemKind::NameValue(ref name, ref value) => {
@@ -966,19 +990,18 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     Some(matches)
 }
 
-fn parse_crate_attrs(sess: &Session, input: &Input) -> Vec<ast::Attribute> {
-    let result = match *input {
+fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
+    match *input {
         Input::File(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile, Vec::new(), &sess.parse_sess)
         }
-        Input::Str(ref src) => {
-            parse::parse_crate_attrs_from_source_str(driver::anon_src().to_string(),
-                                                     src.to_string(),
+        Input::Str { ref name, ref input } => {
+            parse::parse_crate_attrs_from_source_str(name.clone(),
+                                                     input.clone(),
                                                      Vec::new(),
                                                      &sess.parse_sess)
         }
-    };
-    result.into_iter().collect()
+    }
 }
 
 /// Run a procedure which will detect panics in the compiler and print nicer

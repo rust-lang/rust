@@ -12,54 +12,54 @@
 
 #[allow(non_snake_case)]
 mod Foo { }
-//~^ NOTE first definition of type or module `Foo`
+//~^ NOTE previous definition of `Foo` here
 
 #[allow(dead_code)]
 struct Foo;
-//~^ ERROR duplicate definition of type or module `Foo`
-
+//~^ ERROR a module named `Foo` has already been defined in this module
 
 #[allow(non_snake_case)]
 mod Bar { }
-//~^ NOTE first definition of type or module `Bar`
+//~^ NOTE previous definition of `Bar` here
 
 #[allow(dead_code)]
 struct Bar(i32);
-//~^ ERROR duplicate definition of type or module `Bar`
+//~^ ERROR a module named `Bar` has already been defined
 
 
 #[allow(dead_code)]
 struct Baz(i32);
-//~^ NOTE first definition of type or module
+//~^ NOTE previous definition
 
 #[allow(non_snake_case)]
 mod Baz { }
-//~^ ERROR duplicate definition of type or module `Baz`
+//~^ ERROR a type named `Baz` has already been defined
 
 
 #[allow(dead_code)]
 struct Qux { x: bool }
-//~^ NOTE first definition of type or module
+//~^ NOTE previous definition
 
 #[allow(non_snake_case)]
 mod Qux { }
-//~^ ERROR duplicate definition of type or module `Qux`
+//~^ ERROR a type named `Qux` has already been defined
 
 
 #[allow(dead_code)]
 struct Quux;
-//~^ NOTE first definition of type or module
+//~^ NOTE previous definition
 
 #[allow(non_snake_case)]
 mod Quux { }
-//~^ ERROR duplicate definition of type or module `Quux`
+//~^ ERROR a type named `Quux` has already been defined
 
 
 #[allow(dead_code)]
 enum Corge { A, B }
+//~^ NOTE previous definition
 
 #[allow(non_snake_case)]
 mod Corge { }
-//~^ ERROR duplicate definition of type or module `Corge`
+//~^ ERROR a type named `Corge` has already been defined
 
 fn main() { }

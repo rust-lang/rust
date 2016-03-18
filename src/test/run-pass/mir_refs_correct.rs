@@ -204,48 +204,41 @@ fn t24() -> fn(u8) -> S {
     C4
 }
 
-fn main(){
-    unsafe {
-        assert_eq!(t1()(), regular());
+fn main() {
+    assert_eq!(t1()(), regular());
 
-        assert!(::std::mem::transmute::<_, *mut ()>(t2()) ==
-                ::std::mem::transmute::<_, *mut ()>(E::U));
-        assert!(::std::mem::transmute::<_, *mut ()>(t3()) ==
-                ::std::mem::transmute::<_, *mut ()>(S));
+    assert_eq!(t2() as *mut (), E::U as *mut ());
+    assert_eq!(t3() as *mut (), S as *mut ());
 
-        assert_eq!(t4()(), S::hey());
-        let s = S(42);
-        assert_eq!(t5()(&s), <S as X>::hoy(&s));
+    assert_eq!(t4()(), S::hey());
+    let s = S(42);
+    assert_eq!(t5()(&s), <S as X>::hoy(&s));
 
 
-        assert_eq!(t6()(), ext::regular_fn());
-        assert!(::std::mem::transmute::<_, *mut ()>(t7()) ==
-                ::std::mem::transmute::<_, *mut ()>(ext::E::U));
-        assert!(::std::mem::transmute::<_, *mut ()>(t8()) ==
-                ::std::mem::transmute::<_, *mut ()>(ext::S));
+    assert_eq!(t6()(), ext::regular_fn());
+    assert_eq!(t7() as *mut (), ext::E::U as *mut ());
+    assert_eq!(t8() as *mut (), ext::S as *mut ());
 
-        assert_eq!(t9()(), ext::S::hey());
-        let sext = ext::S(6);
-        assert_eq!(t10()(&sext), <ext::S as ext::X>::hoy(&sext));
+    assert_eq!(t9()(), ext::S::hey());
+    let sext = ext::S(6);
+    assert_eq!(t10()(&sext), <ext::S as ext::X>::hoy(&sext));
 
-        let p = parametric::<u8>;
-        assert!(::std::mem::transmute::<_, *mut ()>(t11()) ==
-                ::std::mem::transmute::<_, *mut ()>(p));
+    let p = parametric::<u8>;
+    assert_eq!(t11() as *mut (), p as *mut ());
 
-        assert_eq!(t12(), C);
-        assert_eq!(t13(), C2);
-        assert_eq!(t13_2(), C3);
+    assert_eq!(t12(), C);
+    assert_eq!(t13(), C2);
+    assert_eq!(t13_2(), C3);
 
-        assert_eq!(t14()(), <S as X>::hoy2());
-        assert_eq!(t15()(&s), S::hey2(&s));
-        assert_eq!(t16()(10u32, 20u32), F::f(10u32, 20u32));
-        assert_eq!(t17()(30u32, 10u64), F::f(30u32, 10u64));
-        assert_eq!(t18()(50u64, 5u64), F::f(50u64, 5u64));
-        assert_eq!(t19()(322u64, 2u32), F::f(322u64, 2u32));
-        assert_eq!(t20()(123u64, 38u32), <u32 as T<_, _>>::staticmeth(123, 38));
-        assert_eq!(t21(), Unit);
-        assert_eq!(t22(), None);
-        assert_eq!(t23(), (CEnum::A, CEnum::B));
-        assert_eq!(t24(), C4);
-    }
+    assert_eq!(t14()(), <S as X>::hoy2());
+    assert_eq!(t15()(&s), S::hey2(&s));
+    assert_eq!(t16()(10u32, 20u32), F::f(10u32, 20u32));
+    assert_eq!(t17()(30u32, 10u64), F::f(30u32, 10u64));
+    assert_eq!(t18()(50u64, 5u64), F::f(50u64, 5u64));
+    assert_eq!(t19()(322u64, 2u32), F::f(322u64, 2u32));
+    assert_eq!(t20()(123u64, 38u32), <u32 as T<_, _>>::staticmeth(123, 38));
+    assert_eq!(t21(), Unit);
+    assert_eq!(t22(), None);
+    assert_eq!(t23(), (CEnum::A, CEnum::B));
+    assert_eq!(t24(), C4);
 }

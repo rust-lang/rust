@@ -13,30 +13,34 @@ use rustc::mir::repr::*;
 use rustc::middle::ty;
 use std::fmt::Debug;
 use std::io::{self, Write};
+use syntax::ast::NodeId;
 
-/// Write a graphviz DOT graph for the given MIR.
-pub fn write_mir_graphviz<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
-    try!(writeln!(w, "digraph Mir {{"));
+/// Write a graphviz DOT graph of a list of MIRs.
+pub fn write_mir_graphviz<'a, 't, W, I>(tcx: &ty::TyCtxt<'t>, iter: I, w: &mut W) -> io::Result<()>
+where W: Write, I: Iterator<Item=(&'a NodeId, &'a Mir<'a>)> {
+    for (&nodeid, mir) in iter {
+        try!(writeln!(w, "digraph Mir_{} {{", nodeid));
 
-    // Global graph properties
-    try!(writeln!(w, r#"    graph [fontname="monospace"];"#));
-    try!(writeln!(w, r#"    node [fontname="monospace"];"#));
-    try!(writeln!(w, r#"    edge [fontname="monospace"];"#));
+        // Global graph properties
+        try!(writeln!(w, r#"    graph [fontname="monospace"];"#));
+        try!(writeln!(w, r#"    node [fontname="monospace"];"#));
+        try!(writeln!(w, r#"    edge [fontname="monospace"];"#));
 
-    // Graph label
-    try!(write_graph_label(mir, w));
+        // Graph label
+        try!(write_graph_label(tcx, nodeid, mir, w));
 
-    // Nodes
-    for block in mir.all_basic_blocks() {
-        try!(write_node(block, mir, w));
+        // Nodes
+        for block in mir.all_basic_blocks() {
+            try!(write_node(block, mir, w));
+        }
+
+        // Edges
+        for source in mir.all_basic_blocks() {
+            try!(write_edges(source, mir, w));
+        }
+        try!(writeln!(w, "}}"))
     }
-
-    // Edges
-    for source in mir.all_basic_blocks() {
-        try!(write_edges(source, mir, w));
-    }
-
-    writeln!(w, "}}")
+    Ok(())
 }
 
 /// Write a graphviz DOT node for the given basic block.
@@ -84,8 +88,9 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<W: Write>(mir: &Mir, w: &mut W) -> io::Result<()> {
-    try!(write!(w, "    label=<fn("));
+fn write_graph_label<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
+-> io::Result<()> {
+    try!(write!(w, "    label=<fn {}(", dot::escape_html(&tcx.map.path_to_string(nid))));
 
     // fn argument types.
     for (i, arg) in mir.arg_decls.iter().enumerate() {

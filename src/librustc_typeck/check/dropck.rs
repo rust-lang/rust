@@ -15,8 +15,8 @@ use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::region;
 use middle::subst::{self, Subst};
-use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
+use middle::traits::{self, ProjectionMode};
 use util::nodemap::FnvHashSet;
 
 use syntax::ast;
@@ -39,7 +39,7 @@ use syntax::codemap::{self, Span};
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: DefId) -> Result<(), ()> {
+pub fn check_drop_impl(tcx: &TyCtxt, drop_impl_did: DefId) -> Result<(), ()> {
     let ty::TypeScheme { generics: ref dtor_generics,
                          ty: dtor_self_type } = tcx.lookup_item_type(drop_impl_did);
     let dtor_predicates = tcx.lookup_predicates(drop_impl_did);
@@ -70,7 +70,7 @@ pub fn check_drop_impl(tcx: &ty::ctxt, drop_impl_did: DefId) -> Result<(), ()> {
 }
 
 fn ensure_drop_params_and_item_params_correspond<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     drop_impl_did: DefId,
     drop_impl_generics: &ty::Generics<'tcx>,
     drop_impl_ty: &ty::Ty<'tcx>,
@@ -82,7 +82,10 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, Some(impl_param_env));
+    let infcx = infer::new_infer_ctxt(tcx,
+                                      &tcx.tables,
+                                      Some(impl_param_env),
+                                      ProjectionMode::AnyFinal);
     let mut fulfillment_cx = traits::FulfillmentContext::new();
 
     let named_type = tcx.lookup_item_type(self_type_did).ty;
@@ -119,7 +122,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+    tcx: &TyCtxt<'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
@@ -479,7 +482,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
             Ok(())
         }
 
-        ty::TyBareFn(..) => {
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => {
             // FIXME(#26656): this type is always destruction-safe, but
             // it implicitly witnesses Self: Fn, which can be false.
             Ok(())
@@ -495,7 +498,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     }
 }
 
-fn has_dtor_of_interest<'tcx>(tcx: &ty::ctxt<'tcx>,
+fn has_dtor_of_interest<'tcx>(tcx: &TyCtxt<'tcx>,
                               ty: ty::Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {

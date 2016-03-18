@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Basic functions for dealing with memory
+//! Basic functions for dealing with memory.
 //!
 //! This module contains functions for querying the size and alignment of
 //! types, initializing and manipulating memory.

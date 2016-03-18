@@ -22,7 +22,7 @@
 //! Note that &Any is limited to testing whether a value is of a specified
 //! concrete type, and cannot be used to test whether a type implements a trait.
 //!
-//! [`Box`]: ../boxed/struct.Box.html
+//! [`Box`]: ../../std/boxed/struct.Box.html
 //!
 //! # Examples
 //!

@@ -20,29 +20,25 @@ extern crate syntax;
 extern crate rustc_front;
 
 use build;
-use graphviz;
-use pretty;
-use transform::{clear_dead_blocks, simplify_cfg, type_check};
-use transform::{no_landing_pads};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
 use hair::cx::Cx;
-use std::fs::File;
 
-use rustc::mir::transform::MirPass;
 use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
 use rustc::middle::region::CodeExtentData;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::traits::ProjectionMode;
+use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc_front::hir;
 use rustc_front::intravisit::{self, Visitor};
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
-pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
+pub fn build_mir_for_crate<'tcx>(tcx: &TyCtxt<'tcx>) -> MirMap<'tcx> {
     let mut map = MirMap {
         map: NodeMap(),
     };
@@ -60,7 +56,7 @@ pub fn build_mir_for_crate<'tcx>(tcx: &ty::ctxt<'tcx>) -> MirMap<'tcx> {
 // OuterDump -- walks a crate, looking for fn items and methods to build MIR from
 
 struct OuterDump<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     map: &'a mut MirMap<'tcx>,
 }
 
@@ -116,7 +112,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterDump<'a, 'tcx> {
 // InnerDump -- dumps MIR for a single fn and its contained closures
 
 struct InnerDump<'a, 'm, 'tcx: 'a + 'm> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     map: &'m mut MirMap<'tcx>,
     attr: Option<&'a ast::Attribute>,
 }
@@ -136,61 +132,20 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
                 body: &'tcx hir::Block,
                 span: Span,
                 id: ast::NodeId) {
-        let (prefix, implicit_arg_tys) = match fk {
-            intravisit::FnKind::Closure =>
-                (format!("{}-", id), vec![closure_self_ty(&self.tcx, id, body.id)]),
-            _ =>
-                (format!(""), vec![]),
+        let implicit_arg_tys = if let intravisit::FnKind::Closure = fk {
+            vec![closure_self_ty(&self.tcx, id, body.id)]
+        } else {
+            vec![]
         };
 
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-
-        let infcx = infer::new_infer_ctxt(self.tcx, &self.tcx.tables, Some(param_env));
+        let infcx = infer::new_infer_ctxt(self.tcx,
+                                          &self.tcx.tables,
+                                          Some(param_env),
+                                          ProjectionMode::AnyFinal);
 
         match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
-            Ok(mut mir) => {
-                clear_dead_blocks::ClearDeadBlocks::new().run_on_mir(&mut mir, &infcx);
-                type_check::TypeckMir::new().run_on_mir(&mut mir, &infcx);
-                no_landing_pads::NoLandingPads.run_on_mir(&mut mir, &infcx);
-                if self.tcx.sess.opts.mir_opt_level > 0 {
-                    simplify_cfg::SimplifyCfg::new().run_on_mir(&mut mir, &infcx);
-                }
-                let meta_item_list = self.attr
-                                         .iter()
-                                         .flat_map(|a| a.meta_item_list())
-                                         .flat_map(|l| l.iter());
-                for item in meta_item_list {
-                    if item.check_name("graphviz") || item.check_name("pretty") {
-                        match item.value_str() {
-                            Some(s) => {
-                                let filename = format!("{}{}", prefix, s);
-                                let result = File::create(&filename).and_then(|ref mut output| {
-                                    if item.check_name("graphviz") {
-                                        graphviz::write_mir_graphviz(&mir, output)
-                                    } else {
-                                        pretty::write_mir_pretty(&mir, output)
-                                    }
-                                });
-
-                                if let Err(e) = result {
-                                    self.tcx.sess.span_fatal(
-                                        item.span,
-                                        &format!("Error writing MIR {} results to `{}`: {}",
-                                                 item.name(), filename, e));
-                                }
-                            }
-                            None => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    &format!("{} attribute requires a path", item.name()));
-                            }
-                        }
-                    }
-                }
-
-                let previous = self.map.map.insert(id, mir);
-                assert!(previous.is_none());
-            }
+            Ok(mir) => assert!(self.map.map.insert(id, mir).is_none()),
             Err(ErrorReported) => {}
         }
 
@@ -227,16 +182,23 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
     let parameter_scope =
         cx.tcx().region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
-    Ok(build::construct(cx,
-                        span,
-                        implicit_arg_tys,
-                        arguments,
-                        parameter_scope,
-                        fn_sig.output,
-                        body))
+    let mut mir = build::construct(cx, span, implicit_arg_tys, arguments,
+                                  parameter_scope, fn_sig.output, body);
+
+    match cx.tcx().node_id_to_type(fn_id).sty {
+        ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
+            // RustCall pseudo-ABI untuples the last argument.
+            if let Some(arg_decl) = mir.arg_decls.last_mut() {
+                arg_decl.spread = true;
+            }
+        }
+        _ => {}
+    }
+
+    Ok(mir)
 }
 
-fn closure_self_ty<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
+fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: ast::NodeId)
                              -> Ty<'tcx> {
@@ -252,15 +214,15 @@ fn closure_self_ty<'a, 'tcx>(tcx: &ty::ctxt<'tcx>,
     let region = tcx.mk_region(region);
 
     match tcx.closure_kind(tcx.map.local_def_id(closure_expr_id)) {
-        ty::ClosureKind::FnClosureKind =>
+        ty::ClosureKind::Fn =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,
                                         mutbl: hir::MutImmutable }),
-        ty::ClosureKind::FnMutClosureKind =>
+        ty::ClosureKind::FnMut =>
             tcx.mk_ref(region,
                        ty::TypeAndMut { ty: closure_ty,
                                         mutbl: hir::MutMutable }),
-        ty::ClosureKind::FnOnceClosureKind =>
+        ty::ClosureKind::FnOnce =>
             closure_ty
     }
 }

@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(issue = "0", feature = "windows_stdio")]
+
 use prelude::v1::*;
 use io::prelude::*;
 
+use cmp;
 use io::{self, Cursor};
 use ptr;
 use str;
@@ -18,6 +21,7 @@ use sync::Mutex;
 use sys::c;
 use sys::cvt;
 use sys::handle::Handle;
+use sys_common::io::read_to_end_uninitialized;
 
 pub struct NoClose(Option<Handle>);
 
@@ -55,10 +59,24 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
         Output::Console(ref c) => c.get().raw(),
         Output::Pipe(ref p) => return p.get().write(data),
     };
-    let utf16 = match str::from_utf8(data).ok() {
-        Some(utf8) => utf8.encode_utf16().collect::<Vec<u16>>(),
-        None => return Err(invalid_encoding()),
+    // As with stdin on windows, stdout often can't handle writes of large
+    // sizes. For an example, see #14940. For this reason, don't try to
+    // write the entire output buffer on windows.
+    //
+    // For some other references, it appears that this problem has been
+    // encountered by others [1] [2]. We choose the number 8K just because
+    // libuv does the same.
+    //
+    // [1]: https://tahoe-lafs.org/trac/tahoe-lafs/ticket/1232
+    // [2]: http://www.mail-archive.com/log4net-dev@logging.apache.org/msg00661.html
+    const OUT_MAX: usize = 8192;
+    let len = cmp::min(data.len(), OUT_MAX);
+    let utf8 = match str::from_utf8(&data[..len]) {
+        Ok(s) => s,
+        Err(ref e) if e.valid_up_to() == 0 => return Err(invalid_encoding()),
+        Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
     };
+    let utf16 = utf8.encode_utf16().collect::<Vec<u16>>();
     let mut written = 0;
     try!(cvt(unsafe {
         c::WriteConsoleW(handle,
@@ -71,7 +89,7 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     // FIXME if this only partially writes the utf16 buffer then we need to
     //       figure out how many bytes of `data` were actually written
     assert_eq!(written as usize, utf16.len());
-    Ok(data.len())
+    Ok(utf8.len())
 }
 
 impl Stdin {
@@ -112,6 +130,22 @@ impl Stdin {
 
         // MemReader shouldn't error here since we just filled it
         utf8.read(buf)
+    }
+
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        let mut me = self;
+        (&mut me).read_to_end(buf)
+    }
+}
+
+#[unstable(reason = "not public", issue = "0", feature = "fd_read")]
+impl<'a> Read for &'a Stdin {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        (**self).read(buf)
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        unsafe { read_to_end_uninitialized(self, buf) }
     }
 }
 

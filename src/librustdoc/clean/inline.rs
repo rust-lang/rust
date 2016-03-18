@@ -19,14 +19,14 @@ use rustc_front::hir;
 use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::def::Def;
 use rustc::middle::def_id::DefId;
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::middle::subst;
 use rustc::middle::stability;
 use rustc::middle::const_eval;
 
 use core::DocContext;
 use doctree;
-use clean;
+use clean::{self, Attributes};
 
 use super::{Clean, ToSource};
 
@@ -67,7 +67,7 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Name>)
     })
 }
 
-fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
+fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
                   def: Def) -> Option<Vec<clean::Item>> {
     let mut ret = Vec::new();
     let did = def.def_id();
@@ -128,7 +128,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
     Some(ret)
 }
 
-pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
+pub fn load_attrs(cx: &DocContext, tcx: &TyCtxt,
                   did: DefId) -> Vec<clean::Attribute> {
     tcx.get_attrs(did).iter().map(|a| a.clean(cx)).collect()
 }
@@ -138,17 +138,14 @@ pub fn load_attrs(cx: &DocContext, tcx: &ty::ctxt,
 /// These names are used later on by HTML rendering to generate things like
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
-    match cx.tcx_opt() {
-        Some(tcx) => {
-            let fqn = tcx.sess.cstore.extern_item_path(did);
-            let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
-            cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
-        }
-        None => {}
+    if let Some(tcx) = cx.tcx_opt() {
+        let fqn = tcx.sess.cstore.extern_item_path(did);
+        let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
+        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
     }
 }
 
-pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
+pub fn build_external_trait(cx: &DocContext, tcx: &TyCtxt,
                             did: DefId) -> clean::Trait {
     let def = tcx.lookup_trait_def(did);
     let trait_items = tcx.trait_items(did).clean(cx);
@@ -164,10 +161,10 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     }
 }
 
-fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::Function {
+fn build_external_function(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
-        ty::TyBareFn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
+        ty::TyFnDef(_, _, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
 
@@ -187,7 +184,7 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean
     }
 }
 
-fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::Struct {
+fn build_struct(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Struct {
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     let variant = tcx.lookup_adt_def(did).struct_variant();
@@ -205,7 +202,7 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::Struct {
     }
 }
 
-fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::ItemEnum {
+fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     match t.ty.sty {
@@ -225,17 +222,15 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: DefId) -> clean::ItemEnum {
     }, false)
 }
 
-pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
+pub fn build_impls(cx: &DocContext,
+                   tcx: &TyCtxt,
                    did: DefId) -> Vec<clean::Item> {
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
 
-    match tcx.inherent_impls.borrow().get(&did) {
-        None => {}
-        Some(i) => {
-            for &did in i.iter() {
-                build_impl(cx, tcx, did, &mut impls);
-            }
+    if let Some(i) = tcx.inherent_impls.borrow().get(&did) {
+        for &did in i.iter() {
+            build_impl(cx, tcx, did, &mut impls);
         }
     }
 
@@ -247,19 +242,21 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
     // Primarily, the impls will be used to populate the documentation for this
     // type being inlined, but impls can also be used when generating
     // documentation for primitives (no way to find those specifically).
-    if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
+    if !cx.all_crate_impls.borrow_mut().contains_key(&did.krate) {
+        let mut impls = Vec::new();
         for item in tcx.sess.cstore.crate_top_level_items(did.krate) {
             populate_impls(cx, tcx, item.def, &mut impls);
         }
+        cx.all_crate_impls.borrow_mut().insert(did.krate, impls);
 
-        fn populate_impls(cx: &DocContext, tcx: &ty::ctxt,
+        fn populate_impls(cx: &DocContext, tcx: &TyCtxt,
                           def: cstore::DefLike,
                           impls: &mut Vec<clean::Item>) {
             match def {
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
                     // Don't recurse if this is a #[doc(hidden)] module
-                    if load_attrs(cx, tcx, did).iter().any(|a| is_doc_hidden(a)) {
+                    if load_attrs(cx, tcx, did).list_def("doc").has_word("hidden") {
                         return;
                     }
 
@@ -272,11 +269,25 @@ pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
         }
     }
 
+    let mut candidates = cx.all_crate_impls.borrow_mut();
+    let candidates = candidates.get_mut(&did.krate).unwrap();
+    for i in (0..candidates.len()).rev() {
+        let remove = match candidates[i].inner {
+            clean::ImplItem(ref i) => {
+                i.for_.def_id() == Some(did) || i.for_.primitive_type().is_some()
+            }
+            _ => continue,
+        };
+        if remove {
+            impls.push(candidates.swap_remove(i));
+        }
+    }
+
     return impls;
 }
 
 pub fn build_impl(cx: &DocContext,
-                  tcx: &ty::ctxt,
+                  tcx: &TyCtxt,
                   did: DefId,
                   ret: &mut Vec<clean::Item>) {
     if !cx.inlined.borrow_mut().as_mut().unwrap().insert(did) {
@@ -288,7 +299,7 @@ pub fn build_impl(cx: &DocContext,
     if let Some(ref t) = associated_trait {
         // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
         let trait_attrs = load_attrs(cx, tcx, t.def_id);
-        if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
+        if trait_attrs.list_def("doc").has_word("hidden") {
             return
         }
     }
@@ -325,8 +336,8 @@ pub fn build_impl(cx: &DocContext,
                 let did = assoc_const.def_id;
                 let type_scheme = tcx.lookup_item_type(did);
                 let default = if assoc_const.has_value {
-                    Some(const_eval::lookup_const_by_id(tcx, did, None, None)
-                         .unwrap().span.to_src(cx))
+                    Some(const_eval::lookup_const_by_id(tcx, did, None)
+                         .unwrap().0.span.to_src(cx))
                 } else {
                     None
                 };
@@ -428,21 +439,7 @@ pub fn build_impl(cx: &DocContext,
     });
 }
 
-fn is_doc_hidden(a: &clean::Attribute) -> bool {
-    match *a {
-        clean::List(ref name, ref inner) if *name == "doc" => {
-            inner.iter().any(|a| {
-                match *a {
-                    clean::Word(ref s) => *s == "hidden",
-                    _ => false,
-                }
-            })
-        }
-        _ => false
-    }
-}
-
-fn build_module(cx: &DocContext, tcx: &ty::ctxt,
+fn build_module(cx: &DocContext, tcx: &TyCtxt,
                 did: DefId) -> clean::Module {
     let mut items = Vec::new();
     fill_in(cx, tcx, did, &mut items);
@@ -451,7 +448,7 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
         is_crate: false,
     };
 
-    fn fill_in(cx: &DocContext, tcx: &ty::ctxt, did: DefId,
+    fn fill_in(cx: &DocContext, tcx: &TyCtxt, did: DefId,
                items: &mut Vec<clean::Item>) {
         // If we're reexporting a reexport it may actually reexport something in
         // two namespaces, so the target may be listed twice. Make sure we only
@@ -464,9 +461,8 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
                 }
                 cstore::DlDef(def) if item.vis == hir::Public => {
                     if !visited.insert(def) { continue }
-                    match try_inline_def(cx, tcx, def) {
-                        Some(i) => items.extend(i),
-                        None => {}
+                    if let Some(i) = try_inline_def(cx, tcx, def) {
+                        items.extend(i)
                     }
                 }
                 cstore::DlDef(..) => {}
@@ -478,12 +474,12 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
     }
 }
 
-fn build_const(cx: &DocContext, tcx: &ty::ctxt,
+fn build_const(cx: &DocContext, tcx: &TyCtxt,
                did: DefId) -> clean::Constant {
     use rustc::middle::const_eval;
     use rustc_front::print::pprust;
 
-    let expr = const_eval::lookup_const_by_id(tcx, did, None, None).unwrap_or_else(|| {
+    let (expr, ty) = const_eval::lookup_const_by_id(tcx, did, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
     debug!("converting constant expr {:?} to snippet", expr);
@@ -491,12 +487,12 @@ fn build_const(cx: &DocContext, tcx: &ty::ctxt,
     debug!("got snippet {}", sn);
 
     clean::Constant {
-        type_: tcx.lookup_item_type(did).ty.clean(cx),
+        type_: ty.map(|t| t.clean(cx)).unwrap_or_else(|| tcx.lookup_item_type(did).ty.clean(cx)),
         expr: sn
     }
 }
 
-fn build_static(cx: &DocContext, tcx: &ty::ctxt,
+fn build_static(cx: &DocContext, tcx: &TyCtxt,
                 did: DefId,
                 mutable: bool) -> clean::Static {
     clean::Static {

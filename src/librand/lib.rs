@@ -30,22 +30,18 @@
             issue = "27703")]
 #![feature(core_float)]
 #![feature(core_intrinsics)]
-#![feature(num_bits_bytes)]
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
-#![cfg_attr(test, feature(test, rand, rustc_private))]
+#![cfg_attr(test, feature(test, rand))]
 
 #![allow(deprecated)]
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
-#[cfg(test)]
-#[macro_use]
-extern crate log;
 
 use core::f64;
 use core::intrinsics;
@@ -70,6 +66,7 @@ mod rand_impls;
 // needed by librand; this is necessary because librand doesn't
 // depend on libstd.  This will go away when librand is integrated
 // into libstd.
+#[doc(hidden)]
 trait FloatMath : Sized {
     fn exp(self) -> Self;
     fn ln(self) -> Self;

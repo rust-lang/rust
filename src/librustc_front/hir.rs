@@ -39,7 +39,7 @@ use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
-use syntax::attr::ThinAttributes;
+use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
@@ -635,6 +635,16 @@ pub enum Stmt_ {
     StmtSemi(P<Expr>, NodeId),
 }
 
+impl Stmt_ {
+    pub fn attrs(&self) -> &[Attribute] {
+        match *self {
+            StmtDecl(ref d, _) => d.node.attrs(),
+            StmtExpr(ref e, _) |
+            StmtSemi(ref e, _) => e.attrs.as_attr_slice(),
+        }
+    }
+}
+
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
@@ -657,6 +667,15 @@ pub enum Decl_ {
     DeclLocal(P<Local>),
     /// An item binding:
     DeclItem(ItemId),
+}
+
+impl Decl_ {
+    pub fn attrs(&self) -> &[Attribute] {
+        match *self {
+            DeclLocal(ref l) => l.attrs.as_attr_slice(),
+            DeclItem(_) => &[]
+        }
+    }
 }
 
 /// represents one arm of a 'match'
@@ -737,7 +756,7 @@ pub enum Expr_ {
     ExprBinary(BinOp, P<Expr>, P<Expr>),
     /// A unary operation (For example: `!x`, `*x`)
     ExprUnary(UnOp, P<Expr>),
-    /// A literal (For example: `1u8`, `"foo"`)
+    /// A literal (For example: `1`, `"foo"`)
     ExprLit(P<Lit>),
     /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
@@ -776,8 +795,6 @@ pub enum Expr_ {
     ExprTupField(P<Expr>, Spanned<usize>),
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
-    /// A range (`1..2`, `1..`, or `..2`)
-    ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or type
     /// parameters, e.g. foo::bar::<baz>.
@@ -795,8 +812,8 @@ pub enum Expr_ {
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
-    /// Output of the `asm!()` macro
-    ExprInlineAsm(InlineAsm),
+    /// Inline assembly (from `asm!`), with its outputs and inputs.
+    ExprInlineAsm(InlineAsm, Vec<P<Expr>>, Vec<P<Expr>>),
 
     /// A struct literal expression.
     ///
@@ -806,7 +823,7 @@ pub enum Expr_ {
 
     /// A vector literal constructed from one repeated element.
     ///
-    /// For example, `[1u8; 5]`. The first expression is the element
+    /// For example, `[1; 5]`. The first expression is the element
     /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
 }
@@ -837,6 +854,7 @@ pub enum MatchSource {
     },
     WhileLetDesugar,
     ForLoopDesugar,
+    TryDesugar,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -865,10 +883,10 @@ pub struct MethodSig {
     pub explicit_self: ExplicitSelf,
 }
 
-/// Represents a method declaration in a trait declaration, possibly including
-/// a default implementation A trait method is either required (meaning it
-/// doesn't have an implementation, just a signature) or provided (meaning it
-/// has a default implementation).
+/// Represents an item declaration within a trait declaration,
+/// possibly including a default implementation. A trait item is
+/// either required (meaning it doesn't have an implementation, just a
+/// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TraitItem {
     pub id: NodeId,
@@ -890,6 +908,7 @@ pub struct ImplItem {
     pub id: NodeId,
     pub name: Name,
     pub vis: Visibility,
+    pub defaultness: Defaultness,
     pub attrs: HirVec<Attribute>,
     pub node: ImplItemKind,
     pub span: Span,
@@ -978,7 +997,6 @@ pub enum Ty_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
     pub constraint: InternedString,
-    pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
@@ -988,7 +1006,7 @@ pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
     pub outputs: HirVec<InlineAsmOutput>,
-    pub inputs: HirVec<(InternedString, P<Expr>)>,
+    pub inputs: HirVec<InternedString>,
     pub clobbers: HirVec<InternedString>,
     pub volatile: bool,
     pub alignstack: bool,
@@ -1045,6 +1063,22 @@ pub enum Unsafety {
 pub enum Constness {
     Const,
     NotConst,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum Defaultness {
+    Default,
+    Final,
+}
+
+impl Defaultness {
+    pub fn is_final(&self) -> bool {
+        *self == Defaultness::Final
+    }
+
+    pub fn is_default(&self) -> bool {
+        *self == Defaultness::Default
+    }
 }
 
 impl fmt::Display for Unsafety {

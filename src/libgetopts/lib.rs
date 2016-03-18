@@ -92,11 +92,6 @@
 #![deny(missing_docs)]
 #![feature(staged_api)]
 #![feature(str_char)]
-#![cfg_attr(test, feature(rustc_private))]
-
-#[cfg(test)]
-#[macro_use]
-extern crate log;
 
 use self::Name::*;
 use self::HasArg::*;
@@ -1544,8 +1539,6 @@ Options:
 
         let generated_usage = usage("Usage: fruits", &optgroups);
 
-        debug!("expected: <<{}>>", expected);
-        debug!("generated: <<{}>>", generated_usage);
         assert_eq!(generated_usage, expected);
     }
 
@@ -1573,8 +1566,6 @@ Options:
 
         let usage = usage("Usage: fruits", &optgroups);
 
-        debug!("expected: <<{}>>", expected);
-        debug!("generated: <<{}>>", usage);
         assert!(usage == expected)
     }
 
@@ -1601,8 +1592,6 @@ Options:
 
         let usage = usage("Usage: fruits", &optgroups);
 
-        debug!("expected: <<{}>>", expected);
-        debug!("generated: <<{}>>", usage);
         assert!(usage == expected)
     }
 
@@ -1617,8 +1606,6 @@ Options:
         let expected = "Usage: fruits -b VAL [-a VAL] [-k] [-p [VAL]] [-l VAL]..".to_string();
         let generated_usage = short_usage("fruits", &optgroups);
 
-        debug!("expected: <<{}>>", expected);
-        debug!("generated: <<{}>>", generated_usage);
         assert_eq!(generated_usage, expected);
     }
 

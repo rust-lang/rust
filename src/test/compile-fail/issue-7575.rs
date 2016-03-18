@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // Test the mechanism for warning about possible missing `self` declarations.
+// ignore-tidy-linelength
 
 trait CtxtFn {
     fn f8(self, usize) -> usize;
@@ -72,15 +73,15 @@ impl ManyImplTrait for Myisize {}
 fn no_param_bound(u: usize, m: Myisize) -> usize {
     u.f8(42) + u.f9(342) + m.fff(42)
             //~^ ERROR no method named `f9` found for type `usize` in the current scope
-            //~^^ NOTE found defined static methods, maybe a `self` is missing?
+            //~^^ NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
             //~^^^ ERROR no method named `fff` found for type `Myisize` in the current scope
-            //~^^^^ NOTE found defined static methods, maybe a `self` is missing?
+            //~^^^^ NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
 }
 
 fn param_bound<T: ManyImplTrait>(t: T) -> bool {
     t.is_str()
     //~^ ERROR no method named `is_str` found for type `T` in the current scope
-    //~^^ NOTE found defined static methods, maybe a `self` is missing?
+    //~^^ NOTE found the following associated functions; to be used as methods, functions must have a `self` parameter
 }
 
 fn main() {

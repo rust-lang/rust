@@ -11,7 +11,7 @@
 use middle::def_id::DefId;
 use middle::subst;
 use middle::infer::type_variable;
-use middle::ty::{self, BoundRegion, Region, Ty};
+use middle::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
@@ -211,7 +211,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
-    fn sort_string(&self, cx: &ty::ctxt) -> String {
+    fn sort_string(&self, cx: &TyCtxt) -> String {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr => self.to_string(),
@@ -223,8 +223,8 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::TySlice(_) => "slice".to_string(),
             ty::TyRawPtr(_) => "*-ptr".to_string(),
             ty::TyRef(_, _) => "&-ptr".to_string(),
-            ty::TyBareFn(Some(_), _) => format!("fn item"),
-            ty::TyBareFn(None, _) => "fn pointer".to_string(),
+            ty::TyFnDef(..) => format!("fn item"),
+            ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
                 format!("trait {}", cx.item_path_str(inner.principal_def_id()))
             }
@@ -252,7 +252,7 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-impl<'tcx> ty::ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn note_and_explain_type_err(&self,
                                      db: &mut DiagnosticBuilder,
                                      err: &TypeError<'tcx>,

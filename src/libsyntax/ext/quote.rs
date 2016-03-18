@@ -18,12 +18,12 @@ use parse::token::*;
 use parse::token;
 use ptr::P;
 
-///  Quasiquoting works via token trees.
+/// Quasiquoting works via token trees.
 ///
-///  This is registered as a set of expression syntax extension called quote!
-///  that lifts its argument token-tree to an AST representing the
-///  construction of the same token tree, with token::SubstNt interpreted
-///  as antiquotes (splices).
+/// This is registered as a set of expression syntax extension called quote!
+/// that lifts its argument token-tree to an AST representing the
+/// construction of the same token tree, with token::SubstNt interpreted
+/// as antiquotes (splices).
 
 pub mod rt {
     use ast;
@@ -319,34 +319,36 @@ pub mod rt {
     }
 
     impl<'a> ExtParseUtils for ExtCtxt<'a> {
-
         fn parse_item(&self, s: String) -> P<ast::Item> {
-            parse::parse_item_from_source_str(
+            panictry!(parse::parse_item_from_source_str(
                 "<quote expansion>".to_string(),
                 s,
                 self.cfg(),
-                self.parse_sess()).expect("parse error")
+                self.parse_sess())).expect("parse error")
         }
 
         fn parse_stmt(&self, s: String) -> ast::Stmt {
-            parse::parse_stmt_from_source_str("<quote expansion>".to_string(),
-                                              s,
-                                              self.cfg(),
-                                              self.parse_sess()).expect("parse error")
+            panictry!(parse::parse_stmt_from_source_str(
+                "<quote expansion>".to_string(),
+                s,
+                self.cfg(),
+                self.parse_sess())).expect("parse error")
         }
 
         fn parse_expr(&self, s: String) -> P<ast::Expr> {
-            parse::parse_expr_from_source_str("<quote expansion>".to_string(),
-                                              s,
-                                              self.cfg(),
-                                              self.parse_sess())
+            panictry!(parse::parse_expr_from_source_str(
+                "<quote expansion>".to_string(),
+                s,
+                self.cfg(),
+                self.parse_sess()))
         }
 
         fn parse_tts(&self, s: String) -> Vec<TokenTree> {
-            parse::parse_tts_from_source_str("<quote expansion>".to_string(),
-                                             s,
-                                             self.cfg(),
-                                             self.parse_sess())
+            panictry!(parse::parse_tts_from_source_str(
+                "<quote expansion>".to_string(),
+                s,
+                self.cfg(),
+                self.parse_sess()))
         }
     }
 }

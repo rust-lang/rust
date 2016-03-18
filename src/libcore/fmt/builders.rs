@@ -124,7 +124,8 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 pub struct DebugTuple<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
-    has_fields: bool,
+    fields: usize,
+    empty_name: bool,
 }
 
 pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> DebugTuple<'a, 'b> {
@@ -132,7 +133,8 @@ pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> D
     DebugTuple {
         fmt: fmt,
         result: result,
-        has_fields: false,
+        fields: 0,
+        empty_name: name.is_empty(),
     }
 }
 
@@ -141,7 +143,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, value: &fmt::Debug) -> &mut DebugTuple<'a, 'b> {
         self.result = self.result.and_then(|_| {
-            let (prefix, space) = if self.has_fields {
+            let (prefix, space) = if self.fields > 0 {
                 (",", " ")
             } else {
                 ("(", "")
@@ -155,20 +157,22 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
             }
         });
 
-        self.has_fields = true;
+        self.fields += 1;
         self
     }
 
     /// Finishes output and returns any error encountered.
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        if self.has_fields {
+        if self.fields > 0 {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
-                    self.fmt.write_str("\n)")
-                } else {
-                    self.fmt.write_str(")")
+                    try!(self.fmt.write_str("\n"));
                 }
+                if self.fields == 1 && self.empty_name {
+                    try!(self.fmt.write_str(","));
+                }
+                self.fmt.write_str(")")
             });
         }
         self.result
@@ -176,14 +180,6 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
 
     fn is_pretty(&self) -> bool {
         self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
-    }
-
-    /// Returns the wrapped `Formatter`.
-    #[unstable(feature = "debug_builder_formatter", reason = "recently added",
-               issue = "27782")]
-    #[rustc_deprecated(since = "1.7.0", reason = "will be removed")]
-    pub fn formatter(&mut self) -> &mut fmt::Formatter<'b> {
-        &mut self.fmt
     }
 }
 

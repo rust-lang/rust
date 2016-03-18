@@ -616,13 +616,17 @@ a.test-arrow {
     }
 
     .sidebar .location {
-        float: left;
+        float: right;
         margin: 0px;
-        padding: 5px;
-        width: 60%;
+        padding: 3px 10px 1px 10px;
+        min-height: 39px;
         background: inherit;
         text-align: left;
         font-size: 24px;
+    }
+
+    .sidebar .location:empty {
+        padding: 0;
     }
 
     .sidebar img {

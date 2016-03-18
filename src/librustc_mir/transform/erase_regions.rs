@@ -12,23 +12,18 @@
 //! We want to do this once just before trans, so trans does not have to take
 //! care erasing regions all over the place.
 
-use rustc::middle::ty;
+use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
-use rustc::mir::mir_map::MirMap;
-
-pub fn erase_regions<'tcx>(tcx: &ty::ctxt<'tcx>, mir_map: &mut MirMap<'tcx>) {
-    for (_, mir) in &mut mir_map.map {
-        EraseRegionsVisitor::new(tcx).visit_mir(mir);
-    }
-}
+use rustc::mir::transform::{MirPass, Pass};
+use syntax::ast::NodeId;
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
 }
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> Self {
+    pub fn new(tcx: &'a TyCtxt<'tcx>) -> Self {
         EraseRegionsVisitor {
             tcx: tcx
         }
@@ -87,7 +82,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
             Rvalue::BinaryOp(_, _, _) |
             Rvalue::UnaryOp(_, _) |
             Rvalue::Slice { input: _, from_start: _, from_end: _ } |
-            Rvalue::InlineAsm(_) => {},
+            Rvalue::InlineAsm {..} => {},
 
             Rvalue::Repeat(_, ref mut value) => value.ty = self.tcx.erase_regions(&value.ty),
             Rvalue::Ref(ref mut region, _, _) => *region = ty::ReStatic,
@@ -121,5 +116,15 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
             Literal::Value { .. } => { /* nothing to do */ }
         }
         self.super_constant(constant);
+    }
+}
+
+pub struct EraseRegions;
+
+impl Pass for EraseRegions {}
+
+impl<'tcx> MirPass<'tcx> for EraseRegions {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+        EraseRegionsVisitor::new(tcx).visit_mir(mir);
     }
 }

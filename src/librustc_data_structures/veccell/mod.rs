@@ -12,11 +12,11 @@ use std::cell::UnsafeCell;
 use std::mem;
 
 pub struct VecCell<T> {
-    data: UnsafeCell<Vec<T>>
+    data: UnsafeCell<Vec<T>>,
 }
 
 impl<T> VecCell<T> {
-    pub fn with_capacity(capacity: usize) -> VecCell<T>{
+    pub fn with_capacity(capacity: usize) -> VecCell<T> {
         VecCell { data: UnsafeCell::new(Vec::with_capacity(capacity)) }
     }
 

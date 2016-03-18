@@ -98,43 +98,15 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     fn try_define<T>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T)
         where T: ToNameBinding<'b>
     {
-        let _ = parent.try_define_child(name, ns, self.new_name_binding(def.to_name_binding()));
+        let _ = parent.try_define_child(name, ns, def.to_name_binding());
     }
 
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
     fn define<T: ToNameBinding<'b>>(&self, parent: Module<'b>, name: Name, ns: Namespace, def: T) {
-        let binding = self.new_name_binding(def.to_name_binding());
-        let old_binding = match parent.try_define_child(name, ns, binding) {
-            Ok(()) => return,
-            Err(old_binding) => old_binding,
-        };
-
-        let span = binding.span.unwrap_or(DUMMY_SP);
-        if !old_binding.is_extern_crate() && !binding.is_extern_crate() {
-            // Record an error here by looking up the namespace that had the duplicate
-            let ns_str = match ns { TypeNS => "type or module", ValueNS => "value" };
-            let resolution_error = ResolutionError::DuplicateDefinition(ns_str, name);
-            let mut err = resolve_struct_error(self, span, resolution_error);
-
-            if let Some(sp) = old_binding.span {
-                let note = format!("first definition of {} `{}` here", ns_str, name);
-                err.span_note(sp, &note);
-            }
-            err.emit();
-        } else if old_binding.is_extern_crate() && binding.is_extern_crate() {
-            span_err!(self.session,
-                      span,
-                      E0259,
-                      "an external crate named `{}` has already been imported into this module",
-                      name);
-        } else {
-            span_err!(self.session,
-                      span,
-                      E0260,
-                      "the name `{}` conflicts with an external crate \
-                      that has been imported into this module",
-                      name);
+        let binding = def.to_name_binding();
+        if let Err(old_binding) = parent.try_define_child(name, ns, binding.clone()) {
+            self.report_conflict(parent, name, ns, old_binding, &binding);
         }
     }
 
@@ -207,7 +179,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                           ResolutionError::SelfImportsOnlyAllowedWithin);
                         }
 
-                        let subclass = SingleImport(binding, source_name);
+                        let subclass = ImportDirectiveSubclass::single(binding, source_name);
                         self.build_import_directive(parent,
                                                     module_path,
                                                     subclass,
@@ -258,9 +230,10 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     (module_path.to_vec(), name, rename)
                                 }
                             };
+                            let subclass = ImportDirectiveSubclass::single(rename, name);
                             self.build_import_directive(parent,
                                                         module_path,
-                                                        SingleImport(rename, name),
+                                                        subclass,
                                                         source_item.span,
                                                         source_item.node.id(),
                                                         is_public,
@@ -288,23 +261,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         krate: crate_id,
                         index: CRATE_DEF_INDEX,
                     };
-                    self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
-                    let local_def_id = self.ast_map.local_def_id(item.id);
-                    let external_module =
-                        self.new_extern_crate_module(parent_link, def, is_public, local_def_id);
-                    self.define(parent, name, TypeNS, (external_module, sp));
+                    let module = self.new_extern_crate_module(parent_link, def, is_public, item.id);
+                    self.define(parent, name, TypeNS, (module, sp));
 
-                    if is_public {
-                        let export = Export { name: name, def_id: def_id };
-                        if let Some(def_id) = parent.def_id() {
-                            let node_id = self.resolver.ast_map.as_local_node_id(def_id).unwrap();
-                            self.export_map.entry(node_id).or_insert(Vec::new()).push(export);
-                        }
-                    }
-
-                    self.build_reduced_graph_for_external_crate(external_module);
+                    self.build_reduced_graph_for_external_crate(module);
                 }
                 parent
             }
@@ -340,10 +302,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             // These items live in the type namespace.
             ItemTy(..) => {
-                let parent_link = ModuleParentLink(parent, name);
                 let def = Def::TyAlias(self.ast_map.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), false, is_public);
-                self.define(parent, name, TypeNS, (module, sp));
+                self.define(parent, name, TypeNS, (def, sp, modifiers));
                 parent
             }
 
@@ -494,7 +454,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         debug!("(building reduced graph for external crate) building external def {}, priv {:?}",
                final_ident,
                vis);
-        let is_public = vis == hir::Public;
+        let is_public = vis == hir::Public || new_parent.is_trait();
 
         let mut modifiers = DefModifiers::empty();
         if is_public {
@@ -504,17 +464,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             modifiers = modifiers | DefModifiers::IMPORTABLE;
         }
 
-        let is_exported = is_public &&
-                          match new_parent.def_id() {
-            None => true,
-            Some(did) => self.external_exports.contains(&did),
-        };
-        if is_exported {
-            self.external_exports.insert(def.def_id());
-        }
-
         match def {
-            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) | Def::TyAlias(..) => {
+            Def::Mod(_) | Def::ForeignMod(_) | Def::Enum(..) => {
                 debug!("(building reduced graph for external crate) building module {} {}",
                        final_ident,
                        is_public);
@@ -561,17 +512,13 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            trait_item_name);
 
                     self.trait_item_map.insert((trait_item_name, def_id), trait_item_def.def_id());
-
-                    if is_exported {
-                        self.external_exports.insert(trait_item_def.def_id());
-                    }
                 }
 
                 let parent_link = ModuleParentLink(new_parent, name);
                 let module = self.new_module(parent_link, Some(def), true, is_public);
                 self.try_define(new_parent, name, TypeNS, (module, DUMMY_SP));
             }
-            Def::AssociatedTy(..) => {
+            Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}",
                        final_ident);
                 self.try_define(new_parent, name, TypeNS, (def, DUMMY_SP, modifiers));
@@ -685,33 +632,25 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                               id: NodeId,
                               is_public: bool,
                               shadowable: Shadowable) {
-        module_.unresolved_imports
-               .borrow_mut()
-               .push(ImportDirective::new(module_path, subclass, span, id, is_public, shadowable));
-        self.unresolved_imports += 1;
-
-        if is_public {
-            module_.inc_pub_count();
-        }
-
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
 
         match subclass {
-            SingleImport(target, _) => {
-                module_.increment_outstanding_references_for(target, ValueNS);
-                module_.increment_outstanding_references_for(target, TypeNS);
+            SingleImport { target, .. } => {
+                module_.increment_outstanding_references_for(target, ValueNS, is_public);
+                module_.increment_outstanding_references_for(target, TypeNS, is_public);
             }
             GlobImport => {
                 // Set the glob flag. This tells us that we don't know the
                 // module's exports ahead of time.
-
-                module_.inc_glob_count();
-                if is_public {
-                    module_.inc_pub_glob_count();
-                }
+                module_.inc_glob_count(is_public)
             }
         }
+
+        let directive =
+            ImportDirective::new(module_path, subclass, span, id, is_public, shadowable);
+        module_.add_import_directive(directive);
+        self.unresolved_imports += 1;
     }
 }
 

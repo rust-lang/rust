@@ -43,13 +43,13 @@ fn main() {
 
     // public items in a private mod should be inaccessible
     static_priv_by_default::foo::a;
-    //~^ ERROR: static `a` is private
+    //~^ ERROR: module `foo` is private
     static_priv_by_default::foo::b;
-    //~^ ERROR: function `b` is private
+    //~^ ERROR: module `foo` is private
     static_priv_by_default::foo::c;
-    //~^ ERROR: struct `c` is private
+    //~^ ERROR: module `foo` is private
     foo::<static_priv_by_default::foo::d>();
-    //~^ ERROR: enum `d` is private
+    //~^ ERROR: module `foo` is private
     foo::<static_priv_by_default::foo::e>();
-    //~^ ERROR: type `e` is private
+    //~^ ERROR: module `foo` is private
 }

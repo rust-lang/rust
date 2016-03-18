@@ -13,10 +13,10 @@
 extern {
   fn foo();
 
-  pub //~ ERROR duplicate definition
+  pub //~ ERROR a value named `foo` has already been defined
   fn foo();
 
-  pub //~ ERROR duplicate definition
+  pub //~ ERROR a value named `foo` has already been defined
   static mut foo: u32;
 }
 

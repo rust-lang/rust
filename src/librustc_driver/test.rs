@@ -22,7 +22,8 @@ use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
 use rustc_typeck::middle::subst;
 use rustc_typeck::middle::subst::Subst;
-use rustc_typeck::middle::ty::{self, Ty, TypeFoldable};
+use rustc_typeck::middle::traits::ProjectionMode;
+use rustc_typeck::middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc_typeck::middle::ty::relate::TypeRelation;
 use rustc_typeck::middle::infer::{self, TypeOrigin};
 use rustc_typeck::middle::infer::lub::Lub;
@@ -113,8 +114,11 @@ fn test_env<F>(source_string: &str,
                                        Rc::new(CodeMap::new()), cstore.clone());
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let krate_config = Vec::new();
-    let input = config::Input::Str(source_string.to_string());
-    let krate = driver::phase_1_parse_input(&sess, krate_config, &input);
+    let input = config::Input::Str {
+        name: driver::anon_src(),
+        input: source_string.to_string(),
+    };
+    let krate = driver::phase_1_parse_input(&sess, krate_config, &input).unwrap();
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, "test", None)
                     .expect("phase 2 aborted");
 
@@ -133,7 +137,7 @@ fn test_env<F>(source_string: &str,
     let named_region_map = resolve_lifetime::krate(&sess, &ast_map, &def_map.borrow());
     let region_map = region::resolve_crate(&sess, &ast_map);
     let index = stability::Index::new(&ast_map);
-    ty::ctxt::create_and_enter(&sess,
+    TyCtxt::create_and_enter(&sess,
                                &arenas,
                                def_map,
                                named_region_map.unwrap(),
@@ -143,7 +147,10 @@ fn test_env<F>(source_string: &str,
                                lang_items,
                                index,
                                |tcx| {
-                                   let infcx = infer::new_infer_ctxt(tcx, &tcx.tables, None);
+                                   let infcx = infer::new_infer_ctxt(tcx,
+                                                                     &tcx.tables,
+                                                                     None,
+                                                                     ProjectionMode::AnyFinal);
                                    body(Env { infcx: &infcx });
                                    let free_regions = FreeRegionMap::new();
                                    infcx.resolve_regions_and_report_errors(&free_regions,
@@ -153,7 +160,7 @@ fn test_env<F>(source_string: &str,
 }
 
 impl<'a, 'tcx> Env<'a, 'tcx> {
-    pub fn tcx(&self) -> &ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &TyCtxt<'tcx> {
         self.infcx.tcx
     }
 
@@ -261,16 +268,15 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
         let input_args = input_tys.iter().cloned().collect();
-        self.infcx.tcx.mk_fn(None,
-                             self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-                                 unsafety: hir::Unsafety::Normal,
-                                 abi: Abi::Rust,
-                                 sig: ty::Binder(ty::FnSig {
-                                     inputs: input_args,
-                                     output: ty::FnConverging(output_ty),
-                                     variadic: false,
-                                 }),
-                             }))
+        self.infcx.tcx.mk_fn_ptr(ty::BareFnTy {
+            unsafety: hir::Unsafety::Normal,
+            abi: Abi::Rust,
+            sig: ty::Binder(ty::FnSig {
+                inputs: input_args,
+                output: ty::FnConverging(output_ty),
+                variadic: false,
+            }),
+        })
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {

@@ -10,9 +10,6 @@
 
 //! type context book-keeping
 
-// FIXME: (@jroesch) @eddyb should remove this when he renames ctxt
-#![allow(non_camel_case_types)]
-
 use dep_graph::{DepGraph, DepTrackingMap};
 use front::map as ast_map;
 use session::Session;
@@ -44,7 +41,6 @@ use std::borrow::Borrow;
 use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
-use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::special_idents;
@@ -155,7 +151,7 @@ impl<'tcx> Tables<'tcx> {
     }
 
     pub fn closure_kind(this: &RefCell<Self>,
-                        tcx: &ty::ctxt<'tcx>,
+                        tcx: &TyCtxt<'tcx>,
                         def_id: DefId)
                         -> ty::ClosureKind {
         // If this is a local def-id, it should be inserted into the
@@ -171,7 +167,7 @@ impl<'tcx> Tables<'tcx> {
     }
 
     pub fn closure_type(this: &RefCell<Self>,
-                        tcx: &ty::ctxt<'tcx>,
+                        tcx: &TyCtxt<'tcx>,
                         def_id: DefId,
                         substs: &ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
@@ -194,7 +190,7 @@ impl<'tcx> CommonTypes<'tcx> {
            interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>)
            -> CommonTypes<'tcx>
     {
-        let mk = |sty| ctxt::intern_ty(arena, interner, sty);
+        let mk = |sty| TyCtxt::intern_ty(arena, interner, sty);
         CommonTypes {
             bool: mk(TyBool),
             char: mk(TyChar),
@@ -218,7 +214,7 @@ impl<'tcx> CommonTypes<'tcx> {
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
-pub struct ctxt<'tcx> {
+pub struct TyCtxt<'tcx> {
     /// The arenas that types etc are allocated from.
     arenas: &'tcx CtxtArenas<'tcx>,
 
@@ -346,8 +342,12 @@ pub struct ctxt<'tcx> {
     /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
-    /// These caches are used by const_eval when decoding external constants.
-    pub extern_const_statics: RefCell<DefIdMap<NodeId>>,
+    /// Cache used by const_eval when decoding external constants.
+    /// Contains `None` when the constant has been fetched but doesn't exist.
+    /// Constains `Some(expr_id, type)` otherwise.
+    /// `type` is `None` in case it's not a primitive type
+    pub extern_const_statics: RefCell<DefIdMap<Option<(NodeId, Option<Ty<'tcx>>)>>>,
+    /// Cache used by const_eval when decoding extern const fns
     pub extern_const_fns: RefCell<DefIdMap<NodeId>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
@@ -417,7 +417,7 @@ pub struct ctxt<'tcx> {
     pub fragment_infos: RefCell<DefIdMap<Vec<ty::FragmentInfo>>>,
 }
 
-impl<'tcx> ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn type_parameter_def(&self,
                               node_id: NodeId)
                               -> ty::TypeParameterDef<'tcx>
@@ -498,7 +498,7 @@ impl<'tcx> ctxt<'tcx> {
         value.lift_to_tcx(self)
     }
 
-    /// Create a type context and call the closure with a `&ty::ctxt` reference
+    /// Create a type context and call the closure with a `&TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
@@ -512,13 +512,13 @@ impl<'tcx> ctxt<'tcx> {
                                  lang_items: middle::lang_items::LanguageItems,
                                  stability: stability::Index<'tcx>,
                                  f: F) -> R
-                                 where F: FnOnce(&ctxt<'tcx>) -> R
+                                 where F: FnOnce(&TyCtxt<'tcx>) -> R
     {
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
         let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
-        tls::enter(ctxt {
+        tls::enter(TyCtxt {
             arenas: arenas,
             interner: interner,
             substs_interner: RefCell::new(FnvHashMap()),
@@ -577,7 +577,7 @@ impl<'tcx> ctxt<'tcx> {
 
 /// A trait implemented for all X<'a> types which can be safely and
 /// efficiently converted to X<'tcx> as long as they are part of the
-/// provided ty::ctxt<'tcx>.
+/// provided TyCtxt<'tcx>.
 /// This can be done, for example, for Ty<'tcx> or &'tcx Substs<'tcx>
 /// by looking them up in their respective interners.
 /// None is returned if the value or one of the components is not part
@@ -588,12 +588,12 @@ impl<'tcx> ctxt<'tcx> {
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
     type Lifted;
-    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Self::Lifted>;
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Self::Lifted>;
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
-    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<Ty<'tcx>> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
         if let Some(&ty) = tcx.interner.borrow().get(&self.sty) {
             if *self as *const _ == ty as *const _ {
                 return Some(ty);
@@ -605,7 +605,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
-    fn lift_to_tcx(&self, tcx: &ctxt<'tcx>) -> Option<&'tcx Substs<'tcx>> {
+    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<&'tcx Substs<'tcx>> {
         if let Some(&substs) = tcx.substs_interner.borrow().get(*self) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
@@ -617,7 +617,7 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
 
 
 pub mod tls {
-    use middle::ty;
+    use middle::ty::TyCtxt;
 
     use std::cell::Cell;
     use std::fmt;
@@ -638,7 +638,7 @@ pub mod tls {
         })
     }
 
-    pub fn enter<'tcx, F: FnOnce(&ty::ctxt<'tcx>) -> R, R>(tcx: ty::ctxt<'tcx>, f: F) -> R {
+    pub fn enter<'tcx, F: FnOnce(&TyCtxt<'tcx>) -> R, R>(tcx: TyCtxt<'tcx>, f: F) -> R {
         codemap::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
@@ -655,14 +655,14 @@ pub mod tls {
         })
     }
 
-    pub fn with<F: FnOnce(&ty::ctxt) -> R, R>(f: F) -> R {
+    pub fn with<F: FnOnce(&TyCtxt) -> R, R>(f: F) -> R {
         TLS_TCX.with(|tcx| {
             let tcx = tcx.get().unwrap();
-            f(unsafe { &*(tcx as *const ty::ctxt) })
+            f(unsafe { &*(tcx as *const TyCtxt) })
         })
     }
 
-    pub fn with_opt<F: FnOnce(Option<&ty::ctxt>) -> R, R>(f: F) -> R {
+    pub fn with_opt<F: FnOnce(Option<&TyCtxt>) -> R, R>(f: F) -> R {
         if TLS_TCX.with(|tcx| tcx.get().is_some()) {
             with(|v| f(Some(v)))
         } else {
@@ -677,7 +677,7 @@ macro_rules! sty_debug_print {
         // variable names.
         #[allow(non_snake_case)]
         mod inner {
-            use middle::ty;
+            use middle::ty::{self, TyCtxt};
             #[derive(Copy, Clone)]
             struct DebugStat {
                 total: usize,
@@ -686,7 +686,7 @@ macro_rules! sty_debug_print {
                 both_infer: usize,
             }
 
-            pub fn go(tcx: &ty::ctxt) {
+            pub fn go(tcx: &TyCtxt) {
                 let mut total = DebugStat {
                     total: 0,
                     region_infer: 0, ty_infer: 0, both_infer: 0,
@@ -733,12 +733,12 @@ macro_rules! sty_debug_print {
     }}
 }
 
-impl<'tcx> ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     pub fn print_debug_stats(&self) {
         sty_debug_print!(
             self,
-            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyBareFn, TyTrait,
-            TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
+            TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
+            TyTrait, TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
@@ -780,7 +780,7 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
             |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
 }
 
-impl<'tcx> ctxt<'tcx> {
+impl<'tcx> TyCtxt<'tcx> {
     // Type constructors
     pub fn mk_substs(&self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
         if let Some(substs) = self.substs_interner.borrow().get(&substs) {
@@ -795,12 +795,11 @@ impl<'tcx> ctxt<'tcx> {
     /// Create an unsafe fn ty based on a safe fn ty.
     pub fn safe_to_unsafe_fn_ty(&self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
         assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
-        let unsafe_fn_ty_a = self.mk_bare_fn(ty::BareFnTy {
+        self.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: bare_fn.abi,
             sig: bare_fn.sig.clone()
-        });
-        self.mk_fn(None, unsafe_fn_ty_a)
+        })
     }
 
     pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
@@ -854,7 +853,7 @@ impl<'tcx> ctxt<'tcx> {
     // Interns a type/name combination, stores the resulting box in cx.interner,
     // and returns the box as cast to an unsafe ptr (see comments for Ty above).
     pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
-        ctxt::intern_ty(&self.arenas.type_, &self.interner, st)
+        TyCtxt::intern_ty(&self.arenas.type_, &self.interner, st)
     }
 
     pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
@@ -949,26 +948,14 @@ impl<'tcx> ctxt<'tcx> {
         self.mk_ty(TyBool)
     }
 
-    pub fn mk_fn(&self,
-                 opt_def_id: Option<DefId>,
-                 fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyBareFn(opt_def_id, fty))
+    pub fn mk_fn_def(&self, def_id: DefId,
+                     substs: &'tcx Substs<'tcx>,
+                     fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnDef(def_id, substs, self.mk_bare_fn(fty)))
     }
 
-    pub fn mk_ctor_fn(&self,
-                      def_id: DefId,
-                      input_tys: &[Ty<'tcx>],
-                      output: Ty<'tcx>) -> Ty<'tcx> {
-        let input_args = input_tys.iter().cloned().collect();
-        self.mk_fn(Some(def_id), self.mk_bare_fn(BareFnTy {
-            unsafety: hir::Unsafety::Normal,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: input_args,
-                output: ty::FnConverging(output),
-                variadic: false
-            })
-        }))
+    pub fn mk_fn_ptr(&self, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnPtr(self.mk_bare_fn(fty)))
     }
 
     pub fn mk_trait(&self,

@@ -30,6 +30,7 @@ mod test {
     mod warn {
         #![warn(bad_style)]
         //~^ NOTE lint level defined here
+        //~| NOTE lint level defined here
 
         fn CamelCase() {} //~ WARN function `CamelCase` should have a snake case name
 

@@ -23,7 +23,7 @@ use super::unify_key;
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use rustc_data_structures::unify::{self, UnificationTable};
 use middle::free_region::FreeRegionMap;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::{BoundRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
@@ -187,7 +187,7 @@ impl SameRegions {
 pub type CombineMap = FnvHashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     // Constraints of the form `A <= B` introduced by the region
@@ -250,7 +250,7 @@ pub struct RegionSnapshot {
 }
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> RegionVarBindings<'a, 'tcx> {
+    pub fn new(tcx: &'a TyCtxt<'tcx>) -> RegionVarBindings<'a, 'tcx> {
         RegionVarBindings {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
@@ -1358,7 +1358,7 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
 }
 
 impl<'tcx> GenericKind<'tcx> {
-    pub fn to_ty(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Projection(ref p) => tcx.mk_projection(p.trait_ref.clone(), p.item_name),
@@ -1420,7 +1420,7 @@ impl VerifyBound {
     }
 
     fn is_met<'tcx>(&self,
-                    tcx: &ty::ctxt<'tcx>,
+                    tcx: &TyCtxt<'tcx>,
                     free_regions: &FreeRegionMap,
                     var_values: &Vec<VarValue>,
                     min: ty::Region)

@@ -72,6 +72,7 @@
 #![feature(reflect)]
 #![feature(unwind_attributes)]
 #![feature(repr_simd, platform_intrinsics)]
+#![feature(rustc_attrs)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 

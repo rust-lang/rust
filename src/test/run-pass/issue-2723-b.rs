@@ -10,8 +10,6 @@
 
 // aux-build:issue_2723_a.rs
 
-// pretty-expanded FIXME #23616
-
 extern crate issue_2723_a;
 use issue_2723_a::f;
 

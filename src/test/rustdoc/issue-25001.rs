@@ -17,15 +17,15 @@ pub trait Bar {
     fn quux(self);
 }
 
-impl<T> Foo<T> {
+impl Foo<u8> {
     // @has - '//*[@id="method.pass"]//code' 'fn pass()'
     pub fn pass() {}
 }
-impl<T> Foo<T> {
+impl Foo<u16> {
     // @has - '//*[@id="method.pass-1"]//code' 'fn pass() -> usize'
     pub fn pass() -> usize { 42 }
 }
-impl<T> Foo<T> {
+impl Foo<u32> {
     // @has - '//*[@id="method.pass-2"]//code' 'fn pass() -> isize'
     pub fn pass() -> isize { 42 }
 }

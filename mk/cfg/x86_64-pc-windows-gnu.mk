@@ -25,5 +25,3 @@ CFG_GNU_TRIPLE_x86_64-pc-windows-gnu := x86_64-w64-mingw32
 CFG_THIRD_PARTY_OBJECTS_x86_64-pc-windows-gnu := crt2.o dllcrt2.o
 CFG_INSTALLED_OBJECTS_x86_64-pc-windows-gnu := crt2.o dllcrt2.o rsbegin.o rsend.o
 CFG_RUSTRT_HAS_STARTUP_OBJS_x86_64-pc-windows-gnu := 1
-# FIXME(#31030) - there's not a great reason to disable jemalloc here
-CFG_DISABLE_JEMALLOC_x86_64-pc-windows-gnu := 1

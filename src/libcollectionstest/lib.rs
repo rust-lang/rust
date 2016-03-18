@@ -21,19 +21,16 @@
 #![feature(fn_traits)]
 #![feature(enumset)]
 #![feature(iter_arith)]
+#![feature(map_entry_keys)]
 #![feature(pattern)]
 #![feature(rand)]
-#![feature(rustc_private)]
 #![feature(set_recovery)]
-#![feature(slice_bytes)]
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-
-#[macro_use] extern crate log;
 
 extern crate collections;
 extern crate test;

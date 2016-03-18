@@ -147,9 +147,10 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
 
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<'tcx, N> {
     fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        let substs = self.substs.fold_with(folder);
         traits::VtableImplData {
             impl_def_id: self.impl_def_id,
-            substs: self.substs.fold_with(folder),
+            substs: folder.tcx().mk_substs(substs),
             nested: self.nested.fold_with(folder),
         }
     }

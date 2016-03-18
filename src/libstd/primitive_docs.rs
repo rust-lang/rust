@@ -27,11 +27,11 @@
 /// assert!(!bool_val);
 /// ```
 ///
-/// [`assert!`]: std/macro.assert!.html
-/// [`if` conditionals]: ../../book/if.html
-/// [`BitAnd`]: ../ops/trait.BitAnd.html
-/// [`BitOr`]: ../ops/trait.BitOr.html
-/// [`Not`]: ../ops/trait.Not.html
+/// [`assert!`]: macro.assert!.html
+/// [`if` conditionals]: ../book/if.html
+/// [`BitAnd`]: ops/trait.BitAnd.html
+/// [`BitOr`]: ops/trait.BitOr.html
+/// [`Not`]: ops/trait.Not.html
 ///
 /// # Examples
 ///
@@ -54,7 +54,7 @@
 /// }
 /// ```
 ///
-/// Also, since `bool` implements the [`Copy`](../marker/trait.Copy.html) trait, we don't
+/// Also, since `bool` implements the [`Copy`](marker/trait.Copy.html) trait, we don't
 /// have to worry about the move semantics (just like the integer and float primitives).
 mod prim_bool { }
 
@@ -370,7 +370,7 @@ mod prim_slice { }
 /// // story has nineteen bytes
 /// assert_eq!(19, len);
 ///
-/// // We can re-build a str out of ptr and len. This is all unsafe becuase
+/// // We can re-build a str out of ptr and len. This is all unsafe because
 /// // we are responsible for making sure the two components are valid:
 /// let s = unsafe {
 ///     // First, we build a &[u8]...
@@ -421,7 +421,7 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
-/// For more about tuples, see [the book](../../book/primitive-types.html#tuples).
+/// For more about tuples, see [the book](../book/primitive-types.html#tuples).
 ///
 /// # Trait implementations
 ///
@@ -437,14 +437,14 @@ mod prim_str { }
 /// * [`Default`]
 /// * [`Hash`]
 ///
-/// [`Clone`]: ../clone/trait.Clone.html
-/// [`PartialEq`]: ../cmp/trait.PartialEq.html
-/// [`Eq`]: ../cmp/trait.Eq.html
-/// [`PartialOrd`]: ../cmp/trait.PartialOrd.html
-/// [`Ord`]: ../cmp/trait.Ord.html
-/// [`Debug`]: ../fmt/trait.Debug.html
-/// [`Default`]: ../default/trait.Default.html
-/// [`Hash`]: ../hash/trait.Hash.html
+/// [`Clone`]: clone/trait.Clone.html
+/// [`PartialEq`]: cmp/trait.PartialEq.html
+/// [`Eq`]: cmp/trait.Eq.html
+/// [`PartialOrd`]: cmp/trait.PartialOrd.html
+/// [`Ord`]: cmp/trait.Ord.html
+/// [`Debug`]: fmt/trait.Debug.html
+/// [`Default`]: default/trait.Default.html
+/// [`Hash`]: hash/trait.Hash.html
 ///
 /// Due to a temporary restriction in Rust's type system, these traits are only
 /// implemented on tuples of arity 32 or less. In the future, this may change.

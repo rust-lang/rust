@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::subst;
-use middle::ty::{self, Ty};
+use middle::ty::{self, Ty, TyCtxt};
 
 use std::collections::HashSet;
 
@@ -72,7 +72,8 @@ fn parameters_for_type_shallow<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
             parameters_for_regions_in_substs(&pi.trait_ref.substs),
         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
         ty::TyFloat(..) | ty::TyBox(..) | ty::TyStr |
-        ty::TyArray(..) | ty::TySlice(..) | ty::TyBareFn(..) |
+        ty::TyArray(..) | ty::TySlice(..) |
+        ty::TyFnDef(..) | ty::TyFnPtr(_) |
         ty::TyTuple(..) | ty::TyRawPtr(..) |
         ty::TyInfer(..) | ty::TyClosure(..) | ty::TyError =>
             vec![]
@@ -93,7 +94,7 @@ fn parameters_for_region(region: &ty::Region) -> Option<Parameter> {
     }
 }
 
-pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
+pub fn identify_constrained_type_params<'tcx>(_tcx: &TyCtxt<'tcx>,
                                               predicates: &[ty::Predicate<'tcx>],
                                               impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                               input_parameters: &mut HashSet<Parameter>)
@@ -143,7 +144,7 @@ pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
 /// which is determined by 1, which requires `U`, that is determined
 /// by 0. I should probably pick a less tangled example, but I can't
 /// think of any.
-pub fn setup_constraining_predicates<'tcx>(_tcx: &ty::ctxt<'tcx>,
+pub fn setup_constraining_predicates<'tcx>(_tcx: &TyCtxt<'tcx>,
                                            predicates: &mut [ty::Predicate<'tcx>],
                                            impl_trait_ref: Option<ty::TraitRef<'tcx>>,
                                            input_parameters: &mut HashSet<Parameter>)

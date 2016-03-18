@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait I {}
-type K = I;
+type K = I; //~ NOTE: type defined here
 impl K for isize {} //~ ERROR: `K` is not a trait
 //~^ NOTE: `type` aliases cannot be used for traits
 fn main() {}

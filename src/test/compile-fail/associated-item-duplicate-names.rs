@@ -19,9 +19,9 @@ trait Foo {
 
 impl Foo for () {
     type Ty = ();
-    type Ty = usize; //~ ERROR duplicate associated type
+    type Ty = usize; //~ ERROR duplicate definitions
     const BAR: u32 = 7;
-    const BAR: u32 = 8; //~ ERROR duplicate associated constant
+    const BAR: u32 = 8; //~ ERROR duplicate definitions
 }
 
 fn main() {

@@ -24,8 +24,7 @@ use middle::def::Def;
 use middle::def_id::{DefId};
 use middle::infer;
 use middle::mem_categorization as mc;
-use middle::ty;
-use middle::ty::adjustment;
+use middle::ty::{self, TyCtxt, adjustment};
 
 use rustc_front::hir::{self, PatKind};
 
@@ -210,7 +209,7 @@ enum OverloadedCallType {
 }
 
 impl OverloadedCallType {
-    fn from_trait_id(tcx: &ty::ctxt, trait_id: DefId)
+    fn from_trait_id(tcx: &TyCtxt, trait_id: DefId)
                      -> OverloadedCallType {
         for &(maybe_function_trait, overloaded_call_type) in &[
             (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
@@ -228,7 +227,7 @@ impl OverloadedCallType {
         tcx.sess.bug("overloaded call didn't map to known function trait")
     }
 
-    fn from_method_id(tcx: &ty::ctxt, method_id: DefId)
+    fn from_method_id(tcx: &TyCtxt, method_id: DefId)
                       -> OverloadedCallType {
         let method = tcx.impl_or_trait_item(method_id);
         OverloadedCallType::from_trait_id(tcx, method.container().id())
@@ -307,7 +306,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         }
     }
 
-    fn tcx(&self) -> &'t ty::ctxt<'tcx> {
+    fn tcx(&self) -> &'t TyCtxt<'tcx> {
         self.typer.tcx
     }
 
@@ -399,11 +398,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
             }
 
-            hir::ExprRange(ref start, ref end) => {
-                start.as_ref().map(|e| self.consume_expr(&e));
-                end.as_ref().map(|e| self.consume_expr(&e));
-            }
-
             hir::ExprCall(ref callee, ref args) => {    // callee(args)
                 self.walk_callee(expr, &callee);
                 self.consume_exprs(args);
@@ -455,23 +449,20 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
             }
 
-            hir::ExprInlineAsm(ref ia) => {
-                for &(_, ref input) in &ia.inputs {
-                    self.consume_expr(&input);
-                }
-
-                for output in &ia.outputs {
-                    if output.is_indirect {
-                        self.consume_expr(&output.expr);
+            hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+                for (o, output) in ia.outputs.iter().zip(outputs) {
+                    if o.is_indirect {
+                        self.consume_expr(output);
                     } else {
-                        self.mutate_expr(expr, &output.expr,
-                                         if output.is_rw {
+                        self.mutate_expr(expr, output,
+                                         if o.is_rw {
                                              MutateMode::WriteAndRead
                                          } else {
                                              MutateMode::JustWrite
                                          });
                     }
                 }
+                self.consume_exprs(inputs);
             }
 
             hir::ExprBreak(..) |
@@ -562,7 +553,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                callee, callee_ty);
         let call_scope = self.tcx().region_maps.node_extent(call.id);
         match callee_ty.sty {
-            ty::TyBareFn(..) => {
+            ty::TyFnDef(..) | ty::TyFnPtr(_) => {
                 self.consume_expr(callee);
             }
             ty::TyError => { }

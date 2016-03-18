@@ -20,7 +20,7 @@ struct Baz;
 
 impl Foo for Baz {
     type Bar = i16;
-    type Bar = u16; //~ ERROR duplicate associated type
+    type Bar = u16; //~ ERROR duplicate definitions
 }
 
 fn main() {

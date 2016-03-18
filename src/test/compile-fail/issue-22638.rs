@@ -17,7 +17,7 @@ struct A (B);
 
 impl A {
     pub fn matches<F: Fn()>(&self, f: &F) {
-        //~^ ERROR reached the recursion limit during monomorphization
+        //~^ ERROR reached the recursion limit while instantiating `A::matches::<[closure
         let &A(ref term) = self;
         term.matches(f);
     }

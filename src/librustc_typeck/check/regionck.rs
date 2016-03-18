@@ -91,7 +91,7 @@ use middle::mem_categorization::Categorization;
 use middle::region::{self, CodeExtent};
 use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{self, Ty, MethodCall, TypeFoldable};
+use middle::ty::{self, Ty, TyCtxt, MethodCall, TypeFoldable};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};
 use middle::pat_util;
 use middle::ty::adjustment;
@@ -208,7 +208,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         }
     }
 
-    pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
         self.fcx.ccx.tcx
     }
 
@@ -881,7 +881,7 @@ fn constrain_callee(rcx: &mut Rcx,
                     _callee_expr: &hir::Expr) {
     let callee_ty = rcx.resolve_node_type(callee_id);
     match callee_ty.sty {
-        ty::TyBareFn(..) => { }
+        ty::TyFnDef(..) | ty::TyFnPtr(_) => { }
         _ => {
             // this should not happen, but it does if the program is
             // erroneous

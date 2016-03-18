@@ -45,10 +45,6 @@ fn test_simple() {
     assert_eq!(d.len(), 3);
     d.push_front(1);
     assert_eq!(d.len(), 4);
-    debug!("{}", d[0]);
-    debug!("{}", d[1]);
-    debug!("{}", d[2]);
-    debug!("{}", d[3]);
     assert_eq!(d[0], 1);
     assert_eq!(d[1], 2);
     assert_eq!(d[2], 3);

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use borrow::{Borrow, Cow, ToOwned};
-use ffi::CString;
 use fmt::{self, Debug};
 use mem;
 use string::String;
@@ -22,7 +21,7 @@ use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};
 
 /// A type that can represent owned, mutable platform-native strings, but is
-/// cheaply interconvertable with Rust strings.
+/// cheaply inter-convertible with Rust strings.
 ///
 /// The need for this type arises from the fact that:
 ///
@@ -54,22 +53,6 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
-    }
-
-    /// Constructs an `OsString` from a byte sequence.
-    ///
-    /// # Platform behavior
-    ///
-    /// On Unix systems, any byte sequence can be successfully
-    /// converted into an `OsString`.
-    ///
-    /// On Windows system, only UTF-8 byte sequences will successfully
-    /// convert; non UTF-8 data will produce `None`.
-    #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
-    #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
-                       since = "1.6.0")]
-    pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
-        Self::_from_bytes(bytes.into())
     }
 
     #[cfg(unix)]
@@ -272,7 +255,7 @@ impl OsStr {
         unsafe { mem::transmute(inner) }
     }
 
-    /// Yields a `&str` slice if the `OsStr` is valid unicode.
+    /// Yields a `&str` slice if the `OsStr` is valid Unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -292,41 +275,6 @@ impl OsStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
-    }
-
-    /// Yields this `OsStr` as a byte slice.
-    ///
-    /// # Platform behavior
-    ///
-    /// On Unix systems, this is a no-op.
-    ///
-    /// On Windows systems, this returns `None` unless the `OsStr` is
-    /// valid unicode, in which case it produces UTF-8-encoded
-    /// data. This may entail checking validity.
-    #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
-    #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
-                       since = "1.6.0")]
-    pub fn to_bytes(&self) -> Option<&[u8]> {
-        if cfg!(windows) {
-            self.to_str().map(|s| s.as_bytes())
-        } else {
-            Some(self.bytes())
-        }
-    }
-
-    /// Creates a `CString` containing this `OsStr` data.
-    ///
-    /// Fails if the `OsStr` contains interior nulls.
-    ///
-    /// This is a convenience for creating a `CString` from
-    /// `self.to_bytes()`, and inherits the platform behavior of the
-    /// `to_bytes` method.
-    #[unstable(feature = "convert", reason = "recently added", issue = "27704")]
-    #[rustc_deprecated(reason = "RFC was closed, hides subtle Windows semantics",
-                       since = "1.6.0")]
-    #[allow(deprecated)]
-    pub fn to_cstring(&self) -> Option<CString> {
-        self.to_bytes().and_then(|b| CString::new(b).ok())
     }
 
     /// Checks whether the `OsStr` is empty.

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn std() {}
-mod std {}    //~ ERROR the name `std` conflicts with an external crate
+mod std {}    //~ ERROR an extern crate named `std` has already been imported
 
 fn main() {
 }

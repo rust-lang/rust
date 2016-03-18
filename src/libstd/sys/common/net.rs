@@ -11,19 +11,34 @@
 use prelude::v1::*;
 
 use cmp;
-use ffi::{CStr, CString};
+use ffi::CString;
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc::{c_int, c_char, c_void};
+use libc::{c_int, c_void};
 use mem;
-#[allow(deprecated)]
-use net::{SocketAddr, Shutdown, IpAddr};
+use net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use ptr;
-use str::from_utf8;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
+
+#[cfg(any(target_os = "dragonfly", target_os = "freebsd",
+          target_os = "ios", target_os = "macos",
+          target_os = "openbsd", target_os = "netbsd"))]
+use sys::net::netc::IPV6_JOIN_GROUP as IPV6_ADD_MEMBERSHIP;
+#[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
+              target_os = "ios", target_os = "macos",
+          target_os = "openbsd", target_os = "netbsd")))]
+use sys::net::netc::IPV6_ADD_MEMBERSHIP;
+#[cfg(any(target_os = "dragonfly", target_os = "freebsd",
+          target_os = "ios", target_os = "macos",
+          target_os = "openbsd", target_os = "netbsd"))]
+use sys::net::netc::IPV6_LEAVE_GROUP as IPV6_DROP_MEMBERSHIP;
+#[cfg(not(any(target_os = "dragonfly", target_os = "freebsd",
+              target_os = "ios", target_os = "macos",
+          target_os = "openbsd", target_os = "netbsd")))]
+use sys::net::netc::IPV6_DROP_MEMBERSHIP;
 
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
@@ -84,6 +99,16 @@ fn sockaddr_to_addr(storage: &c::sockaddr_storage,
     }
 }
 
+#[cfg(target_os = "android")]
+fn to_ipv6mr_interface(value: u32) -> c_int {
+    value as c_int
+}
+
+#[cfg(not(target_os = "android"))]
+fn to_ipv6mr_interface(value: u32) -> ::libc::c_uint {
+    value as ::libc::c_uint
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // get_host_addresses
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,34 +149,6 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
         try!(cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), ptr::null(),
                                    &mut res)));
         Ok(LookupHost { original: res, cur: res })
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// lookup_addr
-////////////////////////////////////////////////////////////////////////////////
-
-#[allow(deprecated)]
-pub fn lookup_addr(addr: &IpAddr) -> io::Result<String> {
-    init();
-
-    let saddr = SocketAddr::new(*addr, 0);
-    let (inner, len) = saddr.into_inner();
-    let mut hostbuf = [0 as c_char; c::NI_MAXHOST as usize];
-
-    let data = unsafe {
-        try!(cvt_gai(c::getnameinfo(inner, len,
-                                    hostbuf.as_mut_ptr(),
-                                    c::NI_MAXHOST,
-                                    ptr::null_mut(), 0, 0)));
-
-        CStr::from_ptr(hostbuf.as_ptr())
-    };
-
-    match from_utf8(data.to_bytes()) {
-        Ok(name) => Ok(name.to_owned()),
-        Err(_) => Err(io::Error::new(io::ErrorKind::Other,
-                                     "failed to lookup address information"))
     }
 }
 
@@ -198,6 +195,10 @@ impl TcpStream {
         self.inner.read(buf)
     }
 
+    pub fn read_to_end(&self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
         let ret = try!(cvt(unsafe {
@@ -227,6 +228,45 @@ impl TcpStream {
 
     pub fn duplicate(&self) -> io::Result<TcpStream> {
         self.inner.duplicate().map(|s| TcpStream { inner: s })
+    }
+
+    pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
+        self.inner.set_nodelay(nodelay)
+    }
+
+    pub fn nodelay(&self) -> io::Result<bool> {
+        self.inner.nodelay()
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL));
+        Ok(raw as u32)
+    }
+
+    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
+    }
+
+    pub fn only_v6(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY));
+        Ok(raw != 0)
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.inner.set_nonblocking(nonblocking)
     }
 }
 
@@ -306,6 +346,37 @@ impl TcpListener {
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         self.inner.duplicate().map(|s| TcpListener { inner: s })
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL));
+        Ok(raw as u32)
+    }
+
+    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
+    }
+
+    pub fn only_v6(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY));
+        Ok(raw != 0)
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.inner.set_nonblocking(nonblocking)
     }
 }
 
@@ -400,6 +471,129 @@ impl UdpSocket {
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.inner.timeout(c::SO_SNDTIMEO)
+    }
+
+    pub fn set_broadcast(&self, broadcast: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST, broadcast as c_int)
+    }
+
+    pub fn broadcast(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_BROADCAST));
+        Ok(raw != 0)
+    }
+
+    pub fn set_multicast_loop_v4(&self, multicast_loop_v4: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP, multicast_loop_v4 as c_int)
+    }
+
+    pub fn multicast_loop_v4(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_LOOP));
+        Ok(raw != 0)
+    }
+
+    pub fn set_multicast_ttl_v4(&self, multicast_ttl_v4: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL, multicast_ttl_v4 as c_int)
+    }
+
+    pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_MULTICAST_TTL));
+        Ok(raw as u32)
+    }
+
+    pub fn set_multicast_loop_v6(&self, multicast_loop_v6: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP, multicast_loop_v6 as c_int)
+    }
+
+    pub fn multicast_loop_v6(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_MULTICAST_LOOP));
+        Ok(raw != 0)
+    }
+
+    pub fn join_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
+                         -> io::Result<()> {
+        let mreq = c::ip_mreq {
+            imr_multiaddr: *multiaddr.as_inner(),
+            imr_interface: *interface.as_inner(),
+        };
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_ADD_MEMBERSHIP, mreq)
+    }
+
+    pub fn join_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
+                         -> io::Result<()> {
+        let mreq = c::ipv6_mreq {
+            ipv6mr_multiaddr: *multiaddr.as_inner(),
+            ipv6mr_interface: to_ipv6mr_interface(interface),
+        };
+        setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, mreq)
+    }
+
+    pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr)
+                          -> io::Result<()> {
+        let mreq = c::ip_mreq {
+            imr_multiaddr: *multiaddr.as_inner(),
+            imr_interface: *interface.as_inner(),
+        };
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_DROP_MEMBERSHIP, mreq)
+    }
+
+    pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32)
+                          -> io::Result<()> {
+        let mreq = c::ipv6_mreq {
+            ipv6mr_multiaddr: *multiaddr.as_inner(),
+            ipv6mr_interface: to_ipv6mr_interface(interface),
+        };
+        setsockopt(&self.inner, c::IPPROTO_IPV6, IPV6_DROP_MEMBERSHIP, mreq)
+    }
+
+    pub fn set_ttl(&self, ttl: u32) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL, ttl as c_int)
+    }
+
+    pub fn ttl(&self) -> io::Result<u32> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IP, c::IP_TTL));
+        Ok(raw as u32)
+    }
+
+    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
+        setsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY, only_v6 as c_int)
+    }
+
+    pub fn only_v6(&self) -> io::Result<bool> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::IPPROTO_IPV6, c::IPV6_V6ONLY));
+        Ok(raw != 0)
+    }
+
+    pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+        let raw: c_int = try!(getsockopt(&self.inner, c::SOL_SOCKET, c::SO_ERROR));
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
+    }
+
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
+        self.inner.set_nonblocking(nonblocking)
+    }
+
+    pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.read(buf)
+    }
+
+    pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
+        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        let ret = try!(cvt(unsafe {
+            c::send(*self.inner.as_inner(),
+                    buf.as_ptr() as *const c_void,
+                    len,
+                    0)
+        }));
+        Ok(ret as usize)
+    }
+
+    pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
+        let (addrp, len) = addr.into_inner();
+        cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(|_| ())
     }
 }
 

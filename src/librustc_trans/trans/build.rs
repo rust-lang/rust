@@ -12,7 +12,7 @@
 #![allow(non_snake_case)]
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect, AttrBuilder};
+use llvm::{AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
 use llvm::{Opcode, IntPredicate, RealPredicate};
 use llvm::{ValueRef, BasicBlockRef};
 use trans::common::*;
@@ -20,6 +20,7 @@ use syntax::codemap::Span;
 
 use trans::builder::Builder;
 use trans::type_::Type;
+use trans::value::Value;
 use trans::debuginfo::DebugLoc;
 
 use libc::{c_uint, c_char};
@@ -138,7 +139,6 @@ pub fn Invoke(cx: Block,
               args: &[ValueRef],
               then: BasicBlockRef,
               catch: BasicBlockRef,
-              attributes: Option<AttrBuilder>,
               debug_loc: DebugLoc)
               -> ValueRef {
     if cx.unreachable.get() {
@@ -146,12 +146,14 @@ pub fn Invoke(cx: Block,
     }
     check_not_terminated(cx);
     terminate(cx, "Invoke");
-    debug!("Invoke({} with arguments ({}))",
-           cx.val_to_string(fn_),
-           args.iter().map(|a| cx.val_to_string(*a)).collect::<Vec<String>>().join(", "));
+    debug!("Invoke({:?} with arguments ({}))",
+           Value(fn_),
+           args.iter().map(|a| {
+                format!("{:?}", Value(*a))
+           }).collect::<Vec<String>>().join(", "));
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad().and_then(|b| b.bundle());
-    B(cx).invoke(fn_, args, then, catch, bundle, attributes)
+    B(cx).invoke(fn_, args, then, catch, bundle)
 }
 
 pub fn Unreachable(cx: Block) {
@@ -908,7 +910,6 @@ pub fn InlineAsmCall(cx: Block, asm: *const c_char, cons: *const c_char,
 pub fn Call(cx: Block,
             fn_: ValueRef,
             args: &[ValueRef],
-            attributes: Option<AttrBuilder>,
             debug_loc: DebugLoc)
             -> ValueRef {
     if cx.unreachable.get() {
@@ -916,22 +917,7 @@ pub fn Call(cx: Block,
     }
     debug_loc.apply(cx.fcx);
     let bundle = cx.lpad.get().and_then(|b| b.bundle());
-    B(cx).call(fn_, args, bundle, attributes)
-}
-
-pub fn CallWithConv(cx: Block,
-                    fn_: ValueRef,
-                    args: &[ValueRef],
-                    conv: CallConv,
-                    attributes: Option<AttrBuilder>,
-                    debug_loc: DebugLoc)
-                    -> ValueRef {
-    if cx.unreachable.get() {
-        return _UndefReturn(cx, fn_);
-    }
-    debug_loc.apply(cx.fcx);
-    let bundle = cx.lpad.get().and_then(|b| b.bundle());
-    B(cx).call_with_conv(fn_, args, conv, bundle, attributes)
+    B(cx).call(fn_, args, bundle)
 }
 
 pub fn AtomicFence(cx: Block, order: AtomicOrdering, scope: SynchronizationScope) {

@@ -8,18 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
-
-use dynamic_lib::DynamicLibrary;
 use io::prelude::*;
 use io;
-use sys::c;
 use libc::c_void;
-
+use sys::c;
+use sys::dynamic_lib::DynamicLibrary;
 use sys_common::gnu::libbacktrace;
 
-pub fn print(w: &mut Write, i: isize, addr: u64, _: &DynamicLibrary, _: c::HANDLE)
-        -> io::Result<()> {
+pub fn print(w: &mut Write,
+             i: isize,
+             addr: u64,
+             _process: c::HANDLE,
+             _dbghelp: &DynamicLibrary)
+              -> io::Result<()> {
     let addr = addr as usize as *mut c_void;
     libbacktrace::print(w, i, addr, addr)
 }

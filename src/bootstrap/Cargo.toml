@@ -15,6 +15,10 @@ path = "main.rs"
 name = "rustc"
 path = "rustc.rs"
 
+[[bin]]
+name = "rustdoc"
+path = "rustdoc.rs"
+
 [dependencies]
 build_helper = { path = "../build_helper" }
 cmake = "0.1.10"

@@ -63,19 +63,17 @@ use alloc::boxed::Box;
 use alloc::heap::EMPTY;
 use alloc::raw_vec::RawVec;
 use borrow::ToOwned;
+use borrow::Cow;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::intrinsics::{arith_offset, assume, needs_drop};
+use core::intrinsics::{arith_offset, assume};
 use core::iter::FromIterator;
 use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ops;
 use core::ptr;
 use core::slice;
-
-#[allow(deprecated)]
-use borrow::{Cow, IntoCow};
 
 use super::range::RangeArgument;
 
@@ -497,10 +495,11 @@ impl<T> Vec<T> {
         unsafe {
             // drop any extra elements
             while len < self.len {
-                // decrement len before the read(), so a panic on Drop doesn't
-                // re-drop the just-failed value.
+                // decrement len before the drop_in_place(), so a panic on Drop
+                // doesn't re-drop the just-failed value.
                 self.len -= 1;
-                ptr::read(self.get_unchecked(self.len));
+                let len = self.len;
+                ptr::drop_in_place(self.get_unchecked_mut(len));
             }
         }
     }
@@ -966,17 +965,6 @@ impl<T: Clone> Vec<T> {
         }
     }
 
-    #[allow(missing_docs)]
-    #[inline]
-    #[unstable(feature = "vec_push_all",
-               reason = "likely to be replaced by a more optimized extend",
-               issue = "27744")]
-    #[rustc_deprecated(reason = "renamed to extend_from_slice",
-                       since = "1.6.0")]
-    pub fn push_all(&mut self, other: &[T]) {
-        self.extend_from_slice(other)
-    }
-
     /// Appends all elements in a slice to the `Vec`.
     ///
     /// Iterates over the slice `other`, clones each element, and then appends
@@ -1225,6 +1213,24 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
         self
     }
 }
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::Index<ops::RangeInclusive<usize>> for Vec<T> {
+    type Output = [T];
+
+    #[inline]
+    fn index(&self, index: ops::RangeInclusive<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::Index<ops::RangeToInclusive<usize>> for Vec<T> {
+    type Output = [T];
+
+    #[inline]
+    fn index(&self, index: ops::RangeToInclusive<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
@@ -1252,6 +1258,20 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
         self
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::IndexMut<ops::RangeInclusive<usize>> for Vec<T> {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+}
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> ops::IndexMut<ops::RangeToInclusive<usize>> for Vec<T> {
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 
@@ -1471,13 +1491,8 @@ impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         if self.buf.unsafe_no_drop_flag_needs_drop() {
             unsafe {
-                // The branch on needs_drop() is an -O1 performance optimization.
-                // Without the branch, dropping Vec<u8> takes linear time.
-                if needs_drop::<T>() {
-                    for x in self.iter_mut() {
-                        ptr::drop_in_place(x);
-                    }
-                }
+                // use drop for [T]
+                ptr::drop_in_place(&mut self[..]);
             }
         }
         // RawVec handles deallocation
@@ -1567,22 +1582,6 @@ impl<'a, T: Clone> From<Vec<T>> for Cow<'a, [T]> {
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     fn from_iter<I: IntoIterator<Item = T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
-    fn into_cow(self) -> Cow<'a, [T]> {
-        Cow::Owned(self)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
-    fn into_cow(self) -> Cow<'a, [T]> {
-        Cow::Borrowed(self)
     }
 }
 

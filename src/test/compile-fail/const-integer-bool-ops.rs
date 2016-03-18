@@ -8,32 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const X: usize = 42 && 39; //~ ERROR: can't do this op on unsigned integrals
+const X: usize = 42 && 39; //~ ERROR: can't do this op on integrals
 const ARR: [i32; X] = [99; 34]; //~ NOTE: for array length here
 
-const X1: usize = 42 || 39; //~ ERROR: can't do this op on unsigned integrals
+const X1: usize = 42 || 39; //~ ERROR: can't do this op on integrals
 const ARR1: [i32; X1] = [99; 47]; //~ NOTE: for array length here
 
-// FIXME: the error should be `on signed integrals`
-const X2: usize = -42 || -39; //~ ERROR: can't do this op on unsigned integrals
+const X2: usize = -42 || -39; //~ ERROR: unary negation of unsigned integer
 const ARR2: [i32; X2] = [99; 18446744073709551607]; //~ NOTE: for array length here
 
-// FIXME: the error should be `on signed integrals`
-const X3: usize = -42 && -39; //~ ERROR: can't do this op on unsigned integrals
+const X3: usize = -42 && -39; //~ ERROR: unary negation of unsigned integer
 const ARR3: [i32; X3] = [99; 6]; //~ NOTE: for array length here
 
 const Y: usize = 42.0 == 42.0;
-const ARRR: [i32; Y] = [99; 1]; //~ ERROR: expected constant integer expression for array length
+const ARRR: [i32; Y] = [99; 1]; //~ ERROR: expected usize value for array length
 const Y1: usize = 42.0 >= 42.0;
-const ARRR1: [i32; Y] = [99; 1]; //~ ERROR: expected constant integer expression for array length
+const ARRR1: [i32; Y] = [99; 1]; //~ ERROR: expected usize value for array length
 const Y2: usize = 42.0 <= 42.0;
-const ARRR2: [i32; Y] = [99; 1]; //~ ERROR: expected constant integer expression for array length
+const ARRR2: [i32; Y] = [99; 1]; //~ ERROR: expected usize value for array length
 const Y3: usize = 42.0 > 42.0;
-const ARRR3: [i32; Y] = [99; 0]; //~ ERROR: expected constant integer expression for array length
+const ARRR3: [i32; Y] = [99; 0]; //~ ERROR: expected usize value for array length
 const Y4: usize = 42.0 < 42.0;
-const ARRR4: [i32; Y] = [99; 0]; //~ ERROR: expected constant integer expression for array length
+const ARRR4: [i32; Y] = [99; 0]; //~ ERROR: expected usize value for array length
 const Y5: usize = 42.0 != 42.0;
-const ARRR5: [i32; Y] = [99; 0]; //~ ERROR: expected constant integer expression for array length
+const ARRR5: [i32; Y] = [99; 0]; //~ ERROR: expected usize value for array length
 
 fn main() {
     let _ = ARR;

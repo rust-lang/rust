@@ -30,7 +30,6 @@ pub fn mtime(path: &Path) -> FileTime {
     }).unwrap_or(FileTime::zero())
 }
 
-#[allow(dead_code)] // this will be used soon
 pub fn cp_r(src: &Path, dst: &Path) {
     for f in t!(fs::read_dir(src)) {
         let f = t!(f);

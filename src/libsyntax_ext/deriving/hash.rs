@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
@@ -26,7 +27,10 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
 
     let path = Path::new_(pathvec_std!(cx, core::hash::Hash), None,
                           vec!(), true);
-    let arg = Path::new_local("__H");
+
+    let typaram = &*deriving::hygienic_type_parameter(item, "__H");
+
+    let arg = Path::new_local(typaram);
     let hash_trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -39,7 +43,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                 name: "hash",
                 generics: LifetimeBounds {
                     lifetimes: Vec::new(),
-                    bounds: vec![("__H",
+                    bounds: vec![(typaram,
                                   vec![path_std!(cx, core::hash::Hasher)])],
                 },
                 explicit_self: borrowed_explicit_self(),

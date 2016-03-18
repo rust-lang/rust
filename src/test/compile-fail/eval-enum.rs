@@ -10,7 +10,8 @@
 
 enum test {
     div_zero = 1/0, //~ERROR constant evaluation error: attempted to divide by zero
-    rem_zero = 1%0  //~ERROR constant evaluation error: attempted remainder with a divisor of zero
+    rem_zero = 1%0,
+//~^ ERROR constant evaluation error: attempted to calculate the remainder with a divisor of zero
 }
 
 fn main() {}

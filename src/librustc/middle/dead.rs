@@ -18,6 +18,7 @@ use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::{self, Visitor};
 
 use middle::{pat_util, privacy, ty};
+use middle::ty::TyCtxt;
 use middle::def::Def;
 use middle::def_id::{DefId};
 use lint;
@@ -30,7 +31,7 @@ use syntax::attr::{self, AttrMetaMethods};
 // explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
-fn should_explore(tcx: &ty::ctxt, node_id: ast::NodeId) -> bool {
+fn should_explore(tcx: &TyCtxt, node_id: ast::NodeId) -> bool {
     match tcx.map.find(node_id) {
         Some(ast_map::NodeItem(..)) |
         Some(ast_map::NodeImplItem(..)) |
@@ -44,7 +45,7 @@ fn should_explore(tcx: &ty::ctxt, node_id: ast::NodeId) -> bool {
 
 struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
     struct_has_extern_repr: bool,
     ignore_non_const_paths: bool,
@@ -53,7 +54,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
-    fn new(tcx: &'a ty::ctxt<'tcx>,
+    fn new(tcx: &'a TyCtxt<'tcx>,
            worklist: Vec<ast::NodeId>) -> MarkSymbolVisitor<'a, 'tcx> {
         MarkSymbolVisitor {
             worklist: worklist,
@@ -350,15 +351,9 @@ impl<'v> Visitor<'v> for LifeSeeder {
             }
             hir::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
-                    match impl_item.node {
-                        hir::ImplItemKind::Const(..) |
-                        hir::ImplItemKind::Method(..) => {
-                            if opt_trait.is_some() ||
-                                    has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
-                                self.worklist.push(impl_item.id);
-                            }
-                        }
-                        hir::ImplItemKind::Type(_) => {}
+                    if opt_trait.is_some() ||
+                            has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
+                        self.worklist.push(impl_item.id);
                     }
                 }
             }
@@ -367,7 +362,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
     }
 }
 
-fn create_and_seed_worklist(tcx: &ty::ctxt,
+fn create_and_seed_worklist(tcx: &TyCtxt,
                             access_levels: &privacy::AccessLevels,
                             krate: &hir::Crate) -> Vec<ast::NodeId> {
     let mut worklist = Vec::new();
@@ -390,7 +385,7 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
     return life_seeder.worklist;
 }
 
-fn find_live(tcx: &ty::ctxt,
+fn find_live(tcx: &TyCtxt,
              access_levels: &privacy::AccessLevels,
              krate: &hir::Crate)
              -> Box<HashSet<ast::NodeId>> {
@@ -410,7 +405,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 }
 
 struct DeadVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+    tcx: &'a TyCtxt<'tcx>,
     live_symbols: Box<HashSet<ast::NodeId>>,
 }
 
@@ -587,7 +582,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt, access_levels: &privacy::AccessLevels) {
+pub fn check_crate(tcx: &TyCtxt, access_levels: &privacy::AccessLevels) {
     let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
     let krate = tcx.map.krate();
     let live_symbols = find_live(tcx, access_levels, krate);

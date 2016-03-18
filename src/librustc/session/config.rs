@@ -172,8 +172,12 @@ pub enum PrintRequest {
 pub enum Input {
     /// Load source from file
     File(PathBuf),
-    /// The string is the source
-    Str(String)
+    Str {
+        /// String that is shown in place of a filename
+        name: String,
+        /// Anonymous source string
+        input: String,
+    },
 }
 
 impl Input {
@@ -181,7 +185,7 @@ impl Input {
         match *self {
             Input::File(ref ifile) => ifile.file_stem().unwrap()
                                            .to_str().unwrap().to_string(),
-            Input::Str(_) => "rust_out".to_string(),
+            Input::Str { .. } => "rust_out".to_string(),
         }
     }
 }
@@ -659,6 +663,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print the result of the translation item collection pass"),
     mir_opt_level: Option<usize> = (None, parse_opt_uint,
           "set the MIR optimization level (0-3)"),
+    orbit: bool = (false, parse_bool,
+          "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -887,7 +893,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                  "[asm|llvm-bc|llvm-ir|obj|link|dep-info]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout",
-                 "[crate-name|file-names|sysroot|target-list]"),
+                 "[crate-name|file-names|sysroot|cfg|target-list]"),
         opt::flagmulti_s("g",  "",  "Equivalent to -C debuginfo=2"),
         opt::flagmulti_s("O", "", "Equivalent to -C opt-level=2"),
         opt::opt_s("o", "", "Write output to <filename>", "FILENAME"),
@@ -1093,6 +1099,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             early_warn(error_format, "resetting to default -C codegen-units=1");
             cg.codegen_units = 1;
         }
+    }
+
+    if cg.codegen_units < 1 {
+        early_error(error_format, "Value for codegen units must be a positive nonzero integer");
     }
 
     let cg = cg;

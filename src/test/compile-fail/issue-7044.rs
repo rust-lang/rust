@@ -9,6 +9,6 @@
 // except according to those terms.
 
 static X: isize = 0;
-struct X; //~ ERROR error: duplicate definition of value `X`
+struct X; //~ ERROR `X` has already been defined
 
 fn main() {}

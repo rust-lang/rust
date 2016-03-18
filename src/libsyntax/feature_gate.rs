@@ -241,7 +241,16 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("cfg_target_thread_local", "1.7.0", Some(29594), Active),
 
     // rustc internal
-    ("abi_vectorcall", "1.7.0", None, Active)
+    ("abi_vectorcall", "1.7.0", None, Active),
+
+    // a...b and ...b
+    ("inclusive_range_syntax", "1.7.0", Some(28237), Active),
+
+    // `expr?`
+    ("question_mark", "1.9.0", Some(31436), Active),
+
+    // impl specialization (RFC 1210)
+    ("specialization", "1.7.0", Some(31844), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -341,10 +350,14 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                            "the `#[rustc_move_fragments]` attribute \
                                             is just used for rustc unit tests \
                                             and will never be stable")),
-    ("rustc_mir", Normal, Gated("rustc_attrs",
-                                "the `#[rustc_mir]` attribute \
-                                 is just used for rustc unit tests \
-                                 and will never be stable")),
+    ("rustc_mir", Whitelisted, Gated("rustc_attrs",
+                                     "the `#[rustc_mir]` attribute \
+                                      is just used for rustc unit tests \
+                                      and will never be stable")),
+    ("rustc_no_mir", Whitelisted, Gated("rustc_attrs",
+                                        "the `#[rustc_no_mir]` attribute \
+                                         is just used to make tests pass \
+                                         and will never be stable")),
 
     ("allow_internal_unstable", Normal, Gated("allow_internal_unstable",
                                               EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),
@@ -549,6 +562,7 @@ pub struct Features {
     pub allow_placement_in: bool,
     pub allow_box: bool,
     pub allow_pushpop_unsafe: bool,
+    pub allow_inclusive_range: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
     /// spans of #![feature] attrs for stable language features. for error reporting
@@ -566,6 +580,8 @@ pub struct Features {
     pub staged_api: bool,
     pub stmt_expr_attributes: bool,
     pub deprecated: bool,
+    pub question_mark: bool,
+    pub specialization: bool,
 }
 
 impl Features {
@@ -583,6 +599,7 @@ impl Features {
             allow_placement_in: false,
             allow_box: false,
             allow_pushpop_unsafe: false,
+            allow_inclusive_range: false,
             simd_ffi: false,
             unmarked_api: false,
             declared_stable_lang_features: Vec::new(),
@@ -598,6 +615,8 @@ impl Features {
             staged_api: false,
             stmt_expr_attributes: false,
             deprecated: false,
+            question_mark: false,
+            specialization: false,
         }
     }
 }
@@ -991,6 +1010,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("type_ascription", e.span,
                                   "type ascription is experimental");
             }
+            ast::ExprKind::Range(_, _, ast::RangeLimits::Closed) => {
+                self.gate_feature("inclusive_range_syntax",
+                                  e.span,
+                                  "inclusive range syntax is experimental");
+            }
+            ast::ExprKind::Try(..) => {
+                self.gate_feature("question_mark", e.span, "the `?` operator is not stable");
+            }
             _ => {}
         }
         visit::walk_expr(self, e);
@@ -1084,6 +1111,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+        if ii.defaultness == ast::Defaultness::Default {
+            self.gate_feature("specialization",
+                              ii.span,
+                              "specialization is unstable");
+        }
+
         match ii.node {
             ast::ImplItemKind::Const(..) => {
                 self.gate_feature("associated_consts",
@@ -1177,6 +1210,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         allow_placement_in: cx.has_feature("placement_in_syntax"),
         allow_box: cx.has_feature("box_syntax"),
         allow_pushpop_unsafe: cx.has_feature("pushpop_unsafe"),
+        allow_inclusive_range: cx.has_feature("inclusive_range_syntax"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
         declared_stable_lang_features: accepted_features,
@@ -1192,6 +1226,8 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         staged_api: cx.has_feature("staged_api"),
         stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
         deprecated: cx.has_feature("deprecated"),
+        question_mark: cx.has_feature("question_mark"),
+        specialization: cx.has_feature("specialization"),
     }
 }
 

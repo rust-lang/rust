@@ -19,7 +19,7 @@ trait MyTrait {
     fn get(&self) -> usize;
 }
 
-impl<T:OtherTrait> MyTrait for T { //~ ERROR E0119
+impl<T:OtherTrait> MyTrait for T {
     fn get(&self) -> usize { 0 }
 }
 
@@ -27,7 +27,7 @@ struct MyType {
     dummy: usize
 }
 
-impl MyTrait for MyType {
+impl MyTrait for MyType { //~ ERROR E0119
     fn get(&self) -> usize { self.dummy }
 }
 

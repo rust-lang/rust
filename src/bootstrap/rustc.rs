@@ -8,6 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Shim which is passed to Cargo as "rustc" when running the bootstrap.
+//!
+//! This shim will take care of some various tasks that our build process
+//! requires that Cargo can't quite do through normal configuration:
+//!
+//! 1. When compiling build scripts and build dependencies, we need a guaranteed
+//!    full standard library available. The only compiler which actually has
+//!    this is the snapshot, so we detect this situation and always compile with
+//!    the snapshot compiler.
+//! 2. We pass a bunch of `--cfg` and other flags based on what we're compiling
+//!    (and this slightly differs based on a whether we're using a snapshot or
+//!    not), so we do that all here.
+//!
+//! This may one day be replaced by RUSTFLAGS, but the dynamic nature of
+//! switching compilers for the bootstrap and for build scripts will probably
+//! never get replaced.
+
 extern crate bootstrap;
 
 use std::env;

@@ -26,7 +26,7 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TypeFoldable};
+use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable};
 use middle::ty::fast_reject;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -326,7 +326,7 @@ pub fn try_report_overflow_error_type_of_infinite_size<'a, 'tcx>(
     unreachable!();
 }
 
-pub fn recursive_type_with_infinite_size_error<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn recursive_type_with_infinite_size_error<'tcx>(tcx: &TyCtxt<'tcx>,
                                                      type_def_id: DefId)
                                                      -> DiagnosticBuilder<'tcx>
 {
@@ -507,7 +507,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-pub fn report_object_safety_error<'tcx>(tcx: &ty::ctxt<'tcx>,
+pub fn report_object_safety_error<'tcx>(tcx: &TyCtxt<'tcx>,
                                         span: Span,
                                         trait_def_id: DefId,
                                         violations: Vec<ObjectSafetyViolation>)
@@ -796,7 +796,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn suggest_new_overflow_limit(tcx: &ty::ctxt, err:&mut DiagnosticBuilder, span: Span) {
+fn suggest_new_overflow_limit(tcx: &TyCtxt, err:&mut DiagnosticBuilder, span: Span) {
     let current_limit = tcx.sess.recursion_limit.get();
     let suggested_limit = current_limit * 2;
     err.fileline_note(

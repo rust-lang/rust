@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(dynamic_lib)]
+#![feature(rustc_private)]
 
-use std::dynamic_lib::DynamicLibrary;
+extern crate rustc_back;
+
+use rustc_back::dynamic_lib::DynamicLibrary;
 use std::path::Path;
 
 pub fn main() {

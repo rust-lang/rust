@@ -14,7 +14,6 @@ mod bench;
 mod table;
 pub mod map;
 pub mod set;
-pub mod state;
 
 trait Recover<Q: ?Sized> {
     type Key;

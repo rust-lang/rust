@@ -15,7 +15,6 @@
 // impl.
 
 // aux-build:issue-18514.rs
-// pretty-expanded FIXME #23616
 
 extern crate issue_18514 as ice;
 use ice::{Tr, St};

@@ -10,9 +10,13 @@
 
 #![feature(associated_type_defaults)]
 
-pub trait Foo {
-    type Input = usize;
-    fn bar(&self, _: Self::Input) {}
+pub trait Foo<T: Default + ToString> {
+    type Out: Default + ToString = T;
 }
 
-impl Foo for () {}
+impl Foo<u32> for () {
+}
+
+impl Foo<u64> for () {
+    type Out = bool;
+}

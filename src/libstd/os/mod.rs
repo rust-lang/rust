@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! OS-specific functionality
+//! OS-specific functionality.
 
 #![stable(feature = "os", since = "1.0.0")]
 #![allow(missing_docs, bad_style)]
@@ -31,10 +31,6 @@ pub use sys::ext as windows;
 #[cfg(target_os = "netbsd")]   pub mod netbsd;
 #[cfg(target_os = "openbsd")]   pub mod openbsd;
 #[cfg(target_os = "solaris")]   pub mod solaris;
-
-// Emscripten is just like linux
-#[cfg(target_os = "emscripten")]
-#[path = "linux/mod.rs"]
-pub mod emscripten;
+#[cfg(target_os = "emscripten")] pub mod emscripten;
 
 pub mod raw;

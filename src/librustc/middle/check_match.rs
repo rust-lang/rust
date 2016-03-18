@@ -25,6 +25,7 @@ use middle::expr_use_visitor as euv;
 use middle::infer;
 use middle::mem_categorization::{cmt};
 use middle::pat_util::*;
+use middle::traits::ProjectionMode;
 use middle::ty::*;
 use middle::ty;
 use std::cmp::Ordering;
@@ -107,7 +108,7 @@ impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
 
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
     pub param_env: ParameterEnvironment<'a, 'tcx>,
 }
 
@@ -154,7 +155,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &ty::ctxt) {
+pub fn check_crate(tcx: &TyCtxt) {
     tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut MatchCheckCtxt {
         tcx: tcx,
         param_env: tcx.empty_parameter_environment(),
@@ -344,6 +345,10 @@ fn check_arms(cx: &MatchCheckCtxt,
                         hir::MatchSource::Normal => {
                             span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
                         },
+
+                        hir::MatchSource::TryDesugar => {
+                            cx.tcx.sess.span_bug(pat.span, "unreachable try pattern")
+                        },
                     }
                 }
                 Useful => (),
@@ -433,13 +438,13 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
 }
 
 pub struct StaticInliner<'a, 'tcx: 'a> {
-    pub tcx: &'a ty::ctxt<'tcx>,
+    pub tcx: &'a TyCtxt<'tcx>,
     pub failed: bool,
     pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: &'b ty::ctxt<'tcx>,
+    pub fn new<'b>(tcx: &'b TyCtxt<'tcx>,
                    renaming_map: Option<&'b mut FnvHashMap<(NodeId, Span), NodeId>>)
                    -> StaticInliner<'b, 'tcx> {
         StaticInliner {
@@ -470,9 +475,9 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
                     Some(Def::AssociatedConst(did)) |
-                    Some(Def::Const(did)) => match lookup_const_by_id(self.tcx, did,
-                                                                    Some(pat.id), None) {
-                        Some(const_expr) => {
+                    Some(Def::Const(did)) => {
+                        let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
+                        if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
                             const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
 
                                 if let Some(ref mut renaming_map) = self.renaming_map {
@@ -482,14 +487,13 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 
                                 new_pat
                             })
-                        }
-                        None => {
+                        } else {
                             self.failed = true;
                             span_err!(self.tcx.sess, pat.span, E0158,
                                 "statics cannot be referenced in patterns");
                             pat
                         }
-                    },
+                    }
                     _ => noop_fold_pat(pat, self)
                 }
             }
@@ -1047,10 +1051,7 @@ fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A>
 {
     let pats = Matrix(vec!(vec!(pat)));
     match is_useful(cx, &pats, &[DUMMY_WILD_PAT], ConstructWitness) {
-        UsefulWithWitness(pats) => {
-            assert_eq!(pats.len(), 1);
-            Some(refutable(&pats[0]))
-        },
+        UsefulWithWitness(pats) => Some(refutable(&pats[0])),
         NotUseful => None,
         Useful => unreachable!()
     }
@@ -1100,7 +1101,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                         //FIXME: (@jroesch) this code should be floated up as well
                         let infcx = infer::new_infer_ctxt(cx.tcx,
                                                           &cx.tcx.tables,
-                                                          Some(cx.param_env.clone()));
+                                                          Some(cx.param_env.clone()),
+                                                          ProjectionMode::AnyFinal);
                         if infcx.type_moves_by_default(pat_ty, pat.span) {
                             check_move(p, sub.as_ref().map(|p| &**p));
                         }
@@ -1132,7 +1134,8 @@ fn check_for_mutation_in_guard<'a, 'tcx>(cx: &'a MatchCheckCtxt<'a, 'tcx>,
 
     let infcx = infer::new_infer_ctxt(cx.tcx,
                                       &cx.tcx.tables,
-                                      Some(checker.cx.param_env.clone()));
+                                      Some(checker.cx.param_env.clone()),
+                                      ProjectionMode::AnyFinal);
 
     let mut visitor = ExprUseVisitor::new(&mut checker, &infcx);
     visitor.walk_expr(guard);

@@ -18,7 +18,7 @@ extern crate syntax;
 
 use rustc::session::{build_session, Session};
 use rustc::session::config::{basic_options, build_configuration, Input, OutputType};
-use rustc_driver::driver::{compile_input, CompileController};
+use rustc_driver::driver::{compile_input, CompileController, anon_src};
 use rustc_metadata::cstore::CStore;
 use syntax::diagnostics::registry::Registry;
 use syntax::parse::token;
@@ -67,7 +67,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
 
     compile_input(&sess, &cstore,
             cfg,
-            &Input::Str(code),
+            &Input::Str { name: anon_src(), input: code },
             &None,
             &Some(output),
             None,

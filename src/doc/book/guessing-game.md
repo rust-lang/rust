@@ -295,7 +295,7 @@ Rust warns us that we haven’t used the `Result` value. This warning comes from
 a special annotation that `io::Result` has. Rust is trying to tell you that
 you haven’t handled a possible error. The right way to suppress the error is
 to actually write error handling. Luckily, if we want to crash if there’s
-a problem, we can use these two little methods. If we can recover from the
+a problem, we can use `expect()`. If we can recover from the
 error somehow, we’d do something else, but we’ll save that for a future
 project.
 

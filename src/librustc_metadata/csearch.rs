@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use astencode;
 use cstore;
 use decoder;
 use encoder;
@@ -18,7 +17,7 @@ use middle::cstore::{CrateStore, CrateSource, ChildItem, FoundAst};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
-use middle::ty::{self, Ty, VariantKind};
+use middle::ty::{self, Ty, TyCtxt, VariantKind};
 use middle::def_id::{DefId, DefIndex};
 
 use rustc::front::map as hir_map;
@@ -49,14 +48,19 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_deprecation(&cdata, def.index)
     }
 
-    fn closure_kind(&self, _tcx: &ty::ctxt<'tcx>, def_id: DefId) -> ty::ClosureKind
+    fn visibility(&self, def: DefId) -> hir::Visibility {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::get_visibility(&cdata, def.index)
+    }
+
+    fn closure_kind(&self, _tcx: &TyCtxt<'tcx>, def_id: DefId) -> ty::ClosureKind
     {
         assert!(!def_id.is_local());
         let cdata = self.get_crate_data(def_id.krate);
         decoder::closure_kind(&cdata, def_id.index)
     }
 
-    fn closure_ty(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId) -> ty::ClosureTy<'tcx>
+    fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId) -> ty::ClosureTy<'tcx>
     {
         assert!(!def_id.is_local());
         let cdata = self.get_crate_data(def_id.krate);
@@ -73,21 +77,21 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_repr_attrs(&cdata, def.index)
     }
 
-    fn item_type(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_type(&cdata, def.index, tcx)
     }
 
-    fn item_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_predicates(&cdata, def.index, tcx)
     }
 
-    fn item_super_predicates(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn item_super_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                              -> ty::GenericPredicates<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
@@ -106,13 +110,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_symbol(&cdata, def.index)
     }
 
-    fn trait_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId) -> ty::TraitDef<'tcx>
+    fn trait_def(&self, tcx: &TyCtxt<'tcx>, def: DefId) -> ty::TraitDef<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_trait_def(&cdata, def.index, tcx)
     }
 
-    fn adt_def(&self, tcx: &ty::ctxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
+    fn adt_def(&self, tcx: &TyCtxt<'tcx>, def: DefId) -> ty::AdtDefMaster<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_adt_def(&self.intr, &cdata, def.index, tcx)
@@ -173,7 +177,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn provided_trait_methods(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn provided_trait_methods(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                               -> Vec<Rc<ty::Method<'tcx>>>
     {
         let cdata = self.get_crate_data(def.krate);
@@ -199,7 +203,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_impl_polarity(&cdata, def.index)
     }
 
-    fn impl_trait_ref(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn impl_trait_ref(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                       -> Option<ty::TraitRef<'tcx>>
     {
         let cdata = self.get_crate_data(def.krate);
@@ -214,20 +218,25 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     }
 
     // FIXME: killme
-    fn associated_consts(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn associated_consts(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                          -> Vec<Rc<ty::AssociatedConst<'tcx>>> {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_associated_consts(self.intr.clone(), &cdata, def.index, tcx)
     }
 
-    fn trait_of_item(&self, tcx: &ty::ctxt<'tcx>, def_id: DefId) -> Option<DefId>
+    fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
+        let cdata = self.get_crate_data(impl_def.krate);
+        decoder::get_parent_impl(&*cdata, impl_def.index)
+    }
+
+    fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId) -> Option<DefId>
     {
         let cdata = self.get_crate_data(def_id.krate);
         decoder::get_trait_of_item(&cdata, def_id.index, tcx)
     }
 
-    fn impl_or_trait_item(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
-                          -> ty::ImplOrTraitItem<'tcx>
+    fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
+                          -> Option<ty::ImplOrTraitItem<'tcx>>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_impl_or_trait_item(
@@ -260,7 +269,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::is_default_impl(&cdata, impl_did.index)
     }
 
-    fn is_extern_item(&self, tcx: &ty::ctxt<'tcx>, did: DefId) -> bool {
+    fn is_extern_item(&self, tcx: &TyCtxt<'tcx>, did: DefId) -> bool {
         let cdata = self.get_crate_data(did.krate);
         decoder::is_extern_item(&cdata, did.index, tcx)
     }
@@ -425,15 +434,14 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         result
     }
 
-    fn maybe_get_item_ast(&'tcx self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn maybe_get_item_ast(&'tcx self, tcx: &TyCtxt<'tcx>, def: DefId)
                           -> FoundAst<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
-        let decode_inlined_item = Box::new(astencode::decode_inlined_item);
-        decoder::maybe_get_item_ast(&cdata, tcx, def.index, decode_inlined_item)
+        decoder::maybe_get_item_ast(&cdata, tcx, def.index)
     }
 
-    fn maybe_get_item_mir(&self, tcx: &ty::ctxt<'tcx>, def: DefId)
+    fn maybe_get_item_mir(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                           -> Option<Mir<'tcx>> {
         let cdata = self.get_crate_data(def.krate);
         decoder::maybe_get_item_mir(&cdata, tcx, def.index)
@@ -470,7 +478,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         loader::meta_section_name(target)
     }
-    fn encode_type(&self, tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
+    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
     {
         encoder::encoded_ty(tcx, ty)
     }
@@ -491,7 +499,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     }
 
     fn encode_metadata(&self,
-                       tcx: &ty::ctxt<'tcx>,
+                       tcx: &TyCtxt<'tcx>,
                        reexports: &def::ExportMap,
                        item_symbols: &RefCell<NodeMap<String>>,
                        link_meta: &LinkMeta,
@@ -499,21 +507,18 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                        mir_map: &MirMap<'tcx>,
                        krate: &hir::Crate) -> Vec<u8>
     {
-        let encode_inlined_item: encoder::EncodeInlinedItem =
-            Box::new(|ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii));
-
-        let encode_params = encoder::EncodeParams {
+        let ecx = encoder::EncodeContext {
             diag: tcx.sess.diagnostic(),
             tcx: tcx,
             reexports: reexports,
             item_symbols: item_symbols,
             link_meta: link_meta,
             cstore: self,
-            encode_inlined_item: encode_inlined_item,
             reachable: reachable,
             mir_map: mir_map,
+            type_abbrevs: RefCell::new(FnvHashMap()),
         };
-        encoder::encode_metadata(encode_params, krate)
+        encoder::encode_metadata(ecx, krate)
 
     }
 

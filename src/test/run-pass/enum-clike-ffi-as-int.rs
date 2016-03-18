@@ -25,16 +25,17 @@
 
 #[repr(u32)]
 enum Foo {
-  A = 0,
-  B = 23
+    A = 0,
+    B = 23
 }
 
 #[inline(never)]
 extern "C" fn foo(_x: usize) -> Foo { Foo::B }
 
 pub fn main() {
-  unsafe {
-    let f: extern "C" fn(usize) -> u32 = ::std::mem::transmute(foo);
-    assert_eq!(f(0xDEADBEEF), Foo::B as u32);
-  }
+    unsafe {
+        let f: extern "C" fn(usize) -> u32 =
+            ::std::mem::transmute(foo as extern "C" fn(usize) -> Foo);
+        assert_eq!(f(0xDEADBEEF), Foo::B as u32);
+    }
 }

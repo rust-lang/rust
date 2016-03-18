@@ -18,7 +18,7 @@ extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_resolve;
-extern crate syntax;
+#[macro_use] extern crate syntax;
 
 use std::ffi::{CStr, CString};
 use std::mem::transmute;
@@ -216,7 +216,10 @@ fn build_exec_options(sysroot: PathBuf) -> Options {
 /// for crates used in the given input.
 fn compile_program(input: &str, sysroot: PathBuf)
                    -> Option<(llvm::ModuleRef, Vec<PathBuf>)> {
-    let input = Input::Str(input.to_string());
+    let input = Input::Str {
+        name: driver::anon_src(),
+        input: input.to_string(),
+    };
     let thread = Builder::new().name("compile_program".to_string());
 
     let handle = thread.spawn(move || {
@@ -230,7 +233,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let id = "input".to_string();
 
-        let krate = driver::phase_1_parse_input(&sess, cfg, &input);
+        let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, &input));
 
         let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
             .expect("phase_2 returned `None`");

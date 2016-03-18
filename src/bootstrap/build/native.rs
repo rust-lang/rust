@@ -113,7 +113,8 @@ pub fn compiler_rt(build: &Build, target: &str) {
     let dst = build.compiler_rt_out(target);
     let arch = target.split('-').next().unwrap();
     let mode = if build.config.rust_optimize {"Release"} else {"Debug"};
-    let (dir, build_target, libname) = if target.contains("linux") {
+    let (dir, build_target, libname) = if target.contains("linux") ||
+                                          target.contains("freebsd") {
         let os = if target.contains("android") {"-android"} else {""};
         let arch = if arch.starts_with("arm") && target.contains("eabihf") {
             "armhf"
