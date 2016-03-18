@@ -145,29 +145,20 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(())
     }
 
-    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, args: &[mir::Operand<'tcx>],
-                        return_ptr: Option<Pointer>) -> EvalResult<()> {
-        let num_args = mir.arg_decls.len();
-        let num_vars = mir.var_decls.len();
-        let num_temps = mir.temp_decls.len();
-        assert_eq!(args.len(), num_args);
-
-        let mut locals = Vec::with_capacity(num_args + num_vars + num_temps);
-
-        for (arg_decl, arg_operand) in mir.arg_decls.iter().zip(args) {
-            let size = self.ty_size(arg_decl.ty);
-            let dest = self.memory.allocate(size);
-            let src = try!(self.eval_operand(arg_operand));
-            try!(self.memory.copy(src, dest, size));
-            locals.push(dest);
-        }
-
+    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, return_ptr: Option<Pointer>)
+        -> EvalResult<()>
+    {
+        let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
-        locals.extend(var_tys.chain(temp_tys).map(|ty| {
+
+        let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
             let size = self.ty_size(ty);
             self.memory.allocate(size)
-        }));
+        }).collect();
+
+        let num_args = mir.arg_decls.len();
+        let num_vars = mir.var_decls.len();
 
         self.stack.push(Frame {
             mir: mir.clone(),
@@ -238,13 +229,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     return_ptr = Some(try!(self.eval_lvalue(lv)));
                 }
 
-                let func_ty = self.current_frame().mir.operand_ty(self.tcx, func);
-
+                let func_ty = self.operand_ty(func);
                 match func_ty.sty {
                     ty::TyFnDef(def_id, substs, fn_ty) => {
-                        let substs = self.tcx.mk_substs(
-                            substs.subst(self.tcx, self.current_substs()));
-
                         use syntax::abi::Abi;
                         match fn_ty.abi {
                             Abi::RustIntrinsic => {
@@ -252,7 +239,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 try!(self.call_intrinsic(&name, substs, args))
                             }
 
-                            Abi::Rust => {
+                            Abi::Rust | Abi::RustCall => {
+                                // TODO(tsion): Adjust the first argument when calling a Fn or
+                                // FnMut closure via FnOnce::call_once.
+
                                 // Only trait methods can have a Self parameter.
                                 let (def_id, substs) = if substs.self_ty().is_some() {
                                     self.trait_method(def_id, substs)
@@ -260,9 +250,39 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                     (def_id, substs)
                                 };
 
+                                let mut arg_srcs = Vec::new();
+                                for arg in args {
+                                    let (src, repr) = try!(self.eval_operand_and_repr(arg));
+                                    arg_srcs.push((src, repr.size()));
+                                }
+
+                                if fn_ty.abi == Abi::RustCall && !args.is_empty() {
+                                    arg_srcs.pop();
+                                    let last_arg = args.last().unwrap();
+                                    let (last_src, last_repr) =
+                                        try!(self.eval_operand_and_repr(last_arg));
+                                    match *last_repr {
+                                        Repr::Aggregate { discr_size: 0, ref variants, .. } => {
+                                            assert_eq!(variants.len(), 1);
+                                            for field in &variants[0] {
+                                                let src = last_src.offset(field.offset as isize);
+                                                arg_srcs.push((src, field.size));
+                                            }
+                                        }
+
+                                        _ => panic!("expected tuple as last argument in function with 'rust-call' ABI"),
+                                    }
+                                }
+
                                 let mir = self.load_mir(def_id);
                                 self.substs_stack.push(substs);
-                                try!(self.push_stack_frame(mir, args, return_ptr));
+                                try!(self.push_stack_frame(mir, return_ptr));
+
+                                for (i, (src, size)) in arg_srcs.into_iter().enumerate() {
+                                    let dest = self.current_frame().locals[i];
+                                    try!(self.memory.copy(src, dest, size));
+                                }
+
                                 TerminatorTarget::Call
                             }
 
@@ -393,7 +413,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         _ => panic!("expected Repr::Array target"),
                     },
 
-                    Closure(..) => unimplemented!(),
+                    Closure(..) => self.assign_to_aggregate(dest, &dest_repr, 0, operands),
                 }
             }
 
@@ -422,7 +442,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
 
                 let src = try!(self.eval_operand(operand));
-                let src_ty = self.current_frame().mir.operand_ty(self.tcx, operand);
+                let src_ty = self.operand_ty(operand);
 
                 use rustc::mir::repr::CastKind::*;
                 match kind {
@@ -465,7 +485,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        self.current_frame().mir.operand_ty(self.tcx, operand)
+        self.current_frame().mir
+            .operand_ty(self.tcx, operand)
+            .subst(self.tcx, self.current_substs())
     }
 
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
@@ -623,6 +645,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
+            ty::TyClosure(_, ref closure_substs) =>
+                self.make_aggregate_repr(iter::once(closure_substs.upvar_tys.iter().cloned())),
+
             ref t => panic!("can't convert type to repr: {:?}", t),
         };
 
@@ -736,32 +761,18 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             traits::VtableImpl(vtable_impl) => {
                 let impl_did = vtable_impl.impl_def_id;
                 let mname = self.tcx.item_name(def_id);
-                // Create a concatenated set of substitutions which includes those from the
-                // impl and those from the method:
-                let impl_substs = vtable_impl.substs.with_method_from(&substs);
+                // Create a concatenated set of substitutions which includes those from the impl
+                // and those from the method:
+                let impl_substs = vtable_impl.substs.with_method_from(substs);
                 let substs = self.tcx.mk_substs(impl_substs);
                 let mth = self.tcx.get_impl_method(impl_did, substs, mname);
 
-                println!("{:?} {:?}", mth.method.def_id, mth.substs);
                 (mth.method.def_id, mth.substs)
             }
-            traits::VtableClosure(_vtable_closure) => {
-                // The substitutions should have no type parameters remaining after passing
-                // through fulfill_obligation
-                let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                unimplemented!()
-                // vtable_closure.closure_def_id
-                // vtable_closure.substs
-                // trait_closure_kind
 
-                // let method_ty = def_ty(tcx, def_id, substs);
-                // let fn_ptr_ty = match method_ty.sty {
-                //     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-                //     _ => unreachable!("expected fn item type, found {}",
-                //                       method_ty)
-                // };
-                // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
-            }
+            traits::VtableClosure(vtable_closure) =>
+                (vtable_closure.closure_def_id, vtable_closure.substs.func_substs),
+
             traits::VtableFnPointer(_fn_ty) => {
                 let _trait_closure_kind = self.tcx.lang_items.fn_trait_kind(trait_id).unwrap();
                 unimplemented!()
@@ -775,6 +786,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 // };
                 // Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
+
             traits::VtableObject(ref _data) => {
                 unimplemented!()
                 // Callee {
@@ -825,7 +837,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     }
                     ty::FnDiverging => None,
                 };
-                miri.push_stack_frame(CachedMir::Ref(mir), &[], return_ptr).unwrap();
+                miri.push_stack_frame(CachedMir::Ref(mir), return_ptr).unwrap();
                 miri.run().unwrap();
 
                 if let Some(ret) = return_ptr {
