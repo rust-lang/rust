@@ -17,7 +17,7 @@ pub use self::CombineMapType::*;
 pub use self::RegionResolutionError::*;
 pub use self::VarValue::*;
 
-use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
+use super::{RegionVariableOrigin, SubregionOrigin, MiscVariable};
 use super::unify_key;
 
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
@@ -27,7 +27,6 @@ use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::{BoundRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
-use middle::ty::error::TypeError;
 use util::common::indenter;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
@@ -152,9 +151,14 @@ pub enum RegionResolutionError<'tcx> {
     /// more specific errors message by suggesting to the user where they
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
-    ProcessedErrors(Vec<RegionVariableOrigin>,
-                    Vec<(TypeTrace<'tcx>, TypeError<'tcx>)>,
+    ProcessedErrors(Vec<ProcessedErrorOrigin<'tcx>>,
                     Vec<SameRegions>),
+}
+
+#[derive(Clone, Debug)]
+pub enum ProcessedErrorOrigin<'tcx> {
+    ConcreteFailure(SubregionOrigin<'tcx>, Region, Region),
+    VariableFailure(RegionVariableOrigin),
 }
 
 /// SameRegions is used to group regions that we think are the same and would
