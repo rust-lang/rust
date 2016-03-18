@@ -315,11 +315,22 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let dest_size = self.lvalue_repr(ret_ptr).size();
 
         match name {
-            "size_of" => {
-                let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.ty_size(ty) as u64;
-                try!(self.memory.write_uint(dest, size, dest_size));
+            "copy_nonoverlapping" => {
+                let elem_ty = *substs.types.get(subst::FnSpace, 0);
+                let elem_size = self.ty_size(elem_ty);
+
+                let src_arg   = try!(self.eval_operand(&args[0]));
+                let dest_arg  = try!(self.eval_operand(&args[1]));
+                let count_arg = try!(self.eval_operand(&args[2]));
+
+                let src   = try!(self.memory.read_ptr(src_arg));
+                let dest  = try!(self.memory.read_ptr(dest_arg));
+                let count = try!(self.memory.read_int(count_arg, self.memory.pointer_size));
+
+                try!(self.memory.copy(src, dest, count as usize * elem_size));
             }
+
+            "forget" => {}
 
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
@@ -331,6 +342,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let result_ptr = ptr.offset(offset as isize * pointee_size);
                 try!(self.memory.write_ptr(dest, result_ptr));
             }
+
+            "size_of" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.ty_size(ty) as u64;
+                try!(self.memory.write_uint(dest, size, dest_size));
+            }
+
+            "uninit" => {}
 
             name => panic!("can't handle intrinsic: {}", name),
         }
