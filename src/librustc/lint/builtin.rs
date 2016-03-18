@@ -154,6 +154,12 @@ declare_lint! {
     "transmute from function item type to pointer-sized type erroneously allowed"
 }
 
+declare_lint! {
+    pub OVERLAPPING_INHERENT_IMPLS,
+    Warn,
+    "two overlapping inherent impls define an item with the same name were erroneously allowed"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -184,7 +190,8 @@ impl LintPass for HardwiredLints {
             MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR,
             RAW_POINTER_DERIVE,
-            TRANSMUTE_FROM_FN_ITEM_TYPES
+            TRANSMUTE_FROM_FN_ITEM_TYPES,
+            OVERLAPPING_INHERENT_IMPLS
         )
     }
 }
