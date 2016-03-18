@@ -367,6 +367,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
+            assert_eq!(mt_b.mutbl, hir::MutImmutable); // can only coerce &T -> &U
             return self.identity(ty);
         }
         let r_borrow = match ty.sty {
