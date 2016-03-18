@@ -395,6 +395,42 @@ fn test_variance() {
     fn vals<'a, 'new>(v: Values<'a, (), &'static str>) -> Values<'a, (), &'new str> { v }
 }
 
+#[test]
+fn test_occupied_entry_key() {
+    let mut a = BTreeMap::new();
+    let key = "hello there";
+    let value = "value goes here";
+    assert!(a.is_empty());
+    a.insert(key.clone(), value.clone());
+    assert_eq!(a.len(), 1);
+    assert_eq!(a[key], value);
+
+    match a.entry(key.clone()) {
+        Vacant(_) => panic!(),
+        Occupied(e) => assert_eq!(key, *e.key()),
+    }
+    assert_eq!(a.len(), 1);
+    assert_eq!(a[key], value);
+}
+
+#[test]
+fn test_vacant_entry_key() {
+    let mut a = BTreeMap::new();
+    let key = "hello there";
+    let value = "value goes here";
+
+    assert!(a.is_empty());
+    match a.entry(key.clone()) {
+        Occupied(_) => panic!(),
+        Vacant(e) => {
+            assert_eq!(key, *e.key());
+            e.insert(value.clone());
+        },
+    }
+    assert_eq!(a.len(), 1);
+    assert_eq!(a[key], value);
+}
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};
