@@ -218,10 +218,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        let r_a = match a.sty {
+        let (r_a, mt_a) = match a.sty {
             ty::TyRef(r_a, mt_a) => {
                 try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
-                r_a
+                (r_a, mt_a)
             }
             _ => return self.unify_and_identity(a, b)
         };
@@ -355,6 +355,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Now apply the autoref. We have to extract the region out of
         // the final ref type we got.
+        if ty == a && mt_a.mutbl == hir::MutImmutable && autoderefs == 1 {
+            // As a special case, if we would produce `&'a *x`, that's
+            // a total no-op. We end up with the type `&'a T` just as
+            // we started with.  In that case, just skip it
+            // altogether. This is just an optimization.
+            //
+            // Note that for `&mut`, we DO want to reborrow --
+            // otherwise, this would be a move, which might be an
+            // error. For example `foo(self.x)` where `self` and
+            // `self.x` both have `&mut `type would be a move of
+            // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
+            // which is a borrow.
+            return self.identity(ty);
+        }
         let r_borrow = match ty.sty {
             ty::TyRef(r_borrow, _) => r_borrow,
             _ => self.tcx().sess.span_bug(span,
