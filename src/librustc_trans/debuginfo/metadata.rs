@@ -50,7 +50,9 @@ use syntax::{ast, codemap};
 use syntax::parse::token;
 
 
-const DW_LANG_RUST: c_uint = 0x9000;
+// From DWARF 5.
+// See http://www.dwarfstd.org/ShowIssue.php?issue=140129.1
+const DW_LANG_RUST: c_uint = 0x1c;
 #[allow(non_upper_case_globals)]
 const DW_ATE_boolean: c_uint = 0x02;
 #[allow(non_upper_case_globals)]
