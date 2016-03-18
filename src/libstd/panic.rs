@@ -216,14 +216,14 @@ impl<T> RefRecoverSafe for AssertRecoverSafe<T> {}
 impl<T> AssertRecoverSafe<T> {
     /// Creates a new `AssertRecoverSafe` wrapper around the provided type.
     #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-    #[rustc_deprecated(reason = "the type's field is now public, construct it directly")]
+    #[rustc_deprecated(reason = "the type's field is now public, construct it directly", since = "1.9.0")]
     pub fn new(t: T) -> AssertRecoverSafe<T> {
         AssertRecoverSafe(t)
     }
 
     /// Consumes the `AssertRecoverSafe`, returning the wrapped value.
     #[unstable(feature = "recover", reason = "awaiting feedback", issue = "27719")]
-    #[rustc_deprecated(reason = "the type's field is now public, access it directly")]
+    #[rustc_deprecated(reason = "the type's field is now public, access it directly", since = "1.9.0)]
     pub fn into_inner(self) -> T {
         self.0
     }
