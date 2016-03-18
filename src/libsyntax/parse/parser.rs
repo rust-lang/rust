@@ -3824,7 +3824,9 @@ impl<'a> Parser<'a> {
     fn recover_stmt_(&mut self, break_on_semi: SemiColonMode) {
         let mut brace_depth = 0;
         let mut bracket_depth = 0;
+        debug!("recover_stmt_ enter loop");
         loop {
+            debug!("recover_stmt_ loop {:?}", self.token);
             match self.token {
                 token::OpenDelim(token::DelimToken::Brace) => {
                     brace_depth += 1;
@@ -3836,6 +3838,7 @@ impl<'a> Parser<'a> {
                 }
                 token::CloseDelim(token::DelimToken::Brace) => {
                     if brace_depth == 0 {
+                        debug!("recover_stmt_ return - close delim {:?}", self.token);
                         return;
                     }
                     brace_depth -= 1;
@@ -3848,12 +3851,16 @@ impl<'a> Parser<'a> {
                     }
                     self.bump();
                 }
-                token::Eof => return,
+                token::Eof => {
+                    debug!("recover_stmt_ return - Eof");
+                    return;
+                }
                 token::Semi => {
                     self.bump();
                     if break_on_semi == SemiColonMode::Break &&
                        brace_depth == 0 &&
                        bracket_depth == 0 {
+                        debug!("recover_stmt_ return - Semi");
                         return;
                     }
                 }
@@ -4042,6 +4049,8 @@ impl<'a> Parser<'a> {
         while !self.eat(&token::CloseDelim(token::Brace)) {
             let Spanned {node, span} = if let Some(s) = self.parse_stmt_() {
                 s
+            } else if self.token == token::Eof {
+                break;
             } else {
                 // Found only `;` or `}`.
                 continue;
