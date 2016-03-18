@@ -761,7 +761,7 @@ for example, `a.alloc_one::<T>()` will return a `Unique<T>` (or error).
 
 ## Unchecked variants
 
-Finally, almost all of the methods above return `Result`, and guarantee some
+Almost all of the methods above return `Result`, and guarantee some
 amount of input validation. (This is largely because I observed code
 duplication doing such validation on the client side; or worse, such
 validation accidentally missing.)
@@ -786,6 +786,45 @@ of the preconditions hold.
  * (In other words, "unchecked" is in some sense a privilege being
    offered to impl's; but there is no guarantee that an arbitrary impl
    takes advantage of the privilege.)
+
+## Object-oriented Allocators
+
+Finally, we get to object-oriented programming.
+
+Since the `Allocator` trait has an associated error type, one
+cannot just encode virtually-dispatched allocator objects with
+`Box<Allocator>` or `&Allocator`; trait objects need to have
+their associated types specified as part of the object trait.
+
+In general, we expect allocator-parametric code to opt *not* to use
+trait objects to generalize over allocators, but instead to use
+generic types and instantiate those types with specific concrete
+allocators.
+
+Nonetheless, it *is* an option to write `Box<Allocator<Error=MemoryExhausted>>`, or
+`&Allocator<Error=BumpAllocError>`, when working with allocators that
+use each corresponding error type.
+
+ * (The allocator methods that are not object-safe, like
+   `fn alloc_one<T>(&mut self)`, have a clause `where Self: Sized` to
+   ensure that their presence does not cause the `Allocator` trait as
+   a whole to become non-object-safe.)
+
+To encourage client code that chooses to use trait objects for their
+allocators to try to standardize on one choice of associated `Error`
+type, we provide a convenience `type` definition for
+[allocator objects][], `AllocatorObj`, which makes an opinionated
+decision about which one of the "standard error types" is the "right
+one" for such general purpose objects: namely, `AllocErr`, since it is
+both cheap to construct but also can provide some amount of
+context-sensitive information about the original cause of an
+allocation error.
+
+However, the main point remains that we expect this object-oriented
+usage of allocators to be rare. If this assumption turns out to be
+incorrect, we should revisit these decisions before stabilizing the
+allocator API (that would be the time to e.g. remove the associated
+error type).
 
 ## Why this API
 [Why this API]: #why-this-api
@@ -2078,7 +2117,8 @@ pub unsafe trait Allocator {
     /// `alloc`/`realloc` methods of this allocator.
     ///
     /// Returns `Err` for zero-sized `T`.
-    unsafe fn alloc_one<T>(&mut self) -> Result<Unique<T>, Self::Error> {
+    unsafe fn alloc_one<T>(&mut self) -> Result<Unique<T>, Self::Error>
+        where Self: Sized {
         if let Some(k) = Layout::new::<T>() {
             self.alloc(k).map(|p|Unique::new(*p as *mut T))
         } else {
@@ -2096,7 +2136,8 @@ pub unsafe trait Allocator {
     /// undefined behavior.
     ///
     /// Captures a common usage pattern for allocators.
-    unsafe fn dealloc_one<T>(&mut self, mut ptr: Unique<T>) {
+    unsafe fn dealloc_one<T>(&mut self, mut ptr: Unique<T>)
+        where Self: Sized {
         let raw_ptr = NonZero::new(ptr.get_mut() as *mut T as *mut u8);
         self.dealloc(raw_ptr, Layout::new::<T>().unwrap());
     }
@@ -2109,7 +2150,8 @@ pub unsafe trait Allocator {
     /// `alloc`/`realloc` methods of this allocator.
     ///
     /// Returns `Err` for zero-sized `T` or `n == 0`.
-    unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, Self::Error> {
+    unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, Self::Error>
+        where Self: Sized {
         match Layout::array::<T>(n) {
             Some(layout) => self.alloc(layout).map(|p|Unique::new(*p as *mut T)),
             None => Err(Self::Error::invalid_input("invalid layout for alloc_array")),
@@ -2127,7 +2169,8 @@ pub unsafe trait Allocator {
     unsafe fn realloc_array<T>(&mut self,
                                ptr: Unique<T>,
                                n_old: usize,
-                               n_new: usize) -> Result<Unique<T>, Self::Error> {
+                               n_new: usize) -> Result<Unique<T>, Self::Error>
+        where Self: Sized {
         let old_new_ptr = (Layout::array::<T>(n_old), Layout::array::<T>(n_new), *ptr);
         if let (Some(k_old), Some(k_new), ptr) = old_new_ptr {
             self.realloc(NonZero::new(ptr as *mut u8), k_old, k_new)
@@ -2140,7 +2183,8 @@ pub unsafe trait Allocator {
     /// Deallocates a block suitable for holding `n` instances of `T`.
     ///
     /// Captures a common usage pattern for allocators.
-    unsafe fn dealloc_array<T>(&mut self, ptr: Unique<T>, n: usize) -> Result<(), Self::Error> {
+    unsafe fn dealloc_array<T>(&mut self, ptr: Unique<T>, n: usize) -> Result<(), Self::Error>
+        where Self: Sized {
         let raw_ptr = NonZero::new(*ptr as *mut u8);
         if let Some(k) = Layout::array::<T>(n) {
             self.dealloc(raw_ptr, k);
@@ -2232,7 +2276,8 @@ pub unsafe trait Allocator {
     /// Requires inputs are non-zero and do not cause arithmetic
     /// overflow, and `T` is not zero sized; otherwise yields
     /// undefined behavior.
-    unsafe fn alloc_array_unchecked<T>(&mut self, n: usize) -> Option<Unique<T>> {
+    unsafe fn alloc_array_unchecked<T>(&mut self, n: usize) -> Option<Unique<T>>
+        where Self: Sized {
         let layout = Layout::array_unchecked::<T>(n);
         self.alloc_unchecked(layout).map(|p|Unique::new(*p as *mut T))
     }
@@ -2248,7 +2293,8 @@ pub unsafe trait Allocator {
     unsafe fn realloc_array_unchecked<T>(&mut self,
                                          ptr: Unique<T>,
                                          n_old: usize,
-                                         n_new: usize) -> Option<Unique<T>> {
+                                         n_new: usize) -> Option<Unique<T>>
+        where Self: Sized {
         let (k_old, k_new, ptr) = (Layout::array_unchecked::<T>(n_old),
                                    Layout::array_unchecked::<T>(n_new),
                                    *ptr);
@@ -2263,9 +2309,27 @@ pub unsafe trait Allocator {
     /// Requires inputs are non-zero and do not cause arithmetic
     /// overflow, and `T` is not zero sized; otherwise yields
     /// undefined behavior.
-    unsafe fn dealloc_array_unchecked<T>(&mut self, ptr: Unique<T>, n: usize) {
+    unsafe fn dealloc_array_unchecked<T>(&mut self, ptr: Unique<T>, n: usize)
+        where Self: Sized {
         let layout = Layout::array_unchecked::<T>(n);
         self.dealloc(NonZero::new(*ptr as *mut u8), layout);
     }
 }
+```
+
+### Allocator trait objects
+[allocator objects]: #allocator-trait-objects
+
+```rust
+/// `AllocatorObj` is a convenience for making allocator trait objects
+/// such as `Box<AllocatorObj>` or `&AllocatorObj`. (One cannot just
+/// write `Box<Allocator>` because the one must specify the associated
+/// error type as part of the trait object.
+///
+/// Since one is pays the cost of virtual function dispatch when
+/// calling methods on trait objects, this definition uses `AllocErr`
+/// to encode more information when signalling errors in these
+/// objects, rather than using the content-impoverished
+/// `MemoryExhausted` error type for the associated error type.
+pub type AllocatorObj = Allocator<Error = AllocErr>;
 ```
