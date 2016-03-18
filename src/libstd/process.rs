@@ -507,17 +507,16 @@ impl Child {
     ///
     /// # Examples
     ///
-    /// ```should_panic
+    /// ```no_run
     /// use std::process::{Command, Stdio};
     ///
     /// let mut child = Command::new("/bin/cat")
     ///                         .stdout(Stdio::piped())
     ///                         .arg("file.txt")
     ///                         .spawn()
-    ///                         .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+    ///                         .expect("failed to execute child");
     ///
-    /// let ecode = child.wait_with_output()
-    ///                  .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+    /// let ecode = child.wait_with_output().expect("failed to wait on child");
     ///
     /// assert!(ecode.success());
     /// ```
