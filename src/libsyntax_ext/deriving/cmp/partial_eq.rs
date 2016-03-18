@@ -80,6 +80,14 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         } }
     }
 
+    // avoid defining `ne` if we can
+    // c-like enums, enums without any fields and structs without fields
+    // can safely define only `eq`.
+    let mut methods = vec![md!("eq", cs_eq)];
+    if !is_type_without_fields(item) {
+        methods.push(md!("ne", cs_ne));
+    }
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -87,10 +95,7 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
-        methods: vec!(
-            md!("eq", cs_eq),
-            md!("ne", cs_ne)
-        ),
+        methods: methods,
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
