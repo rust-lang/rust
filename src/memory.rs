@@ -119,7 +119,8 @@ impl Memory {
 
             for &mut (ref mut offset, _) in &mut relocations {
                 alloc.relocations.remove(offset);
-                *offset += dest.offset - src.offset;
+                *offset += dest.offset;
+                *offset -= src.offset;
             }
 
             (bytes, relocations)
