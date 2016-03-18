@@ -142,7 +142,7 @@ impl<'a, 'hir> LoweringContext<'a> {
         }
     }
 
-    // panics if this LoweringContext's NodeIdAssigner is not a Session
+    // Panics if this LoweringContext's NodeIdAssigner is not able to emit diagnostics.
     fn diagnostic(&self) -> &Handler {
         self.id_assigner.diagnostic()
     }

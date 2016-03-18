@@ -2076,8 +2076,8 @@ impl<'a> Parser<'a> {
         if end.is_none() && limits == RangeLimits::Closed {
             Err(self.span_fatal_help(self.span,
                                      "inclusive range with no end",
-                                     "currently, inclusive ranges must be bounded at the end \
-                                      (`...b` or `a...b`) -- see tracking issue #28237"))
+                                     "inclusive ranges must be bounded at the end \
+                                      (`...b` or `a...b`)"))
         } else {
             Ok(ExprKind::Range(start, end, limits))
         }
@@ -3016,7 +3016,8 @@ impl<'a> Parser<'a> {
                         this.parse_assoc_expr_with(op.precedence() + 1,
                             LhsExpr::NotYetParsed)
                 }),
-                // no operators are currently handled here
+                // We currently have no non-associative operators that are not handled above by
+                // the special cases. The code is here only for future convenience.
                 Fixity::None => self.with_res(
                     restrictions - Restrictions::RESTRICTION_STMT_EXPR,
                     |this| {
