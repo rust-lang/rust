@@ -1,6 +1,7 @@
 use arena::TypedArena;
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
+use rustc::middle::infer;
 use rustc::middle::subst::{self, Subst, Substs};
 use rustc::middle::traits;
 use rustc::middle::ty::{self, TyCtxt};
@@ -12,6 +13,7 @@ use std::cell::RefCell;
 use std::iter;
 use std::ops::Deref;
 use std::rc::Rc;
+use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 
 use error::EvalResult;
@@ -485,9 +487,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        self.current_frame().mir
-            .operand_ty(self.tcx, operand)
-            .subst(self.tcx, self.current_substs())
+        let ty = self.current_frame().mir.operand_ty(self.tcx, operand);
+        self.monomorphize(ty)
     }
 
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
@@ -594,12 +595,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
+    fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        let substituted = ty.subst(self.tcx, self.current_substs());
+        infer::normalize_associated_type(self.tcx, &substituted)
+    }
+
     fn ty_size(&self, ty: ty::Ty<'tcx>) -> usize {
         self.ty_to_repr(ty).size()
     }
 
     fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
-        let ty = ty.subst(self.tcx, self.current_substs());
+        let ty = self.monomorphize(ty);
 
         if let Some(repr) = self.repr_cache.borrow().get(ty) {
             return repr;
@@ -724,9 +730,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
-        use rustc::middle::infer;
-        use syntax::ast;
-
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
         let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables);
