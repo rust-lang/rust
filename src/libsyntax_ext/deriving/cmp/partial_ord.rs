@@ -67,6 +67,21 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         }))
     };
 
+    // avoid defining extra methods if we can
+    // c-like enums, enums without any fields and structs without fields
+    // can safely define only `partial_cmp`.
+    let methods = if is_type_without_fields(item) {
+        vec![partial_cmp_def]
+    } else {
+        vec![
+            partial_cmp_def,
+            md!("lt", true, false),
+            md!("le", true, true),
+            md!("gt", false, false),
+            md!("ge", false, true)
+        ]
+    };
+
     let trait_def = TraitDef {
         span: span,
         attributes: vec![],
@@ -74,13 +89,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
-        methods: vec![
-            partial_cmp_def,
-            md!("lt", true, false),
-            md!("le", true, true),
-            md!("gt", false, false),
-            md!("ge", false, true)
-        ],
+        methods: methods,
         associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
