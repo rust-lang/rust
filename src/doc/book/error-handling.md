@@ -2019,6 +2019,16 @@ impl Error for CliError {
             CliError::NotFound => "not found",
         }
     }
+
+    fn cause(&self) -> Option<&error::Error> {
+        match *self {            
+            CliError::Io(ref err) => Some(err),
+            CliError::Parse(ref err) => Some(err),
+            // Our custom error doesn't have an underlying cause, but we could
+            // modify it so that it does.
+            CliError::NotFound() => None,
+        }
+    }
 }
 ```
 
