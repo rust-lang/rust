@@ -407,7 +407,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     match result {
         Ok(t) => t,
         Err(ref err) => {
-            cx.report_and_explain_type_error(trace, err);
+            cx.report_and_explain_type_error(trace, err).emit();
             cx.tcx.types.err
         }
     }
@@ -1396,7 +1396,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 found: actual
             })
         };
-        self.report_and_explain_type_error(trace, &err);
+        self.report_and_explain_type_error(trace, &err).emit();
     }
 
     pub fn report_conflicting_default_types(&self,
@@ -1411,11 +1411,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             })
         };
 
-        self.report_and_explain_type_error(trace,
+        self.report_and_explain_type_error(
+            trace,
             &TypeError::TyParamDefaultMismatch(ExpectedFound {
                 expected: expected,
                 found: actual
-        }));
+            }))
+            .emit();
     }
 
     pub fn replace_late_bound_regions_with_fresh_var<T>(

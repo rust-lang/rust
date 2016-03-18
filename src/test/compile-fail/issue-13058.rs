@@ -36,9 +36,5 @@ fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
 fn main() {
     check((3, 5));
 //~^ ERROR mismatched types
-//~| expected `&_`
-//~| found `(_, _)`
-//~| expected &-ptr
-//~| found tuple
 //~| HELP run `rustc --explain E0308` to see a detailed explanation
 }

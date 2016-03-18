@@ -39,6 +39,7 @@ struct Cat<'x, T> { cat: &'x isize, t: T }
 struct Dog<'y> { dog: &'y isize }
 
 fn cat2<'x, 'y>(x: Cat<'x, Dog<'y>>) -> &'x isize {
+    //~^ HELP consider using an explicit lifetime parameter as shown: fn cat2<'x>(x: Cat<'x, Dog<'x>>) -> &'x isize
     x.t.dog //~ ERROR E0312
 }
 
@@ -48,6 +49,7 @@ struct Baz<'x> {
 
 impl<'a> Baz<'a> {
     fn baz2<'b>(&self, x: &isize) -> (&'b isize, &'b isize) {
+        //~^ HELP consider using an explicit lifetime parameter as shown: fn baz2<'b>(&self, x: &'b isize) -> (&'a isize, &'a isize)
         (self.bar, x) //~ ERROR E0312
         //~^ ERROR E0312
     }
