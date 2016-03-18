@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[allow(exceeding_bitshifts)]
-#[deny(const_err)]
+#![feature(rustc_attrs)]
+#![allow(exceeding_bitshifts)]
+#![deny(const_err)]
 
 fn black_box<T>(_: T) {
     unimplemented!()
@@ -18,6 +19,7 @@ fn black_box<T>(_: T) {
 const BLA: u8 = 200u8 + 200u8;
 //~^ ERROR attempted to add with overflow
 
+#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let a = -std::i8::MIN;
     //~^ WARN attempted to negate with overflow

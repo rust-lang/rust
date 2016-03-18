@@ -39,8 +39,20 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ExprKind::Scope { extent, value } => {
                 this.in_scope(extent, block, |this| this.as_rvalue(block, value))
             }
-            ExprKind::InlineAsm { asm } => {
-                block.and(Rvalue::InlineAsm(asm.clone()))
+            ExprKind::InlineAsm { asm, outputs, inputs } => {
+                let outputs = outputs.into_iter().map(|output| {
+                    unpack!(block = this.as_lvalue(block, output))
+                }).collect();
+
+                let inputs = inputs.into_iter().map(|input| {
+                    unpack!(block = this.as_operand(block, input))
+                }).collect();
+
+                block.and(Rvalue::InlineAsm {
+                    asm: asm.clone(),
+                    outputs: outputs,
+                    inputs: inputs
+                })
             }
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, value));
@@ -73,8 +85,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 })
             }
             ExprKind::Cast { source } => {
-                let source = unpack!(block = this.as_operand(block, source));
-                block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
+                let source = this.hir.mirror(source);
+                if source.ty == expr.ty {
+                    this.expr_as_rvalue(block, source)
+                } else {
+                    let source = unpack!(block = this.as_operand(block, source));
+                    block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
+                }
             }
             ExprKind::ReifyFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, source));

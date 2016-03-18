@@ -39,7 +39,7 @@ use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
-use syntax::attr::ThinAttributes;
+use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
@@ -635,6 +635,16 @@ pub enum Stmt_ {
     StmtSemi(P<Expr>, NodeId),
 }
 
+impl Stmt_ {
+    pub fn attrs(&self) -> &[Attribute] {
+        match *self {
+            StmtDecl(ref d, _) => d.node.attrs(),
+            StmtExpr(ref e, _) |
+            StmtSemi(ref e, _) => e.attrs.as_attr_slice(),
+        }
+    }
+}
+
 // FIXME (pending discussion of #1697, #2178...): local should really be
 // a refinement on pat.
 /// Local represents a `let` statement, e.g., `let <pat>:<ty> = <expr>;`
@@ -657,6 +667,15 @@ pub enum Decl_ {
     DeclLocal(P<Local>),
     /// An item binding:
     DeclItem(ItemId),
+}
+
+impl Decl_ {
+    pub fn attrs(&self) -> &[Attribute] {
+        match *self {
+            DeclLocal(ref l) => l.attrs.as_attr_slice(),
+            DeclItem(_) => &[]
+        }
+    }
 }
 
 /// represents one arm of a 'match'
@@ -793,8 +812,8 @@ pub enum Expr_ {
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
-    /// Output of the `asm!()` macro
-    ExprInlineAsm(InlineAsm),
+    /// Inline assembly (from `asm!`), with its outputs and inputs.
+    ExprInlineAsm(InlineAsm, Vec<P<Expr>>, Vec<P<Expr>>),
 
     /// A struct literal expression.
     ///
@@ -978,7 +997,6 @@ pub enum Ty_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct InlineAsmOutput {
     pub constraint: InternedString,
-    pub expr: P<Expr>,
     pub is_rw: bool,
     pub is_indirect: bool,
 }
@@ -988,7 +1006,7 @@ pub struct InlineAsm {
     pub asm: InternedString,
     pub asm_str_style: StrStyle,
     pub outputs: HirVec<InlineAsmOutput>,
-    pub inputs: HirVec<(InternedString, P<Expr>)>,
+    pub inputs: HirVec<InternedString>,
     pub clobbers: HirVec<InternedString>,
     pub volatile: bool,
     pub alignstack: bool,

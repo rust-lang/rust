@@ -60,17 +60,37 @@ fn fn_sig(f: &mut fmt::Formatter,
     }
 }
 
-fn parameterized<GG>(f: &mut fmt::Formatter,
-                     substs: &subst::Substs,
-                     did: DefId,
-                     projections: &[ty::ProjectionPredicate],
-                     get_generics: GG)
-                     -> fmt::Result
+/// Namespace of the path given to parameterized to print.
+#[derive(Copy, Clone, PartialEq)]
+pub enum Ns {
+    Type,
+    Value
+}
+
+pub fn parameterized<GG>(f: &mut fmt::Formatter,
+                         substs: &subst::Substs,
+                         did: DefId,
+                         ns: Ns,
+                         projections: &[ty::ProjectionPredicate],
+                         get_generics: GG)
+                         -> fmt::Result
     where GG: for<'tcx> FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
 {
-    let (fn_trait_kind, verbose) = try!(ty::tls::with(|tcx| {
+    if let (Ns::Value, Some(self_ty)) = (ns, substs.self_ty()) {
+        try!(write!(f, "<{} as ", self_ty));
+    }
+
+    let (fn_trait_kind, verbose, last_name) = try!(ty::tls::with(|tcx| {
+        let (did, last_name) = if ns == Ns::Value {
+            // Try to get the impl/trait parent, if this is an
+            // associated value item (method or constant).
+            tcx.trait_of_item(did).or_else(|| tcx.impl_of_method(did))
+               .map_or((did, None), |parent| (parent, Some(tcx.item_name(did))))
+        } else {
+            (did, None)
+        };
         try!(write!(f, "{}", tcx.item_path_str(did)));
-        Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose()))
+        Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose(), last_name))
     }));
 
     let mut empty = true;
@@ -185,7 +205,28 @@ fn parameterized<GG>(f: &mut fmt::Formatter,
                     projection.ty));
     }
 
-    start_or_continue(f, "", ">")
+    try!(start_or_continue(f, "", ">"));
+
+    // For values, also print their name and type parameters.
+    if ns == Ns::Value {
+        if substs.self_ty().is_some() {
+            try!(write!(f, ">"));
+        }
+
+        if let Some(name) = last_name {
+            try!(write!(f, "::{}", name));
+        }
+        let tps = substs.types.get_slice(subst::FnSpace);
+        if !tps.is_empty() {
+            try!(write!(f, "::<{}", tps[0]));
+            for ty in &tps[1..] {
+                try!(write!(f, ", {}", ty));
+            }
+            try!(write!(f, ">"));
+        }
+    }
+
+    Ok(())
 }
 
 fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
@@ -265,6 +306,7 @@ impl<'tcx> fmt::Display for TraitAndProjections<'tcx> {
         let TraitAndProjections(ref trait_ref, ref projection_bounds) = *self;
         parameterized(f, trait_ref.substs,
                       trait_ref.def_id,
+                      Ns::Type,
                       projection_bounds,
                       |tcx| tcx.lookup_trait_def(trait_ref.def_id).generics.clone())
     }
@@ -769,7 +811,7 @@ impl fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region, ty::Region>> 
 
 impl<'tcx> fmt::Display for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        parameterized(f, self.substs, self.def_id, &[],
+        parameterized(f, self.substs, self.def_id, Ns::Type, &[],
                       |tcx| tcx.lookup_trait_def(self.def_id).generics.clone())
     }
 }
@@ -821,19 +863,9 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     try!(write!(f, "extern {} ", bare_fn.abi));
                 }
 
-                try!(write!(f, "{}", bare_fn.sig.0));
-                try!(ty::tls::with(|tcx| {
-                    write!(f, " {{{}", tcx.item_path_str(def_id))
-                }));
-
-                let tps = substs.types.get_slice(subst::FnSpace);
-                if tps.len() >= 1 {
-                    try!(write!(f, "::<{}", tps[0]));
-                    for &ty in &tps[1..] {
-                        try!(write!(f, ", {}", ty));
-                    }
-                    try!(write!(f, ">"));
-                }
+                try!(write!(f, "{} {{", bare_fn.sig.0));
+                try!(parameterized(f, substs, def_id, Ns::Value, &[],
+                                   |tcx| tcx.lookup_item_type(def_id).generics));
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
@@ -856,7 +888,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                           !tcx.tcache.borrow().contains_key(&def.did) {
                         write!(f, "{}<..>", tcx.item_path_str(def.did))
                     } else {
-                        parameterized(f, substs, def.did, &[],
+                        parameterized(f, substs, def.did, Ns::Type, &[],
                                       |tcx| tcx.lookup_item_type(def.did).generics)
                     }
                 })

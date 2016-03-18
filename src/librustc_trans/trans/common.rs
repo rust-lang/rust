@@ -12,8 +12,6 @@
 
 //! Code that is useful in various trans modules.
 
-pub use self::ExprOrMethodCall::*;
-
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
@@ -23,33 +21,34 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::subst::{self, Substs};
+use middle::subst::Substs;
+use trans::abi::{Abi, FnType};
 use trans::base;
 use trans::build;
 use trans::builder::Builder;
-use trans::callee;
+use trans::callee::Callee;
 use trans::cleanup;
 use trans::consts;
 use trans::datum;
 use trans::debuginfo::{self, DebugLoc};
 use trans::declare;
 use trans::machine;
+use trans::mir::CachedMir;
 use trans::monomorphize;
 use trans::type_::Type;
-use trans::type_of;
+use trans::value::Value;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::traits::{self, SelectionContext, ProjectionMode};
 use middle::ty::fold::{TypeFolder, TypeFoldable};
 use rustc_front::hir;
-use rustc::mir::repr::Mir;
-use util::nodemap::{FnvHashMap, NodeMap};
+use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ops::Deref;
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
-use std::vec::Vec;
+
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
@@ -75,18 +74,6 @@ pub fn type_is_fat_ptr<'tcx>(cx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::TyStruct(def, substs) => {
-            let fields = &def.struct_variant().fields;
-            fields.len() == 1 && {
-                type_is_immediate(ccx, monomorphize::field_ty(ccx.tcx(), substs, &fields[0]))
-            }
-        }
-        _ => false
-    }
-}
-
 pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     use trans::machine::llsize_of_alloc;
     use trans::type_of::sizing_type_of;
@@ -94,7 +81,6 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     let tcx = ccx.tcx();
     let simple = ty.is_scalar() ||
         ty.is_unique() || ty.is_region_ptr() ||
-        type_is_newtype_immediate(ccx, ty) ||
         ty.is_simd();
     if simple && !type_is_fat_ptr(tcx, ty) {
         return true;
@@ -118,12 +104,6 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     use trans::type_of::sizing_type_of;
     let llty = sizing_type_of(ccx, ty);
     llsize_of_alloc(ccx, llty) == 0
-}
-
-/// Identifies types which we declare to be equivalent to `void` in C for the purpose of function
-/// return types. These are `()`, bot, uninhabited enums and all other zero-sized types.
-pub fn return_type_is_void<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_nil() || ty.is_empty(ccx.tcx()) || type_is_zero_size(ccx, ty)
 }
 
 /// Generates a unique symbol based off the name given. This is used to create
@@ -252,8 +232,6 @@ pub fn BuilderRef_res(b: BuilderRef) -> BuilderRef_res {
     }
 }
 
-pub type ExternMap = FnvHashMap<String, ValueRef>;
-
 pub fn validate_substs(substs: &Substs) {
     assert!(!substs.types.needs_infer());
 }
@@ -295,7 +273,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // The MIR for this function. At present, this is optional because
     // we only have MIR available for things that are local to the
     // crate.
-    pub mir: Option<&'a Mir<'tcx>>,
+    pub mir: Option<CachedMir<'a, 'tcx>>,
 
     // The ValueRef returned from a call to llvm::LLVMAddFunction; the
     // address of the first instruction in the sequence of
@@ -305,9 +283,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // always an empty parameter-environment NOTE: @jroesch another use of ParamEnv
     pub param_env: ty::ParameterEnvironment<'a, 'tcx>,
-
-    // The environment argument in a closure.
-    pub llenv: Option<ValueRef>,
 
     // A pointer to where to store the return value. If the return type is
     // immediate, this points to an alloca in the function. Otherwise, it's a
@@ -336,11 +311,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // Note that for cleanuppad-based exceptions this is not used.
     pub landingpad_alloca: Cell<Option<ValueRef>>,
 
-    // True if the caller expects this fn to use the out pointer to
-    // return. Either way, your code should write into the slot llretslotptr
-    // points to, but if this value is false, that slot will be a local alloca.
-    pub caller_expects_out_pointer: bool,
-
     // Maps the DefId's for local variables to the allocas created for
     // them in llallocas.
     pub lllocals: RefCell<NodeMap<LvalueDatum<'tcx>>>,
@@ -352,9 +322,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // paths) for the code being compiled.
     pub lldropflag_hints: RefCell<DropFlagHintsMap<'tcx>>,
 
-    // The NodeId of the function, or -1 if it doesn't correspond to
-    // a user-defined function.
-    pub id: ast::NodeId,
+    // Describes the return/argument LLVM types and their ABI handling.
+    pub fn_ty: FnType,
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
@@ -383,20 +352,8 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    pub fn mir(&self) -> &'a Mir<'tcx> {
-        self.mir.unwrap()
-    }
-
-    pub fn arg_offset(&self) -> usize {
-        self.env_arg_pos() + if self.llenv.is_some() { 1 } else { 0 }
-    }
-
-    pub fn env_arg_pos(&self) -> usize {
-        if self.caller_expects_out_pointer {
-            1
-        } else {
-            0
-        }
+    pub fn mir(&self) -> CachedMir<'a, 'tcx> {
+        self.mir.clone().expect("fcx.mir was empty")
     }
 
     pub fn cleanup(&self) {
@@ -419,14 +376,9 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         self.llreturn.get().unwrap()
     }
 
-    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>,
-                        output: ty::FnOutput<'tcx>,
-                        name: &str) -> ValueRef {
+    pub fn get_ret_slot(&self, bcx: Block<'a, 'tcx>, name: &str) -> ValueRef {
         if self.needs_ret_allocas {
-            base::alloca(bcx, match output {
-                ty::FnConverging(output_type) => type_of::type_of(bcx.ccx(), output_type),
-                ty::FnDiverging => Type::void(bcx.ccx())
-            }, name)
+            base::alloca(bcx, self.fn_ty.ret.memory_ty(self.ccx), name)
         } else {
             self.llretslotptr.get().unwrap()
         }
@@ -511,62 +463,60 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         // `rust_eh_personality` function, but rather we wired it up to the
         // CRT's custom personality function, which forces LLVM to consider
         // landing pads as "landing pads for SEH".
-        let target = &self.ccx.sess().target.target;
-        match self.ccx.tcx().lang_items.eh_personality() {
-            Some(def_id) if !base::wants_msvc_seh(self.ccx.sess()) => {
-                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
-                                     self.param_substs).val
+        let ccx = self.ccx;
+        let tcx = ccx.tcx();
+        let target = &ccx.sess().target.target;
+        match tcx.lang_items.eh_personality() {
+            Some(def_id) if !base::wants_msvc_seh(ccx.sess()) => {
+                Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty())).reify(ccx).val
             }
-            _ => {
-                let mut personality = self.ccx.eh_personality().borrow_mut();
-                match *personality {
-                    Some(llpersonality) => llpersonality,
-                    None => {
-                        let name = if !base::wants_msvc_seh(self.ccx.sess()) {
-                            "rust_eh_personality"
-                        } else if target.arch == "x86" {
-                            "_except_handler3"
-                        } else {
-                            "__C_specific_handler"
-                        };
-                        let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = declare::declare_cfn(self.ccx, name, fty,
-                                                     self.ccx.tcx().types.i32);
-                        *personality = Some(f);
-                        f
-                    }
-                }
+            _ => if let Some(llpersonality) = ccx.eh_personality().get() {
+                llpersonality
+            } else {
+                let name = if !base::wants_msvc_seh(ccx.sess()) {
+                    "rust_eh_personality"
+                } else if target.arch == "x86" {
+                    "_except_handler3"
+                } else {
+                    "__C_specific_handler"
+                };
+                let fty = Type::variadic_func(&[], &Type::i32(ccx));
+                let f = declare::declare_cfn(ccx, name, fty);
+                ccx.eh_personality().set(Some(f));
+                f
             }
         }
     }
 
     // Returns a ValueRef of the "eh_unwind_resume" lang item if one is defined,
     // otherwise declares it as an external function.
-    pub fn eh_unwind_resume(&self) -> ValueRef {
+    pub fn eh_unwind_resume(&self) -> Callee<'tcx> {
         use trans::attributes;
-        assert!(self.ccx.sess().target.target.options.custom_unwind_resume);
-        match self.ccx.tcx().lang_items.eh_unwind_resume() {
-            Some(def_id) => {
-                callee::trans_fn_ref(self.ccx, def_id, ExprId(0),
-                                     self.param_substs).val
-            }
-            None => {
-                let mut unwresume = self.ccx.eh_unwind_resume().borrow_mut();
-                match *unwresume {
-                    Some(llfn) => llfn,
-                    None => {
-                        let fty = Type::func(&[Type::i8p(self.ccx)], &Type::void(self.ccx));
-                        let llfn = declare::declare_fn(self.ccx,
-                                                       "rust_eh_unwind_resume",
-                                                       llvm::CCallConv,
-                                                       fty, ty::FnDiverging);
-                        attributes::unwind(llfn, true);
-                        *unwresume = Some(llfn);
-                        llfn
-                    }
-                }
-            }
+        let ccx = self.ccx;
+        let tcx = ccx.tcx();
+        assert!(ccx.sess().target.target.options.custom_unwind_resume);
+        if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
+            return Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty()));
         }
+
+        let ty = tcx.mk_fn_ptr(ty::BareFnTy {
+            unsafety: hir::Unsafety::Unsafe,
+            abi: Abi::C,
+            sig: ty::Binder(ty::FnSig {
+                inputs: vec![tcx.mk_mut_ptr(tcx.types.u8)],
+                output: ty::FnDiverging,
+                variadic: false
+            }),
+        });
+
+        let unwresume = ccx.eh_unwind_resume();
+        if let Some(llfn) = unwresume.get() {
+            return Callee::ptr(datum::immediate_rvalue(llfn, ty));
+        }
+        let llfn = declare::declare_fn(ccx, "rust_eh_unwind_resume", ty);
+        attributes::unwind(llfn, true);
+        unwresume.set(Some(llfn));
+        Callee::ptr(datum::immediate_rvalue(llfn, ty))
     }
 }
 
@@ -630,7 +580,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         self.lpad.get()
     }
 
-    pub fn mir(&self) -> &'blk Mir<'tcx> {
+    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
         self.fcx.mir()
     }
 
@@ -650,14 +600,6 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
                     "no def associated with node id {}", nid));
             }
         }
-    }
-
-    pub fn val_to_string(&self, val: ValueRef) -> String {
-        self.ccx().tn().val_to_string(val)
-    }
-
-    pub fn llty_str(&self, ty: Type) -> String {
-        self.ccx().tn().type_to_string(ty)
     }
 
     pub fn to_str(&self) -> String {
@@ -746,6 +688,10 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
 
     // Methods delegated to bcx
 
+    pub fn is_unreachable(&self) -> bool {
+        self.bcx.unreachable.get()
+    }
+
     pub fn ccx(&self) -> &'blk CrateContext<'blk, 'tcx> {
         self.bcx.ccx()
     }
@@ -763,12 +709,8 @@ impl<'blk, 'tcx> BlockAndBuilder<'blk, 'tcx> {
         self.bcx.llbb
     }
 
-    pub fn mir(&self) -> &'blk Mir<'tcx> {
+    pub fn mir(&self) -> CachedMir<'blk, 'tcx> {
         self.bcx.mir()
-    }
-
-    pub fn val_to_string(&self, val: ValueRef) -> String {
-        self.bcx.val_to_string(val)
     }
 
     pub fn monomorphize<T>(&self, value: &T) -> T
@@ -1028,15 +970,15 @@ pub fn C_bytes_in_context(llcx: ContextRef, bytes: &[u8]) -> ValueRef {
     }
 }
 
-pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
+pub fn const_get_elt(v: ValueRef, us: &[c_uint])
               -> ValueRef {
     unsafe {
         let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
-        debug!("const_get_elt(v={}, us={:?}, r={})",
-               cx.tn().val_to_string(v), us, cx.tn().val_to_string(r));
+        debug!("const_get_elt(v={:?}, us={:?}, r={:?})",
+               Value(v), us, Value(r));
 
-        return r;
+        r
     }
 }
 
@@ -1215,41 +1157,6 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     infer::drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
 }
 
-// Key used to lookup values supplied for type parameters in an expr.
-#[derive(Copy, Clone, PartialEq, Debug)]
-pub enum ExprOrMethodCall {
-    // Type parameters for a path like `None::<int>`
-    ExprId(ast::NodeId),
-
-    // Type parameters for a method call like `a.foo::<int>()`
-    MethodCallKey(ty::MethodCall)
-}
-
-pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                node: ExprOrMethodCall,
-                                param_substs: &subst::Substs<'tcx>)
-                                -> &'tcx subst::Substs<'tcx> {
-    let tcx = ccx.tcx();
-
-    let substs = match node {
-        ExprId(id) => {
-            tcx.node_id_item_substs(id).substs
-        }
-        MethodCallKey(method_call) => {
-            tcx.tables.borrow().method_map[&method_call].substs.clone()
-        }
-    };
-
-    if substs.types.needs_infer() {
-        tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
-                              node, substs));
-    }
-
-    ccx.tcx().mk_substs(monomorphize::apply_param_substs(tcx,
-                                                         param_substs,
-                                                         &substs.erase_regions()))
-}
-
 pub fn langcall(bcx: Block,
                 span: Option<Span>,
                 msg: &str,
@@ -1349,16 +1256,5 @@ pub fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             build::VectorSplat(bcx, mask_llty.vector_length(), mask)
         },
         _ => panic!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
-    }
-}
-
-pub fn get_static_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            did: DefId,
-                            ty: Ty<'tcx>)
-                            -> ValueRef {
-    if let Some(node_id) = ccx.tcx().map.as_local_node_id(did) {
-        base::get_item_val(ccx, node_id)
-    } else {
-        base::get_extern_const(ccx, did, ty)
     }
 }

@@ -16,6 +16,7 @@
 use mir::repr::*;
 use middle::subst::{Subst, Substs};
 use middle::ty::{self, AdtDef, Ty, TyCtxt};
+use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_front::hir;
 
 #[derive(Copy, Clone, Debug)]
@@ -73,6 +74,29 @@ impl<'tcx> LvalueTy<'tcx> {
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
+            LvalueTy::Downcast { adt_def, substs, variant_index } => {
+                let substs = substs.fold_with(folder);
+                LvalueTy::Downcast {
+                    adt_def: adt_def,
+                    substs: folder.tcx().mk_substs(substs),
+                    variant_index: variant_index
+                }
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            LvalueTy::Ty { ty } => ty.visit_with(visitor),
+            LvalueTy::Downcast { substs, .. } => substs.visit_with(visitor)
         }
     }
 }
@@ -196,7 +220,7 @@ impl<'tcx> Mir<'tcx> {
                 }
             }
             Rvalue::Slice { .. } => None,
-            Rvalue::InlineAsm(..) => None
+            Rvalue::InlineAsm { .. } => None
         }
     }
 }

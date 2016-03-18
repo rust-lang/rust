@@ -449,23 +449,20 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 }
             }
 
-            hir::ExprInlineAsm(ref ia) => {
-                for &(_, ref input) in &ia.inputs {
-                    self.consume_expr(&input);
-                }
-
-                for output in &ia.outputs {
-                    if output.is_indirect {
-                        self.consume_expr(&output.expr);
+            hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+                for (o, output) in ia.outputs.iter().zip(outputs) {
+                    if o.is_indirect {
+                        self.consume_expr(output);
                     } else {
-                        self.mutate_expr(expr, &output.expr,
-                                         if output.is_rw {
+                        self.mutate_expr(expr, output,
+                                         if o.is_rw {
                                              MutateMode::WriteAndRead
                                          } else {
                                              MutateMode::JustWrite
                                          });
                     }
                 }
+                self.consume_exprs(inputs);
             }
 
             hir::ExprBreak(..) |

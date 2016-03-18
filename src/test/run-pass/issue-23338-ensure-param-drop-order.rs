@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
+
 // ignore-pretty : (#23623) problems when  ending with // comments
 
 // This test is ensuring that parameters are indeed dropped after
@@ -64,6 +66,7 @@ fn test<'a>(log: d::Log<'a>) {
     d::println(&format!("result {}", result));
 }
 
+#[rustc_no_mir] // FIXME #29855 MIR doesn't handle all drops correctly.
 fn foo<'a>(da0: D<'a>, de1: D<'a>) -> D<'a> {
     d::println("entered foo");
     let de2 = de1.incr();      // creates D(de_2, 2)

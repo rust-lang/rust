@@ -42,6 +42,6 @@ fn main() {
     // Make sure we distinguish between trait methods correctly.
     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
     //~^ ERROR mismatched types
-    //~|  expected `fn() {Foo::foo}`
-    //~|  found `fn() {Foo::foo}`
+    //~|  expected `fn() {<u8 as Foo>::foo}`
+    //~|  found `fn() {<u16 as Foo>::foo}`
 }

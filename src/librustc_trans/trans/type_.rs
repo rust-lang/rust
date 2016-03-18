@@ -11,7 +11,7 @@
 #![allow(non_upper_case_globals)]
 
 use llvm;
-use llvm::{TypeRef, Bool, False, True, TypeKind, ValueRef};
+use llvm::{TypeRef, Bool, False, True, TypeKind};
 use llvm::{Float, Double, X86_FP80, PPC_FP128, FP128};
 
 use trans::context::CrateContext;
@@ -20,16 +20,25 @@ use util::nodemap::FnvHashMap;
 use syntax::ast;
 
 use std::ffi::CString;
+use std::fmt;
 use std::mem;
 use std::ptr;
 use std::cell::RefCell;
 
 use libc::c_uint;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq)]
 #[repr(C)]
 pub struct Type {
     rf: TypeRef
+}
+
+impl fmt::Debug for Type {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&llvm::build_string(|s| unsafe {
+            llvm::LLVMWriteTypeToString(self.to_ref(), s);
+        }).expect("non-UTF8 type description from LLVM"))
+    }
 }
 
 macro_rules! ty {
@@ -48,12 +57,6 @@ impl Type {
     #[inline(always)] // So it doesn't kill --opt-level=0 builds of the compiler
     pub fn to_ref(&self) -> TypeRef {
         self.rf
-    }
-
-    pub fn to_string(self: Type) -> String {
-        llvm::build_string(|s| unsafe {
-            llvm::LLVMWriteTypeToString(self.to_ref(), s);
-        }).expect("non-UTF8 type description from LLVM")
     }
 
     pub fn to_ref_slice(slice: &[Type]) -> &[TypeRef] {
@@ -180,10 +183,6 @@ impl Type {
         Type::struct_(ccx, &[], false)
     }
 
-    pub fn glue_fn(ccx: &CrateContext, t: Type) -> Type {
-        Type::func(&[t], &Type::void(ccx))
-    }
-
     pub fn array(ty: &Type, len: u64) -> Type {
         ty!(llvm::LLVMRustArrayType(ty.to_ref(), len))
     }
@@ -203,7 +202,7 @@ impl Type {
     }
 
     pub fn vtable_ptr(ccx: &CrateContext) -> Type {
-        Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to().ptr_to()
+        Type::func(&[Type::i8p(ccx)], &Type::void(ccx)).ptr_to().ptr_to()
     }
 
     pub fn kind(&self) -> TypeKind {
@@ -301,7 +300,6 @@ impl Type {
     }
 }
 
-
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
@@ -322,20 +320,5 @@ impl TypeNames {
 
     pub fn find_type(&self, s: &str) -> Option<Type> {
         self.named_types.borrow().get(s).map(|x| Type::from_ref(*x))
-    }
-
-    pub fn type_to_string(&self, ty: Type) -> String {
-        ty.to_string()
-    }
-
-    pub fn types_to_str(&self, tys: &[Type]) -> String {
-        let strs: Vec<String> = tys.iter().map(|t| self.type_to_string(*t)).collect();
-        format!("[{}]", strs.join(","))
-    }
-
-    pub fn val_to_string(&self, val: ValueRef) -> String {
-        llvm::build_string(|s| unsafe {
-                llvm::LLVMWriteValueToString(val, s);
-            }).expect("nun-UTF8 value description from LLVM")
     }
 }

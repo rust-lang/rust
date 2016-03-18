@@ -948,7 +948,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    fn is_slice(&self) -> bool {
+    pub fn is_slice(&self) -> bool {
         match self.sty {
             TyRawPtr(mt) | TyRef(_, mt) => match mt.ty.sty {
                 TySlice(_) | TyStr => true,

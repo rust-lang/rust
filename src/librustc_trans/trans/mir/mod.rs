@@ -10,21 +10,39 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
+use middle::ty;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use trans::base;
-use trans::common::{self, Block, BlockAndBuilder};
-use trans::expr;
-use trans::type_of;
+use trans::common::{self, Block, BlockAndBuilder, FunctionContext};
 
-use self::lvalue::LvalueRef;
+use std::ops::Deref;
+use std::rc::Rc;
+
+use self::lvalue::{LvalueRef, get_dataptr, get_meta};
 use self::operand::OperandRef;
+
+#[derive(Clone)]
+pub enum CachedMir<'mir, 'tcx: 'mir> {
+    Ref(&'mir mir::Mir<'tcx>),
+    Owned(Rc<mir::Mir<'tcx>>)
+}
+
+impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
+    type Target = mir::Mir<'tcx>;
+    fn deref(&self) -> &mir::Mir<'tcx> {
+        match *self {
+            CachedMir::Ref(r) => r,
+            CachedMir::Owned(ref rc) => rc
+        }
+    }
+}
 
 // FIXME DebugLoc is always None right now
 
 /// Master context for translating MIR.
 pub struct MirContext<'bcx, 'tcx:'bcx> {
-    mir: &'bcx mir::Mir<'tcx>,
+    mir: CachedMir<'bcx, 'tcx>,
 
     /// Function context
     fcx: &'bcx common::FunctionContext<'bcx, 'tcx>,
@@ -77,16 +95,16 @@ enum TempRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
-    let fcx = bcx.fcx();
+pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
+    let bcx = fcx.init(false, None).build();
     let mir = bcx.mir();
 
-    let mir_blocks = bcx.mir().all_basic_blocks();
+    let mir_blocks = mir.all_basic_blocks();
 
     // Analyze the temps to determine which must be lvalues
     // FIXME
     let lvalue_temps = bcx.with_block(|bcx| {
-      analyze::lvalue_temps(bcx, mir)
+      analyze::lvalue_temps(bcx, &mir)
     });
 
     // Allocate variable and temp allocas
@@ -108,10 +126,10 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
                                   TempRef::Operand(None)
                               })
                               .collect();
-    let args = arg_value_refs(&bcx, mir);
+    let args = arg_value_refs(&bcx, &mir);
 
     // Allocate a `Block` for every basic block
-    let block_bcxs: Vec<Block<'bcx,'tcx>> =
+    let block_bcxs: Vec<Block<'blk,'tcx>> =
         mir_blocks.iter()
                   .map(|&bb|{
                       // FIXME(#30941) this doesn't handle msvc-style exceptions
@@ -138,6 +156,8 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
     for &bb in &mir_blocks {
         mircx.trans_block(bb);
     }
+
+    fcx.cleanup();
 }
 
 /// Produce, for each argument, a `ValueRef` pointing at the
@@ -146,51 +166,75 @@ pub fn trans_mir<'bcx, 'tcx>(bcx: BlockAndBuilder<'bcx, 'tcx>) {
 fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                               mir: &mir::Mir<'tcx>)
                               -> Vec<LvalueRef<'tcx>> {
-    // FIXME tupled_args? I think I'd rather that mapping is done in MIR land though
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
-    let mut idx = fcx.arg_offset() as c_uint;
-    mir.arg_decls
-       .iter()
-       .enumerate()
-       .map(|(arg_index, arg_decl)| {
-           let arg_ty = bcx.monomorphize(&arg_decl.ty);
-           let llval = if type_of::arg_is_indirect(bcx.ccx(), arg_ty) {
-               // Don't copy an indirect argument to an alloca, the caller
-               // already put it in a temporary alloca and gave it up, unless
-               // we emit extra-debug-info, which requires local allocas :(.
-               // FIXME: lifetimes, debug info
-               let llarg = llvm::get_param(fcx.llfn, idx);
-               idx += 1;
-               llarg
-           } else if common::type_is_fat_ptr(tcx, arg_ty) {
-               // we pass fat pointers as two words, but we want to
-               // represent them internally as a pointer to two words,
-               // so make an alloca to store them in.
-               let lldata = llvm::get_param(fcx.llfn, idx);
-               let llextra = llvm::get_param(fcx.llfn, idx + 1);
-               idx += 2;
-               let (lltemp, dataptr, meta) = bcx.with_block(|bcx| {
-                   let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
-                   (lltemp, expr::get_dataptr(bcx, lltemp), expr::get_meta(bcx, lltemp))
-               });
-               bcx.store(lldata, dataptr);
-               bcx.store(llextra, meta);
-               lltemp
-           } else {
-               // otherwise, arg is passed by value, so make a
-               // temporary and store it there
-               let llarg = llvm::get_param(fcx.llfn, idx);
-               idx += 1;
-               bcx.with_block(|bcx| {
-                   let lltemp = base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index));
-                   base::store_ty(bcx, llarg, lltemp, arg_ty);
-                   lltemp
-               })
-           };
-           LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
-       })
-       .collect()
+    let mut idx = 0;
+    let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
+    mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
+        let arg_ty = bcx.monomorphize(&arg_decl.ty);
+        if arg_decl.spread {
+            // This argument (e.g. the last argument in the "rust-call" ABI)
+            // is a tuple that was spread at the ABI level and now we have
+            // to reconstruct it into a tuple local variable, from multiple
+            // individual LLVM function arguments.
+
+            let tupled_arg_tys = match arg_ty.sty {
+                ty::TyTuple(ref tys) => tys,
+                _ => unreachable!("spread argument isn't a tuple?!")
+            };
+
+            let lltemp = bcx.with_block(|bcx| {
+                base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
+            });
+            for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
+                let dst = bcx.struct_gep(lltemp, i);
+                let arg = &fcx.fn_ty.args[idx];
+                    idx += 1;
+                if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
+                        // We pass fat pointers as two words, but inside the tuple
+                        // they are the two sub-fields of a single aggregate field.
+                    let meta = &fcx.fn_ty.args[idx];
+                    idx += 1;
+                    arg.store_fn_arg(bcx, &mut llarg_idx, get_dataptr(bcx, dst));
+                    meta.store_fn_arg(bcx, &mut llarg_idx, get_meta(bcx, dst));
+                } else {
+                    arg.store_fn_arg(bcx, &mut llarg_idx, dst);
+                }
+            }
+            return LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty));
+        }
+
+        let arg = &fcx.fn_ty.args[idx];
+        idx += 1;
+        let llval = if arg.is_indirect() {
+            // Don't copy an indirect argument to an alloca, the caller
+            // already put it in a temporary alloca and gave it up, unless
+            // we emit extra-debug-info, which requires local allocas :(.
+            // FIXME: lifetimes, debug info
+            let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
+            llarg_idx += 1;
+            llarg
+        } else {
+            let lltemp = bcx.with_block(|bcx| {
+                base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
+            });
+            if common::type_is_fat_ptr(tcx, arg_ty) {
+                // we pass fat pointers as two words, but we want to
+                // represent them internally as a pointer to two words,
+                // so make an alloca to store them in.
+                let meta = &fcx.fn_ty.args[idx];
+                idx += 1;
+                arg.store_fn_arg(bcx, &mut llarg_idx, get_dataptr(bcx, lltemp));
+                meta.store_fn_arg(bcx, &mut llarg_idx, get_meta(bcx, lltemp));
+            } else  {
+                // otherwise, arg is passed by value, so make a
+                // temporary and store it there
+                arg.store_fn_arg(bcx, &mut llarg_idx, lltemp);
+            }
+            lltemp
+        };
+        LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
+    }).collect()
 }
 
 mod analyze;

@@ -95,7 +95,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 Err(match_pair)
             }
 
-            PatternKind::Array { ref prefix, ref slice, ref suffix } => {
+            PatternKind::Range { .. } |
+            PatternKind::Variant { .. } => {
+                // cannot simplify, test is required
+                Err(match_pair)
+            }
+
+            PatternKind::Slice { .. } if !match_pair.slice_len_checked => {
+                Err(match_pair)
+            }
+
+            PatternKind::Array { ref prefix, ref slice, ref suffix } |
+            PatternKind::Slice { ref prefix, ref slice, ref suffix } => {
                 unpack!(block = self.prefix_suffix_slice(&mut candidate.match_pairs,
                                                          block,
                                                          match_pair.lvalue.clone(),
@@ -103,13 +114,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                                          slice.as_ref(),
                                                          suffix));
                 Ok(block)
-            }
-
-            PatternKind::Slice { .. } |
-            PatternKind::Range { .. } |
-            PatternKind::Variant { .. } => {
-                // cannot simplify, test is required
-                Err(match_pair)
             }
 
             PatternKind::Leaf { ref subpatterns } => {

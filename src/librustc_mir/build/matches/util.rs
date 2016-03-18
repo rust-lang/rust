@@ -22,7 +22,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         subpatterns.iter()
                    .map(|fieldpat| {
                        let lvalue = lvalue.clone().field(fieldpat.field,
-                                                         fieldpat.field_ty());
+                                                         fieldpat.pattern.ty);
                        MatchPair::new(lvalue, &fieldpat.pattern)
                    })
                    .collect()
@@ -118,6 +118,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         MatchPair {
             lvalue: lvalue,
             pattern: pattern,
+            slice_len_checked: false,
         }
     }
 }

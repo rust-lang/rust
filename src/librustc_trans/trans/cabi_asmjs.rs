@@ -11,62 +11,45 @@
 #![allow(non_upper_case_globals)]
 
 use llvm::{Struct, Array, Attribute};
-use trans::cabi::{FnType, ArgType};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
-use trans::type_::Type;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
 
 // See the https://github.com/kripken/emscripten-fastcomp-clang repository.
 // The class `EmscriptenABIInfo` in `/lib/CodeGen/TargetInfo.cpp` contains the ABI definitions.
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    match ty.kind() {
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+    match ret.ty.kind() {
         Struct => {
-            let field_types = ty.field_types();
+            let field_types = ret.ty.field_types();
             if field_types.len() == 1 {
-                ArgType::direct(ty, Some(field_types[0]), None, None)
+                ret.cast = Some(field_types[0]);
             } else {
-                ArgType::indirect(ty, Some(Attribute::StructRet))
+                ret.make_indirect(ccx);
             }
-        },
-        Array => {
-            ArgType::indirect(ty, Some(Attribute::StructRet))
-        },
-        _ => {
-            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-            ArgType::direct(ty, None, None, attr)
         }
+        Array => {
+            ret.make_indirect(ccx);
+        }
+        _ => {}
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if ty.is_aggregate() {
-        ArgType::indirect(ty, Some(Attribute::ByVal))
-    } else {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ArgType::direct(ty, None, None, attr)
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
+    if arg.ty.is_aggregate() {
+        arg.make_indirect(ccx);
+        arg.attrs.set(Attribute::ByVal);
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
-    let mut arg_tys = Vec::new();
-    for &aty in atys {
-        let ty = classify_arg_ty(ccx, aty);
-        arg_tys.push(ty);
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+    if !fty.ret.is_ignore() {
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
-    let ret_ty = if ret_def {
-        classify_ret_ty(ccx, rty)
-    } else {
-        ArgType::direct(Type::void(ccx), None, None, None)
-    };
-
-    return FnType {
-        arg_tys: arg_tys,
-        ret_ty: ret_ty,
-    };
+    for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
+        classify_arg_ty(ccx, arg);
+    }
 }

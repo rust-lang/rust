@@ -337,8 +337,12 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 convert_path_expr(cx, self)
             }
 
-            hir::ExprInlineAsm(ref asm) => {
-                ExprKind::InlineAsm { asm: asm }
+            hir::ExprInlineAsm(ref asm, ref outputs, ref inputs) => {
+                ExprKind::InlineAsm {
+                    asm: asm,
+                    outputs: outputs.to_ref(),
+                    inputs: inputs.to_ref()
+                }
             }
 
             // Now comes the rote stuff:
@@ -668,11 +672,16 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
         },
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => {
-            if let Some(v) = cx.try_const_eval_literal(expr) {
-                return ExprKind::Literal { literal: v };
-            } else {
-                def_id
+            let substs = Some(cx.tcx.node_id_item_substs(expr.id).substs);
+            if let Some((e, _)) = const_eval::lookup_const_by_id(cx.tcx, def_id, substs) {
+                // FIXME ConstVal can't be yet used with adjustments, as they would be lost.
+                if !cx.tcx.tables.borrow().adjustments.contains_key(&e.id) {
+                    if let Some(v) = cx.try_const_eval_literal(e) {
+                        return ExprKind::Literal { literal: v };
+                    }
+                }
             }
+            def_id
         }
 
         Def::Static(node_id, _) => return ExprKind::StaticRef {

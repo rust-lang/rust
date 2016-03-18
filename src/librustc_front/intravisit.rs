@@ -798,12 +798,12 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprRet(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
-        ExprInlineAsm(ref ia) => {
-            for &(_, ref input) in &ia.inputs {
-                visitor.visit_expr(&input)
+        ExprInlineAsm(_, ref outputs, ref inputs) => {
+            for output in outputs {
+                visitor.visit_expr(output)
             }
-            for output in &ia.outputs {
-                visitor.visit_expr(&output.expr)
+            for input in inputs {
+                visitor.visit_expr(input)
             }
         }
     }

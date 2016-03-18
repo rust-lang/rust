@@ -230,6 +230,8 @@ pub enum ExprKind<'tcx> {
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsm,
+        outputs: Vec<ExprRef<'tcx>>,
+        inputs: Vec<ExprRef<'tcx>>
     },
 }
 

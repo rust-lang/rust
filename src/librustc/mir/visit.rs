@@ -261,7 +261,14 @@ macro_rules! make_mir_visitor {
                         });
                     }
 
-                    Rvalue::InlineAsm(_) => {
+                    Rvalue::InlineAsm { ref $($mutability)* outputs,
+                                        ref $($mutability)* inputs, .. } => {
+                        for output in & $($mutability)* outputs[..] {
+                            self.visit_lvalue(output, LvalueContext::Store);
+                        }
+                        for input in & $($mutability)* inputs[..] {
+                            self.visit_operand(input);
+                        }
                     }
                 }
             }

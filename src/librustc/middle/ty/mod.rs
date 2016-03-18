@@ -2182,7 +2182,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn impl_or_trait_item(&self, id: DefId) -> ImplOrTraitItem<'tcx> {
         lookup_locally_or_in_crate_store(
             "impl_or_trait_items", id, &self.impl_or_trait_items,
-            || self.sess.cstore.impl_or_trait_item(self, id))
+            || self.sess.cstore.impl_or_trait_item(self, id)
+                   .expect("missing ImplOrTraitItem in metadata"))
     }
 
     pub fn trait_item_def_ids(&self, id: DefId) -> Rc<Vec<ImplOrTraitItemId>> {
@@ -2502,10 +2503,12 @@ impl<'tcx> TyCtxt<'tcx> {
     /// ID of the impl that the method belongs to. Otherwise, return `None`.
     pub fn impl_of_method(&self, def_id: DefId) -> Option<DefId> {
         if def_id.krate != LOCAL_CRATE {
-            return match self.sess.cstore.impl_or_trait_item(self, def_id).container() {
-                TraitContainer(_) => None,
-                ImplContainer(def_id) => Some(def_id),
-            };
+            return self.sess.cstore.impl_or_trait_item(self, def_id).and_then(|item| {
+                match item.container() {
+                    TraitContainer(_) => None,
+                    ImplContainer(def_id) => Some(def_id),
+                }
+            });
         }
         match self.impl_or_trait_items.borrow().get(&def_id).cloned() {
             Some(trait_item) => {

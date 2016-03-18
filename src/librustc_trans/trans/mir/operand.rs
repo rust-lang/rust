@@ -9,17 +9,18 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::{self, Ty};
+use rustc::middle::ty::Ty;
 use rustc::mir::repr as mir;
-use trans::adt;
 use trans::base;
 use trans::common::{self, Block, BlockAndBuilder};
 use trans::datum;
-use trans::Disr;
+use trans::value::Value;
 use trans::glue;
 
+use std::fmt;
+
+use super::lvalue::load_fat_ptr;
 use super::{MirContext, TempRef, drop};
-use super::lvalue::LvalueRef;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -53,6 +54,25 @@ pub struct OperandRef<'tcx> {
     pub ty: Ty<'tcx>
 }
 
+impl<'tcx> fmt::Debug for OperandRef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.val {
+            OperandValue::Ref(r) => {
+                write!(f, "OperandRef(Ref({:?}) @ {:?})",
+                       Value(r), self.ty)
+            }
+            OperandValue::Immediate(i) => {
+                write!(f, "OperandRef(Immediate({:?}) @ {:?})",
+                       Value(i), self.ty)
+            }
+            OperandValue::FatPtr(a, d) => {
+                write!(f, "OperandRef(FatPtr({:?}, {:?}) @ {:?})",
+                       Value(a), Value(d), self.ty)
+            }
+        }
+    }
+}
+
 impl<'tcx> OperandRef<'tcx> {
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
@@ -60,35 +80,6 @@ impl<'tcx> OperandRef<'tcx> {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => unreachable!()
-        }
-    }
-
-    pub fn repr<'bcx>(self, bcx: &BlockAndBuilder<'bcx, 'tcx>) -> String {
-        match self.val {
-            OperandValue::Ref(r) => {
-                format!("OperandRef(Ref({}) @ {:?})",
-                        bcx.val_to_string(r), self.ty)
-            }
-            OperandValue::Immediate(i) => {
-                format!("OperandRef(Immediate({}) @ {:?})",
-                        bcx.val_to_string(i), self.ty)
-            }
-            OperandValue::FatPtr(a, d) => {
-                format!("OperandRef(FatPtr({}, {}) @ {:?})",
-                        bcx.val_to_string(a),
-                        bcx.val_to_string(d),
-                        self.ty)
-            }
-        }
-    }
-
-    pub fn from_rvalue_datum(datum: datum::Datum<'tcx, datum::Rvalue>) -> OperandRef {
-        OperandRef {
-            ty: datum.ty,
-            val: match datum.kind.mode {
-                datum::RvalueMode::ByRef => OperandValue::Ref(datum.val),
-                datum::RvalueMode::ByValue => OperandValue::Immediate(datum.val),
-            }
         }
     }
 }
@@ -100,18 +91,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                       ty: Ty<'tcx>)
                       -> OperandRef<'tcx>
     {
-        debug!("trans_load: {} @ {:?}", bcx.val_to_string(llval), ty);
+        debug!("trans_load: {:?} @ {:?}", Value(llval), ty);
 
         let val = match datum::appropriate_rvalue_mode(bcx.ccx(), ty) {
             datum::ByValue => {
-                bcx.with_block(|bcx| {
-                    OperandValue::Immediate(base::load_ty(bcx, llval, ty))
-                })
+                OperandValue::Immediate(base::load_ty_builder(bcx, llval, ty))
             }
             datum::ByRef if common::type_is_fat_ptr(bcx.tcx(), ty) => {
-                let (lldata, llextra) = bcx.with_block(|bcx| {
-                    base::load_fat_ptr(bcx, llval, ty)
-                });
+                let (lldata, llextra) = load_fat_ptr(bcx, llval);
                 OperandValue::FatPtr(lldata, llextra)
             }
             datum::ByRef => OperandValue::Ref(llval)
@@ -164,7 +151,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                          lldest: ValueRef,
                          operand: OperandRef<'tcx>)
     {
-        debug!("store_operand: operand={}", operand.repr(bcx));
+        debug!("store_operand: operand={:?}", operand);
         bcx.with_block(|bcx| self.store_operand_direct(bcx, lldest, operand))
     }
 
@@ -185,48 +172,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 base::store_fat_ptr(bcx, data, extra, lldest, operand.ty);
             }
         }
-    }
-
-    pub fn trans_operand_untupled(&mut self,
-                                  bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                                  operand: &mir::Operand<'tcx>)
-                                  -> Vec<OperandRef<'tcx>>
-    {
-        // FIXME: consider having some optimization to avoid tupling/untupling
-        // (and storing/loading in the case of immediates)
-
-        // avoid trans_operand for pointless copying
-        let lv = match *operand {
-            mir::Operand::Consume(ref lvalue) => self.trans_lvalue(bcx, lvalue),
-            mir::Operand::Constant(ref constant) => {
-                // FIXME: consider being less pessimized
-                if constant.ty.is_nil() {
-                    return vec![];
-                }
-
-                let ty = bcx.monomorphize(&constant.ty);
-                let lv = LvalueRef::alloca(bcx, ty, "__untuple_alloca");
-                let constant = self.trans_constant(bcx, constant);
-                self.store_operand(bcx, lv.llval, constant);
-                lv
-           }
-        };
-
-        let lv_ty = lv.ty.to_ty(bcx.tcx());
-        let result_types = match lv_ty.sty {
-            ty::TyTuple(ref tys) => tys,
-            _ => bcx.tcx().sess.span_bug(
-                self.mir.span,
-                &format!("bad final argument to \"rust-call\" fn {:?}", lv_ty))
-        };
-
-        let base_repr = adt::represent_type(bcx.ccx(), lv_ty);
-        let base = adt::MaybeSizedValue::sized(lv.llval);
-        result_types.iter().enumerate().map(|(n, &ty)| {
-            self.trans_load(bcx, bcx.with_block(|bcx| {
-                adt::trans_field_ptr(bcx, &base_repr, base, Disr(0), n)
-            }), ty)
-        }).collect()
     }
 
     pub fn set_operand_dropped(&mut self,

@@ -141,15 +141,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 .chain(explicits)
                 .enumerate()
                 .map(|(index, (ty, pattern))| {
+                    let lvalue = Lvalue::Arg(index as u32);
                     if let Some(pattern) = pattern {
-                        let lvalue = Lvalue::Arg(index as u32);
                         let pattern = this.hir.irrefutable_pat(pattern);
                         unpack!(block = this.lvalue_into_pattern(block,
                                                                  argument_extent,
                                                                  pattern,
                                                                  &lvalue));
                     }
-                    ArgDecl { ty: ty }
+                    // Make sure we drop (parts of) the argument even when not matched on.
+                    this.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
+                                       argument_extent, &lvalue, ty);
+                    ArgDecl { ty: ty, spread: false }
                 })
                 .collect();
 
