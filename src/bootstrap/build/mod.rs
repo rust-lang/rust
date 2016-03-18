@@ -183,6 +183,9 @@ impl Build {
                     compile::tool(self, stage, target.target,
                                   "error_index_generator");
                 }
+                ToolCargoTest { stage } => {
+                    compile::tool(self, stage, target.target, "cargotest");
+                }
                 DocBook { stage } => {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
                 }
@@ -209,6 +212,9 @@ impl Build {
 
                 CheckLinkcheck { stage } => {
                     check::linkcheck(self, stage, target.target);
+                }
+                CheckCargoTest { stage } => {
+                    check::cargotest(self, stage, target.target);
                 }
 
                 DistDocs { stage } => dist::docs(self, stage, target.target),

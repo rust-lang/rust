@@ -16,3 +16,11 @@ pub fn linkcheck(build: &Build, stage: u32, host: &str) {
     build.run(build.tool_cmd(&compiler, "linkchecker")
                    .arg(build.out.join(host).join("doc")));
 }
+
+pub fn cargotest(build: &Build, stage: u32, host: &str) {
+    let ref compiler = Compiler::new(stage, host);
+    build.run(build.tool_cmd(compiler, "cargotest")
+              .env("RUSTC", build.compiler_path(compiler))
+              .env("RUSTDOC", build.rustdoc(compiler))
+              .arg(&build.cargo));
+}
