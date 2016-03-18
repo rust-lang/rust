@@ -51,6 +51,7 @@ impl LateLintPass for NewWithoutDefault {
                 let self_ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id))).ty;
 
                 if_let_chain!{[
+                    self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
                     let Some(ret_ty) = return_ty(cx.tcx.node_id_to_type(id)),
                     same_tys(cx, self_ty, ret_ty),
                     let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH),

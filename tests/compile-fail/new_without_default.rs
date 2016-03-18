@@ -32,13 +32,36 @@ impl Params {
     fn new(_: u32) -> Self { Params }
 }
 
-struct Generics<'a, T> {
-    foo: &'a bool,
+struct GenericsOk<T> {
     bar: T,
 }
 
-impl<'c, V> Generics<'c, V> {
-    fn new<'b>() -> Generics<'b, V> { unimplemented!() } //~ERROR: you should consider adding a `Default` implementation for
+impl<U> Default for GenericsOk<U> {
+    fn default() -> Self { unimplemented!(); }
+}
+
+impl<'c, V> GenericsOk<V> {
+    fn new() -> GenericsOk<V> { unimplemented!() }
+}
+
+struct LtOk<'a> {
+    foo: &'a bool,
+}
+
+impl<'b> Default for LtOk<'b> {
+    fn default() -> Self { unimplemented!(); }
+}
+
+impl<'c> LtOk<'c> {
+    fn new() -> LtOk<'c> { unimplemented!() }
+}
+
+struct LtKo<'a> {
+    foo: &'a bool,
+}
+
+impl<'c> LtKo<'c> {
+    fn new() -> LtKo<'c> { unimplemented!() } //~ERROR: you should consider adding a `Default` implementation for
 }
 
 fn main() {}
