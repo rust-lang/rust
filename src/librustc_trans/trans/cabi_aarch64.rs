@@ -10,8 +10,8 @@
 
 #![allow(non_upper_case_globals)]
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector, Attribute};
-use trans::cabi::{FnType, ArgType};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -161,16 +161,15 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
     })
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        return ArgType::direct(ty, None, None, attr);
+fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
+    if is_reg_ty(ret.ty) {
+        return;
     }
-    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
-        let llty = Type::array(&base_ty, members);
-        return ArgType::direct(ty, Some(llty), None, None);
+    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
+        ret.cast = Some(Type::array(&base_ty, members));
+        return;
     }
-    let size = ty_size(ty);
+    let size = ty_size(ret.ty);
     if size <= 16 {
         let llty = if size <= 1 {
             Type::i8(ccx)
@@ -183,21 +182,21 @@ fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
         } else {
             Type::array(&Type::i64(ccx), ((size + 7 ) / 8 ) as u64)
         };
-        return ArgType::direct(ty, Some(llty), None, None);
+        ret.cast = Some(llty);
+        return;
     }
-    ArgType::indirect(ty, Some(Attribute::StructRet))
+    ret.make_indirect(ccx);
 }
 
-fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        return ArgType::direct(ty, None, None, attr);
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
+    if is_reg_ty(arg.ty) {
+        return;
     }
-    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
-        let llty = Type::array(&base_ty, members);
-        return ArgType::direct(ty, Some(llty), None, None);
+    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(arg.ty) {
+        arg.cast = Some(Type::array(&base_ty, members));
+        return;
     }
-    let size = ty_size(ty);
+    let size = ty_size(arg.ty);
     if size <= 16 {
         let llty = if size == 0 {
             Type::array(&Type::i64(ccx), 0)
@@ -212,9 +211,10 @@ fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
         } else {
             Type::array(&Type::i64(ccx), ((size + 7 ) / 8 ) as u64)
         };
-        return ArgType::direct(ty, Some(llty), None, None);
+        arg.cast = Some(llty);
+        return;
     }
-    ArgType::indirect(ty, None)
+    arg.make_indirect(ccx);
 }
 
 fn is_reg_ty(ty: Type) -> bool {
@@ -228,24 +228,13 @@ fn is_reg_ty(ty: Type) -> bool {
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
-    let mut arg_tys = Vec::new();
-    for &aty in atys {
-        let ty = classify_arg_ty(ccx, aty);
-        arg_tys.push(ty);
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+    if !fty.ret.is_ignore() {
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
-    let ret_ty = if ret_def {
-        classify_ret_ty(ccx, rty)
-    } else {
-        ArgType::direct(Type::void(ccx), None, None, None)
-    };
-
-    return FnType {
-        arg_tys: arg_tys,
-        ret_ty: ret_ty,
-    };
+    for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
+        classify_arg_ty(ccx, arg);
+    }
 }

@@ -10,8 +10,8 @@
 
 use libc::c_uint;
 use llvm;
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Attribute};
-use trans::cabi::{FnType, ArgType};
+use llvm::{Integer, Pointer, Float, Double, Struct, Array};
+use trans::abi::{FnType, ArgType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -82,34 +82,18 @@ fn ty_size(ty: Type) -> usize {
     }
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ArgType::direct(ty, None, None, attr)
-    } else {
-        ArgType::indirect(ty, Some(Attribute::StructRet))
-    }
-}
-
-fn classify_arg_ty(ccx: &CrateContext, ty: Type, offset: &mut usize) -> ArgType {
+fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, offset: &mut usize) {
     let orig_offset = *offset;
-    let size = ty_size(ty) * 8;
-    let mut align = ty_align(ty);
+    let size = ty_size(arg.ty) * 8;
+    let mut align = ty_align(arg.ty);
 
     align = cmp::min(cmp::max(align, 4), 8);
     *offset = align_up_to(*offset, align);
     *offset += align_up_to(size, align * 8) / 8;
 
-    if is_reg_ty(ty) {
-        let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-        ArgType::direct(ty, None, None, attr)
-    } else {
-        ArgType::direct(
-            ty,
-            Some(struct_ty(ccx, ty)),
-            padding_ty(ccx, align, orig_offset),
-            None
-        )
+    if !is_reg_ty(arg.ty) {
+        arg.cast = Some(struct_ty(ccx, arg.ty));
+        arg.pad = padding_ty(ccx, align, orig_offset);
     }
 }
 
@@ -156,27 +140,14 @@ fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
     Type::struct_(ccx, &coerce_to_int(ccx, size), false)
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
-    let ret_ty = if ret_def {
-        classify_ret_ty(ccx, rty)
-    } else {
-        ArgType::direct(Type::void(ccx), None, None, None)
-    };
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+    if !fty.ret.is_ignore() && !is_reg_ty(fty.ret.ty) {
+        fty.ret.make_indirect(ccx);
+    }
 
-    let sret = ret_ty.is_indirect();
-    let mut arg_tys = Vec::new();
-    let mut offset = if sret { 4 } else { 0 };
-
-    for aty in atys {
-        let ty = classify_arg_ty(ccx, *aty, &mut offset);
-        arg_tys.push(ty);
-    };
-
-    return FnType {
-        arg_tys: arg_tys,
-        ret_ty: ret_ty,
-    };
+    let mut offset = if fty.ret.is_indirect() { 4 } else { 0 };
+    for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
+        classify_arg_ty(ccx, arg, &mut offset);
+    }
 }

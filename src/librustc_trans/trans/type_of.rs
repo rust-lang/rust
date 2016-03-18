@@ -13,15 +13,14 @@
 use middle::def_id::DefId;
 use middle::infer;
 use middle::subst;
+use trans::abi::FnType;
 use trans::adt;
 use trans::common::*;
-use trans::foreign;
 use trans::machine;
 use middle::ty::{self, Ty, TypeFoldable};
 
 use trans::type_::Type;
 
-use syntax::abi::Abi;
 use syntax::ast;
 
 // LLVM doesn't like objects that are too big. Issue #17913
@@ -34,120 +33,6 @@ fn ensure_array_fits_in_address_space<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         Some(n) if n < ccx.obj_size_bound() => {}
         _ => { ccx.report_overbig_object(scapegoat) }
     }
-}
-
-pub fn arg_is_indirect<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 arg_ty: Ty<'tcx>) -> bool {
-    !type_is_immediate(ccx, arg_ty) && !type_is_fat_ptr(ccx.tcx(), arg_ty)
-}
-
-pub fn return_uses_outptr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    ty: Ty<'tcx>) -> bool {
-    arg_is_indirect(ccx, ty)
-}
-
-pub fn type_of_explicit_arg<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                      arg_ty: Ty<'tcx>) -> Type {
-    let llty = arg_type_of(ccx, arg_ty);
-    if arg_is_indirect(ccx, arg_ty) {
-        llty.ptr_to()
-    } else {
-        llty
-    }
-}
-
-/// Yields the types of the "real" arguments for a function using the `RustCall`
-/// ABI by untupling the arguments of the function.
-pub fn untuple_arguments<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                   inputs: &[Ty<'tcx>])
-                                   -> Vec<Ty<'tcx>> {
-    if inputs.is_empty() {
-        return Vec::new()
-    }
-
-    let mut result = Vec::new();
-    for (i, &arg_prior_to_tuple) in inputs.iter().enumerate() {
-        if i < inputs.len() - 1 {
-            result.push(arg_prior_to_tuple);
-        }
-    }
-
-    match inputs[inputs.len() - 1].sty {
-        ty::TyTuple(ref tupled_arguments) => {
-            debug!("untuple_arguments(): untupling arguments");
-            for &tupled_argument in tupled_arguments {
-                result.push(tupled_argument);
-            }
-        }
-        _ => {
-            ccx.tcx().sess.bug("argument to function with \"rust-call\" ABI \
-                                is neither a tuple nor unit")
-        }
-    }
-
-    result
-}
-
-pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                 llenvironment_type: Option<Type>,
-                                 sig: &ty::FnSig<'tcx>,
-                                 abi: Abi)
-                                 -> Type
-{
-    debug!("type_of_rust_fn(sig={:?},abi={:?})",
-           sig,
-           abi);
-
-    assert!(!sig.variadic); // rust fns are never variadic
-
-    let mut atys: Vec<Type> = Vec::new();
-
-    // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs_temp;
-    let inputs = if abi == Abi::RustCall {
-        inputs_temp = untuple_arguments(cx, &sig.inputs);
-        &inputs_temp
-    } else {
-        &sig.inputs
-    };
-
-    // Arg 0: Output pointer.
-    // (if the output type is non-immediate)
-    let lloutputtype = match sig.output {
-        ty::FnConverging(output) => {
-            let use_out_pointer = return_uses_outptr(cx, output);
-            let lloutputtype = arg_type_of(cx, output);
-            // Use the output as the actual return value if it's immediate.
-            if use_out_pointer {
-                atys.push(lloutputtype.ptr_to());
-                Type::void(cx)
-            } else if return_type_is_void(cx, output) {
-                Type::void(cx)
-            } else {
-                lloutputtype
-            }
-        }
-        ty::FnDiverging => Type::void(cx)
-    };
-
-    // Arg 1: Environment
-    match llenvironment_type {
-        None => {}
-        Some(llenvironment_type) => atys.push(llenvironment_type),
-    }
-
-    // ... then explicit args.
-    for input in inputs {
-        let arg_ty = type_of_explicit_arg(cx, input);
-
-        if type_is_fat_ptr(cx.tcx(), input) {
-            atys.extend(arg_ty.field_types());
-        } else {
-            atys.push(arg_ty);
-        }
-    }
-
-    Type::func(&atys[..], &lloutputtype)
 }
 
 // A "sizing type" is an LLVM type, the size and alignment of which are
@@ -171,7 +56,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
     let llsizingty = match t.sty {
         _ if !type_is_sized(cx.tcx(), t) => {
-            Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
+            Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, t)], false)
         }
 
         ty::TyBool => Type::bool(cx),
@@ -186,7 +71,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             if type_is_sized(cx.tcx(), ty) {
                 Type::i8p(cx)
             } else {
-                Type::struct_(cx, &[Type::i8p(cx), Type::i8p(cx)], false)
+                Type::struct_(cx, &[Type::i8p(cx), unsized_info_ty(cx, ty)], false)
             }
         }
 
@@ -234,32 +119,27 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
     };
 
-    debug!("--> mapped t={:?} to llsizingty={}",
-            t,
-            cx.tn().type_to_string(llsizingty));
+    debug!("--> mapped t={:?} to llsizingty={:?}", t, llsizingty);
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
     llsizingty
 }
 
-pub fn foreign_arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    if t.is_bool() {
-        Type::i1(cx)
-    } else {
-        type_of(cx, t)
+fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
+    let unsized_part = ccx.tcx().struct_tail(ty);
+    match unsized_part.sty {
+        ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
+            Type::uint_from_ty(ccx, ast::UintTy::Us)
+        }
+        ty::TyTrait(_) => Type::vtable_ptr(ccx),
+        _ => unreachable!("Unexpected tail in unsized_info_ty: {:?} for ty={:?}",
+                          unsized_part, ty)
     }
 }
 
-pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
+pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     if t.is_bool() {
         Type::i1(cx)
-    } else if type_is_immediate(cx, t) && type_of(cx, t).is_aggregate() {
-        // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
-        // for this leads to bad optimizations, so its arg type is an appropriately sized integer
-        match machine::llsize_of_alloc(cx, sizing_type_of(cx, t)) {
-            0 => type_of(cx, t),
-            n => Type::ix(cx, n * 8),
-        }
     } else {
         type_of(cx, t)
     }
@@ -314,12 +194,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     if t != t_norm {
         let llty = in_memory_type_of(cx, t_norm);
-        debug!("--> normalized {:?} {:?} to {:?} {:?} llty={}",
-                t,
-                t,
-                t_norm,
-                t_norm,
-                cx.tn().type_to_string(llty));
+        debug!("--> normalized {:?} to {:?} llty={:?}", t, t_norm, llty);
         cx.lltypes().borrow_mut().insert(t, llty);
         return llty;
     }
@@ -361,16 +236,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   cx.tn().find_type("str_slice").unwrap()
               } else {
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
-                  let unsized_part = cx.tcx().struct_tail(ty);
-                  let info_ty = match unsized_part.sty {
-                      ty::TyStr | ty::TyArray(..) | ty::TySlice(_) => {
-                          Type::uint_from_ty(cx, ast::UintTy::Us)
-                      }
-                      ty::TyTrait(_) => Type::vtable_ptr(cx),
-                      _ => panic!("Unexpected type returned from \
-                                   struct_tail: {:?} for ty={:?}",
-                                  unsized_part, ty)
-                  };
+                  let info_ty = unsized_info_ty(cx, ty);
                   Type::struct_(cx, &[ptr_ty, info_ty], false)
               }
           } else {
@@ -398,13 +264,9 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
       ty::TyFnDef(..) => Type::nil(cx),
       ty::TyFnPtr(f) => {
-        if f.abi == Abi::Rust || f.abi == Abi::RustCall {
-            let sig = cx.tcx().erase_late_bound_regions(&f.sig);
-            let sig = infer::normalize_associated_type(cx.tcx(), &sig);
-            type_of_rust_fn(cx, None, &sig, f.abi).ptr_to()
-        } else {
-            foreign::lltype_for_foreign_fn(cx, t).ptr_to()
-        }
+        let sig = cx.tcx().erase_late_bound_regions(&f.sig);
+        let sig = infer::normalize_associated_type(cx.tcx(), &sig);
+        FnType::new(cx, f.abi, &sig, &[]).llvm_type(cx).ptr_to()
       }
       ty::TyTuple(ref tys) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {
@@ -440,9 +302,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyError => cx.sess().bug("type_of with TyError"),
     };
 
-    debug!("--> mapped t={:?} to llty={}",
-            t,
-            cx.tn().type_to_string(llty));
+    debug!("--> mapped t={:?} to llty={:?}", t, llty);
 
     cx.lltypes().borrow_mut().insert(t, llty);
 

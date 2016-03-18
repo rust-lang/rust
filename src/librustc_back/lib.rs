@@ -48,7 +48,6 @@ extern crate rustc_llvm;
 extern crate rustc_front;
 #[macro_use] extern crate log;
 
-pub mod abi;
 pub mod tempdir;
 pub mod rpath;
 pub mod sha2;

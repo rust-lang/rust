@@ -16,7 +16,7 @@ use self::RegClass::*;
 
 use llvm::{Integer, Pointer, Float, Double};
 use llvm::{Struct, Array, Attribute, Vector};
-use trans::cabi::{ArgType, FnType};
+use trans::abi::{ArgType, FnType};
 use trans::context::CrateContext;
 use trans::type_::Type;
 
@@ -383,38 +383,31 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext,
-                        atys: &[Type],
-                        rty: Type,
-                        ret_def: bool) -> FnType {
+pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
     fn x86_64_ty<F>(ccx: &CrateContext,
-                    ty: Type,
+                    arg: &mut ArgType,
                     is_mem_cls: F,
-                    ind_attr: Attribute)
-                    -> ArgType where
-        F: FnOnce(&[RegClass]) -> bool,
+                    ind_attr: Option<Attribute>)
+        where F: FnOnce(&[RegClass]) -> bool
     {
-        if !ty.is_reg_ty() {
-            let cls = classify_ty(ty);
+        if !arg.ty.is_reg_ty() {
+            let cls = classify_ty(arg.ty);
             if is_mem_cls(&cls) {
-                ArgType::indirect(ty, Some(ind_attr))
+                arg.make_indirect(ccx);
+                if let Some(attr) = ind_attr {
+                    arg.attrs.set(attr);
+                }
             } else {
-                ArgType::direct(ty,
-                                Some(llreg_ty(ccx, &cls)),
-                                None,
-                                None)
+                arg.cast = Some(llreg_ty(ccx, &cls));
             }
-        } else {
-            let attr = if ty == Type::i1(ccx) { Some(Attribute::ZExt) } else { None };
-            ArgType::direct(ty, None, None, attr)
         }
     }
 
     let mut int_regs = 6; // RDI, RSI, RDX, RCX, R8, R9
     let mut sse_regs = 8; // XMM0-7
 
-    let ret_ty = if ret_def {
-        x86_64_ty(ccx, rty, |cls| {
+    if !fty.ret.is_ignore() {
+        x86_64_ty(ccx, &mut fty.ret, |cls| {
             if cls.is_ret_bysret() {
                 // `sret` parameter thus one less register available
                 int_regs -= 1;
@@ -422,14 +415,12 @@ pub fn compute_abi_info(ccx: &CrateContext,
             } else {
                 false
             }
-        }, Attribute::StructRet)
-    } else {
-        ArgType::direct(Type::void(ccx), None, None, None)
-    };
+        }, None);
+    }
 
-    let mut arg_tys = Vec::new();
-    for t in atys {
-        let ty = x86_64_ty(ccx, *t, |cls| {
+    for arg in &mut fty.args {
+        if arg.is_ignore() { continue; }
+        x86_64_ty(ccx, arg, |cls| {
             let needed_int = cls.iter().filter(|&&c| c == Int).count() as isize;
             let needed_sse = cls.iter().filter(|c| c.is_sse()).count() as isize;
             let in_mem = cls.is_pass_byval() ||
@@ -444,21 +435,15 @@ pub fn compute_abi_info(ccx: &CrateContext,
                 sse_regs -= needed_sse;
             }
             in_mem
-        }, Attribute::ByVal);
-        arg_tys.push(ty);
+        }, Some(Attribute::ByVal));
 
         // An integer, pointer, double or float parameter
         // thus the above closure passed to `x86_64_ty` won't
         // get called.
-        if t.kind() == Integer || t.kind() == Pointer {
-            int_regs -= 1;
-        } else if t.kind() == Double || t.kind() == Float {
-            sse_regs -= 1;
+        match arg.ty.kind() {
+            Integer | Pointer => int_regs -= 1,
+            Double | Float => sse_regs -= 1,
+            _ => {}
         }
     }
-
-    return FnType {
-        arg_tys: arg_tys,
-        ret_ty: ret_ty,
-    };
 }

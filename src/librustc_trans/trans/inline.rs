@@ -12,7 +12,8 @@ use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use middle::cstore::{CrateStore, FoundAst, InlinedItem};
 use middle::def_id::DefId;
 use middle::subst::Substs;
-use trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
+use trans::base::{push_ctxt, trans_item, trans_fn};
+use trans::callee::Callee;
 use trans::common::*;
 
 use rustc::dep_graph::DepNode;
@@ -21,14 +22,15 @@ use rustc_front::hir;
 fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
     debug!("instantiate_inline({:?})", fn_id);
     let _icx = push_ctxt("instantiate_inline");
-    let _task = ccx.tcx().dep_graph.in_task(DepNode::TransInlinedItem(fn_id));
+    let tcx = ccx.tcx();
+    let _task = tcx.dep_graph.in_task(DepNode::TransInlinedItem(fn_id));
 
     match ccx.external().borrow().get(&fn_id) {
         Some(&Some(node_id)) => {
             // Already inline
             debug!("instantiate_inline({}): already inline as node id {}",
-                   ccx.tcx().item_path_str(fn_id), node_id);
-            let node_def_id = ccx.tcx().map.local_def_id(node_id);
+                   tcx.item_path_str(fn_id), node_id);
+            let node_def_id = tcx.map.local_def_id(node_id);
             return Some(node_def_id);
         }
         Some(&None) => {
@@ -39,7 +41,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
         }
     }
 
-    let inlined = ccx.tcx().sess.cstore.maybe_get_item_ast(ccx.tcx(), fn_id);
+    let inlined = tcx.sess.cstore.maybe_get_item_ast(tcx, fn_id);
     let inline_id = match inlined {
         FoundAst::NotFound => {
             ccx.external().borrow_mut().insert(fn_id, None);
@@ -52,38 +54,27 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
             trans_item(ccx, item);
 
-            let linkage = match item.node {
-                hir::ItemFn(_, _, _, _, ref generics, _) => {
-                    if generics.is_type_parameterized() {
-                        // Generics have no symbol, so they can't be given any
-                        // linkage.
-                        None
+            if let hir::ItemFn(_, _, _, _, ref generics, _) = item.node {
+                // Generics have no symbol, so they can't be given any linkage.
+                if !generics.is_type_parameterized() {
+                    let linkage = if ccx.sess().opts.cg.codegen_units == 1 {
+                        // We could use AvailableExternallyLinkage here,
+                        // but InternalLinkage allows LLVM to optimize more
+                        // aggressively (at the cost of sometimes
+                        // duplicating code).
+                        InternalLinkage
                     } else {
-                        if ccx.sess().opts.cg.codegen_units == 1 {
-                            // We could use AvailableExternallyLinkage here,
-                            // but InternalLinkage allows LLVM to optimize more
-                            // aggressively (at the cost of sometimes
-                            // duplicating code).
-                            Some(InternalLinkage)
-                        } else {
-                            // With multiple compilation units, duplicated code
-                            // is more of a problem.  Also, `codegen_units > 1`
-                            // means the user is okay with losing some
-                            // performance.
-                            Some(AvailableExternallyLinkage)
-                        }
-                    }
+                        // With multiple compilation units, duplicated code
+                        // is more of a problem.  Also, `codegen_units > 1`
+                        // means the user is okay with losing some
+                        // performance.
+                        AvailableExternallyLinkage
+                    };
+                    let empty_substs = tcx.mk_substs(Substs::trans_empty());
+                    let def_id = tcx.map.local_def_id(item.id);
+                    let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
+                    SetLinkage(llfn, linkage);
                 }
-                hir::ItemConst(..) => None,
-                _ => unreachable!(),
-            };
-
-            match linkage {
-                Some(linkage) => {
-                    let g = get_item_val(ccx, item.id);
-                    SetLinkage(g, linkage);
-                }
-                None => {}
             }
 
             item.id
@@ -93,7 +84,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             item.id
         }
-        FoundAst::FoundParent(parent_id, &InlinedItem::Item(ref item)) => {
+        FoundAst::FoundParent(parent_id, item) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
@@ -101,7 +92,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             match item.node {
                 hir::ItemEnum(ref ast_def, _) => {
                     let ast_vs = &ast_def.variants;
-                    let ty_vs = &ccx.tcx().lookup_adt_def(parent_id).variants;
+                    let ty_vs = &tcx.lookup_adt_def(parent_id).variants;
                     assert_eq!(ast_vs.len(), ty_vs.len());
                     for (ast_v, ty_v) in ast_vs.iter().zip(ty_vs.iter()) {
                         if ty_v.did == fn_id { my_id = ast_v.node.data.id(); }
@@ -120,12 +111,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
                 _ => ccx.sess().bug("instantiate_inline: item has a \
                                  non-enum, non-struct parent")
             }
-            trans_item(ccx, &item);
             my_id
-        }
-        FoundAst::FoundParent(_, _) => {
-            ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
-                            with a non-item parent");
         }
         FoundAst::Found(&InlinedItem::TraitItem(_, ref trait_item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(trait_item.id));
@@ -137,10 +123,10 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
             // the logic to do that already exists in `middle`. In order to
             // reuse that code, it needs to be able to look up the traits for
             // inlined items.
-            let ty_trait_item = ccx.tcx().impl_or_trait_item(fn_id).clone();
-            let trait_item_def_id = ccx.tcx().map.local_def_id(trait_item.id);
-            ccx.tcx().impl_or_trait_items.borrow_mut()
-                     .insert(trait_item_def_id, ty_trait_item);
+            let ty_trait_item = tcx.impl_or_trait_item(fn_id).clone();
+            let trait_item_def_id = tcx.map.local_def_id(trait_item.id);
+            tcx.impl_or_trait_items.borrow_mut()
+               .insert(trait_item_def_id, ty_trait_item);
 
             // If this is a default method, we can't look up the
             // impl type. But we aren't going to translate anyways, so
@@ -155,18 +141,18 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
 
             // Translate monomorphic impl methods immediately.
             if let hir::ImplItemKind::Method(ref sig, ref body) = impl_item.node {
-                let impl_tpt = ccx.tcx().lookup_item_type(impl_did);
+                let impl_tpt = tcx.lookup_item_type(impl_did);
                 if impl_tpt.generics.types.is_empty() &&
                         sig.generics.ty_params.is_empty() {
-                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                    let llfn = get_item_val(ccx, impl_item.id);
+                    let empty_substs = tcx.mk_substs(Substs::trans_empty());
+                    let def_id = tcx.map.local_def_id(impl_item.id);
+                    let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                     trans_fn(ccx,
                              &sig.decl,
                              body,
                              llfn,
                              empty_substs,
-                             impl_item.id,
-                             &impl_item.attrs);
+                             impl_item.id);
                     // See linkage comments on items.
                     if ccx.sess().opts.cg.codegen_units == 1 {
                         SetLinkage(llfn, InternalLinkage);
@@ -180,7 +166,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
         }
     };
 
-    let inline_def_id = ccx.tcx().map.local_def_id(inline_id);
+    let inline_def_id = tcx.map.local_def_id(inline_id);
     Some(inline_def_id)
 }
 

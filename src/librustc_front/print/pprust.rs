@@ -1486,12 +1486,13 @@ impl<'a> State<'a> {
                     _ => (),
                 }
             }
-            hir::ExprInlineAsm(ref a) => {
+            hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
                 try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
                 try!(self.print_string(&a.asm, a.asm_str_style));
                 try!(self.word_space(":"));
 
+                let mut out_idx = 0;
                 try!(self.commasep(Inconsistent, &a.outputs, |s, out| {
                     match out.constraint.slice_shift_char() {
                         Some(('=', operand)) if out.is_rw => {
@@ -1500,18 +1501,21 @@ impl<'a> State<'a> {
                         _ => try!(s.print_string(&out.constraint, ast::StrStyle::Cooked)),
                     }
                     try!(s.popen());
-                    try!(s.print_expr(&out.expr));
+                    try!(s.print_expr(&outputs[out_idx]));
                     try!(s.pclose());
+                    out_idx += 1;
                     Ok(())
                 }));
                 try!(space(&mut self.s));
                 try!(self.word_space(":"));
 
-                try!(self.commasep(Inconsistent, &a.inputs, |s, &(ref co, ref o)| {
+                let mut in_idx = 0;
+                try!(self.commasep(Inconsistent, &a.inputs, |s, co| {
                     try!(s.print_string(&co, ast::StrStyle::Cooked));
                     try!(s.popen());
-                    try!(s.print_expr(&o));
+                    try!(s.print_expr(&inputs[in_idx]));
                     try!(s.pclose());
+                    in_idx += 1;
                     Ok(())
                 }));
                 try!(space(&mut self.s));

@@ -18,6 +18,7 @@ use llvm::{ValueRef, TypeKind};
 use middle::infer;
 use middle::subst;
 use middle::subst::FnSpace;
+use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::attributes;
 use trans::base::*;
@@ -40,19 +41,18 @@ use trans::Disr;
 use middle::subst::Substs;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
-use syntax::abi::Abi;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
 
 use rustc::lint;
 use rustc::session::Session;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 
 use std::cmp::Ordering;
 
-pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Option<ValueRef> {
-    let name = match &*item.name.as_str() {
+fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+    let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",
@@ -94,7 +94,7 @@ pub fn get_simple_intrinsic(ccx: &CrateContext, item: &hir::ForeignItem) -> Opti
         "assume" => "llvm.assume",
         _ => return None
     };
-    Some(ccx.get_intrinsic(&name))
+    Some(ccx.get_intrinsic(&llvm_name))
 }
 
 pub fn span_transmute_size_error(a: &Session, b: Span, msg: &str) {
@@ -171,13 +171,11 @@ pub fn check_intrinsics(ccx: &CrateContext) {
 /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
 /// add them to librustc_trans/trans/context.rs
 pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                            node: ast::NodeId,
                                             callee_ty: Ty<'tcx>,
-                                            cleanup_scope: cleanup::CustomScopeIndex,
+                                            fn_ty: &FnType,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
-                                            substs: &'tcx subst::Substs<'tcx>,
-                                            call_info: NodeIdAndSpan)
+                                            call_debug_location: DebugLoc)
                                             -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
@@ -185,14 +183,23 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_intrinsic_call");
 
-    let sig = ccx.tcx().erase_late_bound_regions(callee_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let (def_id, substs, sig) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs, fty) => {
+            let sig = tcx.erase_late_bound_regions(&fty.sig);
+            (def_id, substs, infer::normalize_associated_type(tcx, &sig))
+        }
+        _ => unreachable!("expected fn item type, found {}", callee_ty)
+    };
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
-    let foreign_item = tcx.map.expect_foreign_item(node);
-    let name = foreign_item.name.as_str();
+    let name = tcx.item_name(def_id).as_str();
 
-    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
+    let span = match call_debug_location {
+        DebugLoc::At(_, span) => span,
+        DebugLoc::None => fcx.span.unwrap_or(DUMMY_SP)
+    };
+
+    let cleanup_scope = fcx.push_custom_cleanup_scope();
 
     // For `transmute` we can just trans the input expr directly into dest
     if name == "transmute" {
@@ -213,7 +220,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     if out_type_size != 0 {
                         // FIXME #19925 Remove this hack after a release cycle.
                         let _ = unpack_datum!(bcx, expr::trans(bcx, &arg_exprs[0]));
-                        let llfn = Callee::def(ccx, def_id, substs, in_type).reify(ccx).val;
+                        let llfn = Callee::def(ccx, def_id, substs).reify(ccx).val;
                         let llfnty = val_ty(llfn);
                         let llresult = match dest {
                             expr::SaveIn(d) => d,
@@ -267,7 +274,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let val = if datum.kind.is_by_ref() {
                         load_ty(bcx, datum.val, datum.ty)
                     } else {
-                        from_arg_ty(bcx, datum.val, datum.ty)
+                        from_immediate(bcx, datum.val)
                     };
 
                     let cast_val = BitCast(bcx, val, llret_ty);
@@ -347,43 +354,6 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
-    // For `try` we need some custom control flow
-    if &name[..] == "try" {
-        if let callee::ArgExprs(ref exprs) = args {
-            let (func, data, local_ptr) = if exprs.len() != 3 {
-                ccx.sess().bug("expected three exprs as arguments for \
-                                `try` intrinsic");
-            } else {
-                (&exprs[0], &exprs[1], &exprs[2])
-            };
-
-            // translate arguments
-            let func = unpack_datum!(bcx, expr::trans(bcx, func));
-            let func = unpack_datum!(bcx, func.to_rvalue_datum(bcx, "func"));
-            let data = unpack_datum!(bcx, expr::trans(bcx, data));
-            let data = unpack_datum!(bcx, data.to_rvalue_datum(bcx, "data"));
-            let local_ptr = unpack_datum!(bcx, expr::trans(bcx, local_ptr));
-            let local_ptr = local_ptr.to_rvalue_datum(bcx, "local_ptr");
-            let local_ptr = unpack_datum!(bcx, local_ptr);
-
-            let dest = match dest {
-                expr::SaveIn(d) => d,
-                expr::Ignore => alloc_ty(bcx, tcx.mk_mut_ptr(tcx.types.i8),
-                                         "try_result"),
-            };
-
-            // do the invoke
-            bcx = try_intrinsic(bcx, func.val, data.val, local_ptr.val, dest,
-                                call_debug_location);
-
-            fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
-            return Result::new(bcx, dest);
-        } else {
-            ccx.sess().bug("expected two exprs as arguments for \
-                            `try` intrinsic");
-        }
-    }
-
     // save the actual AST arguments for later (some places need to do
     // const-evaluation on them)
     let expr_arguments = match args {
@@ -394,18 +364,19 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // Push the arguments.
     let mut llargs = Vec::new();
     bcx = callee::trans_args(bcx,
+                             Abi::RustIntrinsic,
+                             fn_ty,
+                             &mut callee::Intrinsic,
                              args,
-                             callee_ty,
                              &mut llargs,
-                             cleanup::CustomScope(cleanup_scope),
-                             Abi::RustIntrinsic);
+                             cleanup::CustomScope(cleanup_scope));
 
     fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
     // These are the only intrinsic functions that diverge.
     if name == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        Call(bcx, llfn, &[], None, call_debug_location);
+        Call(bcx, llfn, &[], call_debug_location);
         fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
@@ -437,14 +408,19 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let simple = get_simple_intrinsic(ccx, &foreign_item);
-    let llval = match (simple, &*name) {
+    let simple = get_simple_intrinsic(ccx, &name);
+    let llval = match (simple, &name[..]) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, &llargs, None, call_debug_location)
+            Call(bcx, llfn, &llargs, call_debug_location)
+        }
+        (_, "try") => {
+            bcx = try_intrinsic(bcx, llargs[0], llargs[1], llargs[2], llresult,
+                                call_debug_location);
+            C_nil(ccx)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, &[], None, call_debug_location)
+            Call(bcx, llfn, &[], call_debug_location)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -454,7 +430,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "size_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let (llsize, _) = glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
+                let (llsize, _) =
+                    glue::size_and_align_of_dst(&bcx.build(), tp_ty, llargs[1]);
                 llsize
             } else {
                 let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -468,7 +445,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "min_align_of_val") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !type_is_sized(tcx, tp_ty) {
-                let (_, llalign) = glue::size_and_align_of_dst(bcx, tp_ty, llargs[1]);
+                let (_, llalign) =
+                    glue::size_and_align_of_dst(&bcx.build(), tp_ty, llargs[1]);
                 llalign
             } else {
                 C_uint(ccx, type_of::align_of(ccx, tp_ty))
@@ -505,14 +483,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "init_dropped") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            if !return_type_is_void(ccx, tp_ty) {
+            if !type_is_zero_size(ccx, tp_ty) {
                 drop_done_fill_mem(bcx, llresult, tp_ty);
             }
             C_nil(ccx)
         }
         (_, "init") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            if !return_type_is_void(ccx, tp_ty) {
+            if !type_is_zero_size(ccx, tp_ty) {
                 // Just zero out the stack slot. (See comment on base::memzero for explanation)
                 init_zero_mem(bcx, llresult, tp_ty);
             }
@@ -599,21 +577,24 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "volatile_load") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+            let mut ptr = llargs[0];
+            if let Some(ty) = fn_ty.ret.cast {
+                ptr = PointerCast(bcx, ptr, ty.ptr_to());
+            }
             let load = VolatileLoad(bcx, ptr);
             unsafe {
                 llvm::LLVMSetAlignment(load, type_of::align_of(ccx, tp_ty));
             }
-            to_arg_ty(bcx, load, tp_ty)
+            to_immediate(bcx, load, tp_ty)
         },
         (_, "volatile_store") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-            let val = if type_is_immediate(bcx.ccx(), tp_ty) {
-                from_arg_ty(bcx, llargs[1], tp_ty)
-            } else {
+            let val = if fn_ty.args[1].is_indirect() {
                 Load(bcx, llargs[1])
+            } else {
+                from_immediate(bcx, llargs[1])
             };
+            let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
             let store = VolatileStore(bcx, val, ptr);
             unsafe {
                 llvm::LLVMSetAlignment(store, type_of::align_of(ccx, tp_ty));
@@ -634,13 +615,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         "cttz" => count_zeros_intrinsic(bcx, &format!("llvm.cttz.i{}", width),
                                                         llargs[0], call_debug_location),
                         "ctpop" => Call(bcx, ccx.get_intrinsic(&format!("llvm.ctpop.i{}", width)),
-                                        &llargs, None, call_debug_location),
+                                        &llargs, call_debug_location),
                         "bswap" => {
                             if width == 8 {
                                 llargs[0] // byte swap a u8/i8 is just a no-op
                             } else {
                                 Call(bcx, ccx.get_intrinsic(&format!("llvm.bswap.i{}", width)),
-                                        &llargs, None, call_debug_location)
+                                        &llargs, call_debug_location)
                             }
                         }
                         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" => {
@@ -669,7 +650,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     },
                 None => {
                     span_invalid_monomorphization_error(
-                        tcx.sess, call_info.span,
+                        tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
                                   expected basic integer type, found `{}`", name, sty));
                         C_null(llret_ty)
@@ -680,8 +661,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 
         (_, "return_address") => {
-            if !fcx.caller_expects_out_pointer {
-                span_err!(tcx.sess, call_info.span, E0510,
+            if !fcx.fn_ty.ret.is_indirect() {
+                span_err!(tcx.sess, span, E0510,
                           "invalid use of `return_address` intrinsic: function \
                            does not use out pointer");
                 C_null(Type::i8p(ccx))
@@ -709,7 +690,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                    &llargs,
                                    ret_ty, llret_ty,
                                    call_debug_location,
-                                   call_info)
+                                   span)
         }
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
@@ -742,19 +723,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
             match split[1] {
                 "cxchg" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let cmp = from_arg_ty(bcx, llargs[1], tp_ty);
-                    let src = from_arg_ty(bcx, llargs[2], tp_ty);
+                    let cmp = from_immediate(bcx, llargs[1]);
+                    let src = from_immediate(bcx, llargs[2]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
                     let res = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::False);
                     ExtractValue(bcx, res, 0)
                 }
 
                 "cxchgweak" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let cmp = from_arg_ty(bcx, llargs[1], tp_ty);
-                    let src = from_arg_ty(bcx, llargs[2], tp_ty);
+                    let cmp = from_immediate(bcx, llargs[1]);
+                    let src = from_immediate(bcx, llargs[2]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
                     let val = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::True);
                     let result = ExtractValue(bcx, val, 0);
                     let success = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
@@ -765,13 +744,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
                 "load" => {
                     let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    to_arg_ty(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
+                    let mut ptr = llargs[0];
+                    if let Some(ty) = fn_ty.ret.cast {
+                        ptr = PointerCast(bcx, ptr, ty.ptr_to());
+                    }
+                    to_immediate(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
                 }
                 "store" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let val = from_arg_ty(bcx, llargs[1], tp_ty);
+                    let val = from_immediate(bcx, llargs[1]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
                     AtomicStore(bcx, val, ptr, order);
                     C_nil(ccx)
                 }
@@ -803,9 +784,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-                    let val = from_arg_ty(bcx, llargs[1], tp_ty);
+                    let val = from_immediate(bcx, llargs[1]);
+                    let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
                     AtomicRMW(bcx, atom_op, ptr, val, order)
                 }
             }
@@ -815,8 +795,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, _) => {
             let intr = match Intrinsic::find(tcx, &name) {
                 Some(intr) => intr,
-                None => ccx.sess().span_bug(foreign_item.span,
-                                            &format!("unknown intrinsic '{}'", name)),
+                None => unreachable!("unknown intrinsic '{}'", name),
             };
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);
@@ -949,9 +928,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 intrinsics::IntrinsicDef::Named(name) => {
                     let f = declare::declare_cfn(ccx,
                                                  name,
-                                                 Type::func(&inputs, &outputs),
-                                                 tcx.mk_nil());
-                    Call(bcx, f, &llargs, None, call_debug_location)
+                                                 Type::func(&inputs, &outputs));
+                    Call(bcx, f, &llargs, call_debug_location)
                 }
             };
 
@@ -973,7 +951,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     if val_ty(llval) != Type::void(ccx) &&
        machine::llsize_of_alloc(ccx, val_ty(llval)) != 0 {
-        store_ty(bcx, llval, llresult, ret_ty);
+        if let Some(ty) = fn_ty.ret.cast {
+            let ptr = PointerCast(bcx, llresult, ty.ptr_to());
+            let store = Store(bcx, llval, ptr);
+            unsafe {
+                llvm::LLVMSetAlignment(store, type_of::align_of(ccx, ret_ty));
+            }
+        } else {
+            store_ty(bcx, llval, llresult, ret_ty);
+        }
     }
 
     // If we made a temporary stack slot, let's clean it up
@@ -1024,7 +1010,6 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            Mul(bcx, size, count, DebugLoc::None),
            align,
            C_bool(ccx, volatile)],
-         None,
          call_debug_location)
 }
 
@@ -1054,7 +1039,6 @@ fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            Mul(bcx, size, count, DebugLoc::None),
            align,
            C_bool(ccx, volatile)],
-         None,
          call_debug_location)
 }
 
@@ -1065,7 +1049,7 @@ fn count_zeros_intrinsic(bcx: Block,
                          -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
-    Call(bcx, llfn, &[val, y], None, call_debug_location)
+    Call(bcx, llfn, &[val, y], call_debug_location)
 }
 
 fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -1078,7 +1062,7 @@ fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = Call(bcx, llfn, &[a, b], None, call_debug_location);
+    let val = Call(bcx, llfn, &[a, b], call_debug_location);
     let result = ExtractValue(bcx, val, 0);
     let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
     Store(bcx, result, StructGEP(bcx, out, 0));
@@ -1094,7 +1078,7 @@ fn try_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dest: ValueRef,
                              dloc: DebugLoc) -> Block<'blk, 'tcx> {
     if bcx.sess().no_landing_pads() {
-        Call(bcx, func, &[data], None, dloc);
+        Call(bcx, func, &[data], dloc);
         Store(bcx, C_null(Type::i8p(bcx.ccx())), dest);
         bcx
     } else if wants_msvc_seh(bcx.sess()) {
@@ -1165,9 +1149,9 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // More information can be found in libstd's seh.rs implementation.
         let slot = Alloca(bcx, Type::i8p(ccx), "slot");
         let localescape = ccx.get_intrinsic(&"llvm.localescape");
-        Call(bcx, localescape, &[slot], None, dloc);
+        Call(bcx, localescape, &[slot], dloc);
         Store(bcx, local_ptr, slot);
-        Invoke(bcx, func, &[data], normal.llbb, catchswitch.llbb, None, dloc);
+        Invoke(bcx, func, &[data], normal.llbb, catchswitch.llbb, dloc);
 
         Ret(normal, C_i32(ccx, 0), dloc);
 
@@ -1184,7 +1168,7 @@ fn trans_msvc_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = Call(bcx, llfn, &[func, data, local_ptr], None, dloc);
+    let ret = Call(bcx, llfn, &[func, data, local_ptr], dloc);
     Store(bcx, ret, dest);
     return bcx
 }
@@ -1208,6 +1192,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              dloc: DebugLoc) -> Block<'blk, 'tcx> {
     let llfn = get_rust_try_fn(bcx.fcx, &mut |bcx| {
         let ccx = bcx.ccx();
+        let tcx = ccx.tcx();
         let dloc = DebugLoc::None;
 
         // Translates the shims described above:
@@ -1228,10 +1213,11 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // managed by the standard library.
 
         attributes::emit_uwtable(bcx.fcx.llfn, true);
-        let catch_pers = match bcx.tcx().lang_items.eh_personality_catch() {
-            Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0),
-                                              bcx.fcx.param_substs).val,
-            None => bcx.tcx().sess.bug("eh_personality_catch not defined"),
+        let catch_pers = match tcx.lang_items.eh_personality_catch() {
+            Some(did) => {
+                Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
+            }
+            None => ccx.sess().bug("eh_personality_catch not defined"),
         };
 
         let then = bcx.fcx.new_temp_block("then");
@@ -1240,7 +1226,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let func = llvm::get_param(bcx.fcx.llfn, 0);
         let data = llvm::get_param(bcx.fcx.llfn, 1);
         let local_ptr = llvm::get_param(bcx.fcx.llfn, 2);
-        Invoke(bcx, func, &[data], then.llbb, catch.llbb, None, dloc);
+        Invoke(bcx, func, &[data], then.llbb, catch.llbb, dloc);
         Ret(then, C_i32(ccx, 0), dloc);
 
         // Type indicator for the exception being thrown.
@@ -1260,7 +1246,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Note that no invoke is used here because by definition this function
     // can't panic (that's what it's catching).
-    let ret = Call(bcx, llfn, &[func, data, local_ptr], None, dloc);
+    let ret = Call(bcx, llfn, &[func, data, local_ptr], dloc);
     Store(bcx, ret, dest);
     return bcx;
 }
@@ -1269,21 +1255,32 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // This is currently primarily used for the `try` intrinsic functions above.
 fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                     name: &str,
-                    ty: Ty<'tcx>,
+                    inputs: Vec<Ty<'tcx>>,
                     output: ty::FnOutput<'tcx>,
                     trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                     -> ValueRef {
     let ccx = fcx.ccx;
-    let llfn = declare::define_internal_rust_fn(ccx, name, ty);
+    let sig = ty::FnSig {
+        inputs: inputs,
+        output: output,
+        variadic: false,
+    };
+    let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+
+    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::BareFnTy {
+        unsafety: hir::Unsafety::Unsafe,
+        abi: Abi::Rust,
+        sig: ty::Binder(sig)
+    });
+    let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
+    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
     let (fcx, block_arena);
     block_arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                      output, ccx.tcx().mk_substs(Substs::trans_empty()),
-                      None, &block_arena);
-    let bcx = init_function(&fcx, true, output);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &block_arena);
+    let bcx = fcx.init(true, None);
     trans(bcx);
     fcx.cleanup();
-    return llfn
+    llfn
 }
 
 // Helper function used to get a handle to the `__rust_try` function used to
@@ -1294,8 +1291,8 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                              trans: &mut for<'b> FnMut(Block<'b, 'tcx>))
                              -> ValueRef {
     let ccx = fcx.ccx;
-    if let Some(llfn) = *ccx.rust_try_fn().borrow() {
-        return llfn
+    if let Some(llfn) = ccx.rust_try_fn().get() {
+        return llfn;
     }
 
     // Define the type up front for the signature of the rust_try function.
@@ -1311,18 +1308,8 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         }),
     });
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
-    let try_fn_ty  = ty::BareFnTy {
-        unsafety: hir::Unsafety::Unsafe,
-        abi: Abi::Rust,
-        sig: ty::Binder(ty::FnSig {
-            inputs: vec![fn_ty, i8p, i8p],
-            output: output,
-            variadic: false,
-        }),
-    };
-    let rust_try = gen_fn(fcx, "__rust_try", tcx.mk_fn_ptr(try_fn_ty), output,
-                          trans);
-    *ccx.rust_try_fn().borrow_mut() = Some(rust_try);
+    let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
+    ccx.rust_try_fn().set(Some(rust_try));
     return rust_try
 }
 
@@ -1341,9 +1328,10 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let dloc = DebugLoc::None;
 
-    let rust_try_filter = match ccx.tcx().lang_items.msvc_try_filter() {
-        Some(did) => callee::trans_fn_ref(ccx, did, ExprId(0),
-                                          fcx.param_substs).val,
+    let rust_try_filter = match tcx.lang_items.msvc_try_filter() {
+        Some(did) => {
+            Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
+        }
         None => ccx.sess().bug("msvc_try_filter not defined"),
     };
 
@@ -1373,11 +1361,10 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     // For more info, see seh.rs in the standard library.
     let do_trans = |bcx: Block, ehptrs, base_pointer| {
         let rust_try_fn = BitCast(bcx, rust_try_fn, Type::i8p(ccx));
-        let parentfp = Call(bcx, recoverfp, &[rust_try_fn, base_pointer],
-                            None, dloc);
+        let parentfp = Call(bcx, recoverfp, &[rust_try_fn, base_pointer], dloc);
         let arg = Call(bcx, localrecover,
-                       &[rust_try_fn, parentfp, C_i32(ccx, 0)], None, dloc);
-        let ret = Call(bcx, rust_try_filter, &[ehptrs, arg], None, dloc);
+                       &[rust_try_fn, parentfp, C_i32(ccx, 0)], dloc);
+        let ret = Call(bcx, rust_try_filter, &[ehptrs, arg], dloc);
         Ret(bcx, ret, dloc);
     };
 
@@ -1389,17 +1376,8 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // going on here, all I can say is that there's a few tests cases in
         // LLVM's test suite which follow this pattern of instructions, so we
         // just do the same.
-        let filter_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
-            unsafety: hir::Unsafety::Unsafe,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: vec![],
-                output: output,
-                variadic: false,
-            }),
-        });
-        gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
-            let ebp = Call(bcx, frameaddress, &[C_i32(ccx, 1)], None, dloc);
+        gen_fn(fcx, "__rustc_try_filter", vec![], output, &mut |bcx| {
+            let ebp = Call(bcx, frameaddress, &[C_i32(ccx, 1)], dloc);
             let exn = InBoundsGEP(bcx, ebp, &[C_i32(ccx, -20)]);
             let exn = Load(bcx, BitCast(bcx, exn, Type::i8p(ccx).ptr_to()));
             do_trans(bcx, exn, ebp);
@@ -1408,16 +1386,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         // Conveniently on x86_64 the EXCEPTION_POINTERS handle and base pointer
         // are passed in as arguments to the filter function, so we just pass
         // those along.
-        let filter_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
-            unsafety: hir::Unsafety::Unsafe,
-            abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
-                inputs: vec![i8p, i8p],
-                output: output,
-                variadic: false,
-            }),
-        });
-        gen_fn(fcx, "__rustc_try_filter", filter_fn_ty, output, &mut |bcx| {
+        gen_fn(fcx, "__rustc_try_filter", vec![i8p, i8p], output, &mut |bcx| {
             let exn = llvm::get_param(bcx.fcx.llfn, 0);
             let rbp = llvm::get_param(bcx.fcx.llfn, 1);
             do_trans(bcx, exn, rbp);
@@ -1441,7 +1410,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
      ret_ty: Ty<'tcx>,
      llret_ty: Type,
      call_debug_location: DebugLoc,
-     call_info: NodeIdAndSpan) -> ValueRef
+     span: Span) -> ValueRef
 {
     // macros for error handling:
     macro_rules! emit_error {
@@ -1450,7 +1419,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         };
         ($msg: tt, $($fmt: tt)*) => {
             span_invalid_monomorphization_error(
-                bcx.sess(), call_info.span,
+                bcx.sess(), span,
                 &format!(concat!("invalid monomorphization of `{}` intrinsic: ",
                                  $msg),
                          name, $($fmt)*));
@@ -1519,7 +1488,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     if name.starts_with("simd_shuffle") {
         let n: usize = match name["simd_shuffle".len()..].parse() {
             Ok(n) => n,
-            Err(_) => tcx.sess.span_bug(call_info.span,
+            Err(_) => tcx.sess.span_bug(span,
                                         "bad `simd_shuffle` instruction only caught in trans?")
         };
 
@@ -1537,22 +1506,26 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 
         let total_len = in_len as u64 * 2;
 
-        let vector = match args {
-            Some(args) => &args[2],
-            None => bcx.sess().span_bug(call_info.span,
-                                        "intrinsic call with unexpected argument shape"),
-        };
-        let vector = match consts::const_expr(bcx.ccx(), vector, substs, None,
-            consts::TrueConst::Yes, // this should probably help simd error reporting
-        ) {
-            Ok((vector, _)) => vector,
-            Err(err) => bcx.sess().span_fatal(call_info.span, &err.description()),
+        let (vector, indirect) = match args {
+            Some(args) => {
+                match consts::const_expr(bcx.ccx(), &args[2], substs, None,
+                                         // this should probably help simd error reporting
+                                         consts::TrueConst::Yes) {
+                    Ok((vector, _)) => (vector, false),
+                    Err(err) => bcx.sess().span_fatal(span, &err.description()),
+                }
+            }
+            None => (llargs[2], !type_is_immediate(bcx.ccx(), arg_tys[2]))
         };
 
         let indices: Option<Vec<_>> = (0..n)
             .map(|i| {
                 let arg_idx = i;
-                let val = const_get_elt(bcx.ccx(), vector, &[i as libc::c_uint]);
+                let val = if indirect {
+                    Load(bcx, StructGEP(bcx, vector, i))
+                } else {
+                    const_get_elt(vector, &[i as libc::c_uint])
+                };
                 let c = const_to_opt_uint(val);
                 match c {
                     None => {
@@ -1689,7 +1662,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         simd_or: TyUint, TyInt => Or;
         simd_xor: TyUint, TyInt => Xor;
     }
-    bcx.sess().span_bug(call_info.span, "unknown SIMD intrinsic");
+    bcx.sess().span_bug(span, "unknown SIMD intrinsic");
 }
 
 // Returns the width of an int TypeVariant, and if it's signed or not

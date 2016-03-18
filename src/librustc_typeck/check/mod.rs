@@ -3416,12 +3416,12 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
               fcx.add_wf_bounds(&item_substs.substs, expr);
           });
       }
-      hir::ExprInlineAsm(ref ia) => {
-          for &(_, ref input) in &ia.inputs {
-              check_expr(fcx, &input);
+      hir::ExprInlineAsm(_, ref outputs, ref inputs) => {
+          for output in outputs {
+              check_expr(fcx, output);
           }
-          for out in &ia.outputs {
-              check_expr(fcx, &out.expr);
+          for input in inputs {
+              check_expr(fcx, input);
           }
           fcx.write_nil(id);
       }

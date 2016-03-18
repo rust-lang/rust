@@ -10,13 +10,11 @@
 
 //! # Translation of inline assembly.
 
-use llvm;
+use llvm::{self, ValueRef};
+use trans::base;
 use trans::build::*;
-use trans::callee;
 use trans::common::*;
-use trans::cleanup;
-use trans::cleanup::CleanupMethods;
-use trans::expr;
+use trans::datum::{Datum, Lvalue};
 use trans::type_of;
 use trans::type_::Type;
 
@@ -26,64 +24,35 @@ use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
-                                    -> Block<'blk, 'tcx> {
-    let fcx = bcx.fcx;
-    let mut bcx = bcx;
-    let mut constraints = Vec::new();
-    let mut output_types = Vec::new();
-
-    let temp_scope = fcx.push_custom_cleanup_scope();
-
-    let mut ext_inputs = Vec::new();
-    let mut ext_constraints = Vec::new();
+pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    ia: &ast::InlineAsm,
+                                    outputs: Vec<Datum<'tcx, Lvalue>>,
+                                    mut inputs: Vec<ValueRef>) {
+    let mut ext_constraints = vec![];
+    let mut output_types = vec![];
 
     // Prepare the output operands
-    let mut outputs = Vec::new();
-    let mut inputs = Vec::new();
-    for (i, out) in ia.outputs.iter().enumerate() {
-        constraints.push(out.constraint.clone());
-
-        let out_datum = unpack_datum!(bcx, expr::trans(bcx, &out.expr));
+    let mut indirect_outputs = vec![];
+    for (i, (out, out_datum)) in ia.outputs.iter().zip(&outputs).enumerate() {
+        let val = if out.is_rw || out.is_indirect {
+            Some(base::load_ty(bcx, out_datum.val, out_datum.ty))
+        } else {
+            None
+        };
+        if out.is_rw {
+            inputs.push(val.unwrap());
+            ext_constraints.push(i.to_string());
+        }
         if out.is_indirect {
-            bcx = callee::trans_arg_datum(bcx,
-                                          expr_ty(bcx, &out.expr),
-                                          out_datum,
-                                          cleanup::CustomScope(temp_scope),
-                                          &mut inputs);
-            if out.is_rw {
-                ext_inputs.push(*inputs.last().unwrap());
-                ext_constraints.push(i.to_string());
-            }
+            indirect_outputs.push(val.unwrap());
         } else {
             output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
-            outputs.push(out_datum.val);
-            if out.is_rw {
-                bcx = callee::trans_arg_datum(bcx,
-                                              expr_ty(bcx, &out.expr),
-                                              out_datum,
-                                              cleanup::CustomScope(temp_scope),
-                                              &mut ext_inputs);
-                ext_constraints.push(i.to_string());
-            }
         }
     }
-
-    // Now the input operands
-    for &(ref c, ref input) in &ia.inputs {
-        constraints.push((*c).clone());
-
-        let in_datum = unpack_datum!(bcx, expr::trans(bcx, &input));
-        bcx = callee::trans_arg_datum(bcx,
-                                    expr_ty(bcx, &input),
-                                    in_datum,
-                                    cleanup::CustomScope(temp_scope),
-                                    &mut inputs);
+    if !indirect_outputs.is_empty() {
+        indirect_outputs.extend_from_slice(&inputs);
+        inputs = indirect_outputs;
     }
-    inputs.extend_from_slice(&ext_inputs[..]);
-
-    // no failure occurred preparing operands, no need to cleanup
-    fcx.pop_custom_cleanup_scope(temp_scope);
 
     let clobbers = ia.clobbers.iter()
                               .map(|s| format!("~{{{}}}", &s));
@@ -95,19 +64,18 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         _                => Vec::new()
     };
 
-    let all_constraints= constraints.iter()
-                                    .map(|s| s.to_string())
-                                    .chain(ext_constraints)
-                                    .chain(clobbers)
-                                    .chain(arch_clobbers.iter()
-                                               .map(|s| s.to_string()))
-                                    .collect::<Vec<String>>()
-                                    .join(",");
+    let all_constraints =
+        ia.outputs.iter().map(|out| out.constraint.to_string())
+          .chain(ia.inputs.iter().map(|s| s.to_string()))
+          .chain(ext_constraints)
+          .chain(clobbers)
+          .chain(arch_clobbers.iter().map(|s| s.to_string()))
+          .collect::<Vec<String>>().join(",");
 
     debug!("Asm Constraints: {}", &all_constraints[..]);
 
     // Depending on how many outputs we have, the return type is different
-    let num_outputs = outputs.len();
+    let num_outputs = output_types.len();
     let output_type = match num_outputs {
         0 => Type::void(bcx.ccx()),
         1 => output_types[0],
@@ -131,13 +99,10 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                           dialect);
 
     // Again, based on how many outputs we have
-    if num_outputs == 1 {
-        Store(bcx, r, outputs[0]);
-    } else {
-        for (i, o) in outputs.iter().enumerate() {
-            let v = ExtractValue(bcx, r, i);
-            Store(bcx, v, *o);
-        }
+    let outputs = ia.outputs.iter().zip(&outputs).filter(|&(ref o, _)| !o.is_indirect);
+    for (i, (_, datum)) in outputs.enumerate() {
+        let v = if num_outputs == 1 { r } else { ExtractValue(bcx, r, i) };
+        Store(bcx, v, datum.val);
     }
 
     // Store expn_id in a metadata node so we can map LLVM errors
@@ -152,7 +117,4 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         llvm::LLVMSetMetadata(r, kind,
             llvm::LLVMMDNodeInContext(bcx.ccx().llcx(), &val, 1));
     }
-
-    return bcx;
-
 }

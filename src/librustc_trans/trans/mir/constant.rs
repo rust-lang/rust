@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::abi;
 use llvm::ValueRef;
 use middle::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::{self, ConstVal};
 use rustc_const_eval::ConstInt::*;
 use rustc::mir::repr as mir;
+use trans::abi;
 use trans::common::{self, BlockAndBuilder, C_bool, C_bytes, C_floating_f64, C_integral,
-                    C_str_slice, C_nil, C_undef};
+                    C_str_slice, C_undef};
 use trans::consts;
+use trans::datum;
 use trans::expr;
-use trans::inline;
 use trans::type_of;
 use trans::type_::Type;
 
@@ -38,8 +38,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let val = if common::type_is_immediate(ccx, ty) {
             OperandValue::Immediate(val)
         } else if common::type_is_fat_ptr(bcx.tcx(), ty) {
-            let data = common::const_get_elt(ccx, val, &[abi::FAT_PTR_ADDR as u32]);
-            let extra = common::const_get_elt(ccx, val, &[abi::FAT_PTR_EXTRA as u32]);
+            let data = common::const_get_elt(val, &[abi::FAT_PTR_ADDR as u32]);
+            let extra = common::const_get_elt(val, &[abi::FAT_PTR_EXTRA as u32]);
             OperandValue::FatPtr(data, extra)
         } else {
             OperandValue::Ref(val)
@@ -85,16 +85,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::Integral(InferSigned(v)) => C_integral(llty, v as u64, true),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
-            ConstVal::Struct(id) | ConstVal::Tuple(id) |
-            ConstVal::Array(id, _) | ConstVal::Repeat(id, _) => {
-                let expr = bcx.tcx().map.expect_expr(id);
-                bcx.with_block(|bcx| {
-                    expr::trans(bcx, expr).datum.val
-                })
-            },
+            ConstVal::Struct(_) | ConstVal::Tuple(_) |
+            ConstVal::Array(..) | ConstVal::Repeat(..) |
+            ConstVal::Function(_) => {
+                unreachable!("MIR must not use {:?} (which refers to a local ID)", cv)
+            }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
             ConstVal::Dummy => unreachable!(),
-            ConstVal::Function(_) => C_nil(ccx)
         }
     }
 
@@ -116,16 +113,26 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     };
                 }
 
-                let substs = bcx.tcx().mk_substs(bcx.monomorphize(&substs));
-                let def_id = inline::maybe_instantiate_inline(bcx.ccx(), def_id);
-                let expr = const_eval::lookup_const_by_id(bcx.tcx(), def_id, None, Some(substs))
+                let substs = Some(bcx.monomorphize(substs));
+                let expr = const_eval::lookup_const_by_id(bcx.tcx(), def_id, substs)
                             .expect("def was const, but lookup_const_by_id failed").0;
                 // FIXME: this is falling back to translating from HIR. This is not easy to fix,
                 // because we would have somehow adapt const_eval to work on MIR rather than HIR.
                 let d = bcx.with_block(|bcx| {
                     expr::trans(bcx, expr)
                 });
-                OperandRef::from_rvalue_datum(d.datum.to_rvalue_datum(d.bcx, "").datum)
+
+                let datum = d.datum.to_rvalue_datum(d.bcx, "").datum;
+
+                match datum.kind.mode {
+                    datum::RvalueMode::ByValue => {
+                        OperandRef {
+                            ty: datum.ty,
+                            val: OperandValue::Immediate(datum.val)
+                        }
+                    }
+                    datum::RvalueMode::ByRef => self.trans_load(bcx, datum.val, datum.ty)
+                }
             }
             mir::Literal::Value { ref value } => {
                 self.trans_constval(bcx, value, ty)

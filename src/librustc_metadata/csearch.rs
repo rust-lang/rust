@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use astencode;
 use cstore;
 use decoder;
 use encoder;
@@ -237,7 +236,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     }
 
     fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> ty::ImplOrTraitItem<'tcx>
+                          -> Option<ty::ImplOrTraitItem<'tcx>>
     {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_impl_or_trait_item(
@@ -439,8 +438,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                           -> FoundAst<'tcx>
     {
         let cdata = self.get_crate_data(def.krate);
-        let decode_inlined_item = Box::new(astencode::decode_inlined_item);
-        decoder::maybe_get_item_ast(&cdata, tcx, def.index, decode_inlined_item)
+        decoder::maybe_get_item_ast(&cdata, tcx, def.index)
     }
 
     fn maybe_get_item_mir(&self, tcx: &TyCtxt<'tcx>, def: DefId)
@@ -509,21 +507,18 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
                        mir_map: &MirMap<'tcx>,
                        krate: &hir::Crate) -> Vec<u8>
     {
-        let encode_inlined_item: encoder::EncodeInlinedItem =
-            Box::new(|ecx, rbml_w, ii| astencode::encode_inlined_item(ecx, rbml_w, ii));
-
-        let encode_params = encoder::EncodeParams {
+        let ecx = encoder::EncodeContext {
             diag: tcx.sess.diagnostic(),
             tcx: tcx,
             reexports: reexports,
             item_symbols: item_symbols,
             link_meta: link_meta,
             cstore: self,
-            encode_inlined_item: encode_inlined_item,
             reachable: reachable,
             mir_map: mir_map,
+            type_abbrevs: RefCell::new(FnvHashMap()),
         };
-        encoder::encode_metadata(encode_params, krate)
+        encoder::encode_metadata(ecx, krate)
 
     }
 

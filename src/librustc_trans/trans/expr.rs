@@ -44,19 +44,18 @@
 //!   expression and ensures that the result has a cleanup associated with it,
 //!   creating a temporary stack slot if necessary.
 //!
-//! - `trans_local_var -> Datum`: looks up a local variable or upvar.
+//! - `trans_var -> Datum`: looks up a local variable, upvar or static.
 
 #![allow(non_camel_case_types)]
 
 pub use self::Dest::*;
 use self::lazy_binop_ty::*;
 
-use back::abi;
 use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
 use middle::subst::Substs;
-use trans::{_match, adt, asm, base, closure, consts, controlflow};
+use trans::{_match, abi, adt, asm, base, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
 use trans::callee::{Callee, ArgExprs, ArgOverloadedCall, ArgOverloadedOp};
@@ -69,6 +68,7 @@ use trans::glue;
 use trans::machine;
 use trans::tvec;
 use trans::type_of;
+use trans::value::Value;
 use trans::Disr;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
@@ -85,6 +85,7 @@ use rustc_front::hir;
 
 use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
+use std::fmt;
 use std::mem;
 
 // Destinations
@@ -98,11 +99,11 @@ pub enum Dest {
     Ignore,
 }
 
-impl Dest {
-    pub fn to_string(&self, ccx: &CrateContext) -> String {
+impl fmt::Debug for Dest {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            SaveIn(v) => format!("SaveIn({})", ccx.tn().val_to_string(v)),
-            Ignore => "Ignore".to_string()
+            SaveIn(v) => write!(f, "SaveIn({:?})", Value(v)),
+            Ignore => f.write_str("Ignore")
         }
     }
 }
@@ -377,15 +378,13 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         Some(adj) => { adj }
     };
-    debug!("unadjusted datum for expr {:?}: {} adjustment={:?}",
-           expr,
-           datum.to_string(bcx.ccx()),
-           adjustment);
+    debug!("unadjusted datum for expr {:?}: {:?} adjustment={:?}",
+           expr, datum, adjustment);
     match adjustment {
         AdjustReifyFnPointer => {
             match datum.ty.sty {
                 ty::TyFnDef(def_id, substs, _) => {
-                    datum = Callee::def(bcx.ccx(), def_id, substs, datum.ty)
+                    datum = Callee::def(bcx.ccx(), def_id, substs)
                         .reify(bcx.ccx()).to_expr_datum();
                 }
                 _ => {
@@ -452,7 +451,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
     }
-    debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
+    debug!("after adjustments, datum={:?}", datum);
     DatumBlock::new(bcx, datum)
 }
 
@@ -462,9 +461,7 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               target: Datum<'tcx, Rvalue>)
                               -> Block<'blk, 'tcx> {
     let mut bcx = bcx;
-    debug!("coerce_unsized({} -> {})",
-           source.to_string(bcx.ccx()),
-           target.to_string(bcx.ccx()));
+    debug!("coerce_unsized({:?} -> {:?})", source, target);
 
     match (&source.ty.sty, &target.ty.sty) {
         (&ty::TyBox(a), &ty::TyBox(b)) |
@@ -654,7 +651,8 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans(bcx, &e)
         }
         hir::ExprPath(..) => {
-            trans_def(bcx, expr, bcx.def(expr.id))
+            let var = trans_var(bcx, bcx.def(expr.id));
+            DatumBlock::new(bcx, var.to_expr_datum())
         }
         hir::ExprField(ref base, name) => {
             trans_rec_field(bcx, &base, name.node)
@@ -854,8 +852,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
-            debug!("trans_index: base {}", bcx.val_to_string(base));
-            debug!("trans_index: len {}", bcx.val_to_string(len));
+            debug!("trans_index: base {:?}", Value(base));
+            debug!("trans_index: len {:?}", Value(len));
 
             let bounds_check = ICmp(bcx,
                                     llvm::IntUGE,
@@ -866,7 +864,6 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let expected = Call(bcx,
                                 expect,
                                 &[bounds_check, C_bool(ccx, false)],
-                                None,
                                 index_expr_debug_loc);
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
@@ -884,27 +881,40 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     DatumBlock::new(bcx, elt_datum)
 }
 
-fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                         ref_expr: &hir::Expr,
-                         def: Def)
-                         -> DatumBlock<'blk, 'tcx, Expr> {
-    //! Translates a reference to a path.
+/// Translates a reference to a variable.
+pub fn trans_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, def: Def)
+                             -> Datum<'tcx, Lvalue> {
 
-    let _icx = push_ctxt("trans_def_lvalue");
     match def {
-        Def::Static(did, _) => {
-            let const_ty = expr_ty(bcx, ref_expr);
-            let val = get_static_val(bcx.ccx(), did, const_ty);
-            let lval = Lvalue::new("expr::trans_def");
-            DatumBlock::new(bcx, Datum::new(val, const_ty, LvalueExpr(lval)))
+        Def::Static(did, _) => consts::get_static(bcx.ccx(), did),
+        Def::Upvar(_, nid, _, _) => {
+            // Can't move upvars, so this is never a ZeroMemLastUse.
+            let local_ty = node_id_type(bcx, nid);
+            let lval = Lvalue::new_with_hint("expr::trans_var (upvar)",
+                                             bcx, nid, HintKind::ZeroAndMaintain);
+            match bcx.fcx.llupvars.borrow().get(&nid) {
+                Some(&val) => Datum::new(val, local_ty, lval),
+                None => {
+                    bcx.sess().bug(&format!(
+                        "trans_var: no llval for upvar {} found",
+                        nid));
+                }
+            }
         }
-        Def::Local(..) | Def::Upvar(..) => {
-            DatumBlock::new(bcx, trans_local_var(bcx, def).to_expr_datum())
+        Def::Local(_, nid) => {
+            let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
+                Some(&v) => v,
+                None => {
+                    bcx.sess().bug(&format!(
+                        "trans_var: no datum for local/arg {} found",
+                        nid));
+                }
+            };
+            debug!("take_local(nid={}, v={:?}, ty={})",
+                   nid, Value(datum.val), datum.ty);
+            datum
         }
-        _ => {
-            bcx.sess().span_bug(ref_expr.span,
-                &format!("{:?} should not reach expr::trans_def", def))
-        }
+        _ => unreachable!("{:?} should not reach expr::trans_var", def)
     }
 }
 
@@ -1027,8 +1037,18 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 trans_assign_op(bcx, expr, op, &dst, &src)
             }
         }
-        hir::ExprInlineAsm(ref a) => {
-            asm::trans_inline_asm(bcx, a)
+        hir::ExprInlineAsm(ref a, ref outputs, ref inputs) => {
+            let outputs = outputs.iter().map(|output| {
+                let out_datum = unpack_datum!(bcx, trans(bcx, output));
+                unpack_datum!(bcx, out_datum.to_lvalue_datum(bcx, "out", expr.id))
+            }).collect();
+            let inputs = inputs.iter().map(|input| {
+                let input = unpack_datum!(bcx, trans(bcx, input));
+                let input = unpack_datum!(bcx, input.to_rvalue_datum(bcx, "in"));
+                input.to_llscalarish(bcx)
+            }).collect();
+            asm::trans_inline_asm(bcx, a, outputs, inputs);
+            bcx
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1131,8 +1151,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         body,
                                         expr.id,
                                         def_id,
-                                        substs,
-                                        &expr.attrs).unwrap_or(bcx)
+                                        substs).unwrap_or(bcx)
         }
         hir::ExprCall(ref f, ref args) => {
             let method = bcx.tcx().tables.borrow().method_map.get(&method_call).cloned();
@@ -1145,7 +1164,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let f = unpack_datum!(bcx, trans(bcx, f));
                 (match f.ty.sty {
                     ty::TyFnDef(def_id, substs, _) => {
-                        Callee::def(bcx.ccx(), def_id, substs, f.ty)
+                        Callee::def(bcx.ccx(), def_id, substs)
                     }
                     ty::TyFnPtr(_) => {
                         let f = unpack_datum!(bcx,
@@ -1245,48 +1264,6 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx.tcx().sess.span_bug(ref_expr.span, &format!(
                 "Non-DPS def {:?} referened by {}",
                 def, bcx.node_id_to_string(ref_expr.id)));
-        }
-    }
-}
-
-/// Translates a reference to a local variable or argument. This always results in an lvalue datum.
-pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                   def: Def)
-                                   -> Datum<'tcx, Lvalue> {
-    let _icx = push_ctxt("trans_local_var");
-
-    match def {
-        Def::Upvar(_, nid, _, _) => {
-            // Can't move upvars, so this is never a ZeroMemLastUse.
-            let local_ty = node_id_type(bcx, nid);
-            let lval = Lvalue::new_with_hint("expr::trans_local_var (upvar)",
-                                             bcx, nid, HintKind::ZeroAndMaintain);
-            match bcx.fcx.llupvars.borrow().get(&nid) {
-                Some(&val) => Datum::new(val, local_ty, lval),
-                None => {
-                    bcx.sess().bug(&format!(
-                        "trans_local_var: no llval for upvar {} found",
-                        nid));
-                }
-            }
-        }
-        Def::Local(_, nid) => {
-            let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
-                Some(&v) => v,
-                None => {
-                    bcx.sess().bug(&format!(
-                        "trans_local_var: no datum for local/arg {} found",
-                        nid));
-                }
-            };
-            debug!("take_local(nid={}, v={}, ty={})",
-                   nid, bcx.val_to_string(datum.val), datum.ty);
-            datum
-        }
-        _ => {
-            bcx.sess().unimpl(&format!(
-                "unsupported def type in trans_local_var: {:?}",
-                def));
         }
     }
 }
@@ -1708,15 +1685,14 @@ fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if use_fmod {
                 let f64t = Type::f64(bcx.ccx());
                 let fty = Type::func(&[f64t, f64t], &f64t);
-                let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty,
-                                                tcx.types.f64);
+                let llfn = declare::declare_cfn(bcx.ccx(), "fmod", fty);
                 if lhs_t == tcx.types.f32 {
                     let lhs = FPExt(bcx, lhs, f64t);
                     let rhs = FPExt(bcx, rhs, f64t);
-                    let res = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
+                    let res = Call(bcx, llfn, &[lhs, rhs], binop_debug_loc);
                     FPTrunc(bcx, res, Type::f32(bcx.ccx()))
                 } else {
-                    Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc)
+                    Call(bcx, llfn, &[lhs, rhs], binop_debug_loc)
                 }
             } else {
                 FRem(bcx, lhs, rhs, binop_debug_loc)
@@ -1829,12 +1805,10 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
             let lhs = unpack_datum!(bcx, trans(bcx, lhs));
             let lhs = unpack_datum!(bcx, lhs.to_rvalue_datum(bcx, "binop_lhs"));
-            debug!("trans_binary (expr {}): lhs={}",
-                   expr.id, lhs.to_string(ccx));
+            debug!("trans_binary (expr {}): lhs={:?}", expr.id, lhs);
             let rhs = unpack_datum!(bcx, trans(bcx, rhs));
             let rhs = unpack_datum!(bcx, rhs.to_rvalue_datum(bcx, "binop_rhs"));
-            debug!("trans_binary (expr {}): rhs={}",
-                   expr.id, rhs.to_string(ccx));
+            debug!("trans_binary (expr {}): rhs={:?}", expr.id, rhs);
 
             if type_is_fat_ptr(ccx.tcx(), lhs.ty) {
                 assert!(type_is_fat_ptr(ccx.tcx(), rhs.ty),
@@ -1933,8 +1907,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let t_out = node_id_type(bcx, id);
 
     debug!("trans_cast({:?} as {:?})", t_in, t_out);
-    let mut ll_t_in = type_of::arg_type_of(ccx, t_in);
-    let ll_t_out = type_of::arg_type_of(ccx, t_out);
+    let mut ll_t_in = type_of::immediate_type_of(ccx, t_in);
+    let ll_t_out = type_of::immediate_type_of(ccx, t_out);
     // Convert the value to be cast into a ValueRef, either by-ref or
     // by-value as appropriate given its type:
     let mut datum = unpack_datum!(bcx, trans(bcx, expr));
@@ -2085,10 +2059,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           -> DatumBlock<'blk, 'tcx, Expr> {
     let ccx = bcx.ccx();
 
-    debug!("deref_once(expr={:?}, datum={}, method_call={:?})",
-           expr,
-           datum.to_string(ccx),
-           method_call);
+    debug!("deref_once(expr={:?}, datum={:?}, method_call={:?})",
+           expr, datum, method_call);
 
     let mut bcx = bcx;
 
@@ -2175,8 +2147,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    debug!("deref_once(expr={}, method_call={:?}, result={})",
-           expr.id, method_call, r.datum.to_string(ccx));
+    debug!("deref_once(expr={}, method_call={:?}, result={:?})",
+           expr.id, method_call, r.datum);
 
     return r;
 }
@@ -2291,7 +2263,7 @@ impl OverflowOpViaIntrinsic {
                                         -> (Block<'blk, 'tcx>, ValueRef) {
         let llfn = self.to_intrinsic(bcx, lhs_t);
 
-        let val = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
+        let val = Call(bcx, llfn, &[lhs, rhs], binop_debug_loc);
         let result = ExtractValue(bcx, val, 0); // iN operation result
         let overflow = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
 
@@ -2300,7 +2272,7 @@ impl OverflowOpViaIntrinsic {
 
         let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
         Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)],
-             None, binop_debug_loc);
+             binop_debug_loc);
 
         let bcx =
             base::with_cond(bcx, cond, |bcx|

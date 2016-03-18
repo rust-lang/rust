@@ -12,11 +12,13 @@ use llvm::ValueRef;
 use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
+use trans::abi;
 use trans::adt;
 use trans::base;
-use trans::common::{self, BlockAndBuilder};
+use trans::builder::Builder;
+use trans::common::{self, BlockAndBuilder, C_uint};
+use trans::consts;
 use trans::machine;
-use trans::type_of;
 use trans::mir::drop;
 use llvm;
 use trans::Disr;
@@ -49,9 +51,23 @@ impl<'tcx> LvalueRef<'tcx> {
     {
         assert!(!ty.has_erasable_regions());
         let lltemp = bcx.with_block(|bcx| base::alloc_ty(bcx, ty, name));
-        drop::drop_fill(bcx, lltemp, ty);
+        if bcx.fcx().type_needs_drop(ty) {
+            drop::drop_fill(bcx, lltemp, ty);
+        }
         LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty))
     }
+}
+
+pub fn get_meta(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_EXTRA)
+}
+
+pub fn get_dataptr(b: &Builder, fat_ptr: ValueRef) -> ValueRef {
+    b.struct_gep(fat_ptr, abi::FAT_PTR_ADDR)
+}
+
+pub fn load_fat_ptr(b: &Builder, fat_ptr: ValueRef) -> (ValueRef, ValueRef) {
+    (b.load(get_dataptr(b, fat_ptr)), b.load(get_meta(b, fat_ptr)))
 }
 
 impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
@@ -89,16 +105,12 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {
                 let const_ty = self.mir.lvalue_ty(tcx, lvalue);
-                LvalueRef::new_sized(
-                    common::get_static_val(ccx, def_id, const_ty.to_ty(tcx)),
-                    const_ty)
+                LvalueRef::new_sized(consts::get_static(ccx, def_id).val, const_ty)
             },
             mir::Lvalue::ReturnPointer => {
-                let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);
-                let return_ty = fn_return_ty.unwrap();
-                let llval = if !common::return_type_is_void(bcx.ccx(), return_ty) {
+                let llval = if !fcx.fn_ty.ret.is_ignore() {
                     bcx.with_block(|bcx| {
-                        fcx.get_ret_slot(bcx, fn_return_ty, "")
+                        fcx.get_ret_slot(bcx, "")
                     })
                 } else {
                     // This is a void return; that is, there’s no place to store the value and
@@ -106,27 +118,40 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     // Ergo, we return an undef ValueRef, so we do not have to special-case every
                     // place using lvalues, and could use it the same way you use a regular
                     // ReturnPointer LValue (i.e. store into it, load from it etc).
-                    let llty = type_of::type_of(bcx.ccx(), return_ty).ptr_to();
+                    let llty = fcx.fn_ty.ret.original_ty.ptr_to();
                     unsafe {
                         llvm::LLVMGetUndef(llty.to_ref())
                     }
                 };
+                let fn_return_ty = bcx.monomorphize(&self.mir.return_ty);
+                let return_ty = fn_return_ty.unwrap();
                 LvalueRef::new_sized(llval, LvalueTy::from_ty(return_ty))
             },
             mir::Lvalue::Projection(ref projection) => {
                 let tr_base = self.trans_lvalue(bcx, &projection.base);
                 let projected_ty = tr_base.ty.projection_ty(tcx, &projection.elem);
+                let projected_ty = bcx.monomorphize(&projected_ty);
+
+                let project_index = |llindex| {
+                    let element = if let ty::TySlice(_) = tr_base.ty.to_ty(tcx).sty {
+                        // Slices already point to the array element type.
+                        bcx.inbounds_gep(tr_base.llval, &[llindex])
+                    } else {
+                        let zero = common::C_uint(bcx.ccx(), 0u64);
+                        bcx.inbounds_gep(tr_base.llval, &[zero, llindex])
+                    };
+                    (element, ptr::null_mut())
+                };
+
                 let (llprojected, llextra) = match projection.elem {
                     mir::ProjectionElem::Deref => {
                         let base_ty = tr_base.ty.to_ty(tcx);
-                        bcx.with_block(|bcx| {
-                            if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
-                                (base::load_ty(bcx, tr_base.llval, base_ty),
-                                 ptr::null_mut())
-                            } else {
-                                base::load_fat_ptr(bcx, tr_base.llval, base_ty)
-                            }
-                        })
+                        if common::type_is_sized(tcx, projected_ty.to_ty(tcx)) {
+                            (base::load_ty_builder(bcx, tr_base.llval, base_ty),
+                             ptr::null_mut())
+                        } else {
+                            load_fat_ptr(bcx, tr_base.llval)
+                        }
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
                         let base_ty = tr_base.ty.to_ty(tcx);
@@ -142,9 +167,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         } else {
                             adt::MaybeSizedValue::unsized_(tr_base.llval, tr_base.llextra)
                         };
-                        let llprojected = bcx.with_block(|bcx| {
-                            adt::trans_field_ptr(bcx, &base_repr, base, Disr(discr), field.index())
-                        });
+                        let llprojected = adt::trans_field_ptr_builder(bcx, &base_repr, base,
+                                                                       Disr(discr), field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
                         } else {
@@ -154,30 +178,21 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     }
                     mir::ProjectionElem::Index(ref index) => {
                         let index = self.trans_operand(bcx, index);
-                        let llindex = self.prepare_index(bcx, index.immediate());
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
-                        (bcx.inbounds_gep(tr_base.llval, &[zero, llindex]),
-                         ptr::null_mut())
+                        project_index(self.prepare_index(bcx, index.immediate()))
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: false,
                                                          min_length: _ } => {
-                        let lloffset = common::C_u32(bcx.ccx(), offset);
-                        let llindex = self.prepare_index(bcx, lloffset);
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
-                        (bcx.inbounds_gep(tr_base.llval, &[zero, llindex]),
-                         ptr::null_mut())
+                        let lloffset = C_uint(bcx.ccx(), offset);
+                        project_index(self.prepare_index(bcx, lloffset))
                     }
                     mir::ProjectionElem::ConstantIndex { offset,
                                                          from_end: true,
                                                          min_length: _ } => {
-                        let lloffset = common::C_u32(bcx.ccx(), offset);
+                        let lloffset = C_uint(bcx.ccx(), offset);
                         let lllen = self.lvalue_len(bcx, tr_base);
                         let llindex = bcx.sub(lllen, lloffset);
-                        let llindex = self.prepare_index(bcx, llindex);
-                        let zero = common::C_uint(bcx.ccx(), 0u64);
-                        (bcx.inbounds_gep(tr_base.llval, &[zero, llindex]),
-                         ptr::null_mut())
+                        project_index(self.prepare_index(bcx, llindex))
                     }
                     mir::ProjectionElem::Downcast(..) => {
                         (tr_base.llval, tr_base.llextra)

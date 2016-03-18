@@ -2155,7 +2155,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     let input_tys = decl.inputs
                         .iter()
                         .map(|a| ty_of_arg(&ccx.icx(ast_generics), &rb, a, None))
-                        .collect();
+                        .collect::<Vec<_>>();
 
     let output = match decl.output {
         hir::Return(ref ty) =>
@@ -2165,6 +2165,29 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
         hir::NoReturn(..) =>
             ty::FnDiverging
     };
+
+    // feature gate SIMD types in FFI, since I (huonw) am not sure the
+    // ABIs are handled at all correctly.
+    if abi != abi::Abi::RustIntrinsic && abi != abi::Abi::PlatformIntrinsic
+            && !ccx.tcx.sess.features.borrow().simd_ffi {
+        let check = |ast_ty: &hir::Ty, ty: ty::Ty| {
+            if ty.is_simd() {
+                ccx.tcx.sess.struct_span_err(ast_ty.span,
+                              &format!("use of SIMD type `{}` in FFI is highly experimental and \
+                                        may result in invalid code",
+                                       pprust::ty_to_string(ast_ty)))
+                    .fileline_help(ast_ty.span,
+                                   "add #![feature(simd_ffi)] to the crate attributes to enable")
+                    .emit();
+            }
+        };
+        for (input, ty) in decl.inputs.iter().zip(&input_tys) {
+            check(&input.ty, ty)
+        }
+        if let hir::Return(ref ty) = decl.output {
+            check(&ty, output.unwrap())
+        }
+    }
 
     let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
     let t_fn = ccx.tcx.mk_fn_def(id, substs, ty::BareFnTy {

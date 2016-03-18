@@ -16,14 +16,16 @@ use middle::def::ExportMap;
 use middle::def_id::DefId;
 use middle::traits;
 use rustc::mir::mir_map::MirMap;
+use rustc::mir::repr as mir;
 use trans::adt;
 use trans::base;
 use trans::builder::Builder;
-use trans::common::{ExternMap,BuilderRef_res};
+use trans::common::BuilderRef_res;
 use trans::debuginfo;
 use trans::declare;
 use trans::glue::DropGlueKind;
-use trans::monomorphize::MonoId;
+use trans::mir::CachedMir;
+use trans::monomorphize::Instance;
 use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
@@ -75,6 +77,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     check_overflow: bool,
     check_drop_flag_for_sanity: bool,
     mir_map: &'a MirMap<'tcx>,
+    mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
 
     available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
     use_dll_storage_attrs: bool,
@@ -90,8 +93,6 @@ pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
     tn: TypeNames,
-    externs: RefCell<ExternMap>,
-    item_vals: RefCell<NodeMap<ValueRef>>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
@@ -100,8 +101,8 @@ pub struct LocalCrateContext<'tcx> {
     /// Backwards version of the `external` map (inlined items to where they
     /// came from)
     external_srcs: RefCell<NodeMap<DefId>>,
-    /// Cache instances of monomorphized functions
-    monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
+    /// Cache instances of monomorphic and polymorphic items
+    instances: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
     monomorphizing: RefCell<DefIdMap<usize>>,
     available_monomorphizations: RefCell<FnvHashSet<String>>,
     /// Cache generated vtables
@@ -148,13 +149,13 @@ pub struct LocalCrateContext<'tcx> {
     builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
-    closure_vals: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
+    closure_vals: RefCell<FnvHashMap<Instance<'tcx>, ValueRef>>,
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
-    eh_personality: RefCell<Option<ValueRef>>,
-    eh_unwind_resume: RefCell<Option<ValueRef>>,
-    rust_try_fn: RefCell<Option<ValueRef>>,
+    eh_personality: Cell<Option<ValueRef>>,
+    eh_unwind_resume: Cell<Option<ValueRef>>,
+    rust_try_fn: Cell<Option<ValueRef>>,
 
     intrinsics: RefCell<FnvHashMap<&'static str, ValueRef>>,
 
@@ -340,6 +341,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
             mir_map: mir_map,
+            mir_cache: RefCell::new(DefIdMap()),
             stats: Stats {
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
@@ -464,14 +466,12 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 llmod: llmod,
                 llcx: llcx,
                 tn: TypeNames::new(),
-                externs: RefCell::new(FnvHashMap()),
-                item_vals: RefCell::new(NodeMap()),
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
                 external: RefCell::new(DefIdMap()),
                 external_srcs: RefCell::new(NodeMap()),
-                monomorphized: RefCell::new(FnvHashMap()),
+                instances: RefCell::new(FnvHashMap()),
                 monomorphizing: RefCell::new(DefIdMap()),
                 available_monomorphizations: RefCell::new(FnvHashSet()),
                 vtables: RefCell::new(FnvHashMap()),
@@ -492,9 +492,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                 closure_vals: RefCell::new(FnvHashMap()),
                 dbg_cx: dbg_cx,
-                eh_personality: RefCell::new(None),
-                eh_unwind_resume: RefCell::new(None),
-                rust_try_fn: RefCell::new(None),
+                eh_personality: Cell::new(None),
+                eh_unwind_resume: Cell::new(None),
+                rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
@@ -616,14 +616,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.tn
     }
 
-    pub fn externs<'a>(&'a self) -> &'a RefCell<ExternMap> {
-        &self.local.externs
-    }
-
-    pub fn item_vals<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
-        &self.local.item_vals
-    }
-
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {
         &self.shared.export_map
     }
@@ -660,8 +652,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.external_srcs
     }
 
-    pub fn monomorphized<'a>(&'a self) -> &'a RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>> {
-        &self.local.monomorphized
+    pub fn instances<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
+        &self.local.instances
     }
 
     pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<usize>> {
@@ -746,7 +738,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.opaque_vec_type
     }
 
-    pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>> {
+    pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
         &self.local.closure_vals
     }
 
@@ -754,15 +746,15 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.dbg_cx
     }
 
-    pub fn eh_personality<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+    pub fn eh_personality<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local.eh_personality
     }
 
-    pub fn eh_unwind_resume<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+    pub fn eh_unwind_resume<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local.eh_unwind_resume
     }
 
-    pub fn rust_try_fn<'a>(&'a self) -> &'a RefCell<Option<ValueRef>> {
+    pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
         &self.local.rust_try_fn
     }
 
@@ -829,8 +821,22 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared.use_dll_storage_attrs()
     }
 
-    pub fn mir_map(&self) -> &'b MirMap<'tcx> {
-        self.shared.mir_map
+    pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
+        if def_id.is_local() {
+            let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
+            self.shared.mir_map.map.get(&node_id).map(CachedMir::Ref)
+        } else {
+            if let Some(mir) = self.shared.mir_cache.borrow().get(&def_id).cloned() {
+                return Some(CachedMir::Owned(mir));
+            }
+
+            let mir = self.sess().cstore.maybe_get_item_mir(self.tcx(), def_id);
+            let cached = mir.map(Rc::new);
+            if let Some(ref mir) = cached {
+                self.shared.mir_cache.borrow_mut().insert(def_id, mir.clone());
+            }
+            cached.map(CachedMir::Owned)
+        }
     }
 
     pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
@@ -865,8 +871,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret),
-                                             ccx.tcx().mk_nil());
+                let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -874,9 +879,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
         );
         ($name:expr, fn(...) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name,
-                                             Type::variadic_func(&[], &$ret),
-                                             ccx.tcx().mk_nil());
+                let f = declare::declare_cfn(ccx, $name, Type::variadic_func(&[], &$ret));
                 llvm::SetUnnamedAddr(f, false);
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -884,8 +887,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if key == $name {
-                let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
-                                             ccx.tcx().mk_nil());
+                let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret));
                 llvm::SetUnnamedAddr(f, false);
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
@@ -1032,8 +1034,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
                 ifn!($name, fn($($arg),*) -> void);
             } else if key == $name {
                 let f = declare::declare_cfn(ccx, stringify!($cname),
-                                             Type::func(&[$($arg),*], &void),
-                                             ccx.tcx().mk_nil());
+                                             Type::func(&[$($arg),*], &void));
                 llvm::SetLinkage(f, llvm::InternalLinkage);
 
                 let bld = ccx.builder();
@@ -1055,8 +1056,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
                 ifn!($name, fn($($arg),*) -> $ret);
             } else if key == $name {
                 let f = declare::declare_cfn(ccx, stringify!($cname),
-                                             Type::func(&[$($arg),*], &$ret),
-                                             ccx.tcx().mk_nil());
+                                             Type::func(&[$($arg),*], &$ret));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }

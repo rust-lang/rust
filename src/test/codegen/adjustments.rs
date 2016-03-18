@@ -11,6 +11,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
+#![feature(rustc_attrs)]
 
 // Hack to get the correct size for the length part in slices
 // CHECK: @helper([[USIZE:i[0-9]+]])
@@ -20,6 +21,7 @@ fn helper(_: usize) {
 
 // CHECK-LABEL: @no_op_slice_adjustment
 #[no_mangle]
+#[rustc_no_mir] // FIXME #27840 MIR has different codegen.
 pub fn no_op_slice_adjustment(x: &[u8]) -> &[u8] {
     // We used to generate an extra alloca and memcpy for the block's trailing expression value, so
     // check that we copy directly to the return value slot

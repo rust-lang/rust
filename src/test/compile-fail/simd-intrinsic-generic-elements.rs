@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, platform_intrinsics, rustc_attrs)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -56,6 +56,7 @@ extern "platform-intrinsic" {
     fn simd_shuffle8<T, U>(x: T, y: T, idx: [u32; 8]) -> U;
 }
 
+#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 fn main() {
     let x = i32x4(0, 0, 0, 0);
 

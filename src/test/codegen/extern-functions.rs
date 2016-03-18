@@ -22,3 +22,8 @@ extern {
     #[unwind]
     fn unwinding_extern_fn();
 }
+
+pub unsafe fn force_declare() {
+    extern_fn();
+    unwinding_extern_fn();
+}

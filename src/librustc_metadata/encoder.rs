@@ -13,6 +13,7 @@
 #![allow(unused_must_use)] // everything is just a MemWriter, can't fail
 #![allow(non_camel_case_types)]
 
+use astencode::encode_inlined_item;
 use common::*;
 use cstore;
 use decoder;
@@ -55,21 +56,6 @@ use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::Visitor;
 use rustc_front::intravisit;
 
-pub type EncodeInlinedItem<'a> =
-    Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;
-
-pub struct EncodeParams<'a, 'tcx: 'a> {
-    pub diag: &'a Handler,
-    pub tcx: &'a TyCtxt<'tcx>,
-    pub reexports: &'a def::ExportMap,
-    pub item_symbols: &'a RefCell<NodeMap<String>>,
-    pub link_meta: &'a LinkMeta,
-    pub cstore: &'a cstore::CStore,
-    pub encode_inlined_item: EncodeInlinedItem<'a>,
-    pub reachable: &'a NodeSet,
-    pub mir_map: &'a MirMap<'tcx>,
-}
-
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
     pub tcx: &'a TyCtxt<'tcx>,
@@ -77,7 +63,6 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
     pub cstore: &'a cstore::CStore,
-    pub encode_inlined_item: RefCell<EncodeInlinedItem<'a>>,
     pub type_abbrevs: tyencode::abbrev_map<'tcx>,
     pub reachable: &'a NodeSet,
     pub mir_map: &'a MirMap<'tcx>,
@@ -688,6 +673,7 @@ fn encode_info_for_associated_const<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                             rbml_w,
                             InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
                                                      ii));
+        encode_mir(ecx, rbml_w, ii.id);
     }
 
     rbml_w.end_tag();
@@ -733,6 +719,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                     rbml_w,
                                     InlinedItemRef::ImplItem(ecx.tcx.map.local_def_id(parent_id),
                                                              impl_item));
+                encode_mir(ecx, rbml_w, impl_item.id);
             }
             encode_constness(rbml_w, sig.constness);
             encode_defaultness(rbml_w, impl_item.defaultness);
@@ -818,23 +805,6 @@ fn encode_repr_attrs(rbml_w: &mut Encoder,
     rbml_w.start_tag(tag_items_data_item_repr);
     repr_attrs.encode(rbml_w);
     rbml_w.end_tag();
-}
-
-fn encode_inlined_item(ecx: &EncodeContext,
-                       rbml_w: &mut Encoder,
-                       ii: InlinedItemRef) {
-    let mut eii = ecx.encode_inlined_item.borrow_mut();
-    let eii: &mut EncodeInlinedItem = &mut *eii;
-    eii(ecx, rbml_w, ii);
-
-    let node_id = match ii {
-        InlinedItemRef::Item(item) => item.id,
-        InlinedItemRef::TraitItem(_, trait_item) => trait_item.id,
-        InlinedItemRef::ImplItem(_, impl_item) => impl_item.id,
-        InlinedItemRef::Foreign(foreign_item) => foreign_item.id
-    };
-
-    encode_mir(ecx, rbml_w, node_id);
 }
 
 fn encode_mir(ecx: &EncodeContext, rbml_w: &mut Encoder, node_id: NodeId) {
@@ -958,6 +928,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+        encode_mir(ecx, rbml_w, item.id);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
@@ -976,6 +947,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
         if needs_inline || constness == hir::Constness::Const {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+            encode_mir(ecx, rbml_w, item.id);
         }
         if tps_len == 0 {
             encode_symbol(ecx, rbml_w, item.id);
@@ -1044,6 +1016,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_variant_id(rbml_w, ecx.tcx.map.local_def_id(v.node.data.id()));
         }
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+        encode_mir(ecx, rbml_w, item.id);
         encode_path(rbml_w, path);
 
         // Encode inherent implementations for this enumeration.
@@ -1092,6 +1065,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_struct_fields(rbml_w, variant);
 
         encode_inlined_item(ecx, rbml_w, InlinedItemRef::Item(item));
+        encode_mir(ecx, rbml_w, item.id);
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, rbml_w, def_id);
@@ -1374,6 +1348,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
 
                     encode_inlined_item(ecx, rbml_w,
                                         InlinedItemRef::TraitItem(def_id, trait_item));
+                    encode_mir(ecx, rbml_w, trait_item.id);
                 }
                 hir::MethodTraitItem(ref sig, ref body) => {
                     // If this is a static method, we've already
@@ -1389,6 +1364,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                         encode_item_sort(rbml_w, 'p');
                         encode_inlined_item(ecx, rbml_w,
                                             InlinedItemRef::TraitItem(def_id, trait_item));
+                        encode_mir(ecx, rbml_w, trait_item.id);
                     } else {
                         encode_item_sort(rbml_w, 'r');
                     }
@@ -1426,13 +1402,15 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_name(rbml_w, nitem.name);
         if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
             encode_inlined_item(ecx, rbml_w, InlinedItemRef::Foreign(nitem));
+            encode_mir(ecx, rbml_w, nitem.id);
+        } else {
+            encode_symbol(ecx, rbml_w, nitem.id);
         }
         encode_attributes(rbml_w, &nitem.attrs);
         let stab = stability::lookup_stability(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         let depr = stability::lookup_deprecation(ecx.tcx, ecx.tcx.map.local_def_id(nitem.id));
         encode_stability(rbml_w, stab);
         encode_deprecation(rbml_w, depr);
-        encode_symbol(ecx, rbml_w, nitem.id);
         encode_method_argument_names(rbml_w, &fndecl);
       }
       hir::ForeignItemStatic(_, mutbl) => {
@@ -1928,32 +1906,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
 #[allow(non_upper_case_globals)]
 pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
 
-pub fn encode_metadata(parms: EncodeParams, krate: &hir::Crate) -> Vec<u8> {
-    let EncodeParams {
-        item_symbols,
-        diag,
-        tcx,
-        reexports,
-        cstore,
-        encode_inlined_item,
-        link_meta,
-        reachable,
-        mir_map,
-        ..
-    } = parms;
-    let ecx = EncodeContext {
-        diag: diag,
-        tcx: tcx,
-        reexports: reexports,
-        item_symbols: item_symbols,
-        link_meta: link_meta,
-        cstore: cstore,
-        encode_inlined_item: RefCell::new(encode_inlined_item),
-        type_abbrevs: RefCell::new(FnvHashMap()),
-        reachable: reachable,
-        mir_map: mir_map,
-    };
-
+pub fn encode_metadata(ecx: EncodeContext, krate: &hir::Crate) -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
 
     {

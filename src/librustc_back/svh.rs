@@ -279,7 +279,7 @@ mod svh_visitor {
             ExprBreak(id)            => SawExprBreak(id.map(|id| id.node.name.as_str())),
             ExprAgain(id)            => SawExprAgain(id.map(|id| id.node.name.as_str())),
             ExprRet(..)              => SawExprRet,
-            ExprInlineAsm(ref asm)   => SawExprInlineAsm(asm),
+            ExprInlineAsm(ref a,_,_) => SawExprInlineAsm(a),
             ExprStruct(..)           => SawExprStruct,
             ExprRepeat(..)           => SawExprRepeat,
         }

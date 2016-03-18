@@ -1320,14 +1320,11 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     dialect,
                     expn_id,
                 }) => hir::ExprInlineAsm(hir::InlineAsm {
-                inputs: inputs.iter()
-                              .map(|&(ref c, ref input)| (c.clone(), lower_expr(lctx, input)))
-                              .collect(),
+                inputs: inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
                 outputs: outputs.iter()
                                 .map(|out| {
                                     hir::InlineAsmOutput {
                                         constraint: out.constraint.clone(),
-                                        expr: lower_expr(lctx, &out.expr),
                                         is_rw: out.is_rw,
                                         is_indirect: out.is_indirect,
                                     }
@@ -1340,7 +1337,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 alignstack: alignstack,
                 dialect: dialect,
                 expn_id: expn_id,
-            }),
+            }, outputs.iter().map(|out| lower_expr(lctx, &out.expr)).collect(),
+               inputs.iter().map(|&(_, ref input)| lower_expr(lctx, input)).collect()),
             ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
                 hir::ExprStruct(lower_path(lctx, path),
                                 fields.iter().map(|x| lower_field(lctx, x)).collect(),

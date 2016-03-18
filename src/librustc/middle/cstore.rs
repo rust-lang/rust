@@ -122,7 +122,7 @@ pub struct ChildItem {
 
 pub enum FoundAst<'ast> {
     Found(&'ast InlinedItem),
-    FoundParent(DefId, &'ast InlinedItem),
+    FoundParent(DefId, &'ast hir::Item),
     NotFound,
 }
 
@@ -182,7 +182,7 @@ pub trait CrateStore<'tcx> : Any {
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
                      -> Option<DefId>;
     fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> ty::ImplOrTraitItem<'tcx>;
+                          -> Option<ty::ImplOrTraitItem<'tcx>>;
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool;
@@ -353,7 +353,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn trait_of_item(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
                      -> Option<DefId> { unimplemented!() }
     fn impl_or_trait_item(&self, tcx: &TyCtxt<'tcx>, def: DefId)
-                          -> ty::ImplOrTraitItem<'tcx> { unimplemented!() }
+                          -> Option<ty::ImplOrTraitItem<'tcx>> { unimplemented!() }
 
     // flags
     fn is_const_fn(&self, did: DefId) -> bool { unimplemented!() }

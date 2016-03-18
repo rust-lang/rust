@@ -863,12 +863,28 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         "-g".to_owned(),
         "--debuginfo".to_owned()
     ];
-    let new_options =
+    let mut new_options =
         split_maybe_args(options).into_iter()
                                  .filter(|x| !options_to_remove.contains(x))
-                                 .collect::<Vec<String>>()
-                                 .join(" ");
-    Some(new_options)
+                                 .collect::<Vec<String>>();
+
+    let mut i = 0;
+    while i + 1 < new_options.len() {
+        if new_options[i] == "-Z" {
+            // FIXME #31005 MIR missing debuginfo currently.
+            if new_options[i + 1] == "orbit" {
+                // Remove "-Z" and "orbit".
+                new_options.remove(i);
+                new_options.remove(i);
+                continue;
+            }
+            // Always skip over -Z's argument.
+            i += 1;
+        }
+        i += 1;
+    }
+
+    Some(new_options.join(" "))
 }
 
 fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) {
@@ -1386,7 +1402,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
     compose_and_run(config,
                     testpaths,
                     args,
-                    Vec::new(),
+                    props.rustc_env.clone(),
                     &config.compile_lib_path,
                     Some(aux_dir.to_str().unwrap()),
                     input)

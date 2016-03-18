@@ -1170,25 +1170,21 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprInlineAsm(ref ia) => {
-
-            let succ = ia.outputs.iter().rev().fold(succ,
-                |succ, out| {
-                    // see comment on lvalues
-                    // in propagate_through_lvalue_components()
-                    if out.is_indirect {
-                        self.propagate_through_expr(&out.expr, succ)
-                    } else {
-                        let acc = if out.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
-                        let succ = self.write_lvalue(&out.expr, succ, acc);
-                        self.propagate_through_lvalue_components(&out.expr, succ)
-                    }
+          hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+            let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
+                // see comment on lvalues
+                // in propagate_through_lvalue_components()
+                if o.is_indirect {
+                    self.propagate_through_expr(output, succ)
+                } else {
+                    let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
+                    let succ = self.write_lvalue(output, succ, acc);
+                    self.propagate_through_lvalue_components(output, succ)
                 }
-            );
+            });
+
             // Inputs are executed first. Propagate last because of rev order
-            ia.inputs.iter().rev().fold(succ, |succ, &(_, ref expr)| {
-                self.propagate_through_expr(&expr, succ)
-            })
+            self.propagate_through_exprs(inputs, succ)
           }
 
           hir::ExprLit(..) => {
@@ -1425,17 +1421,17 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
         intravisit::walk_expr(this, expr);
       }
 
-      hir::ExprInlineAsm(ref ia) => {
-        for &(_, ref input) in &ia.inputs {
-          this.visit_expr(&input);
+      hir::ExprInlineAsm(ref ia, ref outputs, ref inputs) => {
+        for input in inputs {
+          this.visit_expr(input);
         }
 
         // Output operands must be lvalues
-        for out in &ia.outputs {
-          if !out.is_indirect {
-            this.check_lvalue(&out.expr);
+        for (o, output) in ia.outputs.iter().zip(outputs) {
+          if !o.is_indirect {
+            this.check_lvalue(output);
           }
-          this.visit_expr(&out.expr);
+          this.visit_expr(output);
         }
 
         intravisit::walk_expr(this, expr);

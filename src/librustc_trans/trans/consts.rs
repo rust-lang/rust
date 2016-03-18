@@ -9,27 +9,28 @@
 // except according to those terms.
 
 
-use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
-use middle::cstore::LOCAL_CRATE;
 use middle::const_eval::{self, ConstEvalErr};
 use middle::def::Def;
 use middle::def_id::DefId;
-use trans::{adt, closure, debuginfo, expr, inline, machine};
-use trans::base::{self, push_ctxt};
+use rustc::front::map as hir_map;
+use trans::{abi, adt, closure, debuginfo, expr, machine};
+use trans::base::{self, exported_name, imported_name, push_ctxt};
 use trans::callee::Callee;
 use trans::collector::{self, TransItem};
-use trans::common::{self, type_is_sized, ExprOrMethodCall, node_id_substs, C_nil, const_get_elt};
+use trans::common::{type_is_sized, C_nil, const_get_elt};
 use trans::common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
 use trans::common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
-use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null, ExprId, MethodCallKey};
+use trans::common::{type_is_fat_ptr, Field, C_vector, C_array, C_null};
+use trans::datum::{Datum, Lvalue};
 use trans::declare;
-use trans::monomorphize;
+use trans::monomorphize::{self, Instance};
 use trans::type_::Type;
 use trans::type_of;
+use trans::value::Value;
 use trans::Disr;
 use middle::subst::Substs;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
@@ -45,7 +46,7 @@ use std::ffi::{CStr, CString};
 use std::borrow::Cow;
 use libc::c_uint;
 use syntax::ast::{self, LitKind};
-use syntax::attr;
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::parse::token;
 use syntax::ptr::P;
 
@@ -191,13 +192,18 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 }
 
 fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                           node: ExprOrMethodCall,
                            def_id: DefId,
+                           substs: Substs<'tcx>,
                            arg_vals: &[ValueRef],
                            param_substs: &'tcx Substs<'tcx>,
                            trueconst: TrueConst) -> Result<ValueRef, ConstEvalFailure> {
     let fn_like = const_eval::lookup_const_fn_by_id(ccx.tcx(), def_id);
     let fn_like = fn_like.expect("lookup_const_fn_by_id failed in const_fn_call");
+
+    let body = match fn_like.body().expr {
+        Some(ref expr) => expr,
+        None => return Ok(C_nil(ccx))
+    };
 
     let args = &fn_like.decl().inputs;
     assert_eq!(args.len(), arg_vals.len());
@@ -205,13 +211,12 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let arg_ids = args.iter().map(|arg| arg.pat.id);
     let fn_args = arg_ids.zip(arg_vals.iter().cloned()).collect();
 
-    let substs = node_id_substs(ccx, node, param_substs);
-    match fn_like.body().expr {
-        Some(ref expr) => {
-            const_expr(ccx, &expr, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
-        },
-        None => Ok(C_nil(ccx)),
-    }
+    let substs = monomorphize::apply_param_substs(ccx.tcx(),
+                                                  param_substs,
+                                                  &substs.erase_regions());
+    let substs = ccx.tcx().mk_substs(substs);
+
+    const_expr(ccx, body, substs, Some(&fn_args), trueconst).map(|(res, _)| res)
 }
 
 pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -219,14 +224,11 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 ref_expr: &hir::Expr,
                                 param_substs: &'tcx Substs<'tcx>)
                                 -> &'tcx hir::Expr {
-    let def_id = inline::maybe_instantiate_inline(ccx, def_id);
-
-    if def_id.krate != LOCAL_CRATE {
-        ccx.sess().span_bug(ref_expr.span,
-                            "cross crate constant could not be inlined");
-    }
-
-    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id), Some(param_substs)) {
+    let substs = ccx.tcx().node_id_item_substs(ref_expr.id).substs;
+    let substs = monomorphize::apply_param_substs(ccx.tcx(),
+                                                  param_substs,
+                                                  &substs.erase_regions());
+    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(substs)) {
         Some((ref expr, _ty)) => expr,
         None => {
             ccx.sess().span_bug(ref_expr.span, "constant item not found")
@@ -351,9 +353,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         Some(AdjustReifyFnPointer) => {
             match ety.sty {
                 ty::TyFnDef(def_id, substs, _) => {
-                    let datum = Callee::def(cx, def_id, substs, ety).reify(cx);
-                    llconst = datum.val;
-                    ety_adjusted = datum.ty;
+                    llconst = Callee::def(cx, def_id, substs).reify(cx).val;
                 }
                 _ => {
                     unreachable!("{} cannot be reified to a fn ptr", ety)
@@ -405,8 +405,8 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     // to use a different vtable. In that case, we want to
                     // load out the original data pointer so we can repackage
                     // it.
-                    (const_get_elt(cx, llconst, &[abi::FAT_PTR_ADDR as u32]),
-                     Some(const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32])))
+                    (const_get_elt(llconst, &[abi::FAT_PTR_ADDR as u32]),
+                     Some(const_get_elt(llconst, &[abi::FAT_PTR_EXTRA as u32])))
                 } else {
                     (llconst, None)
                 };
@@ -595,17 +595,15 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
             let (te1, ty) = try!(const_expr(cx, &e1, param_substs, fn_args, trueconst));
-            debug!("const_expr_unadjusted: te1={}, ty={:?}",
-                   cx.tn().val_to_string(te1),
-                   ty);
+            debug!("const_expr_unadjusted: te1={:?}, ty={:?}",
+                   Value(te1), ty);
             assert!(!ty.is_simd());
             let is_float = ty.is_fp();
             let signed = ty.is_signed();
 
             let (te2, ty2) = try!(const_expr(cx, &e2, param_substs, fn_args, trueconst));
-            debug!("const_expr_unadjusted: te2={}, ty={:?}",
-                   cx.tn().val_to_string(te2),
-                   ty2);
+            debug!("const_expr_unadjusted: te2={:?}, ty={:?}",
+                   Value(te2), ty2);
 
             try!(check_binary_expr_validity(cx, e, ty, te1, te2, trueconst));
 
@@ -689,8 +687,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let (arr, len) = match bt.sty {
                 ty::TyArray(_, u) => (bv, C_uint(cx, u)),
                 ty::TySlice(..) | ty::TyStr => {
-                    let e1 = const_get_elt(cx, bv, &[0]);
-                    (load_const(cx, e1, bt), const_get_elt(cx, bv, &[1]))
+                    let e1 = const_get_elt(bv, &[0]);
+                    (load_const(cx, e1, bt), const_get_elt(bv, &[1]))
                 },
                 ty::TyRef(_, mt) => match mt.ty.sty {
                     ty::TyArray(_, u) => {
@@ -725,7 +723,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                           "const index-expr is out of bounds");
                 C_undef(val_ty(arr).element_type())
             } else {
-                const_get_elt(cx, arr, &[iv as c_uint])
+                const_get_elt(arr, &[iv as c_uint])
             }
         },
         hir::ExprCast(ref base, _) => {
@@ -741,10 +739,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let t_cast_inner =
                     t_cast.builtin_deref(true, ty::NoPreference).expect("cast to non-pointer").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, t_cast_inner).ptr_to();
-                let addr = ptrcast(const_get_elt(cx, v, &[abi::FAT_PTR_ADDR as u32]),
+                let addr = ptrcast(const_get_elt(v, &[abi::FAT_PTR_ADDR as u32]),
                                    ptr_ty);
                 if type_is_fat_ptr(cx.tcx(), t_cast) {
-                    let info = const_get_elt(cx, v, &[abi::FAT_PTR_EXTRA as u32]);
+                    let info = const_get_elt(v, &[abi::FAT_PTR_EXTRA as u32]);
                     return Ok(C_struct(cx, &[addr, info], false))
                 } else {
                     return Ok(addr);
@@ -756,7 +754,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             ) {
                 (CastTy::Int(IntTy::CEnum), CastTy::Int(_)) => {
                     let repr = adt::represent_type(cx, t_expr);
-                    let discr = adt::const_get_discrim(cx, &repr, v);
+                    let discr = adt::const_get_discrim(&repr, v);
                     let iv = C_integral(cx.int_type(), discr.0, false);
                     let s = adt::is_discr_signed(&repr) as Bool;
                     llvm::LLVMConstIntCast(iv, llty.to_ref(), s)
@@ -809,7 +807,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
             let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
             if let Some(Def::Static(def_id, _)) = opt_def {
-                common::get_static_val(cx, def_id, ety)
+                get_static(cx, def_id).val
             } else {
                 // If this isn't the address of a static, then keep going through
                 // normal constant evaluation.
@@ -947,8 +945,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 Def::Fn(did) | Def::Method(did) => {
                     try!(const_fn_call(
                         cx,
-                        ExprId(callee.id),
                         did,
+                        cx.tcx().node_id_item_substs(callee.id).substs,
                         &arg_vals,
                         param_substs,
                         trueconst,
@@ -976,9 +974,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprMethodCall(_, _, ref args) => {
             let arg_vals = try!(map_list(args));
             let method_call = ty::MethodCall::expr(e.id);
-            let method_did = cx.tcx().tables.borrow().method_map[&method_call].def_id;
-            try!(const_fn_call(cx, MethodCallKey(method_call),
-                               method_did, &arg_vals, param_substs, trueconst))
+            let method = cx.tcx().tables.borrow().method_map[&method_call];
+            try!(const_fn_call(cx, method.def_id, method.substs.clone(),
+                               &arg_vals, param_substs, trueconst))
         },
         hir::ExprType(ref e, _) => try!(const_expr(cx, &e, param_substs, fn_args, trueconst)).0,
         hir::ExprBlock(ref block) => {
@@ -1001,8 +999,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                 body,
                                                 e.id,
                                                 def_id,
-                                                substs,
-                                                &e.attrs);
+                                                substs);
                 }
                 _ =>
                     cx.sess().span_bug(
@@ -1014,6 +1011,125 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         _ => cx.sess().span_bug(e.span,
                                 "bad constant expression type in consts::const_expr"),
     })
+}
+
+pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
+                            -> Datum<'tcx, Lvalue> {
+    let ty = ccx.tcx().lookup_item_type(def_id).ty;
+
+    let instance = Instance::mono(ccx.tcx(), def_id);
+    if let Some(&g) = ccx.instances().borrow().get(&instance) {
+        return Datum::new(g, ty, Lvalue::new("static"));
+    }
+
+    let g = if let Some(id) = ccx.tcx().map.as_local_node_id(def_id) {
+        let llty = type_of::type_of(ccx, ty);
+        match ccx.tcx().map.get(id) {
+            hir_map::NodeItem(&hir::Item {
+                ref attrs, span, node: hir::ItemStatic(..), ..
+            }) => {
+                // If this static came from an external crate, then
+                // we need to get the symbol from metadata instead of
+                // using the current crate's name/version
+                // information in the hash of the symbol
+                let sym = exported_name(ccx, id, ty, attrs);
+                debug!("making {}", sym);
+
+                // Create the global before evaluating the initializer;
+                // this is necessary to allow recursive statics.
+                let g = declare::define_global(ccx, &sym, llty).unwrap_or_else(|| {
+                    ccx.sess().span_fatal(span,
+                        &format!("symbol `{}` is already defined", sym))
+                });
+
+                ccx.item_symbols().borrow_mut().insert(id, sym);
+                g
+            }
+
+            hir_map::NodeForeignItem(&hir::ForeignItem {
+                ref attrs, name, span, node: hir::ForeignItemStatic(..), ..
+            }) => {
+                let ident = imported_name(name, attrs);
+                let g = if let Some(name) =
+                        attr::first_attr_value_str_by_name(&attrs, "linkage") {
+                    // If this is a static with a linkage specified, then we need to handle
+                    // it a little specially. The typesystem prevents things like &T and
+                    // extern "C" fn() from being non-null, so we can't just declare a
+                    // static and call it a day. Some linkages (like weak) will make it such
+                    // that the static actually has a null value.
+                    let linkage = match base::llvm_linkage_by_name(&name) {
+                        Some(linkage) => linkage,
+                        None => {
+                            ccx.sess().span_fatal(span, "invalid linkage specified");
+                        }
+                    };
+                    let llty2 = match ty.sty {
+                        ty::TyRawPtr(ref mt) => type_of::type_of(ccx, mt.ty),
+                        _ => {
+                            ccx.sess().span_fatal(span, "must have type `*const T` or `*mut T`");
+                        }
+                    };
+                    unsafe {
+                        // Declare a symbol `foo` with the desired linkage.
+                        let g1 = declare::declare_global(ccx, &ident, llty2);
+                        llvm::SetLinkage(g1, linkage);
+
+                        // Declare an internal global `extern_with_linkage_foo` which
+                        // is initialized with the address of `foo`.  If `foo` is
+                        // discarded during linking (for example, if `foo` has weak
+                        // linkage and there are no definitions), then
+                        // `extern_with_linkage_foo` will instead be initialized to
+                        // zero.
+                        let mut real_name = "_rust_extern_with_linkage_".to_string();
+                        real_name.push_str(&ident);
+                        let g2 = declare::define_global(ccx, &real_name, llty).unwrap_or_else(||{
+                            ccx.sess().span_fatal(span,
+                                &format!("symbol `{}` is already defined", ident))
+                        });
+                        llvm::SetLinkage(g2, llvm::InternalLinkage);
+                        llvm::LLVMSetInitializer(g2, g1);
+                        g2
+                    }
+                } else {
+                    // Generate an external declaration.
+                    declare::declare_global(ccx, &ident, llty)
+                };
+
+                for attr in attrs {
+                    if attr.check_name("thread_local") {
+                        llvm::set_thread_local(g, true);
+                    }
+                }
+
+                g
+            }
+
+            item => unreachable!("get_static: expected static, found {:?}", item)
+        }
+    } else {
+        // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
+        // FIXME(nagisa): investigate whether it can be changed into define_global
+        let name = ccx.sess().cstore.item_symbol(def_id);
+        let g = declare::declare_global(ccx, &name, type_of::type_of(ccx, ty));
+        // Thread-local statics in some other crate need to *always* be linked
+        // against in a thread-local fashion, so we need to be sure to apply the
+        // thread-local attribute locally if it was present remotely. If we
+        // don't do this then linker errors can be generated where the linker
+        // complains that one object files has a thread local version of the
+        // symbol and another one doesn't.
+        for attr in ccx.tcx().get_attrs(def_id).iter() {
+            if attr.check_name("thread_local") {
+                llvm::set_thread_local(g, true);
+            }
+        }
+        if ccx.use_dll_storage_attrs() {
+            llvm::SetDLLStorageClass(g, llvm::DLLImportStorageClass);
+        }
+        g
+    };
+
+    ccx.instances().borrow_mut().insert(instance, g);
+    Datum::new(g, ty, Lvalue::new("static"))
 }
 
 pub fn trans_static(ccx: &CrateContext,
@@ -1029,7 +1145,8 @@ pub fn trans_static(ccx: &CrateContext,
 
     unsafe {
         let _icx = push_ctxt("trans_static");
-        let g = base::get_item_val(ccx, id);
+        let def_id = ccx.tcx().map.local_def_id(id);
+        let datum = get_static(ccx, def_id);
 
         let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
         let (v, _) = try!(const_expr(
@@ -1042,40 +1159,39 @@ pub fn trans_static(ccx: &CrateContext,
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
-        let mut val_llty = llvm::LLVMTypeOf(v);
-        let v = if val_llty == Type::i1(ccx).to_ref() {
-            val_llty = Type::i8(ccx).to_ref();
-            llvm::LLVMConstZExt(v, val_llty)
+        let mut val_llty = val_ty(v);
+        let v = if val_llty == Type::i1(ccx) {
+            val_llty = Type::i8(ccx);
+            llvm::LLVMConstZExt(v, val_llty.to_ref())
         } else {
             v
         };
 
-        let ty = ccx.tcx().node_id_to_type(id);
-        let llty = type_of::type_of(ccx, ty);
-        let g = if val_llty == llty.to_ref() {
-            g
+        let llty = type_of::type_of(ccx, datum.ty);
+        let g = if val_llty == llty {
+            datum.val
         } else {
             // If we created the global with the wrong type,
             // correct the type.
             let empty_string = CString::new("").unwrap();
-            let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(g));
+            let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(datum.val));
             let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
-            llvm::LLVMSetValueName(g, empty_string.as_ptr());
+            llvm::LLVMSetValueName(datum.val, empty_string.as_ptr());
             let new_g = llvm::LLVMGetOrInsertGlobal(
-                ccx.llmod(), name_string.as_ptr(), val_llty);
+                ccx.llmod(), name_string.as_ptr(), val_llty.to_ref());
             // To avoid breaking any invariants, we leave around the old
             // global for the moment; we'll replace all references to it
             // with the new global later. (See base::trans_crate.)
-            ccx.statics_to_rauw().borrow_mut().push((g, new_g));
+            ccx.statics_to_rauw().borrow_mut().push((datum.val, new_g));
             new_g
         };
-        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, ty));
+        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, datum.ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if m != hir::MutMutable {
-            let tcontents = ty.type_contents(ccx.tcx());
+            let tcontents = datum.ty.type_contents(ccx.tcx());
             if !tcontents.interior_unsafe() {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }

@@ -14,18 +14,19 @@
 
 use std;
 
-use back::link::*;
+use back::link;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst::{Substs};
 use middle::traits;
 use middle::ty::{self, Ty, TyCtxt};
+use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
 use trans::base::*;
 use trans::build::*;
-use trans::callee;
+use trans::callee::{Callee, ArgVals};
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::collector::{self, TransItem};
@@ -37,25 +38,23 @@ use trans::machine::*;
 use trans::monomorphize;
 use trans::type_of::{type_of, sizing_type_of, align_of};
 use trans::type_::Type;
+use trans::value::Value;
 
 use arena::TypedArena;
-use libc::c_uint;
-use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 
-pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+pub fn trans_exchange_free_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            v: ValueRef,
                                            size: ValueRef,
                                            align: ValueRef,
                                            debug_loc: DebugLoc)
                                            -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_exchange_free");
-    let ccx = cx.ccx();
-    callee::trans_lang_call(cx,
-        langcall(cx, None, "", ExchangeFreeFnLangItem),
-        &[PointerCast(cx, v, Type::i8p(ccx)), size, align],
-        Some(expr::Ignore),
-        debug_loc).bcx
+
+    let def_id = langcall(bcx, None, "", ExchangeFreeFnLangItem);
+    let args = [PointerCast(bcx, v, Type::i8p(bcx.ccx())), size, align];
+    Callee::def(bcx.ccx(), def_id, bcx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, debug_loc, ArgVals(&args), None).bcx
 }
 
 pub fn trans_exchange_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
@@ -170,13 +169,13 @@ pub fn drop_ty_core<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let may_need_drop =
                     ICmp(bcx, llvm::IntNE, hint_val, moved_val, DebugLoc::None);
                 bcx = with_cond(bcx, may_need_drop, |cx| {
-                    Call(cx, glue, &[ptr], None, debug_loc);
+                    Call(cx, glue, &[ptr], debug_loc);
                     cx
                 })
             }
             None => {
                 // No drop-hint ==> call standard drop glue
-                Call(bcx, glue, &[ptr], None, debug_loc);
+                Call(bcx, glue, &[ptr], debug_loc);
             }
         }
     }
@@ -240,38 +239,40 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
     let t = g.ty();
 
-    let llty = if type_is_sized(ccx.tcx(), t) {
-        type_of(ccx, t).ptr_to()
-    } else {
-        type_of(ccx, ccx.tcx().mk_box(t)).ptr_to()
+    let tcx = ccx.tcx();
+    let sig = ty::FnSig {
+        inputs: vec![tcx.mk_mut_ptr(tcx.types.i8)],
+        output: ty::FnOutput::FnConverging(tcx.mk_nil()),
+        variadic: false,
     };
-
-    let llfnty = Type::glue_fn(ccx, llty);
+    // Create a FnType for fn(*mut i8) and substitute the real type in
+    // later - that prevents FnType from splitting fat pointers up.
+    let mut fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+    fn_ty.args[0].original_ty = type_of(ccx, t).ptr_to();
+    let llfnty = fn_ty.llvm_type(ccx);
 
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
     if let Some(old_sym) = ccx.available_drop_glues().borrow().get(&g) {
-        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty, ccx.tcx().mk_nil());
+        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty);
         ccx.drop_glues().borrow_mut().insert(g, llfn);
         return llfn;
     };
 
-    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
-    let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ccx.tcx().mk_nil()).unwrap_or_else(||{
-       ccx.sess().bug(&format!("symbol `{}` already defined", fn_nm));
-    });
+    let fn_nm = link::mangle_internal_name_by_type_and_seq(ccx, t, "drop");
+    assert!(declare::get_defined_value(ccx, &fn_nm).is_none());
+    let llfn = declare::declare_cfn(ccx, &fn_nm, llfnty);
     ccx.available_drop_glues().borrow_mut().insert(g, fn_nm);
+    ccx.drop_glues().borrow_mut().insert(g, llfn);
 
     let _s = StatRecorder::new(ccx, format!("drop {:?}", t));
 
-    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+    let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                      ty::FnConverging(ccx.tcx().mk_nil()),
-                      empty_substs, None, &arena);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &arena);
 
-    let bcx = init_function(&fcx, false, ty::FnConverging(ccx.tcx().mk_nil()));
+    let bcx = fcx.init(false, None);
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 
@@ -284,9 +285,8 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let llrawptr0 = get_param(llfn, fcx.arg_offset() as c_uint);
-    let bcx = make_drop_glue(bcx, llrawptr0, g);
-    finish_fn(&fcx, bcx, ty::FnConverging(ccx.tcx().mk_nil()), DebugLoc::None);
+    let bcx = make_drop_glue(bcx, get_param(llfn, 0), g);
+    fcx.finish(bcx, DebugLoc::None);
 
     llfn
 }
@@ -314,7 +314,7 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             And(bcx, not_init, not_done, DebugLoc::None);
         with_cond(bcx, drop_flag_neither_initialized_nor_cleared, |cx| {
             let llfn = cx.ccx().get_intrinsic(&("llvm.debugtrap"));
-            Call(cx, llfn, &[], None, DebugLoc::None);
+            Call(cx, llfn, &[], DebugLoc::None);
             cx
         })
     };
@@ -365,26 +365,30 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
     };
     let dtor_did = def.destructor().unwrap();
-    bcx = callee::Callee::ptr(callee::trans_fn_ref_with_substs(
-            bcx.ccx(), dtor_did, None, vtbl.substs))
-        .call(bcx, DebugLoc::None, callee::ArgVals(args), Some(expr::Ignore)).bcx;
+    bcx = Callee::def(bcx.ccx(), dtor_did, vtbl.substs)
+        .call(bcx, DebugLoc::None, ArgVals(args), None).bcx;
 
     bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
 
-pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+                                         t: Ty<'tcx>, info: ValueRef)
                                          -> (ValueRef, ValueRef) {
-    debug!("calculate size of DST: {}; with lost info: {}",
-           t, bcx.val_to_string(info));
+    debug!("calculate size of DST: {}; with lost info: {:?}",
+           t, Value(info));
     if type_is_sized(bcx.tcx(), t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
         let size = llsize_of_alloc(bcx.ccx(), sizing_type);
         let align = align_of(bcx.ccx(), t);
-        debug!("size_and_align_of_dst t={} info={} size: {} align: {}",
-               t, bcx.val_to_string(info), size, align);
+        debug!("size_and_align_of_dst t={} info={:?} size: {} align: {}",
+               t, Value(info), size, align);
         let size = C_uint(bcx.ccx(), size);
         let align = C_uint(bcx.ccx(), align);
         return (size, align);
+    }
+    if bcx.is_unreachable() {
+        let llty = Type::int(bcx.ccx());
+        return (C_undef(llty), C_undef(llty));
     }
     match t.sty {
         ty::TyStruct(def, substs) => {
@@ -394,7 +398,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             assert!(!t.is_simd());
             let repr = adt::represent_type(ccx, t);
             let sizing_type = adt::sizing_type_context_of(ccx, &repr, true);
-            debug!("DST {} sizing_type: {}", t, sizing_type.to_string());
+            debug!("DST {} sizing_type: {:?}", t, sizing_type);
             let sized_size = llsize_of_alloc(ccx, sizing_type.prefix());
             let sized_align = llalign_of_min(ccx, sizing_type.prefix());
             debug!("DST {} statically sized prefix size: {} align: {}",
@@ -408,8 +412,6 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let field_ty = monomorphize::field_ty(bcx.tcx(), substs, last_field);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
-            let dbloc = DebugLoc::None;
-
             // FIXME (#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
             // required of the unsized field that follows) before
@@ -418,14 +420,14 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             // here. But this is where the add would go.)
 
             // Return the sum of sizes and max of aligns.
-            let mut size = Add(bcx, sized_size, unsized_size, dbloc);
+            let mut size = bcx.add(sized_size, unsized_size);
 
             // Issue #27023: If there is a drop flag, *now* we add 1
             // to the size.  (We can do this without adding any
             // padding because drop flags do not have any alignment
             // constraints.)
             if sizing_type.needs_drop_flag() {
-                size = Add(bcx, size, C_uint(bcx.ccx(), 1_u64), dbloc);
+                size = bcx.add(size, C_uint(bcx.ccx(), 1_u64));
             }
 
             // Choose max of two known alignments (combined value must
@@ -436,14 +438,9 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
                     // pick the correct alignment statically.
                     C_uint(ccx, std::cmp::max(sized_align, unsized_align))
                 }
-                _ => Select(bcx,
-                            ICmp(bcx,
-                                 llvm::IntUGT,
-                                 sized_align,
-                                 unsized_align,
-                                 dbloc),
-                            sized_align,
-                            unsized_align)
+                _ => bcx.select(bcx.icmp(llvm::IntUGT, sized_align, unsized_align),
+                                sized_align,
+                                unsized_align)
             };
 
             // Issue #27023: must add any necessary padding to `size`
@@ -457,19 +454,18 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             //
             //   `(size + (align-1)) & -align`
 
-            let addend = Sub(bcx, align, C_uint(bcx.ccx(), 1_u64), dbloc);
-            let size = And(
-                bcx, Add(bcx, size, addend, dbloc), Neg(bcx, align, dbloc), dbloc);
+            let addend = bcx.sub(align, C_uint(bcx.ccx(), 1_u64));
+            let size = bcx.and(bcx.add(size, addend), bcx.neg(align));
 
             (size, align)
         }
         ty::TyTrait(..) => {
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
-            let info = PointerCast(bcx, info, Type::int(bcx.ccx()).ptr_to());
-            let size_ptr = GEPi(bcx, info, &[1]);
-            let align_ptr = GEPi(bcx, info, &[2]);
-            (Load(bcx, size_ptr), Load(bcx, align_ptr))
+            let info = bcx.pointercast(info, Type::int(bcx.ccx()).ptr_to());
+            let size_ptr = bcx.gepi(info, &[1]);
+            let align_ptr = bcx.gepi(info, &[2]);
+            (bcx.load(size_ptr), bcx.load(align_ptr))
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(bcx.tcx());
@@ -478,7 +474,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, in
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
             let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
-            (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), DebugLoc::None),
+            (bcx.mul(info, C_uint(bcx.ccx(), unit_size)),
              C_uint(bcx.ccx(), unit_align))
         }
         _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}", t))
@@ -523,7 +519,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                     let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
                     let info = expr::get_meta(bcx, v0);
                     let info = Load(bcx, info);
-                    let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+                    let (llsize, llalign) =
+                        size_and_align_of_dst(&bcx.build(), content_ty, info);
 
                     // `Box<ZeroSizeType>` does not allocate.
                     let needs_free = ICmp(bcx,
@@ -585,7 +582,6 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
             Call(bcx,
                  dtor,
                  &[PointerCast(bcx, Load(bcx, data_ptr), Type::i8p(bcx.ccx()))],
-                 None,
                  DebugLoc::None);
             bcx
         }

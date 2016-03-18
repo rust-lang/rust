@@ -48,13 +48,13 @@ use std;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
-use back::abi::FAT_PTR_ADDR;
 use middle::subst;
 use middle::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
 use trans::_match;
+use trans::abi::FAT_PTR_ADDR;
 use trans::base::InitAlloca;
 use trans::build::*;
 use trans::cleanup;
@@ -67,6 +67,7 @@ use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
+use trans::value::Value;
 
 type Hint = attr::ReprAttr;
 
@@ -87,11 +88,6 @@ impl TypeContext {
     }
     fn may_need_drop_flag(t: Type, needs_drop_flag: bool) -> TypeContext {
         TypeContext { prefix: t, needs_drop_flag: needs_drop_flag }
-    }
-    pub fn to_string(self) -> String {
-        let TypeContext { prefix, needs_drop_flag } = self;
-        format!("TypeContext {{ prefix: {}, needs_drop_flag: {} }}",
-                prefix.to_string(), needs_drop_flag)
     }
 }
 
@@ -1069,6 +1065,15 @@ pub fn num_args(r: &Repr, discr: Disr) -> usize {
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                                    val: MaybeSizedValue, discr: Disr, ix: usize) -> ValueRef {
+    trans_field_ptr_builder(&bcx.build(), r, val, discr, ix)
+}
+
+/// Access a field, at a point when the value's case is known.
+pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+                                           r: &Repr<'tcx>,
+                                           val: MaybeSizedValue,
+                                           discr: Disr, ix: usize)
+                                           -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
@@ -1091,13 +1096,15 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             assert_eq!(machine::llsize_of_alloc(bcx.ccx(), ty), 0);
             // The contents of memory at this pointer can't matter, but use
             // the value that's "reasonable" in case of pointer comparison.
-            PointerCast(bcx, val.value, ty.ptr_to())
+            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
+            bcx.pointercast(val.value, ty.ptr_to())
         }
         RawNullablePointer { nndiscr, nnty, .. } => {
             assert_eq!(ix, 0);
             assert_eq!(discr, nndiscr);
             let ty = type_of::type_of(bcx.ccx(), nnty);
-            PointerCast(bcx, val.value, ty.ptr_to())
+            if bcx.is_unreachable() { return C_undef(ty.ptr_to()); }
+            bcx.pointercast(val.value, ty.ptr_to())
         }
         StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             assert_eq!(discr, nndiscr);
@@ -1106,43 +1113,48 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
     }
 }
 
-pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: MaybeSizedValue,
-                                    ix: usize, needs_cast: bool) -> ValueRef {
+fn struct_field_ptr<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
+                                st: &Struct<'tcx>, val: MaybeSizedValue,
+                                ix: usize, needs_cast: bool) -> ValueRef {
     let ccx = bcx.ccx();
+    let fty = st.fields[ix];
+    let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
+    if bcx.is_unreachable() {
+        return C_undef(ll_fty.ptr_to());
+    }
+
     let ptr_val = if needs_cast {
         let fields = st.fields.iter().map(|&ty| {
             type_of::in_memory_type_of(ccx, ty)
         }).collect::<Vec<_>>();
         let real_ty = Type::struct_(ccx, &fields[..], st.packed);
-        PointerCast(bcx, val.value, real_ty.ptr_to())
+        bcx.pointercast(val.value, real_ty.ptr_to())
     } else {
         val.value
     };
 
-    let fty = st.fields[ix];
     // Simple case - we can just GEP the field
     //   * First field - Always aligned properly
     //   * Packed struct - There is no alignment padding
     //   * Field is sized - pointer is properly aligned already
     if ix == 0 || st.packed || type_is_sized(bcx.tcx(), fty) {
-        return StructGEP(bcx, ptr_val, ix);
+        return bcx.struct_gep(ptr_val, ix);
     }
 
     // If the type of the last field is [T] or str, then we don't need to do
     // any adjusments
     match fty.sty {
         ty::TySlice(..) | ty::TyStr => {
-            return StructGEP(bcx, ptr_val, ix);
+            return bcx.struct_gep(ptr_val, ix);
         }
         _ => ()
     }
 
     // There's no metadata available, log the case and just do the GEP.
     if !val.has_meta() {
-        debug!("Unsized field `{}`, of `{}` has no metadata for adjustment",
-               ix,
-               bcx.val_to_string(ptr_val));
-        return StructGEP(bcx, ptr_val, ix);
+        debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
+               ix, Value(ptr_val));
+        return bcx.struct_gep(ptr_val, ix);
     }
 
     let dbloc = DebugLoc::None;
@@ -1183,23 +1195,21 @@ pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, v
     //   (unaligned offset + (align - 1)) & -align
 
     // Calculate offset
-    let align_sub_1 = Sub(bcx, align, C_uint(bcx.ccx(), 1u64), dbloc);
-    let offset = And(bcx,
-                     Add(bcx, unaligned_offset, align_sub_1, dbloc),
-                     Neg(bcx, align, dbloc),
-                     dbloc);
+    dbloc.apply(bcx.fcx());
+    let align_sub_1 = bcx.sub(align, C_uint(bcx.ccx(), 1u64));
+    let offset = bcx.and(bcx.add(unaligned_offset, align_sub_1),
+                         bcx.neg(align));
 
-    debug!("struct_field_ptr: DST field offset: {}",
-           bcx.val_to_string(offset));
+    debug!("struct_field_ptr: DST field offset: {:?}", Value(offset));
 
     // Cast and adjust pointer
-    let byte_ptr = PointerCast(bcx, ptr_val, Type::i8p(bcx.ccx()));
-    let byte_ptr = GEP(bcx, byte_ptr, &[offset]);
+    let byte_ptr = bcx.pointercast(ptr_val, Type::i8p(bcx.ccx()));
+    let byte_ptr = bcx.gep(byte_ptr, &[offset]);
 
     // Finally, cast back to the type expected
     let ll_fty = type_of::in_memory_type_of(bcx.ccx(), fty);
-    debug!("struct_field_ptr: Field type is {}", ll_fty.to_string());
-    PointerCast(bcx, byte_ptr, ll_fty.ptr_to())
+    debug!("struct_field_ptr: Field type is {:?}", ll_fty);
+    bcx.pointercast(byte_ptr, ll_fty.ptr_to())
 }
 
 pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
@@ -1283,14 +1293,15 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let scratch = unpack_datum!(bcx, datum::lvalue_scratch_datum(
                 bcx, tcx.dtor_type(), "drop_flag",
                 InitAlloca::Uninit("drop flag itself has no dtor"),
-                cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| {
+                cleanup::CustomScope(custom_cleanup_scope), |bcx, _| {
                     debug!("no-op populate call for trans_drop_flag_ptr on dtor_type={:?}",
                            tcx.dtor_type());
                     bcx
                 }
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
-                let ptr = struct_field_ptr(variant_cx, st, MaybeSizedValue::sized(value),
+                let ptr = struct_field_ptr(&variant_cx.build(), st,
+                                           MaybeSizedValue::sized(value),
                                            (st.fields.len() - 1), false);
                 datum::Datum::new(ptr, ptr_ty, datum::Lvalue::new("adt::trans_drop_flag_ptr"))
                     .store_to(variant_cx, scratch.val)
@@ -1442,7 +1453,7 @@ fn padding(ccx: &CrateContext, size: u64) -> ValueRef {
 fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }
 
 /// Get the discriminant of a constant value.
-pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef) -> Disr {
+pub fn const_get_discrim(r: &Repr, val: ValueRef) -> Disr {
     match *r {
         CEnum(ity, _, _) => {
             match ity {
@@ -1452,13 +1463,13 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef) -> Disr {
         }
         General(ity, _, _) => {
             match ity {
-                attr::SignedInt(..) => Disr(const_to_int(const_get_elt(ccx, val, &[0])) as u64),
-                attr::UnsignedInt(..) => Disr(const_to_uint(const_get_elt(ccx, val, &[0])))
+                attr::SignedInt(..) => Disr(const_to_int(const_get_elt(val, &[0])) as u64),
+                attr::UnsignedInt(..) => Disr(const_to_uint(const_get_elt(val, &[0])))
             }
         }
         Univariant(..) => Disr(0),
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            ccx.sess().bug("const discrim access of non c-like enum")
+            unreachable!("const discrim access of non c-like enum")
         }
     }
 }
@@ -1472,25 +1483,25 @@ pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: usize) -> ValueRef {
     match *r {
         CEnum(..) => ccx.sess().bug("element access in C-like enum const"),
-        Univariant(..) => const_struct_field(ccx, val, ix),
-        General(..) => const_struct_field(ccx, val, ix + 1),
+        Univariant(..) => const_struct_field(val, ix),
+        General(..) => const_struct_field(val, ix + 1),
         RawNullablePointer { .. } => {
             assert_eq!(ix, 0);
             val
         },
-        StructWrappedNullablePointer{ .. } => const_struct_field(ccx, val, ix)
+        StructWrappedNullablePointer{ .. } => const_struct_field(val, ix)
     }
 }
 
 /// Extract field of struct-like const, skipping our alignment padding.
-fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: usize) -> ValueRef {
+fn const_struct_field(val: ValueRef, ix: usize) -> ValueRef {
     // Get the ix-th non-undef element of the struct.
     let mut real_ix = 0; // actual position in the struct
     let mut ix = ix; // logical index relative to real_ix
     let mut field;
     loop {
         loop {
-            field = const_get_elt(ccx, val, &[real_ix]);
+            field = const_get_elt(val, &[real_ix]);
             if !is_undef(field) {
                 break;
             }

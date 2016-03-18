@@ -11,10 +11,11 @@
 use llvm::ValueRef;
 use middle::def::Def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
+use middle::subst::Substs;
 use trans::base::*;
 use trans::basic_block::BasicBlock;
 use trans::build::*;
-use trans::callee;
+use trans::callee::{Callee, ArgVals};
 use trans::cleanup::CleanupMethods;
 use trans::cleanup;
 use trans::common::*;
@@ -24,7 +25,6 @@ use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::expr;
 use trans::machine;
 use trans;
-use middle::ty;
 
 use rustc_front::hir;
 use rustc_front::util as ast_util;
@@ -152,9 +152,8 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             els: Option<&hir::Expr>,
                             dest: expr::Dest)
                             -> Block<'blk, 'tcx> {
-    debug!("trans_if(bcx={}, if_id={}, cond={:?}, thn={}, dest={})",
-           bcx.to_str(), if_id, cond, thn.id,
-           dest.to_string(bcx.ccx()));
+    debug!("trans_if(bcx={}, if_id={}, cond={:?}, thn={}, dest={:?})",
+           bcx.to_str(), if_id, cond, thn.id, dest);
     let _icx = push_ctxt("trans_if");
 
     if bcx.unreachable.get() {
@@ -363,14 +362,12 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let fcx = bcx.fcx;
     let mut bcx = bcx;
-    let dest = match (fcx.llretslotptr.get(), retval_expr) {
-        (Some(_), Some(retval_expr)) => {
-            let ret_ty = expr_ty_adjusted(bcx, &retval_expr);
-            expr::SaveIn(fcx.get_ret_slot(bcx, ty::FnConverging(ret_ty), "ret_slot"))
-        }
-        _ => expr::Ignore,
-    };
     if let Some(x) = retval_expr {
+        let dest = if fcx.llretslotptr.get().is_some() {
+            expr::SaveIn(fcx.get_ret_slot(bcx, "ret_slot"))
+        } else {
+            expr::Ignore
+        };
         bcx = expr::trans_into(bcx, &x, dest);
         match dest {
             expr::SaveIn(slot) if fcx.needs_ret_allocas => {
@@ -406,13 +403,8 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let expr_file_line = consts::addr_of(ccx, expr_file_line_const, align, "panic_loc");
     let args = vec!(expr_file_line);
     let did = langcall(bcx, Some(call_info.span), "", PanicFnLangItem);
-    let bcx = callee::trans_lang_call(bcx,
-                                      did,
-                                      &args[..],
-                                      Some(expr::Ignore),
-                                      call_info.debug_loc()).bcx;
-    Unreachable(bcx);
-    return bcx;
+    Callee::def(ccx, did, ccx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, call_info.debug_loc(), ArgVals(&args), None).bcx
 }
 
 pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -439,11 +431,6 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let file_line = consts::addr_of(ccx, file_line_const, align, "panic_bounds_check_loc");
     let args = vec!(file_line, index, len);
     let did = langcall(bcx, Some(call_info.span), "", PanicBoundsCheckFnLangItem);
-    let bcx = callee::trans_lang_call(bcx,
-                                      did,
-                                      &args[..],
-                                      Some(expr::Ignore),
-                                      call_info.debug_loc()).bcx;
-    Unreachable(bcx);
-    return bcx;
+    Callee::def(ccx, did, ccx.tcx().mk_substs(Substs::empty()))
+        .call(bcx, call_info.debug_loc(), ArgVals(&args), None).bcx
 }

@@ -14,6 +14,7 @@
 
 use self::Family::*;
 
+use astencode::decode_inlined_item;
 use cstore::{self, crate_metadata};
 use common::*;
 use encoder::def_to_u64;
@@ -797,64 +798,36 @@ pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex) -> ast::Nam
     item_name(intr, cdata.lookup_item(id))
 }
 
-pub type DecodeInlinedItem<'a> =
-    Box<for<'tcx> FnMut(Cmd,
-                        &TyCtxt<'tcx>,
-                        Vec<hir_map::PathElem>, // parent_path
-                        hir_map::DefPath,       // parent_def_path
-                        rbml::Doc,
-                        DefId)
-                        -> Result<&'tcx InlinedItem, (Vec<hir_map::PathElem>,
-                                                      hir_map::DefPath)> + 'a>;
-
-pub fn maybe_get_item_ast<'tcx>(cdata: Cmd,
-                                tcx: &TyCtxt<'tcx>,
-                                id: DefIndex,
-                                mut decode_inlined_item: DecodeInlinedItem)
+pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
                                 -> FoundAst<'tcx> {
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
     let item_did = item_def_id(item_doc, cdata);
-    let parent_path = {
-        let mut path = item_path(item_doc);
-        path.pop();
-        path
-    };
-    let parent_def_path = {
-        let mut def_path = def_path(cdata, id);
-        def_path.pop();
-        def_path
-    };
-    match decode_inlined_item(cdata,
-                              tcx,
-                              parent_path,
-                              parent_def_path,
-                              item_doc,
-                              item_did) {
-        Ok(ii) => FoundAst::Found(ii),
-        Err((mut parent_path, mut parent_def_path)) => {
-            match item_parent_item(cdata, item_doc) {
-                Some(parent_did) => {
-                    // Remove the last element from the paths, since we are now
-                    // trying to inline the parent.
-                    parent_path.pop();
-                    parent_def_path.pop();
-
-                    let parent_item = cdata.lookup_item(parent_did.index);
-                    match decode_inlined_item(cdata,
-                                              tcx,
-                                              parent_path,
-                                              parent_def_path,
-                                              parent_item,
-                                              parent_did) {
-                        Ok(ii) => FoundAst::FoundParent(parent_did, ii),
-                        Err(_) => FoundAst::NotFound
-                    }
-                }
-                None => FoundAst::NotFound
+    let mut parent_path = item_path(item_doc);
+    parent_path.pop();
+    let mut parent_def_path = def_path(cdata, id);
+    parent_def_path.pop();
+    if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
+        let ii = decode_inlined_item(cdata, tcx, parent_path,
+                                     parent_def_path,
+                                     ast_doc, item_did);
+        return FoundAst::Found(ii);
+    } else if let Some(parent_did) = item_parent_item(cdata, item_doc) {
+        // Remove the last element from the paths, since we are now
+        // trying to inline the parent.
+        parent_path.pop();
+        parent_def_path.pop();
+        let parent_doc = cdata.lookup_item(parent_did.index);
+        if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, tag_ast as usize) {
+            let ii = decode_inlined_item(cdata, tcx, parent_path,
+                                         parent_def_path,
+                                         ast_doc, parent_did);
+            if let &InlinedItem::Item(ref i) = ii {
+                return FoundAst::FoundParent(parent_did, i);
             }
         }
     }
+    FoundAst::NotFound
 }
 
 pub fn is_item_mir_available<'tcx>(cdata: Cmd, id: DefIndex) -> bool {
@@ -982,12 +955,16 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                     cdata: Cmd,
                                     id: DefIndex,
                                     tcx: &TyCtxt<'tcx>)
-                                    -> ty::ImplOrTraitItem<'tcx> {
+                                    -> Option<ty::ImplOrTraitItem<'tcx>> {
     let item_doc = cdata.lookup_item(id);
 
     let def_id = item_def_id(item_doc, cdata);
 
-    let container_id = item_require_parent_item(cdata, item_doc);
+    let container_id = if let Some(id) = item_parent_item(cdata, item_doc) {
+        id
+    } else {
+        return None;
+    };
     let container_doc = cdata.lookup_item(container_id.index);
     let container = match item_family(container_doc) {
         Trait => TraitContainer(container_id),
@@ -998,7 +975,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
     let vis = item_visibility(item_doc);
     let defaultness = item_defaultness(item_doc);
 
-    match item_sort(item_doc) {
+    Some(match item_sort(item_doc) {
         sort @ Some('C') | sort @ Some('c') => {
             let ty = doc_type(item_doc, tcx, cdata);
             ty::ConstTraitItem(Rc::new(ty::AssociatedConst {
@@ -1044,8 +1021,8 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                 container: container,
             }))
         }
-        _ => panic!("unknown impl/trait item sort"),
-    }
+        _ => return None
+    })
 }
 
 pub fn get_trait_item_def_ids(cdata: Cmd, id: DefIndex)
@@ -1085,7 +1062,7 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
                                                     cdata,
                                                     did.index,
                                                     tcx);
-            if let ty::MethodTraitItem(ref method) = trait_item {
+            if let Some(ty::MethodTraitItem(ref method)) = trait_item {
                 Some((*method).clone())
             } else {
                 None
@@ -1114,7 +1091,7 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
                                                             cdata,
                                                             did.index,
                                                             tcx);
-                    if let ty::ConstTraitItem(ref ac) = trait_item {
+                    if let Some(ty::ConstTraitItem(ref ac)) = trait_item {
                         Some((*ac).clone())
                     } else {
                         None
