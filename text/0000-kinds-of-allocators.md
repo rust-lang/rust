@@ -249,8 +249,8 @@ For this demo I want to try to minimize cleverness, so we will use
 ```rust
 impl DumbBumpPool {
     pub fn new(name: &'static str,
-           size_in_bytes: usize,
-           start_align: usize) -> DumbBumpPool {
+               size_in_bytes: usize,
+               start_align: usize) -> DumbBumpPool {
         unsafe {
             let ptr = heap::allocate(size_in_bytes, start_align);
             if ptr.is_null() { panic!("allocation failed."); }
@@ -307,14 +307,18 @@ will expose:
 
 ```rust
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub enum BumpAllocError { Invalid, MemoryExhausted(alloc::Layout), Interference }
+pub enum BumpAllocError {
+    Invalid(&'static str),
+    MemoryExhausted(alloc::Layout),
+    Interference
+}
 
 impl BumpAllocError {
     pub fn is_transient(&self) -> bool { *self == BumpAllocError::Interference }
 }
 
 impl alloc::AllocError for BumpAllocError {
-    fn invalid_input() -> Self { BumpAllocError::Invalid }
+    fn invalid_input(details: &'static str) -> Self { BumpAllocError::Invalid(details) }
     fn is_memory_exhausted(&self) -> bool { if let BumpAllocError::MemoryExhausted(_) = *self { true } else { false }  }
     fn is_request_unsupported(&self) -> bool { false }
 }
@@ -358,7 +362,7 @@ impl<'a> Allocator for &'a DumbBumpPool {
         let curr_aligned = sum & !(align - 1);
         let size = *layout.size();
         let remaining = (self.end as usize) - curr_aligned;
-        if oflo || remaining <= size {
+        if oflo || remaining < size {
             return Err(BumpAllocError::MemoryExhausted(layout.clone()));
         }
 
