@@ -743,7 +743,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                 use rustc::middle::cstore::CrateStore;
                 let cs = &self.tcx.sess.cstore;
-                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap();
+                let mir = cs.maybe_get_item_mir(self.tcx, def_id).unwrap_or_else(|| {
+                    panic!("no mir for {:?}", def_id);
+                });
                 let cached = Rc::new(mir);
                 mir_cache.insert(def_id, cached.clone());
                 CachedMir::Owned(cached)
