@@ -18,8 +18,8 @@ use std::thread;
 static A: AtomicUsize = AtomicUsize::new(0);
 
 fn main() {
-    panic::set_handler(|_| ());
-    panic::set_handler(|info| { A.fetch_add(1, Ordering::SeqCst); });
+    panic::set_hook(Box::new(|_| ()));
+    panic::set_hook(Box::new(|info| { A.fetch_add(1, Ordering::SeqCst); }));
 
     let _ = thread::spawn(|| {
         panic!();
