@@ -499,6 +499,29 @@ impl Child {
     /// before waiting. This helps avoid deadlock: it ensures that the
     /// child does not block waiting for input from the parent, while
     /// the parent waits for the child to exit.
+    ///
+    /// By default, stdin, stdout and stderr are inherited from the parent.
+    /// In order to capture the output into this `Result<Output>` it is
+    /// necessary to create new pipes between parent and child. Use
+    /// `stdout(Stdio::piped())` or `stdout(Stdio::piped())`, respectively.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let mut child = Command::new("/bin/cat")
+    ///                         .stdout(Stdio::piped())
+    ///                         .arg("file.txt")
+    ///                         .spawn()
+    ///                         .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+    ///
+    /// let ecode = child.wait_with_output()
+    ///                  .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+    ///
+    /// assert!(ecode.success());
+    /// ```
+    ///
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
