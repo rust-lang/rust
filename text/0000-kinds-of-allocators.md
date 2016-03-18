@@ -1724,7 +1724,7 @@ impl Layout {
 
 ```rust
 /// `AllocError` instances provide feedback about the cause of an allocation failure.
-pub trait AllocError {
+pub trait AllocError: fmt::Debug {
     /// Construct an error that indicates operation failure due to
     /// invalid input values for the request.
     ///
@@ -1865,7 +1865,7 @@ pub unsafe trait Allocator {
     ///
     /// Many allocators will want to use the zero-sized
     /// `MemoryExhausted` type for this.
-    type Error: AllocError + fmt::Debug;
+    type Error: AllocError;
 
 ```
 
