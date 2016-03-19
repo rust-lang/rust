@@ -10,3 +10,8 @@ fn empty() -> &'static str {
 fn hello() -> &'static str {
     "Hello, world!"
 }
+
+#[miri_run]
+fn hello_bytes() -> &'static [u8; 13] {
+    b"Hello, world!"
+}

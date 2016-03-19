@@ -620,7 +620,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_uint(ptr.offset(psize as isize), s.len() as u64, psize));
                 Ok(ptr)
             }
-            ByteStr(ref _bs) => unimplemented!(),
+            ByteStr(ref bs) => {
+                let psize = self.memory.pointer_size;
+                let static_ptr = self.memory.allocate(bs.len());
+                let ptr = self.memory.allocate(psize);
+                try!(self.memory.write_bytes(static_ptr, bs));
+                try!(self.memory.write_ptr(ptr, static_ptr));
+                Ok(ptr)
+            }
             Bool(b) => {
                 let ptr = self.memory.allocate(1);
                 try!(self.memory.write_bool(ptr, b));
