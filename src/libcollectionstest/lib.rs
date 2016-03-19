@@ -25,6 +25,7 @@
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(set_recovery)]
+#![feature(splice)]
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]
