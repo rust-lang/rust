@@ -1310,6 +1310,7 @@ extern {
                          -> ValueRef;
     pub fn LLVMBuildNot(B: BuilderRef, V: ValueRef, Name: *const c_char)
                         -> ValueRef;
+    pub fn LLVMRustSetHasUnsafeAlgebra(Instr: ValueRef);
 
     /* Memory */
     pub fn LLVMBuildAlloca(B: BuilderRef, Ty: TypeRef, Name: *const c_char)
