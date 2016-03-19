@@ -113,8 +113,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.div.ss")
         },
         "ldmxcsr" => Intrinsic {
-            inputs: vec![v(i(32))],
-            output: void(),
+            inputs: vec![u(32)],
+            output: Type::Void,
             definition: Named("llvm.x86.sse.ldmxcsr")
         },
         "max_ss" => Intrinsic {
@@ -143,8 +143,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.rsqrt.ss")
         },
         "s_fense" => Intrinsic {
-            inputs: void(),
-            output: void(),
+            inputs: Type::Void,
+            output: Type::Void,
             definition: Named("llvm.x86.sse.sfence")
         },
         "sqrt_ps" => Intrinsic {
