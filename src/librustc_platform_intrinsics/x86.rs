@@ -113,7 +113,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.div.ss")
         },
         "ldmxcsr" => Intrinsic {
-            inputs: vec![i(32)],
+            inputs: vec![v(i(32))],
             output: void(),
             definition: Named("llvm.x86.sse.ldmxcsr")
         },
@@ -143,7 +143,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.rsqrt.ss")
         },
         "s_fense" => Intrinsic {
-            inputs: vec![],
+            inputs: void(),
             output: void(),
             definition: Named("llvm.x86.sse.sfence")
         },
@@ -159,7 +159,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         },
         "stmxcsr" => Intrinsic {
             inputs: void(),
-            output: u(32),
+            output: v(u(32)),
             definition: Named("llvm.x86.sse.stmxcsr")
         },
         "sub_ss" => Intrinsic {
