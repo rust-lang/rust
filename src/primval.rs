@@ -1,26 +1,32 @@
 use rustc::mir::repr as mir;
 
+use error::{EvalError, EvalResult};
+use memory::Pointer;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PrimVal {
     Bool(bool),
     I8(i8), I16(i16), I32(i32), I64(i64),
     U8(u8), U16(u16), U32(u32), U64(u64),
+
+    AbstractPtr(Pointer),
+    IntegerPtr(u64),
 }
 
-pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {
+pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<PrimVal> {
     macro_rules! int_binops {
         ($v:ident, $l:ident, $r:ident) => ({
             use rustc::mir::repr::BinOp::*;
             use self::PrimVal::*;
             match bin_op {
-                Add => $v($l + $r),
-                Sub => $v($l - $r),
-                Mul => $v($l * $r),
-                Div => $v($l / $r),
-                Rem => $v($l % $r),
+                Add    => $v($l + $r),
+                Sub    => $v($l - $r),
+                Mul    => $v($l * $r),
+                Div    => $v($l / $r),
+                Rem    => $v($l % $r),
                 BitXor => $v($l ^ $r),
                 BitAnd => $v($l & $r),
-                BitOr => $v($l | $r),
+                BitOr  => $v($l | $r),
 
                 // TODO(tsion): Can have differently-typed RHS.
                 Shl => $v($l << $r),
@@ -36,8 +42,18 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {
         })
     }
 
+    fn unrelated_ptr_ops(bin_op: mir::BinOp) -> EvalResult<PrimVal> {
+        use rustc::mir::repr::BinOp::*;
+        match bin_op {
+            Eq => Ok(Bool(false)),
+            Ne => Ok(Bool(true)),
+            Lt | Le | Gt | Ge => Err(EvalError::InvalidPointerMath),
+            _ => unimplemented!(),
+        }
+    }
+
     use self::PrimVal::*;
-    match (left, right) {
+    let val = match (left, right) {
         (I8(l),  I8(r))  => int_binops!(I8, l, r),
         (I16(l), I16(r)) => int_binops!(I16, l, r),
         (I32(l), I32(r)) => int_binops!(I32, l, r),
@@ -46,8 +62,36 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> PrimVal {
         (U16(l), U16(r)) => int_binops!(U16, l, r),
         (U32(l), U32(r)) => int_binops!(U32, l, r),
         (U64(l), U64(r)) => int_binops!(U64, l, r),
+
+        (IntegerPtr(l), IntegerPtr(r)) => int_binops!(IntegerPtr, l, r),
+
+        (AbstractPtr(_), IntegerPtr(_)) | (IntegerPtr(_), AbstractPtr(_)) =>
+            return unrelated_ptr_ops(bin_op),
+
+        (AbstractPtr(l_ptr), AbstractPtr(r_ptr)) => {
+            if l_ptr.alloc_id != r_ptr.alloc_id {
+                return unrelated_ptr_ops(bin_op);
+            }
+
+            let l = l_ptr.offset;
+            let r = r_ptr.offset;
+
+            use rustc::mir::repr::BinOp::*;
+            match bin_op {
+                Eq => Bool(l == r),
+                Ne => Bool(l != r),
+                Lt => Bool(l < r),
+                Le => Bool(l <= r),
+                Gt => Bool(l > r),
+                Ge => Bool(l >= r),
+                _ => unimplemented!(),
+            }
+        }
+
         _ => unimplemented!(),
-    }
+    };
+
+    Ok(val)
 }
 
 pub fn unary_op(un_op: mir::UnOp, val: PrimVal) -> PrimVal {

@@ -16,9 +16,9 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 
-use error::EvalResult;
+use error::{EvalError, EvalResult};
 use memory::{self, FieldRepr, Memory, Pointer, Repr};
-use primval;
+use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = true;
 
@@ -404,19 +404,20 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             BinaryOp(bin_op, ref left, ref right) => {
                 let left_ptr = try!(self.eval_operand(left));
                 let left_ty = self.operand_ty(left);
-                let left_val = try!(self.memory.read_primval(left_ptr, left_ty));
+                let left_val = try!(self.read_primval(left_ptr, left_ty));
 
                 let right_ptr = try!(self.eval_operand(right));
                 let right_ty = self.operand_ty(right);
-                let right_val = try!(self.memory.read_primval(right_ptr, right_ty));
+                let right_val = try!(self.read_primval(right_ptr, right_ty));
 
-                self.memory.write_primval(dest, primval::binary_op(bin_op, left_val, right_val))
+                let val = try!(primval::binary_op(bin_op, left_val, right_val));
+                self.memory.write_primval(dest, val)
             }
 
             UnaryOp(un_op, ref operand) => {
                 let ptr = try!(self.eval_operand(operand));
                 let ty = self.operand_ty(operand);
-                let val = try!(self.memory.read_primval(ptr, ty));
+                let val = try!(self.read_primval(ptr, ty));
                 self.memory.write_primval(dest, primval::unary_op(un_op, val))
             }
 
@@ -627,6 +628,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         infer::normalize_associated_type(self.tcx, &substituted)
     }
 
+    fn type_is_sized(&self, ty: ty::Ty<'tcx>) -> bool {
+        ty.is_sized(&self.tcx.empty_parameter_environment(), DUMMY_SP)
+    }
+
     fn ty_size(&self, ty: ty::Ty<'tcx>) -> usize {
         self.ty_to_repr(ty).size()
     }
@@ -671,7 +676,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
             ty::TyBox(ty) => {
-                if ty.is_sized(&self.tcx.empty_parameter_environment(), DUMMY_SP) {
+                if self.type_is_sized(ty) {
                     Repr::Primitive { size: self.memory.pointer_size }
                 } else {
                     Repr::Primitive { size: self.memory.pointer_size * 2 }
@@ -723,6 +728,46 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             variants: variants,
         }
 
+    }
+
+    pub fn read_primval(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<PrimVal> {
+        use syntax::ast::{IntTy, UintTy};
+        let val = match ty.sty {
+            ty::TyBool              => PrimVal::Bool(try!(self.memory.read_bool(ptr))),
+            ty::TyInt(IntTy::I8)    => PrimVal::I8(try!(self.memory.read_int(ptr, 1)) as i8),
+            ty::TyInt(IntTy::I16)   => PrimVal::I16(try!(self.memory.read_int(ptr, 2)) as i16),
+            ty::TyInt(IntTy::I32)   => PrimVal::I32(try!(self.memory.read_int(ptr, 4)) as i32),
+            ty::TyInt(IntTy::I64)   => PrimVal::I64(try!(self.memory.read_int(ptr, 8)) as i64),
+            ty::TyUint(UintTy::U8)  => PrimVal::U8(try!(self.memory.read_uint(ptr, 1)) as u8),
+            ty::TyUint(UintTy::U16) => PrimVal::U16(try!(self.memory.read_uint(ptr, 2)) as u16),
+            ty::TyUint(UintTy::U32) => PrimVal::U32(try!(self.memory.read_uint(ptr, 4)) as u32),
+            ty::TyUint(UintTy::U64) => PrimVal::U64(try!(self.memory.read_uint(ptr, 8)) as u64),
+
+            // TODO(tsion): Pick the PrimVal dynamically.
+            ty::TyInt(IntTy::Is) =>
+                PrimVal::I64(try!(self.memory.read_int(ptr, self.memory.pointer_size))),
+            ty::TyUint(UintTy::Us) =>
+                PrimVal::U64(try!(self.memory.read_uint(ptr, self.memory.pointer_size))),
+
+            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
+                if self.type_is_sized(ty) {
+                    match self.memory.read_ptr(ptr) {
+                        Ok(p) => PrimVal::AbstractPtr(p),
+                        Err(EvalError::ReadBytesAsPointer) => {
+                            let n = try!(self.memory.read_uint(ptr, self.memory.pointer_size));
+                            PrimVal::IntegerPtr(n)
+                        }
+                        Err(e) => return Err(e),
+                    }
+                } else {
+                    panic!("unimplemented: primitive read of fat pointer type: {:?}", ty);
+                }
+            }
+
+            _ => panic!("primitive read of non-primitive type: {:?}", ty),
+        };
+        Ok(val)
     }
 
     fn current_frame(&self) -> &Frame<'a, 'tcx> {

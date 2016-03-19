@@ -1,5 +1,4 @@
 use byteorder::{self, ByteOrder, NativeEndian, ReadBytesExt, WriteBytesExt};
-use rustc::middle::ty;
 use std::collections::{BTreeMap, HashMap};
 use std::collections::Bound::{Included, Excluded};
 use std::mem;
@@ -169,26 +168,6 @@ impl Memory {
         Ok(())
     }
 
-    pub fn read_primval(&self, ptr: Pointer, ty: ty::Ty) -> EvalResult<PrimVal> {
-        use syntax::ast::{IntTy, UintTy};
-        match ty.sty {
-            ty::TyBool              => self.read_bool(ptr).map(PrimVal::Bool),
-            ty::TyInt(IntTy::I8)    => self.read_int(ptr, 1).map(|n| PrimVal::I8(n as i8)),
-            ty::TyInt(IntTy::I16)   => self.read_int(ptr, 2).map(|n| PrimVal::I16(n as i16)),
-            ty::TyInt(IntTy::I32)   => self.read_int(ptr, 4).map(|n| PrimVal::I32(n as i32)),
-            ty::TyInt(IntTy::I64)   => self.read_int(ptr, 8).map(|n| PrimVal::I64(n as i64)),
-            ty::TyUint(UintTy::U8)  => self.read_uint(ptr, 1).map(|n| PrimVal::U8(n as u8)),
-            ty::TyUint(UintTy::U16) => self.read_uint(ptr, 2).map(|n| PrimVal::U16(n as u16)),
-            ty::TyUint(UintTy::U32) => self.read_uint(ptr, 4).map(|n| PrimVal::U32(n as u32)),
-            ty::TyUint(UintTy::U64) => self.read_uint(ptr, 8).map(|n| PrimVal::U64(n as u64)),
-
-            // TODO(tsion): Pick the PrimVal dynamically.
-            ty::TyInt(IntTy::Is)    => self.read_int(ptr, self.pointer_size).map(PrimVal::I64),
-            ty::TyUint(UintTy::Us)  => self.read_uint(ptr, self.pointer_size).map(PrimVal::U64),
-            _ => panic!("primitive read of non-primitive type: {:?}", ty),
-        }
-    }
-
     pub fn write_primval(&mut self, ptr: Pointer, val: PrimVal) -> EvalResult<()> {
         match val {
             PrimVal::Bool(b) => self.write_bool(ptr, b),
@@ -199,7 +178,8 @@ impl Memory {
             PrimVal::U8(n)   => self.write_uint(ptr, n as u64, 1),
             PrimVal::U16(n)  => self.write_uint(ptr, n as u64, 2),
             PrimVal::U32(n)  => self.write_uint(ptr, n as u64, 4),
-            PrimVal::U64(n)  => self.write_uint(ptr, n as u64, 8),
+            PrimVal::U64(n) | PrimVal::IntegerPtr(n) => self.write_uint(ptr, n as u64, 8),
+            PrimVal::AbstractPtr(_p) => unimplemented!(),
         }
     }
 
@@ -258,7 +238,7 @@ impl Allocation {
         if n == 0 {
             Ok(())
         } else {
-            Err(EvalError::InvalidPointerAccess)
+            Err(EvalError::ReadPointerAsBytes)
         }
     }
 
@@ -267,7 +247,7 @@ impl Allocation {
         if self.count_overlapping_relocations(start, end) == 0 {
             Ok(())
         } else {
-            Err(EvalError::InvalidPointerAccess)
+            Err(EvalError::ReadPointerAsBytes)
         }
     }
 }
