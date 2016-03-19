@@ -587,6 +587,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         _ => panic!("variant downcast on non-aggregate type: {:?}", base_repr),
                     },
 
+                    // FIXME(tsion): Wrong for fat pointers.
                     Deref => try!(self.memory.read_ptr(base_ptr)),
 
                     _ => unimplemented!(),
@@ -599,6 +600,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(ptr)
     }
 
+    // TODO(tsion): Try making const_to_primval instead.
     fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {
         use rustc::middle::const_eval::ConstVal::*;
         match *const_val {
@@ -609,7 +611,15 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_uint(ptr, int.to_u64_unchecked(), 8));
                 Ok(ptr)
             }
-            Str(ref _s) => unimplemented!(),
+            Str(ref s) => {
+                let psize = self.memory.pointer_size;
+                let static_ptr = self.memory.allocate(s.len());
+                let ptr = self.memory.allocate(psize * 2);
+                try!(self.memory.write_bytes(static_ptr, s.as_bytes()));
+                try!(self.memory.write_ptr(ptr, static_ptr));
+                try!(self.memory.write_uint(ptr.offset(psize as isize), s.len() as u64, psize));
+                Ok(ptr)
+            }
             ByteStr(ref _bs) => unimplemented!(),
             Bool(b) => {
                 let ptr = self.memory.allocate(1);

@@ -144,6 +144,10 @@ impl Memory {
         Ok(())
     }
 
+    pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<()> {
+        self.get_bytes_mut(ptr, src.len()).map(|dest| dest.clone_from_slice(src))
+    }
+
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {
         let alloc = try!(self.get(ptr.alloc_id));
         try!(alloc.check_relocation_edges(ptr.offset, ptr.offset + self.pointer_size));
