@@ -16,22 +16,22 @@ static ATOMIC: AtomicIsize = ATOMIC_ISIZE_INIT;
 
 fn main() {
     // Make sure trans can emit all the intrinsics correctly
-    ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed);
-    ATOMIC.compare_exchange(0, 1, Acquire, Relaxed);
-    ATOMIC.compare_exchange(0, 1, Release, Relaxed);
-    ATOMIC.compare_exchange(0, 1, AcqRel, Relaxed);
-    ATOMIC.compare_exchange(0, 1, SeqCst, Relaxed);
-    ATOMIC.compare_exchange(0, 1, Acquire, Acquire);
-    ATOMIC.compare_exchange(0, 1, AcqRel, Acquire);
-    ATOMIC.compare_exchange(0, 1, SeqCst, Acquire);
-    ATOMIC.compare_exchange(0, 1, SeqCst, SeqCst);
-    ATOMIC.compare_exchange_weak(0, 1, Relaxed, Relaxed);
-    ATOMIC.compare_exchange_weak(0, 1, Acquire, Relaxed);
-    ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed);
-    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Relaxed);
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Relaxed);
-    ATOMIC.compare_exchange_weak(0, 1, Acquire, Acquire);
-    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Acquire);
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Acquire);
-    ATOMIC.compare_exchange_weak(0, 1, SeqCst, SeqCst);
+    ATOMIC.compare_exchange(0, 1, Relaxed, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, Acquire, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, Release, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, AcqRel, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, SeqCst, Relaxed).ok();
+    ATOMIC.compare_exchange(0, 1, Acquire, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, AcqRel, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, SeqCst, Acquire).ok();
+    ATOMIC.compare_exchange(0, 1, SeqCst, SeqCst).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Relaxed, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Acquire, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Release, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Relaxed).ok();
+    ATOMIC.compare_exchange_weak(0, 1, Acquire, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, AcqRel, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, SeqCst, Acquire).ok();
+    ATOMIC.compare_exchange_weak(0, 1, SeqCst, SeqCst).ok();
 }
