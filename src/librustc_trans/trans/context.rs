@@ -856,14 +856,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
     }
 
-    /// Given the node-id of some local item that has no type
-    /// parameters, make a suitable "empty substs" for it.
-    pub fn empty_substs_for_node_id(&self, item_node_id: ast::NodeId)
-                                    -> &'tcx Substs<'tcx> {
-        let item_def_id = self.tcx().map.local_def_id(item_node_id);
-        self.empty_substs_for_def_id(item_def_id)
-    }
-
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
