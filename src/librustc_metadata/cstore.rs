@@ -22,7 +22,8 @@ use loader;
 
 use rustc::back::svh::Svh;
 use rustc::middle::cstore::{ExternCrate};
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
+use rustc::middle::def_id::DefId;
 
 use std::cell::{RefCell, Ref, Cell};
 use std::rc::Rc;
@@ -92,6 +93,7 @@ pub struct CStore {
     used_link_args: RefCell<Vec<String>>,
     statically_included_foreign_items: RefCell<NodeSet>,
     pub intr: Rc<IdentInterner>,
+    pub visible_parent_map: RefCell<DefIdMap<DefId>>,
 }
 
 impl CStore {
@@ -104,6 +106,7 @@ impl CStore {
             used_link_args: RefCell::new(Vec::new()),
             intr: intr,
             statically_included_foreign_items: RefCell::new(NodeSet()),
+            visible_parent_map: RefCell::new(FnvHashMap()),
         }
     }
 
