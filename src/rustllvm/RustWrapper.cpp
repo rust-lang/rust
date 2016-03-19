@@ -165,8 +165,10 @@ extern "C" void LLVMRemoveFunctionAttrString(LLVMValueRef fn, unsigned index, co
 }
 
 // enable fpmath flag UnsafeAlgebra
-extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef Instr) {
-    unwrap<Instruction>(Instr)->setHasUnsafeAlgebra(true);
+extern "C" void LLVMRustSetHasUnsafeAlgebra(LLVMValueRef V) {
+    if (auto I = dyn_cast<Instruction>(unwrap<Value>(V))) {
+        I->setHasUnsafeAlgebra(true);
+    }
 }
 
 extern "C" LLVMValueRef LLVMBuildAtomicLoad(LLVMBuilderRef B,
