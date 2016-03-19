@@ -342,11 +342,21 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let ptr_arg    = try!(self.eval_operand(&args[0]));
                 let offset_arg = try!(self.eval_operand(&args[1]));
 
-                let ptr    = try!(self.memory.read_ptr(ptr_arg));
                 let offset = try!(self.memory.read_int(offset_arg, self.memory.pointer_size));
 
-                let result_ptr = ptr.offset(offset as isize * pointee_size);
-                try!(self.memory.write_ptr(dest, result_ptr));
+                match self.memory.read_ptr(ptr_arg) {
+                    Ok(ptr) => {
+                        let result_ptr = ptr.offset(offset as isize * pointee_size);
+                        try!(self.memory.write_ptr(dest, result_ptr));
+                    }
+                    Err(EvalError::ReadBytesAsPointer) => {
+                        let psize = self.memory.pointer_size;
+                        let addr = try!(self.memory.read_int(ptr_arg, psize));
+                        let result_addr = addr + offset * pointee_size as i64;
+                        try!(self.memory.write_int(dest, result_addr, psize));
+                    }
+                    Err(e) => return Err(e),
+                }
             }
 
             "size_of" => {
