@@ -589,15 +589,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         },
         (_, "volatile_store") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let val = if fn_ty.args[1].is_indirect() {
-                Load(bcx, llargs[1])
+            if type_is_fat_ptr(bcx.tcx(), tp_ty) {
+                VolatileStore(bcx, llargs[1], expr::get_dataptr(bcx, llargs[0]));
+                VolatileStore(bcx, llargs[2], expr::get_meta(bcx, llargs[0]));
             } else {
-                from_immediate(bcx, llargs[1])
-            };
-            let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
-            let store = VolatileStore(bcx, val, ptr);
-            unsafe {
-                llvm::LLVMSetAlignment(store, type_of::align_of(ccx, tp_ty));
+                let val = if fn_ty.args[1].is_indirect() {
+                    Load(bcx, llargs[1])
+                } else {
+                    from_immediate(bcx, llargs[1])
+                };
+                let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
+                let store = VolatileStore(bcx, val, ptr);
+                unsafe {
+                    llvm::LLVMSetAlignment(store, type_of::align_of(ccx, tp_ty));
+                }
             }
             C_nil(ccx)
         },
