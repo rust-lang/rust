@@ -106,8 +106,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(u(32), 4),
             definition: Named("llvm.x86.sha1nexte")
         },
-        //"_sha1rnds4" => Intrinsic{ Named("llvm.x86.sha1rnds4")}
-        //Implementing this requires passing a function pointer to the cpu
+        /*"_sha1rnds4" => Intrinsic{ Named("llvm.x86.sha1rnds4")} requires voodoo */
 
         //SHA256
         "_sha256msg1" => Intrinsic {
