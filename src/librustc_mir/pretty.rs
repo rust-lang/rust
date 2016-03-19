@@ -16,21 +16,33 @@ use syntax::ast::NodeId;
 const INDENT: &'static str = "    ";
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 't, W, I>(tcx: &ty::TyCtxt<'t>, iter: I, w: &mut W) -> io::Result<()>
-where W: Write, I: Iterator<Item=(&'a NodeId, &'a Mir<'a>)> {
-    for (&nodeid, mir) in iter {
-        write_mir_intro(tcx, nodeid, mir, w)?;
-        // Nodes
-        for block in mir.all_basic_blocks() {
-            write_basic_block(block, mir, w)?;
-        }
-        writeln!(w, "}}")?
+pub fn write_mir_pretty<'a, 'tcx, I>(tcx: &ty::TyCtxt<'tcx>,
+                                     iter: I,
+                                     w: &mut Write)
+                                     -> io::Result<()>
+    where I: Iterator<Item=(&'a NodeId, &'a Mir<'tcx>)>, 'tcx: 'a
+{
+    for (&node_id, mir) in iter {
+        write_mir_fn(tcx, node_id, mir, w)?;
     }
     Ok(())
 }
 
+pub fn write_mir_fn<'tcx>(tcx: &ty::TyCtxt<'tcx>,
+                          node_id: NodeId,
+                          mir: &Mir<'tcx>,
+                          w: &mut Write)
+                          -> io::Result<()> {
+    write_mir_intro(tcx, node_id, mir, w)?;
+    for block in mir.all_basic_blocks() {
+        write_basic_block(block, mir, w)?;
+    }
+    writeln!(w, "}}")?;
+    Ok(())
+}
+
 /// Write out a human-readable textual representation for the given basic block.
-fn write_basic_block<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<()> {
+fn write_basic_block(block: BasicBlock, mir: &Mir, w: &mut Write) -> io::Result<()> {
     let data = mir.basic_block_data(block);
 
     // Basic block label at the top.
@@ -49,9 +61,8 @@ fn write_basic_block<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::R
 
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
-fn write_mir_intro<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
--> io::Result<()> {
-
+fn write_mir_intro(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut Write)
+                   -> io::Result<()> {
     write!(w, "fn {}(", tcx.map.path_to_string(nid))?;
 
     // fn argument types.
