@@ -116,8 +116,8 @@ Compatibility Notes
   that were not intended. In this release, [defaulted type parameters
   appearing outside of type definitions will generate a
   warning][1.7d], which will become an error in future releases.
-* [Parsing "." as a float results in an error instead of
-  0][1.7p]. That is, `".".parse::<f32>()` returns `Err`, not `Ok(0)`.
+* [Parsing "." as a float results in an error instead of 0][1.7p].
+  That is, `".".parse::<f32>()` returns `Err`, not `Ok(0.0)`.
 * [Borrows of closure parameters may not outlive the closure][1.7bc].
 
 [1.7a]: https://github.com/rust-lang/rust/pull/30928

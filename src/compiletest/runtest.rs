@@ -1025,6 +1025,10 @@ fn check_expected_errors(revision: Option<&str>,
         expected.replace(r"\", "/")
     }).collect::<Vec<String>>();
 
+    // If the testcase being checked contains at least one expected "help"
+    // message, then we'll ensure that all "help" messages are expected.
+    // Otherwise, all "help" messages reported by the compiler will be ignored.
+    // This logic also applies to "note" messages.
     let (expect_help, expect_note) =
         expected_errors.iter()
                         .fold((false, false),
