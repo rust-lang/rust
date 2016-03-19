@@ -1,4 +1,4 @@
-//! This LintPass catches both string addition and string addition + assignment
+//! This lint catches both string addition and string addition + assignment
 //!
 //! Note that since we have two lints where one subsumes the other, we try to
 //! disable the subsumed lint unless it has a higher level

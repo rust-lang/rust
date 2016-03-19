@@ -164,9 +164,9 @@ fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], l
     }
 }
 
-/// check if this type has an is_empty method
+/// Check if this type has an `is_empty` method.
 fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
-    /// get a ImplOrTraitItem and return true if it matches is_empty(self)
+    /// Get an `ImplOrTraitItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext, id: &ImplOrTraitItemId) -> bool {
         if let MethodTraitItemId(def_id) = *id {
             if let ty::MethodTraitItem(ref method) = cx.tcx.impl_or_trait_item(def_id) {
@@ -179,7 +179,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         }
     }
 
-    /// check the inherent impl's items for an is_empty(self) method
+    /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: &DefId) -> bool {
         let impl_items = cx.tcx.impl_items.borrow();
         cx.tcx.inherent_impls.borrow().get(id).map_or(false, |ids| {

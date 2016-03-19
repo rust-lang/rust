@@ -330,7 +330,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
     }
 }
 
-/// Get all arms that are unbounded PatRange-s.
+/// Get all arms that are unbounded `PatRange`s.
 fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
     arms.iter()
         .filter_map(|arm| {

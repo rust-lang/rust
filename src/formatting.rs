@@ -82,7 +82,7 @@ impl EarlyLintPass for Formatting {
     }
 }
 
-/// Implementation of the SUSPICIOUS_ASSIGNMENT_FORMATTING lint.
+/// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
     if let ast::ExprKind::Assign(ref lhs, ref rhs) = expr.node {
         if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(cx, lhs.span) {
@@ -108,7 +108,7 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
     }
 }
 
-/// Implementation of the SUSPICIOUS_ELSE_FORMATTING lint for weird `else if`.
+/// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else if`.
 fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
     if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
         if unsugar_if(else_).is_some() && !differing_macro_contexts(then.span, else_.span) && !in_macro(cx, then.span) {

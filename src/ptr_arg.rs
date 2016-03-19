@@ -1,6 +1,4 @@
-//! Checks for usage of &Vec[_] and &String
-//!
-//! This lint is **warn** by default
+//! Checks for usage of  `&Vec[_]` and `&String`.
 
 use rustc::front::map::NodeItem;
 use rustc::lint::*;

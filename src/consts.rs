@@ -30,7 +30,7 @@ impl From<FloatTy> for FloatWidth {
     }
 }
 
-/// a Lit_-like enum to fold constant `Expr`s into
+/// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
 pub enum Constant {
     /// a String "abc"
