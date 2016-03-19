@@ -134,7 +134,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         }
         Err((err, span)) => {
             reg.sess.struct_span_err(span, err)
-                    .span_note(span, "Clippy will use defaulf configuration")
+                    .span_note(span, "Clippy will use default configuration")
                     .emit();
             utils::conf::Conf::default()
         }
@@ -163,7 +163,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_early_lint_pass(box precedence::Precedence);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
-    reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatemets);
+    reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatements);
     reg.register_late_lint_pass(box mut_mut::MutMut);
     reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);
     reg.register_late_lint_pass(box len_zero::LenZero);

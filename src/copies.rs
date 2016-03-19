@@ -47,7 +47,7 @@ declare_lint! {
 /// match foo {
 ///     Bar => bar(),
 ///     Quz => quz(),
-///     Baz => bar(), // <= oups
+///     Baz => bar(), // <= oops
 /// }
 /// ```
 declare_lint! {

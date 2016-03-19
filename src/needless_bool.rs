@@ -105,7 +105,7 @@ impl LateLintPass for BoolComparison {
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
-                                       "equality checks against true are unnecesary",
+                                       "equality checks against true are unnecessary",
                                        |db| {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });
@@ -115,7 +115,7 @@ impl LateLintPass for BoolComparison {
                     span_lint_and_then(cx,
                                        BOOL_COMPARISON,
                                        e.span,
-                                       "equality checks against true are unnecesary",
+                                       "equality checks against true are unnecessary",
                                        |db| {
                                            db.span_suggestion(e.span, "try simplifying it as shown:", hint);
                                        });

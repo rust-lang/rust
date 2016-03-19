@@ -14,7 +14,7 @@ use utils::{match_path, span_lint_and_then};
 ///
 /// **Why is this bad?** The implementation of these traits must agree (for example for use with
 /// `HashMap`) so it’s probably a bad idea to use a default-generated `Hash` implementation  with
-/// an explicitely defined `PartialEq`. In particular, the following must hold for any type:
+/// an explicitly defined `PartialEq`. In particular, the following must hold for any type:
 ///
 /// ```rust
 /// k1 == k2 ⇒ hash(k1) == hash(k2)

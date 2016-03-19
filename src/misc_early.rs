@@ -110,10 +110,10 @@ impl EarlyLintPass for MiscEarly {
                 let arg_name = sp_ident.node.to_string();
 
                 if arg_name.starts_with('_') {
-                    if let Some(correspondance) = registered_names.get(&arg_name[1..]) {
+                    if let Some(correspondence) = registered_names.get(&arg_name[1..]) {
                         span_lint(cx,
                                   DUPLICATE_UNDERSCORE_ARGUMENT,
-                                  *correspondance,
+                                  *correspondence,
                                   &format!("`{}` already exists, having another argument having almost the same \
                                             name makes code comprehension and documentation more difficult",
                                            arg_name[1..].to_owned()));;

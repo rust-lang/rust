@@ -13,7 +13,7 @@ use utils::differing_macro_contexts;
 pub struct SpanlessEq<'a, 'tcx: 'a> {
     /// Context used to evaluate constant expressions.
     cx: &'a LateContext<'a, 'tcx>,
-    /// If is true, never consider as equal expressions containing fonction calls.
+    /// If is true, never consider as equal expressions containing function calls.
     ignore_fn: bool,
 }
 

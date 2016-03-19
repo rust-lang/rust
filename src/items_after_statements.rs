@@ -32,15 +32,15 @@ declare_lint! {
     "finds blocks where an item comes after a statement"
 }
 
-pub struct ItemsAfterStatemets;
+pub struct ItemsAfterStatements;
 
-impl LintPass for ItemsAfterStatemets {
+impl LintPass for ItemsAfterStatements {
     fn get_lints(&self) -> LintArray {
         lint_array!(ITEMS_AFTER_STATEMENTS)
     }
 }
 
-impl EarlyLintPass for ItemsAfterStatemets {
+impl EarlyLintPass for ItemsAfterStatements {
     fn check_block(&mut self, cx: &EarlyContext, item: &Block) {
         if in_macro(cx, item.span) {
             return;
