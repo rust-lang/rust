@@ -70,7 +70,7 @@ fn test_integrity() {
             {
                 // push the panicking item to the heap and catch the panic
                 let thread_result = {
-                    let mut heap_ref = AssertRecoverSafe::new(&mut heap);
+                    let mut heap_ref = AssertRecoverSafe(&mut heap);
                     panic::recover(move || {
                         heap_ref.push(panic_item);
                     })

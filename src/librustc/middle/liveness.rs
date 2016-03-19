@@ -115,6 +115,7 @@ use middle::pat_util;
 use middle::ty::{self, TyCtxt, ParameterEnvironment};
 use middle::traits::{self, ProjectionMode};
 use middle::infer;
+use middle::subst::Subst;
 use lint;
 use util::nodemap::NodeMap;
 
@@ -1491,6 +1492,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
                 let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
+                let t_ret_subst = t_ret.subst(&self.ir.tcx, &param_env.free_substs);
                 let infcx = infer::new_infer_ctxt(&self.ir.tcx,
                                                   &self.ir.tcx.tables,
                                                   Some(param_env),
@@ -1498,7 +1500,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let cause = traits::ObligationCause::dummy();
                 let norm = traits::fully_normalize(&infcx,
                                                    cause,
-                                                   &t_ret);
+                                                   &t_ret_subst);
 
                 if norm.unwrap().is_nil() {
                     // for nil return types, it is ok to not return a value expl.

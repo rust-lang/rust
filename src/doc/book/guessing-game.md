@@ -912,7 +912,7 @@ returned by `parse()`, this is an `enum`  like `Ordering`, but in this case,
 each variant has some data associated with it: `Ok` is a success, and `Err` is a
 failure. Each contains more information: the successfully parsed integer, or an
 error type. In this case, we `match` on `Ok(num)`, which sets the name `num` to
-the unwrapped `Ok` value (ythe integer), and then we  return it on the
+the unwrapped `Ok` value (the integer), and then we  return it on the
 right-hand side. In the `Err` case, we don’t care what kind of error it is, so
 we just use the catch all `_` instead of a name. This catches everything that
 isn't `Ok`, and `continue` lets us move to the next iteration of the loop; in

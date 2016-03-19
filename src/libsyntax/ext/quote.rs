@@ -121,6 +121,12 @@ pub mod rt {
         }
     }
 
+    impl ToTokens for P<ast::ImplItem> {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
+            vec![TokenTree::Token(self.span, token::Interpolated(token::NtImplItem(self.clone())))]
+        }
+    }
+
     impl ToTokens for ast::TraitItem {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             vec![TokenTree::Token(self.span,
