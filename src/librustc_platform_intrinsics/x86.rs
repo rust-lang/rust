@@ -245,7 +245,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         //SSE2
         "_clflush" => Intrinsic {
             inputs: vec![p(false,void(),None)],
-            output: v(i(8), 16),
+            output: void(),
             definition: Named("llvm.x86.sse2.padds.b")
         }
         "_adds_epi8" => Intrinsic {
