@@ -315,6 +315,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let dest_size = self.lvalue_repr(ret_ptr).size();
 
         match name {
+            "assume" => {}
+
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
                 let elem_size = self.ty_size(elem_ty);
@@ -330,6 +332,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.copy(src, dest, count as usize * elem_size));
             }
 
+            // TODO(tsion): Mark as dropped?
             "forget" => {}
 
             "offset" => {
