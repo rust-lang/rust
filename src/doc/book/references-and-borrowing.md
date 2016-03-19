@@ -163,8 +163,8 @@ both at the same time:
 * exactly one mutable reference (`&mut T`).
 
 
-You may notice that this is very similar, though not exactly the same as,
-to the definition of a data race:
+You may notice that this is very similar to, though not exactly the same as,
+the definition of a data race:
 
 > There is a ‘data race’ when two or more pointers access the same memory
 > location at the same time, where at least one of them is writing, and the
