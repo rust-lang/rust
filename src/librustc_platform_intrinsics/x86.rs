@@ -24,7 +24,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
     if !name.starts_with("x86_mm") { return None }
     Some(match &name["x86_mm".len()..] {
 
-        //AESNI Instructions
+        //AESNI
         "_aesdec" => Intrinsic {
             inputs: vec![v(u(32), 4),v(u(32), 4)],
             output: v(u(32), 4),
@@ -54,6 +54,40 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(u(32), 4),i(32)],
             output: v(u(32), 4),
             definition: Named("llvm.x86.aesni.aeskeygenassist")
+        },
+
+        //RDRAND
+        "_rdrand_16" => Intrinsic {
+            inputs: vec![p(false,i(16),None)],
+            output: u(32),
+            definition: Named("llvm.x86.rdrand.16")
+        },
+        "_rdrand_32" => Intrinsic {
+            inputs: vec![p(false,i(32),None)],
+            output: u(32),
+            definition: Named("llvm.x86.rdrand.32")
+        },
+        "_rdrand_64" => Intrinsic {
+            inputs: vec![p(false,i(64),None)],
+            output: u(32),
+            definition: Named("llvm.x86.rdrand.64")
+        },
+
+        //RDSEED
+        "_rdseed_16" => Intrinsic {
+            inputs: vec![p(false,i(16),None)],
+            output: u(32),
+            definition: Named("llvm.x86.rdseed.16")
+        },
+        "_rdseed_32" => Intrinsic {
+            inputs: vec![p(false,i(32),None)],
+            output: u(32),
+            definition: Named("llvm.x86.rdseed.32")
+        },
+        "_rdseed_64" => Intrinsic {
+            inputs: vec![p(false,i(64),None)],
+            output: u(32),
+            definition: Named("llvm.x86.rdseed.64")
         },
 
         //SSE
