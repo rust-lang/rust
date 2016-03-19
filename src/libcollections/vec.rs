@@ -70,7 +70,7 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::FromIterator;
 use core::mem;
-use core::ops::{Index, IndexMut};
+use core::ops::{InPlace, Index, IndexMut, Place, Placer};
 use core::ops;
 use core::ptr;
 use core::slice;
@@ -699,16 +699,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
-        // This will panic or abort if we would allocate > isize::MAX bytes
-        // or if the length increment would overflow for zero-sized types.
-        if self.len == self.buf.cap() {
-            self.buf.double();
-        }
-        unsafe {
-            let end = self.as_mut_ptr().offset(self.len as isize);
-            ptr::write(end, value);
-            self.len += 1;
-        }
+        self <- value;
     }
 
     /// Removes the last element from a vector and returns it, or `None` if it
@@ -1759,3 +1750,62 @@ impl<'a, T> Drop for Drain<'a, T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Placer<T> for &'a mut Vec<T> {
+    type Place = BackPlace<'a, T>;
+
+    fn make_place(self) -> BackPlace<'a, T> {
+        // This will panic or abort if we would allocate > isize::MAX bytes
+        // or if the length increment would overflow for zero-sized types.
+        if self.len == self.buf.cap() {
+            self.buf.double();
+        }
+
+        BackPlace { vec: self }
+    }
+}
+
+/// A place for insertion at the back of a `Vec`.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(placement_in_syntax)]
+///
+/// let mut vec = vec![1, 2];
+/// &mut vec <- 3;
+/// &mut vec <- 4;
+/// assert_eq!(&vec, &[1, 2, 3, 4]);
+/// ```
+#[must_use = "places do nothing unless written to with `<-` syntax"]
+#[unstable(feature = "collection_placement",
+           reason = "struct name and placement protocol are subject to change",
+           issue = "30172")]
+pub struct BackPlace<'a, T: 'a> {
+    vec: &'a mut Vec<T>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> Place<T> for BackPlace<'a, T> {
+    fn pointer(&mut self) -> *mut T {
+        unsafe { self.vec.as_mut_ptr().offset(self.vec.len as isize) }
+    }
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T> InPlace<T> for BackPlace<'a, T> {
+    type Owner = &'a mut T;
+
+    unsafe fn finalize(mut self) -> &'a mut T {
+        let ptr = self.pointer();
+        self.vec.len += 1;
+        &mut *ptr
+    }
+}

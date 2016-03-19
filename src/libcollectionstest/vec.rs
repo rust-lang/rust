@@ -11,6 +11,7 @@
 use std::borrow::Cow;
 use std::iter::{FromIterator, repeat};
 use std::mem::size_of;
+use std::panic;
 
 use test::Bencher;
 
@@ -493,6 +494,23 @@ fn test_cow_from() {
         (Cow::Owned(o), Cow::Borrowed(b)) => assert!(o == owned && b == borrowed),
         _ => panic!("invalid `Cow::from`"),
     }
+}
+
+#[test]
+fn test_placement() {
+    let mut vec = vec![1];
+    assert_eq!(&mut vec <- 2, &2);
+    assert_eq!(vec.len(), 2);
+    assert_eq!(&mut vec <- 3, &3);
+    assert_eq!(vec.len(), 3);
+    assert_eq!(&vec, &[1, 2, 3]);
+}
+
+#[test]
+fn test_placement_panic() {
+    let mut vec = vec![1, 2, 3];
+    let _ = panic::recover(panic::AssertRecoverSafe(|| { &mut vec <- panic!(); }));
+    assert_eq!(vec.len(), 3);
 }
 
 #[bench]
