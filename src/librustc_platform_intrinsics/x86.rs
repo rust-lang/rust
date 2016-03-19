@@ -311,7 +311,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         "_mfence" => Intrinsic {
             inputs: vec![],
             output: void(),
-            definition: Named("llvm.x86.sse2.fence")
+            definition: Named("llvm.x86.sse2.mfence")
         },
         "_min_epi16" => Intrinsic {
             inputs: vec![v(i(16), 8), v(i(16), 8)],
@@ -372,11 +372,6 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(u(8), 16), v(u(8), 16)],
             output: v(u(64), 2),
             definition: Named("llvm.x86.sse2.psad.bw")
-        },
-        "_sfence" => Intrinsic {
-            inputs: vec![],
-            output: void(),
-            definition: Named("llvm.x86.sse2.sfence")
         },
         "_sqrt_pd" => Intrinsic {
             inputs: vec![v(f(64), 2)],
