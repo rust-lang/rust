@@ -279,6 +279,13 @@ impl From<u32> for Ipv4Addr {
     }
 }
 
+#[stable(feature = "from_slice_v4", since = "1.9.0")]
+impl From<[u8; 4]> for Ipv4Addr {
+    fn from(octets: [u8; 4]) -> Ipv4Addr {
+        Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3])
+    }
+}
+
 impl Ipv6Addr {
     /// Creates a new IPv6 address from eight 16-bit segments.
     ///
@@ -829,6 +836,11 @@ mod tests {
     fn test_int_to_ipv4() {
         let a = Ipv4Addr::new(127, 0, 0, 1);
         assert_eq!(Ipv4Addr::from(2130706433), a);
+    }
+
+    #[test]
+    fn ipv4_from_u32_slice() {
+        assert_eq!(Ipv4Addr::from([127, 0, 0, 1]), Ipv4Addr::new(127, 0, 0, 1))
     }
 
     #[test]
