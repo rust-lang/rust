@@ -229,8 +229,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.sqrt.ss")
         },
         "stmxcsr" => Intrinsic {
-            inputs: void(),
-            output: v(u(32)),
+            inputs: vec![void()],
+            output: u(32),
             definition: Named("llvm.x86.sse.stmxcsr")
         },
         "sub_ss" => Intrinsic {
