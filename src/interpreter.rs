@@ -339,6 +339,29 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             // TODO(tsion): Mark as dropped?
             "forget" => {}
 
+            "min_align_of" => {
+                try!(self.memory.write_int(dest, 1, dest_size));
+            }
+
+            // FIXME(tsion): Handle different integer types correctly.
+            "mul_with_overflow" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.ty_size(ty);
+
+                let left_arg  = try!(self.eval_operand(&args[0]));
+                let right_arg = try!(self.eval_operand(&args[1]));
+
+                let left = try!(self.memory.read_int(left_arg, size));
+                let right = try!(self.memory.read_int(right_arg, size));
+
+                let (n, overflowed) = unsafe {
+                    ::std::intrinsics::mul_with_overflow::<i64>(left, right)
+                };
+
+                try!(self.memory.write_int(dest, n, size));
+                try!(self.memory.write_bool(dest.offset(size as isize), overflowed));
+            }
+
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
                 let pointee_size = self.ty_size(pointee_ty) as isize;

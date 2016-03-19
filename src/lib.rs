@@ -1,4 +1,4 @@
-#![feature(btree_range, collections_bound, rustc_private)]
+#![feature(btree_range, collections_bound, core_intrinsics, rustc_private)]
 
 // From rustc.
 extern crate arena;
