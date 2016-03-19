@@ -503,7 +503,7 @@ impl Child {
     /// By default, stdin, stdout and stderr are inherited from the parent.
     /// In order to capture the output into this `Result<Output>` it is
     /// necessary to create new pipes between parent and child. Use
-    /// `stdout(Stdio::piped())` or `stdout(Stdio::piped())`, respectively.
+    /// `stdout(Stdio::piped())` or `stderr(Stdio::piped())`, respectively.
     ///
     /// # Examples
     ///
