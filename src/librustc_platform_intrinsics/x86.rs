@@ -23,6 +23,90 @@ use rustc::middle::ty;
 pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
     if !name.starts_with("x86_mm") { return None }
     Some(match &name["x86_mm".len()..] {
+
+        //AESNI Instructions
+        "_aesdec" => Intrinsic {
+            inputs: vec![v(u(32), 4),v(u(32), 4)],
+            output: v(u(32), 4),
+            definition: Named("llvm.x86.aesni.aesdec")
+        },
+        "_aesdeclast" => Intrinsic {
+            inputs: vec![v(u(32), 4),v(u(32), 4)],
+            output: v(u(32), 4),
+            definition: Named("llvm.x86.aesni.aesdec")
+        },
+        "_aesenc" => Intrinsic {
+            inputs: vec![v(u(32), 4),v(u(32), 4)],
+            output: v(u(32), 4),
+            definition: Named("llvm.x86.aesni.aesenc")
+        },
+        "_aesenclast" => Intrinsic {
+            inputs: vec![v(u(32), 4),v(u(32), 4)],
+            output: v(u(32), 4),
+            definition: Named("llvm.x86.aesni.aesenclast")
+        },
+        "_aesimc" => Intrinsic {
+            inputs: vec![v(u(32), 4)],
+            output: v(u(32), 4),
+            definition: Named("llvm.x86.aesni.aesimc")
+        },
+        "_aeskeygenassist" => Intrinsic {
+            inputs: vec![v(u(32), 4),i_(32, 8)],
+            output: v(u(32), 4),
+            definition: Named("llvm.x86.aesni.aeskeygenassist")
+        },
+
+        //SSE
+        "add_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.add.ss")
+        },
+        "cmp_ps" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.cmp.ps")
+        },
+        "cmp_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.cmp.ss")
+        },
+        "comieq_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.comieq.ss")
+        },
+        "comige_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.comige.ss")
+        },
+        "comigt_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.comigt.ss")
+        },
+        "comile_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.comile.ss")
+        },
+        "comilt_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.comilt.ss")
+        },
+        "comineq_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.comineq.ss")
+        },
+        "_storeu_ps" => Intrinsic {
+            inputs: vec![p(false, f(32), Some(i(8))), v(f(32), 4)],
+            output: void(),
+            definition: Named("llvm.x86.sse.storeu.ps")
+        },
         "_movemask_ps" => Intrinsic {
             inputs: vec![v(f(32), 4)],
             output: i(32),
@@ -53,11 +137,77 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(f(32), 4),
             definition: Named("llvm.sqrt.v4f32")
         },
-        "_storeu_ps" => Intrinsic {
-            inputs: vec![p(false, f(32), Some(i(8))), v(f(32), 4)],
-            output: void(),
-            definition: Named("llvm.x86.sse.storeu.ps")
+        "div_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.div.ss")
         },
+        "ldmxcsr" => Intrinsic {
+            inputs: vec![v(u(32),1)],
+            output: void,
+            definition: Named("llvm.x86.sse.ldmxcsr")
+        },
+        "ldmxcsr" => Intrinsic {
+            inputs: vec![v(u(32),1)],
+            output: void,
+            definition: Named("llvm.x86.sse.ldmxcsr")
+        },
+        "max_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.max.ss")
+        },
+        "min_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.min.ss")
+        },
+        "mul_ss" => Intrinsic {
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.mul.ss")
+        },
+        "rcp_ss" => Intrinsic {
+            inputs: vec![v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.rcp.ss")
+        },
+        "rsqrt_ss" => Intrinsic {
+            inputs: vec![v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.rsqrt.ss")
+        },
+        "s_fense" => Intrinsic {
+            inputs: void(),
+            output: void(),
+            definition: Named("llvm.x86.sse.sfence")
+        },
+        "sqrt_ps" => Intrinsic {
+            inputs: vec![v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.sqrt.ps")
+        },
+        "sqrt_ss" => Intrinsic {
+            inputs: vec![v(f(32),4)],
+            output: v(f(32),4),
+            definition: Named("llvm.x86.sse.sqrt.ss")
+        },
+        "stmxcsr" => Intrinsic {
+            inputs: void(),
+            output: v(u(32),1),
+            definition: Named("llvm.x86.sse.stmxcsr")
+        },
+        "sub_ss" => Intrinsic {
+            inputs: void(),
+            output: v(u(32),1),
+            definition: Named("llvm.x86.sse.sub.ss")
+        },
+
+
+
+
+
+        //SSE2
         "_adds_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16), v(i(8), 16)],
             output: v(i(8), 16),
