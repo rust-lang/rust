@@ -114,7 +114,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         },
         "ldmxcsr" => Intrinsic {
             inputs: vec![i(32)],
-            output: void,
+            output: void(),
             definition: Named("llvm.x86.sse.ldmxcsr")
         },
         "max_ss" => Intrinsic {
@@ -143,7 +143,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.rsqrt.ss")
         },
         "s_fense" => Intrinsic {
-            inputs: void(),
+            inputs: vec![],
             output: void(),
             definition: Named("llvm.x86.sse.sfence")
         },
@@ -338,6 +338,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(u(16), 8),
             definition: Named("llvm.x86.sse2.psubus.w")
         },
+
+        //sse3
         "_addsub_ps" => Intrinsic {
             inputs: vec![v(f(32), 4), v(f(32), 4)],
             output: v(f(32), 4),
@@ -373,6 +375,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(u(8), 16),
             definition: Named("llvm.x86.sse3.ldu.dq")
         },
+
+        //SSSE3
         "_abs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 16)],
             output: v(i(8), 16),
@@ -448,6 +452,8 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: v(i(32), 4),
             definition: Named("llvm.x86.ssse3.psign.d.128")
         },
+
+        //SSE4.1
         "_dp_ps" => Intrinsic {
             inputs: vec![v(f(32), 4), v(f(32), 4), i_(32, 8)],
             output: v(f(32), 4),
@@ -533,6 +539,9 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: i(32),
             definition: Named("llvm.x86.sse41.ptestz")
         },
+
+
+        //SSE4.2
         "_cmpestra" => Intrinsic {
             inputs: vec![v(i(8), 16), i(32), v(i(8), 16), i(32), i_(32, 8)],
             output: i(32),
@@ -603,6 +612,9 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: i(32),
             definition: Named("llvm.x86.sse42.pcmpistriz128")
         },
+
+
+        //AVX
         "256_addsub_ps" => Intrinsic {
             inputs: vec![v(f(32), 8), v(f(32), 8)],
             output: v(f(32), 8),
@@ -848,6 +860,9 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             output: void(),
             definition: Named("llvm.x86.avx.vzeroupper")
         },
+
+
+        //avx2
         "256_abs_epi8" => Intrinsic {
             inputs: vec![v(i(8), 32)],
             output: v(i(8), 32),
