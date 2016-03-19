@@ -2259,8 +2259,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 // compilation unit that references the item, so it will still get
                 // translated everywhere it's needed.
                 for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
-                    let empty_substs = ccx.empty_substs_for_node_id(item.id);
                     let def_id = tcx.map.local_def_id(item.id);
+                    let empty_substs = ccx.empty_substs_for_def_id(def_id);
                     let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                     trans_fn(ccx, &decl, &body, llfn, empty_substs, item.id);
                     set_global_section(ccx, llfn, item);
@@ -2298,8 +2298,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     if sig.generics.ty_params.is_empty() {
                         let trans_everywhere = attr::requests_inline(&impl_item.attrs);
                         for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
-                            let empty_substs = ccx.empty_substs_for_node_id(impl_item.id);
                             let def_id = tcx.map.local_def_id(impl_item.id);
+                            let empty_substs = ccx.empty_substs_for_def_id(def_id);
                             let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                             trans_fn(ccx, &sig.decl, body, llfn, empty_substs, impl_item.id);
                             update_linkage(ccx, llfn, Some(impl_item.id),

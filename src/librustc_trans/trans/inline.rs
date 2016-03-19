@@ -144,8 +144,8 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
                 let impl_tpt = tcx.lookup_item_type(impl_did);
                 if impl_tpt.generics.types.is_empty() &&
                         sig.generics.ty_params.is_empty() {
-                    let empty_substs = ccx.empty_substs_for_node_id(impl_item.id);
                     let def_id = tcx.map.local_def_id(impl_item.id);
+                    let empty_substs = ccx.empty_substs_for_def_id(def_id);
                     let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                     trans_fn(ccx,
                              &sig.decl,
