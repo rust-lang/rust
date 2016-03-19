@@ -84,14 +84,10 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
 
         //We only care about the operation here
         let (n_tps, inputs, output) = match split[1] {
-            "cxchg" => (1, vec!(tcx.mk_mut_ptr(param(ccx, 0)),
-                                param(ccx, 0),
-                                param(ccx, 0)),
-                        param(ccx, 0)),
-            "cxchgweak" => (1, vec!(tcx.mk_mut_ptr(param(ccx, 0)),
-                                param(ccx, 0),
-                                param(ccx, 0)),
-                            tcx.mk_tup(vec!(param(ccx, 0), tcx.types.bool))),
+            "cxchg" | "cxchgweak" => (1, vec!(tcx.mk_mut_ptr(param(ccx, 0)),
+                                              param(ccx, 0),
+                                              param(ccx, 0)),
+                                      tcx.mk_tup(vec!(param(ccx, 0), tcx.types.bool))),
             "load" => (1, vec!(tcx.mk_imm_ptr(param(ccx, 0))),
                        param(ccx, 0)),
             "store" => (1, vec!(tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0)),

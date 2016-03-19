@@ -725,6 +725,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, name) if name.starts_with("atomic_") => {
             let split: Vec<&str> = name.split('_').collect();
 
+            let is_cxchg = split[1] == "cxchg" || split[1] == "cxchgweak";
             let (order, failorder) = match split.len() {
                 2 => (llvm::SequentiallyConsistent, llvm::SequentiallyConsistent),
                 3 => match split[2] {
@@ -733,16 +734,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     "acq"     => (llvm::Acquire, llvm::Acquire),
                     "rel"     => (llvm::Release, llvm::Monotonic),
                     "acqrel"  => (llvm::AcquireRelease, llvm::Acquire),
-                    "failrelaxed" if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                    "failrelaxed" if is_cxchg =>
                         (llvm::SequentiallyConsistent, llvm::Monotonic),
-                    "failacq" if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                    "failacq" if is_cxchg =>
                         (llvm::SequentiallyConsistent, llvm::Acquire),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
                 4 => match (split[2], split[3]) {
-                    ("acq", "failrelaxed") if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                    ("acq", "failrelaxed") if is_cxchg =>
                         (llvm::Acquire, llvm::Monotonic),
-                    ("acqrel", "failrelaxed") if split[1] == "cxchg" || split[1] == "cxchgweak" =>
+                    ("acqrel", "failrelaxed") if is_cxchg =>
                         (llvm::AcquireRelease, llvm::Monotonic),
                     _ => ccx.sess().fatal("unknown ordering in atomic intrinsic")
                 },
@@ -750,22 +751,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             };
 
             match split[1] {
-                "cxchg" => {
+                "cxchg" | "cxchgweak" => {
                     let cmp = from_immediate(bcx, llargs[1]);
                     let src = from_immediate(bcx, llargs[2]);
                     let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
-                    let res = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::False);
-                    ExtractValue(bcx, res, 0)
-                }
-
-                "cxchgweak" => {
-                    let cmp = from_immediate(bcx, llargs[1]);
-                    let src = from_immediate(bcx, llargs[2]);
-                    let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
-                    let val = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, llvm::True);
+                    let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
+                    let val = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, weak);
                     let result = ExtractValue(bcx, val, 0);
                     let success = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
-                    Store(bcx, result, StructGEP(bcx, llresult, 0));
+                    Store(bcx,
+                          result,
+                          PointerCast(bcx, StructGEP(bcx, llresult, 0), val_ty(src).ptr_to()));
                     Store(bcx, success, StructGEP(bcx, llresult, 1));
                     C_nil(ccx)
                 }
@@ -778,6 +774,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     }
                     to_immediate(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
                 }
+
                 "store" => {
                     let val = from_immediate(bcx, llargs[1]);
                     let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
