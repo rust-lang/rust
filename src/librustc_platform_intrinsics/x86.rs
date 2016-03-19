@@ -51,7 +51,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.aesni.aesimc")
         },
         "_aeskeygenassist" => Intrinsic {
-            inputs: vec![v(u(32), 4),i_(32, 8)],
+            inputs: vec![v(u(32), 4),i(32)],
             output: v(u(32), 4),
             definition: Named("llvm.x86.aesni.aeskeygenassist")
         },
@@ -71,36 +71,6 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(f(32),4),v(f(32),4)],
             output: v(f(32),4),
             definition: Named("llvm.x86.sse.cmp.ss")
-        },
-        "comieq_ss" => Intrinsic {
-            inputs: vec![v(f(32),4),v(f(32),4)],
-            output: v(f(32),4),
-            definition: Named("llvm.x86.sse.comieq.ss")
-        },
-        "comige_ss" => Intrinsic {
-            inputs: vec![v(f(32),4),v(f(32),4)],
-            output: v(f(32),4),
-            definition: Named("llvm.x86.sse.comige.ss")
-        },
-        "comigt_ss" => Intrinsic {
-            inputs: vec![v(f(32),4),v(f(32),4)],
-            output: v(f(32),4),
-            definition: Named("llvm.x86.sse.comigt.ss")
-        },
-        "comile_ss" => Intrinsic {
-            inputs: vec![v(f(32),4),v(f(32),4)],
-            output: v(f(32),4),
-            definition: Named("llvm.x86.sse.comile.ss")
-        },
-        "comilt_ss" => Intrinsic {
-            inputs: vec![v(f(32),4),v(f(32),4)],
-            output: v(f(32),4),
-            definition: Named("llvm.x86.sse.comilt.ss")
-        },
-        "comineq_ss" => Intrinsic {
-            inputs: vec![v(f(32),4),v(f(32),4)],
-            output: v(f(32),4),
-            definition: Named("llvm.x86.sse.comineq.ss")
         },
         "_storeu_ps" => Intrinsic {
             inputs: vec![p(false, f(32), Some(i(8))), v(f(32), 4)],
@@ -143,12 +113,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             definition: Named("llvm.x86.sse.div.ss")
         },
         "ldmxcsr" => Intrinsic {
-            inputs: vec![v(u(32),1)],
-            output: void,
-            definition: Named("llvm.x86.sse.ldmxcsr")
-        },
-        "ldmxcsr" => Intrinsic {
-            inputs: vec![v(u(32),1)],
+            inputs: vec![i(32)],
             output: void,
             definition: Named("llvm.x86.sse.ldmxcsr")
         },
@@ -194,12 +159,12 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
         },
         "stmxcsr" => Intrinsic {
             inputs: void(),
-            output: v(u(32),1),
+            output: u(32),
             definition: Named("llvm.x86.sse.stmxcsr")
         },
         "sub_ss" => Intrinsic {
-            inputs: void(),
-            output: v(u(32),1),
+            inputs: vec![v(f(32),4),v(f(32),4)],
+            output: v(f(32),4),
             definition: Named("llvm.x86.sse.sub.ss")
         },
 
