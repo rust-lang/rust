@@ -238,7 +238,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         match fn_ty.abi {
                             Abi::RustIntrinsic => {
                                 let name = self.tcx.item_name(def_id).as_str();
-                                try!(self.call_intrinsic(&name, substs, args))
+                                match fn_ty.sig.0.output {
+                                    ty::FnConverging(ty) => {
+                                        let size = self.ty_size(ty);
+                                        try!(self.call_intrinsic(&name, substs, args,
+                                            return_ptr.unwrap(), size))
+                                    }
+                                    ty::FnDiverging => unimplemented!(),
+                                }
                             }
 
                             Abi::Rust | Abi::RustCall => {
@@ -308,12 +315,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn call_intrinsic(&mut self, name: &str, substs: &'tcx Substs<'tcx>,
-        args: &[mir::Operand<'tcx>]) -> EvalResult<TerminatorTarget>
+        args: &[mir::Operand<'tcx>], dest: Pointer, dest_size: usize)
+        -> EvalResult<TerminatorTarget>
     {
-        let ret_ptr = &mir::Lvalue::ReturnPointer;
-        let dest = try!(self.eval_lvalue(ret_ptr));
-        let dest_size = self.lvalue_repr(ret_ptr).size();
-
         match name {
             "assume" => {}
 
