@@ -105,7 +105,7 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(u(32), 4),v(u(32), 4)],
             output: v(u(32), 4),
             definition: Named("llvm.x86.sha1nexte")
-        }
+        },
         //"_sha1rnds4" => Intrinsic{ Named("llvm.x86.sha1rnds4")}
         //Implementing this requires passing a function pointer to the cpu
 
@@ -114,17 +114,17 @@ pub fn find<'tcx>(_tcx: &ty::ctxt<'tcx>, name: &str) -> Option<Intrinsic> {
             inputs: vec![v(u(32), 4),v(u(32), 4)],
             output: v(u(32), 4),
             definition: Named("llvm.x86.sha256msg1")
-        }
+        },
         "_sha256msg2" => Intrinsic {
             inputs: vec![v(u(32), 4),v(u(32), 4)],
             output: v(u(32), 4),
             definition: Named("llvm.x86.sha256msg2")
-        }
+        },
         "_sha256rnds2" => Intrinsic {
             inputs: vec![v(u(32), 4),v(u(32), 4),v(u(32), 4)],
             output: v(u(32), 4),
             definition: Named("llvm.x86.sha256rnds2")
-        }
+        },
 
 
         //SSE
