@@ -54,6 +54,7 @@ pub mod collapsible_if;
 pub mod copies;
 pub mod cyclomatic_complexity;
 pub mod derive;
+pub mod doc;
 pub mod drop_ref;
 pub mod entry;
 pub mod enum_clike;
@@ -223,6 +224,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
+    reg.register_early_lint_pass(box doc::Doc);
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -265,6 +267,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_XOR_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,
+        doc::DOC_MARKDOWN,
         drop_ref::DROP_REF,
         entry::MAP_ENTRY,
         enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
