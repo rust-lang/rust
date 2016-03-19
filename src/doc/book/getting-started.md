@@ -93,8 +93,8 @@ unofficial locations.
 | `armv7-apple-ios`             |  ✓  |     |     | ARM iOS                    |
 | `armv7s-apple-ios`            |  ✓  |     |     | ARM iOS                    |
 | `aarch64-apple-ios`           |  ✓  |     |     | ARM64 iOS                  |
-| `i686-unknown-freebsd`        |  ✓  |  ✓  |     | 32-bit FreeBSD             |
-| `x86_64-unknown-freebsd`      |  ✓  |  ✓  |     | 64-bit FreeBSD             |
+| `i686-unknown-freebsd`        |  ✓  |  ✓  |  ✓  | 32-bit FreeBSD             |
+| `x86_64-unknown-freebsd`      |  ✓  |  ✓  |  ✓  | 64-bit FreeBSD             |
 | `x86_64-unknown-openbsd`      |  ✓  |  ✓  |     | 64-bit OpenBSD             |
 | `x86_64-unknown-netbsd`       |  ✓  |  ✓  |     | 64-bit NetBSD              |
 | `x86_64-unknown-bitrig`       |  ✓  |  ✓  |     | 64-bit Bitrig              |
