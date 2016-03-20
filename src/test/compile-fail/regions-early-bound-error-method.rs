@@ -28,8 +28,7 @@ impl<'a> GetRef<'a> for Box<'a> {
 impl<'a> Box<'a> {
     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
         g2.get()
-        //~^ ERROR cannot infer an appropriate lifetime for automatic coercion due to
-        //~| ERROR mismatched types
+        //~^ ERROR mismatched types
         //~| expected `&'a isize`
         //~| found `&'b isize`
         //~| lifetime mismatch

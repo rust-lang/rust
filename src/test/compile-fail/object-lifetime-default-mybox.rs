@@ -34,8 +34,7 @@ fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
                 b: &'b MyBox<SomeTrait>)
                 -> &'b MyBox<SomeTrait>
 {
-    a
-      //~^ ERROR cannot infer
+    a //~ ERROR E0312
 }
 
 fn load2<'a>(ss: &MyBox<SomeTrait+'a>) -> MyBox<SomeTrait+'a> {

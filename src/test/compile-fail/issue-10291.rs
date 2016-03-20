@@ -11,8 +11,7 @@
 fn test<'x>(x: &'x isize) {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     drop::<Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
-        x
-        //~^ ERROR cannot infer an appropriate lifetime
+        x //~ ERROR E0312
     }));
 }
 
