@@ -1033,43 +1033,38 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || {
-                 io::set_panic(box err);
-                 f()
-             })
-             .unwrap()
-             .join() {
-        Ok(()) => {
-            // fallthrough
-        }
-        Err(value) => {
-            // Thread panicked without emitting a fatal diagnostic
-            if !value.is::<errors::FatalError>() {
-                let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+    let thread = cfg.spawn(move || {
+         io::set_panic(box err);
+         f()
+     });
 
-                // a .span_bug or .bug call has already printed what
-                // it wants to print.
-                if !value.is::<errors::ExplicitBug>() {
-                    emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
-                }
+     if let Err(value) = thread.unwrap().join() {
+        // Thread panicked without emitting a fatal diagnostic
+        if !value.is::<errors::FatalError>() {
+            let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
 
-                let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
-                          format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
-                for note in &xs {
-                    emitter.emit(None, &note[..], None, errors::Level::Note)
-                }
-                if let None = env::var_os("RUST_BACKTRACE") {
-                    emitter.emit(None,
-                                 "run with `RUST_BACKTRACE=1` for a backtrace",
-                                 None,
-                                 errors::Level::Note);
-                }
-
-                println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
+            // a .span_bug or .bug call has already printed what
+            // it wants to print.
+            if !value.is::<errors::ExplicitBug>() {
+                emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
             }
 
-            exit_on_err();
+            let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
+                      format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
+            for note in &xs {
+                emitter.emit(None, &note[..], None, errors::Level::Note)
+            }
+            if let None = env::var_os("RUST_BACKTRACE") {
+                emitter.emit(None,
+                             "run with `RUST_BACKTRACE=1` for a backtrace",
+                             None,
+                             errors::Level::Note);
+            }
+
+            println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
         }
+
+        exit_on_err();
     }
 }
 
