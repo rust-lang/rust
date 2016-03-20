@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use std::mem::size_of;
+use std::mem::{size_of, align_of};
 
 #[repr(i8)]
 enum Ei8 {
@@ -71,6 +71,24 @@ enum Euint {
     Buint = 1
 }
 
+#[repr(u8)]
+enum Eu8NonCLike<T> {
+    _None,
+    _Some(T),
+}
+
+#[repr(i64)]
+enum Ei64NonCLike<T> {
+    _None,
+    _Some(T),
+}
+
+#[repr(u64)]
+enum Eu64NonCLike<T> {
+    _None,
+    _Some(T),
+}
+
 pub fn main() {
     assert_eq!(size_of::<Ei8>(), 1);
     assert_eq!(size_of::<Eu8>(), 1);
@@ -82,4 +100,17 @@ pub fn main() {
     assert_eq!(size_of::<Eu64>(), 8);
     assert_eq!(size_of::<Eint>(), size_of::<isize>());
     assert_eq!(size_of::<Euint>(), size_of::<usize>());
+    assert_eq!(size_of::<Eu8NonCLike<()>>(), 1);
+    assert_eq!(size_of::<Ei64NonCLike<()>>(), 8);
+    assert_eq!(size_of::<Eu64NonCLike<()>>(), 8);
+    let u8_expected_size = round_up(9, align_of::<Eu64NonCLike<u8>>());
+    assert_eq!(size_of::<Eu64NonCLike<u8>>(), u8_expected_size);
+    let array_expected_size = round_up(28, align_of::<Eu64NonCLike<[u32; 5]>>());
+    assert_eq!(size_of::<Eu64NonCLike<[u32; 5]>>(), array_expected_size);
+    assert_eq!(size_of::<Eu64NonCLike<[u32; 6]>>(), 32);
+}
+
+// Rounds x up to the next multiple of a
+fn round_up(x: usize, a: usize) -> usize {
+    ((x + (a - 1)) / a) * a
 }
