@@ -3625,7 +3625,7 @@ fn show_candidates(session: &mut DiagnosticBuilder,
             if paths.len() == 1 {
                 session.fileline_help(
                     span,
-                    &format!("you can to import it into scope: `use {};`.",
+                    &format!("you can import it into scope: `use {};`.",
                         &path_strings[0]),
                 );
             } else {
