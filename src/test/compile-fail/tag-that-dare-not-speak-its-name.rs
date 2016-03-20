@@ -22,7 +22,7 @@ fn main() {
     let x : char = last(y);
     //~^ ERROR mismatched types
     //~| expected `char`
-    //~| found `core::option::Option<_>`
+    //~| found `std::option::Option<_>`
     //~| expected char
-    //~| found enum `core::option::Option`
+    //~| found enum `std::option::Option`
 }

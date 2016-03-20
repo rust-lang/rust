@@ -35,8 +35,8 @@ fn main() {
     let r1 = vec!(Box::new(r { i: i1 }));
     let r2 = vec!(Box::new(r { i: i2 }));
     f(clone(&r1), clone(&r2));
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type
-    //~^^ ERROR the trait `core::clone::Clone` is not implemented for the type
+    //~^ ERROR the trait `std::clone::Clone` is not implemented for the type
+    //~^^ ERROR the trait `std::clone::Clone` is not implemented for the type
     println!("{:?}", (r2, i1.get()));
     println!("{:?}", (r1, i2.get()));
 }

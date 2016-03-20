@@ -17,8 +17,8 @@ fn main() {
     let x = Some(&[name]);
     let msg = foo(x);
 //~^ ERROR mismatched types
-//~| expected `core::option::Option<&[&str]>`
-//~| found `core::option::Option<&[&str; 1]>`
+//~| expected `std::option::Option<&[&str]>`
+//~| found `std::option::Option<&[&str; 1]>`
 //~| expected slice
 //~| found array of 1 elements
     assert_eq!(msg, 3);

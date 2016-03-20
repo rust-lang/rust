@@ -27,16 +27,16 @@ fn test<T: Sync>(s: T) {}
 fn main() {
     let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0)});
     test(us);
-    //~^ ERROR `core::marker::Sync` is not implemented
+    //~^ ERROR `std::marker::Sync` is not implemented
 
     let uns = UnsafeCell::new(NoSync);
     test(uns);
-    //~^ ERROR `core::marker::Sync` is not implemented
+    //~^ ERROR `std::marker::Sync` is not implemented
 
     let ms = MySync{u: uns};
     test(ms);
-    //~^ ERROR `core::marker::Sync` is not implemented
+    //~^ ERROR `std::marker::Sync` is not implemented
 
     test(NoSync);
-    //~^ ERROR `core::marker::Sync` is not implemented
+    //~^ ERROR `std::marker::Sync` is not implemented
 }

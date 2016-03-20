@@ -31,7 +31,7 @@ impl<T:Clone> ToOpt for Option<T> {
 }
 
 fn function<T:ToOpt + Clone>(counter: usize, t: T) {
-//~^ ERROR reached the recursion limit while instantiating `function::<core::option::Option<
+//~^ ERROR reached the recursion limit while instantiating `function::<std::option::Option<
     if counter > 0 {
         function(counter - 1, t.to_option());
         // FIXME(#4287) Error message should be here. It should be

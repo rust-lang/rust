@@ -22,6 +22,6 @@ pub fn main() {
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];
     let range = *arr..;
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
-    //~| ERROR the trait `core::marker::Sized` is not implemented
+    //~^ ERROR the trait `std::marker::Sized` is not implemented
+    //~| ERROR the trait `std::marker::Sized` is not implemented
 }
