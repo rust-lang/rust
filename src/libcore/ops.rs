@@ -1448,7 +1448,6 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(stage0, lang = "range_full")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
@@ -1461,7 +1460,6 @@ impl fmt::Debug for RangeFull {
 
 /// A (half-open) range which is bounded at both ends.
 #[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(stage0, lang = "range")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1481,7 +1479,6 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 
 /// A range which is only bounded below.
 #[derive(Clone, PartialEq, Eq)]
-#[cfg_attr(stage0, lang = "range_from")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
@@ -1498,7 +1495,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
 
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
-#[cfg_attr(stage0, lang = "range_to")] // FIXME remove attribute after next snapshot
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
