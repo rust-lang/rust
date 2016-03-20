@@ -335,10 +335,10 @@ pub struct RustcDefaultCalls;
 fn handle_explain(code: &str,
                   descriptions: &diagnostics::registry::Registry,
                   output: ErrorOutputType) {
-    let normalised = if !code.starts_with("E") {
-        format!("E{0:0>4}", code)
-    } else {
+    let normalised = if code.starts_with("E") {
         code.to_string()
+    } else {
+        format!("E{0:0>4}", code)
     };
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
@@ -916,10 +916,10 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         if opt.stability == OptionStability::Stable {
             continue
         }
-        let opt_name = if !opt.opt_group.long_name.is_empty() {
-            &opt.opt_group.long_name
-        } else {
+        let opt_name = if opt.opt_group.long_name.is_empty() {
             &opt.opt_group.short_name
+        } else {
+            &opt.opt_group.long_name
         };
         if !matches.opt_present(opt_name) {
             continue
