@@ -290,7 +290,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             }
             // separate if lets to avoid double borrowing the def_map
             if let Some(id) = maybe_id {
-                if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, id, None, None) {
+                if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, id, None) {
                     let ret = self.expr(const_expr);
                     if ret.is_some() {
                         self.needed_resolution = true;

@@ -332,8 +332,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(a);
                 self.hash_expr(i);
             }
-            ExprInlineAsm(_) => {
-                let c: fn(_) -> _ = ExprInlineAsm;
+            ExprInlineAsm(..) => {
+                let c: fn(_, _, _) -> _ = ExprInlineAsm;
                 c.hash(&mut self.s);
             }
             ExprIf(ref cond, ref t, ref e) => {
