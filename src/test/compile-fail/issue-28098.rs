@@ -10,13 +10,13 @@
 
 fn main() {
     let _ = Iterator::next(&mut ());
-    //~^ ERROR the trait `core::iter::Iterator` is not implemented
+    //~^ ERROR the trait `std::iter::Iterator` is not implemented
 
     for _ in false {}
-    //~^ ERROR the trait `core::iter::Iterator` is not implemented
+    //~^ ERROR the trait `std::iter::Iterator` is not implemented
 
     let _ = Iterator::next(&mut ());
-    //~^ ERROR the trait `core::iter::Iterator` is not implemented
+    //~^ ERROR the trait `std::iter::Iterator` is not implemented
 
     other()
 }
@@ -25,11 +25,11 @@ pub fn other() {
     // check errors are still reported globally
 
     let _ = Iterator::next(&mut ());
-    //~^ ERROR the trait `core::iter::Iterator` is not implemented
+    //~^ ERROR the trait `std::iter::Iterator` is not implemented
 
     let _ = Iterator::next(&mut ());
-    //~^ ERROR the trait `core::iter::Iterator` is not implemented
+    //~^ ERROR the trait `std::iter::Iterator` is not implemented
 
     for _ in false {}
-    //~^ ERROR the trait `core::iter::Iterator` is not implemented
+    //~^ ERROR the trait `std::iter::Iterator` is not implemented
 }

@@ -16,9 +16,9 @@ fn foo(x: Whatever) {
         Some(field) =>
 //~^ ERROR mismatched types
 //~| expected `Whatever`
-//~| found `core::option::Option<_>`
+//~| found `std::option::Option<_>`
 //~| expected enum `Whatever`
-//~| found enum `core::option::Option`
+//~| found enum `std::option::Option`
             field.access(), //~ ERROR the type of this value must be known in this context
     }
 }

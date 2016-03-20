@@ -10,5 +10,5 @@
 
 fn main() {
     format!("{:X}", "3");
-    //~^ ERROR: the trait `core::fmt::UpperHex` is not implemented
+    //~^ ERROR: the trait `std::fmt::UpperHex` is not implemented
 }

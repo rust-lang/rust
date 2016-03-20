@@ -11,7 +11,7 @@
 type FuncType<'f> = Fn(&isize) -> isize + 'f;
 
 fn ho_func(f: Option<FuncType>) {
-    //~^ ERROR: the trait `core::marker::Sized` is not implemented for the type
+    //~^ ERROR: the trait `std::marker::Sized` is not implemented for the type
 }
 
 fn main() {}

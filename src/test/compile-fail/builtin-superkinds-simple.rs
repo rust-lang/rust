@@ -14,6 +14,6 @@
 trait Foo : Send { }
 
 impl Foo for std::rc::Rc<i8> { }
-//~^ ERROR the trait `core::marker::Send` is not implemented
+//~^ ERROR the trait `std::marker::Send` is not implemented
 
 fn main() { }
