@@ -9,7 +9,7 @@ use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, sa
 /// **What it does:** This lints about type with a `fn new() -> Self` method and no `Default`
 /// implementation.
 ///
-/// **Why is this bad?** User might expect to be able to use `Default` is the type can be
+/// **Why is this bad?** User might expect to be able to use `Default` as the type can be
 /// constructed without arguments.
 ///
 /// **Known problems:** Hopefully none.
