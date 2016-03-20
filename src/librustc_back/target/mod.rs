@@ -40,8 +40,8 @@
 //! this module defines the format the JSON file should take, though each
 //! underscore in the field names should be replaced with a hyphen (`-`) in the
 //! JSON file. Some fields are required in every target specification, such as
-//! `data-layout`, `llvm-target`, `target-endian`, `target-pointer-width`, and
-//! `arch`. In general, options passed to rustc with `-C` override the target's
+//! `llvm-target`, `target-endian`, `target-pointer-width`, `arch`, and
+//! `os`. In general, options passed to rustc with `-C` override the target's
 //! settings, though `target-feature` and `link-args` will *add* to the list
 //! specified by the target, rather than replace.
 
