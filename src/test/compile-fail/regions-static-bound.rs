@@ -13,7 +13,7 @@ fn static_id<'a,'b>(t: &'a ()) -> &'static ()
 fn static_id_indirect<'a,'b>(t: &'a ()) -> &'static ()
     where 'a: 'b, 'b: 'static { t }
 fn static_id_wrong_way<'a>(t: &'a ()) -> &'static () where 'static: 'a {
-    t //~ ERROR cannot infer an appropriate lifetime
+    t //~ ERROR E0312
 }
 
 fn error(u: &(), v: &()) {

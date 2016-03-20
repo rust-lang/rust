@@ -68,6 +68,7 @@ use super::region_inference::SubSupConflict;
 use super::region_inference::GenericBoundFailure;
 use super::region_inference::GenericKind;
 use super::region_inference::ProcessedErrors;
+use super::region_inference::ProcessedErrorOrigin;
 use super::region_inference::SameRegions;
 
 use std::collections::HashSet;
@@ -232,7 +233,7 @@ pub trait ErrorReporting<'tcx> {
                             errors: &Vec<RegionResolutionError<'tcx>>);
 
     fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
-                      -> Vec<RegionResolutionError<'tcx>>;
+                      -> Option<Vec<RegionResolutionError<'tcx>>>;
 
     fn report_type_error(&self,
                          trace: TypeTrace<'tcx>,
@@ -246,7 +247,8 @@ pub trait ErrorReporting<'tcx> {
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &TypeError<'tcx>);
+                                     terr: &TypeError<'tcx>)
+                                     -> DiagnosticBuilder<'tcx>;
 
     fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
 
@@ -258,7 +260,8 @@ pub trait ErrorReporting<'tcx> {
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin<'tcx>,
                                sub: Region,
-                               sup: Region);
+                               sup: Region)
+                                -> DiagnosticBuilder<'tcx>;
 
     fn report_generic_bound_failure(&self,
                                     origin: SubregionOrigin<'tcx>,
@@ -273,8 +276,7 @@ pub trait ErrorReporting<'tcx> {
                                sup_region: Region);
 
     fn report_processed_errors(&self,
-                               var_origin: &[RegionVariableOrigin],
-                               trace_origin: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
+                               origins: &[ProcessedErrorOrigin<'tcx>],
                                same_regions: &[SameRegions]);
 
     fn give_suggestion(&self, err: &mut DiagnosticBuilder, same_regions: &[SameRegions]);
@@ -303,12 +305,19 @@ trait ErrorReportingHelpers<'tcx> {
 impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_region_errors(&self,
                             errors: &Vec<RegionResolutionError<'tcx>>) {
-        let p_errors = self.process_errors(errors);
-        let errors = if p_errors.is_empty() { errors } else { &p_errors };
+        debug!("report_region_errors(): {} errors to start", errors.len());
+
+        // try to pre-process the errors, which will group some of them
+        // together into a `ProcessedErrors` group:
+        let processed_errors = self.process_errors(errors);
+        let errors = processed_errors.as_ref().unwrap_or(errors);
+
+        debug!("report_region_errors: {} errors after preprocessing", errors.len());
+
         for error in errors {
             match error.clone() {
                 ConcreteFailure(origin, sub, sup) => {
-                    self.report_concrete_failure(origin, sub, sup);
+                    self.report_concrete_failure(origin, sub, sup).emit();
                 }
 
                 GenericBoundFailure(kind, param_ty, sub) => {
@@ -323,13 +332,10 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                                  sup_origin, sup_r);
                 }
 
-                ProcessedErrors(ref var_origins,
-                                ref trace_origins,
+                ProcessedErrors(ref origins,
                                 ref same_regions) => {
                     if !same_regions.is_empty() {
-                        self.report_processed_errors(&var_origins[..],
-                                                     &trace_origins[..],
-                                                     &same_regions[..]);
+                        self.report_processed_errors(origins, same_regions);
                     }
                 }
             }
@@ -341,46 +347,73 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     // parameters to the user. This is done so that we can have a more
     // complete view of what lifetimes should be the same.
     // If the return value is an empty vector, it means that processing
-    // failed (so the return value of this method should not be used)
+    // failed (so the return value of this method should not be used).
+    //
+    // The method also attempts to weed out messages that seem like
+    // duplicates that will be unhelpful to the end-user. But
+    // obviously it never weeds out ALL errors.
     fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
-                      -> Vec<RegionResolutionError<'tcx>> {
+                      -> Option<Vec<RegionResolutionError<'tcx>>> {
         debug!("process_errors()");
-        let mut var_origins = Vec::new();
-        let mut trace_origins = Vec::new();
+        let mut origins = Vec::new();
+
+        // we collect up ConcreteFailures and SubSupConflicts that are
+        // relating free-regions bound on the fn-header and group them
+        // together into this vector
         let mut same_regions = Vec::new();
-        let mut processed_errors = Vec::new();
+
+        // here we put errors that we will not be able to process nicely
+        let mut other_errors = Vec::new();
+
+        // we collect up GenericBoundFailures in here.
+        let mut bound_failures = Vec::new();
+
         for error in errors {
-            match error.clone() {
-                ConcreteFailure(origin, sub, sup) => {
+            match *error {
+                ConcreteFailure(ref origin, sub, sup) => {
                     debug!("processing ConcreteFailure");
-                    let trace = match origin {
-                        infer::Subtype(trace) => Some(trace),
-                        _ => None,
-                    };
                     match free_regions_from_same_fn(self.tcx, sub, sup) {
-                        Some(ref same_frs) if trace.is_some() => {
-                            let trace = trace.unwrap();
-                            let terr = TypeError::RegionsDoesNotOutlive(sup,
-                                                                        sub);
-                            trace_origins.push((trace, terr));
+                        Some(ref same_frs) => {
+                            origins.push(
+                                ProcessedErrorOrigin::ConcreteFailure(
+                                    origin.clone(),
+                                    sub,
+                                    sup));
                             append_to_same_regions(&mut same_regions, same_frs);
                         }
-                        _ => processed_errors.push((*error).clone()),
+                        _ => {
+                            other_errors.push(error.clone());
+                        }
                     }
                 }
-                SubSupConflict(var_origin, _, sub_r, _, sup_r) => {
+                SubSupConflict(ref var_origin, _, sub_r, _, sup_r) => {
                     debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub_r, sup_r);
                     match free_regions_from_same_fn(self.tcx, sub_r, sup_r) {
                         Some(ref same_frs) => {
-                            var_origins.push(var_origin);
+                            origins.push(
+                                ProcessedErrorOrigin::VariableFailure(
+                                    var_origin.clone()));
                             append_to_same_regions(&mut same_regions, same_frs);
                         }
-                        None => processed_errors.push((*error).clone()),
+                        None => {
+                            other_errors.push(error.clone());
+                        }
                     }
                 }
-                _ => ()  // This shouldn't happen
+                GenericBoundFailure(ref origin, ref kind, region) => {
+                    bound_failures.push((origin.clone(), kind.clone(), region));
+                }
+                ProcessedErrors(..) => {
+                    panic!("should not encounter a `ProcessedErrors` yet: {:?}", error)
+                }
             }
         }
+
+        // ok, let's pull together the errors, sorted in an order that
+        // we think will help user the best
+        let mut processed_errors = vec![];
+
+        // first, put the processed errors, if any
         if !same_regions.is_empty() {
             let common_scope_id = same_regions[0].scope_id;
             for sr in &same_regions {
@@ -390,16 +423,39 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 if sr.scope_id != common_scope_id {
                     debug!("returning empty result from process_errors because
                             {} != {}", sr.scope_id, common_scope_id);
-                    return vec!();
+                    return None;
                 }
             }
-            let pe = ProcessedErrors(var_origins, trace_origins, same_regions);
+            assert!(origins.len() > 0);
+            let pe = ProcessedErrors(origins, same_regions);
             debug!("errors processed: {:?}", pe);
             processed_errors.push(pe);
         }
-        return processed_errors;
 
+        // next, put the other misc errors
+        processed_errors.extend(other_errors);
 
+        // finally, put the `T: 'a` errors, but only if there were no
+        // other errors. otherwise, these have a very high rate of
+        // being unhelpful in practice. This is because they are
+        // basically secondary checks that test the state of the
+        // region graph after the rest of inference is done, and the
+        // other kinds of errors indicate that the region constraint
+        // graph is internally inconsistent, so these test results are
+        // likely to be meaningless.
+        if processed_errors.is_empty() {
+            for (origin, kind, region) in bound_failures {
+                processed_errors.push(GenericBoundFailure(origin, kind, region));
+            }
+        }
+
+        // we should always wind up with SOME errors, unless there were no
+        // errors to start
+        assert!(if errors.len() > 0 {processed_errors.len() > 0} else {true});
+
+        return Some(processed_errors);
+
+        #[derive(Debug)]
         struct FreeRegionsFromSameFn {
             sub_fr: ty::FreeRegion,
             sup_fr: ty::FreeRegion,
@@ -459,11 +515,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
         fn append_to_same_regions(same_regions: &mut Vec<SameRegions>,
                                   same_frs: &FreeRegionsFromSameFn) {
+            debug!("append_to_same_regions(same_regions={:?}, same_frs={:?})",
+                   same_regions, same_frs);
             let scope_id = same_frs.scope_id;
             let (sub_fr, sup_fr) = (same_frs.sub_fr, same_frs.sup_fr);
-            for sr in &mut *same_regions {
-                if sr.contains(&sup_fr.bound_region)
-                   && scope_id == sr.scope_id {
+            for sr in same_regions.iter_mut() {
+                if sr.contains(&sup_fr.bound_region) && scope_id == sr.scope_id {
                     sr.push(sub_fr.bound_region);
                     return
                 }
@@ -569,11 +626,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
-                                     terr: &TypeError<'tcx>) {
+                                     terr: &TypeError<'tcx>)
+                                     -> DiagnosticBuilder<'tcx> {
         let span = trace.origin.span();
         let mut err = self.report_type_error(trace, terr);
         self.tcx.note_and_explain_type_err(&mut err, terr, span);
-        err.emit();
+        err
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`", or None if this is a derived
@@ -678,11 +736,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin<'tcx>,
                                sub: Region,
-                               sup: Region) {
+                               sup: Region)
+                                -> DiagnosticBuilder<'tcx> {
         match origin {
             infer::Subtype(trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
-                self.report_and_explain_type_error(trace, &terr);
+                self.report_and_explain_type_error(trace, &terr)
             }
             infer::Reborrow(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0312,
@@ -696,7 +755,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "...but the borrowed content is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0313,
@@ -712,7 +771,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                              self.tcx.local_var_name_str(upvar_id.var_id)),
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::InfStackClosure(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0314,
@@ -725,7 +784,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "...but the closure's stack frame is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::InvokeClosure(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0315,
@@ -734,7 +793,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the closure is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::DerefPointer(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0473,
@@ -743,7 +802,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the reference is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::FreeVariable(span, id) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0474,
@@ -757,7 +816,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "closure is valid for ",
                     sub,
                     "");
-                err.emit();
+                err
             }
             infer::IndexSlice(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0475,
@@ -766,7 +825,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the slice is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::RelateObjectBound(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0476,
@@ -780,7 +839,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "source pointer is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::RelateParamBound(span, ty) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0477,
@@ -790,7 +849,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                         "type must outlive ",
                                         sub,
                                         "");
-                err.emit();
+                err
             }
             infer::RelateRegionParamBound(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0478,
@@ -803,7 +862,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "but lifetime parameter must outlive ",
                     sub,
                     "");
-                err.emit();
+                err
             }
             infer::RelateDefaultParamBound(span, ty) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0479,
@@ -814,7 +873,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                         "type must outlive ",
                                         sub,
                                         "");
-                err.emit();
+                err
             }
             infer::CallRcvr(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0480,
@@ -824,7 +883,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the receiver is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::CallArg(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0481,
@@ -834,7 +893,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the function argument is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::CallReturn(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0482,
@@ -844,7 +903,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the return value is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::Operand(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0483,
@@ -854,7 +913,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the operand is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::AddrOf(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0484,
@@ -863,7 +922,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the borrow is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::AutoBorrow(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0485,
@@ -873,7 +932,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the automatic borrow is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::ExprTypeIsNotInScope(t, span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0486,
@@ -884,7 +943,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "type is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::SafeDestructor(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0487,
@@ -899,7 +958,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "subregion: ",
                     sub,
                     "");
-                err.emit();
+                err
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0488,
@@ -908,7 +967,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the variable is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
             infer::ParameterInScope(_, span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0489,
@@ -917,7 +976,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "the parameter is only valid for ",
                     sub,
                     "");
-                err.emit();
+                err
             }
             infer::DataBorrowed(ty, span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0490,
@@ -925,7 +984,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                           self.ty_to_string(ty));
                 self.tcx.note_and_explain_region(&mut err, "the type is valid for ", sub, "");
                 self.tcx.note_and_explain_region(&mut err, "but the borrow lasts for ", sup, "");
-                err.emit();
+                err
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0491,
@@ -940,7 +999,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "but the referenced data is only valid for ",
                     sup,
                     "");
-                err.emit();
+                err
             }
         }
     }
@@ -970,19 +1029,22 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     }
 
     fn report_processed_errors(&self,
-                               var_origins: &[RegionVariableOrigin],
-                               trace_origins: &[(TypeTrace<'tcx>, TypeError<'tcx>)],
+                               origins: &[ProcessedErrorOrigin<'tcx>],
                                same_regions: &[SameRegions]) {
-        for (i, vo) in var_origins.iter().enumerate() {
-            let mut err = self.report_inference_failure(vo.clone());
-            if i == var_origins.len() - 1 {
+        for (i, origin) in origins.iter().enumerate() {
+            let mut err = match *origin {
+                ProcessedErrorOrigin::VariableFailure(ref var_origin) =>
+                    self.report_inference_failure(var_origin.clone()),
+                ProcessedErrorOrigin::ConcreteFailure(ref sr_origin, sub, sup) =>
+                    self.report_concrete_failure(sr_origin.clone(), sub, sup),
+            };
+
+            // attach the suggestion to the last such error
+            if i == origins.len() - 1 {
                 self.give_suggestion(&mut err, same_regions);
             }
-            err.emit();
-        }
 
-        for &(ref trace, ref terr) in trace_origins {
-            self.report_and_explain_type_error(trace.clone(), terr);
+            err.emit();
         }
     }
 
