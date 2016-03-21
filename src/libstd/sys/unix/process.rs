@@ -335,7 +335,7 @@ impl Command {
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
     unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
-        macro_rules! try {
+        macro_rules! t {
             ($e:expr) => (match $e {
                 Ok(e) => e,
                 Err(e) => return e,
@@ -343,17 +343,17 @@ impl Command {
         }
 
         if let Some(fd) = stdio.stdin.fd() {
-            cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
+            t!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
         }
         if let Some(fd) = stdio.stdout.fd() {
-            cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO))?;
+            t!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
         }
         if let Some(fd) = stdio.stderr.fd() {
-            cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
+            t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
         }
 
         if let Some(u) = self.gid {
-            cvt(libc::setgid(u as gid_t))?;
+            t!(cvt(libc::setgid(u as gid_t)));
         }
         if let Some(u) = self.uid {
             // When dropping privileges from root, the `setgroups` call
@@ -365,7 +365,7 @@ impl Command {
             // privilege dropping function.
             let _ = libc::setgroups(0, ptr::null());
 
-            cvt(libc::setuid(u as uid_t))?;
+            t!(cvt(libc::setuid(u as uid_t)));
         }
         if self.session_leader {
             // Don't check the error of setsid because it fails if we're the
@@ -374,7 +374,7 @@ impl Command {
             let _ = libc::setsid();
         }
         if let Some(ref cwd) = self.cwd {
-            cvt(libc::chdir(cwd.as_ptr()))?;
+            t!(cvt(libc::chdir(cwd.as_ptr())));
         }
         if let Some(ref envp) = self.envp {
             *sys::os::environ() = envp.as_ptr();
@@ -390,9 +390,9 @@ impl Command {
             // need to clean things up now to avoid confusing the program
             // we're about to run.
             let mut set: libc::sigset_t = mem::uninitialized();
-            cvt(libc::sigemptyset(&mut set))?;
-            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
-                                           ptr::null_mut()))?;
+            t!(cvt(libc::sigemptyset(&mut set)));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
+                                           ptr::null_mut())));
             let ret = libc::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
                 return io::Error::last_os_error()
@@ -400,7 +400,7 @@ impl Command {
         }
 
         for callback in self.closures.iter_mut() {
-            callback()?;
+            t!(callback());
         }
 
         libc::execvp(self.argv[0], self.argv.as_ptr());
