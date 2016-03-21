@@ -159,7 +159,7 @@ pub fn run_compiler<'a>(args: &[String],
         }
     }}
 
-    let matches = match handle_options(args) {
+    let matches = match handle_options(args.to_vec()) {
         Some(matches) => matches,
         None => return (Ok(()), None),
     };
@@ -870,15 +870,25 @@ fn print_flag_list<T>(cmdline_opt: &str,
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
+pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
-    let args = &args[1..];
+    let _binary = args.remove(0);
 
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
         usage(false, false);
         return None;
+    }
+
+    // Replace -O and -g with their equivalent -C options.
+    for i in 0..args.len() {
+        if args[i] == "-O" {
+            args[i] = "-Copt-level=2".to_string();
+        }
+        if args[i] == "-g" {
+            args[i] = "-Cdebuginfo=2".to_string();
+        }
     }
 
     // Parse with *all* options defined in the compiler, we don't worry about

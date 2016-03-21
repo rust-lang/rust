@@ -1113,42 +1113,30 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let target = matches.opt_str("target").unwrap_or(
         host_triple().to_string());
     let opt_level = {
-        if matches.opt_present("O") {
-            if cg.opt_level.is_some() {
-                early_error(error_format, "-O and -C opt-level both provided");
-            }
-            OptLevel::Default
-        } else {
-            match cg.opt_level {
-                None => OptLevel::No,
-                Some(0) => OptLevel::No,
-                Some(1) => OptLevel::Less,
-                Some(2) => OptLevel::Default,
-                Some(3) => OptLevel::Aggressive,
-                Some(arg) => {
-                    early_error(error_format, &format!("optimization level needs to be \
-                                                      between 0-3 (instead was `{}`)",
-                                                     arg));
-                }
+        match cg.opt_level {
+            None => OptLevel::No,
+            Some(0) => OptLevel::No,
+            Some(1) => OptLevel::Less,
+            Some(2) => OptLevel::Default,
+            Some(3) => OptLevel::Aggressive,
+            Some(arg) => {
+                early_error(error_format, &format!("optimization level needs to be \
+                                                    between 0-3 (instead was `{}`)",
+                                                   arg));
             }
         }
     };
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let gc = debugging_opts.gc;
-    let debuginfo = if matches.opt_present("g") {
-        if cg.debuginfo.is_some() {
-            early_error(error_format, "-g and -C debuginfo both provided");
-        }
-        FullDebugInfo
-    } else {
+    let debuginfo = {
         match cg.debuginfo {
             None | Some(0) => NoDebugInfo,
             Some(1) => LimitedDebugInfo,
             Some(2) => FullDebugInfo,
             Some(arg) => {
                 early_error(error_format, &format!("debug info level needs to be between \
-                                                  0-2 (instead was `{}`)",
-                                                 arg));
+                                                    0-2 (instead was `{}`)",
+                                                   arg));
             }
         }
     };
