@@ -92,38 +92,38 @@ fn main() {
         println!("Nor should this!");
     }
 
-    let hie = HasIsEmpty;
-    if hie.len() == 0 {
+    let has_is_empty = HasIsEmpty;
+    if has_is_empty.len() == 0 {
         //~^ERROR length comparison to zero
         //~|HELP consider using `is_empty`
-        //~|SUGGESTION hie.is_empty()
+        //~|SUGGESTION has_is_empty.is_empty()
         println!("Or this!");
     }
-    if hie.len() != 0 {
+    if has_is_empty.len() != 0 {
         //~^ERROR length comparison to zero
         //~|HELP consider using `is_empty`
-        //~|SUGGESTION !hie.is_empty()
+        //~|SUGGESTION !has_is_empty.is_empty()
         println!("Or this!");
     }
-    if hie.len() > 0 {
+    if has_is_empty.len() > 0 {
         //~^ERROR length comparison to zero
         //~|HELP consider using `is_empty`
-        //~|SUGGESTION !hie.is_empty()
+        //~|SUGGESTION !has_is_empty.is_empty()
         println!("Or this!");
     }
-    assert!(!hie.is_empty());
+    assert!(!has_is_empty.is_empty());
 
-    let wie : &WithIsEmpty = &Wither;
-    if wie.len() == 0 {
+    let with_is_empty: &WithIsEmpty = &Wither;
+    if with_is_empty.len() == 0 {
         //~^ERROR length comparison to zero
         //~|HELP consider using `is_empty`
-        //~|SUGGESTION wie.is_empty()
+        //~|SUGGESTION with_is_empty.is_empty()
         println!("Or this!");
     }
-    assert!(!wie.is_empty());
+    assert!(!with_is_empty.is_empty());
 
-    let hwie = HasWrongIsEmpty;
-    if hwie.len() == 0 { //no error as HasWrongIsEmpty does not have .is_empty()
+    let has_wrong_is_empty = HasWrongIsEmpty;
+    if has_wrong_is_empty.len() == 0 { //no error as HasWrongIsEmpty does not have .is_empty()
         println!("Or this!");
     }
 }

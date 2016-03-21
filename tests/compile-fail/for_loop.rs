@@ -88,7 +88,8 @@ impl Unrelated {
 
 #[deny(needless_range_loop, explicit_iter_loop, iter_next_loop, reverse_range_loop, explicit_counter_loop)]
 #[deny(unused_collect)]
-#[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity)]
+#[allow(linkedlist, shadow_unrelated, unnecessary_mut_passed, cyclomatic_complexity, similar_names)]
+#[allow(many_single_char_names)]
 fn main() {
     const MAX_LEN: usize = 42;
 

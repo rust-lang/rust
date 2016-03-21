@@ -638,7 +638,7 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
         Lt,
         Le,
     };
-    let (rel, lhs2, rhs2) = match op {
+    let (rel, normalized_lhs, normalized_rhs) = match op {
         BiLt => (Rel::Lt, lhs, rhs),
         BiLe => (Rel::Le, lhs, rhs),
         BiGt => (Rel::Lt, rhs, lhs),
@@ -646,8 +646,8 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
         _ => return None,
     };
 
-    let lx = detect_extreme_expr(cx, lhs2);
-    let rx = detect_extreme_expr(cx, rhs2);
+    let lx = detect_extreme_expr(cx, normalized_lhs);
+    let rx = detect_extreme_expr(cx, normalized_rhs);
 
     Some(match rel {
         Rel::Lt => {

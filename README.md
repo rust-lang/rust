@@ -14,7 +14,7 @@ Table of contents:
 * [License](#license)
 
 ##Lints
-There are 136 lints included in this crate:
+There are 138 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -74,6 +74,7 @@ name                                                                            
 [let_unit_value](https://github.com/Manishearth/rust-clippy/wiki#let_unit_value)                                     | warn    | creating a let binding to a value of unit type, which usually can't be used afterwards
 [linkedlist](https://github.com/Manishearth/rust-clippy/wiki#linkedlist)                                             | warn    | usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque
 [manual_swap](https://github.com/Manishearth/rust-clippy/wiki#manual_swap)                                           | warn    | manual swap
+[many_single_char_names](https://github.com/Manishearth/rust-clippy/wiki#many_single_char_names)                     | warn    | too many single character bindings
 [map_clone](https://github.com/Manishearth/rust-clippy/wiki#map_clone)                                               | warn    | using `.map(|x| x.clone())` to clone an iterator or option's contents (recommends `.cloned()` instead)
 [map_entry](https://github.com/Manishearth/rust-clippy/wiki#map_entry)                                               | warn    | use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`
 [match_bool](https://github.com/Manishearth/rust-clippy/wiki#match_bool)                                             | warn    | a match on boolean expression; recommends `if..else` block instead
@@ -119,6 +120,7 @@ name                                                                            
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                                           | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                                 | allow   | The name is re-bound without even using the original value
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)                     | warn    | defining a method that should be implementing a std trait
+[similar_names](https://github.com/Manishearth/rust-clippy/wiki#similar_names)                                       | warn    | similarly named items and bindings
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                           | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                               | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead

@@ -3,6 +3,7 @@
 #![feature(rustc_private, collections)]
 #![feature(iter_arith)]
 #![feature(custom_attribute)]
+#![feature(slice_patterns)]
 #![allow(indexing_slicing, shadow_reuse, unknown_lints)]
 
 // this only exists to allow the "dogfood" integration test to work
@@ -84,6 +85,7 @@ pub mod needless_features;
 pub mod needless_update;
 pub mod new_without_default;
 pub mod no_effect;
+pub mod non_expressive_names;
 pub mod open_options;
 pub mod overflow_check_conditional;
 pub mod panic;
@@ -200,6 +202,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box types::CharLitAsU8);
     reg.register_late_lint_pass(box print::PrintLint);
     reg.register_late_lint_pass(box vec::UselessVec);
+    reg.register_early_lint_pass(box non_expressive_names::NonExpressiveNames {
+        max_single_char_names: conf.max_single_char_names,
+    });
     reg.register_late_lint_pass(box drop_ref::DropRefPass);
     reg.register_late_lint_pass(box types::AbsurdExtremeComparisons);
     reg.register_late_lint_pass(box regex::RegexPass::default());
@@ -326,6 +331,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         needless_update::NEEDLESS_UPDATE,
         new_without_default::NEW_WITHOUT_DEFAULT,
         no_effect::NO_EFFECT,
+        non_expressive_names::MANY_SINGLE_CHAR_NAMES,
+        non_expressive_names::SIMILAR_NAMES,
         open_options::NONSENSICAL_OPEN_OPTIONS,
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         panic::PANIC_PARAMS,
