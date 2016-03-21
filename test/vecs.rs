@@ -9,7 +9,7 @@ fn make_vec() -> Vec<i32> {
     v
 }
 
-// #[miri_run]
-// fn make_vec_macro() -> Vec<i32> {
-//     vec![1, 2]
-// }
+#[miri_run]
+fn make_vec_macro() -> Vec<i32> {
+    vec![1, 2]
+}
