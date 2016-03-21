@@ -1685,6 +1685,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                     for (j, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                         let dst = StructGEP(bcx, llval, j);
                         let arg = &self.fn_ty.args[idx];
+                        idx += 1;
                         let b = &bcx.build();
                         if common::type_is_fat_ptr(bcx.tcx(), tupled_arg_ty) {
                             let meta = &self.fn_ty.args[idx];
