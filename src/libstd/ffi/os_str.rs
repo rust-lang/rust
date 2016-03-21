@@ -173,7 +173,7 @@ impl ops::Deref for OsString {
     }
 }
 
-#[stable(feature = "rust1", since = "1.9.0")]
+#[stable(feature = "osstring_default", since = "1.9.0")]
 impl Default for OsString {
     #[inline]
     fn default() -> OsString {
@@ -310,11 +310,11 @@ impl OsStr {
     }
 }
 
-#[stable(feature = "rust1", since = "1.9.0")]
+#[stable(feature = "osstring_default", since = "1.9.0")]
 impl<'a> Default for &'a OsStr {
     #[inline]
     fn default() -> &'a OsStr {
-        ""
+        OsStr::new("")
     }
 }
 
