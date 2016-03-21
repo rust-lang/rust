@@ -49,12 +49,11 @@ pub fn get_or_insert_link_guard<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>)
     }
 
     let llfty = Type::func(&[], &Type::void(ccx));
-    let guard_function = declare::define_cfn(ccx,
-                                             &guard_name[..],
-                                             llfty,
-                                             ccx.tcx().mk_nil()).unwrap_or_else(|| {
-        ccx.sess().bug("Link guard already defined.");
-    });
+    if declare::get_defined_value(ccx, &guard_name[..]).is_some() {
+        ccx.sess().bug(
+            &format!("Link guard already defined"));
+    }
+    let guard_function = declare::declare_cfn(ccx, &guard_name[..], llfty);
 
     attributes::emit_uwtable(guard_function, true);
     attributes::unwind(guard_function, false);
@@ -76,10 +75,12 @@ pub fn get_or_insert_link_guard<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>)
 
             let dependency_guard_name = link_guard_name(&crate_name[..], &svh);
 
-            let decl = declare::declare_cfn(ccx,
-                                            &dependency_guard_name[..],
-                                            llfty,
-                                            ccx.tcx().mk_nil());
+            if declare::get_defined_value(ccx, &dependency_guard_name[..]).is_some() {
+                ccx.sess().bug(
+                    &format!("Link guard already defined for dependency `{}`",
+                             crate_name));
+            }
+            let decl = declare::declare_cfn(ccx, &dependency_guard_name[..], llfty);
             attributes::unwind(decl, false);
 
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);

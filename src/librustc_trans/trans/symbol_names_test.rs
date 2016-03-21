@@ -21,6 +21,7 @@ use rustc_front::intravisit::{self, Visitor};
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use trans::common::CrateContext;
+use trans::monomorphize::Instance;
 
 const SYMBOL_NAME: &'static str = "rustc_symbol_name";
 const ITEM_PATH: &'static str = "rustc_item_path";
@@ -50,8 +51,9 @@ impl<'a, 'tcx> SymbolNamesTest<'a, 'tcx> {
         let def_id = self.tcx.map.local_def_id(node_id);
         for attr in self.tcx.get_attrs(def_id).iter() {
             if attr.check_name(SYMBOL_NAME) {
-                // for now, just monomorphic names
-                let name = symbol_names::exported_name(self.ccx, def_id, &[]);
+                // for now, can only use on monomorphic names
+                let instance = Instance::mono(self.tcx, def_id);
+                let name = symbol_names::exported_name(self.ccx, &instance);
                 self.tcx.sess.span_err(attr.span, &format!("symbol-name({})", name));
             } else if attr.check_name(ITEM_PATH) {
                 let path = self.tcx.item_path_str(def_id);
