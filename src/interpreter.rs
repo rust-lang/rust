@@ -14,6 +14,7 @@ use std::iter;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax::ast;
+use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 
 use error::{EvalError, EvalResult};
@@ -248,6 +249,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 }
                             }
 
+                            Abi::C =>
+                                try!(self.call_c_abi(def_id, args, return_ptr.unwrap())),
+
                             Abi::Rust | Abi::RustCall => {
                                 // TODO(tsion): Adjust the first argument when calling a Fn or
                                 // FnMut closure via FnOnce::call_once.
@@ -295,7 +299,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 TerminatorTarget::Call
                             }
 
-                            abi => panic!("can't handle function with ABI {:?}", abi),
+                            abi => panic!("can't handle function with {:?} ABI", abi),
                         }
                     }
 
@@ -397,9 +401,38 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.copy(src, dest, dest_size));
             }
 
+            // TODO(tsion): Mark bytes as undef.
             "uninit" => {}
 
             name => panic!("can't handle intrinsic: {}", name),
+        }
+
+        // Since we pushed no stack frame, the main loop will act
+        // as if the call just completed and it's returning to the
+        // current frame.
+        Ok(TerminatorTarget::Call)
+    }
+
+    fn call_c_abi(&mut self, def_id: DefId, args: &[mir::Operand<'tcx>], dest: Pointer)
+        -> EvalResult<TerminatorTarget>
+    {
+        let name = self.tcx.item_name(def_id);
+        let attrs = self.tcx.get_attrs(def_id);
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
+            Some(ln) => ln.clone(),
+            None => name.as_str(),
+        };
+
+        match &link_name[..] {
+            "__rust_allocate" => {
+                let size_arg  = try!(self.eval_operand(&args[0]));
+                let _align_arg = try!(self.eval_operand(&args[1]));
+                let size = try!(self.memory.read_uint(size_arg, self.memory.pointer_size));
+                let ptr = self.memory.allocate(size as usize);
+                try!(self.memory.write_ptr(dest, ptr));
+            }
+
+            _ => panic!("can't call C ABI function: {}", link_name),
         }
 
         // Since we pushed no stack frame, the main loop will act
