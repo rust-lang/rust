@@ -117,11 +117,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
 
         'outer: while !self.stack.is_empty() {
-            let mut current_block = self.current_frame().next_block;
+            let mut current_block = self.frame().next_block;
 
             loop {
                 print_trace(&current_block, ":", self.stack.len());
-                let current_mir = self.current_frame().mir.clone(); // Cloning a reference.
+                let current_mir = self.mir().clone(); // Cloning a reference.
                 let block_data = current_mir.basic_block_data(current_block);
 
                 for stmt in &block_data.statements {
@@ -228,7 +228,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             Call { ref func, ref args, ref destination, .. } => {
                 let mut return_ptr = None;
                 if let Some((ref lv, target)) = *destination {
-                    self.current_frame_mut().next_block = target;
+                    self.frame_mut().next_block = target;
                     return_ptr = Some(try!(self.eval_lvalue(lv)));
                 }
 
@@ -292,7 +292,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 try!(self.push_stack_frame(mir, return_ptr));
 
                                 for (i, (src, size)) in arg_srcs.into_iter().enumerate() {
-                                    let dest = self.current_frame().locals[i];
+                                    let dest = self.frame().locals[i];
                                     try!(self.memory.copy(src, dest, size));
                                 }
 
@@ -609,7 +609,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        let ty = self.current_frame().mir.operand_ty(self.tcx, operand);
+        let ty = self.mir().operand_ty(self.tcx, operand);
         self.monomorphize(ty)
     }
 
@@ -639,7 +639,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     // TODO(tsion): Replace this inefficient hack with a wrapper like LvalueTy (e.g. LvalueRepr).
     fn lvalue_repr(&self, lvalue: &mir::Lvalue<'tcx>) -> &'arena Repr {
         use rustc::mir::tcx::LvalueTy;
-        match self.current_frame().mir.lvalue_ty(self.tcx, lvalue) {
+        match self.mir().lvalue_ty(self.tcx, lvalue) {
             LvalueTy::Ty { ty } => self.ty_to_repr(ty),
             LvalueTy::Downcast { ref adt_def, substs, variant_index } => {
                 let field_tys = adt_def.variants[variant_index].fields.iter()
@@ -652,11 +652,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
-            ReturnPointer => self.current_frame().return_ptr
+            ReturnPointer => self.frame().return_ptr
                 .expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => self.current_frame().locals[i as usize],
-            Var(i) => self.current_frame().locals[self.current_frame().var_offset + i as usize],
-            Temp(i) => self.current_frame().locals[self.current_frame().temp_offset + i as usize],
+            Arg(i) => self.frame().locals[i as usize],
+            Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
+            Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
             Projection(ref proj) => {
                 let base_ptr = try!(self.eval_lvalue(&proj.base));
@@ -745,11 +745,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> ty::Ty<'tcx> {
-        self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx)
+        self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx)
     }
 
     fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
-        let substituted = ty.subst(self.tcx, self.current_substs());
+        let substituted = ty.subst(self.tcx, self.substs());
         infer::normalize_associated_type(self.tcx, &substituted)
     }
 
@@ -893,15 +893,19 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(val)
     }
 
-    fn current_frame(&self) -> &Frame<'a, 'tcx> {
+    fn frame(&self) -> &Frame<'a, 'tcx> {
         self.stack.last().expect("no call frames exist")
     }
 
-    fn current_frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
+    fn frame_mut(&mut self) -> &mut Frame<'a, 'tcx> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
-    fn current_substs(&self) -> &'tcx Substs<'tcx> {
+    fn mir(&self) -> &mir::Mir<'tcx> {
+        &self.frame().mir
+    }
+
+    fn substs(&self) -> &'tcx Substs<'tcx> {
         self.substs_stack.last().cloned().unwrap_or_else(|| self.tcx.mk_substs(Substs::empty()))
     }
 

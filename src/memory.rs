@@ -23,19 +23,19 @@ pub struct Allocation {
     // TODO(tsion): undef mask
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct Pointer {
     pub alloc_id: AllocId,
     pub offset: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct FieldRepr {
     pub offset: usize,
     pub size: usize,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Repr {
     /// Representation for a non-aggregate type such as a boolean, integer, character or pointer.
     Primitive {
