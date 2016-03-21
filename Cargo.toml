@@ -1,6 +1,6 @@
 [package]
 name = "clippy"
-version = "0.0.54"
+version = "0.0.55"
 authors = [
 	"Manish Goregaokar <manishsmail@gmail.com>",
 	"Andre Bogus <bogusandre@gmail.com>",
