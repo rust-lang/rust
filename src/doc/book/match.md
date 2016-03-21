@@ -36,10 +36,10 @@ give us an error:
 error: non-exhaustive patterns: `_` not covered
 ```
 
-Rust is telling us that we forgot a value. The compiler infers from `x` that it
-can have any positive 32bit value; for example 1 to 2,147,483,647. The `_` acts 
+Rust is telling us that we forgot some value. The compiler infers from `x` that it
+can have any 32bit integer value; for example -2,147,483,648 to 2,147,483,647. The `_` acts 
 as a 'catch-all', and will catch all possible values that *aren't* specified in 
-an arm of `match`. As you can see with the previous example, we provide `match` 
+an arm of `match`. As you can see in the previous example, we provide `match` 
 arms for integers 1-5, if `x` is 6 or any other value, then it is caught by `_`.
 
 `match` is also an expression, which means we can use it on the right-hand
