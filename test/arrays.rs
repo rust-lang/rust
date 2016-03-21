@@ -17,7 +17,13 @@ fn array_array() -> [[u8; 2]; 3] {
 }
 
 #[miri_run]
-fn indexing() -> i32 {
+fn index_unsafe() -> i32 {
     let a = [0, 10, 20, 30];
     unsafe { *a.get_unchecked(2) }
+}
+
+#[miri_run]
+fn index() -> i32 {
+    let a = [0, 10, 20, 30];
+    a[2]
 }

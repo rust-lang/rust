@@ -531,6 +531,20 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
+            Len(ref lvalue) => {
+                let ty = self.lvalue_ty(lvalue);
+                match ty.sty {
+                    ty::TyArray(_, n) => {
+                        let psize = self.memory.pointer_size;
+                        self.memory.write_uint(dest, n as u64, psize)
+                    }
+                    ty::TySlice(_) => {
+                        unimplemented!()
+                    }
+                    _ => panic!("Rvalue::Len expected array or slice, got {:?}", ty),
+                }
+            }
+
             Ref(_, _, ref lvalue) => {
                 let ptr = try!(self.eval_lvalue(lvalue));
                 self.memory.write_ptr(dest, ptr)
@@ -635,16 +649,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
-    fn eval_lvalue(&self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
-        let frame = self.current_frame();
-
+    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
-            ReturnPointer =>
-                frame.return_ptr.expect("ReturnPointer used in a function with no return value"),
-            Arg(i) => frame.locals[i as usize],
-            Var(i) => frame.locals[frame.var_offset + i as usize],
-            Temp(i) => frame.locals[frame.temp_offset + i as usize],
+            ReturnPointer => self.current_frame().return_ptr
+                .expect("ReturnPointer used in a function with no return value"),
+            Arg(i) => self.current_frame().locals[i as usize],
+            Var(i) => self.current_frame().locals[self.current_frame().var_offset + i as usize],
+            Temp(i) => self.current_frame().locals[self.current_frame().temp_offset + i as usize],
 
             Projection(ref proj) => {
                 let base_ptr = try!(self.eval_lvalue(&proj.base));
@@ -667,7 +679,19 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     // FIXME(tsion): Wrong for fat pointers.
                     Deref => try!(self.memory.read_ptr(base_ptr)),
 
-                    _ => unimplemented!(),
+                    Index(ref operand) => {
+                        let base_ty = self.lvalue_ty(&proj.base);
+                        let elem_size = match base_ty.sty {
+                            ty::TyArray(elem_ty, _) => self.ty_size(elem_ty),
+                            ty::TySlice(elem_ty) => self.ty_size(elem_ty),
+                            _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
+                        };
+                        let n_ptr = try!(self.eval_operand(operand));
+                        let n = try!(self.memory.read_uint(n_ptr, self.memory.pointer_size));
+                        base_ptr.offset(n as isize * elem_size as isize)
+                    }
+
+                    ref p => panic!("can't handle lvalue projection: {:?}", p),
                 }
             }
 
@@ -720,6 +744,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
+    fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> ty::Ty<'tcx> {
+        self.current_frame().mir.lvalue_ty(self.tcx, lvalue).to_ty(self.tcx)
+    }
+
     fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         let substituted = ty.subst(self.tcx, self.current_substs());
         infer::normalize_associated_type(self.tcx, &substituted)
@@ -762,7 +790,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 self.make_aggregate_repr(variants)
             }
 
-            ty::TyArray(ref elem_ty, length) => Repr::Array {
+            ty::TyArray(elem_ty, length) => Repr::Array {
                 elem_size: self.ty_size(elem_ty),
                 length: length,
             },
@@ -823,7 +851,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             size: max_variant_size + discr_size,
             variants: variants,
         }
-
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<PrimVal> {
