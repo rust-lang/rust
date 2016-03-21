@@ -54,6 +54,7 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
 ///
 /// Constructed by the `Formatter::debug_struct` method.
 #[must_use]
+#[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugStruct<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
@@ -120,6 +121,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 ///
 /// Constructed by the `Formatter::debug_tuple` method.
 #[must_use]
+#[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugTuple<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
@@ -231,6 +233,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
 ///
 /// Constructed by the `Formatter::debug_set` method.
 #[must_use]
+#[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugSet<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
@@ -279,6 +282,7 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 ///
 /// Constructed by the `Formatter::debug_list` method.
 #[must_use]
+#[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugList<'a, 'b: 'a> {
     inner: DebugInner<'a, 'b>,
@@ -327,6 +331,7 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
 ///
 /// Constructed by the `Formatter::debug_map` method.
 #[must_use]
+#[allow(missing_debug_implementations)]
 #[stable(feature = "debug_builders", since = "1.2.0")]
 pub struct DebugMap<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,

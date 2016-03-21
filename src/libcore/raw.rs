@@ -59,6 +59,7 @@ use mem;
 /// println!("data pointer = {:?}, length = {}", repr.data, repr.len);
 /// ```
 #[repr(C)]
+#[allow(missing_debug_implementations)]
 pub struct Slice<T> {
     pub data: *const T,
     pub len: usize,
@@ -143,6 +144,7 @@ impl<T> Clone for Slice<T> {
 /// ```
 #[repr(C)]
 #[derive(Copy, Clone)]
+#[allow(missing_debug_implementations)]
 pub struct TraitObject {
     pub data: *mut (),
     pub vtable: *mut (),

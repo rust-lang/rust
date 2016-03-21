@@ -73,6 +73,7 @@
 
 use prelude::v1::*;
 
+use fmt;
 use marker;
 use mem;
 
@@ -214,6 +215,13 @@ pub trait BuildHasher {
 /// This struct is 0-sized and does not need construction.
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
+
+#[stable(since = "1.9.0", feature = "core_impl_debug")]
+impl<H> fmt::Debug for BuildHasherDefault<H> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("BuildHasherDefault")
+    }
+}
 
 #[stable(since = "1.7.0", feature = "build_hasher")]
 impl<H: Default + Hasher> BuildHasher for BuildHasherDefault<H> {

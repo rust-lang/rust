@@ -30,6 +30,7 @@ use super::Hasher;
 /// Although the SipHash algorithm is considered to be generally strong,
 /// it is not intended for cryptographic purposes. As such, all
 /// cryptographic uses of this implementation are _strongly discouraged_.
+#[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SipHasher {
     k0: u64,
