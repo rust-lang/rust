@@ -310,6 +310,14 @@ impl OsStr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.9.0")]
+impl<'a> Default for &'a OsStr {
+    #[inline]
+    fn default() -> &'a OsStr {
+        ""
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsStr {
     fn eq(&self, other: &OsStr) -> bool {
@@ -590,5 +598,11 @@ mod tests {
 
         os_string.clear();
         assert_eq!(0, os_string.len());
+    }
+
+    #[test]
+    fn test_os_str_default() {
+        let os_str: &OsStr = Default::default();
+        assert_eq!("", os_str);
     }
 }
