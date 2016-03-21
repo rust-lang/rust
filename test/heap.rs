@@ -10,8 +10,3 @@ fn make_box() -> Box<(i16, i16)> {
 fn make_box_syntax() -> Box<(i16, i16)> {
     box (1, 2)
 }
-
-// #[miri_run]
-// fn make_vec() -> Vec<i32> {
-//     Vec::new()
-// }
