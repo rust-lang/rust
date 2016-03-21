@@ -38,10 +38,10 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// let mut child = Command::new("/bin/cat")
 ///                         .arg("file.txt")
 ///                         .spawn()
-///                         .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+///                         .expect("failed to execute child");
 ///
 /// let ecode = child.wait()
-///                  .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+///                  .expect("failed to wait on child");
 ///
 /// assert!(ecode.success());
 /// ```
@@ -195,7 +195,8 @@ impl FromInner<AnonPipe> for ChildStderr {
 ///                      .arg("-c")
 ///                      .arg("echo hello")
 ///                      .output()
-///                      .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
+///                      .expect("failed to execute proces");
+///
 /// let hello = output.stdout;
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
@@ -305,11 +306,10 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```should_panic
     /// use std::process::Command;
-    /// let output = Command::new("cat").arg("foo.txt").output().unwrap_or_else(|e| {
-    ///     panic!("failed to execute process: {}", e)
-    /// });
+    /// let output = Command::new("/bin/cat").arg("file.txt").output()
+    ///     .expect("failed to execute process");
     ///
     /// println!("status: {}", output.status);
     /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
@@ -328,12 +328,11 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```should_panic
     /// use std::process::Command;
     ///
-    /// let status = Command::new("ls").status().unwrap_or_else(|e| {
-    ///     panic!("failed to execute process: {}", e)
-    /// });
+    /// let status = Command::new("/bin/cat").arg("file.txt").status()
+    ///     .expect("failed to execute process");
     ///
     /// println!("process exited with: {}", status);
     /// ```
@@ -511,13 +510,13 @@ impl Child {
     /// use std::process::{Command, Stdio};
     ///
     /// let mut child = Command::new("/bin/cat")
-    ///                         .stdout(Stdio::piped())
     ///                         .arg("file.txt")
+    ///                         .stdout(Stdio::piped())
     ///                         .spawn()
-    ///                         .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+    ///                         .expect("failed to execute child");
     ///
     /// let ecode = child.wait_with_output()
-    ///                  .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+    ///                  .expect("failed to wait on child");
     ///
     /// assert!(ecode.success());
     /// ```
