@@ -180,8 +180,6 @@ impl<K, V> RawBucket<K, V> {
     }
 }
 
-// Uncomment dead code when it's needed.
-
 // Buckets hold references to the table.
 impl<K, V, M> FullBucket<K, V, M> {
     /// Borrow a reference to the table.
@@ -203,17 +201,9 @@ impl<K, V, M> EmptyBucket<K, V, M> {
     pub fn table(&self) -> &M {
         &self.table
     }
-    // /// Move out the reference to the table.
-    // pub fn into_table(self) -> M {
-    //     self.table
-    // }
 }
 
 impl<K, V, M> Bucket<K, V, M> {
-    // /// Move out the reference to the table.
-    // pub fn into_table(self) -> M {
-    //     self.table
-    // }
     /// Get the raw index.
     pub fn index(&self) -> usize {
         self.idx
