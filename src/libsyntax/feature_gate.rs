@@ -212,7 +212,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // rust runtime internal
     ("unwind_attributes", "1.4.0", None, Active),
 
-	// allow the use of `#[naked]` on functions.
+    // allow the use of `#[naked]` on functions.
     ("naked_functions", "1.9.0", None, Active),
 
     // allow empty structs and enum variants with braces
