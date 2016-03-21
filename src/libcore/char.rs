@@ -416,14 +416,14 @@ pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
 ///
 /// [`escape_unicode()`]: ../../std/primitive.char.html#method.escape_unicode
 /// [`char`]: ../../std/primitive.char.html
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
     state: EscapeUnicodeState
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum EscapeUnicodeState {
     Backslash,
     Type,
@@ -496,13 +496,13 @@ impl Iterator for EscapeUnicode {
 ///
 /// [`escape_default()`]: ../../std/primitive.char.html#method.escape_default
 /// [`char`]: ../../std/primitive.char.html
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     state: EscapeDefaultState
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum EscapeDefaultState {
     Backslash(char),
     Char(char),

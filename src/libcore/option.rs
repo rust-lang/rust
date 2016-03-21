@@ -763,7 +763,7 @@ impl<'a, T> IntoIterator for &'a mut Option<T> {
 // The Option Iterators
 /////////////////////////////////////////////////////////////////////////////
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Item<A> {
     opt: Option<A>
 }
@@ -796,6 +796,7 @@ impl<A> ExactSizeIterator for Item<A> {}
 
 /// An iterator over a reference of the contained item in an Option.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -826,6 +827,7 @@ impl<'a, A> Clone for Iter<'a, A> {
 
 /// An iterator over a mutable reference of the contained item in an Option.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -848,7 +850,7 @@ impl<'a, A> DoubleEndedIterator for IterMut<'a, A> {
 impl<'a, A> ExactSizeIterator for IterMut<'a, A> {}
 
 /// An iterator over the item contained inside an Option.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<A> { inner: Item<A> }
 
