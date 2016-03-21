@@ -73,3 +73,10 @@ impl<'tcx> ToType<'tcx> for ast::FloatTy {
         tcx.mk_mach_float(*self)
     }
 }
+
+impl UnifyKey for ty::TyVid {
+    type Value = ();
+    fn index(&self) -> u32 { self.index }
+    fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
+    fn tag(_: Option<ty::TyVid>) -> &'static str { "TyVid" }
+}
