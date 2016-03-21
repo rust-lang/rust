@@ -100,35 +100,43 @@ impl Memory {
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
+        try!(self.clear_relocations(ptr, size));
         let alloc = try!(self.get_mut(ptr.alloc_id));
-        try!(alloc.check_no_relocations(ptr.offset, ptr.offset + size));
         Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
     }
 
+    fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
+        let end = ptr.offset + size;
+        let alloc = try!(self.get_mut(ptr.alloc_id));
+        let keys: Vec<_> = alloc.relocations
+            .range(Included(&start), Excluded(&end))
+            .map(|(&k, _)| k)
+            .collect();
+        for k in keys {
+            alloc.relocations.remove(&k);
+        }
+        Ok(())
+    }
+
+    fn copy_relocations(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
+        let relocations: Vec<_> = try!(self.get_mut(src.alloc_id)).relocations
+            .range(Included(&src.offset), Excluded(&(src.offset + size)))
+            .map(|(&offset, &alloc_id)| {
+                // Update relocation offsets for the new positions in the destination allocation.
+                (offset + dest.offset - src.offset, alloc_id)
+            }).collect();
+        try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
+        Ok(())
+    }
+
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        let (src_bytes, mut relocations) = {
+        let src_bytes = {
             let alloc = try!(self.get_mut(src.alloc_id));
             try!(alloc.check_relocation_edges(src.offset, src.offset + size));
-            let bytes = alloc.bytes[src.offset..src.offset + size].as_mut_ptr();
-
-            let relocations: Vec<(usize, AllocId)> = alloc.relocations
-                .range(Included(&src.offset), Excluded(&(src.offset + size)))
-                .map(|(&k, &v)| (k, v))
-                .collect();
-
-            (bytes, relocations)
+            alloc.bytes[src.offset..src.offset + size].as_mut_ptr()
         };
-
-        // Update relocation offsets for the new positions in the destination allocation.
-        for &mut (ref mut offset, _) in &mut relocations {
-            *offset += dest.offset;
-            *offset -= src.offset;
-        }
-
         let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
-
-        // TODO(tsion): Clear the destination range's existing relocations.
-        try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
@@ -141,7 +149,7 @@ impl Memory {
             }
         }
 
-        Ok(())
+        self.copy_relocations(src, dest, size)
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<()> {
@@ -160,7 +168,6 @@ impl Memory {
         }
     }
 
-    // TODO(tsion): Detect invalid writes here and elsewhere.
     pub fn write_ptr(&mut self, dest: Pointer, ptr_val: Pointer) -> EvalResult<()> {
         {
             let size = self.pointer_size;

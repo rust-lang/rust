@@ -27,3 +27,13 @@ fn index() -> i32 {
     let a = [0, 10, 20, 30];
     a[2]
 }
+
+#[miri_run]
+fn index_for_loop() -> usize {
+    let mut sum = 0;
+    let a = [0, 10, 20, 30];
+    for i in 0..a.len() {
+        sum += a[i];
+    }
+    sum
+}
