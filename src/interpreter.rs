@@ -677,7 +677,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                     Deref => {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
-                        println!("{:?}", pointee_ty);
                         let ptr = try!(self.memory.read_ptr(base_ptr));
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) => {
