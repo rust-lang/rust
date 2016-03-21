@@ -211,7 +211,7 @@ impl<K: UnifyKey> UnificationTable<K> {
     /// really more of a building block. If the values associated with
     /// your key are non-trivial, you would probably prefer to call
     /// `unify_var_var` below.
-    fn unify(&mut self, root_a: VarValue<K>, root_b: VarValue<K>, new_value: K::Value) {
+    fn unify(&mut self, root_a: VarValue<K>, root_b: VarValue<K>, new_value: K::Value) -> K {
         debug!("unify(root_a(id={:?}, rank={:?}), root_b(id={:?}, rank={:?}))",
                root_a.key(),
                root_a.rank,
@@ -221,14 +221,14 @@ impl<K: UnifyKey> UnificationTable<K> {
         if root_a.rank > root_b.rank {
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
-            self.redirect_root(root_a.rank, root_b, root_a, new_value);
+            self.redirect_root(root_a.rank, root_b, root_a, new_value)
         } else if root_a.rank < root_b.rank {
             // b has greater rank, so a should redirect to b.
-            self.redirect_root(root_b.rank, root_a, root_b, new_value);
+            self.redirect_root(root_b.rank, root_a, root_b, new_value)
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
-            self.redirect_root(root_a.rank + 1, root_a, root_b, new_value);
+            self.redirect_root(root_a.rank + 1, root_a, root_b, new_value)
         }
     }
 
@@ -236,11 +236,12 @@ impl<K: UnifyKey> UnificationTable<K> {
                      new_rank: u32,
                      old_root: VarValue<K>,
                      new_root: VarValue<K>,
-                     new_value: K::Value) {
+                     new_value: K::Value) -> K {
         let old_root_key = old_root.key();
         let new_root_key = new_root.key();
         self.set(old_root_key, old_root.redirect(new_root_key));
         self.set(new_root_key, new_root.root(new_rank, new_value));
+        new_root_key
     }
 }
 
@@ -256,14 +257,16 @@ impl<K: UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
 impl<'tcx, K: UnifyKey> UnificationTable<K>
     where K::Value: Combine
 {
-    pub fn union(&mut self, a_id: K, b_id: K) {
+    pub fn union(&mut self, a_id: K, b_id: K) -> K {
         let node_a = self.get(a_id);
         let node_b = self.get(b_id);
         let a_id = node_a.key();
         let b_id = node_b.key();
         if a_id != b_id {
             let new_value = node_a.value.combine(&node_b.value);
-            self.unify(node_a, node_b, new_value);
+            self.unify(node_a, node_b, new_value)
+        } else {
+            a_id
         }
     }
 
@@ -290,14 +293,14 @@ impl<'tcx, K, V> UnificationTable<K>
     where K: UnifyKey<Value = Option<V>>,
           V: Clone + PartialEq + Debug
 {
-    pub fn unify_var_var(&mut self, a_id: K, b_id: K) -> Result<(), (V, V)> {
+    pub fn unify_var_var(&mut self, a_id: K, b_id: K) -> Result<K, (V, V)> {
         let node_a = self.get(a_id);
         let node_b = self.get(b_id);
         let a_id = node_a.key();
         let b_id = node_b.key();
 
         if a_id == b_id {
-            return Ok(());
+            return Ok(a_id);
         }
 
         let combined = {

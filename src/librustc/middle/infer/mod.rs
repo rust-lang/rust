@@ -663,7 +663,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut variables = Vec::new();
 
         let unbound_ty_vars = self.type_variables
-                                  .borrow()
+                                  .borrow_mut()
                                   .unsolved_variables()
                                   .into_iter()
                                   .map(|t| self.tcx.mk_var(t));
@@ -1196,7 +1196,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 // structurally), and we prevent cycles in any case,
                 // so this recursion should always be of very limited
                 // depth.
-                self.type_variables.borrow()
+                self.type_variables.borrow_mut()
                     .probe(v)
                     .map(|t| self.shallow_resolve(t))
                     .unwrap_or(typ)

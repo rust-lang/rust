@@ -60,8 +60,8 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
     }
 
     let infcx = this.infcx();
-    let a = infcx.type_variables.borrow().replace_if_possible(a);
-    let b = infcx.type_variables.borrow().replace_if_possible(b);
+    let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
+    let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
     match (&a.sty, &b.sty) {
         (&ty::TyInfer(TyVar(..)), &ty::TyInfer(TyVar(..)))
             if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
