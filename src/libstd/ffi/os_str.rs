@@ -397,6 +397,15 @@ impl_cmp!(Cow<'a, OsStr>, OsStr);
 impl_cmp!(Cow<'a, OsStr>, &'b OsStr);
 impl_cmp!(Cow<'a, OsStr>, OsString);
 
+#[stable(feature = "os_str_default", since = "1.9.0")]
+impl Default for OsString {
+    #[inline]
+    fn default() -> OsString {
+        OsString::new()
+    }
+}
+
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hash for OsStr {
     #[inline]
@@ -576,5 +585,11 @@ mod tests {
 
         os_string.clear();
         assert_eq!(0, os_string.len());
+    }
+
+    #[test]
+    fn test_os_str_default(){
+        let os_str = Default::default();
+        assert!(os_str.is_empty())
     }
 }
