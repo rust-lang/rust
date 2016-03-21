@@ -3,7 +3,7 @@
 
 #[miri_run]
 fn make_vec() -> Vec<i32> {
-    let v = Vec::with_capacity(4);
+    let mut v = Vec::with_capacity(4);
     v.push(1);
     v.push(2);
     v
