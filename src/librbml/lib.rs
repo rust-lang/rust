@@ -125,6 +125,7 @@
 #![feature(copy_from_slice)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(question_mark)]
 
 #![cfg_attr(test, feature(test))]
 

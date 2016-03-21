@@ -33,6 +33,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(str_char)]
+#![feature(question_mark)]
 
 extern crate serialize;
 #[macro_use]

@@ -36,6 +36,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(unicode)]
+#![feature(question_mark)]
 
 extern crate arena;
 extern crate flate;
