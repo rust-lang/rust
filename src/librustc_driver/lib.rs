@@ -157,7 +157,7 @@ pub fn run_compiler<'a>(args: &[String],
         }
     }}
 
-    let matches = match handle_options(args.to_vec()) {
+    let matches = match handle_options(args) {
         Some(matches) => matches,
         None => return (Ok(()), None),
     };
@@ -335,10 +335,10 @@ pub struct RustcDefaultCalls;
 fn handle_explain(code: &str,
                   descriptions: &diagnostics::registry::Registry,
                   output: ErrorOutputType) {
-    let normalised = if !code.starts_with("E") {
-        format!("E{0:0>4}", code)
-    } else {
+    let normalised = if code.starts_with("E") {
         code.to_string()
+    } else {
+        format!("E{0:0>4}", code)
     };
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
@@ -870,9 +870,9 @@ fn print_flag_list<T>(cmdline_opt: &str,
 ///
 /// So with all that in mind, the comments below have some more detail about the
 /// contortions done here to get things to work out correctly.
-pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
+pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     // Throw away the first argument, the name of the binary
-    let _binary = args.remove(0);
+    let args = &args[1..];
 
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
@@ -916,10 +916,10 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
         if opt.stability == OptionStability::Stable {
             continue
         }
-        let opt_name = if !opt.opt_group.long_name.is_empty() {
-            &opt.opt_group.long_name
-        } else {
+        let opt_name = if opt.opt_group.long_name.is_empty() {
             &opt.opt_group.short_name
+        } else {
+            &opt.opt_group.long_name
         };
         if !matches.opt_present(opt_name) {
             continue
@@ -1033,43 +1033,38 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || {
-                 io::set_panic(box err);
-                 f()
-             })
-             .unwrap()
-             .join() {
-        Ok(()) => {
-            // fallthrough
-        }
-        Err(value) => {
-            // Thread panicked without emitting a fatal diagnostic
-            if !value.is::<errors::FatalError>() {
-                let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+    let thread = cfg.spawn(move || {
+         io::set_panic(box err);
+         f()
+     });
 
-                // a .span_bug or .bug call has already printed what
-                // it wants to print.
-                if !value.is::<errors::ExplicitBug>() {
-                    emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
-                }
+     if let Err(value) = thread.unwrap().join() {
+        // Thread panicked without emitting a fatal diagnostic
+        if !value.is::<errors::FatalError>() {
+            let mut emitter = errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
 
-                let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
-                          format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
-                for note in &xs {
-                    emitter.emit(None, &note[..], None, errors::Level::Note)
-                }
-                if let None = env::var_os("RUST_BACKTRACE") {
-                    emitter.emit(None,
-                                 "run with `RUST_BACKTRACE=1` for a backtrace",
-                                 None,
-                                 errors::Level::Note);
-                }
-
-                println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
+            // a .span_bug or .bug call has already printed what
+            // it wants to print.
+            if !value.is::<errors::ExplicitBug>() {
+                emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
             }
 
-            exit_on_err();
+            let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
+                      format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
+            for note in &xs {
+                emitter.emit(None, &note[..], None, errors::Level::Note)
+            }
+            if let None = env::var_os("RUST_BACKTRACE") {
+                emitter.emit(None,
+                             "run with `RUST_BACKTRACE=1` for a backtrace",
+                             None,
+                             errors::Level::Note);
+            }
+
+            println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
         }
+
+        exit_on_err();
     }
 }
 
