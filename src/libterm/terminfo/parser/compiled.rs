@@ -186,7 +186,7 @@ fn read_byte(r: &mut io::Read) -> io::Result<u8> {
 /// Parse a compiled terminfo entry, using long capability names if `longnames`
 /// is true
 pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
-    macro_rules! try( ($e:expr) => (
+    macro_rules! t( ($e:expr) => (
         match $e {
             Ok(e) => e,
             Err(e) => return Err(format!("{}", e))
@@ -200,7 +200,7 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
     };
 
     // Check magic number
-    let magic = read_le_u16(file)?;
+    let magic = t!(read_le_u16(file));
     if magic != 0x011A {
         return Err(format!("invalid magic number: expected {:x}, found {:x}",
                            0x011A,
@@ -211,7 +211,7 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
     // supported. Using 0 instead of -1 works because we skip sections with length 0.
     macro_rules! read_nonneg {
         () => {{
-            match try!(read_le_u16(file)) as i16 {
+            match t!(read_le_u16(file)) as i16 {
                 n if n >= 0 => n as usize,
                 -1 => 0,
                 _ => return Err("incompatible file: length fields must be  >= -1".to_string()),
@@ -243,7 +243,7 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
 
     // don't read NUL
     let mut bytes = Vec::new();
-    file.take((names_bytes - 1) as u64).read_to_end(&mut bytes)?;
+    t!(file.take((names_bytes - 1) as u64).read_to_end(&mut bytes));
     let names_str = match String::from_utf8(bytes) {
         Ok(s) => s,
         Err(_) => return Err("input not utf-8".to_string()),
@@ -253,35 +253,39 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
                                            .map(|s| s.to_string())
                                            .collect();
     // consume NUL
-    if read_byte(file)? != b'\0' {
+    if t!(read_byte(file)) != b'\0' {
         return Err("incompatible file: missing null terminator for names section".to_string());
     }
 
-    let bools_map: HashMap<String, bool> = (0..bools_bytes).filter_map(|i| match read_byte(file) {
+    let bools_map: HashMap<String, bool> = t! {
+        (0..bools_bytes).filter_map(|i| match read_byte(file) {
             Err(e) => Some(Err(e)),
             Ok(1) => Some(Ok((bnames[i].to_string(), true))),
             Ok(_) => None
-        }).collect()?;
+        }).collect()
+    };
 
     if (bools_bytes + names_bytes) % 2 == 1 {
-        read_byte(file)?; // compensate for padding
+        t!(read_byte(file)); // compensate for padding
     }
 
-    let numbers_map: HashMap<String, u16> = (0..numbers_count).filter_map(|i| match read_le_u16(file) {
+    let numbers_map: HashMap<String, u16> = t! {
+        (0..numbers_count).filter_map(|i| match read_le_u16(file) {
             Ok(0xFFFF) => None,
             Ok(n) => Some(Ok((nnames[i].to_string(), n))),
             Err(e) => Some(Err(e))
-        }).collect()?;
+        }).collect()
+    };
 
     let string_map: HashMap<String, Vec<u8>> = if string_offsets_count > 0 {
-        let string_offsets: Vec<u16> = (0..string_offsets_count)
+        let string_offsets: Vec<u16> = t!((0..string_offsets_count)
                                                 .map(|_| read_le_u16(file))
-                                                .collect()?;
+                                                .collect());
 
         let mut string_table = Vec::new();
-        file.take(string_table_bytes as u64).read_to_end(&mut string_table)?;
+        t!(file.take(string_table_bytes as u64).read_to_end(&mut string_table));
 
-        string_offsets.into_iter().enumerate().filter(|&(_, offset)| {
+        t!(string_offsets.into_iter().enumerate().filter(|&(_, offset)| {
             // non-entry
             offset != 0xFFFF
         }).map(|(i, offset)| {
@@ -305,7 +309,7 @@ pub fn parse(file: &mut io::Read, longnames: bool) -> Result<TermInfo, String> {
                 Some(len) => Ok((name.to_string(), string_table[offset..offset + len].to_vec())),
                 None => Err("invalid file: missing NUL in string_table".to_string()),
             }
-        }).collect()?
+        }).collect())
     } else {
         HashMap::new()
     };
