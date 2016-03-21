@@ -215,6 +215,24 @@ impl Memory {
     pub fn write_uint(&mut self, ptr: Pointer, n: u64, size: usize) -> EvalResult<()> {
         self.get_bytes_mut(ptr, size).map(|mut b| b.write_uint::<NativeEndian>(n, size).unwrap())
     }
+
+    pub fn read_isize(&self, ptr: Pointer) -> EvalResult<i64> {
+        self.read_int(ptr, self.pointer_size)
+    }
+
+    pub fn write_isize(&mut self, ptr: Pointer, n: i64) -> EvalResult<()> {
+        let size = self.pointer_size;
+        self.write_int(ptr, n, size)
+    }
+
+    pub fn read_usize(&self, ptr: Pointer) -> EvalResult<u64> {
+        self.read_uint(ptr, self.pointer_size)
+    }
+
+    pub fn write_usize(&mut self, ptr: Pointer, n: u64) -> EvalResult<()> {
+        let size = self.pointer_size;
+        self.write_uint(ptr, n, size)
+    }
 }
 
 impl Allocation {

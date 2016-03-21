@@ -348,7 +348,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                 let src   = try!(self.memory.read_ptr(src_arg));
                 let dest  = try!(self.memory.read_ptr(dest_arg));
-                let count = try!(self.memory.read_int(count_arg, self.memory.pointer_size));
+                let count = try!(self.memory.read_isize(count_arg));
 
                 try!(self.memory.copy(src, dest, count as usize * elem_size));
             }
@@ -397,7 +397,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let ptr_arg    = try!(self.eval_operand(&args[0]));
                 let offset_arg = try!(self.eval_operand(&args[1]));
 
-                let offset = try!(self.memory.read_int(offset_arg, self.memory.pointer_size));
+                let offset = try!(self.memory.read_isize(offset_arg));
 
                 match self.memory.read_ptr(ptr_arg) {
                     Ok(ptr) => {
@@ -405,10 +405,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         try!(self.memory.write_ptr(dest, result_ptr));
                     }
                     Err(EvalError::ReadBytesAsPointer) => {
-                        let psize = self.memory.pointer_size;
-                        let addr = try!(self.memory.read_int(ptr_arg, psize));
+                        let addr = try!(self.memory.read_isize(ptr_arg));
                         let result_addr = addr + offset * pointee_size as i64;
-                        try!(self.memory.write_int(dest, result_addr, psize));
+                        try!(self.memory.write_isize(dest, result_addr));
                     }
                     Err(e) => return Err(e),
                 }
@@ -451,7 +450,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             "__rust_allocate" => {
                 let size_arg  = try!(self.eval_operand(&args[0]));
                 let _align_arg = try!(self.eval_operand(&args[1]));
-                let size = try!(self.memory.read_uint(size_arg, self.memory.pointer_size));
+                let size = try!(self.memory.read_usize(size_arg));
                 let ptr = self.memory.allocate(size as usize);
                 try!(self.memory.write_ptr(dest, ptr));
             }
@@ -553,8 +552,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     },
                     _ => panic!("Rvalue::Len expected array or slice, got {:?}", ty),
                 };
-                let psize = self.memory.pointer_size;
-                try!(self.memory.write_uint(dest, len, psize));
+                try!(self.memory.write_usize(dest, len));
             }
 
             Ref(_, _, ref lvalue) => {
@@ -563,9 +561,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 match lv.extra {
                     LvalueExtra::None => {},
                     LvalueExtra::Length(len) => {
-                        let psize = self.memory.pointer_size;
-                        let len_ptr = dest.offset(psize as isize);
-                        try!(self.memory.write_uint(len_ptr, len, psize));
+                        let len_ptr = dest.offset(self.memory.pointer_size as isize);
+                        try!(self.memory.write_usize(len_ptr, len));
                     }
                 }
             }
@@ -589,9 +586,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
-                                let size = self.memory.pointer_size;
-                                let len_ptr = dest.offset(size as isize);
-                                try!(self.memory.write_uint(len_ptr, length as u64, size));
+                                let len_ptr = dest.offset(self.memory.pointer_size as isize);
+                                try!(self.memory.write_usize(len_ptr, length as u64));
                             }
 
                             _ => panic!("can't handle cast: {:?}", rvalue),
@@ -685,9 +681,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         let ptr = try!(self.memory.read_ptr(base_ptr));
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) => {
-                                let psize = self.memory.pointer_size;
-                                let len_ptr = base_ptr.offset(psize as isize);
-                                let len = try!(self.memory.read_uint(len_ptr, psize));
+                                let len_ptr = base_ptr.offset(self.memory.pointer_size as isize);
+                                let len = try!(self.memory.read_usize(len_ptr));
                                 LvalueExtra::Length(len)
                             }
                             ty::TyTrait(_) => unimplemented!(),
@@ -703,7 +698,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                             _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
                         };
                         let n_ptr = try!(self.eval_operand(operand));
-                        let n = try!(self.memory.read_uint(n_ptr, self.memory.pointer_size));
+                        let n = try!(self.memory.read_usize(n_ptr));
                         base_ptr.offset(n as isize * elem_size as isize)
                     }
 
@@ -734,7 +729,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let ptr = self.memory.allocate(psize * 2);
                 try!(self.memory.write_bytes(static_ptr, s.as_bytes()));
                 try!(self.memory.write_ptr(ptr, static_ptr));
-                try!(self.memory.write_uint(ptr.offset(psize as isize), s.len() as u64, psize));
+                try!(self.memory.write_usize(ptr.offset(psize as isize), s.len() as u64));
                 Ok(ptr)
             }
             ByteStr(ref bs) => {
@@ -887,10 +882,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             ty::TyUint(UintTy::U64) => PrimVal::U64(try!(self.memory.read_uint(ptr, 8)) as u64),
 
             // TODO(tsion): Pick the PrimVal dynamically.
-            ty::TyInt(IntTy::Is) =>
-                PrimVal::I64(try!(self.memory.read_int(ptr, self.memory.pointer_size))),
-            ty::TyUint(UintTy::Us) =>
-                PrimVal::U64(try!(self.memory.read_uint(ptr, self.memory.pointer_size))),
+            ty::TyInt(IntTy::Is)   => PrimVal::I64(try!(self.memory.read_isize(ptr))),
+            ty::TyUint(UintTy::Us) => PrimVal::U64(try!(self.memory.read_usize(ptr))),
 
             ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty, .. }) => {
@@ -898,7 +891,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     match self.memory.read_ptr(ptr) {
                         Ok(p) => PrimVal::AbstractPtr(p),
                         Err(EvalError::ReadBytesAsPointer) => {
-                            let n = try!(self.memory.read_uint(ptr, self.memory.pointer_size));
+                            let n = try!(self.memory.read_usize(ptr));
                             PrimVal::IntegerPtr(n)
                         }
                         Err(e) => return Err(e),
