@@ -1,5 +1,5 @@
-use byteorder::{self, ByteOrder, NativeEndian, ReadBytesExt, WriteBytesExt};
-use std::collections::{BTreeMap, HashMap};
+use byteorder::{ByteOrder, NativeEndian, ReadBytesExt, WriteBytesExt};
+use std::collections::{btree_map, BTreeMap, HashMap};
 use std::collections::Bound::{Included, Excluded};
 use std::mem;
 use std::ptr;
@@ -94,25 +94,46 @@ impl Memory {
     }
 
     fn get_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
-        let alloc = try!(self.get(ptr.alloc_id));
-        try!(alloc.check_no_relocations(ptr.offset, ptr.offset + size));
-        Ok(&alloc.bytes[ptr.offset..ptr.offset + size])
+        try!(self.check_readable_bytes(ptr, size));
+        try!(self.get(ptr.alloc_id)).checked_slice(ptr.offset, size)
     }
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
         try!(self.clear_relocations(ptr, size));
-        let alloc = try!(self.get_mut(ptr.alloc_id));
-        Ok(&mut alloc.bytes[ptr.offset..ptr.offset + size])
+        try!(self.get_mut(ptr.alloc_id)).checked_slice_mut(ptr.offset, size)
+    }
+
+    fn check_readable_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        if try!(self.relocations(ptr, size)).count() == 0 {
+            // TODO(tsion): Track and check for undef bytes.
+            Ok(())
+        } else {
+            Err(EvalError::ReadPointerAsBytes)
+        }
+    }
+
+    fn relocations(&self, ptr: Pointer, size: usize)
+        -> EvalResult<btree_map::Range<usize, AllocId>>
+    {
+        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
+        let end = ptr.offset + size;
+        let alloc = try!(self.get(ptr.alloc_id));
+        Ok(alloc.relocations.range(Included(&start), Excluded(&end)))
+    }
+
+    fn check_relocation_edges(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        let overlapping_start = try!(self.relocations(ptr, 0)).count();
+        let overlapping_end = try!(self.relocations(ptr.offset(size as isize), 0)).count();
+        if overlapping_start + overlapping_end == 0 {
+            Ok(())
+        } else {
+            Err(EvalError::ReadPointerAsBytes)
+        }
     }
 
     fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
-        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
-        let end = ptr.offset + size;
+        let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
         let alloc = try!(self.get_mut(ptr.alloc_id));
-        let keys: Vec<_> = alloc.relocations
-            .range(Included(&start), Excluded(&end))
-            .map(|(&k, _)| k)
-            .collect();
         for k in keys {
             alloc.relocations.remove(&k);
         }
@@ -131,10 +152,12 @@ impl Memory {
     }
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
+        // TODO(tsion): Track and check for undef bytes.
+        try!(self.check_relocation_edges(src, size));
+
         let src_bytes = {
-            let alloc = try!(self.get_mut(src.alloc_id));
-            try!(alloc.check_relocation_edges(src.offset, src.offset + size));
-            alloc.bytes[src.offset..src.offset + size].as_mut_ptr()
+            let alloc = try!(self.get(src.alloc_id));
+            try!(alloc.checked_slice(src.offset, size)).as_ptr()
         };
         let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
 
@@ -158,9 +181,8 @@ impl Memory {
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {
         let alloc = try!(self.get(ptr.alloc_id));
-        try!(alloc.check_relocation_edges(ptr.offset, ptr.offset + self.pointer_size));
-        let bytes = &alloc.bytes[ptr.offset..ptr.offset + self.pointer_size];
-        let offset = byteorder::NativeEndian::read_u64(bytes) as usize;
+        let mut bytes = try!(alloc.checked_slice(ptr.offset, self.pointer_size));
+        let offset = bytes.read_uint::<NativeEndian>(self.pointer_size).unwrap() as usize;
 
         match alloc.relocations.get(&ptr.offset) {
             Some(&alloc_id) => Ok(Pointer { alloc_id: alloc_id, offset: offset }),
@@ -168,14 +190,13 @@ impl Memory {
         }
     }
 
-    pub fn write_ptr(&mut self, dest: Pointer, ptr_val: Pointer) -> EvalResult<()> {
+    pub fn write_ptr(&mut self, dest: Pointer, ptr: Pointer) -> EvalResult<()> {
         {
             let size = self.pointer_size;
-            let bytes = try!(self.get_bytes_mut(dest, size));
-            byteorder::NativeEndian::write_u64(bytes, ptr_val.offset as u64);
+            let mut bytes = try!(self.get_bytes_mut(dest, size));
+            bytes.write_uint::<NativeEndian>(ptr.offset as u64, size).unwrap();
         }
-        let alloc = try!(self.get_mut(dest.alloc_id));
-        alloc.relocations.insert(dest.offset, ptr_val.alloc_id);
+        try!(self.get_mut(dest.alloc_id)).relocations.insert(dest.offset, ptr.alloc_id);
         Ok(())
     }
 
@@ -243,40 +264,23 @@ impl Memory {
 }
 
 impl Allocation {
-    fn check_bounds(&self, start: usize, end: usize) -> EvalResult<()> {
+    fn checked_slice(&self, offset: usize, size: usize) -> EvalResult<&[u8]> {
+        let start = offset;
+        let end = start + size;
         if start <= self.bytes.len() && end <= self.bytes.len() {
-            Ok(())
+            Ok(&self.bytes[start..end])
         } else {
             Err(EvalError::PointerOutOfBounds)
         }
     }
 
-    fn count_overlapping_relocations(&self, start: usize, end: usize) -> usize {
-        self.relocations.range(
-            // FIXME(tsion): Assuming pointer size is 8. Move this method to Memory.
-            Included(&start.saturating_sub(8 - 1)),
-            Excluded(&end)
-        ).count()
-    }
-
-    fn check_relocation_edges(&self, start: usize, end: usize) -> EvalResult<()> {
-        try!(self.check_bounds(start, end));
-        let n =
-            self.count_overlapping_relocations(start, start) +
-            self.count_overlapping_relocations(end, end);
-        if n == 0 {
-            Ok(())
+    fn checked_slice_mut(&mut self, offset: usize, size: usize) -> EvalResult<&mut [u8]> {
+        let start = offset;
+        let end = start + size;
+        if start <= self.bytes.len() && end <= self.bytes.len() {
+            Ok(&mut self.bytes[start..end])
         } else {
-            Err(EvalError::ReadPointerAsBytes)
-        }
-    }
-
-    fn check_no_relocations(&self, start: usize, end: usize) -> EvalResult<()> {
-        try!(self.check_bounds(start, end));
-        if self.count_overlapping_relocations(start, end) == 0 {
-            Ok(())
-        } else {
-            Err(EvalError::ReadPointerAsBytes)
+            Err(EvalError::PointerOutOfBounds)
         }
     }
 }
