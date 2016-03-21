@@ -14,6 +14,7 @@
 #![allow(unused_must_use)]
 #![allow(unknown_features)]
 #![feature(box_syntax)]
+#![feature(question_mark)]
 
 use std::fmt::{self, Write};
 use std::usize;

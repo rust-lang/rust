@@ -10,6 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(question_mark)]
+
 use std::fs::File;
 use std::io::{self, BufReader, Read};
 

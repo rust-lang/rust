@@ -29,6 +29,7 @@
 #![feature(std_panic)]
 #![feature(test)]
 #![feature(unicode)]
+#![feature(question_mark)]
 
 extern crate arena;
 extern crate getopts;

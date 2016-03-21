@@ -15,6 +15,7 @@
 #![feature(rustc_private)]
 #![feature(str_char)]
 #![feature(test)]
+#![feature(question_mark)]
 
 #![deny(warnings)]
 
