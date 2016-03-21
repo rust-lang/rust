@@ -3167,8 +3167,8 @@ x <<= 2;
 To fix this error, please check that this type implements this binary
 operation. Example:
 
-```compile_fail
-let x = 12u32; // the `u32` type does implement the `ShlAssign` trait
+```
+let mut x = 12u32; // the `u32` type does implement the `ShlAssign` trait
 
 x <<= 2; // ok!
 ```
