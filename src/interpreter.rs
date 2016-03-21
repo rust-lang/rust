@@ -780,6 +780,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
+            ty::TyFnPtr(..) => Repr::Primitive { size: self.memory.pointer_size },
+
             ty::TyClosure(_, ref closure_substs) =>
                 self.make_aggregate_repr(iter::once(closure_substs.upvar_tys.iter().cloned())),
 
