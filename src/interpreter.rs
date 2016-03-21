@@ -347,6 +347,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_int(dest, 1, dest_size));
             }
 
+            "move_val_init" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.ty_size(ty);
+
+                let ptr_arg = try!(self.eval_operand(&args[0]));
+                let ptr = try!(self.memory.read_ptr(ptr_arg));
+
+                let val = try!(self.eval_operand(&args[1]));
+                try!(self.memory.copy(val, ptr, size));
+            }
+
             // FIXME(tsion): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
