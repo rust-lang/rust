@@ -173,6 +173,14 @@ impl ops::Deref for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.9.0")]
+impl Default for OsString {
+    #[inline]
+    fn default() -> OsString {
+        OsString::new()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for OsString {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -552,6 +560,12 @@ mod tests {
 
         os_string.reserve_exact(16);
         assert!(os_string.capacity() >= 33)
+    }
+
+    #[test]
+    fn test_os_string_default() {
+        let os_string: OsString = Default::default();
+        assert_eq!("", &os_string);
     }
 
     #[test]
