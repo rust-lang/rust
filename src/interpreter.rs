@@ -540,6 +540,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
+            Repeat(_, _) => unimplemented!(),
+
             Len(ref lvalue) => {
                 let src = try!(self.eval_lvalue(lvalue));
                 let ty = self.lvalue_ty(lvalue);
@@ -604,7 +606,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
-            ref r => panic!("can't handle rvalue: {:?}", r),
+            Slice { .. } => unimplemented!(),
+            InlineAsm(_) => unimplemented!(),
         }
 
         Ok(())
