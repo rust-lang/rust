@@ -50,7 +50,9 @@ fn main() {
 
         if target.contains("rumprun") {
             println!("cargo:rustc-link-lib=unwind");
-        } else if target.contains("netbsd") || target.contains("openbsd") {
+        } else if target.contains("netbsd") {
+            println!("cargo:rustc-link-lib=gcc_s");
+        } else if target.contains("openbsd") {
             println!("cargo:rustc-link-lib=gcc");
         } else if target.contains("bitrig") {
             println!("cargo:rustc-link-lib=c++abi");
