@@ -123,6 +123,15 @@
 //! {:.*} {0}
 //! ```
 //!
+//! It is possible to combine the `{:.*}` syntax with positional and
+//! named parameters:
+//!
+//! ```
+//! let formatted_numbers = format!("{} {0:.*} {foo:.*}", 2.1, 2, 1, foo=2.1);
+//!
+//! assert_eq("2.1 is 2.10 2.1", formatted_numbers)
+//! ```
+//!
 //! ## Formatting traits
 //!
 //! When requesting that an argument be formatted with a particular type, you
