@@ -15,6 +15,11 @@ fn make_vec_macro() -> Vec<i32> {
 }
 
 #[miri_run]
+fn make_vec_macro_repeat() -> Vec<u8> {
+    vec![42; 8]
+}
+
+#[miri_run]
 fn vec_int_iter() -> i32 {
     vec![1, 2, 3, 4].into_iter().fold(0, |x, y| x + y)
 }

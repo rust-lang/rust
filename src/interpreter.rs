@@ -413,6 +413,21 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
+            // FIXME(tsion): Handle different integer types correctly. Use primvals?
+            "overflowing_sub" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.ty_size(ty);
+
+                let left_arg  = try!(self.eval_operand(&args[0]));
+                let right_arg = try!(self.eval_operand(&args[1]));
+
+                let left = try!(self.memory.read_int(left_arg, size));
+                let right = try!(self.memory.read_int(right_arg, size));
+
+                let n = left.wrapping_sub(right);
+                try!(self.memory.write_int(dest, n, size));
+            }
+
             "size_of" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.ty_size(ty) as u64;
