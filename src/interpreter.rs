@@ -614,11 +614,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(())
     }
 
-    fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
-        let ty = self.mir().operand_ty(self.tcx, operand);
-        self.monomorphize(ty)
-    }
-
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
         self.eval_operand_and_repr(op).map(|(p, _)| p)
     }
@@ -766,7 +761,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn lvalue_ty(&self, lvalue: &mir::Lvalue<'tcx>) -> ty::Ty<'tcx> {
-        self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx)
+        self.monomorphize(self.mir().lvalue_ty(self.tcx, lvalue).to_ty(self.tcx))
+    }
+
+    fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
+        self.monomorphize(self.mir().operand_ty(self.tcx, operand))
     }
 
     fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
