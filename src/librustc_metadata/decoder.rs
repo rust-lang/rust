@@ -810,7 +810,7 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
     let mut parent_path = item_path(item_doc);
     parent_path.pop();
     let mut parent_def_path = def_path(cdata, id);
-    parent_def_path.pop();
+    parent_def_path.data.pop();
     if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
         let ii = decode_inlined_item(cdata,
                                      tcx,
@@ -830,7 +830,7 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
         let mut grandparent_path = parent_path;
         grandparent_path.pop();
         let mut grandparent_def_path = parent_def_path;
-        grandparent_def_path.pop();
+        grandparent_def_path.data.pop();
         let parent_doc = cdata.lookup_item(parent_did.index);
         if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, tag_ast as usize) {
             let ii = decode_inlined_item(cdata,
