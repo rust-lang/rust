@@ -106,24 +106,24 @@ impl Memory {
     }
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        let (src_bytes, relocations) = {
+        let (src_bytes, mut relocations) = {
             let alloc = try!(self.get_mut(src.alloc_id));
             try!(alloc.check_relocation_edges(src.offset, src.offset + size));
             let bytes = alloc.bytes[src.offset..src.offset + size].as_mut_ptr();
 
-            let mut relocations: Vec<(usize, AllocId)> = alloc.relocations
+            let relocations: Vec<(usize, AllocId)> = alloc.relocations
                 .range(Included(&src.offset), Excluded(&(src.offset + size)))
                 .map(|(&k, &v)| (k, v))
                 .collect();
 
-            for &mut (ref mut offset, _) in &mut relocations {
-                alloc.relocations.remove(offset);
-                *offset += dest.offset;
-                *offset -= src.offset;
-            }
-
             (bytes, relocations)
         };
+
+        // Update relocation offsets for the new positions in the destination allocation.
+        for &mut (ref mut offset, _) in &mut relocations {
+            *offset += dest.offset;
+            *offset -= src.offset;
+        }
 
         let dest_bytes = try!(self.get_bytes_mut(dest, size)).as_mut_ptr();
 
