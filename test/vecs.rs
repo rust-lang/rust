@@ -13,3 +13,8 @@ fn make_vec() -> Vec<i32> {
 fn make_vec_macro() -> Vec<i32> {
     vec![1, 2]
 }
+
+#[miri_run]
+fn vec_int_iter() -> i32 {
+    vec![1, 2, 3, 4].into_iter().fold(0, |x, y| x + y)
+}
