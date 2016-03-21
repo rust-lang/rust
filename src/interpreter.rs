@@ -495,7 +495,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         match *rvalue {
             Use(ref operand) => {
                 let src = try!(self.eval_operand(operand));
-                self.memory.copy(src, dest, dest_repr.size())
+                try!(self.memory.copy(src, dest, dest_repr.size()));
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
@@ -508,39 +508,36 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let right_val = try!(self.read_primval(right_ptr, right_ty));
 
                 let val = try!(primval::binary_op(bin_op, left_val, right_val));
-                self.memory.write_primval(dest, val)
+                try!(self.memory.write_primval(dest, val));
             }
 
             UnaryOp(un_op, ref operand) => {
                 let ptr = try!(self.eval_operand(operand));
                 let ty = self.operand_ty(operand);
                 let val = try!(self.read_primval(ptr, ty));
-                self.memory.write_primval(dest, primval::unary_op(un_op, val))
+                try!(self.memory.write_primval(dest, primval::unary_op(un_op, val)));
             }
 
             Aggregate(ref kind, ref operands) => {
                 use rustc::mir::repr::AggregateKind::*;
                 match *kind {
-                    Tuple => self.assign_to_aggregate(dest, &dest_repr, 0, operands),
+                    Tuple | Closure(..) =>
+                        try!(self.assign_to_aggregate(dest, &dest_repr, 0, operands)),
 
                     Adt(_, variant_idx, _) =>
-                        self.assign_to_aggregate(dest, &dest_repr, variant_idx, operands),
+                        try!(self.assign_to_aggregate(dest, &dest_repr, variant_idx, operands)),
 
-                    Vec => match *dest_repr {
-                        Repr::Array { elem_size, length } => {
-                            assert_eq!(length, operands.len());
-                            for (i, operand) in operands.iter().enumerate() {
-                                let src = try!(self.eval_operand(operand));
-                                let offset = i * elem_size;
-                                let elem_dest = dest.offset(offset as isize);
-                                try!(self.memory.copy(src, elem_dest, elem_size));
-                            }
-                            Ok(())
+                    Vec => if let Repr::Array { elem_size, length } = *dest_repr {
+                        assert_eq!(length, operands.len());
+                        for (i, operand) in operands.iter().enumerate() {
+                            let src = try!(self.eval_operand(operand));
+                            let offset = i * elem_size;
+                            let elem_dest = dest.offset(offset as isize);
+                            try!(self.memory.copy(src, elem_dest, elem_size));
                         }
-                        _ => panic!("expected Repr::Array target"),
+                    } else {
+                        panic!("expected Repr::Array target");
                     },
-
-                    Closure(..) => self.assign_to_aggregate(dest, &dest_repr, 0, operands),
                 }
             }
 
@@ -557,7 +554,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     _ => panic!("Rvalue::Len expected array or slice, got {:?}", ty),
                 };
                 let psize = self.memory.pointer_size;
-                self.memory.write_uint(dest, len, psize)
+                try!(self.memory.write_uint(dest, len, psize));
             }
 
             Ref(_, _, ref lvalue) => {
@@ -571,13 +568,12 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         try!(self.memory.write_uint(len_ptr, len, psize));
                     }
                 }
-                Ok(())
             }
 
             Box(ty) => {
                 let size = self.ty_size(ty);
                 let ptr = self.memory.allocate(size);
-                self.memory.write_ptr(dest, ptr)
+                try!(self.memory.write_ptr(dest, ptr));
             }
 
             Cast(kind, ref operand, dest_ty) => {
@@ -594,11 +590,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         match (&src_pointee_ty.sty, &dest_pointee_ty.sty) {
                             (&ty::TyArray(_, length), &ty::TySlice(_)) => {
                                 let size = self.memory.pointer_size;
-                                self.memory.write_uint(
-                                    dest.offset(size as isize),
-                                    length as u64,
-                                    size,
-                                )
+                                let len_ptr = dest.offset(size as isize);
+                                try!(self.memory.write_uint(len_ptr, length as u64, size));
                             }
 
                             _ => panic!("can't handle cast: {:?}", rvalue),
@@ -608,7 +601,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     Misc => {
                         // FIXME(tsion): Wrong for almost everything.
                         let size = dest_repr.size();
-                        self.memory.copy(src, dest, size)
+                        try!(self.memory.copy(src, dest, size));
                     }
 
                     _ => panic!("can't handle cast: {:?}", rvalue),
@@ -617,6 +610,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             ref r => panic!("can't handle rvalue: {:?}", r),
         }
+
+        Ok(())
     }
 
     fn operand_ty(&self, operand: &mir::Operand<'tcx>) -> ty::Ty<'tcx> {
