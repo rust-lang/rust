@@ -743,17 +743,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         use syntax::ast::{IntTy, UintTy};
         let repr = match ty.sty {
             ty::TyBool => Repr::Primitive { size: 1 },
-            ty::TyInt(IntTy::Is)  => Repr::Primitive { size: self.memory.pointer_size },
-            ty::TyInt(IntTy::I8)  => Repr::Primitive { size: 1 },
-            ty::TyInt(IntTy::I16) => Repr::Primitive { size: 2 },
-            ty::TyInt(IntTy::I32) => Repr::Primitive { size: 4 },
-            ty::TyInt(IntTy::I64) => Repr::Primitive { size: 8 },
 
-            ty::TyUint(UintTy::Us)  => Repr::Primitive { size: self.memory.pointer_size },
-            ty::TyUint(UintTy::U8)  => Repr::Primitive { size: 1 },
-            ty::TyUint(UintTy::U16) => Repr::Primitive { size: 2 },
-            ty::TyUint(UintTy::U32) => Repr::Primitive { size: 4 },
-            ty::TyUint(UintTy::U64) => Repr::Primitive { size: 8 },
+            ty::TyInt(IntTy::I8)  | ty::TyUint(UintTy::U8)  => Repr::Primitive { size: 1 },
+            ty::TyInt(IntTy::I16) | ty::TyUint(UintTy::U16) => Repr::Primitive { size: 2 },
+            ty::TyInt(IntTy::I32) | ty::TyUint(UintTy::U32) => Repr::Primitive { size: 4 },
+            ty::TyInt(IntTy::I64) | ty::TyUint(UintTy::U64) => Repr::Primitive { size: 8 },
+
+            ty::TyInt(IntTy::Is) | ty::TyUint(UintTy::Us) =>
+                Repr::Primitive { size: self.memory.pointer_size },
 
             ty::TyTuple(ref fields) =>
                 self.make_aggregate_repr(iter::once(fields.iter().cloned())),
