@@ -21,7 +21,7 @@ use error::{EvalError, EvalResult};
 use memory::{self, FieldRepr, Memory, Pointer, Repr};
 use primval::{self, PrimVal};
 
-const TRACE_EXECUTION: bool = true;
+const TRACE_EXECUTION: bool = false;
 
 struct Interpreter<'a, 'tcx: 'a, 'arena> {
     /// The results of the type checker, from rustc.
