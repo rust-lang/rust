@@ -74,6 +74,19 @@ struct Frame<'a, 'tcx: 'a> {
     temp_offset: usize,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+struct Lvalue {
+    ptr: Pointer,
+    extra: LvalueExtra,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum LvalueExtra {
+    None,
+    Length(u64),
+    // Vtable(memory::AllocId),
+}
+
 #[derive(Clone)]
 enum CachedMir<'mir, 'tcx: 'mir> {
     Ref(&'mir mir::Mir<'tcx>),
@@ -195,7 +208,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let discr_ptr = try!(self.eval_lvalue(discr));
+                let discr_ptr = try!(self.eval_lvalue(discr)).ptr;
                 let discr_size = self.lvalue_repr(discr).size();
                 let discr_val = try!(self.memory.read_uint(discr_ptr, discr_size));
 
@@ -215,7 +228,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Switch { ref discr, ref targets, .. } => {
-                let adt_ptr = try!(self.eval_lvalue(discr));
+                let adt_ptr = try!(self.eval_lvalue(discr)).ptr;
                 let adt_repr = self.lvalue_repr(discr);
                 let discr_size = match *adt_repr {
                     Repr::Aggregate { discr_size, .. } => discr_size,
@@ -229,7 +242,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let mut return_ptr = None;
                 if let Some((ref lv, target)) = *destination {
                     self.frame_mut().next_block = target;
-                    return_ptr = Some(try!(self.eval_lvalue(lv)));
+                    return_ptr = Some(try!(self.eval_lvalue(lv)).ptr);
                 }
 
                 let func_ty = self.operand_ty(func);
@@ -475,7 +488,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
     {
-        let dest = try!(self.eval_lvalue(lvalue));
+        let dest = try!(self.eval_lvalue(lvalue)).ptr;
         let dest_repr = self.lvalue_repr(lvalue);
 
         use rustc::mir::repr::Rvalue::*;
@@ -532,22 +545,33 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Len(ref lvalue) => {
+                let src = try!(self.eval_lvalue(lvalue));
                 let ty = self.lvalue_ty(lvalue);
-                match ty.sty {
-                    ty::TyArray(_, n) => {
-                        let psize = self.memory.pointer_size;
-                        self.memory.write_uint(dest, n as u64, psize)
-                    }
-                    ty::TySlice(_) => {
-                        unimplemented!()
-                    }
+                let len = match ty.sty {
+                    ty::TyArray(_, n) => n as u64,
+                    ty::TySlice(_) => if let LvalueExtra::Length(n) = src.extra {
+                        n
+                    } else {
+                        panic!("Rvalue::Len of a slice given non-slice pointer: {:?}", src);
+                    },
                     _ => panic!("Rvalue::Len expected array or slice, got {:?}", ty),
-                }
+                };
+                let psize = self.memory.pointer_size;
+                self.memory.write_uint(dest, len, psize)
             }
 
             Ref(_, _, ref lvalue) => {
-                let ptr = try!(self.eval_lvalue(lvalue));
-                self.memory.write_ptr(dest, ptr)
+                let lv = try!(self.eval_lvalue(lvalue));
+                try!(self.memory.write_ptr(dest, lv.ptr));
+                match lv.extra {
+                    LvalueExtra::None => {},
+                    LvalueExtra::Length(len) => {
+                        let psize = self.memory.pointer_size;
+                        let len_ptr = dest.offset(psize as isize);
+                        try!(self.memory.write_uint(len_ptr, len, psize));
+                    }
+                }
+                Ok(())
             }
 
             Box(ty) => {
@@ -557,18 +581,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Cast(kind, ref operand, dest_ty) => {
-                fn pointee_type<'tcx>(ptr_ty: ty::Ty<'tcx>) -> Option<ty::Ty<'tcx>> {
-                    match ptr_ty.sty {
-                        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-                        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-                        ty::TyBox(ty) => {
-                            Some(ty)
-                        }
-
-                        _ => None,
-                    }
-                }
-
                 let src = try!(self.eval_operand(operand));
                 let src_ty = self.operand_ty(operand);
 
@@ -597,7 +609,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         // FIXME(tsion): Wrong for almost everything.
                         let size = dest_repr.size();
                         self.memory.copy(src, dest, size)
-                        // panic!("can't handle cast: {:?}", rvalue);
                     }
 
                     _ => panic!("can't handle cast: {:?}", rvalue),
@@ -622,7 +633,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     {
         use rustc::mir::repr::Operand::*;
         match *op {
-            Consume(ref lvalue) => Ok((try!(self.eval_lvalue(lvalue)), self.lvalue_repr(lvalue))),
+            Consume(ref lvalue) =>
+                Ok((try!(self.eval_lvalue(lvalue)).ptr, self.lvalue_repr(lvalue))),
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
@@ -649,7 +661,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
-    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Pointer> {
+    fn eval_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<Lvalue> {
         use rustc::mir::repr::Lvalue::*;
         let ptr = match *lvalue {
             ReturnPointer => self.frame().return_ptr
@@ -659,8 +671,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
 
             Projection(ref proj) => {
-                let base_ptr = try!(self.eval_lvalue(&proj.base));
+                let base_ptr = try!(self.eval_lvalue(&proj.base)).ptr;
                 let base_repr = self.lvalue_repr(&proj.base);
+                let base_ty = self.lvalue_ty(&proj.base);
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
                     Field(field, _) => match *base_repr {
@@ -676,11 +689,24 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         _ => panic!("variant downcast on non-aggregate type: {:?}", base_repr),
                     },
 
-                    // FIXME(tsion): Wrong for fat pointers.
-                    Deref => try!(self.memory.read_ptr(base_ptr)),
+                    Deref => {
+                        let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
+                        println!("{:?}", pointee_ty);
+                        let ptr = try!(self.memory.read_ptr(base_ptr));
+                        let extra = match pointee_ty.sty {
+                            ty::TySlice(_) => {
+                                let psize = self.memory.pointer_size;
+                                let len_ptr = base_ptr.offset(psize as isize);
+                                let len = try!(self.memory.read_uint(len_ptr, psize));
+                                LvalueExtra::Length(len)
+                            }
+                            ty::TyTrait(_) => unimplemented!(),
+                            _ => LvalueExtra::None,
+                        };
+                        return Ok(Lvalue { ptr: ptr, extra: extra });
+                    }
 
                     Index(ref operand) => {
-                        let base_ty = self.lvalue_ty(&proj.base);
                         let elem_size = match base_ty.sty {
                             ty::TyArray(elem_ty, _) => self.ty_size(elem_ty),
                             ty::TySlice(elem_ty) => self.ty_size(elem_ty),
@@ -698,7 +724,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
-        Ok(ptr)
+        Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
     }
 
     // TODO(tsion): Try making const_to_primval instead.
@@ -1001,6 +1027,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
             vtable => unreachable!("resolved vtable bad vtable {:?} in trans", vtable),
         }
+    }
+}
+
+fn pointee_type<'tcx>(ptr_ty: ty::Ty<'tcx>) -> Option<ty::Ty<'tcx>> {
+    match ptr_ty.sty {
+        ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
+        ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
+        ty::TyBox(ty) => {
+            Some(ty)
+        }
+        _ => None,
     }
 }
 
