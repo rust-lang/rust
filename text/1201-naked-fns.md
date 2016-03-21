@@ -1,7 +1,7 @@
 - Feature Name: `naked_fns`
 - Start Date: 2015-07-10
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1201
+- Rust Issue: https://github.com/rust-lang/rust/issues/32408
 
 # Summary
 
