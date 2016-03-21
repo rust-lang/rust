@@ -586,7 +586,7 @@ mod tests {
         os_string.clear();
         assert_eq!(0, os_string.len());
     }
-    
+
     #[test]
     fn test_os_str_default(){
         let os_str = Default::default();
