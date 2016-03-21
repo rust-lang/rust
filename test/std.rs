@@ -17,3 +17,8 @@ fn arc() -> i32 {
     let a = Arc::new(42);
     *a
 }
+
+#[miri_run]
+fn true_assert() {
+    assert_eq!(1, 1);
+}
