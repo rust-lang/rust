@@ -617,7 +617,8 @@ impl Decodable for FileMap {
 
                     Ok(lines)
                 })?;
-            let multibyte_chars: Vec<MultiByteChar> = d.read_struct_field("multibyte_chars", 4, |d| Decodable::decode(d))?;
+            let multibyte_chars: Vec<MultiByteChar> =
+                d.read_struct_field("multibyte_chars", 4, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name: name,
                 start_pos: start_pos,
