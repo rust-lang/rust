@@ -133,7 +133,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         let infcx = infer::new_infer_ctxt(tcx,
                                           &tcx.tables,
                                           Some(self.clone()),
-                                          ProjectionMode::AnyFinal);
+                                          ProjectionMode::Topmost);
 
         let adt = match self_type.sty {
             ty::TyStruct(struct_def, substs) => {
@@ -548,7 +548,7 @@ impl<'tcx> ty::TyS<'tcx> {
         let infcx = infer::new_infer_ctxt(tcx,
                                           &tcx.tables,
                                           Some(param_env.clone()),
-                                          ProjectionMode::AnyFinal);
+                                          ProjectionMode::Topmost);
 
         let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
                                                                 self, bound, span);
