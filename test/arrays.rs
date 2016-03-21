@@ -37,3 +37,13 @@ fn index_for_loop() -> usize {
     }
     sum
 }
+
+#[miri_run]
+fn for_loop() -> usize {
+    let mut sum = 0;
+    let a = [0, 10, 20, 30];
+    for &n in &a {
+        sum += n;
+    }
+    sum
+}
