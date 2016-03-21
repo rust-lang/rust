@@ -655,7 +655,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         try!(self.const_to_ptr(value)),
                         self.ty_to_repr(ty),
                     )),
-                    ref l => panic!("can't handle item literal: {:?}", l),
+                    Item { .. } => unimplemented!(),
                 }
             }
         }
@@ -682,6 +682,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             Arg(i) => self.frame().locals[i as usize],
             Var(i) => self.frame().locals[self.frame().var_offset + i as usize],
             Temp(i) => self.frame().locals[self.frame().temp_offset + i as usize],
+
+            Static(_def_id) => unimplemented!(),
 
             Projection(ref proj) => {
                 let base_ptr = try!(self.eval_lvalue(&proj.base)).ptr;
@@ -728,11 +730,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         base_ptr.offset(n as isize * elem_size as isize)
                     }
 
-                    ref p => panic!("can't handle lvalue projection: {:?}", p),
+                    ConstantIndex { .. } => unimplemented!(),
                 }
             }
-
-            ref l => panic!("can't handle lvalue: {:?}", l),
         };
 
         Ok(Lvalue { ptr: ptr, extra: LvalueExtra::None })
