@@ -29,21 +29,6 @@ fn index() -> i32 {
 }
 
 #[miri_run]
-fn index_for_loop() -> usize {
-    let mut sum = 0;
-    let a = [0, 10, 20, 30];
-    for i in 0..a.len() {
-        sum += a[i];
-    }
-    sum
-}
-
-#[miri_run]
-fn for_loop() -> usize {
-    let mut sum = 0;
-    let a = [0, 10, 20, 30];
-    for &n in &a {
-        sum += n;
-    }
-    sum
+fn array_repeat() -> [u8; 8] {
+    [42; 8]
 }

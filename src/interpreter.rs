@@ -530,8 +530,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         assert_eq!(length, operands.len());
                         for (i, operand) in operands.iter().enumerate() {
                             let src = try!(self.eval_operand(operand));
-                            let offset = i * elem_size;
-                            let elem_dest = dest.offset(offset as isize);
+                            let elem_dest = dest.offset((i * elem_size) as isize);
                             try!(self.memory.copy(src, elem_dest, elem_size));
                         }
                     } else {
@@ -540,7 +539,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
-            Repeat(_, _) => unimplemented!(),
+            Repeat(ref operand, _) => {
+                if let Repr::Array { elem_size, length } = *dest_repr {
+                    let src = try!(self.eval_operand(operand));
+                    for i in 0..length {
+                        let elem_dest = dest.offset((i * elem_size) as isize);
+                        try!(self.memory.copy(src, elem_dest, elem_size));
+                    }
+                } else {
+                    panic!("expected Repr::Array target");
+                }
+            }
 
             Len(ref lvalue) => {
                 let src = try!(self.eval_lvalue(lvalue));
