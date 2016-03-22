@@ -173,6 +173,18 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     builder.cfg.terminate(END_BLOCK, arg_scope_id, span,
                           TerminatorKind::Return);
 
+    assert!(
+        builder.cfg.basic_blocks
+                   .iter()
+                   .enumerate()
+                   .all(|(index, block)| {
+                       if block.terminator.is_none() {
+                           panic!("no terminator on block {:?} in {:?}",
+                               index, argument_extent)
+                       }
+                       true
+                   }));
+
     MirPlusPlus {
         mir: Mir {
             basic_blocks: builder.cfg.basic_blocks,

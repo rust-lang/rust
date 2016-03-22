@@ -30,6 +30,7 @@ impl SimplifyCfg {
             let mut seen: Vec<BasicBlock> = Vec::with_capacity(8);
 
             while mir.basic_block_data(target).statements.is_empty() {
+                debug!("final_target: target={:?}", target);
                 match mir.basic_block_data(target).terminator().kind {
                     TerminatorKind::Goto { target: next } => {
                         if seen.contains(&next) {
@@ -50,6 +51,8 @@ impl SimplifyCfg {
             // Temporarily take ownership of the terminator we're modifying to keep borrowck happy
             let mut terminator = mir.basic_block_data_mut(bb).terminator.take()
                                     .expect("invalid terminator state");
+
+            debug!("remove_goto_chains: bb={:?} terminator={:?}", bb, terminator);
 
             for target in terminator.successors_mut() {
                 let new_target = match final_target(mir, *target) {
