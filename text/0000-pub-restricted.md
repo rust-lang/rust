@@ -36,7 +36,7 @@ within a submodule of the tree, then `X` *cannot* be put at the root
 of the module tree. Illustration:
 
 ```rust
-// Intent: `a` exports `I` and `foo`, but nothing else.
+// Intent: `a` exports `I`, `bar`, and `foo`, but nothing else.
 pub mod a {
     pub const I: i32 = 3;
 
@@ -44,8 +44,8 @@ pub mod a {
     // is not meant to be exposed outside of `a`.
     fn semisecret(x: i32) -> i32  { use self::b::c::J; x + J }
 
-    pub fn foo(y: i32) -> i32 { semisecret(I) + y }
     pub fn bar(z: i32) -> i32 { semisecret(I) * z }
+    pub fn foo(y: i32) -> i32 { semisecret(I) + y }
 
     mod b {
         mod c {
@@ -68,7 +68,7 @@ accessed within the items of `a`, and then re-exporting `semisecret`
 as necessary up the module tree.
 
 ```rust
-// Intent: `a` exports `I` and `foo`, but nothing else.
+// Intent: `a` exports `I`, `bar`, and `foo`, but nothing else.
 pub mod a {
     pub const I: i32 = 3;
 
@@ -77,8 +77,8 @@ pub mod a {
     // (If we put `pub use` here, then *anyone* could access it.)
     use self::b::semisecret;
 
-    pub fn foo(y: i32) -> i32 { semisecret(I) + y }
     pub fn bar(z: i32) -> i32 { semisecret(I) * z }
+    pub fn foo(y: i32) -> i32 { semisecret(I) + y }
 
     mod b {
         pub use self::c::semisecret;
@@ -269,7 +269,7 @@ some manner.
 In the running example, one could instead write:
 
 ```rust
-// Intent: `a` exports `I` and `foo`, but nothing else.
+// Intent: `a` exports `I`, `bar`, and `foo`, but nothing else.
 pub mod a {
     pub const I: i32 = 3;
 
@@ -278,8 +278,8 @@ pub mod a {
     // (`pub use` would be *rejected*; see Note 1 below)
     use self::b::semisecret;
 
-    pub fn foo(y: i32) -> i32 { semisecret(I) + y }
     pub fn bar(z: i32) -> i32 { semisecret(I) * z }
+    pub fn foo(y: i32) -> i32 { semisecret(I) + y }
 
     mod b {
         pub(a) use self::c::semisecret;
