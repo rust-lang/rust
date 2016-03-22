@@ -1544,13 +1544,18 @@ fn rewrite_args(context: &RewriteContext,
         _ => multi_line_budget,
     };
 
+    let end_with_newline = match context.config.fn_args_layout {
+        StructLitStyle::Block => true,
+        _ => false,
+    };
+
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
         indent: indent,
         width: budget,
-        ends_with_newline: false,
+        ends_with_newline: end_with_newline,
         config: context.config,
     };
 
