@@ -121,12 +121,11 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
     };
     let kind_start = start + tag.len() + adjusts + (follow as usize);
-    let letters = line[kind_start..].chars();
-    let kind = letters.skip_while(|c| c.is_whitespace())
-                      .take_while(|c| !c.is_whitespace())
-                      .collect::<String>()
-                      .parse::<ErrorKind>()
-                      .ok();
+    let kind = line[kind_start..].split_whitespace()
+                                 .next()
+                                 .expect("Encountered unexpected empty comment")
+                                 .parse::<ErrorKind>()
+                                 .ok();
     let letters = line[kind_start..].chars();
     let msg = letters.skip_while(|c| c.is_whitespace())
                      .skip_while(|c| !c.is_whitespace())
