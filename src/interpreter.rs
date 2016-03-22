@@ -208,7 +208,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let discr_ptr = try!(self.eval_lvalue(discr)).ptr;
+                let discr_ptr = try!(self.eval_lvalue(discr)).to_ptr();
                 let discr_size = self.lvalue_repr(discr).size();
                 let discr_val = try!(self.memory.read_uint(discr_ptr, discr_size));
 
@@ -228,7 +228,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Switch { ref discr, ref targets, .. } => {
-                let adt_ptr = try!(self.eval_lvalue(discr)).ptr;
+                let adt_ptr = try!(self.eval_lvalue(discr)).to_ptr();
                 let adt_repr = self.lvalue_repr(discr);
                 let discr_size = match *adt_repr {
                     Repr::Aggregate { discr_size, .. } => discr_size,
@@ -242,7 +242,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let mut return_ptr = None;
                 if let Some((ref lv, target)) = *destination {
                     self.frame_mut().next_block = target;
-                    return_ptr = Some(try!(self.eval_lvalue(lv)).ptr);
+                    return_ptr = Some(try!(self.eval_lvalue(lv)).to_ptr());
                 }
 
                 let func_ty = self.operand_ty(func);
@@ -502,7 +502,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn eval_assignment(&mut self, lvalue: &mir::Lvalue<'tcx>, rvalue: &mir::Rvalue<'tcx>)
         -> EvalResult<()>
     {
-        let dest = try!(self.eval_lvalue(lvalue)).ptr;
+        let dest = try!(self.eval_lvalue(lvalue)).to_ptr();
         let dest_repr = self.lvalue_repr(lvalue);
 
         use rustc::mir::repr::Rvalue::*;
@@ -647,7 +647,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) =>
-                Ok((try!(self.eval_lvalue(lvalue)).ptr, self.lvalue_repr(lvalue))),
+                Ok((try!(self.eval_lvalue(lvalue)).to_ptr(), self.lvalue_repr(lvalue))),
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
@@ -686,7 +686,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             Static(_def_id) => unimplemented!(),
 
             Projection(ref proj) => {
-                let base_ptr = try!(self.eval_lvalue(&proj.base)).ptr;
+                let base_ptr = try!(self.eval_lvalue(&proj.base)).to_ptr();
                 let base_repr = self.lvalue_repr(&proj.base);
                 let base_ty = self.lvalue_ty(&proj.base);
                 use rustc::mir::repr::ProjectionElem::*;
@@ -1051,6 +1051,13 @@ fn pointee_type<'tcx>(ptr_ty: ty::Ty<'tcx>) -> Option<ty::Ty<'tcx>> {
             Some(ty)
         }
         _ => None,
+    }
+}
+
+impl Lvalue {
+    fn to_ptr(self) -> Pointer {
+        assert_eq!(self.extra, LvalueExtra::None);
+        self.ptr
     }
 }
 
