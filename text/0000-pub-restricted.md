@@ -474,13 +474,22 @@ feature is making this code cleaner or easier to reason about).
 [impl item example]: #impl-item-example
 
 ```rust
-pub struct S;
+pub struct S(i32);
 
 mod a {
-    pub fn call_foo(s: &S) { s.foo(); }
+    pub fn call_foo(s: &super::S) { s.foo(); }
 
-    impl S {
-        pub(a) fn foo(&self) { println!("only callable within `a`"); }
+    mod b {
+        fn some_method_private_to_b() {
+            println!("inside some_method_private_to_b");
+        }
+
+        impl super::super::S {
+            pub(a) fn foo(&self) {
+                some_method_private_to_b();
+                println!("only callable within `a`: {}", self.0);
+            }
+        }
     }
 }
 
@@ -807,25 +816,7 @@ itself not accessible in `mod b`?
 
 pnkfelix is personally inclined to make this sort of thing illegal,
 mainly because he finds it totally unintuitive, but is interested in
-hearing counter-arguments. Certainly the earlier [impl item example][]
-would look prettier as:
-
-```rust
-pub struct S;
-
-impl S {
-    pub(a) fn foo(&self) { println!("only callable within `a`"); }
-}
-
-mod a {
-    pub fn call_foo(s: &S) { s.foo(); }
-
-}
-
-fn rejected(s: &S) {
-    s.foo(); //~ ERROR: `S::foo` not visible outside of module `a`
-}
-```
+hearing counter-arguments.
 
 ## Implicit Restriction Satisfaction (IRS:PUNPM)
 
