@@ -11,6 +11,17 @@ fn rc_cell() -> i32 {
     r.get()
 }
 
+// TODO(tsion): borrow code needs to evaluate string statics via Lvalue::Static
+// #[miri_run]
+// fn rc_refcell() -> i32 {
+//     use std::rc::Rc;
+//     use std::cell::RefCell;
+//     let r = Rc::new(RefCell::new(42));
+//     *r.borrow_mut() += 10;
+//     let x = *r.borrow();
+//     x
+// }
+
 #[miri_run]
 fn arc() -> i32 {
     use std::sync::Arc;
