@@ -123,7 +123,7 @@ DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test rustc_lint rustc_front
 
 
-TOOL_DEPS_compiletest := test getopts
+TOOL_DEPS_compiletest := test getopts log
 TOOL_DEPS_rustdoc := rustdoc
 TOOL_DEPS_rustc := rustc_driver
 TOOL_DEPS_rustbook := std rustdoc
