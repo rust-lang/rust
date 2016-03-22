@@ -38,8 +38,8 @@ use rustc_trans::back::link;
 use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::def::Def;
 use rustc::middle::def_id::{DefId, DefIndex};
-use rustc::middle::ty::subst::{self, ParamSpace, VecPerParamSpace};
-use rustc::middle::ty;
+use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
+use rustc::ty;
 use rustc::middle::stability;
 
 use rustc_front::hir;
@@ -831,7 +831,7 @@ impl Clean<WherePredicate> for hir::WherePredicate {
 
 impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
     fn clean(&self, cx: &DocContext) -> WherePredicate {
-        use rustc::middle::ty::Predicate;
+        use rustc::ty::Predicate;
 
         match *self {
             Predicate::Trait(ref pred) => pred.clean(cx),

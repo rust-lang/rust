@@ -55,8 +55,8 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::def::*;
 use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
-use rustc::middle::ty::subst::{ParamSpace, FnSpace, TypeSpace};
-use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
+use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
+use rustc::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, FnvHashMap};
 
 use syntax::ast::{self, FloatTy};

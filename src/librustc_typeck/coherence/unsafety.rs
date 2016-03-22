@@ -11,7 +11,7 @@
 //! Unsafety checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 use rustc_front::intravisit;
 use rustc_front::hir;
 

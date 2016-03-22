@@ -20,7 +20,7 @@ use lint;
 use middle::cstore::{CrateStore, LOCAL_CRATE};
 use middle::def::Def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
-use middle::ty::{self, TyCtxt};
+use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};

@@ -102,7 +102,7 @@ use trans::cleanup::{CleanupMethods, DropHintDatum, DropHintMethods};
 use trans::expr;
 use trans::tvec;
 use trans::value::Value;
-use middle::ty::Ty;
+use rustc::ty::Ty;
 
 use std::fmt;
 use syntax::ast;

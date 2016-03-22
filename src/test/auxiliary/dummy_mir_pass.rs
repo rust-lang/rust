@@ -22,7 +22,7 @@ extern crate syntax;
 use rustc::mir::transform::{self, MirPass};
 use rustc::mir::repr::{Mir, Literal};
 use rustc::mir::visit::MutVisitor;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc::middle::const_eval::ConstVal;
 use rustc_const_eval::ConstInt;
 use rustc_plugin::Registry;

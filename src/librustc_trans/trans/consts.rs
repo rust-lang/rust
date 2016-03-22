@@ -32,11 +32,11 @@ use trans::type_::Type;
 use trans::type_of;
 use trans::value::Value;
 use trans::Disr;
-use middle::ty::subst::Substs;
-use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
-use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::cast::{CastTy,IntTy};
+use rustc::ty::subst::Substs;
+use rustc::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
 use rustc_const_eval::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
 

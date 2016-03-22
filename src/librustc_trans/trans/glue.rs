@@ -18,9 +18,9 @@ use back::symbol_names;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
-use middle::ty::subst::{Substs};
-use middle::traits;
-use middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::{Substs};
+use rustc::traits;
+use rustc::ty::{self, Ty, TyCtxt};
 use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()

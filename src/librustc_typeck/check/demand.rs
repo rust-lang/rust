@@ -10,8 +10,8 @@
 
 
 use check::{coercion, FnCtxt};
-use middle::ty::Ty;
-use middle::infer::TypeOrigin;
+use rustc::ty::Ty;
+use rustc::infer::TypeOrigin;
 
 use syntax::codemap::Span;
 use rustc_front::hir;

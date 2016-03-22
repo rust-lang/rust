@@ -10,7 +10,7 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
-use middle::ty;
+use rustc::ty;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
 use trans::base;

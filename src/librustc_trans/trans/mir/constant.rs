@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use middle::ty::{Ty, TypeFoldable};
+use rustc::ty::{Ty, TypeFoldable};
 use rustc::middle::const_eval::{self, ConstVal};
 use rustc_const_eval::ConstInt::*;
 use rustc::mir::repr as mir;

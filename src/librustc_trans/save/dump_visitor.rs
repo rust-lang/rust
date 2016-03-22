@@ -31,7 +31,7 @@ use session::Session;
 
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 
 use std::collections::HashSet;
 use std::hash::*;

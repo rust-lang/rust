@@ -15,7 +15,7 @@ use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
-use rustc::middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc::front::map as hir_map;
 use rustc::lint;
 use rustc_trans::back::link;

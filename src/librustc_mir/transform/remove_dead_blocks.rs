@@ -33,7 +33,7 @@
 //! and does not renumber anything.
 
 use rustc_data_structures::bitvec::BitVector;
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{Pass, MirPass};
 use syntax::ast::NodeId;

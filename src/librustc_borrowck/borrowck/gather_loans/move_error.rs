@@ -12,7 +12,7 @@ use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
-use rustc::middle::ty;
+use rustc::ty;
 use syntax::ast;
 use syntax::codemap;
 use syntax::errors::DiagnosticBuilder;
