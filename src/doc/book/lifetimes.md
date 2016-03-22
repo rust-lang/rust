@@ -282,14 +282,12 @@ to it.
 
 ## Lifetime Elision
 
-Rust supports powerful local type inference in function bodies, but it’s
-forbidden in item signatures to allow reasoning about the types based on
-the item signature alone. However, for ergonomic reasons a very restricted
-secondary inference algorithm called “lifetime elision” applies in function
-signatures. It infers only based on the signature components themselves and not
-based on the body of the function, only infers lifetime parameters, and does
-this with only three easily memorizable and unambiguous rules. This makes
-lifetime elision a shorthand for writing an item signature, while not hiding
+Rust supports powerful local type inference in the bodies of functions but not in their item signatures. 
+It's forbidden to allow reasoning about types based on the item signature alone. 
+However, for ergonomic reasons, a very restricted secondary inference algorithm called 
+“lifetime elision” does apply when judging lifetimes. Lifetime elision is concerned solely to infer 
+lifetime parameters using three easily memorizable and unambiguous rules. This means lifetime elision 
+acts as a shorthand for writing an item signature, while not hiding
 away the actual types involved as full local inference would if applied to it.
 
 When talking about lifetime elision, we use the term *input lifetime* and
