@@ -258,7 +258,7 @@ done:
     io::stdin().read_line(&mut guess).expect("failed to read line");
 ```
 
-But that gets hard to read. So we’ve split it up, two lines for two method
+But that gets hard to read. So we’ve split it up, two lines for three method
 calls. We already talked about `read_line()`, but what about `expect()`? Well,
 we already mentioned that `read_line()` puts what the user types into the `&mut
 String` we pass it. But it also returns a value: in this case, an
