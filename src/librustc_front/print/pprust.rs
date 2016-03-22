@@ -288,13 +288,13 @@ pub fn fun_to_string(decl: &hir::FnDecl,
     to_string(|s| {
         s.head("")?;
         s.print_fn(decl,
-                        unsafety,
-                        constness,
-                        Abi::Rust,
-                        Some(name),
-                        generics,
-                        opt_explicit_self,
-                        hir::Inherited)?;
+                   unsafety,
+                   constness,
+                   Abi::Rust,
+                   Some(name),
+                   generics,
+                   opt_explicit_self,
+                   hir::Inherited)?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -567,13 +567,13 @@ impl<'a> State<'a> {
             hir::ForeignItemFn(ref decl, ref generics) => {
                 self.head("")?;
                 self.print_fn(decl,
-                                   hir::Unsafety::Normal,
-                                   hir::Constness::NotConst,
-                                   Abi::Rust,
-                                   Some(item.name),
-                                   generics,
-                                   None,
-                                   item.vis)?;
+                              hir::Unsafety::Normal,
+                              hir::Constness::NotConst,
+                              Abi::Rust,
+                              Some(item.name),
+                              generics,
+                              None,
+                              item.vis)?;
                 self.end()?; // end head-ibox
                 word(&mut self.s, ";")?;
                 self.end() // end the outer fn box
@@ -704,13 +704,13 @@ impl<'a> State<'a> {
             hir::ItemFn(ref decl, unsafety, constness, abi, ref typarams, ref body) => {
                 self.head("")?;
                 self.print_fn(decl,
-                                   unsafety,
-                                   constness,
-                                   abi,
-                                   Some(item.name),
-                                   typarams,
-                                   None,
-                                   item.vis)?;
+                              unsafety,
+                              constness,
+                              abi,
+                              Some(item.name),
+                              typarams,
+                              None,
+                              item.vis)?;
                 word(&mut self.s, " ")?;
                 self.print_block_with_attrs(&body, &item.attrs)?;
             }
@@ -984,9 +984,9 @@ impl<'a> State<'a> {
         match ti.node {
             hir::ConstTraitItem(ref ty, ref default) => {
                 self.print_associated_const(ti.name,
-                                                 &ty,
-                                                 default.as_ref().map(|expr| &**expr),
-                                                 hir::Inherited)?;
+                                            &ty,
+                                            default.as_ref().map(|expr| &**expr),
+                                            hir::Inherited)?;
             }
             hir::MethodTraitItem(ref sig, ref body) => {
                 if body.is_some() {
@@ -1002,8 +1002,8 @@ impl<'a> State<'a> {
             }
             hir::TypeTraitItem(ref bounds, ref default) => {
                 self.print_associated_type(ti.name,
-                                                Some(bounds),
-                                                default.as_ref().map(|ty| &**ty))?;
+                                           Some(bounds),
+                                           default.as_ref().map(|ty| &**ty))?;
             }
         }
         self.ann.post(self, NodeSubItem(ti.id))
@@ -1219,15 +1219,15 @@ impl<'a> State<'a> {
         self.print_path(path, true, 0)?;
         word(&mut self.s, "{")?;
         self.commasep_cmnt(Consistent,
-                                &fields[..],
-                                |s, field| {
-                                    s.ibox(indent_unit)?;
-                                    s.print_name(field.name.node)?;
-                                    s.word_space(":")?;
-                                    s.print_expr(&field.expr)?;
-                                    s.end()
-                                },
-                                |f| f.span)?;
+                           &fields[..],
+                           |s, field| {
+                               s.ibox(indent_unit)?;
+                               s.print_name(field.name.node)?;
+                               s.word_space(":")?;
+                               s.print_expr(&field.expr)?;
+                               s.end()
+                           },
+                           |f| f.span)?;
         match *wth {
             Some(ref expr) => {
                 self.ibox(indent_unit)?;
@@ -1760,17 +1760,17 @@ impl<'a> State<'a> {
                 self.nbsp()?;
                 self.word_space("{")?;
                 self.commasep_cmnt(Consistent,
-                                        &fields[..],
-                                        |s, f| {
-                                            s.cbox(indent_unit)?;
-                                            if !f.node.is_shorthand {
-                                                s.print_name(f.node.name)?;
-                                                s.word_nbsp(":")?;
-                                            }
-                                            s.print_pat(&f.node.pat)?;
-                                            s.end()
-                                        },
-                                        |f| f.node.pat.span)?;
+                                   &fields[..],
+                                   |s, f| {
+                                       s.cbox(indent_unit)?;
+                                       if !f.node.is_shorthand {
+                                           s.print_name(f.node.name)?;
+                                           s.word_nbsp(":")?;
+                                       }
+                                       s.print_pat(&f.node.pat)?;
+                                       s.end()
+                                   },
+                                   |f| f.node.pat.span)?;
                 if etc {
                     if !fields.is_empty() {
                         self.word_space(",")?;
@@ -2261,13 +2261,13 @@ impl<'a> State<'a> {
             },
         };
         self.print_fn(decl,
-                           unsafety,
-                           hir::Constness::NotConst,
-                           abi,
-                           name,
-                           &generics,
-                           opt_explicit_self,
-                           hir::Inherited)?;
+                      unsafety,
+                      hir::Constness::NotConst,
+                      abi,
+                      name,
+                      &generics,
+                      opt_explicit_self,
+                      hir::Inherited)?;
         self.end()
     }
 

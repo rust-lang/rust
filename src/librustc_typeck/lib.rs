@@ -354,17 +354,13 @@ pub fn check_crate(tcx: &TyCtxt, trait_map: ty::TraitMap) -> CompileResult {
           coherence::check_coherence(&ccx));
     })?;
 
-    time(time_passes, "wf checking", ||
-        check::check_wf_new(&ccx))?;
+    time(time_passes, "wf checking", || check::check_wf_new(&ccx))?;
 
-    time(time_passes, "item-types checking", ||
-        check::check_item_types(&ccx))?;
+    time(time_passes, "item-types checking", || check::check_item_types(&ccx))?;
 
-    time(time_passes, "item-bodies checking", ||
-        check::check_item_bodies(&ccx))?;
+    time(time_passes, "item-bodies checking", || check::check_item_bodies(&ccx))?;
 
-    time(time_passes, "drop-impl checking", ||
-        check::check_drop_impls(&ccx))?;
+    time(time_passes, "drop-impl checking", || check::check_drop_impls(&ccx))?;
 
     check_for_entry_fn(&ccx);
 

@@ -123,8 +123,8 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
         for projection in projections {
             start_or_continue(f, "<", ", ")?;
             write!(f, "{}={}",
-                        projection.projection_ty.item_name,
-                        projection.ty)?;
+                   projection.projection_ty.item_name,
+                   projection.ty)?;
         }
         return start_or_continue(f, "", ">");
     }
@@ -201,8 +201,8 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     for projection in projections {
         start_or_continue(f, "<", ", ")?;
         write!(f, "{}={}",
-                    projection.projection_ty.item_name,
-                    projection.ty)?;
+               projection.projection_ty.item_name,
+               projection.ty)?;
     }
 
     start_or_continue(f, "", ">")?;
@@ -865,7 +865,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
 
                 write!(f, "{} {{", bare_fn.sig.0)?;
                 parameterized(f, substs, def_id, Ns::Value, &[],
-                                   |tcx| tcx.lookup_item_type(def_id).generics)?;
+                              |tcx| tcx.lookup_item_type(def_id).generics)?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {

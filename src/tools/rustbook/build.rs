@@ -56,10 +56,10 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
         };
 
         writeln!(out, "<li><a {} href='{}'><b>{}</b> {}</a>",
-                      class_string,
-                      current_page.path_to_root.join(&item.path).with_extension("html").display(),
-                      section,
-                      item.title)?;
+                 class_string,
+                 current_page.path_to_root.join(&item.path).with_extension("html").display(),
+                 section,
+                 item.title)?;
         if !item.children.is_empty() {
             writeln!(out, "<ul class='section'>")?;
             let _ = walk_items(&item.children[..], section, current_page, out);

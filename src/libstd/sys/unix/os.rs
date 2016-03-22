@@ -181,15 +181,15 @@ pub fn current_exe() -> io::Result<PathBuf> {
                        -1 as c_int];
         let mut sz: libc::size_t = 0;
         cvt(libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                              ptr::null_mut(), &mut sz, ptr::null_mut(),
-                              0 as libc::size_t))?;
+                         ptr::null_mut(), &mut sz, ptr::null_mut(),
+                         0 as libc::size_t))?;
         if sz == 0 {
             return Err(io::Error::last_os_error())
         }
         let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
         cvt(libc::sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
-                              v.as_mut_ptr() as *mut libc::c_void, &mut sz,
-                              ptr::null_mut(), 0 as libc::size_t))?;
+                         v.as_mut_ptr() as *mut libc::c_void, &mut sz,
+                         ptr::null_mut(), 0 as libc::size_t))?;
         if sz == 0 {
             return Err(io::Error::last_os_error());
         }
@@ -218,10 +218,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let mib = mib.as_mut_ptr();
         let mut argv_len = 0;
         cvt(libc::sysctl(mib, 4, 0 as *mut _, &mut argv_len,
-                              0 as *mut _, 0))?;
+                         0 as *mut _, 0))?;
         let mut argv = Vec::<*const libc::c_char>::with_capacity(argv_len as usize);
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _,
-                              &mut argv_len, 0 as *mut _, 0))?;
+                         &mut argv_len, 0 as *mut _, 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
             return Err(io::Error::new(io::ErrorKind::Other,

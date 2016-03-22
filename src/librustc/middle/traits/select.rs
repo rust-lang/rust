@@ -1038,15 +1038,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // For other types, we'll use the builtin rules.
                 self.assemble_builtin_bound_candidates(ty::BoundCopy,
-                                                            obligation,
-                                                            &mut candidates)?;
+                                                       obligation,
+                                                       &mut candidates)?;
             }
             Some(bound @ ty::BoundSized) => {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
                 self.assemble_builtin_bound_candidates(bound,
-                                                            obligation,
-                                                            &mut candidates)?;
+                                                       obligation,
+                                                       &mut candidates)?;
             }
 
             None if self.tcx().lang_items.unsize_trait() ==
@@ -2422,8 +2422,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .map_bound(|(trait_ref, _)| trait_ref);
 
         self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                          obligation.predicate.to_poly_trait_ref(),
-                                          trait_ref)?;
+                                     obligation.predicate.to_poly_trait_ref(),
+                                     trait_ref)?;
         Ok(self_ty)
     }
 
@@ -2450,8 +2450,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligations);
 
         self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                          obligation.predicate.to_poly_trait_ref(),
-                                          trait_ref)?;
+                                     obligation.predicate.to_poly_trait_ref(),
+                                     trait_ref)?;
 
         Ok(VtableClosureData {
             closure_def_id: closure_def_id,

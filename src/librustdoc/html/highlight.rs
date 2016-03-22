@@ -71,7 +71,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             },
             token::Comment => {
                 write!(out, "<span class='comment'>{}</span>",
-                            Escape(&snip(next.sp)))?;
+                       Escape(&snip(next.sp)))?;
                 continue
             },
             token::Shebang(s) => {
@@ -180,8 +180,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         if klass == "" {
             write!(out, "{}", Escape(&snip))?;
         } else {
-            write!(out, "<span class='{}'>{}</span>", klass,
-                          Escape(&snip))?;
+            write!(out, "<span class='{}'>{}</span>", klass, Escape(&snip))?;
         }
     }
 

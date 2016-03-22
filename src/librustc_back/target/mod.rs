@@ -468,7 +468,7 @@ impl Target {
             let mut contents = Vec::new();
             f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
             let obj = json::from_reader(&mut &contents[..])
-                                .map_err(|e| e.to_string())?;
+                           .map_err(|e| e.to_string())?;
             Ok(Target::from_json(obj))
         }
 

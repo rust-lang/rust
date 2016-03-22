@@ -71,9 +71,9 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
         // Relate integral variables to other types
         (&ty::TyInfer(ty::IntVar(a_id)), &ty::TyInfer(ty::IntVar(b_id))) => {
             infcx.int_unification_table
-                      .borrow_mut()
-                      .unify_var_var(a_id, b_id)
-                      .map_err(|e| int_unification_error(a_is_expected, e))?;
+                 .borrow_mut()
+                 .unify_var_var(a_id, b_id)
+                 .map_err(|e| int_unification_error(a_is_expected, e))?;
             Ok(a)
         }
         (&ty::TyInfer(ty::IntVar(v_id)), &ty::TyInt(v)) => {
@@ -92,9 +92,9 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
         // Relate floating-point variables to other types
         (&ty::TyInfer(ty::FloatVar(a_id)), &ty::TyInfer(ty::FloatVar(b_id))) => {
             infcx.float_unification_table
-                      .borrow_mut()
-                      .unify_var_var(a_id, b_id)
-                      .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
+                 .borrow_mut()
+                 .unify_var_var(a_id, b_id)
+                 .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
             Ok(a)
         }
         (&ty::TyInfer(ty::FloatVar(v_id)), &ty::TyFloat(v)) => {
@@ -123,8 +123,7 @@ fn unify_integral_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                     val: ty::IntVarValue)
                                     -> RelateResult<'tcx, Ty<'tcx>>
 {
-    infcx
-         .int_unification_table
+    infcx.int_unification_table
          .borrow_mut()
          .unify_var_value(vid, val)
          .map_err(|e| int_unification_error(vid_is_expected, e))?;
@@ -140,8 +139,7 @@ fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                  val: ast::FloatTy)
                                  -> RelateResult<'tcx, Ty<'tcx>>
 {
-    infcx
-         .float_unification_table
+    infcx.float_unification_table
          .borrow_mut()
          .unify_var_value(vid, val)
          .map_err(|e| float_unification_error(vid_is_expected, e))?;

@@ -344,9 +344,9 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                         root.push_str(&seg.name);
                         root.push_str("/");
                         write!(w, "<a class='mod'
-                                            href='{}index.html'>{}</a>::",
-                                      root,
-                                      seg.name)?;
+                                       href='{}index.html'>{}</a>::",
+                                 root,
+                                 seg.name)?;
                     }
                 }
             }
@@ -361,7 +361,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
     match href(did) {
         Some((url, shortty, fqp)) => {
             write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                          shortty, url, fqp.join("::"), last.name)?;
+                   shortty, url, fqp.join("::"), last.name)?;
         }
         _ => write!(w, "{}", last.name)?,
     }
@@ -379,8 +379,8 @@ fn primitive_link(f: &mut fmt::Formatter,
             let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
             let len = if len == 0 {0} else {len - 1};
             write!(f, "<a class='primitive' href='{}primitive.{}.html'>",
-                        repeat("../").take(len).collect::<String>(),
-                        prim.to_url_str())?;
+                   repeat("../").take(len).collect::<String>(),
+                   prim.to_url_str())?;
             needs_termination = true;
         }
         Some(&cnum) => {
@@ -399,9 +399,9 @@ fn primitive_link(f: &mut fmt::Formatter,
             match loc {
                 Some(root) => {
                     write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
-                                root,
-                                path.0.first().unwrap(),
-                                prim.to_url_str())?;
+                           root,
+                           path.0.first().unwrap(),
+                           prim.to_url_str())?;
                     needs_termination = true;
                 }
                 None => {}
@@ -490,7 +490,7 @@ impl fmt::Display for clean::Type {
                     }
                     _ => {
                         primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
-                                            &format!("*{}", RawMutableSpace(m)))?;
+                                       &format!("*{}", RawMutableSpace(m)))?;
                         write!(f, "{}", t)
                     }
                 }
@@ -508,8 +508,7 @@ impl fmt::Display for clean::Type {
                                 primitive_link(f, clean::Slice,
                                     &format!("&amp;{}{}[{}]", lt, m, **bt)),
                             _ => {
-                                primitive_link(f, clean::Slice,
-                                    &format!("&amp;{}{}[", lt, m))?;
+                                primitive_link(f, clean::Slice, &format!("&amp;{}{}[", lt, m))?;
                                 write!(f, "{}", **bt)?;
                                 primitive_link(f, clean::Slice, "]")
                             }
@@ -567,8 +566,8 @@ impl fmt::Display for clean::Impl {
         write!(f, "impl{} ", self.generics)?;
         if let Some(ref ty) = self.trait_ {
             write!(f, "{}{} for ",
-                        if self.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
-                        *ty)?;
+                   if self.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
+                   *ty)?;
         }
         write!(f, "{}{}", self.for_, WhereClause(&self.generics))?;
         Ok(())

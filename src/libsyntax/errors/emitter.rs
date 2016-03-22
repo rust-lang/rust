@@ -208,8 +208,8 @@ impl EmitterWriter {
             if let Some(_) = self.registry.as_ref()
                                           .and_then(|registry| registry.find_description(code)) {
                 print_diagnostic(&mut self.dst, &ss[..], Help,
-                                      &format!("run `rustc --explain {}` to see a \
-                                               detailed explanation", code), None)?;
+                                 &format!("run `rustc --explain {}` to see a \
+                                           detailed explanation", code), None)?;
             }
         }
         Ok(())
@@ -234,13 +234,13 @@ impl EmitterWriter {
         let mut lines = complete.lines();
         for line in lines.by_ref().take(MAX_HIGHLIGHT_LINES) {
             write!(&mut self.dst, "{0}:{1:2$} {3}\n",
-                        fm.name, "", max_digits, line)?;
+                   fm.name, "", max_digits, line)?;
         }
 
         // if we elided some lines, add an ellipsis
         if let Some(_) = lines.next() {
             write!(&mut self.dst, "{0:1$} {0:2$} ...\n",
-                        "", fm.name.len(), max_digits)?;
+                   "", fm.name.len(), max_digits)?;
         }
 
         Ok(())
@@ -424,15 +424,15 @@ impl EmitterWriter {
             // Print offending code-line
             remaining_err_lines -= 1;
             write!(&mut self.dst, "{}:{:>width$} {}\n",
-                        fm.name,
-                        line.line_index + 1,
-                        cur_line_str,
-                        width=digits)?;
+                   fm.name,
+                   line.line_index + 1,
+                   cur_line_str,
+                   width=digits)?;
 
             if s.len() > skip {
                 // Render the spans we assembled previously (if any).
                 println_maybe_styled!(&mut self.dst, term::Attr::ForegroundColor(lvl.color()),
-                                           "{}", s)?;
+                                      "{}", s)?;
             }
 
             if !overflowed_buf.is_empty() {
@@ -561,13 +561,13 @@ impl EmitterWriter {
 
             // Print offending code-lines
             write!(&mut self.dst, "{}:{:>width$} {}\n", fm.name,
-                        line.line_index + 1, line_str, width=digits)?;
+                   line.line_index + 1, line_str, width=digits)?;
             remaining_err_lines -= 1;
 
             if s.len() > skip {
                 // Render the spans we assembled previously (if any)
                 println_maybe_styled!(&mut self.dst, term::Attr::ForegroundColor(lvl.color()),
-                                           "{}", s)?;
+                                      "{}", s)?;
             }
             prev_line_index = line.line_index;
         }
@@ -642,7 +642,7 @@ fn print_diagnostic(dst: &mut Destination,
     }
 
     print_maybe_styled!(dst, term::Attr::ForegroundColor(lvl.color()),
-                             "{}: ", lvl.to_string())?;
+                        "{}: ", lvl.to_string())?;
     print_maybe_styled!(dst, term::Attr::Bold, "{}", msg)?;
 
     if let Some(code) = code {

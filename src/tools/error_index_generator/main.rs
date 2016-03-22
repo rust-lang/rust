@@ -96,8 +96,8 @@ impl Formatter for HTMLFormatter {
 
         // Error title (with self-link).
         write!(output,
-                    "<h2 id=\"{0}\" class=\"section-header\"><a href=\"#{0}\">{0}</a></h2>\n",
-                    err_code)?;
+               "<h2 id=\"{0}\" class=\"section-header\"><a href=\"#{0}\">{0}</a></h2>\n",
+               err_code)?;
 
         // Description rendered as markdown.
         match info.description {

@@ -188,9 +188,9 @@ impl Command {
         let stderr = self.stderr.as_ref().unwrap_or(&default);
         let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
         let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE,
-                                           &mut pipes.stdout)?;
+                                      &mut pipes.stdout)?;
         let stderr = stderr.to_handle(c::STD_ERROR_HANDLE,
-                                           &mut pipes.stderr)?;
+                                      &mut pipes.stderr)?;
         si.hStdInput = stdin.raw();
         si.hStdOutput = stdout.raw();
         si.hStdError = stderr.raw();

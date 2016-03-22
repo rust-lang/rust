@@ -188,10 +188,10 @@ impl fmt::Display for Toc {
             // recursively format this table of contents (the
             // `{children}` is the key).
             write!(fmt,
-                        "\n<li><a href=\"#{id}\">{num} {name}</a>{children}</li>",
-                        id = entry.id,
-                        num = entry.sec_number, name = entry.name,
-                        children = entry.children)?
+                   "\n<li><a href=\"#{id}\">{num} {name}</a>{children}</li>",
+                   id = entry.id,
+                   num = entry.sec_number, name = entry.name,
+                   children = entry.children)?
         }
         write!(fmt, "</ul>")
     }
