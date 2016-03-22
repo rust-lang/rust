@@ -52,13 +52,17 @@ use middle::const_val::ConstVal;
 use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
+use hir::{self, SelfKind};
 use hir::def::{self, Def};
 use hir::def_id::DefId;
+use hir::print as pprust;
 use middle::resolve_lifetime as rl;
+use rustc::lint;
 use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::wf::object_region_bounds;
+use rustc_back::slice;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
@@ -73,10 +77,6 @@ use syntax::codemap::{Span, Pos};
 use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token::{self, keywords};
-
-use rustc::hir::print as pprust;
-use rustc::hir::{self, SelfKind};
-use rustc_back::slice;
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
@@ -679,6 +679,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         PathParamMode::Explicit,
                                         trait_def_id,
                                         self_ty,
+                                        trait_ref.ref_id,
                                         trait_ref.path.segments.last().unwrap(),
                                         poly_projections)
     }
@@ -723,6 +724,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         span: Span,
         param_mode: PathParamMode,
         trait_def_id: DefId,
+        trait_path_ref_id: ast::NodeId,
         trait_segment: &hir::PathSegment,
         mut projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
         -> ty::PolyTraitRef<'tcx>
@@ -732,6 +734,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                         param_mode,
                                         trait_def_id,
                                         None,
+                                        trait_path_ref_id,
                                         trait_segment,
                                         projections)
     }
@@ -742,6 +745,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         param_mode: PathParamMode,
         trait_def_id: DefId,
         self_ty: Option<Ty<'tcx>>,
+        path_id: ast::NodeId,
         trait_segment: &hir::PathSegment,
         poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
         -> ty::PolyTraitRef<'tcx>
@@ -770,7 +774,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 .filter_map(|binding| {
                     // specify type to assert that error was already reported in Err case:
                     let predicate: Result<_, ErrorReported> =
-                        self.ast_type_binding_to_poly_projection_predicate(poly_trait_ref.clone(),
+                        self.ast_type_binding_to_poly_projection_predicate(path_id,
+                                                                           poly_trait_ref.clone(),
                                                                            self_ty,
                                                                            binding);
                     predicate.ok() // ok to ignore Err() because ErrorReported (see above)
@@ -863,7 +868,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         (self.tcx().mk_substs(substs), assoc_bindings)
     }
 
-    fn ast_type_binding_to_poly_projection_predicate(&self,
+    fn ast_type_binding_to_poly_projection_predicate(
+        &self,
+        path_id: ast::NodeId,
         mut trait_ref: ty::PolyTraitRef<'tcx>,
         self_ty: Option<Ty<'tcx>>,
         binding: &ConvertedBinding<'tcx>)
@@ -886,6 +893,36 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // ```
         //
         // We want to produce `<B as SuperTrait<int>>::T == foo`.
+
+        // Find any late-bound regions declared in `ty` that are not
+        // declared in the trait-ref. These are not wellformed.
+        //
+        // Example:
+        //
+        //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+        //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+        let late_bound_in_trait_ref = tcx.collect_constrained_late_bound_regions(&trait_ref);
+        let late_bound_in_ty = tcx.collect_referenced_late_bound_regions(&ty::Binder(binding.ty));
+        debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
+        debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
+        for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
+            let br_name = match *br {
+                ty::BrNamed(_, name) => name,
+                _ => {
+                    span_bug!(
+                        binding.span,
+                        "anonymous bound region {:?} in binding but not trait ref",
+                        br);
+                }
+            };
+            tcx.sess.add_lint(
+                lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
+                path_id,
+                binding.span,
+                format!("binding for associated type `{}` references lifetime `{}`, \
+                         which does not appear in the trait input types",
+                        binding.item_name, br_name));
+        }
 
         // Simple case: X is defined in the current trait.
         if self.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
@@ -1012,6 +1049,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                                path.span,
                                                                PathParamMode::Explicit,
                                                                trait_def_id,
+                                                               ty.id,
                                                                path.segments.last().unwrap(),
                                                                &mut projection_bounds);
                         Ok((trait_ref, projection_bounds))
@@ -1416,6 +1454,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                       param_mode: PathParamMode,
                       def: Def,
                       opt_self_ty: Option<Ty<'tcx>>,
+                      base_path_ref_id: ast::NodeId,
                       base_segments: &[hir::PathSegment])
                       -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -1434,6 +1473,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                        span,
                                                        param_mode,
                                                        trait_def_id,
+                                                       base_path_ref_id,
                                                        base_segments.last().unwrap(),
                                                        &mut projection_bounds);
 
@@ -1518,6 +1558,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                       param_mode: PathParamMode,
                                       mut def: Def,
                                       opt_self_ty: Option<Ty<'tcx>>,
+                                      base_path_ref_id: ast::NodeId,
                                       base_segments: &[hir::PathSegment],
                                       assoc_segments: &[hir::PathSegment])
                                       -> (Ty<'tcx>, Def) {
@@ -1532,6 +1573,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                          param_mode,
                                          def,
                                          opt_self_ty,
+                                         base_path_ref_id,
                                          base_segments);
         debug!("finish_resolving_def_to_ty: base_def_to_ty returned {:?}", ty);
         // If any associated type segments remain, attempt to resolve them.
@@ -1607,7 +1649,45 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             hir::TyBareFn(ref bf) => {
                 require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-                tcx.mk_fn_ptr(self.ty_of_bare_fn(bf.unsafety, bf.abi, &bf.decl))
+                let bare_fn_ty = self.ty_of_bare_fn(bf.unsafety, bf.abi, &bf.decl);
+
+                // Find any late-bound regions declared in return type that do
+                // not appear in the arguments. These are not wellformed.
+                //
+                // Example:
+                //
+                //     for<'a> fn() -> &'a str <-- 'a is bad
+                //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
+                //
+                // Note that we do this check **here** and not in
+                // `ty_of_bare_fn` because the latter is also used to make
+                // the types for fn items, and we do not want to issue a
+                // warning then. (Once we fix #32330, the regions we are
+                // checking for here would be considered early bound
+                // anyway.)
+                let inputs = bare_fn_ty.sig.inputs();
+                let late_bound_in_args = tcx.collect_constrained_late_bound_regions(&inputs);
+                let output = bare_fn_ty.sig.output();
+                let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
+                for br in late_bound_in_ret.difference(&late_bound_in_args) {
+                    let br_name = match *br {
+                        ty::BrNamed(_, name) => name,
+                        _ => {
+                            span_bug!(
+                                bf.decl.output.span(),
+                                "anonymous bound region {:?} in return but not args",
+                                br);
+                        }
+                    };
+                    tcx.sess.add_lint(
+                        lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
+                        ast_ty.id,
+                        ast_ty.span,
+                        format!("return type references lifetime `{}`, \
+                                 which does not appear in the trait input types",
+                                br_name));
+                }
+                tcx.mk_fn_ptr(bare_fn_ty)
             }
             hir::TyPolyTraitRef(ref bounds) => {
                 self.conv_ty_poly_trait_ref(rscope, ast_ty.span, bounds)
@@ -1635,6 +1715,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                                                                  PathParamMode::Explicit,
                                                                  def,
                                                                  opt_self_ty,
+                                                                 ast_ty.id,
                                                                  &path.segments[..base_ty_end],
                                                                  &path.segments[base_ty_end..]);
 
