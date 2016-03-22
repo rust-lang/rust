@@ -12,6 +12,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc::middle::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, Pass};
+use pretty;
 use syntax::ast::NodeId;
 
 use super::remove_dead_blocks::RemoveDeadBlocks;
@@ -30,16 +31,22 @@ impl SimplifyCfg {
             let mut seen: Vec<BasicBlock> = Vec::with_capacity(8);
 
             while mir.basic_block_data(target).statements.is_empty() {
-                debug!("final_target: target={:?}", target);
-                match mir.basic_block_data(target).terminator().kind {
-                    TerminatorKind::Goto { target: next } => {
-                        if seen.contains(&next) {
-                            return None;
+                // NB -- terminator may have been swapped with `None`
+                // below, in which case we have a cycle and just want
+                // to stop
+                if let Some(ref terminator) = mir.basic_block_data(target).terminator {
+                    match terminator.kind {
+                        TerminatorKind::Goto { target: next } => {
+                            if seen.contains(&next) {
+                                return None;
+                            }
+                            seen.push(next);
+                            target = next;
                         }
-                        seen.push(next);
-                        target = next;
+                        _ => break
                     }
-                    _ => break
+                } else {
+                    break
                 }
             }
 
@@ -106,8 +113,11 @@ impl SimplifyCfg {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>) {
+        let mut counter = 0;
         let mut changed = true;
         while changed {
+            pretty::dump_mir(tcx, "simplify_cfg", &counter, id, mir, None);
+            counter += 1;
             changed = self.simplify_branches(mir);
             changed |= self.remove_goto_chains(mir);
             RemoveDeadBlocks.run_pass(tcx, id, mir);
