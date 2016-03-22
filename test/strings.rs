@@ -15,3 +15,8 @@ fn hello() -> &'static str {
 fn hello_bytes() -> &'static [u8; 13] {
     b"Hello, world!"
 }
+
+#[miri_run]
+fn hello_bytes_fat() -> &'static [u8] {
+    b"Hello, world!"
+}
