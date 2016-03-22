@@ -77,7 +77,6 @@ pub mod back {
 pub mod diagnostics;
 
 pub mod trans;
-pub mod save;
 
 pub mod lib {
     pub use llvm;

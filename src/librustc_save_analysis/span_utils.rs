@@ -10,7 +10,7 @@
 
 use rustc::session::Session;
 
-use save::generated_code;
+use generated_code;
 
 use std::cell::Cell;
 use std::env;
