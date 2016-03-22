@@ -455,6 +455,11 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                     let bucket = bucket.put(hash, key, val);
                     // Now that it's stolen, just read the value's pointer
                     // right out of the table! Go back to the *starting point*.
+                    //
+                    // This use of `into_table` is misleading. It turns the
+                    // bucket, which is a FullBucket on top of a
+                    // FullBucketMut, into just one FullBucketMut. The "table"
+                    // refers to the inner FullBucketMut in this context.
                     return bucket.into_table().into_mut_refs().1;
                 },
                 Full(bucket) => bucket
