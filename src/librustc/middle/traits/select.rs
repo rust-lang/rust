@@ -39,7 +39,7 @@ use super::util;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener, TypeOrigin};
-use middle::subst::{Subst, Substs, TypeSpace};
+use middle::ty::subst::{Subst, Substs, TypeSpace};
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use middle::traits;
 use middle::ty::fast_reject;

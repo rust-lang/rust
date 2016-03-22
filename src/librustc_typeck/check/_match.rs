@@ -12,7 +12,7 @@ use middle::def::{self, Def};
 use middle::infer::{self, TypeOrigin};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{demand, FnCtxt, Expectation};

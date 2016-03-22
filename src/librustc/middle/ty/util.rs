@@ -14,7 +14,7 @@ use back::svh::Svh;
 use middle::const_eval::{self, ConstVal, ErrKind};
 use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def_id::DefId;
-use middle::subst;
+use middle::ty::subst;
 use middle::infer;
 use middle::pat_util;
 use middle::traits::{self, ProjectionMode};

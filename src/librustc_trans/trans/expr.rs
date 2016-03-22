@@ -54,7 +54,7 @@ use self::lazy_binop_ty::*;
 use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use trans::{_match, abi, adt, asm, base, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;

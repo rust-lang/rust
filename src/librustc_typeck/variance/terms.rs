@@ -21,7 +21,7 @@
 
 use arena::TypedArena;
 use dep_graph::DepTrackingMapConfig;
-use middle::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
+use middle::ty::subst::{ParamSpace, FnSpace, TypeSpace, SelfSpace, VecPerParamSpace};
 use middle::ty::{self, TyCtxt};
 use middle::ty::maps::ItemVariances;
 use std::fmt;

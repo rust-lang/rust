@@ -14,7 +14,7 @@ use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::region;
-use middle::subst::{self, Subst};
+use middle::ty::subst::{self, Subst};
 use middle::ty::{self, Ty, TyCtxt};
 use middle::traits::{self, ProjectionMode};
 use util::nodemap::FnvHashSet;

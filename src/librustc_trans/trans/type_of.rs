@@ -12,7 +12,7 @@
 
 use middle::def_id::DefId;
 use middle::infer;
-use middle::subst;
+use middle::ty::subst;
 use trans::abi::FnType;
 use trans::adt;
 use trans::common::*;

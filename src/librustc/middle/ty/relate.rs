@@ -14,7 +14,7 @@
 //! type equality, etc.
 
 use middle::def_id::DefId;
-use middle::subst::{ParamSpace, Substs};
+use middle::ty::subst::{ParamSpace, Substs};
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;

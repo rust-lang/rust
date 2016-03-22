@@ -11,7 +11,7 @@
 use llvm::ValueRef;
 use middle::def::Def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use trans::base::*;
 use trans::basic_block::BasicBlock;
 use trans::build::*;

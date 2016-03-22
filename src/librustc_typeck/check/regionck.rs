@@ -89,7 +89,7 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::region::{self, CodeExtent};
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::traits;
 use middle::ty::{self, Ty, TyCtxt, MethodCall, TypeFoldable};
 use middle::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};

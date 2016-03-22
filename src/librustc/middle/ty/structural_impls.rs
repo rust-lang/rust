@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst::{self, VecPerParamSpace};
+use middle::ty::subst::{self, VecPerParamSpace};
 use middle::traits;
 use middle::ty::{self, Lift, TraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};

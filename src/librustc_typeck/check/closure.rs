@@ -13,7 +13,7 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi::Abi;

@@ -105,7 +105,7 @@ use dep_graph::DepNode;
 use front::map as hir_map;
 use middle::def::Def;
 use middle::infer::{self, TypeOrigin};
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::traits::ProjectionMode;
 use session::{config, CompileResult};

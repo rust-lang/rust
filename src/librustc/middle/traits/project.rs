@@ -25,7 +25,7 @@ use super::util;
 
 use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
-use middle::subst::Subst;
+use middle::ty::subst::Subst;
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use middle::ty::fold::{TypeFoldable, TypeFolder};
 use syntax::parse::token;

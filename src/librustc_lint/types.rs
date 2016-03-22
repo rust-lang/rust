@@ -12,7 +12,7 @@
 
 use middle::{infer};
 use middle::def_id::DefId;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;

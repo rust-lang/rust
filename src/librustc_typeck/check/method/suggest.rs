@@ -21,7 +21,7 @@ use middle::cstore::{self, CrateStore};
 use middle::def::Def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::traits::{Obligation, SelectionContext};
 use util::nodemap::{FnvHashSet};
 

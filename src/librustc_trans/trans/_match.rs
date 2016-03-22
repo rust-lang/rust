@@ -200,7 +200,7 @@ use middle::lang_items::StrEqFnLangItem;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
 use middle::pat_util::*;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use trans::adt;
 use trans::base::*;
 use trans::build::{AddCase, And, Br, CondBr, GEPi, InBoundsGEP, Load, PointerCast};

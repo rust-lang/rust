@@ -17,7 +17,7 @@
 
 use middle::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
-use middle::subst::{self, Subst};
+use middle::ty::subst::{self, Subst};
 use middle::ty::{self, TyCtxt, TypeFoldable};
 use middle::traits::{self, ProjectionMode};
 use middle::ty::{ImplOrTraitItemId, ConstTraitItemId};
