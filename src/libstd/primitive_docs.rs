@@ -77,7 +77,7 @@ mod prim_bool { }
 /// # Representation
 ///
 /// `char` is always four bytes in size. This is a different representation than
-/// a given character would have as part of a [`String`], for example:
+/// a given character would have as part of a [`String`]. For example:
 ///
 /// ```
 /// let v = vec!['h', 'e', 'l', 'l', 'o'];
@@ -116,8 +116,8 @@ mod prim_bool { }
 ///             ^~
 /// ```
 ///
-/// Another implication of the 4-byte fixed size of a `char`, is that
-/// per-`char`acter processing can end up using a lot more memory:
+/// Another implication of the 4-byte fixed size of a `char` is that
+/// per-`char` processing can end up using a lot more memory:
 ///
 /// ```
 /// let s = String::from("love: ❤️");
