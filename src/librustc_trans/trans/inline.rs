@@ -11,7 +11,7 @@
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use middle::cstore::{CrateStore, FoundAst, InlinedItem};
 use middle::def_id::DefId;
-use middle::ty::subst::Substs;
+use rustc::ty::subst::Substs;
 use trans::base::{push_ctxt, trans_item, trans_fn};
 use trans::callee::Callee;
 use trans::common::*;

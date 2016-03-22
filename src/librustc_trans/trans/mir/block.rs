@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, BasicBlockRef, ValueRef, OperandBundleDef};
-use rustc::middle::ty;
+use rustc::ty;
 use rustc::mir::repr as mir;
 use trans::abi::{Abi, FnType};
 use trans::adt;

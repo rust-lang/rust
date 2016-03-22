@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::infer::InferCtxt;
-use middle::traits::{self, FulfillmentContext, Normalized, MiscObligation,
+use rustc::infer::InferCtxt;
+use rustc::traits::{self, FulfillmentContext, Normalized, MiscObligation,
                      SelectionContext, ObligationCause};
-use middle::ty::fold::TypeFoldable;
+use rustc::ty::fold::TypeFoldable;
 use syntax::ast;
 use syntax::codemap::Span;
 

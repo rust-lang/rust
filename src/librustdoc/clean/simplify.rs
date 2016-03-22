@@ -11,7 +11,7 @@
 //! Simplification of where clauses and parameter bounds into a prettier and
 //! more canonical form.
 //!
-//! Currently all cross-crate-inlined function use `middle::ty` to reconstruct
+//! Currently all cross-crate-inlined function use `rustc::ty` to reconstruct
 //! the AST (e.g. see all of `clean::inline`), but this is not always a
 //! non-lossy transformation. The current format of storage for where clauses
 //! for functions and such is simply a list of predicates. One example of this
@@ -30,7 +30,7 @@ use std::mem;
 use std::collections::HashMap;
 
 use rustc::middle::def_id::DefId;
-use rustc::middle::ty::subst;
+use rustc::ty::subst;
 
 use clean::PathParameters as PP;
 use clean::WherePredicate as WP;

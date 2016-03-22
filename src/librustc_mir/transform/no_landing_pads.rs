@@ -11,7 +11,7 @@
 //! This pass removes the unwind branch of all the terminators when the no-landing-pads option is
 //! specified.
 
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{Pass, MirPass};

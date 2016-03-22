@@ -26,7 +26,7 @@ use {resolve_error, resolve_struct_error, ResolutionError};
 use rustc::middle::cstore::{CrateStore, ChildItem, DlDef};
 use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
-use rustc::middle::ty::VariantKind;
+use rustc::ty::VariantKind;
 
 use syntax::ast::{Name, NodeId};
 use syntax::attr::AttrMetaMethods;

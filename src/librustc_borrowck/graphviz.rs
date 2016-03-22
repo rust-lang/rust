@@ -14,13 +14,13 @@
 
 pub use self::Variant::*;
 
-pub use rustc::middle::cfg::graphviz::{Node, Edge};
-use rustc::middle::cfg::graphviz as cfg_dot;
+pub use rustc::cfg::graphviz::{Node, Edge};
+use rustc::cfg::graphviz as cfg_dot;
 
 use borrowck;
 use borrowck::{BorrowckCtxt, LoanPath};
 use dot;
-use rustc::middle::cfg::CFGIndex;
+use rustc::cfg::CFGIndex;
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use std::rc::Rc;
 use dot::IntoCow;

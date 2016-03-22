@@ -40,7 +40,7 @@
 use graphviz as dot;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::middle::def_id::DefId;
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
 use rustc_front::hir;

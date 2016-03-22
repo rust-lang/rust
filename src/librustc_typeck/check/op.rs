@@ -19,7 +19,7 @@ use super::{
     FnCtxt,
 };
 use middle::def_id::DefId;
-use middle::ty::{Ty, TypeFoldable, PreferMutLvalue};
+use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
 use rustc_front::hir;
@@ -335,7 +335,7 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
             let method_ty = method.ty;
 
             // HACK(eddyb) Fully qualified path to work around a resolve bug.
-            let method_call = ::middle::ty::MethodCall::expr(expr.id);
+            let method_call = ::rustc::ty::MethodCall::expr(expr.id);
             fcx.inh.tables.borrow_mut().method_map.insert(method_call, method);
 
             // extract return type for method; all late bound regions

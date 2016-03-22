@@ -25,18 +25,18 @@
 // by borrowck::gather_loans
 
 use rustc::dep_graph::DepNode;
-use rustc::middle::ty::cast::{CastKind};
+use rustc::ty::cast::{CastKind};
 use rustc::middle::const_eval::{self, ConstEvalErr};
 use rustc::middle::const_eval::ErrKind::IndexOpFeatureGated;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::def::Def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::infer;
+use rustc::infer;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::middle::ty::{self, Ty, TyCtxt};
-use rustc::middle::traits::{self, ProjectionMode};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::traits::{self, ProjectionMode};
 use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;

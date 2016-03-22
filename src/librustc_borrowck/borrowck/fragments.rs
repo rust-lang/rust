@@ -21,7 +21,7 @@ use borrowck::LoanPathElem::{LpDeref, LpInterior};
 use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
 use rustc::middle::def_id::{DefId};
-use rustc::middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc::middle::mem_categorization as mc;
 
 use std::mem;

@@ -10,7 +10,7 @@
 
 use dot;
 use rustc::mir::repr::*;
-use rustc::middle::ty;
+use rustc::ty;
 use std::fmt::Debug;
 use std::io::{self, Write};
 use syntax::ast::NodeId;

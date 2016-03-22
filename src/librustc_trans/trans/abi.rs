@@ -27,7 +27,7 @@ use trans::type_::Type;
 use trans::type_of;
 
 use rustc_front::hir;
-use middle::ty::{self, Ty};
+use rustc::ty::{self, Ty};
 
 use libc::c_uint;
 
@@ -318,7 +318,7 @@ impl FnType {
             }
 
             ty::TyRef(b, mt) => {
-                use middle::ty::{BrAnon, ReLateBound};
+                use rustc::ty::{BrAnon, ReLateBound};
 
                 // `&mut` pointer parameters never alias other parameters, or mutable global data
                 //

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::{self, Ty};
-use middle::ty::cast::{CastTy, IntTy};
+use rustc::ty::{self, Ty};
+use rustc::ty::cast::{CastTy, IntTy};
 use middle::const_eval::ConstVal;
 use rustc_const_eval::ConstInt;
 use rustc::mir::repr as mir;
