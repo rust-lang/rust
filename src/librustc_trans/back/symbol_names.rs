@@ -97,7 +97,8 @@
 //! virtually impossible. Thus, symbol hash generation exclusively relies on
 //! DefPaths which are much more robust in the face of changes to the code base.
 
-use trans::{CrateContext, Instance, gensym_name};
+use common::{CrateContext, gensym_name};
+use monomorphize::Instance;
 use util::sha2::{Digest, Sha256};
 
 use rustc::middle::cstore;

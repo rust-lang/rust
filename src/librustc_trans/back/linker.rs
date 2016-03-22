@@ -22,7 +22,7 @@ use session::Session;
 use session::config::CrateTypeDylib;
 use session::config;
 use syntax::ast;
-use trans::CrateTranslation;
+use CrateTranslation;
 
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.

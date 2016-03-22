@@ -23,7 +23,7 @@ use session::Session;
 use middle::cstore::{self, CrateStore, LinkMeta};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
-use trans::CrateTranslation;
+use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
