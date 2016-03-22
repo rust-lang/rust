@@ -32,7 +32,7 @@ use middle::{cfg, infer, stability, traits};
 use middle::def::Def;
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::adjustment;
 use middle::traits::ProjectionMode;

@@ -14,7 +14,7 @@ use astconv::AstConv;
 use check::FnCtxt;
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::subst;
+use middle::ty::subst;
 use middle::traits;
 use middle::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};

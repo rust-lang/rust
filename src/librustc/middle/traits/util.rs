@@ -10,7 +10,7 @@
 
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
-use middle::subst::{Subst, Substs};
+use middle::ty::subst::{Subst, Substs};
 use middle::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use syntax::codemap::Span;
 use util::common::ErrorReported;

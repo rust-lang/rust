@@ -21,7 +21,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer;
 use middle::lang_items::LangItem;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use trans::abi::{Abi, FnType};
 use trans::base;
 use trans::build;

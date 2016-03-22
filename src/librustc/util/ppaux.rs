@@ -10,7 +10,7 @@
 
 
 use middle::def_id::DefId;
-use middle::subst::{self, Subst};
+use middle::ty::subst::{self, Subst};
 use middle::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
 use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};

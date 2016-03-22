@@ -54,7 +54,7 @@ use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
+use middle::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use middle::traits;
 use middle::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use middle::ty::wf::object_region_bounds;

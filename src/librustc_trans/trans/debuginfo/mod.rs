@@ -28,7 +28,7 @@ use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArr
                       DIDescriptor, FlagPrototyped};
 use middle::def_id::DefId;
 use middle::infer::normalize_associated_type;
-use middle::subst::{self, Substs};
+use middle::ty::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
 

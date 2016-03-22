@@ -41,7 +41,7 @@ use middle::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::pat_util::simple_name;
-use middle::subst::{self, Substs};
+use middle::ty::subst::{self, Substs};
 use middle::traits;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::adjustment::CustomCoerceUnsized;

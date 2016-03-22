@@ -17,7 +17,7 @@ pub use self::ObligationCauseCode::*;
 
 use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::{self, Ty, TypeFoldable};
 use middle::infer::{self, fixup_err_to_string, InferCtxt};
 

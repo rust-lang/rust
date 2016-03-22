@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::{self, Ty, TypeFlags, TypeFoldable};
 
 pub struct FlagComputation {

@@ -22,7 +22,7 @@ use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
 use middle::stability;
-use middle::subst::{self, Subst, Substs};
+use middle::ty::subst::{self, Subst, Substs};
 use middle::traits;
 use middle::ty::{self, TraitRef, Ty, TypeAndMut};
 use middle::ty::{TyS, TypeVariants};

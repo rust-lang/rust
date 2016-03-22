@@ -32,7 +32,7 @@ use trans::type_::Type;
 use trans::type_of;
 use trans::value::Value;
 use trans::Disr;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
 use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use middle::ty::{self, Ty, TyCtxt};

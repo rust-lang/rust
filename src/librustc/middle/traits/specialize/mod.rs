@@ -24,7 +24,7 @@ use middle::cstore::CrateStore;
 use middle::def_id::DefId;
 use middle::infer::{self, InferCtxt, TypeOrigin};
 use middle::region;
-use middle::subst::{Subst, Substs};
+use middle::ty::subst::{Subst, Substs};
 use middle::traits::{self, ProjectionMode, ObligationCause, Normalized};
 use middle::ty::{self, TyCtxt};
 use syntax::codemap::DUMMY_SP;

@@ -48,7 +48,7 @@ use std;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::{self, Ty, TyCtxt};
 use syntax::ast;
 use syntax::attr;

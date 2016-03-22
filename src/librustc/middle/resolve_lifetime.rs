@@ -23,7 +23,7 @@ use front::map::Map;
 use session::Session;
 use middle::def::{Def, DefMap};
 use middle::region;
-use middle::subst;
+use middle::ty::subst;
 use middle::ty;
 use std::fmt;
 use std::mem::replace;

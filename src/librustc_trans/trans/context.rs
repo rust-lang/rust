@@ -28,7 +28,7 @@ use trans::mir::CachedMir;
 use trans::monomorphize::Instance;
 use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
-use middle::subst::{Substs, VecPerParamSpace};
+use middle::ty::subst::{Substs, VecPerParamSpace};
 use middle::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;

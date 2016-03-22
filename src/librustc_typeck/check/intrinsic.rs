@@ -13,7 +13,7 @@
 
 use astconv::AstConv;
 use intrinsics;
-use middle::subst::{self, Substs};
+use middle::ty::subst::{self, Substs};
 use middle::ty::FnSig;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::fold::TypeFolder;

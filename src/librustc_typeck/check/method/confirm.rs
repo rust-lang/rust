@@ -13,7 +13,7 @@ use super::probe;
 use check::{self, FnCtxt, callee, demand};
 use check::UnresolvedTypeAction;
 use middle::def_id::DefId;
-use middle::subst::{self};
+use middle::ty::subst::{self};
 use middle::traits;
 use middle::ty::{self, NoPreference, PreferMutLvalue, Ty, TyCtxt};
 use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};

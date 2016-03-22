@@ -15,7 +15,7 @@
 //! optimal solution to the constraints. The final variance for each
 //! inferred is then written into the `variance_map` in the tcx.
 
-use middle::subst::VecPerParamSpace;
+use middle::ty::subst::VecPerParamSpace;
 use middle::ty;
 use std::rc::Rc;
 

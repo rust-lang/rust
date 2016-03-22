@@ -12,7 +12,7 @@ use middle::free_region::FreeRegionMap;
 use middle::infer::{self, TypeOrigin};
 use middle::ty::{self, TyCtxt};
 use middle::traits::{self, ProjectionMode};
-use middle::subst::{self, Subst, Substs, VecPerParamSpace};
+use middle::ty::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
 use syntax::codemap::Span;

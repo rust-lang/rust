@@ -12,7 +12,7 @@ use graphviz::IntoCow;
 use middle::const_eval::ConstVal;
 use rustc_const_eval::{ConstUsize, ConstInt};
 use middle::def_id::DefId;
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use util::ppaux;
 use rustc_back::slice;

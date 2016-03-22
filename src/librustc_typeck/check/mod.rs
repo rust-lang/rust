@@ -91,7 +91,7 @@ use middle::def_id::DefId;
 use middle::infer;
 use middle::infer::{TypeOrigin, TypeTrace, type_variable};
 use middle::pat_util::{self, pat_id_map};
-use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
+use middle::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use middle::traits::{self, report_fulfillment_errors, ProjectionMode};
 use middle::ty::{GenericPredicates, TypeScheme};
 use middle::ty::{ParamTy, ParameterEnvironment};

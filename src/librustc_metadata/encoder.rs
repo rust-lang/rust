@@ -25,7 +25,7 @@ use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use middle::stability;
-use middle::subst;
+use middle::ty::subst;
 use middle::traits::specialization_graph;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::ty::util::IntTypeExt;
