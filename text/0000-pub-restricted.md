@@ -813,7 +813,9 @@ For example:
    `pub(restricted)` form does not have any variant where the
    restrction-specification denotes the whole universe.
    In other words, there's no current way to get the same effect
-   as `pub item` via `pub(restricted) item`.
+   as `pub item` via `pub(restricted) item`; you cannot say
+   `pub(universe) item` (even though I do so in a tongue-in-cheek
+   manner elsewhere in this RFC).
 
    Some future syntaxes to support this have been proposed in the
    RFC comment thread, such as `pub(::)`. But this RFC is leaving the
@@ -905,6 +907,49 @@ use item` and `pub(super) use item` would be considered synonymous,
 even in the context of a non-pub module like `mod b`. In particular,
 `pub(super) use item` may be imposing a new restriction on the
 re-exported name that was not part of its original definition.)
+
+## Interaction with Globs
+
+Glob re-exports
+currently only re-export `pub` (as in `pub(universe)` items).
+
+What should glob-reepxorts do with respect to `pub(restricted)`?
+
+Here is an illustrating example pointed out by petrochenkov in the
+comment thread:
+
+```rust
+mod m {
+    /*priv*/ pub(m) struct S1;
+    pub(super) S2;
+    pub(foo::bar) S3;
+    pub S4;
+
+    mod n {
+
+        // What is reexported here?
+        // Just `S4`?
+        // Anything in `m` visible
+        //  to `n` (which is not consisent with the current treatment of
+        `pub` by globs).
+
+        pub use m::*;
+    }
+}
+
+// What is reexported here?
+pub use m::*;
+pub(baz::qux) use m::*;
+```
+
+This remains an unresolved question, but my personal inclination, at
+least for the initial implementation, is to make globs only import
+purely `pub` items; no non-`pub`, and no `pub(restricted)`.
+
+After we get more experience with `pub(restricted)` (and perhaps make
+other changes that may come in future RFCs), we will be in a better
+position to evaluate what to do here.
+
 
 # Appendices
 
