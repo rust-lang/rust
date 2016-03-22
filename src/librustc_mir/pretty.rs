@@ -12,11 +12,62 @@ use build::{Location, ScopeAuxiliary};
 use rustc::mir::repr::*;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
+use std::fmt::Display;
+use std::fs;
 use std::io::{self, Write};
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 
 const INDENT: &'static str = "    ";
+
+/// If the session is properly configured, dumps a human-readable
+/// representation of the mir into:
+///
+/// ```
+/// rustc.node<node_id>.<pass_name>.<disambiguator>
+/// ```
+///
+/// Output from this function is controlled by passing `-Z dump-mir=<filter>`,
+/// where `<filter>` takes the following forms:
+///
+/// - `all` -- dump MIR for all fns, all passes, all everything
+/// - `substring1&substring2,...` -- `&`-separated list of substrings
+///   that can appear in the pass-name or the `item_path_str` for the given
+///   node-id. If any one of the substrings match, the data is dumped out.
+pub fn dump_mir<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
+                          pass_name: &str,
+                          disambiguator: &Display,
+                          node_id: NodeId,
+                          mir: &Mir<'tcx>,
+                          auxiliary: Option<&Vec<ScopeAuxiliary>>) {
+    let filters = match tcx.sess.opts.debugging_opts.dump_mir {
+        None => return,
+        Some(ref filters) => filters,
+    };
+    let node_path = tcx.item_path_str(tcx.map.local_def_id(node_id));
+    let is_matched =
+        filters.split("&")
+               .any(|filter| {
+                   filter == "all" ||
+                       pass_name.contains(filter) ||
+                       node_path.contains(filter)
+               });
+    if !is_matched {
+        return;
+    }
+
+    let file_name = format!("rustc.node{}.{}.{}.mir",
+                            node_id, pass_name, disambiguator);
+    let _ = fs::File::create(&file_name).and_then(|mut file| {
+        try!(writeln!(file, "// MIR for `{}`", node_path));
+        try!(writeln!(file, "// node_id = {}", node_id));
+        try!(writeln!(file, "// pass_name = {}", pass_name));
+        try!(writeln!(file, "// disambiguator = {}", disambiguator));
+        try!(writeln!(file, ""));
+        try!(write_mir_fn(tcx, node_id, mir, &mut file, auxiliary));
+        Ok(())
+    });
+}
 
 /// Write out a human-readable textual representation for the given MIR.
 pub fn write_mir_pretty<'a, 'tcx, I>(tcx: &TyCtxt<'tcx>,
@@ -117,7 +168,7 @@ fn write_basic_block(tcx: &TyCtxt,
     // Terminator at the bottom.
     writeln!(w, "{0}{0}{1:?}; // {2}",
              INDENT,
-             data.terminator(),
+             data.terminator().kind,
              comment(tcx, data.terminator().scope, data.terminator().span))?;
 
     writeln!(w, "{}}}", INDENT)

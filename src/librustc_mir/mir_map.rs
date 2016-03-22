@@ -22,6 +22,7 @@ extern crate rustc_front;
 use build::{self, MirPlusPlus};
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
+use pretty;
 use hair::cx::Cx;
 
 use rustc::mir::mir_map::MirMap;
@@ -182,7 +183,7 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
     let parameter_scope =
         cx.tcx().region_maps.lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
-    let MirPlusPlus { mut mir, scope_auxiliary: _ } =
+    let MirPlusPlus { mut mir, scope_auxiliary } =
         build::construct(cx,
                          span,
                          implicit_arg_tys,
@@ -200,6 +201,13 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
         }
         _ => {}
     }
+
+    pretty::dump_mir(cx.tcx(),
+                     "mir_map",
+                     &0,
+                     fn_id,
+                     &mir,
+                     Some(&scope_auxiliary));
 
     Ok(mir)
 }
