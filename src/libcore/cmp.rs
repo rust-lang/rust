@@ -14,6 +14,21 @@
 //! by the compiler to implement comparison operators. Rust programs may
 //! implement `PartialOrd` to overload the `<`, `<=`, `>`, and `>=` operators,
 //! and may implement `PartialEq` to overload the `==` and `!=` operators.
+//!
+//! # Examples
+//!
+//! ```
+//! let x: u32 = 0;
+//! let y: u32 = 1;
+//!
+//! // these two lines are equivalent
+//! assert_eq!(x < y, true);
+//! assert_eq!(x.lt(&y), true);
+//!
+//! // these two lines are also equivalent
+//! assert_eq!(x == y, false);
+//! assert_eq!(x.eq(&y), false);
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -44,6 +59,16 @@ use option::Option::{self, Some};
 /// only if `a != b`.
 ///
 /// This trait can be used with `#[derive]`.
+///
+/// # Examples
+///
+/// ```
+/// let x: u32 = 0;
+/// let y: u32 = 1;
+///
+/// assert_eq!(x == y, false);
+/// assert_eq!(x.eq(&y), false);
+/// ```
 #[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait PartialEq<Rhs: ?Sized = Self> {
@@ -226,6 +251,16 @@ impl PartialOrd for Ordering {
 ///
 /// This trait can be used with `#[derive]`. When `derive`d, it will produce an ordering
 /// based on the top-to-bottom declaration order of the struct's members.
+///
+/// # Examples
+///
+/// ```
+/// let x : u32 = 0;
+/// let y : u32 = 1;
+///
+/// assert_eq!(x < y, true);
+/// assert_eq!(x.lt(&y), true);
+/// ```
 #[lang = "ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
