@@ -217,20 +217,30 @@ impl<K, V, M> Deref for FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>
     }
 }
 
-impl<K, V, M> DerefMut for FullBucket<K, V, M> where M: DerefMut<Target=RawTable<K, V>> {
-    fn deref_mut(&mut self) -> &mut RawTable<K, V> {
-        &mut self.table
-    }
+/// `Put` is implemented for types which provide access to a table and cannot be invalidated
+///  by filling a bucket. A similar implementation for `Take` is possible.
+pub trait Put<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V>;
 }
 
 
-/// `Put` is implemented for types which provide access to a table and cannot be invalidated
-///  by filling a bucket. A similar implementation for `Take` is possible.
-pub trait Put {}
-impl<K, V> Put for RawTable<K, V> {}
-impl<'t, K, V> Put for &'t mut RawTable<K, V> {}
-impl<K, V, M: Put> Put for Bucket<K, V, M> {}
-impl<K, V, M: Put> Put for FullBucket<K, V, M> {}
+impl<'t, K, V> Put<K, V> for &'t mut RawTable<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
+        *self
+    }
+}
+
+impl<K, V, M> Put<K, V> for Bucket<K, V, M> where M: Put<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
+        self.table.borrow_table_mut()
+    }
+}
+
+impl<K, V, M> Put<K, V> for FullBucket<K, V, M> where M: Put<K, V> {
+    unsafe fn borrow_table_mut(&mut self) -> &mut RawTable<K, V> {
+        self.table.borrow_table_mut()
+    }
+}
 
 impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
     pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
@@ -332,7 +342,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> EmptyBucket<K, V, M> {
     }
 }
 
-impl<K, V, M> EmptyBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut + Put {
+impl<K, V, M> EmptyBucket<K, V, M> where M: Put<K, V> {
     /// Puts given key and value pair, along with the key's hash,
     /// into this bucket in the hashtable. Note how `self` is 'moved' into
     /// this function, because this slot will no longer be empty when
@@ -346,9 +356,9 @@ impl<K, V, M> EmptyBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + Deref
             *self.raw.hash = hash.inspect();
             ptr::write(self.raw.key, key);
             ptr::write(self.raw.val, value);
-        }
 
-        self.table.size += 1;
+            self.table.borrow_table_mut().size += 1;
+        }
 
         FullBucket { raw: self.raw, idx: self.idx, table: self.table }
     }
@@ -436,7 +446,7 @@ impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
     }
 }
 
-impl<K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut {
+impl<K, V, M> FullBucket<K, V, M> where M: Put<K, V> {
     pub fn replace(&mut self, h: SafeHash, k: K, v: V) -> (SafeHash, K, V) {
         unsafe {
             let old_hash = ptr::replace(self.raw.hash as *mut SafeHash, h);
@@ -446,7 +456,9 @@ impl<K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefM
             (old_hash, old_key, old_val)
         }
     }
+}
 
+impl<K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefMut {
     /// Gets mutable references to the key and value at a given index.
     pub fn read_mut(&mut self) -> (&mut K, &mut V) {
         unsafe {
