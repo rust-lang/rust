@@ -9,14 +9,54 @@
 // except according to those terms.
 use self::WhichLine::*;
 
+use std::fmt;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::Path;
+use std::str::FromStr;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ErrorKind {
+    Help,
+    Error,
+    Note,
+    Suggestion,
+    Warning,
+}
+
+impl FromStr for ErrorKind {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match &s.trim_right_matches(':') as &str {
+            "HELP" => Ok(ErrorKind::Help),
+            "ERROR" => Ok(ErrorKind::Error),
+            "NOTE" => Ok(ErrorKind::Note),
+            "SUGGESTION" => Ok(ErrorKind::Suggestion),
+            "WARN" => Ok(ErrorKind::Warning),
+            "WARNING" => Ok(ErrorKind::Warning),
+            _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ErrorKind::Help => write!(f, "help"),
+            ErrorKind::Error => write!(f, "error"),
+            ErrorKind::Note => write!(f, "note"),
+            ErrorKind::Suggestion => write!(f, "suggestion"),
+            ErrorKind::Warning => write!(f, "warning"),
+        }
+    }
+}
 
 pub struct ExpectedError {
     pub line_num: usize,
-    pub kind: String,
+    /// What kind of message we expect (e.g. warning, error, suggestion).
+    /// `None` if not specified or unknown message kind.
+    pub kind: Option<ErrorKind>,
     pub msg: String,
 }
 
@@ -81,11 +121,11 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
     };
     let kind_start = start + tag.len() + adjusts + (follow as usize);
-    let letters = line[kind_start..].chars();
-    let kind = letters.skip_while(|c| c.is_whitespace())
-                      .take_while(|c| !c.is_whitespace())
-                      .flat_map(|c| c.to_lowercase())
-                      .collect::<String>();
+    let kind = line[kind_start..].split_whitespace()
+                                 .next()
+                                 .expect("Encountered unexpected empty comment")
+                                 .parse::<ErrorKind>()
+                                 .ok();
     let letters = line[kind_start..].chars();
     let msg = letters.skip_while(|c| c.is_whitespace())
                      .skip_while(|c| !c.is_whitespace())

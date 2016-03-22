@@ -158,6 +158,11 @@ impl<'a, 'v, 'tcx> Visitor<'v> for LanguageItemCollector<'a, 'tcx> {
 
             if let Some(item_index) = item_index {
                 self.collect_item(item_index, self.ast_map.local_def_id(item.id))
+            } else {
+                let span = self.ast_map.span(item.id);
+                span_err!(self.session, span, E0522,
+                          "definition of an unknown language item: `{}`.",
+                          &value[..]);
             }
         }
     }
