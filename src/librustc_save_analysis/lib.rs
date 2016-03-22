@@ -8,18 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![crate_name = "rustc_save_analysis"]
+#![unstable(feature = "rustc_private", issue = "27812")]
+#![crate_type = "dylib"]
+#![crate_type = "rlib"]
+#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
+      html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+      html_root_url = "https://doc.rust-lang.org/nightly/")]
+#![cfg_attr(not(stage0), deny(warnings))]
+
+#![feature(custom_attribute)]
+#![allow(unused_attributes)]
+#![feature(rustc_private)]
+#![feature(staged_api)]
+
+extern crate rustc;
+extern crate rustc_front;
+
+#[macro_use] extern crate log;
+#[macro_use] extern crate syntax;
+
+use rustc_front::{hir, lowering};
+use rustc::front::map::NodeItem;
+use rustc::middle::def::Def;
+use rustc::middle::def_id::DefId;
+use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
-use middle::def::Def;
-use middle::def_id::DefId;
 
 use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
-
-use rustc_front;
-use rustc_front::{hir, lowering};
-use rustc::front::map::NodeItem;
-use rustc::session::config::CrateType::CrateTypeExecutable;
 
 use syntax::ast::{self, NodeId, PatKind};
 use syntax::ast_util;
