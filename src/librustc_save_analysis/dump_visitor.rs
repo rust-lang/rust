@@ -27,10 +27,9 @@
 //! is used for recording the output in a format-agnostic way (see CsvDumper
 //! for an example).
 
-use session::Session;
-
-use middle::def::Def;
-use middle::def_id::DefId;
+use rustc::middle::def::Def;
+use rustc::middle::def_id::DefId;
+use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
 use std::collections::HashSet;
