@@ -197,7 +197,7 @@ pub struct ArgDecl<'tcx> {
 /// list of the `Mir`.
 ///
 /// (We use a `u32` internally just to save memory.)
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct BasicBlock(u32);
 
 impl BasicBlock {
@@ -668,7 +668,7 @@ impl IndexMut<ScopeId> for ScopeDataVec {
     }
 }
 
-#[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct ScopeId(u32);
 
 impl ScopeId {

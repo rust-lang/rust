@@ -73,6 +73,7 @@ pub struct ScopeAuxiliary {
     pub postdoms: Vec<Location>,
 }
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Location {
     /// the location is within this block
     pub block: BasicBlock,
