@@ -15,8 +15,8 @@
 //! `TransitiveRelation` type and use that to decide when one free
 //! region outlives another and so forth.
 
-use middle::ty::{self, TyCtxt, FreeRegion, Region};
-use middle::ty::wf::ImpliedBound;
+use ty::{self, TyCtxt, FreeRegion, Region};
+use ty::wf::ImpliedBound;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 #[derive(Clone)]

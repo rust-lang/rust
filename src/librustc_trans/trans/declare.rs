@@ -20,8 +20,8 @@
 //! * Use define_* family of methods when you might be defining the ValueRef.
 //! * When in doubt, define.
 use llvm::{self, ValueRef};
-use middle::ty;
-use middle::infer;
+use rustc::ty;
+use rustc::infer;
 use trans::abi::{Abi, FnType};
 use trans::attributes;
 use trans::context::CrateContext;

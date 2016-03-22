@@ -130,7 +130,7 @@ use trans::glue;
 use middle::region;
 use trans::type_::Type;
 use trans::value::Value;
-use middle::ty::{Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 
 use std::fmt;
 use syntax::ast;

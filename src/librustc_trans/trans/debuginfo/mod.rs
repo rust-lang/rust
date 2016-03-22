@@ -27,8 +27,8 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
 use middle::def_id::DefId;
-use middle::infer::normalize_associated_type;
-use middle::ty::subst::{self, Substs};
+use rustc::infer::normalize_associated_type;
+use rustc::ty::subst::{self, Substs};
 use rustc_front;
 use rustc_front::hir;
 
@@ -36,8 +36,8 @@ use trans::abi::Abi;
 use trans::common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use trans;
 use trans::monomorphize;
-use middle::infer;
-use middle::ty::{self, Ty};
+use rustc::infer;
+use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 use rustc::front::map as hir_map;

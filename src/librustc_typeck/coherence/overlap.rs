@@ -14,9 +14,9 @@
 
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
-use middle::traits::{self, ProjectionMode};
-use middle::infer;
-use middle::ty::{self, TyCtxt};
+use rustc::traits::{self, ProjectionMode};
+use rustc::infer;
+use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;

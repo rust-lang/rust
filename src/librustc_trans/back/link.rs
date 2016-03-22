@@ -23,7 +23,7 @@ use session::Session;
 use middle::cstore::{self, CrateStore, LinkMeta};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
-use middle::ty::{Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::front::map::DefPath;
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use util::common::time;

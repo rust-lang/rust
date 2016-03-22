@@ -14,7 +14,7 @@ use borrowck::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
-use rustc::middle::ty;
+use rustc::ty;
 use syntax::codemap::Span;
 
 use borrowck::ToInteriorKind;

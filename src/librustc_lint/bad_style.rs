@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def::Def;
-use middle::ty;
+use rustc::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
 

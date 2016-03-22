@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::middle::ty::Ty;
+use rustc::ty::Ty;
 use trans::adt;
 use trans::base;
 use trans::common::{self, BlockAndBuilder};

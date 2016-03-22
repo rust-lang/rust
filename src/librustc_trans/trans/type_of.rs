@@ -11,13 +11,13 @@
 #![allow(non_camel_case_types)]
 
 use middle::def_id::DefId;
-use middle::infer;
-use middle::ty::subst;
+use rustc::infer;
+use rustc::ty::subst;
 use trans::abi::FnType;
 use trans::adt;
 use trans::common::*;
 use trans::machine;
-use middle::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 
 use trans::type_::Type;
 
@@ -145,7 +145,7 @@ pub fn immediate_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     }
 }
 
-/// Get the LLVM type corresponding to a Rust type, i.e. `middle::ty::Ty`.
+/// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
 /// This is the right LLVM type for an alloca containing a value of that type,
 /// and the pointee of an Lvalue Datum (which is always a LLVM pointer).
 /// For unsized types, the returned type is a fat pointer, thus the resulting
@@ -163,7 +163,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type {
     in_memory_type_of(cx, ty)
 }
 
-/// Get the LLVM type corresponding to a Rust type, i.e. `middle::ty::Ty`.
+/// Get the LLVM type corresponding to a Rust type, i.e. `rustc::ty::Ty`.
 /// This is the right LLVM type for a field/array element of that type,
 /// and is the same as `type_of` for all Sized types.
 /// Unsized types, however, are represented by a "minimal unit", e.g.

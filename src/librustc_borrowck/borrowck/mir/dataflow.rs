@@ -10,7 +10,7 @@
 
 use syntax::attr::AttrMetaMethods;
 
-use rustc::middle::ty;
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir};
 
 use std::io;
@@ -459,7 +459,7 @@ impl<D: BitDenotation> DataflowState<D> {
 
 
 impl<'tcx> DataflowState<MoveData<'tcx>> {
-    pub fn new_move_analysis(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> Self {
+    pub fn new_move_analysis(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> Self {
         let move_data = MoveData::gather_moves(mir, tcx);
         DataflowState::new(mir, move_data)
     }

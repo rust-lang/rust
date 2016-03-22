@@ -194,10 +194,10 @@ use rustc_front::intravisit as hir_visit;
 use rustc::front::map as hir_map;
 use rustc::middle::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
-use rustc::middle::traits;
-use rustc::middle::ty::subst::{self, Substs, Subst};
-use rustc::middle::ty::{self, Ty, TypeFoldable};
-use rustc::middle::ty::adjustment::CustomCoerceUnsized;
+use rustc::traits;
+use rustc::ty::subst::{self, Substs, Subst};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::repr as mir;
 use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
@@ -580,7 +580,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     if let Some(destructor_did) = destructor_did {
-        use rustc::middle::ty::ToPolyTraitRef;
+        use rustc::ty::ToPolyTraitRef;
 
         let drop_trait_def_id = ccx.tcx()
                                    .lang_items

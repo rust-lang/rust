@@ -16,7 +16,7 @@
 use std::hash::Hasher;
 
 use middle::def_id::DefId;
-use middle::ty;
+use rustc::ty;
 use syntax::ast::{CrateNum, NodeId};
 use syntax::codemap::Span;
 

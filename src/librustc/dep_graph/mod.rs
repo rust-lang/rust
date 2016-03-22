@@ -11,7 +11,7 @@
 use self::thread::{DepGraphThreadData, DepMessage};
 use middle::def_id::DefId;
 use syntax::ast::NodeId;
-use middle::ty::TyCtxt;
+use ty::TyCtxt;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
 use std::rc::Rc;

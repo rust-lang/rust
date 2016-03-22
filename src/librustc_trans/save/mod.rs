@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use middle::def::Def;
 use middle::def_id::DefId;
 

@@ -27,7 +27,7 @@ use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
 use trans::value::Value;
-use middle::ty::{self, Ty};
+use rustc::ty::{self, Ty};
 
 use rustc_front::hir;
 

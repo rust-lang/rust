@@ -15,9 +15,9 @@ use intrinsics::{self, Intrinsic};
 use libc;
 use llvm;
 use llvm::{ValueRef, TypeKind};
-use middle::infer;
-use middle::ty::subst;
-use middle::ty::subst::FnSpace;
+use rustc::infer;
+use rustc::ty::subst;
+use rustc::ty::subst::FnSpace;
 use trans::abi::{Abi, FnType};
 use trans::adt;
 use trans::attributes;
@@ -36,9 +36,9 @@ use trans::glue;
 use trans::type_of;
 use trans::machine;
 use trans::type_::Type;
-use middle::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
 use trans::Disr;
-use middle::ty::subst::Substs;
+use rustc::ty::subst::Substs;
 use rustc::dep_graph::DepNode;
 use rustc_front::hir;
 use syntax::ast;
@@ -1694,7 +1694,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
 // Returns None if the type is not an integer
 fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
         -> Option<(u64, bool)> {
-    use rustc::middle::ty::{TyInt, TyUint};
+    use rustc::ty::{TyInt, TyUint};
     match *sty {
         TyInt(t) => Some((match t {
             ast::IntTy::Is => {
@@ -1730,7 +1730,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
 // Returns None if the type is not a float
 fn float_type_width<'tcx>(sty: &ty::TypeVariants<'tcx>)
         -> Option<u64> {
-    use rustc::middle::ty::TyFloat;
+    use rustc::ty::TyFloat;
     match *sty {
         TyFloat(t) => Some(match t {
             ast::FloatTy::F32 => 32,

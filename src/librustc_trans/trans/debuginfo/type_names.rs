@@ -14,9 +14,9 @@ use super::namespace::crate_root_namespace;
 
 use trans::common::CrateContext;
 use middle::def_id::DefId;
-use middle::infer;
-use middle::ty::subst;
-use middle::ty::{self, Ty};
+use rustc::infer;
+use rustc::ty::subst;
+use rustc::ty::{self, Ty};
 
 use rustc_front::hir;
 

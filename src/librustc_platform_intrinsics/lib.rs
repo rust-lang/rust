@@ -19,7 +19,7 @@
 extern crate rustc_llvm as llvm;
 extern crate rustc;
 
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 
 pub struct Intrinsic {
     pub inputs: &'static [&'static Type],

@@ -54,7 +54,7 @@ use self::lazy_binop_ty::*;
 use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
-use middle::ty::subst::Substs;
+use rustc::ty::subst::Substs;
 use trans::{_match, abi, adt, asm, base, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
@@ -70,12 +70,12 @@ use trans::tvec;
 use trans::type_of;
 use trans::value::Value;
 use trans::Disr;
-use middle::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
-use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
-use middle::ty::adjustment::CustomCoerceUnsized;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::MethodCall;
-use middle::ty::cast::{CastKind, CastTy};
+use rustc::ty::adjustment::{AdjustDerefRef, AdjustReifyFnPointer};
+use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
+use rustc::ty::adjustment::CustomCoerceUnsized;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::MethodCall;
+use rustc::ty::cast::{CastKind, CastTy};
 use util::common::indenter;
 use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
@@ -1859,8 +1859,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               id: ast::NodeId)
                               -> DatumBlock<'blk, 'tcx, Expr>
 {
-    use middle::ty::cast::CastTy::*;
-    use middle::ty::cast::IntTy::*;
+    use rustc::ty::cast::CastTy::*;
+    use rustc::ty::cast::IntTy::*;
 
     fn int_cast(bcx: Block,
                 lldsttype: Type,
@@ -2194,7 +2194,7 @@ impl OverflowOpViaIntrinsic {
     fn to_intrinsic_name(&self, tcx: &TyCtxt, ty: Ty) -> &'static str {
         use syntax::ast::IntTy::*;
         use syntax::ast::UintTy::*;
-        use middle::ty::{TyInt, TyUint};
+        use rustc::ty::{TyInt, TyUint};
 
         let new_sty = match ty.sty {
             TyInt(Is) => match &tcx.sess.target.target.target_pointer_width[..] {

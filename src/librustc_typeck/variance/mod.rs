@@ -12,7 +12,7 @@
 //! parameters. See README.md for details.
 
 use arena;
-use middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 
 /// Defines the `TermsContext` basically houses an arena where we can
 /// allocate terms.

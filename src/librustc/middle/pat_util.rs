@@ -10,7 +10,7 @@
 
 use middle::def::*;
 use middle::def_id::DefId;
-use middle::ty::TyCtxt;
+use ty::TyCtxt;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
