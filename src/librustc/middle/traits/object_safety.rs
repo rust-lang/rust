@@ -21,7 +21,7 @@ use super::supertraits;
 use super::elaborate_predicates;
 
 use middle::def_id::DefId;
-use middle::subst::{self, SelfSpace, TypeSpace};
+use middle::ty::subst::{self, SelfSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use std::rc::Rc;

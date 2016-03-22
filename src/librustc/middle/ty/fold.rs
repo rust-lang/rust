@@ -40,7 +40,7 @@
 //! and does not need to visit anything else.
 
 use middle::region;
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::adjustment;
 use middle::ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 

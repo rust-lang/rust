@@ -20,7 +20,7 @@ use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::def::Def;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, TyCtxt};
-use rustc::middle::subst;
+use rustc::middle::ty::subst;
 use rustc::middle::stability;
 use rustc::middle::const_eval;
 

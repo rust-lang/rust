@@ -30,7 +30,7 @@ use std::mem;
 use std::collections::HashMap;
 
 use rustc::middle::def_id::DefId;
-use rustc::middle::subst;
+use rustc::middle::ty::subst;
 
 use clean::PathParameters as PP;
 use clean::WherePredicate as WP;

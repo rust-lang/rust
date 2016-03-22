@@ -115,7 +115,7 @@ use middle::pat_util;
 use middle::ty::{self, TyCtxt, ParameterEnvironment};
 use middle::traits::{self, ProjectionMode};
 use middle::infer;
-use middle::subst::Subst;
+use middle::ty::subst::Subst;
 use lint;
 use util::nodemap::NodeMap;
 

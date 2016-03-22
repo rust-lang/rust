@@ -195,7 +195,7 @@ use rustc::front::map as hir_map;
 use rustc::middle::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
 use rustc::middle::traits;
-use rustc::middle::subst::{self, Substs, Subst};
+use rustc::middle::ty::subst::{self, Substs, Subst};
 use rustc::middle::ty::{self, Ty, TypeFoldable};
 use rustc::middle::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::repr as mir;

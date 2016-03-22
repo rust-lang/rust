@@ -499,7 +499,7 @@ pub mod tls {
     use std::cell::Cell;
     use std::mem;
     use middle::ty::{self, Ty, TyCtxt};
-    use middle::subst::Substs;
+    use middle::ty::subst::Substs;
     use middle::def_id::DefId;
 
     pub trait EncodingContext<'tcx> {

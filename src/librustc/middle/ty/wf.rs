@@ -11,7 +11,7 @@
 use middle::def_id::DefId;
 use middle::infer::InferCtxt;
 use middle::ty::outlives::{self, Component};
-use middle::subst::Substs;
+use middle::ty::subst::Substs;
 use middle::traits;
 use middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;

@@ -21,7 +21,7 @@ use rustc::mir::repr::*;
 use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::def_id::DefId;
 use rustc::middle::infer::InferCtxt;
-use rustc::middle::subst::{Subst, Substs};
+use rustc::middle::ty::subst::{Subst, Substs};
 use rustc::middle::ty::{self, Ty, TyCtxt};
 use syntax::codemap::Span;
 use syntax::parse::token;

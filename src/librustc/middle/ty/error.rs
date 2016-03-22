@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def_id::DefId;
-use middle::subst;
+use middle::ty::subst;
 use middle::infer::type_variable;
 use middle::ty::{self, BoundRegion, Region, Ty, TyCtxt};
 

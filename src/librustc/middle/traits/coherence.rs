@@ -14,7 +14,7 @@ use super::{SelectionContext, Obligation, ObligationCause};
 
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::DefId;
-use middle::subst::TypeSpace;
+use middle::ty::subst::TypeSpace;
 use middle::ty::{self, Ty, TyCtxt};
 use middle::infer::{self, InferCtxt, TypeOrigin};
 use syntax::codemap::DUMMY_SP;

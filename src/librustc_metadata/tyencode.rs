@@ -19,8 +19,8 @@ use std::io::prelude::*;
 
 use middle::def_id::DefId;
 use middle::region;
-use middle::subst;
-use middle::subst::VecPerParamSpace;
+use middle::ty::subst;
+use middle::ty::subst::VecPerParamSpace;
 use middle::ty::ParamTy;
 use middle::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FnvHashMap;

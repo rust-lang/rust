@@ -33,7 +33,7 @@ use middle::const_qualif::ConstQualif;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::region;
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::{self, Ty, TyCtxt};
 
 use syntax::{ast, ast_util, codemap};

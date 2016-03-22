@@ -82,7 +82,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::infer::{self, TypeOrigin};
 use middle::region;
-use middle::subst;
+use middle::ty::subst;
 use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use middle::ty::{Region, ReFree};
 use middle::ty::error::TypeError;

@@ -13,7 +13,7 @@
 use middle::cstore;
 use middle::def_id::DefId;
 use middle::region;
-use middle::subst::{self, Substs};
+use middle::ty::subst::{self, Substs};
 use middle::traits;
 use middle::ty::{self, AdtDef, ToPredicate, TypeFlags, Ty, TyCtxt, TyS, TypeFoldable};
 use util::common::ErrorReported;

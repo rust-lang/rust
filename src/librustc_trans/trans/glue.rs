@@ -18,7 +18,7 @@ use back::symbol_names;
 use llvm;
 use llvm::{ValueRef, get_param};
 use middle::lang_items::ExchangeFreeFnLangItem;
-use middle::subst::{Substs};
+use middle::ty::subst::{Substs};
 use middle::traits;
 use middle::ty::{self, Ty, TyCtxt};
 use trans::abi::{Abi, FnType};
