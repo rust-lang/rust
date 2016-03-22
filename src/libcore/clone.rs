@@ -18,6 +18,29 @@
 //! them cheap and safe to copy. For other types copies must be made
 //! explicitly, by convention implementing the `Clone` trait and calling
 //! the `clone` method.
+//!
+//! Basic usage example:
+//!
+//! ```
+//! let s = String::new(); // String type implements Clone
+//! let copy = s.clone(); // so we can clone it
+//! ```
+//!
+//! To easily implement the Clone trait, you can also use
+//! `#[derive(Clone)]`. Example:
+//!
+//! ```
+//! #[derive(Clone)] // we add the Clone trait to Morpheus struct
+//! struct Morpheus {
+//!    blue_pill: f32,
+//!    red_pill: i64,
+//! }
+//!
+//! fn main() {
+//!    let f = Morpheus { blue_pill: 0.0, red_pill: 0 };
+//!    let copy = f.clone(); // and now we can clone it!
+//! }
+//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
