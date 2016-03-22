@@ -891,6 +891,10 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
 {
     let tcx = this.tcx();
 
+    debug!("ast_type_binding_to_poly_projection_predicate()");
+    debug!("trait_ref = {:?}", trait_ref);
+    debug!("self_ty = {:?}", self_ty);
+
     // Given something like `U : SomeTrait<T=X>`, we want to produce a
     // predicate like `<U as SomeTrait>::T = X`. This is somewhat
     // subtle in the event that `T` is defined in a supertrait of
@@ -906,6 +910,34 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     // ```
     //
     // We want to produce `<B as SuperTrait<int>>::T == foo`.
+
+    // Find any late-bound regions declared in `ty` that are not
+    // declared in the trait-ref. These are not wellformed.
+    //
+    // Example:
+    //
+    //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+    //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+    let late_bound_in_trait_ref = tcx.collect_late_bound_regions(&trait_ref);
+    let late_bound_in_ty = tcx.collect_late_bound_regions(&ty::Binder(binding.ty));
+    debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
+    debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
+    for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
+        let br_name = match *br {
+            ty::BrNamed(_, name) => name,
+            _ => {
+                this.tcx().sess.span_bug(
+                    binding.span,
+                    &format!("anonymous bound region {:?} in binding but not trait ref",
+                             br));
+            }
+        };
+        this.tcx().sess.span_err(
+            binding.span,
+            &format!("binding for associated type `{}` references lifetime `{}`, \
+                      which does not appear in the trait input types",
+                     binding.item_name, br_name));
+    }
 
     // Simple case: X is defined in the current trait.
     if this.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
