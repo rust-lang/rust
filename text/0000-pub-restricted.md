@@ -796,6 +796,30 @@ tree for all of its re-exports.
    do the inline refactoring, rewriting each `pub(crate)` as `pub(A1)`
    as necessary.
 
+## Be more ambitious!
+
+This feature could be extended in various ways.
+
+For example:
+
+ * As mentioned on the RFC comment thread,
+   we could allow multiple paths in the restriction-specification:
+   `pub(path1, path2, path3)`.
+
+   This, for better or worse, would start
+   to look a lot like `friend` declarations from C++.
+
+ * Also as mentioned on the RFC comment thread, the
+   `pub(restricted)` form does not have any variant where the
+   restrction-specification denotes the whole universe.
+   In other words, there's no current way to get the same effect
+   as `pub item` via `pub(restricted) item`.
+
+   Some future syntaxes to support this have been proposed in the
+   RFC comment thread, such as `pub(::)`. But this RFC is leaving the
+   actual choice to add such an extension (and what syntax to use
+   for it) up to a later amendment in the future.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
