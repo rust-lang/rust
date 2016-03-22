@@ -30,7 +30,7 @@ use rustc_metadata::creader::LocalCrateReader;
 use rustc_metadata::cstore::CStore;
 use rustc_trans::back::link;
 use rustc_trans::back::write;
-use rustc_trans::trans;
+use rustc_trans as trans;
 use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
