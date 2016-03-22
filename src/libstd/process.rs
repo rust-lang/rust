@@ -314,6 +314,8 @@ impl Command {
     /// println!("status: {}", output.status);
     /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     /// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    ///
+    /// assert!(output.status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
@@ -335,6 +337,8 @@ impl Command {
     ///     .expect("failed to execute process");
     ///
     /// println!("process exited with: {}", status);
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
@@ -518,7 +522,7 @@ impl Child {
     /// let ecode = child.wait_with_output()
     ///                  .expect("failed to wait on child");
     ///
-    /// assert!(ecode.success());
+    /// assert!(ecode.status.success());
     /// ```
     ///
     #[stable(feature = "process", since = "1.0.0")]
