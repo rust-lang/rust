@@ -220,7 +220,7 @@ VISIBILITY ::= <empty> | `pub` | `pub` `(` USE_PATH `)` | `pub` `(` `crate` `)`
 
 One can use these `pub(restriction)` forms anywhere that one can
 currently use `pub`. In particular, one can use them on item
-defintions, methods in an impl, the fields of a struct
+definitions, methods in an impl, the fields of a struct
 definition, and on `pub use` re-exports.
 
 ## Semantics
