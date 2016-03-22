@@ -2841,7 +2841,12 @@ impl<'a> Parser<'a> {
                 maybe_whole!(deref self, NtTT);
                 match self.token {
                     token::CloseDelim(_) => {
-                        panic!("should have been caught above");
+                        // An unexpected closing delimiter (i.e., there is no
+                        // matching opening delimiter).
+                        let token_str = self.this_token_to_string();
+                        let err = self.diagnostic().struct_span_err(self.span,
+                            &format!("unexpected close delimiter: `{}`", token_str));
+                        Err(err)
                     },
                     /* we ought to allow different depths of unquotation */
                     token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => {
