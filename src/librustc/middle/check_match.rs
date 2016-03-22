@@ -1017,7 +1017,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
             sp: Span,
             fn_id: NodeId) {
     match kind {
-        FnKind::Closure => {}
+        FnKind::Closure(_) => {}
         _ => cx.param_env = ParameterEnvironment::for_item(cx.tcx, fn_id),
     }
 

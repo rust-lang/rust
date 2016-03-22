@@ -653,7 +653,7 @@ fn set_bit(words: &mut [usize], bit: usize) -> bool {
     let word = bit / usize_bits;
     let bit_in_word = bit % usize_bits;
     let bit_mask = 1 << bit_in_word;
-    debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, word);
+    debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, bit_mask);
     let oldv = words[word];
     let newv = oldv | bit_mask;
     words[word] = newv;

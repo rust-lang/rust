@@ -109,6 +109,7 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_front 0.0.0",
+ "rustc_mir 0.0.0",
  "syntax 0.0.0",
 ]
 

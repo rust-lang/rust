@@ -254,13 +254,13 @@ impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> 
         self.operation.visit_id(node_id);
 
         match function_kind {
-            FnKind::ItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
                 self.visit_generics_helper(generics)
             }
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 self.visit_generics_helper(&sig.generics)
             }
-            FnKind::Closure => {}
+            FnKind::Closure(_) => {}
         }
 
         for argument in &function_declaration.inputs {

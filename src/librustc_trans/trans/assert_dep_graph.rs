@@ -253,7 +253,9 @@ fn dump_graph(tcx: &TyCtxt) {
 
 pub struct GraphvizDepGraph(FnvHashSet<DepNode>, Vec<(DepNode, DepNode)>);
 
-impl<'a, 'tcx> dot::GraphWalk<'a, DepNode, (DepNode, DepNode)> for GraphvizDepGraph {
+impl<'a, 'tcx> dot::GraphWalk<'a> for GraphvizDepGraph {
+    type Node = DepNode;
+    type Edge = (DepNode, DepNode);
     fn nodes(&self) -> dot::Nodes<DepNode> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
         nodes.into_cow()
@@ -269,7 +271,9 @@ impl<'a, 'tcx> dot::GraphWalk<'a, DepNode, (DepNode, DepNode)> for GraphvizDepGr
     }
 }
 
-impl<'a, 'tcx> dot::Labeller<'a, DepNode, (DepNode, DepNode)> for GraphvizDepGraph {
+impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
+    type Node = DepNode;
+    type Edge = (DepNode, DepNode);
     fn graph_id(&self) -> dot::Id {
         dot::Id::new("DependencyGraph").unwrap()
     }
