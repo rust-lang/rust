@@ -1885,7 +1885,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                             source: Span::empty(),
                             name: Some(field.name.clean(cx)),
                             attrs: Vec::new(),
-                            visibility: Some(hir::Public),
+                            visibility: Some(field.vis),
                             // FIXME: this is not accurate, we need an id for
                             //        the specific field but we're using the id
                             //        for the whole variant. Thus we read the
