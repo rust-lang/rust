@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use build::Location;
+use build::{Location, ScopeAuxiliary};
 use rustc::mir::repr::*;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
@@ -25,14 +25,13 @@ pub fn write_mir_pretty<'a, 'tcx, I>(tcx: &TyCtxt<'tcx>,
                                      -> io::Result<()>
     where I: Iterator<Item=(&'a NodeId, &'a Mir<'tcx>)>, 'tcx: 'a
 {
-    let no_annotations = FnvHashMap();
     for (&node_id, mir) in iter {
-        write_mir_fn(tcx, node_id, mir, w, &no_annotations)?;
+        write_mir_fn(tcx, node_id, mir, w, None)?;
     }
     Ok(())
 }
 
-pub enum Annotation {
+enum Annotation {
     EnterScope(ScopeId),
     ExitScope(ScopeId),
 }
@@ -41,21 +40,39 @@ pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
                           node_id: NodeId,
                           mir: &Mir<'tcx>,
                           w: &mut Write,
-                          annotations: &FnvHashMap<Location, Vec<Annotation>>)
+                          auxiliary: Option<&Vec<ScopeAuxiliary>>)
                           -> io::Result<()> {
-    write_mir_intro(tcx, node_id, mir, w)?;
-    for block in mir.all_basic_blocks() {
-        write_basic_block(tcx, block, mir, w, annotations)?;
+    // compute scope/entry exit annotations
+    let mut annotations = FnvHashMap();
+    if let Some(auxiliary) = auxiliary {
+        for (index, auxiliary) in auxiliary.iter().enumerate() {
+            let scope_id = ScopeId::new(index);
+
+            annotations.entry(auxiliary.dom)
+                       .or_insert(vec![])
+                       .push(Annotation::EnterScope(scope_id));
+
+            for &loc in &auxiliary.postdoms {
+                annotations.entry(loc)
+                           .or_insert(vec![])
+                           .push(Annotation::ExitScope(scope_id));
+            }
+        }
     }
 
-    // construct a scope tree
+    write_mir_intro(tcx, node_id, mir, w)?;
+    for block in mir.all_basic_blocks() {
+        write_basic_block(tcx, block, mir, w, &annotations)?;
+    }
+
+    // construct a scope tree and write it out
     let mut scope_tree: FnvHashMap<Option<ScopeId>, Vec<ScopeId>> = FnvHashMap();
     for (index, scope_data) in mir.scopes.vec.iter().enumerate() {
         scope_tree.entry(scope_data.parent_scope)
                   .or_insert(vec![])
                   .push(ScopeId::new(index));
     }
-    write_scope_tree(tcx, mir, &scope_tree, w, None, 1)?;
+    write_scope_tree(tcx, mir, auxiliary, &scope_tree, w, None, 1)?;
 
     writeln!(w, "}}")?;
     Ok(())
@@ -115,6 +132,7 @@ fn comment(tcx: &TyCtxt,
 
 fn write_scope_tree(tcx: &TyCtxt,
                     mir: &Mir,
+                    auxiliary: Option<&Vec<ScopeAuxiliary>>,
                     scope_tree: &FnvHashMap<Option<ScopeId>, Vec<ScopeId>>,
                     w: &mut Write,
                     parent: Option<ScopeId>,
@@ -125,14 +143,20 @@ fn write_scope_tree(tcx: &TyCtxt,
         let data = &mir.scopes[child];
         assert_eq!(data.parent_scope, parent);
         writeln!(w, "{0:1$}Scope({2}) {{", "", indent, child.index())?;
+
         let indent = indent + INDENT.len();
         if let Some(parent) = parent {
             writeln!(w, "{0:1$}Parent: Scope({2})", "", indent, parent.index())?;
         }
-        writeln!(w, "{0:1$}Extent: {2:?}",
-                 "", indent,
-                 tcx.region_maps.code_extent_data(data.extent))?;
-        write_scope_tree(tcx, mir, scope_tree, w, Some(child), depth + 1)?;
+
+        if let Some(auxiliary) = auxiliary {
+            let extent = auxiliary[child.index()].extent;
+            let data = tcx.region_maps.code_extent_data(extent);
+            writeln!(w, "{0:1$}Extent: {2:?}", "", indent, data)?;
+        }
+
+        write_scope_tree(tcx, mir, auxiliary, scope_tree, w,
+                         Some(child), depth + 1)?;
     }
     Ok(())
 }
