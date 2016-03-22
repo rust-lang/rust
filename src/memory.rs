@@ -18,7 +18,7 @@ pub struct AllocId(u64);
 
 #[derive(Debug)]
 pub struct Allocation {
-    pub bytes: Vec<u8>,
+    pub bytes: Box<[u8]>,
     pub relocations: BTreeMap<usize, AllocId>,
     // TODO(tsion): undef mask
 }
@@ -76,7 +76,10 @@ impl Memory {
 
     pub fn allocate(&mut self, size: usize) -> Pointer {
         let id = AllocId(self.next_id);
-        let alloc = Allocation { bytes: vec![0; size], relocations: BTreeMap::new() };
+        let alloc = Allocation {
+            bytes: vec![0; size].into_boxed_slice(),
+            relocations: BTreeMap::new(),
+        };
         self.alloc_map.insert(self.next_id, alloc);
         self.next_id += 1;
         Pointer {
