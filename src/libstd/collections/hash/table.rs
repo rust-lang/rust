@@ -421,8 +421,9 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
     }
 }
 
-// We don't need a `Take` trait currently. This is why a mutable reference
-// to the table is required.
+// We take a mutable reference to the table instead of accepting anything that
+// implements `DerefMut` to prevent fn `take` from being called on `stash`ed
+// buckets.
 impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
     /// Removes this bucket's key and value from the hashtable.
     ///
@@ -446,6 +447,8 @@ impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
     }
 }
 
+// This use of `Put` is misleading and restrictive, but safe and sufficient for our use cases
+// where `M` is a full bucket or table reference type with mutable access to the table.
 impl<K, V, M> FullBucket<K, V, M> where M: Put<K, V> {
     pub fn replace(&mut self, h: SafeHash, k: K, v: V) -> (SafeHash, K, V) {
         unsafe {
