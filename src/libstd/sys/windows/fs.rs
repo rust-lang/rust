@@ -290,7 +290,7 @@ impl File {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
             cvt(c::GetFileInformationByHandle(self.handle.raw(),
-                                                   &mut info))?;
+                                              &mut info))?;
             let mut attr = FileAttr {
                 attributes: info.dwFileAttributes,
                 creation_time: info.ftCreationTime,

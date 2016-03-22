@@ -100,10 +100,10 @@ pub fn compile_input(sess: &Session,
             let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
             let id = link::find_crate_name(Some(sess), &krate.attrs, input);
             let expanded_crate = phase_2_configure_and_expand(sess,
-                                                                   &cstore,
-                                                                   krate,
-                                                                   &id[..],
-                                                                   addl_plugins)?;
+                                                              &cstore,
+                                                              krate,
+                                                              &id[..],
+                                                              addl_plugins)?;
 
             (outputs, expanded_crate, id)
         };
@@ -169,12 +169,12 @@ pub fn compile_input(sess: &Session,
         };
 
         phase_3_run_analysis_passes(sess,
-                                              &cstore,
-                                              hir_map,
-                                              &arenas,
-                                              &id,
-                                              control.make_glob_map,
-                                              |tcx, mir_map, analysis, result| {
+                                    &cstore,
+                                    hir_map,
+                                    &arenas,
+                                    &id,
+                                    control.make_glob_map,
+                                    |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -683,8 +683,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     })?;
 
     time(time_passes,
-              "const fn bodies and arguments",
-              || const_fn::check_crate(sess, &krate))?;
+         "const fn bodies and arguments",
+         || const_fn::check_crate(sess, &krate))?;
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -781,10 +781,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     };
 
     let named_region_map = time(time_passes,
-                                     "lifetime resolution",
-                                     || middle::resolve_lifetime::krate(sess,
-                                                                        &hir_map,
-                                                                        &def_map.borrow()))?;
+                                "lifetime resolution",
+                                || middle::resolve_lifetime::krate(sess,
+                                                                   &hir_map,
+                                                                   &def_map.borrow()))?;
 
     time(time_passes,
          "looking for entry point",

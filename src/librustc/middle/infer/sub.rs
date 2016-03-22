@@ -76,8 +76,8 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
                 self.fields
-                         .switch_expected()
-                         .instantiate(b, SupertypeOf, a_id)?;
+                    .switch_expected()
+                    .instantiate(b, SupertypeOf, a_id)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {

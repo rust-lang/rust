@@ -642,11 +642,11 @@ impl UnixDatagram {
                 let (addr, len) = sockaddr_un(path)?;
 
                 let count = cvt(libc::sendto(*d.0.as_inner(),
-                                                  buf.as_ptr() as *const _,
-                                                  buf.len(),
-                                                  0,
-                                                  &addr as *const _ as *const _,
-                                                  len))?;
+                                             buf.as_ptr() as *const _,
+                                             buf.len(),
+                                             0,
+                                             &addr as *const _ as *const _,
+                                             len))?;
                 Ok(count as usize)
             }
         }

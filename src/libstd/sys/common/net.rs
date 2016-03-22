@@ -49,7 +49,7 @@ pub fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
     unsafe {
         let payload = &payload as *const T as *const c_void;
         cvt(c::setsockopt(*sock.as_inner(), opt, val, payload,
-                               mem::size_of::<T>() as c::socklen_t))?;
+                          mem::size_of::<T>() as c::socklen_t))?;
         Ok(())
     }
 }
@@ -60,8 +60,8 @@ pub fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as c::socklen_t;
         cvt(c::getsockopt(*sock.as_inner(), opt, val,
-                               &mut slot as *mut _ as *mut _,
-                               &mut len))?;
+                          &mut slot as *mut _ as *mut _,
+                          &mut len))?;
         assert_eq!(len as usize, mem::size_of::<T>());
         Ok(slot)
     }
@@ -147,7 +147,7 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     let mut res = ptr::null_mut();
     unsafe {
         cvt_gai(c::getaddrinfo(c_host.as_ptr(), ptr::null(), ptr::null(),
-                                   &mut res))?;
+                               &mut res))?;
         Ok(LookupHost { original: res, cur: res })
     }
 }
@@ -308,7 +308,7 @@ impl TcpListener {
         // the OS to clean up the previous one.
         if !cfg!(windows) {
             setsockopt(&sock, c::SOL_SOCKET, c::SO_REUSEADDR,
-                            1 as c_int)?;
+                       1 as c_int)?;
         }
 
         // Bind our new socket
@@ -334,7 +334,7 @@ impl TcpListener {
         let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as c::socklen_t;
         let sock = self.inner.accept(&mut storage as *mut _ as *mut _,
-                                          &mut len)?;
+                                     &mut len)?;
         let addr = sockaddr_to_addr(&storage, len as usize)?;
         Ok((TcpStream { inner: sock, }, addr))
     }

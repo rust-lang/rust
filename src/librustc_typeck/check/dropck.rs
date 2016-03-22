@@ -47,10 +47,10 @@ pub fn check_drop_impl(tcx: &TyCtxt, drop_impl_did: DefId) -> Result<(), ()> {
         ty::TyEnum(adt_def, self_to_impl_substs) |
         ty::TyStruct(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(tcx,
-                                                               drop_impl_did,
-                                                               dtor_generics,
-                                                               &dtor_self_type,
-                                                               adt_def.did)?;
+                                                          drop_impl_did,
+                                                          dtor_generics,
+                                                          &dtor_self_type,
+                                                          adt_def.did)?;
 
             ensure_drop_predicates_are_implied_by_item_defn(tcx,
                                                             drop_impl_did,
@@ -469,8 +469,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
         ty::TyTuple(ref tys) |
         ty::TyClosure(_, box ty::ClosureSubsts { upvar_tys: ref tys, .. }) => {
             for ty in tys {
-                iterate_over_potentially_unsafe_regions_in_type(
-                    cx, context, ty, depth+1)?
+                iterate_over_potentially_unsafe_regions_in_type(cx, context, ty, depth+1)?
             }
             Ok(())
         }

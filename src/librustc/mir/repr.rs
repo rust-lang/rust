@@ -809,8 +809,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let variant_def = &adt_def.variants[variant];
 
                         ppaux::parameterized(fmt, substs, variant_def.did,
-                                                  ppaux::Ns::Value, &[],
-                                                  |tcx| {
+                                             ppaux::Ns::Value, &[],
+                                             |tcx| {
                             tcx.lookup_item_type(variant_def.did).generics
                         })?;
 

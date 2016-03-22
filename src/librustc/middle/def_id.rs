@@ -56,7 +56,7 @@ pub struct DefId {
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "DefId {{ krate: {:?}, node: {:?}",
-                    self.krate, self.index)?;
+               self.krate, self.index)?;
 
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now

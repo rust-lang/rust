@@ -388,7 +388,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     to_string(|s| {
         s.head("")?;
         s.print_fn(decl, unsafety, constness, Abi::Rust, Some(name),
-                        generics, opt_explicit_self, ast::Visibility::Inherited)?;
+                   generics, opt_explicit_self, ast::Visibility::Inherited)?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -779,8 +779,8 @@ pub trait PrintState<'a> {
                 word(self.writer(), &name)?;
                 self.popen()?;
                 self.commasep(Consistent,
-                                   &items[..],
-                                   |s, i| s.print_meta_item(&i))?;
+                              &items[..],
+                              |s, i| s.print_meta_item(&i))?;
                 self.pclose()?;
             }
         }
@@ -915,7 +915,7 @@ impl<'a> State<'a> {
             if i < len {
                 word(&mut self.s, ",")?;
                 self.maybe_print_trailing_comment(get_span(elt),
-                                                    Some(get_span(&elts[i]).hi))?;
+                                                  Some(get_span(&elts[i]).hi))?;
                 self.space_if_not_bol()?;
             }
         }
@@ -979,7 +979,7 @@ impl<'a> State<'a> {
             ast::TyKind::Tup(ref elts) => {
                 self.popen()?;
                 self.commasep(Inconsistent, &elts[..],
-                                   |s, ty| s.print_type(&ty))?;
+                              |s, ty| s.print_type(&ty))?;
                 if elts.len() == 1 {
                     word(&mut self.s, ",")?;
                 }
@@ -1000,11 +1000,11 @@ impl<'a> State<'a> {
                     },
                 };
                 self.print_ty_fn(f.abi,
-                                      f.unsafety,
-                                      &f.decl,
-                                      None,
-                                      &generics,
-                                      None)?;
+                                 f.unsafety,
+                                 &f.decl,
+                                 None,
+                                 &generics,
+                                 None)?;
             }
             ast::TyKind::Path(None, ref path) => {
                 self.print_path(path, false, 0)?;
@@ -1050,16 +1050,15 @@ impl<'a> State<'a> {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 self.head("")?;
                 self.print_fn(decl, ast::Unsafety::Normal,
-                                   ast::Constness::NotConst,
-                                   Abi::Rust, Some(item.ident),
-                                   generics, None, item.vis)?;
+                              ast::Constness::NotConst,
+                              Abi::Rust, Some(item.ident),
+                              generics, None, item.vis)?;
                 self.end()?; // end head-ibox
                 word(&mut self.s, ";")?;
                 self.end() // end the outer fn box
             }
             ast::ForeignItemKind::Static(ref t, m) => {
-                self.head(&visibility_qualified(item.vis,
-                                                    "static"))?;
+                self.head(&visibility_qualified(item.vis, "static"))?;
                 if m {
                     self.word_space("mut")?;
                 }
@@ -1119,8 +1118,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
             ast::ItemKind::ExternCrate(ref optional_path) => {
-                self.head(&visibility_qualified(item.vis,
-                                                     "extern crate"))?;
+                self.head(&visibility_qualified(item.vis, "extern crate"))?;
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
                     if val.contains("-") {
@@ -1138,16 +1136,14 @@ impl<'a> State<'a> {
                 self.end()?; // end outer head-block
             }
             ast::ItemKind::Use(ref vp) => {
-                self.head(&visibility_qualified(item.vis,
-                                                     "use"))?;
+                self.head(&visibility_qualified(item.vis, "use"))?;
                 self.print_view_path(&vp)?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
             ast::ItemKind::Static(ref ty, m, ref expr) => {
-                self.head(&visibility_qualified(item.vis,
-                                                    "static"))?;
+                self.head(&visibility_qualified(item.vis, "static"))?;
                 if m == ast::Mutability::Mutable {
                     self.word_space("mut")?;
                 }
@@ -1163,8 +1159,7 @@ impl<'a> State<'a> {
                 self.end()?; // end the outer cbox
             }
             ast::ItemKind::Const(ref ty, ref expr) => {
-                self.head(&visibility_qualified(item.vis,
-                                                    "const"))?;
+                self.head(&visibility_qualified(item.vis, "const"))?;
                 self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
@@ -1192,8 +1187,7 @@ impl<'a> State<'a> {
                 self.print_block_with_attrs(&body, &item.attrs)?;
             }
             ast::ItemKind::Mod(ref _mod) => {
-                self.head(&visibility_qualified(item.vis,
-                                                    "mod"))?;
+                self.head(&visibility_qualified(item.vis, "mod"))?;
                 self.print_ident(item.ident)?;
                 self.nbsp()?;
                 self.bopen()?;
@@ -1555,8 +1549,8 @@ impl<'a> State<'a> {
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref default) => {
                 self.print_associated_const(ti.ident, &ty,
-                                                 default.as_ref().map(|expr| &**expr),
-                                                 ast::Visibility::Inherited)?;
+                                            default.as_ref().map(|expr| &**expr),
+                                            ast::Visibility::Inherited)?;
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
@@ -1572,7 +1566,7 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Type(ref bounds, ref default) => {
                 self.print_associated_type(ti.ident, Some(bounds),
-                                                default.as_ref().map(|ty| &**ty))?;
+                                           default.as_ref().map(|ty| &**ty))?;
             }
         }
         self.ann.post(self, NodeSubItem(ti.id))
@@ -1923,7 +1917,7 @@ impl<'a> State<'a> {
         if !tys.is_empty() {
             word(&mut self.s, "::<")?;
             self.commasep(Inconsistent, tys,
-                               |s, ty| s.print_type(&ty))?;
+                          |s, ty| s.print_type(&ty))?;
             word(&mut self.s, ">")?;
         }
         self.print_call_post(base_args)
@@ -2223,7 +2217,7 @@ impl<'a> State<'a> {
                     match out.constraint.slice_shift_char() {
                         Some(('=', operand)) if out.is_rw => {
                             s.print_string(&format!("+{}", operand),
-                                                ast::StrStyle::Cooked)?
+                                           ast::StrStyle::Cooked)?
                         }
                         _ => s.print_string(&out.constraint, ast::StrStyle::Cooked)?
                     }
@@ -2267,10 +2261,10 @@ impl<'a> State<'a> {
                     space(&mut self.s)?;
                     self.word_space(":")?;
                     self.commasep(Inconsistent, &options,
-                                       |s, &co| {
-                        s.print_string(co, ast::StrStyle::Cooked)?;
-                        Ok(())
-                    })?;
+                                  |s, &co| {
+                                      s.print_string(co, ast::StrStyle::Cooked)?;
+                                      Ok(())
+                                  })?;
                 }
 
                 self.pclose()?;
@@ -3037,13 +3031,13 @@ impl<'a> State<'a> {
             },
         };
         self.print_fn(decl,
-                           unsafety,
-                           ast::Constness::NotConst,
-                           abi,
-                           name,
-                           &generics,
-                           opt_explicit_self,
-                           ast::Visibility::Inherited)?;
+                      unsafety,
+                      ast::Constness::NotConst,
+                      abi,
+                      name,
+                      &generics,
+                      opt_explicit_self,
+                      ast::Visibility::Inherited)?;
         self.end()
     }
 

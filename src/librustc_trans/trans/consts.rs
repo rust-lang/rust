@@ -976,7 +976,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let method_call = ty::MethodCall::expr(e.id);
             let method = cx.tcx().tables.borrow().method_map[&method_call];
             const_fn_call(cx, method.def_id, method.substs.clone(),
-                               &arg_vals, param_substs, trueconst)?
+                          &arg_vals, param_substs, trueconst)?
         },
         hir::ExprType(ref e, _) => const_expr(cx, &e, param_substs, fn_args, trueconst)?.0,
         hir::ExprBlock(ref block) => {

@@ -954,10 +954,10 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     }
 
     let candidate = one_bound_for_assoc_type(tcx,
-                                                  candidates,
-                                                  &trait_ref.to_string(),
-                                                  &binding.item_name.as_str(),
-                                                  binding.span)?;
+                                             candidates,
+                                             &trait_ref.to_string(),
+                                             &binding.item_name.as_str(),
+                                             binding.span)?;
 
     Ok(ty::Binder(ty::ProjectionPredicate {             // <-------------------------+
         projection_ty: ty::ProjectionTy {               //                           |

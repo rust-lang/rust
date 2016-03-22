@@ -65,9 +65,9 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
 
     // Basic block number at the top.
     write!(w, r#"<tr><td {attrs} colspan="{colspan}">{blk}</td></tr>"#,
-                attrs=r#"bgcolor="gray" align="center""#,
-                colspan=num_cols,
-                blk=block.index())?;
+           attrs=r#"bgcolor="gray" align="center""#,
+           colspan=num_cols,
+           blk=block.index())?;
 
     init(w)?;
 
@@ -145,13 +145,13 @@ fn write_graph_label<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut
             write!(w, "mut ")?;
         }
         write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                    Lvalue::Var(i as u32), escape(&var.ty), var.name)?;
+               Lvalue::Var(i as u32), escape(&var.ty), var.name)?;
     }
 
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
         write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                    Lvalue::Temp(i as u32), escape(&temp.ty))?;
+               Lvalue::Temp(i as u32), escape(&temp.ty))?;
     }
 
     writeln!(w, ">;")

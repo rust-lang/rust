@@ -834,7 +834,7 @@ impl<'a> Parser<'a> {
         F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
     {
         let (result, returned) = self.parse_seq_to_before_gt_or_return(sep,
-                                                    |p| Ok(Some(f(p)?)))?;
+                                                                       |p| Ok(Some(f(p)?)))?;
         assert!(!returned);
         return Ok(result);
     }
@@ -1476,8 +1476,8 @@ impl<'a> Parser<'a> {
                 self.bump();
                 let delim = self.expect_open_delim()?;
                 let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                                     SeqSep::none(),
-                                                     |p| p.parse_token_tree())?;
+                                                SeqSep::none(),
+                                                |p| p.parse_token_tree())?;
                 let hi = self.span.hi;
                 TyKind::Mac(spanned(lo, hi, Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT }))
             } else {
@@ -2225,7 +2225,7 @@ impl<'a> Parser<'a> {
                             &token::CloseDelim(token::Bracket),
                             SeqSep::trailing_allowed(token::Comma),
                             |p| Ok(p.parse_expr()?)
-                                )?;
+                        )?;
                         let mut exprs = vec!(first_expr);
                         exprs.extend(remaining_exprs);
                         ex = ExprKind::Vec(exprs);
@@ -2610,8 +2610,8 @@ impl<'a> Parser<'a> {
 
                     let dot_pos = self.last_span.hi;
                     e = self.parse_dot_suffix(special_idents::invalid,
-                                                   mk_sp(dot_pos, dot_pos),
-                                                   e, lo)?;
+                                              mk_sp(dot_pos, dot_pos),
+                                              e, lo)?;
                   }
                 }
                 continue;
@@ -3267,7 +3267,7 @@ impl<'a> Parser<'a> {
         let match_span = self.last_span;
         let lo = self.last_span.lo;
         let discriminant = self.parse_expr_res(Restrictions::RESTRICTION_NO_STRUCT_LITERAL,
-                                                    None)?;
+                                               None)?;
         if let Err(mut e) = self.commit_expr_expecting(&discriminant,
                                                        token::OpenDelim(token::Brace)) {
             if self.token == token::Token::Semi {
@@ -3612,8 +3612,9 @@ impl<'a> Parser<'a> {
                         let path = ident_to_path(ident_span, ident);
                         self.bump();
                         let delim = self.expect_open_delim()?;
-                        let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                SeqSep::none(), |p| p.parse_token_tree())?;
+                        let tts = self.parse_seq_to_end(
+                            &token::CloseDelim(delim),
+                            SeqSep::none(), |p| p.parse_token_tree())?;
                         let mac = Mac_ { path: path, tts: tts, ctxt: EMPTY_CTXT };
                         pat = PatKind::Mac(codemap::Spanned {node: mac,
                                                        span: mk_sp(lo, self.last_span.hi)});
@@ -3670,10 +3671,10 @@ impl<'a> Parser<'a> {
                             pat = PatKind::TupleStruct(path, None);
                         } else {
                             let args = self.parse_enum_variant_seq(
-                                    &token::OpenDelim(token::Paren),
-                                    &token::CloseDelim(token::Paren),
-                                    SeqSep::trailing_allowed(token::Comma),
-                                    |p| p.parse_pat())?;
+                                &token::OpenDelim(token::Paren),
+                                &token::CloseDelim(token::Paren),
+                                SeqSep::trailing_allowed(token::Comma),
+                                |p| p.parse_pat())?;
                             pat = PatKind::TupleStruct(path, Some(args));
                         }
                       }
@@ -3963,7 +3964,7 @@ impl<'a> Parser<'a> {
             // FIXME: Bad copy of attrs
             let restrictions = self.restrictions | Restrictions::NO_NONINLINE_MOD;
             match self.with_res(restrictions,
-                                     |this| this.parse_item_(attrs.clone(), false, true))? {
+                                |this| this.parse_item_(attrs.clone(), false, true))? {
                 Some(i) => {
                     let hi = i.span.hi;
                     let decl = P(spanned(lo, hi, DeclKind::Item(i)));
@@ -4941,8 +4942,8 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let delim = self.expect_open_delim()?;
             let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                                 SeqSep::none(),
-                                                 |p| p.parse_token_tree())?;
+                                            SeqSep::none(),
+                                            |p| p.parse_token_tree())?;
             let m_ = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m_,
                                                 span: mk_sp(lo,
@@ -5409,8 +5410,8 @@ impl<'a> Parser<'a> {
                     id_sp: Span)
                     -> PResult<'a, (ast::ItemKind, Vec<ast::Attribute> )> {
         let ModulePathSuccess { path, owns_directory } = self.submod_path(id,
-                                                                               outer_attrs,
-                                                                               id_sp)?;
+                                                                          outer_attrs,
+                                                                          id_sp)?;
 
         self.eval_src_mod_from_path(path,
                                     owns_directory,
@@ -5993,8 +5994,8 @@ impl<'a> Parser<'a> {
             // eat a matched-delimiter token tree:
             let delim = self.expect_open_delim()?;
             let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                                 SeqSep::none(),
-                                                 |p| p.parse_token_tree())?;
+                                            SeqSep::none(),
+                                            |p| p.parse_token_tree())?;
             // single-variant-enum... :
             let m = Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT };
             let m: ast::Mac = codemap::Spanned { node: m,

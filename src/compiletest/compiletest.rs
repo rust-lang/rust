@@ -312,10 +312,10 @@ fn collect_tests_from_dir(config: &Config,
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
             collect_tests_from_dir(config,
-                                        base,
-                                        &file_path,
-                                        &relative_file_path,
-                                        tests)?;
+                                   base,
+                                   &file_path,
+                                   relative_file_path,
+                                   tests)?;
         }
     }
     Ok(())

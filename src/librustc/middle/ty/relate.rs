@@ -167,9 +167,9 @@ pub fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
                 let b_regions = b.get_slice(space);
                 let r_variances = variances.map(|v| v.regions.get_slice(space));
                 let regions = relate_region_params(relation,
-                                                        r_variances,
-                                                        a_regions,
-                                                        b_regions)?;
+                                                   r_variances,
+                                                   a_regions,
+                                                   b_regions)?;
                 substs.mut_regions().replace(space, regions);
             }
         }
@@ -261,8 +261,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::FnSig<'tcx> {
         }
 
         let inputs = relate_arg_vecs(relation,
-                                          &a.inputs,
-                                          &b.inputs)?;
+                                     &a.inputs,
+                                     &b.inputs)?;
 
         let output = match (a.output, b.output) {
             (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
@@ -557,8 +557,8 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         {
             if as_.len() == bs.len() {
                 let ts = as_.iter().zip(bs)
-                                 .map(|(a, b)| relation.relate(a, b))
-                                 .collect::<Result<_, _>>()?;
+                            .map(|(a, b)| relation.relate(a, b))
+                            .collect::<Result<_, _>>()?;
                 Ok(tcx.mk_tup(ts))
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(

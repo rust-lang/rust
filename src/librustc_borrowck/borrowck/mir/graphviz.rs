@@ -124,15 +124,15 @@ impl<'c, 'b:'c, 'a:'b, 'tcx:'a> dot::Labeller<'c> for Graph<'c,'b,'a,'tcx> {
                     write!(w, "</td><td></td><td></td></tr>")?;
                 }
                 write!(w, "<tr><td></td><td {bg} {align}>{objs:?}",
-                            bg = BG_FLOWCONTENT,
-                            align = ALIGN_RIGHT,
-                            objs = c)?;
+                       bg = BG_FLOWCONTENT,
+                       align = ALIGN_RIGHT,
+                       objs = c)?;
                 seen_one = true;
             }
             if !seen_one {
                 write!(w, "<tr><td></td><td {bg} {align}>[]",
-                            bg = BG_FLOWCONTENT,
-                            align = ALIGN_RIGHT)?;
+                       bg = BG_FLOWCONTENT,
+                       align = ALIGN_RIGHT)?;
             }
             Ok(())
         }
@@ -155,18 +155,18 @@ impl<'c, 'b:'c, 'a:'b, 'tcx:'a> dot::Labeller<'c> for Graph<'c,'b,'a,'tcx> {
                 let kill = flow.interpret_set(flow.sets.kill_set_for(i));
                 chunked_present_left(w, &gen[..], chunk_size)?;
                 write!(w, " = GEN:</td><td {bg}><FONT {face}>{genbits:?}</FONT></td>\
-                                            <td></td></tr>",
-                            bg = BG_FLOWCONTENT,
-                            face = FACE_MONOSPACE,
-                            genbits=bits_to_string( flow.sets.gen_set_for(i),
-                                                    flow.sets.bytes_per_block()))?;
+                                       <td></td></tr>",
+                       bg = BG_FLOWCONTENT,
+                       face = FACE_MONOSPACE,
+                       genbits=bits_to_string( flow.sets.gen_set_for(i),
+                                               flow.sets.bytes_per_block()))?;
                 write!(w, "<tr><td></td><td {bg} {align}>KILL:</td>\
-                                             <td {bg}><FONT {face}>{killbits:?}</FONT></td>",
-                            bg = BG_FLOWCONTENT,
-                            align = ALIGN_RIGHT,
-                            face = FACE_MONOSPACE,
-                            killbits=bits_to_string(flow.sets.kill_set_for(i),
-                                                    flow.sets.bytes_per_block()))?;
+                                        <td {bg}><FONT {face}>{killbits:?}</FONT></td>",
+                       bg = BG_FLOWCONTENT,
+                       align = ALIGN_RIGHT,
+                       face = FACE_MONOSPACE,
+                       killbits=bits_to_string(flow.sets.kill_set_for(i),
+                                               flow.sets.bytes_per_block()))?;
 
                 // (chunked_present_right)
                 let mut seen_one = false;
@@ -174,19 +174,19 @@ impl<'c, 'b:'c, 'a:'b, 'tcx:'a> dot::Labeller<'c> for Graph<'c,'b,'a,'tcx> {
                     if !seen_one {
                         // continuation of row; this is fourth <td>
                         write!(w, "<td {bg}>= {kill:?}</td></tr>",
-                                    bg = BG_FLOWCONTENT,
-                                    kill=k)?;
+                               bg = BG_FLOWCONTENT,
+                               kill=k)?;
                     } else {
                         // new row, with indent of three <td>'s
                         write!(w, "<tr><td></td><td></td><td></td><td {bg}>{kill:?}</td></tr>",
-                                    bg = BG_FLOWCONTENT,
-                                    kill=k)?;
+                               bg = BG_FLOWCONTENT,
+                               kill=k)?;
                     }
                     seen_one = true;
                 }
                 if !seen_one {
                     write!(w, "<td {bg}>= []</td></tr>",
-                                bg = BG_FLOWCONTENT)?;
+                           bg = BG_FLOWCONTENT)?;
                 }
 
                 Ok(())

@@ -255,7 +255,7 @@ impl<'a> ArchiveBuilder<'a> {
         // permission bits.
         if let Some(ref s) = self.config.src {
             io::copy(&mut File::open(s)?,
-                          &mut File::create(&self.config.dst)?)?;
+                     &mut File::create(&self.config.dst)?)?;
         }
 
         if removals.len() > 0 {
@@ -272,7 +272,7 @@ impl<'a> ArchiveBuilder<'a> {
                 }
                 Addition::Archive { archive, archive_name, mut skip } => {
                     self.add_archive_members(&mut members, archive,
-                                                  &archive_name, &mut *skip)?;
+                                             &archive_name, &mut *skip)?;
                 }
             }
         }
