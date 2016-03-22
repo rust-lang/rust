@@ -229,7 +229,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             while let Some(id) = cx.map.get_enclosing_scope(node) {
                 node = id;
                 let attrs = cx.map.attrs(node).clean(cx);
-                if attrs.list_def("doc").has_word("hidden") {
+                if attrs.list("doc").has_word("hidden") {
                     return true;
                 }
                 if node == ast::CRATE_NODE_ID {
@@ -251,11 +251,14 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Some(analysis) => analysis, None => return false
         };
 
+        let use_attrs = tcx.map.attrs(id).clean(self.cx);
+
         let is_private = !analysis.access_levels.is_public(def);
         let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
+        let is_no_inline = use_attrs.list("doc").has_word("no_inline");
 
         // Only inline if requested or if the item would otherwise be stripped
-        if !please_inline && !is_private && !is_hidden {
+        if (!please_inline && !is_private && !is_hidden) || is_no_inline {
             return false
         }
 
