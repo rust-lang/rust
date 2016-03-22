@@ -237,7 +237,7 @@ impl LateLintPass for NonSnakeCase {
                 fk: FnKind, _: &hir::FnDecl,
                 _: &hir::Block, span: Span, id: ast::NodeId) {
         match fk {
-            FnKind::Method(name, _, _) => match method_context(cx, id, span) {
+            FnKind::Method(name, _, _, _) => match method_context(cx, id, span) {
                 MethodLateContext::PlainImpl => {
                     self.check_snake_case(cx, "method", &name.as_str(), Some(span))
                 },
@@ -246,10 +246,10 @@ impl LateLintPass for NonSnakeCase {
                 },
                 _ => (),
             },
-            FnKind::ItemFn(name, _, _, _, _, _) => {
+            FnKind::ItemFn(name, _, _, _, _, _, _) => {
                 self.check_snake_case(cx, "function", &name.as_str(), Some(span))
             },
-            _ => (),
+            FnKind::Closure(_) => (),
         }
     }
 

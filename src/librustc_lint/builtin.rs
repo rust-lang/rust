@@ -223,10 +223,10 @@ impl LateLintPass for UnsafeCode {
     fn check_fn(&mut self, cx: &LateContext, fk: FnKind, _: &hir::FnDecl,
                 _: &hir::Block, span: Span, _: ast::NodeId) {
         match fk {
-            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, _, _, _) =>
+            FnKind::ItemFn(_, _, hir::Unsafety::Unsafe, _, _, _, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 if sig.unsafety == hir::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -670,7 +670,7 @@ impl LateLintPass for UnconditionalRecursion {
                 cx.tcx.impl_or_trait_item(cx.tcx.map.local_def_id(id)).as_opt_method()
             }
             // closures can't recur, so they don't matter.
-            FnKind::Closure => return
+            FnKind::Closure(_) => return
         };
 
         // Walk through this function (say `f`) looking to see if

@@ -56,6 +56,8 @@ use rustc_front::hir;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_front::print::pprust as pprust_hir;
 
+use rustc::mir::mir_map::MirMap;
+
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
     PpmNormal,
@@ -875,9 +877,10 @@ pub fn pretty_print_input(sess: Session,
                                                                      &arenas,
                                                                      &id,
                                                                      resolve::MakeGlobMap::No,
-                                                                     |tcx, _, _, _| {
+                                                                     |tcx, mir_map, _, _| {
                         print_flowgraph(variants,
                                         tcx,
+                                        mir_map.as_ref(),
                                         code,
                                         mode,
                                         out)
@@ -911,12 +914,13 @@ pub fn pretty_print_input(sess: Session,
     }
 }
 
-fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
-                             tcx: &TyCtxt,
-                             code: blocks::Code,
-                             mode: PpFlowGraphMode,
-                             mut out: W)
-                             -> io::Result<()> {
+fn print_flowgraph<'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
+                                   tcx: &TyCtxt<'tcx>,
+                                   mir_map: Option<&MirMap<'tcx>>,
+                                   code: blocks::Code,
+                                   mode: PpFlowGraphMode,
+                                   mut out: W)
+                                   -> io::Result<()> {
     let cfg = match code {
         blocks::BlockCode(block) => cfg::CFG::new(tcx, &block),
         blocks::FnLikeCode(fn_like) => cfg::CFG::new(tcx, &fn_like.body()),
@@ -942,6 +946,7 @@ fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
         blocks::FnLikeCode(fn_like) => {
             let (bccx, analysis_data) =
                 borrowck::build_borrowck_dataflow_data_for_fn(tcx,
+                                                              mir_map,
                                                               fn_like.to_fn_parts(),
                                                               &cfg);
 

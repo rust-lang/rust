@@ -634,16 +634,16 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
-            FnKind::ItemFn(_, generics, _, _, _, _) => {
+            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
                 self.visit_generics(generics);
                 ItemRibKind
             }
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, sig, _, _) => {
                 self.visit_generics(&sig.generics);
                 self.visit_explicit_self(&sig.explicit_self);
                 MethodRibKind
             }
-            FnKind::Closure => ClosureRibKind(node_id),
+            FnKind::Closure(_) => ClosureRibKind(node_id),
         };
         self.resolve_function(rib_kind, declaration, block);
     }

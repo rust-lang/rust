@@ -880,7 +880,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes,
              "borrow checking",
-             || borrowck::check_crate(tcx));
+             || borrowck::check_crate(tcx, &mir_map));
 
         // Avoid overwhelming user with errors if type checking failed.
         // I'm not sure how helpful this is, to be honest, but it avoids

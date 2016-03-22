@@ -14,3 +14,4 @@ syntax = { path = "../libsyntax" }
 graphviz = { path = "../libgraphviz" }
 rustc = { path = "../librustc" }
 rustc_front = { path = "../librustc_front" }
+rustc_mir = { path = "../librustc_mir" }

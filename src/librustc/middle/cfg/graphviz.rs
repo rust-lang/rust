@@ -52,7 +52,9 @@ fn replace_newline_with_backslash_l(s: String) -> String {
     }
 }
 
-impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
+impl<'a, 'ast> dot::Labeller<'a> for LabelledCFG<'a, 'ast> {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn graph_id(&'a self) -> dot::Id<'a> { dot::Id::new(&self.name[..]).unwrap() }
 
     fn node_id(&'a self, &(i,_): &Node<'a>) -> dot::Id<'a> {
@@ -97,7 +99,9 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
     }
 }
 
-impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for &'a cfg::CFG {
+impl<'a> dot::GraphWalk<'a> for &'a cfg::CFG {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> {
         let mut v = Vec::new();
         self.graph.each_node(|i, nd| { v.push((i, nd)); true });
@@ -116,8 +120,10 @@ impl<'a> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for &'a cfg::CFG {
     }
 }
 
-impl<'a, 'ast> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast>
+impl<'a, 'ast> dot::GraphWalk<'a> for LabelledCFG<'a, 'ast>
 {
+    type Node = Node<'a>;
+    type Edge = Edge<'a>;
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> { self.cfg.nodes() }
     fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> { self.cfg.edges() }
     fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.cfg.source(edge) }
