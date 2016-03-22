@@ -794,10 +794,9 @@ fn test_rev_iterator() {
 
 #[test]
 fn test_chars_decoding() {
-    let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(::std::char::from_u32) {
-        let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-        let s = ::std::str::from_utf8(&bytes[..len]).unwrap();
+        let bytes = c.encode_utf8();
+        let s = ::std::str::from_utf8(bytes.as_slice()).unwrap();
         if Some(c) != s.chars().next() {
             panic!("character {:x}={} does not decode correctly", c as u32, c);
         }
@@ -806,10 +805,9 @@ fn test_chars_decoding() {
 
 #[test]
 fn test_chars_rev_decoding() {
-    let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(::std::char::from_u32) {
-        let len = c.encode_utf8(&mut bytes).unwrap_or(0);
-        let s = ::std::str::from_utf8(&bytes[..len]).unwrap();
+        let bytes = c.encode_utf8();
+        let s = ::std::str::from_utf8(bytes.as_slice()).unwrap();
         if Some(c) != s.chars().rev().next() {
             panic!("character {:x}={} does not decode correctly", c as u32, c);
         }

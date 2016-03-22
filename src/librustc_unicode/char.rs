@@ -35,7 +35,9 @@ use tables::{derived_property, property, general_category, conversions};
 
 // stable reexports
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit, EscapeUnicode, EscapeDefault};
+pub use core::char::{MAX, from_u32, from_u32_unchecked, from_digit};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::char::{EscapeUnicode, EscapeDefault, EncodeUtf8, EncodeUtf16};
 
 // unstable reexports
 #[unstable(feature = "unicode", issue = "27783")]
@@ -408,84 +410,50 @@ impl char {
         C::len_utf16(self)
     }
 
-    /// Encodes this character as UTF-8 into the provided byte buffer, and then
-    /// returns the number of bytes written.
+    /// Returns an interator over the bytes of this character as UTF-8.
     ///
-    /// If the buffer is not large enough, nothing will be written into it and a
-    /// `None` will be returned. A buffer of length four is large enough to
-    /// encode any `char`.
+    /// The returned iterator also has an `as_slice()` method to view the
+    /// encoded bytes as a byte slice.
     ///
     /// # Examples
     ///
-    /// In both of these examples, 'ß' takes two bytes to encode.
-    ///
     /// ```
     /// #![feature(unicode)]
     ///
-    /// let mut b = [0; 2];
+    /// let iterator = 'ß'.encode_utf8();
+    /// assert_eq!(iterator.as_slice(), [0xc3, 0x9f]);
     ///
-    /// let result = 'ß'.encode_utf8(&mut b);
-    ///
-    /// assert_eq!(result, Some(2));
+    /// for (i, byte) in iterator.enumerate() {
+    ///     println!("byte {}: {:x}", i, byte);
+    /// }
     /// ```
-    ///
-    /// A buffer that's too small:
-    ///
-    /// ```
-    /// #![feature(unicode)]
-    ///
-    /// let mut b = [0; 1];
-    ///
-    /// let result = 'ß'.encode_utf8(&mut b);
-    ///
-    /// assert_eq!(result, None);
-    /// ```
-    #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader",
-               issue = "27784")]
+    #[unstable(feature = "unicode", issue = "27784")]
     #[inline]
-    pub fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> {
-        C::encode_utf8(self, dst)
+    pub fn encode_utf8(self) -> EncodeUtf8 {
+        C::encode_utf8(self)
     }
 
-    /// Encodes this character as UTF-16 into the provided `u16` buffer, and
-    /// then returns the number of `u16`s written.
+    /// Returns an interator over the `u16` entries of this character as UTF-16.
     ///
-    /// If the buffer is not large enough, nothing will be written into it and a
-    /// `None` will be returned. A buffer of length 2 is large enough to encode
-    /// any `char`.
+    /// The returned iterator also has an `as_slice()` method to view the
+    /// encoded form as a slice.
     ///
     /// # Examples
     ///
-    /// In both of these examples, '𝕊' takes two `u16`s to encode.
-    ///
     /// ```
     /// #![feature(unicode)]
     ///
-    /// let mut b = [0; 2];
+    /// let iterator = '𝕊'.encode_utf16();
+    /// assert_eq!(iterator.as_slice(), [0xd835, 0xdd4a]);
     ///
-    /// let result = '𝕊'.encode_utf16(&mut b);
-    ///
-    /// assert_eq!(result, Some(2));
+    /// for (i, val) in iterator.enumerate() {
+    ///     println!("entry {}: {:x}", i, val);
+    /// }
     /// ```
-    ///
-    /// A buffer that's too small:
-    ///
-    /// ```
-    /// #![feature(unicode)]
-    ///
-    /// let mut b = [0; 1];
-    ///
-    /// let result = '𝕊'.encode_utf16(&mut b);
-    ///
-    /// assert_eq!(result, None);
-    /// ```
-    #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader",
-               issue = "27784")]
+    #[unstable(feature = "unicode", issue = "27784")]
     #[inline]
-    pub fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> {
-        C::encode_utf16(self, dst)
+    pub fn encode_utf16(self) -> EncodeUtf16 {
+        C::encode_utf16(self)
     }
 
     /// Returns true if this `char` is an alphabetic code point, and false if not.
