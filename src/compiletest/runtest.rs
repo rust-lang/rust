@@ -11,7 +11,7 @@
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
-use errors;
+use errors::{self, ErrorKind};
 use header::TestProps;
 use header;
 use procsrv;
@@ -1033,8 +1033,8 @@ fn check_expected_errors(revision: Option<&str>,
         expected_errors.iter()
                         .fold((false, false),
                               |(acc_help, acc_note), ee|
-                                  (acc_help || ee.kind == "help:" || ee.kind == "help",
-                                   acc_note || ee.kind == "note:" || ee.kind == "note"));
+                                  (acc_help || ee.kind == Some(ErrorKind::Help),
+                                   acc_note || ee.kind == Some(ErrorKind::Note)));
 
     // Scan and extract our error/warning messages,
     // which look like:
@@ -1052,15 +1052,15 @@ fn check_expected_errors(revision: Option<&str>,
         let mut prev = 0;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
-                debug!("prefix={} ee.kind={} ee.msg={} line={}",
+                debug!("prefix={} ee.kind={:?} ee.msg={} line={}",
                        prefixes[i],
                        ee.kind,
                        ee.msg,
                        line);
                 // Suggestions have no line number in their output, so take on the line number of
                 // the previous expected error
-                if ee.kind == "suggestion" {
-                    assert!(expected_errors[prev].kind == "help",
+                if ee.kind == Some(ErrorKind::Suggestion) {
+                    assert!(expected_errors[prev].kind == Some(ErrorKind::Help),
                             "SUGGESTIONs must be preceded by a HELP");
                     if line.contains(&ee.msg) {
                         found_flags[i] = true;
@@ -1070,7 +1070,7 @@ fn check_expected_errors(revision: Option<&str>,
                 }
                 if
                     (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
-                    line.contains(&ee.kind) &&
+                    (ee.kind.is_none() || line.contains(&ee.kind.as_ref().unwrap().to_string())) &&
                     line.contains(&ee.msg)
                 {
                     found_flags[i] = true;
@@ -1096,7 +1096,10 @@ fn check_expected_errors(revision: Option<&str>,
         if !flag {
             let ee = &expected_errors[i];
             error(revision, &format!("expected {} on line {} not found: {}",
-                                     ee.kind, ee.line_num, ee.msg));
+                                     ee.kind.as_ref()
+                                            .map_or("message".into(),
+                                                    |k| k.to_string()),
+                                     ee.line_num, ee.msg));
             not_found += 1;
         }
     }
