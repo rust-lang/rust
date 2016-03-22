@@ -382,6 +382,15 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    pub fn collect_late_bound_regions<T>(&self, value: &Binder<T>)
+                                         -> FnvHashSet<ty::BoundRegion>
+        where T : TypeFoldable<'tcx>
+    {
+        let mut collector = LateBoundRegionsCollector::new();
+        value.skip_binder().visit_with(&mut collector);
+        collector.regions
+    }
+
     /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
     /// method lookup and a few other places where precise region relationships are not required.
     pub fn erase_late_bound_regions<T>(&self, value: &Binder<T>) -> T
@@ -626,3 +635,39 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
         false
     }
 }
+
+/// Collects all the late-bound regions it finds into a hash set.
+struct LateBoundRegionsCollector {
+    current_depth: u32,
+    regions: FnvHashSet<ty::BoundRegion>,
+}
+
+impl LateBoundRegionsCollector {
+    fn new() -> Self {
+        LateBoundRegionsCollector {
+            current_depth: 1,
+            regions: FnvHashSet(),
+        }
+    }
+}
+
+impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
+    fn enter_region_binder(&mut self) {
+        self.current_depth += 1;
+    }
+
+    fn exit_region_binder(&mut self) {
+        self.current_depth -= 1;
+    }
+
+    fn visit_region(&mut self, r: ty::Region) -> bool {
+        match r {
+            ty::ReLateBound(debruijn, br) if debruijn.depth == self.current_depth => {
+                self.regions.insert(br);
+            }
+            _ => { }
+        }
+        true
+    }
+}
+
