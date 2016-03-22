@@ -269,10 +269,10 @@ pub trait CharExt {
     fn len_utf8(self) -> usize;
     #[stable(feature = "core", since = "1.6.0")]
     fn len_utf16(self) -> usize;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
-    #[stable(feature = "core", since = "1.6.0")]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
+    #[unstable(feature = "unicode", issue = "27784")]
+    fn encode_utf8(self) -> EncodeUtf8;
+    #[unstable(feature = "unicode", issue = "27784")]
+    fn encode_utf16(self) -> EncodeUtf16;
 }
 
 #[stable(feature = "core", since = "1.6.0")]
@@ -336,75 +336,47 @@ impl CharExt for char {
     }
 
     #[inline]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> {
-        encode_utf8_raw(self as u32, dst)
+    fn encode_utf8(self) -> EncodeUtf8 {
+        let code = self as u32;
+        let mut buf = [0; 4];
+        let pos = if code < MAX_ONE_B {
+            buf[3] = code as u8;
+            3
+        } else if code < MAX_TWO_B {
+            buf[2] = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
+            2
+        } else if code < MAX_THREE_B {
+            buf[1] = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+            buf[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
+            1
+        } else {
+            buf[0] = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+            buf[1] = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+            buf[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+            buf[3] = (code & 0x3F) as u8 | TAG_CONT;
+            0
+        };
+        EncodeUtf8 { buf: buf, pos: pos }
     }
 
     #[inline]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> {
-        encode_utf16_raw(self as u32, dst)
-    }
-}
-
-/// Encodes a raw u32 value as UTF-8 into the provided byte buffer,
-/// and then returns the number of bytes written.
-///
-/// If the buffer is not large enough, nothing will be written into it
-/// and a `None` will be returned.
-#[inline]
-#[unstable(feature = "char_internals",
-           reason = "this function should not be exposed publicly",
-           issue = "0")]
-#[doc(hidden)]
-pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
-    // Marked #[inline] to allow llvm optimizing it away
-    if code < MAX_ONE_B && !dst.is_empty() {
-        dst[0] = code as u8;
-        Some(1)
-    } else if code < MAX_TWO_B && dst.len() >= 2 {
-        dst[0] = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
-        dst[1] = (code & 0x3F) as u8 | TAG_CONT;
-        Some(2)
-    } else if code < MAX_THREE_B && dst.len() >= 3  {
-        dst[0] = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
-        dst[1] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-        dst[2] = (code & 0x3F) as u8 | TAG_CONT;
-        Some(3)
-    } else if dst.len() >= 4 {
-        dst[0] = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
-        dst[1] = (code >> 12 & 0x3F) as u8 | TAG_CONT;
-        dst[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
-        dst[3] = (code & 0x3F) as u8 | TAG_CONT;
-        Some(4)
-    } else {
-        None
-    }
-}
-
-/// Encodes a raw u32 value as UTF-16 into the provided `u16` buffer,
-/// and then returns the number of `u16`s written.
-///
-/// If the buffer is not large enough, nothing will be written into it
-/// and a `None` will be returned.
-#[inline]
-#[unstable(feature = "char_internals",
-           reason = "this function should not be exposed publicly",
-           issue = "0")]
-#[doc(hidden)]
-pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
-    // Marked #[inline] to allow llvm optimizing it away
-    if (ch & 0xFFFF) == ch && !dst.is_empty() {
-        // The BMP falls through (assuming non-surrogate, as it should)
-        dst[0] = ch as u16;
-        Some(1)
-    } else if dst.len() >= 2 {
-        // Supplementary planes break into surrogates.
-        ch -= 0x1_0000;
-        dst[0] = 0xD800 | ((ch >> 10) as u16);
-        dst[1] = 0xDC00 | ((ch as u16) & 0x3FF);
-        Some(2)
-    } else {
-        None
+    fn encode_utf16(self) -> EncodeUtf16 {
+        let mut buf = [0; 2];
+        let mut code = self as u32;
+        let pos = if (code & 0xFFFF) == code {
+            // The BMP falls through (assuming non-surrogate, as it should)
+            buf[1] = code as u16;
+            1
+        } else {
+            // Supplementary planes break into surrogates.
+            code -= 0x1_0000;
+            buf[0] = 0xD800 | ((code >> 10) as u16);
+            buf[1] = 0xDC00 | ((code as u16) & 0x3FF);
+            0
+        };
+        EncodeUtf16 { buf: buf, pos: pos }
     }
 }
 
@@ -581,5 +553,82 @@ impl Iterator for EscapeDefault {
             EscapeDefaultState::Done => None,
             EscapeDefaultState::Backslash(c) | EscapeDefaultState::Char(c) => Some(c),
         }
+    }
+}
+
+/// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
+/// value.
+///
+/// Constructed via the `.encode_utf8()` method on `char`.
+#[unstable(feature = "unicode", issue = "27784")]
+#[derive(Debug)]
+pub struct EncodeUtf8 {
+    buf: [u8; 4],
+    pos: usize,
+}
+
+impl EncodeUtf8 {
+    /// Returns the remaining bytes of this iterator as a slice.
+    #[unstable(feature = "unicode", issue = "27784")]
+    pub fn as_slice(&self) -> &[u8] {
+        &self.buf[self.pos..]
+    }
+}
+
+#[unstable(feature = "unicode", issue = "27784")]
+impl Iterator for EncodeUtf8 {
+    type Item = u8;
+
+    fn next(&mut self) -> Option<u8> {
+        if self.pos == self.buf.len() {
+            None
+        } else {
+            let ret = Some(self.buf[self.pos]);
+            self.pos += 1;
+            ret
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.as_slice().iter().size_hint()
+    }
+}
+
+/// An iterator over `u16` entries represending the UTF-16 encoding of a `char`
+/// value.
+///
+/// Constructed via the `.encode_utf16()` method on `char`.
+#[unstable(feature = "unicode", issue = "27784")]
+#[derive(Debug)]
+pub struct EncodeUtf16 {
+    buf: [u16; 2],
+    pos: usize,
+}
+
+impl EncodeUtf16 {
+    /// Returns the remaining bytes of this iterator as a slice.
+    #[unstable(feature = "unicode", issue = "27784")]
+    pub fn as_slice(&self) -> &[u16] {
+        &self.buf[self.pos..]
+    }
+}
+
+
+#[unstable(feature = "unicode", issue = "27784")]
+impl Iterator for EncodeUtf16 {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<u16> {
+        if self.pos == self.buf.len() {
+            None
+        } else {
+            let ret = Some(self.buf[self.pos]);
+            self.pos += 1;
+            ret
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.as_slice().iter().size_hint()
     }
 }
