@@ -257,7 +257,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             free: None,
             cached_block: None,
         });
-        self.scope_auxiliary.push(ScopeAuxiliary {
+        self.scope_auxiliary.vec.push(ScopeAuxiliary {
             extent: extent,
             dom: self.cfg.current_location(entry),
             postdoms: vec![]
@@ -279,7 +279,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.extent, extent);
         unpack!(block = build_scope_drops(&mut self.cfg, &scope, &self.scopes, block));
-        self.scope_auxiliary[scope.id.index()]
+        self.scope_auxiliary[scope.id]
             .postdoms
             .push(self.cfg.current_location(block));
         block.unit()
@@ -313,7 +313,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 self.cfg.terminate(block, scope.id, span, free);
                 block = next;
             }
-            self.scope_auxiliary[scope.id.index()]
+            self.scope_auxiliary[scope.id]
                 .postdoms
                 .push(self.cfg.current_location(block));
         }

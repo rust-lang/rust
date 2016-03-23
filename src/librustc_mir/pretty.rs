@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use build::{Location, ScopeAuxiliary};
+use build::{Location, ScopeAuxiliaryVec};
 use rustc::mir::repr::*;
 use rustc::middle::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
@@ -39,7 +39,7 @@ pub fn dump_mir<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
                           disambiguator: &Display,
                           node_id: NodeId,
                           mir: &Mir<'tcx>,
-                          auxiliary: Option<&Vec<ScopeAuxiliary>>) {
+                          auxiliary: Option<&ScopeAuxiliaryVec>) {
     let filters = match tcx.sess.opts.debugging_opts.dump_mir {
         None => return,
         Some(ref filters) => filters,
@@ -91,12 +91,12 @@ pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
                           node_id: NodeId,
                           mir: &Mir<'tcx>,
                           w: &mut Write,
-                          auxiliary: Option<&Vec<ScopeAuxiliary>>)
+                          auxiliary: Option<&ScopeAuxiliaryVec>)
                           -> io::Result<()> {
     // compute scope/entry exit annotations
     let mut annotations = FnvHashMap();
     if let Some(auxiliary) = auxiliary {
-        for (index, auxiliary) in auxiliary.iter().enumerate() {
+        for (index, auxiliary) in auxiliary.vec.iter().enumerate() {
             let scope_id = ScopeId::new(index);
 
             annotations.entry(auxiliary.dom)
@@ -183,7 +183,7 @@ fn comment(tcx: &TyCtxt,
 
 fn write_scope_tree(tcx: &TyCtxt,
                     mir: &Mir,
-                    auxiliary: Option<&Vec<ScopeAuxiliary>>,
+                    auxiliary: Option<&ScopeAuxiliaryVec>,
                     scope_tree: &FnvHashMap<Option<ScopeId>, Vec<ScopeId>>,
                     w: &mut Write,
                     parent: Option<ScopeId>,
@@ -201,7 +201,7 @@ fn write_scope_tree(tcx: &TyCtxt,
         }
 
         if let Some(auxiliary) = auxiliary {
-            let extent = auxiliary[child.index()].extent;
+            let extent = auxiliary[child].extent;
             let data = tcx.region_maps.code_extent_data(extent);
             writeln!(w, "{0:1$}Extent: {2:?}", "", indent, data)?;
         }
