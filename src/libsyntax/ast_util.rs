@@ -247,7 +247,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
             FnKind::ItemFn(_, generics, _, _, _, _) => {
                 self.visit_generics_helper(generics)
             }
-            FnKind::Method(_, sig, _) => {
+            FnKind::Method(_, ref sig, _) => {
                 self.visit_generics_helper(&sig.generics)
             }
             FnKind::Closure => {}
