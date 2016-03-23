@@ -26,8 +26,8 @@ impl LintPass for NonminimalBool {
 }
 
 impl LateLintPass for NonminimalBool {
-    fn check_crate(&mut self, cx: &LateContext, krate: &Crate) {
-        krate.visit_all_items(&mut NonminimalBoolVisitor(cx))
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
+        NonminimalBoolVisitor(cx).visit_item(item)
     }
 }
 
