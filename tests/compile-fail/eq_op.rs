@@ -4,6 +4,7 @@
 #[deny(eq_op)]
 #[allow(identity_op)]
 #[allow(no_effect)]
+#[deny(nonminimal_bool)]
 fn main() {
     // simple values and comparisons
     1 == 1; //~ERROR equal expressions
@@ -38,9 +39,9 @@ fn main() {
     1 - 1; //~ERROR equal expressions
     1 / 1; //~ERROR equal expressions
     true && true; //~ERROR equal expressions
-    //~|WARN this boolean expression can be simplified
+    //~|ERROR this boolean expression can be simplified
     true || true; //~ERROR equal expressions
-    //~|WARN this boolean expression can be simplified
+    //~|ERROR this boolean expression can be simplified
 
     let mut a = vec![1];
     a == a; //~ERROR equal expressions

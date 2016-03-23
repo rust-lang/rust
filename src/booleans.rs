@@ -2,17 +2,17 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use rustc_front::intravisit::*;
 use syntax::ast::LitKind;
-use utils::{span_lint_and_then, in_macro, snippet_opt};
+use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 
 /// **What it does:** This lint checks for boolean expressions that can be written more concisely
 ///
 /// **Why is this bad?** Readability of boolean expressions suffers from unnecesessary duplication
 ///
-/// **Known problems:** None
+/// **Known problems:** Ignores short circuting behavior, bitwise and/or and xor. Ends up suggesting things like !(a == b)
 ///
 /// **Example:** `if a && b || a` should be `if a`
 declare_lint! {
-    pub NONMINIMAL_BOOL, Warn,
+    pub NONMINIMAL_BOOL, Allow,
     "checks for boolean expressions that can be written more concisely"
 }
 

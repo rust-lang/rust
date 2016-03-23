@@ -4,6 +4,7 @@
 #![deny(block_in_if_condition_expr)]
 #![deny(block_in_if_condition_stmt)]
 #![allow(unused, let_and_return)]
+#![warn(nonminimal_bool)]
 
 
 macro_rules! blocky {
