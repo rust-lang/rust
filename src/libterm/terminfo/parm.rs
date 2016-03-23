@@ -49,6 +49,61 @@ pub enum Param {
     Number(i32),
 }
 
+/// An error from interpreting a parameterized string.
+#[derive(Debug, Eq, PartialEq)]
+pub enum Error {
+    /// Data was requested from the stack, but the stack didn't have enough elements.
+    StackUnderflow,
+    /// The type of the element(s) on top of the stack did not match the type that the operator
+    /// wanted.
+    TypeMismatch,
+    /// An unrecognized format option was used.
+    UnrecognizedFormatOption(char),
+    /// An invalid variable name was used.
+    InvalidVariableName(char),
+    /// An invalid parameter index was used.
+    InvalidParameterIndex(char),
+    /// A malformed character constant was used.
+    MalformedCharacterConstant,
+    /// An integer constant was too large (overflowed an i32)
+    IntegerConstantOverflow,
+    /// A malformed integer constant was used.
+    MalformedIntegerConstant,
+    /// A format width constant was too large (overflowed a usize)
+    FormatWidthOverflow,
+    /// A format precision constant was too large (overflowed a usize)
+    FormatPrecisionOverflow,
+}
+
+impl ::std::fmt::Display for Error {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        use std::error::Error;
+        f.write_str(self.description())
+    }
+}
+
+impl ::std::error::Error for Error {
+    fn description(&self) -> &str {
+        use self::Error::*;
+        match self {
+            &StackUnderflow => "not enough elements on the stack",
+            &TypeMismatch => "type mismatch",
+            &UnrecognizedFormatOption(_) => "unrecognized format option",
+            &InvalidVariableName(_) => "invalid variable name",
+            &InvalidParameterIndex(_) => "invalid parameter index",
+            &MalformedCharacterConstant => "malformed character constant",
+            &IntegerConstantOverflow => "integer constant computation overflowed",
+            &MalformedIntegerConstant => "malformed integer constant",
+            &FormatWidthOverflow => "format width constant computation overflowed",
+            &FormatPrecisionOverflow => "format precision constant computation overflowed",
+        }
+    }
+
+    fn cause(&self) -> Option<&::std::error::Error> {
+        None
+    }
+}
+
 /// Container for static and dynamic variable arrays
 pub struct Variables {
     /// Static variables A-Z
@@ -82,7 +137,7 @@ impl Variables {
 ///
 /// To be compatible with ncurses, `vars` should be the same between calls to `expand` for
 /// multiple capabilities for the same terminal.
-pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<u8>, String> {
+pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<u8>, Error> {
     let mut state = Nothing;
 
     // expanded cap will only rarely be larger than the cap itself
@@ -120,8 +175,8 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             Some(Number(0)) => output.push(128u8),
                             // Don't check bounds. ncurses just casts and truncates.
                             Some(Number(c)) => output.push(c as u8),
-                            Some(_) => return Err("a non-char was used with %c".to_string()),
-                            None => return Err("stack is empty".to_string()),
+                            Some(_) => return Err(Error::TypeMismatch),
+                            None => return Err(Error::StackUnderflow),
                         }
                     }
                     'p' => state = PushParam,
@@ -132,8 +187,8 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     'l' => {
                         match stack.pop() {
                             Some(Words(s)) => stack.push(Number(s.len() as i32)),
-                            Some(_) => return Err("a non-str was used with %l".to_string()),
-                            None => return Err("stack is empty".to_string()),
+                            Some(_) => return Err(Error::TypeMismatch),
+                            None => return Err(Error::StackUnderflow),
                         }
                     }
                     '+' | '-' | '/' | '*' | '^' | '&' | '|' | 'm' => {
@@ -148,13 +203,11 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                     '&' => x & y,
                                     '^' => x ^ y,
                                     'm' => x % y,
-                                    _ => unreachable!("All cases handled"),
+                                    _ => unreachable!("logic error"),
                                 }))
                             }
-                            (Some(_), Some(_)) => {
-                                return Err(format!("non-numbers on stack with {}", cur))
-                            }
-                            _ => return Err("stack is empty".to_string()),
+                            (Some(_), Some(_)) => return Err(Error::TypeMismatch),
+                            _ => return Err(Error::StackUnderflow),
                         }
                     }
                     '=' | '>' | '<' | 'A' | 'O' => {
@@ -166,17 +219,15 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                     '>' => x > y,
                                     'A' => x > 0 && y > 0,
                                     'O' => x > 0 || y > 0,
-                                    _ => unreachable!(),
+                                    _ => unreachable!("logic error"),
                                 } {
                                     1
                                 } else {
                                     0
                                 }))
                             }
-                            (Some(_), Some(_)) => {
-                                return Err(format!("non-numbers on stack with {}", cur))
-                            }
-                            _ => return Err("stack is empty".to_string()),
+                            (Some(_), Some(_)) => return Err(Error::TypeMismatch),
+                            _ => return Err(Error::StackUnderflow),
                         }
                     }
                     '!' | '~' => {
@@ -186,11 +237,11 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                     '!' if x > 0 => 0,
                                     '!' => 1,
                                     '~' => !x,
-                                    _ => unreachable!(),
+                                    _ => unreachable!("logic error"),
                                 }))
                             }
-                            Some(_) => return Err(format!("non-numbers on stack with {}", cur)),
-                            None => return Err("stack is empty".to_string()),
+                            Some(_) => return Err(Error::TypeMismatch),
+                            None => return Err(Error::StackUnderflow),
                         }
                     }
                     'i' => {
@@ -199,9 +250,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                 mparams[0] = Number(x + 1);
                                 mparams[1] = Number(y + 1);
                             }
-                            (_, _) => {
-                                return Err("first two params not numbers with %i".to_string())
-                            }
+                            (_, _) => return Err(Error::TypeMismatch),
                         }
                     }
 
@@ -212,7 +261,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             let res = try!(format(arg, FormatOp::from_char(cur), flags));
                             output.extend(res.iter().map(|x| *x));
                         } else {
-                            return Err("stack is empty".to_string());
+                            return Err(Error::StackUnderflow);
                         }
                     }
                     ':' | '#' | ' ' | '.' | '0'...'9' => {
@@ -227,7 +276,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                                 flags.width = cur as usize - '0' as usize;
                                 fstate = FormatStateWidth;
                             }
-                            _ => unreachable!(),
+                            _ => unreachable!("logic error"),
                         }
                         state = FormatPattern(flags, fstate);
                     }
@@ -238,22 +287,20 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         match stack.pop() {
                             Some(Number(0)) => state = SeekIfElse(0),
                             Some(Number(_)) => (),
-                            Some(_) => {
-                                return Err("non-number on stack with conditional".to_string())
-                            }
-                            None => return Err("stack is empty".to_string()),
+                            Some(_) => return Err(Error::TypeMismatch),
+                            None => return Err(Error::StackUnderflow),
                         }
                     }
                     'e' => state = SeekIfEnd(0),
                     ';' => (),
-                    _ => return Err(format!("unrecognized format option {}", cur)),
+                    c => return Err(Error::UnrecognizedFormatOption(c)),
                 }
             }
             PushParam => {
                 // params are 1-indexed
                 stack.push(mparams[match cur.to_digit(10) {
                                Some(d) => d as usize - 1,
-                               None => return Err("bad param number".to_string()),
+                               None => return Err(Error::InvalidParameterIndex(cur)),
                            }]
                            .clone());
             }
@@ -263,17 +310,17 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         let idx = (cur as u8) - b'A';
                         vars.sta[idx as usize] = arg;
                     } else {
-                        return Err("stack is empty".to_string());
+                        return Err(Error::StackUnderflow);
                     }
                 } else if cur >= 'a' && cur <= 'z' {
                     if let Some(arg) = stack.pop() {
                         let idx = (cur as u8) - b'a';
                         vars.dyn[idx as usize] = arg;
                     } else {
-                        return Err("stack is empty".to_string());
+                        return Err(Error::StackUnderflow);
                     }
                 } else {
-                    return Err("bad variable name in %P".to_string());
+                    return Err(Error::InvalidVariableName(cur));
                 }
             }
             GetVar => {
@@ -284,7 +331,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     let idx = (cur as u8) - b'a';
                     stack.push(vars.dyn[idx as usize].clone());
                 } else {
-                    return Err("bad variable name in %g".to_string());
+                    return Err(Error::InvalidVariableName(cur));
                 }
             }
             CharConstant => {
@@ -293,7 +340,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
             }
             CharClose => {
                 if cur != '\'' {
-                    return Err("malformed character constant".to_string());
+                    return Err(Error::MalformedCharacterConstant);
                 }
             }
             IntConstant(i) => {
@@ -306,10 +353,10 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             state = IntConstant(i);
                             old_state = Nothing;
                         }
-                        None => return Err("int constant too large".to_string()),
+                        None => return Err(Error::IntegerConstantOverflow),
                     }
                 } else {
-                    return Err("bad int constant".to_string());
+                    return Err(Error::MalformedIntegerConstant);
                 }
             }
             FormatPattern(ref mut flags, ref mut fstate) => {
@@ -322,7 +369,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                             // will cause state to go to Nothing
                             old_state = FormatPattern(*flags, *fstate);
                         } else {
-                            return Err("stack is empty".to_string());
+                            return Err(Error::StackUnderflow);
                         }
                     }
                     (FormatStateFlags, '#') => {
@@ -345,23 +392,25 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                         *fstate = FormatStatePrecision;
                     }
                     (FormatStateWidth, '0'...'9') => {
-                        let old = flags.width;
-                        flags.width = flags.width * 10 + (cur as usize - '0' as usize);
-                        if flags.width < old {
-                            return Err("format width overflow".to_string());
+                        flags.width = match flags.width.checked_mul(10).and_then(|w| {
+                            w.checked_add(cur as usize - '0' as usize)
+                        }) {
+                            Some(width) => width,
+                            None => return Err(Error::FormatWidthOverflow),
                         }
                     }
                     (FormatStateWidth, '.') => {
                         *fstate = FormatStatePrecision;
                     }
                     (FormatStatePrecision, '0'...'9') => {
-                        let old = flags.precision;
-                        flags.precision = flags.precision * 10 + (cur as usize - '0' as usize);
-                        if flags.precision < old {
-                            return Err("format precision overflow".to_string());
+                        flags.precision = match flags.precision.checked_mul(10).and_then(|w| {
+                            w.checked_add(cur as usize - '0' as usize)
+                        }) {
+                            Some(precision) => precision,
+                            None => return Err(Error::FormatPrecisionOverflow),
                         }
                     }
-                    _ => return Err("invalid format specifier".to_string()),
+                    _ => return Err(Error::UnrecognizedFormatOption(cur)),
                 }
             }
             SeekIfElse(level) => {
@@ -455,18 +504,9 @@ impl FormatOp {
             _ => panic!("bad FormatOp char"),
         }
     }
-    fn to_char(self) -> char {
-        match self {
-            FormatDigit => 'd',
-            FormatOctal => 'o',
-            FormatHex => 'x',
-            FormatHEX => 'X',
-            FormatString => 's',
-        }
-    }
 }
 
-fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
+fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, Error> {
     let mut s = match val {
         Number(d) => {
             match op {
@@ -504,7 +544,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
                         format!("{:01$X}", d, flags.precision)
                     }
                 }
-                FormatString => return Err("non-number on stack with %s".to_string()),
+                FormatString => return Err(Error::TypeMismatch),
             }
             .into_bytes()
         }
@@ -517,7 +557,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8>, String> {
                     }
                     s
                 }
-                _ => return Err(format!("non-string on stack with %{}", op.to_char())),
+                _ => return Err(Error::TypeMismatch),
             }
         }
     };
@@ -573,7 +613,7 @@ mod test {
                    cap: &str,
                    params: &[Param],
                    vars: &mut Variables)
-                   -> Result<Vec<u8>, String> {
+                   -> Result<Vec<u8>, super::Error> {
             let mut u8v: Vec<_> = fmt.bytes().collect();
             u8v.extend(cap.as_bytes().iter().map(|&b| b));
             expand(&u8v, params, vars)

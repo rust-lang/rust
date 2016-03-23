@@ -17,7 +17,6 @@ use std::fs;
 use std::path::PathBuf;
 
 /// Return path to database entry for `term`
-#[allow(deprecated)]
 pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
     let mut dirs_to_search = Vec::new();
     let first_char = match term.chars().next() {
@@ -78,22 +77,4 @@ pub fn get_dbpath_for_term(term: &str) -> Option<PathBuf> {
         }
     }
     None
-}
-
-#[test]
-#[ignore(reason = "buildbots don't have ncurses installed and I can't mock everything I need")]
-fn test_get_dbpath_for_term() {
-    // woefully inadequate test coverage
-    // note: current tests won't work with non-standard terminfo hierarchies (e.g. OS X's)
-    use std::env;
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    fn x(t: &str) -> String {
-        let p = get_dbpath_for_term(t).expect("no terminfo entry found");
-        p.to_str().unwrap().to_string()
-    }
-    assert!(x("screen") == "/usr/share/terminfo/s/screen");
-    assert!(get_dbpath_for_term("") == None);
-    env::set_var("TERMINFO_DIRS", ":");
-    assert!(x("screen") == "/usr/share/terminfo/s/screen");
-    env::remove_var("TERMINFO_DIRS");
 }
