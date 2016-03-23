@@ -256,7 +256,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 block = match value {
                     Some(value) => unpack!(this.into(&Lvalue::ReturnPointer, block, value)),
                     None => {
-                        this.cfg.push_assign_unit(block, scope_id, expr_span, &Lvalue::ReturnPointer);
+                        this.cfg.push_assign_unit(block, scope_id,
+                                                  expr_span, &Lvalue::ReturnPointer);
                         block
                     }
                 };
