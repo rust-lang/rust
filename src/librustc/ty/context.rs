@@ -35,7 +35,7 @@ use ty::layout::{Layout, TargetDataLayout};
 use ty::maps;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
-use util::nodemap::FnvHashMap;
+use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use arena::TypedArena;
 use std::borrow::Borrow;
@@ -191,7 +191,7 @@ impl<'a, 'tcx> Tables<'tcx> {
 
 impl<'tcx> CommonTypes<'tcx> {
     fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
-           interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>)
+           interner: &RefCell<FnvHashSet<InternedTy<'tcx>>>)
            -> CommonTypes<'tcx>
     {
         let mk = |sty| TyCtxt::intern_ty(arena, interner, sty);
@@ -220,7 +220,8 @@ impl<'tcx> CommonTypes<'tcx> {
 /// later on.
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'tcx: 'a> {
-    gcx: &'a GlobalCtxt<'tcx>
+    gcx: &'a GlobalCtxt<'tcx>,
+
 }
 
 impl<'a, 'tcx> Deref for TyCtxt<'a, 'tcx> {
@@ -236,16 +237,12 @@ pub struct GlobalCtxt<'tcx> {
 
     /// Specifically use a speedy hash algorithm for this hash map, it's used
     /// quite often.
-    // FIXME(eddyb) use a FnvHashSet<InternedTy<'tcx>> when equivalent keys can
-    // queried from a HashSet.
-    interner: RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
-
-    // FIXME as above, use a hashset if equivalent elements can be queried.
-    substs_interner: RefCell<FnvHashMap<&'tcx Substs<'tcx>, &'tcx Substs<'tcx>>>,
-    bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
-    region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
-    stability_interner: RefCell<FnvHashMap<&'tcx attr::Stability, &'tcx attr::Stability>>,
-    layout_interner: RefCell<FnvHashMap<&'tcx Layout, &'tcx Layout>>,
+    interner: RefCell<FnvHashSet<InternedTy<'tcx>>>,
+    substs_interner: RefCell<FnvHashSet<InternedSubsts<'tcx>>>,
+    bare_fn_interner: RefCell<FnvHashSet<&'tcx BareFnTy<'tcx>>>,
+    region_interner: RefCell<FnvHashSet<&'tcx Region>>,
+    stability_interner: RefCell<FnvHashSet<&'tcx attr::Stability>>,
+    layout_interner: RefCell<FnvHashSet<&'tcx Layout>>,
 
     pub dep_graph: DepGraph,
 
@@ -518,7 +515,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
         let interned = self.arenas.stability.alloc(stab);
         if let Some(prev) = self.stability_interner
                                 .borrow_mut()
-                                .insert(interned, interned) {
+                                .replace(interned) {
             bug!("Tried to overwrite interned Stability: {:?}", prev)
         }
         interned
@@ -532,7 +529,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
         let interned = self.arenas.layout.alloc(layout);
         if let Some(prev) = self.layout_interner
                                 .borrow_mut()
-                                .insert(interned, interned) {
+                                .replace(interned) {
             bug!("Tried to overwrite interned Layout: {:?}", prev)
         }
         interned
@@ -571,18 +568,18 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx>) -> R
     {
         let data_layout = TargetDataLayout::parse(s);
-        let interner = RefCell::new(FnvHashMap());
+        let interner = RefCell::new(FnvHashSet());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
         let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter(GlobalCtxt {
             arenas: arenas,
             interner: interner,
-            substs_interner: RefCell::new(FnvHashMap()),
-            bare_fn_interner: RefCell::new(FnvHashMap()),
-            region_interner: RefCell::new(FnvHashMap()),
-            stability_interner: RefCell::new(FnvHashMap()),
-            layout_interner: RefCell::new(FnvHashMap()),
+            substs_interner: RefCell::new(FnvHashSet()),
+            bare_fn_interner: RefCell::new(FnvHashSet()),
+            region_interner: RefCell::new(FnvHashSet()),
+            stability_interner: RefCell::new(FnvHashSet()),
+            layout_interner: RefCell::new(FnvHashSet()),
             dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
@@ -656,7 +653,7 @@ pub trait Lift<'tcx> {
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
     fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<Ty<'tcx>> {
-        if let Some(&ty) = tcx.interner.borrow().get(&self.sty) {
+        if let Some(&InternedTy { ty }) = tcx.interner.borrow().get(&self.sty) {
             if *self as *const _ == ty as *const _ {
                 return Some(ty);
             }
@@ -668,7 +665,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
     fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
-        if let Some(&substs) = tcx.substs_interner.borrow().get(*self) {
+        if let Some(&InternedSubsts { substs }) = tcx.substs_interner.borrow().get(*self) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
             }
@@ -745,6 +742,8 @@ macro_rules! sty_debug_print {
         #[allow(non_snake_case)]
         mod inner {
             use ty::{self, TyCtxt};
+            use ty::context::InternedTy;
+
             #[derive(Copy, Clone)]
             struct DebugStat {
                 total: usize,
@@ -761,7 +760,7 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
 
-                for (_, t) in tcx.interner.borrow().iter() {
+                for &InternedTy { ty: t } in tcx.interner.borrow().iter() {
                     let variant = match t.sty {
                         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
                             ty::TyFloat(..) | ty::TyStr => continue,
@@ -817,7 +816,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
 
 
 /// An entry in the type interner.
-pub struct InternedTy<'tcx> {
+struct InternedTy<'tcx> {
     ty: Ty<'tcx>
 }
 
@@ -836,9 +835,21 @@ impl<'tcx> Hash for InternedTy<'tcx> {
     }
 }
 
-impl<'tcx> Borrow<TypeVariants<'tcx>> for InternedTy<'tcx> {
-    fn borrow<'a>(&'a self) -> &'a TypeVariants<'tcx> {
+impl<'tcx: 'lcx, 'lcx> Borrow<TypeVariants<'lcx>> for InternedTy<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a TypeVariants<'lcx> {
         &self.ty.sty
+    }
+}
+
+/// An entry in the substs interner.
+#[derive(PartialEq, Eq, Hash)]
+struct InternedSubsts<'tcx> {
+    substs: &'tcx Substs<'tcx>
+}
+
+impl<'tcx: 'lcx, 'lcx> Borrow<Substs<'lcx>> for InternedSubsts<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a Substs<'lcx> {
+        self.substs
     }
 }
 
@@ -851,12 +862,14 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
 impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     // Type constructors
     pub fn mk_substs(self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
-        if let Some(substs) = self.substs_interner.borrow().get(&substs) {
-            return *substs;
+        if let Some(interned) = self.substs_interner.borrow().get(&substs) {
+            return interned.substs;
         }
 
         let substs = self.arenas.substs.alloc(substs);
-        self.substs_interner.borrow_mut().insert(substs, substs);
+        self.substs_interner.borrow_mut().insert(InternedSubsts {
+            substs: substs
+        });
         substs
     }
 
@@ -876,7 +889,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
         }
 
         let bare_fn = self.arenas.bare_fn.alloc(bare_fn);
-        self.bare_fn_interner.borrow_mut().insert(bare_fn, bare_fn);
+        self.bare_fn_interner.borrow_mut().insert(bare_fn);
         bare_fn
     }
 
@@ -886,19 +899,19 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
         }
 
         let region = self.arenas.region.alloc(region);
-        self.region_interner.borrow_mut().insert(region, region);
+        self.region_interner.borrow_mut().insert(region);
         region
     }
 
     fn intern_ty(type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                 interner: &RefCell<FnvHashMap<InternedTy<'tcx>, Ty<'tcx>>>,
+                 interner: &RefCell<FnvHashSet<InternedTy<'tcx>>>,
                  st: TypeVariants<'tcx>)
                  -> Ty<'tcx> {
         let ty: Ty /* don't be &mut TyS */ = {
             let mut interner = interner.borrow_mut();
             match interner.get(&st) {
-                Some(ty) => return *ty,
-                _ => ()
+                Some(&InternedTy { ty }) => return ty,
+                None => ()
             }
 
             let flags = super::flags::FlagComputation::for_sty(&st);
@@ -909,7 +922,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
                                              region_depth: flags.depth, }),
             };
 
-            interner.insert(InternedTy { ty: ty }, ty);
+            interner.insert(InternedTy { ty: ty });
             ty
         };
 
