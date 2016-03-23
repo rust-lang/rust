@@ -48,12 +48,12 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         out: &mut Write) -> io::Result<()> {
     use syntax::parse::lexer::Reader;
 
-    try!(write!(out, "<pre "));
+    write!(out, "<pre ")?;
     match id {
-        Some(id) => try!(write!(out, "id='{}' ", id)),
+        Some(id) => write!(out, "id='{}' ", id)?,
         None => {}
     }
-    try!(write!(out, "class='rust {}'>\n", class.unwrap_or("")));
+    write!(out, "class='rust {}'>\n", class.unwrap_or(""))?;
     let mut is_attribute = false;
     let mut is_macro = false;
     let mut is_macro_nonterminal = false;
@@ -66,16 +66,16 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
         let klass = match next.tok {
             token::Whitespace => {
-                try!(write!(out, "{}", Escape(&snip(next.sp))));
+                write!(out, "{}", Escape(&snip(next.sp)))?;
                 continue
             },
             token::Comment => {
-                try!(write!(out, "<span class='comment'>{}</span>",
-                            Escape(&snip(next.sp))));
+                write!(out, "<span class='comment'>{}</span>",
+                            Escape(&snip(next.sp)))?;
                 continue
             },
             token::Shebang(s) => {
-                try!(write!(out, "{}", Escape(&s.as_str())));
+                write!(out, "{}", Escape(&s.as_str()))?;
                 continue
             },
             // If this '&' token is directly adjacent to another token, assume
@@ -114,13 +114,13 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
             // span when we see the ']'.
             token::Pound => {
                 is_attribute = true;
-                try!(write!(out, r"<span class='attribute'>#"));
+                write!(out, r"<span class='attribute'>#")?;
                 continue
             }
             token::CloseDelim(token::Bracket) => {
                 if is_attribute {
                     is_attribute = false;
-                    try!(write!(out, "]</span>"));
+                    write!(out, "]</span>")?;
                     continue
                 } else {
                     ""
@@ -178,10 +178,10 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         // stringifying this token
         let snip = sess.codemap().span_to_snippet(next.sp).unwrap();
         if klass == "" {
-            try!(write!(out, "{}", Escape(&snip)));
+            write!(out, "{}", Escape(&snip))?;
         } else {
-            try!(write!(out, "<span class='{}'>{}</span>", klass,
-                          Escape(&snip)));
+            write!(out, "<span class='{}'>{}</span>", klass,
+                          Escape(&snip))?;
         }
     }
 

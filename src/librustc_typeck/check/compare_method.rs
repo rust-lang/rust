@@ -323,7 +323,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         debug!("compare_impl_method: trait_fty={:?}",
                trait_fty);
 
-        try!(infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty));
+        infer::mk_subty(&infcx, false, origin, impl_fty, trait_fty)?;
 
         infcx.leak_check(&skol_map, snapshot)
     });

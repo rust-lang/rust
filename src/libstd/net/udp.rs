@@ -70,7 +70,7 @@ impl UdpSocket {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A)
                                      -> io::Result<usize> {
-        match try!(addr.to_socket_addrs()).next() {
+        match addr.to_socket_addrs()?.next() {
             Some(addr) => self.0.send_to(buf, &addr),
             None => Err(Error::new(ErrorKind::InvalidInput,
                                    "no addresses to send data to")),

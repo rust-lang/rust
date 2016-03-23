@@ -83,7 +83,7 @@ impl Encodable for Name {
 
 impl Decodable for Name {
     fn decode<D: Decoder>(d: &mut D) -> Result<Name, D::Error> {
-        Ok(token::intern(&try!(d.read_str())[..]))
+        Ok(token::intern(&d.read_str()?[..]))
     }
 }
 
@@ -152,7 +152,7 @@ impl Encodable for Ident {
 
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::with_empty_ctxt(try!(Name::decode(d))))
+        Ok(Ident::with_empty_ctxt(Name::decode(d)?))
     }
 }
 

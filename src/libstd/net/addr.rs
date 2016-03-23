@@ -431,13 +431,13 @@ impl ToSocketAddrs for (Ipv6Addr, u16) {
 }
 
 fn resolve_socket_addr(s: &str, p: u16) -> io::Result<vec::IntoIter<SocketAddr>> {
-    let ips = try!(lookup_host(s));
-    let v: Vec<_> = try!(ips.map(|a| {
+    let ips = lookup_host(s)?;
+    let v: Vec<_> = ips.map(|a| {
         a.map(|mut a| {
             a.set_port(p);
             a
         })
-    }).collect());
+    }).collect()?;
     Ok(v.into_iter())
 }
 

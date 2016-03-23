@@ -757,9 +757,9 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
                                  bc_data_deflated: &[u8]) -> io::Result<()> {
     let bc_data_deflated_size: u64 = bc_data_deflated.len() as u64;
 
-    try!(writer.write_all(RLIB_BYTECODE_OBJECT_MAGIC));
-    try!(writer.write_all(&[1, 0, 0, 0]));
-    try!(writer.write_all(&[
+    writer.write_all(RLIB_BYTECODE_OBJECT_MAGIC)?;
+    writer.write_all(&[1, 0, 0, 0])?;
+    writer.write_all(&[
         (bc_data_deflated_size >>  0) as u8,
         (bc_data_deflated_size >>  8) as u8,
         (bc_data_deflated_size >> 16) as u8,
@@ -768,8 +768,8 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
         (bc_data_deflated_size >> 40) as u8,
         (bc_data_deflated_size >> 48) as u8,
         (bc_data_deflated_size >> 56) as u8,
-    ]));
-    try!(writer.write_all(&bc_data_deflated));
+    ])?;
+    writer.write_all(&bc_data_deflated)?;
 
     let number_of_bytes_written_so_far =
         RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id
@@ -781,7 +781,7 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
     // padding byte to make it even. This works around a crash bug in LLDB
     // (see issue #15950)
     if number_of_bytes_written_so_far % 2 == 1 {
-        try!(writer.write_all(&[0]));
+        writer.write_all(&[0])?;
     }
 
     return Ok(());

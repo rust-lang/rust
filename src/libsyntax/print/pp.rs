@@ -318,7 +318,7 @@ impl<'a> Printer<'a> {
           Token::Eof => {
             if !self.scan_stack_empty {
                 self.check_stack(0);
-                try!(self.advance_left());
+                self.advance_left()?;
             }
             self.indent(0);
             Ok(())
@@ -399,9 +399,9 @@ impl<'a> Printer<'a> {
                     self.size[scanned] = SIZE_INFINITY;
                 }
             }
-            try!(self.advance_left());
+            self.advance_left()?;
             if self.left != self.right {
-                try!(self.check_stream());
+                self.check_stream()?;
             }
         }
         Ok(())
@@ -464,7 +464,7 @@ impl<'a> Printer<'a> {
                 _ => 0
             };
 
-            try!(self.print(left, left_size));
+            self.print(left, left_size)?;
 
             self.left_total += len;
 
@@ -532,7 +532,7 @@ impl<'a> Printer<'a> {
     }
     pub fn print_str(&mut self, s: &str) -> io::Result<()> {
         while self.pending_indentation > 0 {
-            try!(write!(self.out, " "));
+            write!(self.out, " ")?;
             self.pending_indentation -= 1;
         }
         write!(self.out, "{}", s)

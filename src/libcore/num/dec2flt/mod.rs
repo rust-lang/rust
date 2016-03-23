@@ -214,7 +214,7 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
     }
     let (sign, s) = extract_sign(s);
     let flt = match parse_decimal(s) {
-        ParseResult::Valid(decimal) => try!(convert(decimal)),
+        ParseResult::Valid(decimal) => convert(decimal)?,
         ParseResult::ShortcutToInf => T::infinity(),
         ParseResult::ShortcutToZero => T::zero(),
         ParseResult::Invalid => match s {

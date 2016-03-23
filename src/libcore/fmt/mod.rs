@@ -795,16 +795,16 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
         None => {
             // We can use default formatting parameters for all arguments.
             for (arg, piece) in args.args.iter().zip(pieces.by_ref()) {
-                try!(formatter.buf.write_str(*piece));
-                try!((arg.formatter)(arg.value, &mut formatter));
+                formatter.buf.write_str(*piece)?;
+                (arg.formatter)(arg.value, &mut formatter)?;
             }
         }
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
             for (arg, piece) in fmt.iter().zip(pieces.by_ref()) {
-                try!(formatter.buf.write_str(*piece));
-                try!(formatter.run(arg));
+                formatter.buf.write_str(*piece)?;
+                formatter.run(arg)?;
             }
         }
     }
@@ -812,7 +812,7 @@ pub fn write(output: &mut Write, args: Arguments) -> Result {
     // There can be only one trailing string piece left.
     match pieces.next() {
         Some(piece) => {
-            try!(formatter.buf.write_str(*piece));
+            formatter.buf.write_str(*piece)?;
         }
         None => {}
     }
@@ -897,9 +897,9 @@ impl<'a> Formatter<'a> {
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             if let Some(c) = sign {
-                try!(f.buf.write_str(unsafe {
+                f.buf.write_str(unsafe {
                     str::from_utf8_unchecked(c.encode_utf8().as_slice())
-                }));
+                })?;
             }
             if prefixed { f.buf.write_str(prefix) }
             else { Ok(()) }
@@ -910,18 +910,18 @@ impl<'a> Formatter<'a> {
             // If there's no minimum length requirements then we can just
             // write the bytes.
             None => {
-                try!(write_prefix(self)); self.buf.write_str(buf)
+                write_prefix(self)?; self.buf.write_str(buf)
             }
             // Check if we're over the minimum width, if so then we can also
             // just write the bytes.
             Some(min) if width >= min => {
-                try!(write_prefix(self)); self.buf.write_str(buf)
+                write_prefix(self)?; self.buf.write_str(buf)
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
-                try!(write_prefix(self));
+                write_prefix(self)?;
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
                     f.buf.write_str(buf)
                 })
@@ -929,7 +929,7 @@ impl<'a> Formatter<'a> {
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
-                    try!(write_prefix(f)); f.buf.write_str(buf)
+                    write_prefix(f)?; f.buf.write_str(buf)
                 })
             }
         }
@@ -1008,13 +1008,13 @@ impl<'a> Formatter<'a> {
         };
 
         for _ in 0..pre_pad {
-            try!(self.buf.write_str(fill));
+            self.buf.write_str(fill)?;
         }
 
-        try!(f(self));
+        f(self)?;
 
         for _ in 0..post_pad {
-            try!(self.buf.write_str(fill));
+            self.buf.write_str(fill)?;
         }
 
         Ok(())
@@ -1033,7 +1033,7 @@ impl<'a> Formatter<'a> {
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
-                try!(self.buf.write_str(sign));
+                self.buf.write_str(sign)?;
 
                 // remove the sign from the formatted parts
                 formatted.sign = b"";
@@ -1065,7 +1065,7 @@ impl<'a> Formatter<'a> {
         }
 
         if !formatted.sign.is_empty() {
-            try!(write_bytes(self.buf, formatted.sign));
+            write_bytes(self.buf, formatted.sign)?;
         }
         for part in formatted.parts {
             match *part {
@@ -1073,11 +1073,11 @@ impl<'a> Formatter<'a> {
                     const ZEROES: &'static str = // 64 zeroes
                         "0000000000000000000000000000000000000000000000000000000000000000";
                     while nzeroes > ZEROES.len() {
-                        try!(self.buf.write_str(ZEROES));
+                        self.buf.write_str(ZEROES)?;
                         nzeroes -= ZEROES.len();
                     }
                     if nzeroes > 0 {
-                        try!(self.buf.write_str(&ZEROES[..nzeroes]));
+                        self.buf.write_str(&ZEROES[..nzeroes])?;
                     }
                 }
                 flt2dec::Part::Num(mut v) => {
@@ -1087,10 +1087,10 @@ impl<'a> Formatter<'a> {
                         *c = b'0' + (v % 10) as u8;
                         v /= 10;
                     }
-                    try!(write_bytes(self.buf, &s[..len]));
+                    write_bytes(self.buf, &s[..len])?;
                 }
                 flt2dec::Part::Copy(buf) => {
-                    try!(write_bytes(self.buf, buf));
+                    write_bytes(self.buf, buf)?;
                 }
             }
         }
@@ -1349,20 +1349,20 @@ impl Display for bool {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        try!(f.write_char('"'));
+        f.write_char('"')?;
         let mut from = 0;
         for (i, c) in self.char_indices() {
             let esc = c.escape_default();
             // If char needs escaping, flush backlog so far and write, else skip
             if esc.size_hint() != (1, Some(1)) {
-                try!(f.write_str(&self[from..i]));
+                f.write_str(&self[from..i])?;
                 for c in esc {
-                    try!(f.write_char(c));
+                    f.write_char(c)?;
                 }
                 from = i + c.len_utf8();
             }
         }
-        try!(f.write_str(&self[from..]));
+        f.write_str(&self[from..])?;
         f.write_char('"')
     }
 }
@@ -1377,9 +1377,9 @@ impl Display for str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        try!(f.write_char('\''));
+        f.write_char('\'')?;
         for c in self.escape_default() {
-            try!(f.write_char(c))
+            f.write_char(c)?
         }
         f.write_char('\'')
     }
