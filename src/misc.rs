@@ -39,7 +39,7 @@ impl LintPass for TopLevelRefPass {
 
 impl LateLintPass for TopLevelRefPass {
     fn check_fn(&mut self, cx: &LateContext, k: FnKind, decl: &FnDecl, _: &Block, _: Span, _: NodeId) {
-        if let FnKind::Closure = k {
+        if let FnKind::Closure(_) = k {
             // Does not apply to closures
             return;
         }
