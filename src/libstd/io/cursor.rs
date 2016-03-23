@@ -213,7 +213,7 @@ impl<T> io::Seek for Cursor<T> where T: AsRef<[u8]> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let n = try!(Read::read(&mut try!(self.fill_buf()), buf));
+        let n = Read::read(&mut self.fill_buf()?, buf)?;
         self.pos += n as u64;
         Ok(n)
     }
@@ -232,7 +232,7 @@ impl<T> BufRead for Cursor<T> where T: AsRef<[u8]> {
 impl<'a> Write for Cursor<&'a mut [u8]> {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let pos = cmp::min(self.pos, self.inner.len() as u64);
-        let amt = try!((&mut self.inner[(pos as usize)..]).write(data));
+        let amt = (&mut self.inner[(pos as usize)..]).write(data)?;
         self.pos += amt as u64;
         Ok(amt)
     }
@@ -271,7 +271,7 @@ impl Write for Cursor<Vec<u8>> {
 impl Write for Cursor<Box<[u8]>> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let pos = cmp::min(self.pos, self.inner.len() as u64);
-        let amt = try!((&mut self.inner[(pos as usize)..]).write(buf));
+        let amt = (&mut self.inner[(pos as usize)..]).write(buf)?;
         self.pos += amt as u64;
         Ok(amt)
     }

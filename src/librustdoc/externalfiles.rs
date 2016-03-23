@@ -38,9 +38,9 @@ impl ExternalHtml {
 }
 
 pub fn load_string(input: &Path) -> io::Result<Option<String>> {
-    let mut f = try!(File::open(input));
+    let mut f = File::open(input)?;
     let mut d = Vec::new();
-    try!(f.read_to_end(&mut d));
+    f.read_to_end(&mut d)?;
     Ok(str::from_utf8(&d).map(|s| s.to_string()).ok())
 }
 

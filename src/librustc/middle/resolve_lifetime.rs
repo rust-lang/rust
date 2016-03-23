@@ -102,7 +102,7 @@ pub fn krate(sess: &Session,
     let _task = hir_map.dep_graph.in_task(DepNode::ResolveLifetimes);
     let krate = hir_map.krate();
     let mut named_region_map = NodeMap();
-    try!(sess.track_errors(|| {
+    sess.track_errors(|| {
         krate.visit_all_items(&mut LifetimeContext {
             sess: sess,
             named_region_map: &mut named_region_map,
@@ -111,7 +111,7 @@ pub fn krate(sess: &Session,
             trait_ref_hack: false,
             labels_in_fn: vec![],
         });
-    }));
+    })?;
     Ok(named_region_map)
 }
 

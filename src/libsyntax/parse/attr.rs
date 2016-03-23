@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
             debug!("parse_outer_attributes: self.token={:?}", self.token);
             match self.token {
                 token::Pound => {
-                    attrs.push(try!(self.parse_attribute(false)));
+                    attrs.push(self.parse_attribute(false)?);
                 }
                 token::DocComment(s) => {
                     let attr = ::attr::mk_sugared_doc_attr(
@@ -79,10 +79,10 @@ impl<'a> Parser<'a> {
                     ast::AttrStyle::Outer
                 };
 
-                try!(self.expect(&token::OpenDelim(token::Bracket)));
-                let meta_item = try!(self.parse_meta_item());
+                self.expect(&token::OpenDelim(token::Bracket))?;
+                let meta_item = self.parse_meta_item()?;
                 let hi = self.span.hi;
-                try!(self.expect(&token::CloseDelim(token::Bracket)));
+                self.expect(&token::CloseDelim(token::Bracket))?;
 
                 (mk_sp(lo, hi), meta_item, style)
             }
@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
                         break;
                     }
 
-                    let attr = try!(self.parse_attribute(true));
+                    let attr = self.parse_attribute(true)?;
                     assert!(attr.node.style == ast::AttrStyle::Inner);
                     attrs.push(attr);
                 }
@@ -166,12 +166,12 @@ impl<'a> Parser<'a> {
         }
 
         let lo = self.span.lo;
-        let ident = try!(self.parse_ident());
+        let ident = self.parse_ident()?;
         let name = self.id_to_interned_str(ident);
         match self.token {
             token::Eq => {
                 self.bump();
-                let lit = try!(self.parse_lit());
+                let lit = self.parse_lit()?;
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
@@ -185,7 +185,7 @@ impl<'a> Parser<'a> {
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::NameValue(name, lit))))
             }
             token::OpenDelim(token::Paren) => {
-                let inner_items = try!(self.parse_meta_seq());
+                let inner_items = self.parse_meta_seq()?;
                 let hi = self.span.hi;
                 Ok(P(spanned(lo, hi, ast::MetaItemKind::List(name, inner_items))))
             }

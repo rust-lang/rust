@@ -74,7 +74,7 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
     where F: FnMut(&SocketAddr) -> io::Result<T>
 {
     let mut last_err = None;
-    for addr in try!(addr.to_socket_addrs()) {
+    for addr in addr.to_socket_addrs()? {
         match f(&addr) {
             Ok(l) => return Ok(l),
             Err(e) => last_err = Some(e),

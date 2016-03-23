@@ -78,13 +78,13 @@ fn write(out: &Output, data: &[u8]) -> io::Result<usize> {
     };
     let utf16 = utf8.encode_utf16().collect::<Vec<u16>>();
     let mut written = 0;
-    try!(cvt(unsafe {
+    cvt(unsafe {
         c::WriteConsoleW(handle,
                          utf16.as_ptr() as c::LPCVOID,
                          utf16.len() as u32,
                          &mut written,
                          ptr::null_mut())
-    }));
+    })?;
 
     // FIXME if this only partially writes the utf16 buffer then we need to
     //       figure out how many bytes of `data` were actually written
@@ -112,13 +112,13 @@ impl Stdin {
         if utf8.position() as usize == utf8.get_ref().len() {
             let mut utf16 = vec![0u16; 0x1000];
             let mut num = 0;
-            try!(cvt(unsafe {
+            cvt(unsafe {
                 c::ReadConsoleW(handle,
                                 utf16.as_mut_ptr() as c::LPVOID,
                                 utf16.len() as u32,
                                 &mut num,
                                 ptr::null_mut())
-            }));
+            })?;
             utf16.truncate(num as usize);
             // FIXME: what to do about this data that has already been read?
             let data = match String::from_utf16(&utf16) {

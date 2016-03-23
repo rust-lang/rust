@@ -418,7 +418,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     param_ty: Ty<'tcx>)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
-    let trait_ref = try!(trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
+    let trait_ref = trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty)?;
     Ok(predicate_for_trait_ref(cause, trait_ref, recursion_depth))
 }
 

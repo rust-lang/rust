@@ -169,22 +169,22 @@ impl RawHandle {
         // WriteFile takes a DWORD (u32) for the length so it only supports
         // writing u32::MAX bytes at a time.
         let len = cmp::min(buf.len(), u32::MAX as usize) as c::DWORD;
-        try!(cvt(unsafe {
+        cvt(unsafe {
             c::WriteFile(self.0, buf.as_ptr() as c::LPVOID,
                          len, &mut amt, ptr::null_mut())
-        }));
+        })?;
         Ok(amt as usize)
     }
 
     pub fn duplicate(&self, access: c::DWORD, inherit: bool,
                      options: c::DWORD) -> io::Result<Handle> {
         let mut ret = 0 as c::HANDLE;
-        try!(cvt(unsafe {
+        cvt(unsafe {
             let cur_proc = c::GetCurrentProcess();
             c::DuplicateHandle(cur_proc, self.0, cur_proc, &mut ret,
                             access, inherit as c::BOOL,
                             options)
-        }));
+        })?;
         Ok(Handle::new(ret))
     }
 }

@@ -124,7 +124,7 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let mode = probe::Mode::MethodCall;
     let self_ty = fcx.infcx().resolve_type_vars_if_possible(&self_ty);
-    let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, call_expr.id));
+    let pick = probe::probe(fcx, span, mode, method_name, self_ty, call_expr.id)?;
     Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }
 
@@ -337,7 +337,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               -> Result<Def, MethodError<'tcx>>
 {
     let mode = probe::Mode::Path;
-    let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
+    let pick = probe::probe(fcx, span, mode, method_name, self_ty, expr_id)?;
     let def = pick.item.def();
 
     if let probe::InherentImplPick = pick.kind {

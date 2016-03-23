@@ -54,7 +54,7 @@ impl GitConnect {
         let c = format!("git-upload-pack");
 
         let mut out = String::new();
-        let data = try!(self.command(&c));
+        let data = self.command(&c)?;
 
         for line in data.iter() {
             out.push_str(&format!("{:?}", line));

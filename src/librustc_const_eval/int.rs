@@ -220,7 +220,7 @@ impl ConstInt {
 
     /// Compares the values if they are of the same type
     pub fn try_cmp(self, rhs: Self) -> Result<::std::cmp::Ordering, ConstMathErr> {
-        match try!(self.infer(rhs)) {
+        match self.infer(rhs)? {
             (I8(a), I8(b)) => Ok(a.cmp(&b)),
             (I16(a), I16(b)) => Ok(a.cmp(&b)),
             (I32(a), I32(b)) => Ok(a.cmp(&b)),
@@ -420,8 +420,8 @@ fn check_division(
 impl ::std::ops::Div for ConstInt {
     type Output = Result<Self, ConstMathErr>;
     fn div(self, rhs: Self) -> Result<Self, ConstMathErr> {
-        let (lhs, rhs) = try!(self.infer(rhs));
-        try!(check_division(lhs, rhs, Op::Div, DivisionByZero));
+        let (lhs, rhs) = self.infer(rhs)?;
+        check_division(lhs, rhs, Op::Div, DivisionByZero)?;
         match (lhs, rhs) {
             (I8(a), I8(b)) => Ok(I8(a/b)),
             (I16(a), I16(b)) => Ok(I16(a/b)),
@@ -447,9 +447,9 @@ impl ::std::ops::Div for ConstInt {
 impl ::std::ops::Rem for ConstInt {
     type Output = Result<Self, ConstMathErr>;
     fn rem(self, rhs: Self) -> Result<Self, ConstMathErr> {
-        let (lhs, rhs) = try!(self.infer(rhs));
+        let (lhs, rhs) = self.infer(rhs)?;
         // should INT_MIN%-1 be zero or an error?
-        try!(check_division(lhs, rhs, Op::Rem, RemainderByZero));
+        check_division(lhs, rhs, Op::Rem, RemainderByZero)?;
         match (lhs, rhs) {
             (I8(a), I8(b)) => Ok(I8(a%b)),
             (I16(a), I16(b)) => Ok(I16(a%b)),
@@ -475,7 +475,7 @@ impl ::std::ops::Rem for ConstInt {
 impl ::std::ops::Shl<ConstInt> for ConstInt {
     type Output = Result<Self, ConstMathErr>;
     fn shl(self, rhs: Self) -> Result<Self, ConstMathErr> {
-        let b = try!(rhs.to_u32().ok_or(ShiftNegative));
+        let b = rhs.to_u32().ok_or(ShiftNegative)?;
         match self {
             I8(a) => Ok(I8(overflowing!(a.overflowing_shl(b), Op::Shl))),
             I16(a) => Ok(I16(overflowing!(a.overflowing_shl(b), Op::Shl))),
@@ -498,7 +498,7 @@ impl ::std::ops::Shl<ConstInt> for ConstInt {
 impl ::std::ops::Shr<ConstInt> for ConstInt {
     type Output = Result<Self, ConstMathErr>;
     fn shr(self, rhs: Self) -> Result<Self, ConstMathErr> {
-        let b = try!(rhs.to_u32().ok_or(ShiftNegative));
+        let b = rhs.to_u32().ok_or(ShiftNegative)?;
         match self {
             I8(a) => Ok(I8(overflowing!(a.overflowing_shr(b), Op::Shr))),
             I16(a) => Ok(I16(overflowing!(a.overflowing_shr(b), Op::Shr))),

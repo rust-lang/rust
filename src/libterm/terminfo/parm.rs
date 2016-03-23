@@ -209,7 +209,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                     'd' | 'o' | 'x' | 'X' | 's' => {
                         if let Some(arg) = stack.pop() {
                             let flags = Flags::new();
-                            let res = try!(format(arg, FormatOp::from_char(cur), flags));
+                            let res = format(arg, FormatOp::from_char(cur), flags)?;
                             output.extend(res.iter().map(|x| *x));
                         } else {
                             return Err("stack is empty".to_string());
@@ -317,7 +317,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables) -> Result<Vec<
                 match (*fstate, cur) {
                     (_, 'd') | (_, 'o') | (_, 'x') | (_, 'X') | (_, 's') => {
                         if let Some(arg) = stack.pop() {
-                            let res = try!(format(arg, FormatOp::from_char(cur), *flags));
+                            let res = format(arg, FormatOp::from_char(cur), *flags)?;
                             output.extend(res.iter().map(|x| *x));
                             // will cause state to go to Nothing
                             old_state = FormatPattern(*flags, *fstate);

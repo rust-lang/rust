@@ -234,7 +234,7 @@ impl<T: ?Sized> Mutex<T> {
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
         unsafe {
             if self.inner.lock.try_lock() {
-                Ok(try!(MutexGuard::new(&*self.inner, &self.data)))
+                Ok(MutexGuard::new(&*self.inner, &self.data)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
@@ -353,7 +353,7 @@ impl StaticMutex {
     pub fn try_lock(&'static self) -> TryLockResult<MutexGuard<()>> {
         unsafe {
             if self.lock.try_lock() {
-                Ok(try!(MutexGuard::new(self, &DUMMY.0)))
+                Ok(MutexGuard::new(self, &DUMMY.0)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }

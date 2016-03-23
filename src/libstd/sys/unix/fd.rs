@@ -39,11 +39,11 @@ impl FileDesc {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let ret = try!(cvt(unsafe {
+        let ret = cvt(unsafe {
             libc::read(self.fd,
                        buf.as_mut_ptr() as *mut c_void,
                        buf.len() as size_t)
-        }));
+        })?;
         Ok(ret as usize)
     }
 
@@ -53,11 +53,11 @@ impl FileDesc {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let ret = try!(cvt(unsafe {
+        let ret = cvt(unsafe {
             libc::write(self.fd,
                         buf.as_ptr() as *const c_void,
                         buf.len() as size_t)
-        }));
+        })?;
         Ok(ret as usize)
     }
 

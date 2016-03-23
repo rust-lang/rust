@@ -250,7 +250,7 @@ pub struct ClosureSubsts<'tcx> {
 
 impl<'tcx> Decodable for &'tcx ClosureSubsts<'tcx> {
     fn decode<S: Decoder>(s: &mut S) -> Result<&'tcx ClosureSubsts<'tcx>, S::Error> {
-        let closure_substs = try! { Decodable::decode(s) };
+        let closure_substs = Decodable::decode(s)?;
         let dummy_def_id: DefId = unsafe { mem::zeroed() };
 
         cstore::tls::with_decoding_context(s, |dcx, _| {

@@ -112,15 +112,15 @@ impl<'tcx> PreMovePath<'tcx> {
 
 impl<'tcx> fmt::Debug for MovePath<'tcx> {
     fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(w, "MovePath {{"));
+        write!(w, "MovePath {{")?;
         if let Some(parent) = self.parent {
-            try!(write!(w, " parent: {:?},", parent));
+            write!(w, " parent: {:?},", parent)?;
         }
         if let Some(first_child) = self.first_child {
-            try!(write!(w, " first_child: {:?},", first_child));
+            write!(w, " first_child: {:?},", first_child)?;
         }
         if let Some(next_sibling) = self.next_sibling {
-            try!(write!(w, " next_sibling: {:?}", next_sibling));
+            write!(w, " next_sibling: {:?}", next_sibling)?;
         }
         write!(w, " content: {:?} }}", self.content)
     }

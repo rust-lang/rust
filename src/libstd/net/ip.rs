@@ -487,16 +487,16 @@ impl fmt::Display for Ipv6Addr {
                 if zeros_len > 1 {
                     fn fmt_subslice(segments: &[u16], fmt: &mut fmt::Formatter) -> fmt::Result {
                         if !segments.is_empty() {
-                            try!(write!(fmt, "{:x}", segments[0]));
+                            write!(fmt, "{:x}", segments[0])?;
                             for &seg in &segments[1..] {
-                                try!(write!(fmt, ":{:x}", seg));
+                                write!(fmt, ":{:x}", seg)?;
                             }
                         }
                         Ok(())
                     }
 
-                    try!(fmt_subslice(&self.segments()[..zeros_at], fmt));
-                    try!(fmt.write_str("::"));
+                    fmt_subslice(&self.segments()[..zeros_at], fmt)?;
+                    fmt.write_str("::")?;
                     fmt_subslice(&self.segments()[zeros_at + zeros_len..], fmt)
                 } else {
                     let &[a, b, c, d, e, f, g, h] = &self.segments();

@@ -59,17 +59,17 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                try!(self.fields.instantiate(b, EqTo, a_id));
+                self.fields.instantiate(b, EqTo, a_id)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, EqTo, b_id));
+                self.fields.instantiate(a, EqTo, b_id)?;
                 Ok(a)
             }
 
             _ => {
-                try!(combine::super_combine_tys(self.fields.infcx, self, a, b));
+                combine::super_combine_tys(self.fields.infcx, self, a, b)?;
                 Ok(a)
             }
         }
@@ -89,7 +89,7 @@ impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a, 'tcx>
     {
-        try!(self.fields.higher_ranked_sub(a, b));
+        self.fields.higher_ranked_sub(a, b)?;
         self.fields.higher_ranked_sub(b, a)
     }
 }

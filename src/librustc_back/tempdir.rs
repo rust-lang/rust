@@ -45,7 +45,7 @@ impl TempDir {
         let storage;
         let mut tmpdir = tmpdir;
         if !tmpdir.is_absolute() {
-            let cur_dir = try!(env::current_dir());
+            let cur_dir = env::current_dir()?;
             storage = cur_dir.join(tmpdir);
             tmpdir = &storage;
             // return TempDir::new_in(&cur_dir.join(tmpdir), prefix);
