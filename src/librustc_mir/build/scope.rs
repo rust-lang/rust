@@ -282,7 +282,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.scope_auxiliary[scope.id.index()]
             .postdoms
             .push(self.cfg.current_location(block));
-        block.and(())
+        block.unit()
     }
 
 
