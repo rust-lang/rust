@@ -741,6 +741,44 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search_by(self, f)
     }
 
+    /// Binary search a sorted slice with a key extraction function.
+    ///
+    /// Assumes that the slice is sorted by the key, for instance with
+    /// `sort_by_key` using the same key extraction function.
+    ///
+    /// If a matching value is found then returns `Ok`, containing the
+    /// index for the matched element; if no match is found then `Err`
+    /// is returned, containing the index where a matching element could
+    /// be inserted while maintaining sorted order.
+    ///
+    /// # Examples
+    ///
+    /// Looks up a series of four elements in a slice of pairs sorted by
+    /// their second elements. The first is found, with a uniquely
+    /// determined position; the second and third are not found; the
+    /// fourth could match any position in `[1,4]`.
+    ///
+    /// ```rust
+    /// #![feature(slice_binary_search_by_key)]
+    /// let s = [(0, 0), (2, 1), (4, 1), (5, 1), (3, 1),
+    ///          (1, 2), (2, 3), (4, 5), (5, 8), (3, 13),
+    ///          (1, 21), (2, 34), (4, 55)];
+    ///
+    /// assert_eq!(s.binary_search_by_key(&13, |&(a,b)| b),  Ok(9));
+    /// assert_eq!(s.binary_search_by_key(&4, |&(a,b)| b),   Err(7));
+    /// assert_eq!(s.binary_search_by_key(&100, |&(a,b)| b), Err(13));
+    /// let r = s.binary_search_by_key(&1, |&(a,b)| b);
+    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// ```
+    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "0")]
+    #[inline]
+    pub fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
+        where F: FnMut(&T) -> B,
+              B: Ord
+    {
+        core_slice::SliceExt::binary_search_by_key(self, b, f)
+    }
+
     /// Sorts the slice, in place.
     ///
     /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
