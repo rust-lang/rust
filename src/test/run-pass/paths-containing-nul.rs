@@ -23,6 +23,8 @@ fn assert_invalid_input<T>(on: &str, result: io::Result<T>) {
 }
 
 fn main() {
+    fs::File::create("a");
+
     assert_invalid_input("File::open", fs::File::open("\0"));
     assert_invalid_input("File::create", fs::File::create("\0"));
     assert_invalid_input("remove_file", fs::remove_file("\0"));
@@ -45,4 +47,6 @@ fn main() {
     assert_invalid_input("read_dir", fs::read_dir("\0"));
     assert_invalid_input("set_permissions",
                          fs::set_permissions("\0", fs::metadata(".").unwrap().permissions()));
+
+    fs::remove_file("a");
 }
