@@ -34,10 +34,13 @@ impl LateLintPass for NonminimalBool {
 struct NonminimalBoolVisitor<'a, 'tcx: 'a>(&'a LateContext<'a, 'tcx>);
 
 use quine_mc_cluskey::Bool;
-struct Hir2Qmm<'tcx>(Vec<&'tcx Expr>);
+struct Hir2Qmm<'a, 'tcx: 'a, 'v> {
+    terminals: Vec<&'v Expr>,
+    cx: &'a LateContext<'a, 'tcx>
+}
 
-impl<'tcx> Hir2Qmm<'tcx> {
-    fn extract(&mut self, op: BinOp_, a: &[&'tcx Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
+impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
+    fn extract(&mut self, op: BinOp_, a: &[&'v Expr], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
             if let ExprBinary(binop, ref lhs, ref rhs) = a.node {
                 if binop.node == op {
@@ -50,7 +53,7 @@ impl<'tcx> Hir2Qmm<'tcx> {
         Ok(v)
     }
 
-    fn run(&mut self, e: &'tcx Expr) -> Result<Bool, String> {
+    fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
         match e.node {
             ExprUnary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
             ExprBinary(binop, ref lhs, ref rhs) => {
@@ -69,8 +72,15 @@ impl<'tcx> Hir2Qmm<'tcx> {
             },
             _ => {},
         }
-        let n = self.0.len();
-        self.0.push(e);
+        if let Some((n, _)) = self.terminals
+                                  .iter()
+                                  .enumerate()
+                                  .find(|&(_, expr)| SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr)) {
+            #[allow(cast_possible_truncation)]
+            return Ok(Bool::Term(n as u8));
+        }
+        let n = self.terminals.len();
+        self.terminals.push(e);
         if n < 32 {
             #[allow(cast_possible_truncation)]
             Ok(Bool::Term(n as u8))
@@ -157,7 +167,10 @@ fn simple_negate(b: Bool) -> Bool {
 
 impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     fn bool_expr(&self, e: &Expr) {
-        let mut h2q = Hir2Qmm(Vec::new());
+        let mut h2q = Hir2Qmm {
+            terminals: Vec::new(),
+            cx: self.0,
+        };
         if let Ok(expr) = h2q.run(e) {
             let mut simplified = expr.simplify();
             for simple in Bool::Not(Box::new(expr.clone())).simplify() {
@@ -170,7 +183,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             if !simplified.iter().any(|s| *s == expr) {
                 span_lint_and_then(self.0, NONMINIMAL_BOOL, e.span, "this boolean expression can be simplified", |db| {
                     for suggestion in &simplified {
-                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.0));
+                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
                     }
                 });
             }
