@@ -213,7 +213,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("unwind_attributes", "1.4.0", None, Active),
 
     // allow the use of `#[naked]` on functions.
-    ("naked_functions", "1.9.0", None, Active),
+    ("naked_functions", "1.9.0", Some(32408), Active),
 
     // allow empty structs and enum variants with braces
     ("braced_empty_structs", "1.5.0", Some(29720), Accepted),
