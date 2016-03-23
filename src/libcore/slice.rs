@@ -157,6 +157,11 @@ pub trait SliceExt {
     fn clone_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Clone;
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
+
+    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "0")]
+    fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord;
 }
 
 // Use macros to be generic over const/mut
@@ -506,6 +511,14 @@ impl<T> SliceExt for [T] {
             ptr::copy_nonoverlapping(
                 src.as_ptr(), self.as_mut_ptr(), self.len());
         }
+    }
+
+    #[inline]
+    fn binary_search_by_key<B, F>(&self, b: &B, mut f: F) -> Result<usize, usize>
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord
+    {
+        self.binary_search_by(|k| f(k).cmp(b))
     }
 }
 
