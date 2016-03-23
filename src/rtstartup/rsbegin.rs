@@ -23,8 +23,19 @@
 // of other runtime components (registered via yet another special image section).
 
 #![crate_type="rlib"]
-#![no_std]
+#![feature(no_core, lang_items, optin_builtin_traits)]
+#![no_core]
 #![allow(non_camel_case_types)]
+
+#[lang="sized"]
+trait Sized {}
+
+#[lang="copy"]
+trait Copy {}
+
+#[lang="sync"]
+trait Sync {}
+impl Sync for .. {}
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frames
