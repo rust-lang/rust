@@ -272,7 +272,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let (actual, result) = (self.temp(usize_ty), self.temp(bool_ty));
 
                 // actual = len(lvalue)
-                self.cfg.push_assign(block, scope_id, test.span, &actual, Rvalue::Len(lvalue.clone()));
+                self.cfg.push_assign(block, scope_id, test.span,
+                                     &actual, Rvalue::Len(lvalue.clone()));
 
                 // expected = <N>
                 let expected = self.push_usize(block, scope_id, test.span, len);

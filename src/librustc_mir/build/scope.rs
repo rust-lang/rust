@@ -113,12 +113,20 @@ pub struct Scope<'tcx> {
     // This is expected to go away once `box EXPR` becomes a sugar for placement protocol and gets
     // desugared in some earlier stage.
     free: Option<FreeData<'tcx>>,
+
+    /// The cached block for the cleanups-on-diverge path. This block
+    /// contains a block that will just do a RESUME to an appropriate
+    /// place. This block does not execute any of the drops or free:
+    /// each of those has their own cached-blocks, which will branch
+    /// to this point.
+    cached_block: Option<BasicBlock>
 }
 
 struct DropData<'tcx> {
     span: Span,
     value: Lvalue<'tcx>,
     // NB: per-drop “cache” is necessary for the build_scope_drops function below.
+
     /// The cached block for the cleanups-on-diverge path. This block contains code to run the
     /// current drop and all the preceding drops (i.e. those having lower index in Drop’s
     /// Scope drop array)
@@ -127,10 +135,13 @@ struct DropData<'tcx> {
 
 struct FreeData<'tcx> {
     span: Span,
+
     /// Lvalue containing the allocated box.
     value: Lvalue<'tcx>,
+
     /// type of item for which the box was allocated for (i.e. the T in Box<T>).
     item_ty: Ty<'tcx>,
+
     /// The cached block containing code to run the free. The block will also execute all the drops
     /// in the scope.
     cached_block: Option<BasicBlock>
@@ -155,6 +166,7 @@ impl<'tcx> Scope<'tcx> {
     /// Should always be run for all inner scopes when a drop is pushed into some scope enclosing a
     /// larger extent of code.
     fn invalidate_cache(&mut self) {
+        self.cached_block = None;
         for dropdata in &mut self.drops {
             dropdata.cached_block = None;
         }
@@ -234,7 +246,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             id: id,
             extent: extent,
             drops: vec![],
-            free: None
+            free: None,
+            cached_block: None,
         });
         self.scope_auxiliary.push(ScopeAuxiliary {
             extent: extent,
@@ -288,7 +301,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                               block));
             if let Some(ref free_data) = scope.free {
                 let next = self.cfg.start_new_block();
-                let free = build_free(self.hir.tcx(), tmp.clone(), free_data, next);
+                let free = build_free(self.hir.tcx(), &tmp, free_data, next);
                 self.cfg.terminate(block, scope.id, span, free);
                 block = next;
             }
@@ -419,20 +432,16 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         }
         let unit_temp = self.get_unit_temp();
         let Builder { ref mut hir, ref mut cfg, ref mut scopes, .. } = *self;
-        let mut next_block = None;
 
         // Given an array of scopes, we generate these from the outermost scope to the innermost
         // one. Thus for array [S0, S1, S2] with corresponding cleanup blocks [B0, B1, B2], we will
         // generate B0 <- B1 <- B2 in left-to-right order. Control flow of the generated blocks
         // always ends up at a block with the Resume terminator.
-        for scope in scopes.iter_mut().filter(|s| !s.drops.is_empty() || s.free.is_some()) {
-            next_block = Some(build_diverge_scope(hir.tcx(),
-                                                  cfg,
-                                                  unit_temp.clone(),
-                                                  scope,
-                                                  next_block));
+        if scopes.iter().any(|scope| !scope.drops.is_empty() || scope.free.is_some()) {
+            Some(build_diverge_scope(hir.tcx(), cfg, &unit_temp, scopes))
+        } else {
+            None
         }
-        scopes.iter().rev().flat_map(|x| x.cached_block()).next()
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -525,8 +534,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // FIXME: We should have this as a constant, rather than a stack variable (to not pollute
         // icache with cold branch code), however to achieve that we either have to rely on rvalue
         // promotion or have some way, in MIR, to create constants.
-        self.cfg.push_assign(block, scope_id, span, &tuple, // tuple = (message_arg, file_arg, line_arg);
+        self.cfg.push_assign(block, scope_id, span, &tuple, // [1]
                              Rvalue::Aggregate(AggregateKind::Tuple, elems));
+        // [1] tuple = (message_arg, file_arg, line_arg);
         // FIXME: is this region really correct here?
         self.cfg.push_assign(block, scope_id, span, &tuple_ref, // tuple_ref = &tuple;
                              Rvalue::Ref(region, BorrowKind::Shared, tuple));
@@ -602,58 +612,42 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
 
 fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
                              cfg: &mut CFG<'tcx>,
-                             unit_temp: Lvalue<'tcx>,
-                             scope: &mut Scope<'tcx>,
-                             target: Option<BasicBlock>)
-                             -> BasicBlock {
-    debug_assert!(!scope.drops.is_empty() || scope.free.is_some());
+                             unit_temp: &Lvalue<'tcx>,
+                             scopes: &mut [Scope<'tcx>])
+                             -> BasicBlock
+{
+    assert!(scopes.len() >= 1);
 
-    // First, we build the drops, iterating the drops array in reverse. We do that so that as soon
-    // as we find a `cached_block`, we know that we’re finished and don’t need to do anything else.
-    let mut previous = None;
-    let mut last_drop_block = None;
-    for drop_data in scope.drops.iter_mut().rev() {
-        if let Some(cached_block) = drop_data.cached_block {
-            if let Some((previous_block, previous_span, previous_value)) = previous {
-                cfg.terminate(previous_block,
-                              scope.id,
-                              previous_span,
-                              TerminatorKind::Drop {
-                                  value: previous_value,
-                                  target: cached_block,
-                                  unwind: None
-                              });
-                return last_drop_block.unwrap();
-            } else {
-                return cached_block;
-            }
-        } else {
-            let block = cfg.start_new_cleanup_block();
-            drop_data.cached_block = Some(block);
-            if let Some((previous_block, previous_span, previous_value)) = previous {
-                cfg.terminate(previous_block,
-                              scope.id,
-                              previous_span,
-                              TerminatorKind::Drop {
-                                  value: previous_value,
-                                  target: block,
-                                  unwind: None
-                              });
-            } else {
-                last_drop_block = Some(block);
-            }
-            previous = Some((block, drop_data.span, drop_data.value.clone()));
-        }
-    }
+    // Build up the drops in **reverse** order. The end result will
+    // look like:
+    //
+    //    [drops[n]] -...-> [drops[0]] -> [Free] -> [scopes[..n-1]]
+    //    |                                    |
+    //    +------------------------------------+
+    //     code for scopes[n]
+    //
+    // The code in this function reads from right to left. At each
+    // point, we check for cached blocks representing the
+    // remainder. If everything is cached, we'll just walk right to
+    // left reading the cached results but never created anything.
 
-    // Prepare the end target for this chain.
-    let mut target = target.unwrap_or_else(||{
-        let b = cfg.start_new_cleanup_block();
-        cfg.terminate(b, scope.id, DUMMY_SP, TerminatorKind::Resume); // TODO
-        b
-    });
+    // To start, translate scopes[1..].
+    let (scope, earlier_scopes) = scopes.split_last_mut().unwrap();
+    let mut target = if let Some(cached_block) = scope.cached_block {
+        cached_block
+    } else if earlier_scopes.is_empty() {
+        // Diverging from the root scope creates a RESUME terminator.
+        // FIXME what span to use here?
+        let resumeblk = cfg.start_new_cleanup_block();
+        cfg.terminate(resumeblk, scope.id, DUMMY_SP, TerminatorKind::Resume);
+        resumeblk
+    } else {
+        // Diverging from any other scope chains up to the previous scope.
+        build_diverge_scope(tcx, cfg, unit_temp, earlier_scopes)
+    };
+    scope.cached_block = Some(target);
 
-    // Then, build the free branching into the prepared target.
+    // Next, build up any free.
     if let Some(ref mut free_data) = scope.free {
         target = if let Some(cached_block) = free_data.cached_block {
             cached_block
@@ -665,29 +659,35 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
                           build_free(tcx, unit_temp, free_data, target));
             free_data.cached_block = Some(into);
             into
-        }
-    };
-
-    if let Some((previous_block, previous_span, previous_value)) = previous {
-        // Finally, branch into that just-built `target` from the `previous_block`.
-        cfg.terminate(previous_block,
-                      scope.id,
-                      previous_span,
-                      TerminatorKind::Drop {
-                          value: previous_value,
-                          target: target,
-                          unwind: None
-                      });
-        last_drop_block.unwrap()
-    } else {
-        // If `previous.is_none()`, there were no drops in this scope – we return the
-        // target.
-        target
+        };
     }
+
+    // Next, build up the drops. Here we iterate the vector in
+    // *forward* order, so that we generate drops[0] first (right to
+    // left in diagram above).
+    for drop_data in &mut scope.drops {
+        target = if let Some(cached_block) = drop_data.cached_block {
+            cached_block
+        } else {
+            let block = cfg.start_new_cleanup_block();
+            cfg.terminate(block,
+                          scope.id,
+                          drop_data.span,
+                          TerminatorKind::Drop {
+                              value: drop_data.value.clone(),
+                              target: target,
+                              unwind: None
+                          });
+            drop_data.cached_block = Some(block);
+            block
+        };
+    }
+
+    target
 }
 
 fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
-                    unit_temp: Lvalue<'tcx>,
+                    unit_temp: &Lvalue<'tcx>,
                     data: &FreeData<'tcx>,
                     target: BasicBlock)
                     -> TerminatorKind<'tcx> {
@@ -707,7 +707,7 @@ fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
             }
         }),
         args: vec![Operand::Consume(data.value.clone())],
-        destination: Some((unit_temp, target)),
+        destination: Some((unit_temp.clone(), target)),
         cleanup: None
     }
 }
