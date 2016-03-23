@@ -4952,7 +4952,7 @@ impl<'a> Parser<'a> {
             self.commit_expr_expecting(&expr, token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr))
         } else {
-            let (name, inner_attrs, node) = self.parse_impl_method(vis)?;
+            let (name, inner_attrs, node) = self.parse_impl_method(&vis)?;
             attrs.extend(inner_attrs);
             (name, node)
         };
@@ -4968,8 +4968,8 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
-        match visa {
+    fn complain_if_pub_macro(&mut self, visa: &Visibility, span: Span) {
+        match *visa {
             Visibility::Public => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid, _) => sid.name == intern("macro_rules"),
@@ -4993,7 +4993,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a method or a macro invocation in a trait impl.
-    fn parse_impl_method(&mut self, vis: Visibility)
+    fn parse_impl_method(&mut self, vis: &Visibility)
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if !self.token.is_any_keyword()
@@ -5003,7 +5003,7 @@ impl<'a> Parser<'a> {
             // method macro.
 
             let last_span = self.last_span;
-            self.complain_if_pub_macro(vis, last_span);
+            self.complain_if_pub_macro(&vis, last_span);
 
             let lo = self.span.lo;
             let pth = self.parse_path(NoTypesAllowed)?;
@@ -6045,7 +6045,7 @@ impl<'a> Parser<'a> {
             // MACRO INVOCATION ITEM
 
             let last_span = self.last_span;
-            self.complain_if_pub_macro(visibility, last_span);
+            self.complain_if_pub_macro(&visibility, last_span);
 
             let mac_lo = self.span.lo;
 

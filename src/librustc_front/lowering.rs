@@ -761,7 +761,7 @@ pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> hir::ImplItem {
         id: i.id,
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
-        vis: lower_visibility(lctx, i.vis),
+        vis: lower_visibility(lctx, &i.vis),
         defaultness: lower_defaultness(lctx, i.defaultness),
         node: match i.node {
             ImplItemKind::Const(ref ty, ref expr) => {
@@ -839,7 +839,7 @@ pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
         name: i.ident.name,
         attrs: lower_attrs(lctx, &i.attrs),
         node: node,
-        vis: lower_visibility(lctx, i.vis),
+        vis: lower_visibility(lctx, &i.vis),
         span: i.span,
     }
 }
@@ -857,7 +857,7 @@ pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> hir::Forei
                 hir::ForeignItemStatic(lower_ty(lctx, t), m)
             }
         },
-        vis: lower_visibility(lctx, i.vis),
+        vis: lower_visibility(lctx, &i.vis),
         span: i.span,
     }
 }
@@ -1706,8 +1706,8 @@ pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureBy) -> hir::Captu
     }
 }
 
-pub fn lower_visibility(_lctx: &LoweringContext, v: Visibility) -> hir::Visibility {
-    match v {
+pub fn lower_visibility(_lctx: &LoweringContext, v: &Visibility) -> hir::Visibility {
+    match *v {
         Visibility::Public => hir::Public,
         Visibility::Inherited => hir::Inherited,
     }

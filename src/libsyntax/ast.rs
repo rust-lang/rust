@@ -1868,7 +1868,7 @@ pub struct PolyTraitRef {
     pub span: Span,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
     Inherited,
@@ -1893,7 +1893,7 @@ impl StructField_ {
 
 pub type StructField = Spanned<StructField_>;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum StructFieldKind {
     NamedField(Ident, Visibility),
     /// Element of a tuple-like struct
@@ -1908,9 +1908,9 @@ impl StructFieldKind {
         }
     }
 
-    pub fn visibility(&self) -> Visibility {
+    pub fn visibility(&self) -> &Visibility {
         match *self {
-            NamedField(_, vis) | UnnamedField(vis) => vis
+            NamedField(_, ref vis) | UnnamedField(ref vis) => vis
         }
     }
 }
