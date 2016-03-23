@@ -383,7 +383,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    for attr in krate.module.as_ref().unwrap().attrs.list_def("doc") {
+    for attr in krate.module.as_ref().unwrap().attrs.list("doc") {
         match *attr {
             clean::Word(ref w) if "no_default_passes" == *w => {
                 default_passes = false;
