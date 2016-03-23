@@ -319,7 +319,7 @@ pub fn encode<T: ::Encodable>(object: &T) -> Result<string::String, EncoderError
     let mut s = String::new();
     {
         let mut encoder = Encoder::new(&mut s);
-        try!(object.encode(&mut encoder));
+        object.encode(&mut encoder)?;
     }
     Ok(s)
 }
@@ -371,7 +371,7 @@ pub type EncodeResult = Result<(), EncoderError>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
 fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
-    try!(wr.write_str("\""));
+    wr.write_str("\"")?;
 
     let mut start = 0;
 
@@ -416,19 +416,19 @@ fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
         };
 
         if start < i {
-            try!(wr.write_str(&v[start..i]));
+            wr.write_str(&v[start..i])?;
         }
 
-        try!(wr.write_str(escaped));
+        wr.write_str(escaped)?;
 
         start = i + 1;
     }
 
     if start != v.len() {
-        try!(wr.write_str(&v[start..]));
+        wr.write_str(&v[start..])?;
     }
 
-    try!(wr.write_str("\""));
+    wr.write_str("\"")?;
     Ok(())
 }
 
@@ -442,12 +442,12 @@ fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {
     const BUF: &'static str = "                ";
 
     while n >= BUF.len() {
-        try!(wr.write_str(BUF));
+        wr.write_str(BUF)?;
         n -= BUF.len();
     }
 
     if n > 0 {
-        try!(wr.write_str(&BUF[..n]));
+        wr.write_str(&BUF[..n])?;
     }
     Ok(())
 }
@@ -491,7 +491,7 @@ impl<'a> ::Encoder for Encoder<'a> {
 
     fn emit_nil(&mut self) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, "null"));
+        write!(self.writer, "null")?;
         Ok(())
     }
 
@@ -510,9 +510,9 @@ impl<'a> ::Encoder for Encoder<'a> {
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if v {
-            try!(write!(self.writer, "true"));
+            write!(self.writer, "true")?;
         } else {
-            try!(write!(self.writer, "false"));
+            write!(self.writer, "false")?;
         }
         Ok(())
     }
@@ -551,11 +551,11 @@ impl<'a> ::Encoder for Encoder<'a> {
             escape_str(self.writer, name)
         } else {
             if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-            try!(write!(self.writer, "{{\"variant\":"));
-            try!(escape_str(self.writer, name));
-            try!(write!(self.writer, ",\"fields\":["));
-            try!(f(self));
-            try!(write!(self.writer, "]}}"));
+            write!(self.writer, "{{\"variant\":")?;
+            escape_str(self.writer, name)?;
+            write!(self.writer, ",\"fields\":[")?;
+            f(self)?;
+            write!(self.writer, "]}}")?;
             Ok(())
         }
     }
@@ -565,7 +565,7 @@ impl<'a> ::Encoder for Encoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx != 0 {
-            try!(write!(self.writer, ","));
+            write!(self.writer, ",")?;
         }
         f(self)
     }
@@ -595,9 +595,9 @@ impl<'a> ::Encoder for Encoder<'a> {
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, "{{"));
-        try!(f(self));
-        try!(write!(self.writer, "}}"));
+        write!(self.writer, "{{")?;
+        f(self)?;
+        write!(self.writer, "}}")?;
         Ok(())
     }
 
@@ -605,9 +605,9 @@ impl<'a> ::Encoder for Encoder<'a> {
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        if idx != 0 { try!(write!(self.writer, ",")); }
-        try!(escape_str(self.writer, name));
-        try!(write!(self.writer, ":"));
+        if idx != 0 { write!(self.writer, ",")?; }
+        escape_str(self.writer, name)?;
+        write!(self.writer, ":")?;
         f(self)
     }
 
@@ -658,9 +658,9 @@ impl<'a> ::Encoder for Encoder<'a> {
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, "["));
-        try!(f(self));
-        try!(write!(self.writer, "]"));
+        write!(self.writer, "[")?;
+        f(self)?;
+        write!(self.writer, "]")?;
         Ok(())
     }
 
@@ -669,7 +669,7 @@ impl<'a> ::Encoder for Encoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx != 0 {
-            try!(write!(self.writer, ","));
+            write!(self.writer, ",")?;
         }
         f(self)
     }
@@ -678,9 +678,9 @@ impl<'a> ::Encoder for Encoder<'a> {
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, "{{"));
-        try!(f(self));
-        try!(write!(self.writer, "}}"));
+        write!(self.writer, "{{")?;
+        f(self)?;
+        write!(self.writer, "}}")?;
         Ok(())
     }
 
@@ -688,9 +688,9 @@ impl<'a> ::Encoder for Encoder<'a> {
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        if idx != 0 { try!(write!(self.writer, ",")) }
+        if idx != 0 { write!(self.writer, ",")? }
         self.is_emitting_map_key = true;
-        try!(f(self));
+        f(self)?;
         self.is_emitting_map_key = false;
         Ok(())
     }
@@ -699,7 +699,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, ":"));
+        write!(self.writer, ":")?;
         f(self)
     }
 }
@@ -739,7 +739,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
 
     fn emit_nil(&mut self) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, "null"));
+        write!(self.writer, "null")?;
         Ok(())
     }
 
@@ -758,9 +758,9 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     fn emit_bool(&mut self, v: bool) -> EncodeResult {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if v {
-            try!(write!(self.writer, "true"));
+            write!(self.writer, "true")?;
         } else {
-            try!(write!(self.writer, "false"));
+            write!(self.writer, "false")?;
         }
         Ok(())
     }
@@ -797,23 +797,23 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
             escape_str(self.writer, name)
         } else {
             if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-            try!(write!(self.writer, "{{\n"));
+            write!(self.writer, "{{\n")?;
             self.curr_indent += self.indent;
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "\"variant\": "));
-            try!(escape_str(self.writer, name));
-            try!(write!(self.writer, ",\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "\"fields\": [\n"));
+            spaces(self.writer, self.curr_indent)?;
+            write!(self.writer, "\"variant\": ")?;
+            escape_str(self.writer, name)?;
+            write!(self.writer, ",\n")?;
+            spaces(self.writer, self.curr_indent)?;
+            write!(self.writer, "\"fields\": [\n")?;
             self.curr_indent += self.indent;
-            try!(f(self));
+            f(self)?;
             self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
+            write!(self.writer, "\n")?;
+            spaces(self.writer, self.curr_indent)?;
             self.curr_indent -= self.indent;
-            try!(write!(self.writer, "]\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "}}"));
+            write!(self.writer, "]\n")?;
+            spaces(self.writer, self.curr_indent)?;
+            write!(self.writer, "}}")?;
             Ok(())
         }
     }
@@ -823,9 +823,9 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx != 0 {
-            try!(write!(self.writer, ",\n"));
+            write!(self.writer, ",\n")?;
         }
-        try!(spaces(self.writer, self.curr_indent));
+        spaces(self.writer, self.curr_indent)?;
         f(self)
     }
 
@@ -856,15 +856,15 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if len == 0 {
-            try!(write!(self.writer, "{{}}"));
+            write!(self.writer, "{{}}")?;
         } else {
-            try!(write!(self.writer, "{{"));
+            write!(self.writer, "{{")?;
             self.curr_indent += self.indent;
-            try!(f(self));
+            f(self)?;
             self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "}}"));
+            write!(self.writer, "\n")?;
+            spaces(self.writer, self.curr_indent)?;
+            write!(self.writer, "}}")?;
         }
         Ok(())
     }
@@ -874,13 +874,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
-            try!(write!(self.writer, "\n"));
+            write!(self.writer, "\n")?;
         } else {
-            try!(write!(self.writer, ",\n"));
+            write!(self.writer, ",\n")?;
         }
-        try!(spaces(self.writer, self.curr_indent));
-        try!(escape_str(self.writer, name));
-        try!(write!(self.writer, ": "));
+        spaces(self.writer, self.curr_indent)?;
+        escape_str(self.writer, name)?;
+        write!(self.writer, ": ")?;
         f(self)
     }
 
@@ -932,15 +932,15 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if len == 0 {
-            try!(write!(self.writer, "[]"));
+            write!(self.writer, "[]")?;
         } else {
-            try!(write!(self.writer, "["));
+            write!(self.writer, "[")?;
             self.curr_indent += self.indent;
-            try!(f(self));
+            f(self)?;
             self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "]"));
+            write!(self.writer, "\n")?;
+            spaces(self.writer, self.curr_indent)?;
+            write!(self.writer, "]")?;
         }
         Ok(())
     }
@@ -950,11 +950,11 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
-            try!(write!(self.writer, "\n"));
+            write!(self.writer, "\n")?;
         } else {
-            try!(write!(self.writer, ",\n"));
+            write!(self.writer, ",\n")?;
         }
-        try!(spaces(self.writer, self.curr_indent));
+        spaces(self.writer, self.curr_indent)?;
         f(self)
     }
 
@@ -963,15 +963,15 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if len == 0 {
-            try!(write!(self.writer, "{{}}"));
+            write!(self.writer, "{{}}")?;
         } else {
-            try!(write!(self.writer, "{{"));
+            write!(self.writer, "{{")?;
             self.curr_indent += self.indent;
-            try!(f(self));
+            f(self)?;
             self.curr_indent -= self.indent;
-            try!(write!(self.writer, "\n"));
-            try!(spaces(self.writer, self.curr_indent));
-            try!(write!(self.writer, "}}"));
+            write!(self.writer, "\n")?;
+            spaces(self.writer, self.curr_indent)?;
+            write!(self.writer, "}}")?;
         }
         Ok(())
     }
@@ -981,13 +981,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         if idx == 0 {
-            try!(write!(self.writer, "\n"));
+            write!(self.writer, "\n")?;
         } else {
-            try!(write!(self.writer, ",\n"));
+            write!(self.writer, ",\n")?;
         }
-        try!(spaces(self.writer, self.curr_indent));
+        spaces(self.writer, self.curr_indent)?;
         self.is_emitting_map_key = true;
-        try!(f(self));
+        f(self)?;
         self.is_emitting_map_key = false;
         Ok(())
     }
@@ -996,7 +996,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
-        try!(write!(self.writer, ": "));
+        write!(self.writer, ": ")?;
         f(self)
     }
 }
@@ -1695,7 +1695,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
                     'n' => res.push('\n'),
                     'r' => res.push('\r'),
                     't' => res.push('\t'),
-                    'u' => match try!(self.decode_hex_escape()) {
+                    'u' => match self.decode_hex_escape()? {
                         0xDC00 ... 0xDFFF => {
                             return self.error(LoneLeadingSurrogateInHexEscape)
                         }
@@ -1708,7 +1708,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
                                 _ => return self.error(UnexpectedEndOfHexEscape),
                             }
 
-                            let n2 = try!(self.decode_hex_escape());
+                            let n2 = self.decode_hex_escape()?;
                             if n2 < 0xDC00 || n2 > 0xDFFF {
                                 return self.error(LoneLeadingSurrogateInHexEscape)
                             }
@@ -2174,7 +2174,7 @@ impl ::Decoder for Decoder {
     }
 
     fn read_char(&mut self) -> DecodeResult<char> {
-        let s = try!(self.read_str());
+        let s = self.read_str()?;
         {
             let mut it = s.chars();
             match (it.next(), it.next()) {
@@ -2264,7 +2264,7 @@ impl ::Decoder for Decoder {
     fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        let value = try!(f(self));
+        let value = f(self)?;
         self.pop();
         Ok(value)
     }
@@ -2276,7 +2276,7 @@ impl ::Decoder for Decoder {
                                -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
-        let mut obj = try!(expect!(self.pop(), Object));
+        let mut obj = expect!(self.pop(), Object)?;
 
         let value = match obj.remove(&name.to_string()) {
             None => {
@@ -2290,7 +2290,7 @@ impl ::Decoder for Decoder {
             },
             Some(json) => {
                 self.stack.push(json);
-                try!(f(self))
+                f(self)?
             }
         };
         self.stack.push(Json::Object(obj));
@@ -2346,7 +2346,7 @@ impl ::Decoder for Decoder {
     fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
-        let array = try!(expect!(self.pop(), Array));
+        let array = expect!(self.pop(), Array)?;
         let len = array.len();
         for v in array.into_iter().rev() {
             self.stack.push(v);
@@ -2363,7 +2363,7 @@ impl ::Decoder for Decoder {
     fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
-        let obj = try!(expect!(self.pop(), Object));
+        let obj = expect!(self.pop(), Object)?;
         let len = obj.len();
         for (key, value) in obj {
             self.stack.push(value);

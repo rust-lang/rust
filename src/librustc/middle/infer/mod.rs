@@ -960,7 +960,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
-            let () = try!(mk_eqty(self, false, origin, a, b));
+            let () = mk_eqty(self, false, origin, a, b)?;
             self.leak_check(&skol_map, snapshot)
         })
     }

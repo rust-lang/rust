@@ -1473,7 +1473,7 @@ impl<'tcx> Encodable for AdtDef<'tcx> {
 
 impl<'tcx> Decodable for AdtDef<'tcx> {
     fn decode<D: Decoder>(d: &mut D) -> Result<AdtDef<'tcx>, D::Error> {
-        let def_id: DefId = try!{ Decodable::decode(d) };
+        let def_id: DefId = Decodable::decode(d)?;
 
         cstore::tls::with_decoding_context(d, |dcx, _| {
             let def_id = dcx.translate_def_id(def_id);

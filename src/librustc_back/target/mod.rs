@@ -464,11 +464,11 @@ impl Target {
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let mut f = try!(File::open(path).map_err(|e| e.to_string()));
+            let mut f = File::open(path).map_err(|e| e.to_string())?;
             let mut contents = Vec::new();
-            try!(f.read_to_end(&mut contents).map_err(|e| e.to_string()));
-            let obj = try!(json::from_reader(&mut &contents[..])
-                                .map_err(|e| e.to_string()));
+            f.read_to_end(&mut contents).map_err(|e| e.to_string())?;
+            let obj = json::from_reader(&mut &contents[..])
+                           .map_err(|e| e.to_string())?;
             Ok(Target::from_json(obj))
         }
 

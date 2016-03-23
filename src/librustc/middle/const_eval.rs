@@ -639,14 +639,14 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                 _ => {},
             }
         }
-        match try!(eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)) {
+        match eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)? {
           Float(f) => Float(-f),
           Integral(i) => Integral(math!(e, -i)),
           const_val => signal!(e, NegateOn(const_val)),
         }
       }
       hir::ExprUnary(hir::UnNot, ref inner) => {
-        match try!(eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)) {
+        match eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)? {
           Integral(i) => Integral(math!(e, !i)),
           Bool(b) => Bool(!b),
           const_val => signal!(e, NotOn(const_val)),
@@ -661,8 +661,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
         // gives us a type through a type-suffix, cast or const def type
         // we need to re-eval the other value of the BinOp if it was
         // not inferred
-        match (try!(eval_const_expr_partial(tcx, &a, ty_hint, fn_args)),
-               try!(eval_const_expr_partial(tcx, &b, b_ty, fn_args))) {
+        match (eval_const_expr_partial(tcx, &a, ty_hint, fn_args)?,
+               eval_const_expr_partial(tcx, &b, b_ty, fn_args)?) {
           (Float(a), Float(b)) => {
             match op.node {
               hir::BiAdd => Float(a + b),
@@ -744,7 +744,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                     // we had a type hint, so we can't have an unknown type
                     None => unreachable!(),
                 };
-                try!(eval_const_expr_partial(tcx, &base, hint, fn_args))
+                eval_const_expr_partial(tcx, &base, hint, fn_args)?
             },
             Err(e) => return Err(e),
         };
@@ -781,14 +781,14 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                           Some(ty) => ty_hint.checked_or(ty),
                           None => ty_hint,
                       };
-                      try!(eval_const_expr_partial(tcx, e, item_hint, None))
+                      eval_const_expr_partial(tcx, e, item_hint, None)?
                   } else {
                       signal!(e, NonConstPath);
                   }
               },
               Def::Variant(enum_def, variant_def) => {
                   if let Some(const_expr) = lookup_variant_by_id(tcx, enum_def, variant_def) {
-                      try!(eval_const_expr_partial(tcx, const_expr, ty_hint, None))
+                      eval_const_expr_partial(tcx, const_expr, ty_hint, None)?
                   } else {
                       signal!(e, NonConstPath);
                   }
@@ -810,7 +810,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
       }
       hir::ExprCall(ref callee, ref args) => {
           let sub_ty_hint = ty_hint.erase_hint();
-          let callee_val = try!(eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args));
+          let callee_val = eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)?;
           let did = match callee_val {
               Function(did) => did,
               callee => signal!(e, CallOn(callee)),
@@ -826,27 +826,27 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           let mut call_args = NodeMap();
           for (arg, arg_expr) in decl.inputs.iter().zip(args.iter()) {
               let arg_hint = ty_hint.erase_hint();
-              let arg_val = try!(eval_const_expr_partial(
+              let arg_val = eval_const_expr_partial(
                   tcx,
                   arg_expr,
                   arg_hint,
                   fn_args
-              ));
+              )?;
               debug!("const call arg: {:?}", arg);
               let old = call_args.insert(arg.pat.id, arg_val);
               assert!(old.is_none());
           }
           debug!("const call({:?})", call_args);
-          try!(eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args)))
+          eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
       },
-      hir::ExprLit(ref lit) => try!(lit_to_const(&lit.node, tcx, ety, lit.span)),
+      hir::ExprLit(ref lit) => lit_to_const(&lit.node, tcx, ety, lit.span)?,
       hir::ExprBlock(ref block) => {
         match block.expr {
-            Some(ref expr) => try!(eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)),
+            Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
             None => unreachable!(),
         }
       }
-      hir::ExprType(ref e, _) => try!(eval_const_expr_partial(tcx, &e, ty_hint, fn_args)),
+      hir::ExprType(ref e, _) => eval_const_expr_partial(tcx, &e, ty_hint, fn_args)?,
       hir::ExprTup(_) => Tuple(e.id),
       hir::ExprStruct(..) => Struct(e.id),
       hir::ExprIndex(ref arr, ref idx) => {
@@ -854,9 +854,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             signal!(e, IndexOpFeatureGated);
         }
         let arr_hint = ty_hint.erase_hint();
-        let arr = try!(eval_const_expr_partial(tcx, arr, arr_hint, fn_args));
+        let arr = eval_const_expr_partial(tcx, arr, arr_hint, fn_args)?;
         let idx_hint = ty_hint.checked_or(tcx.types.usize);
-        let idx = match try!(eval_const_expr_partial(tcx, idx, idx_hint, fn_args)) {
+        let idx = match eval_const_expr_partial(tcx, idx, idx_hint, fn_args)? {
             Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
             Integral(_) => unreachable!(),
             _ => signal!(idx, IndexNotInt),
@@ -866,18 +866,18 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             Array(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
             Array(v, n) => if let hir::ExprVec(ref v) = tcx.map.expect_expr(v).node {
                 assert_eq!(n as usize as u64, n);
-                try!(eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args))
+                eval_const_expr_partial(tcx, &v[idx as usize], ty_hint, fn_args)?
             } else {
                 unreachable!()
             },
 
             Repeat(_, n) if idx >= n => signal!(e, IndexOutOfBounds),
-            Repeat(elem, _) => try!(eval_const_expr_partial(
+            Repeat(elem, _) => eval_const_expr_partial(
                 tcx,
                 &tcx.map.expect_expr(elem),
                 ty_hint,
                 fn_args,
-            )),
+            )?,
 
             ByteStr(ref data) if idx >= data.len() as u64 => signal!(e, IndexOutOfBounds),
             ByteStr(data) => {
@@ -894,7 +894,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           let len_hint = ty_hint.checked_or(tcx.types.usize);
           Repeat(
               e.id,
-              match try!(eval_const_expr_partial(tcx, &n, len_hint, fn_args)) {
+              match eval_const_expr_partial(tcx, &n, len_hint, fn_args)? {
                   Integral(Usize(i)) => i.as_u64(tcx.sess.target.uint_type),
                   Integral(_) => signal!(e, RepeatCountNotNatural),
                   _ => signal!(e, RepeatCountNotInt),
@@ -903,11 +903,11 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
       },
       hir::ExprTupField(ref base, index) => {
         let base_hint = ty_hint.erase_hint();
-        let c = try!(eval_const_expr_partial(tcx, base, base_hint, fn_args));
+        let c = eval_const_expr_partial(tcx, base, base_hint, fn_args)?;
         if let Tuple(tup_id) = c {
             if let hir::ExprTup(ref fields) = tcx.map.expect_expr(tup_id).node {
                 if index.node < fields.len() {
-                    try!(eval_const_expr_partial(tcx, &fields[index.node], ty_hint, fn_args))
+                    eval_const_expr_partial(tcx, &fields[index.node], ty_hint, fn_args)?
                 } else {
                     signal!(e, TupleIndexOutOfBounds);
                 }
@@ -921,14 +921,14 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
       hir::ExprField(ref base, field_name) => {
         let base_hint = ty_hint.erase_hint();
         // Get the base expression if it is a struct and it is constant
-        let c = try!(eval_const_expr_partial(tcx, base, base_hint, fn_args));
+        let c = eval_const_expr_partial(tcx, base, base_hint, fn_args)?;
         if let Struct(struct_id) = c {
             if let hir::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
                 // Check that the given field exists and evaluate it
                 // if the idents are compared run-pass/issue-19244 fails
                 if let Some(f) = fields.iter().find(|f| f.name.node
                                                      == field_name.node) {
-                    try!(eval_const_expr_partial(tcx, &f.expr, ty_hint, fn_args))
+                    eval_const_expr_partial(tcx, &f.expr, ty_hint, fn_args)?
                 } else {
                     signal!(e, MissingStructField);
                 }
@@ -943,7 +943,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
     };
 
     match (ety.map(|t| &t.sty), result) {
-        (Some(ref ty_hint), Integral(i)) => Ok(Integral(try!(infer(i, tcx, ty_hint, e.span)))),
+        (Some(ref ty_hint), Integral(i)) => Ok(Integral(infer(i, tcx, ty_hint, e.span)?)),
         (_, result) => Ok(result),
     }
 }
@@ -1105,14 +1105,14 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
         ty::TyFloat(ast::FloatTy::F64) if val.is_negative() => {
             // FIXME: this could probably be prettier
             // there's no easy way to turn an `Infer` into a f64
-            let val = try!((-val).map_err(Math));
+            let val = (-val).map_err(Math)?;
             let val = val.to_u64().unwrap() as f64;
             let val = -val;
             Ok(Float(val))
         },
         ty::TyFloat(ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64)),
         ty::TyFloat(ast::FloatTy::F32) if val.is_negative() => {
-            let val = try!((-val).map_err(Math));
+            let val = (-val).map_err(Math)?;
             let val = val.to_u64().unwrap() as f32;
             let val = -val;
             Ok(Float(val as f64))

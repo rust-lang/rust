@@ -172,9 +172,9 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
                           data_addr as *mut libc::c_void)
     };
     if ret == 0 || data.is_null() {
-        try!(output(w, idx, addr, None));
+        output(w, idx, addr, None)?;
     } else {
-        try!(output(w, idx, addr, Some(unsafe { CStr::from_ptr(data).to_bytes() })));
+        output(w, idx, addr, Some(unsafe { CStr::from_ptr(data).to_bytes() }))?;
     }
 
     // pcinfo may return an arbitrary number of file:line pairs,
@@ -198,7 +198,7 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
         for (i, &(file, line)) in fileline_buf[..fileline_count].iter().enumerate() {
             if file.is_null() { continue; } // just to be sure
             let file = unsafe { CStr::from_ptr(file).to_bytes() };
-            try!(output_fileline(w, file, line, i == FILELINE_SIZE - 1));
+            output_fileline(w, file, line, i == FILELINE_SIZE - 1)?;
         }
     }
 

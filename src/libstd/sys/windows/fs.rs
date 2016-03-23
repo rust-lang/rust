@@ -248,13 +248,13 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let path = try!(to_u16s(path));
+        let path = to_u16s(path)?;
         let handle = unsafe {
             c::CreateFileW(path.as_ptr(),
-                           try!(opts.get_access_mode()),
+                           opts.get_access_mode()?,
                            opts.share_mode,
                            opts.security_attributes as *mut _,
-                           try!(opts.get_creation_mode()),
+                           opts.get_creation_mode()?,
                            opts.get_flags_and_attributes(),
                            ptr::null_mut())
         };
@@ -266,7 +266,7 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        try!(cvt(unsafe { c::FlushFileBuffers(self.handle.raw()) }));
+        cvt(unsafe { c::FlushFileBuffers(self.handle.raw()) })?;
         Ok(())
     }
 
@@ -277,20 +277,20 @@ impl File {
             EndOfFile: size as c::LARGE_INTEGER,
         };
         let size = mem::size_of_val(&info);
-        try!(cvt(unsafe {
+        cvt(unsafe {
             c::SetFileInformationByHandle(self.handle.raw(),
                                           c::FileEndOfFileInfo,
                                           &mut info as *mut _ as *mut _,
                                           size as c::DWORD)
-        }));
+        })?;
         Ok(())
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::BY_HANDLE_FILE_INFORMATION = mem::zeroed();
-            try!(cvt(c::GetFileInformationByHandle(self.handle.raw(),
-                                                   &mut info)));
+            cvt(c::GetFileInformationByHandle(self.handle.raw(),
+                                              &mut info))?;
             let mut attr = FileAttr {
                 attributes: info.dwFileAttributes,
                 creation_time: info.ftCreationTime,
@@ -331,16 +331,16 @@ impl File {
         };
         let pos = pos as c::LARGE_INTEGER;
         let mut newpos = 0;
-        try!(cvt(unsafe {
+        cvt(unsafe {
             c::SetFilePointerEx(self.handle.raw(), pos,
                                 &mut newpos, whence)
-        }));
+        })?;
         Ok(newpos as u64)
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
         Ok(File {
-            handle: try!(self.handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)),
+            handle: self.handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)?,
         })
     }
 
@@ -353,7 +353,7 @@ impl File {
                          -> io::Result<(c::DWORD, &'a c::REPARSE_DATA_BUFFER)> {
         unsafe {
             let mut bytes = 0;
-            try!(cvt({
+            cvt({
                 c::DeviceIoControl(self.handle.raw(),
                                    c::FSCTL_GET_REPARSE_POINT,
                                    ptr::null_mut(),
@@ -362,14 +362,14 @@ impl File {
                                    space.len() as c::DWORD,
                                    &mut bytes,
                                    ptr::null_mut())
-            }));
+            })?;
             Ok((bytes, &*(space.as_ptr() as *const c::REPARSE_DATA_BUFFER)))
         }
     }
 
     fn readlink(&self) -> io::Result<PathBuf> {
         let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-        let (_bytes, buf) = try!(self.reparse_point(&mut space));
+        let (_bytes, buf) = self.reparse_point(&mut space)?;
         unsafe {
             let (path_buffer, subst_off, subst_len, relative) = match buf.ReparseTag {
                 c::IO_REPARSE_TAG_SYMLINK => {
@@ -516,10 +516,10 @@ impl DirBuilder {
     pub fn new() -> DirBuilder { DirBuilder }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let p = try!(to_u16s(p));
-        try!(cvt(unsafe {
+        let p = to_u16s(p)?;
+        cvt(unsafe {
             c::CreateDirectoryW(p.as_ptr(), ptr::null_mut())
-        }));
+        })?;
         Ok(())
     }
 }
@@ -527,7 +527,7 @@ impl DirBuilder {
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = p.to_path_buf();
     let star = p.join("*");
-    let path = try!(to_u16s(&star));
+    let path = to_u16s(&star)?;
 
     unsafe {
         let mut wfd = mem::zeroed();
@@ -545,28 +545,28 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p_u16s = try!(to_u16s(p));
-    try!(cvt(unsafe { c::DeleteFileW(p_u16s.as_ptr()) }));
+    let p_u16s = to_u16s(p)?;
+    cvt(unsafe { c::DeleteFileW(p_u16s.as_ptr()) })?;
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = try!(to_u16s(old));
-    let new = try!(to_u16s(new));
-    try!(cvt(unsafe {
+    let old = to_u16s(old)?;
+    let new = to_u16s(new)?;
+    cvt(unsafe {
         c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING)
-    }));
+    })?;
     Ok(())
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = try!(to_u16s(p));
-    try!(cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) }));
+    let p = to_u16s(p)?;
+    cvt(unsafe { c::RemoveDirectoryW(p.as_ptr()) })?;
     Ok(())
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let filetype = try!(lstat(path)).file_type();
+    let filetype = lstat(path)?.file_type();
     if filetype.is_symlink() {
         // On Windows symlinks to files and directories are removed differently.
         // rmdir only deletes dir symlinks and junctions, not file symlinks.
@@ -577,15 +577,15 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 }
 
 fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
-    for child in try!(readdir(path)) {
-        let child = try!(child);
-        let child_type = try!(child.file_type());
+    for child in readdir(path)? {
+        let child = child?;
+        let child_type = child.file_type()?;
         if child_type.is_dir() {
-            try!(remove_dir_all_recursive(&child.path()));
+            remove_dir_all_recursive(&child.path())?;
         } else if child_type.is_symlink_dir() {
-            try!(rmdir(&child.path()));
+            rmdir(&child.path())?;
         } else {
-            try!(unlink(&child.path()));
+            unlink(&child.path())?;
         }
     }
     rmdir(path)
@@ -599,7 +599,7 @@ pub fn readlink(path: &Path) -> io::Result<PathBuf> {
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
                       c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = try!(File::open(&path, &opts));
+    let file = File::open(&path, &opts)?;
     file.readlink()
 }
 
@@ -608,21 +608,21 @@ pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
-    let src = try!(to_u16s(src));
-    let dst = try!(to_u16s(dst));
+    let src = to_u16s(src)?;
+    let dst = to_u16s(dst)?;
     let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
-    try!(cvt(unsafe {
+    cvt(unsafe {
         c::CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as c::BOOL
-    }));
+    })?;
     Ok(())
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = try!(to_u16s(src));
-    let dst = try!(to_u16s(dst));
-    try!(cvt(unsafe {
+    let src = to_u16s(src)?;
+    let dst = to_u16s(dst)?;
+    cvt(unsafe {
         c::CreateHardLinkW(dst.as_ptr(), src.as_ptr(), ptr::null_mut())
-    }));
+    })?;
     Ok(())
 }
 
@@ -632,7 +632,7 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
     opts.access_mode(0);
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = try!(File::open(path, &opts));
+    let file = File::open(path, &opts)?;
     file.file_attr()
 }
 
@@ -641,14 +641,14 @@ pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     // No read or write permissions are necessary
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
-    let file = try!(File::open(path, &opts));
+    let file = File::open(path, &opts)?;
     file.file_attr()
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = try!(to_u16s(p));
+    let p = to_u16s(p)?;
     unsafe {
-        try!(cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs)));
+        cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs))?;
         Ok(())
     }
 }
@@ -668,7 +668,7 @@ pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
     opts.access_mode(0);
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
-    let f = try!(File::open(p, &opts));
+    let f = File::open(p, &opts)?;
     get_path(&f)
 }
 
@@ -687,13 +687,13 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         *(lpData as *mut i64) = TotalBytesTransferred;
         c::PROGRESS_CONTINUE
     }
-    let pfrom = try!(to_u16s(from));
-    let pto = try!(to_u16s(to));
+    let pfrom = to_u16s(from)?;
+    let pto = to_u16s(to)?;
     let mut size = 0i64;
-    try!(cvt(unsafe {
+    cvt(unsafe {
         c::CopyFileExW(pfrom.as_ptr(), pto.as_ptr(), Some(callback),
                        &mut size as *mut _ as *mut _, ptr::null_mut(), 0)
-    }));
+    })?;
     Ok(size as u64)
 }
 
@@ -710,13 +710,13 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::R
 #[allow(dead_code)]
 fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
-    try!(d.mkdir(&junction));
+    d.mkdir(&junction)?;
 
     let mut opts = OpenOptions::new();
     opts.write(true);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
                       c::FILE_FLAG_BACKUP_SEMANTICS);
-    let f = try!(File::open(junction, &opts));
+    let f = File::open(junction, &opts)?;
     let h = f.handle().raw();
 
     unsafe {

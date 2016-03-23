@@ -86,7 +86,7 @@ impl Encodable for BytePos {
 
 impl Decodable for BytePos {
     fn decode<D: Decoder>(d: &mut D) -> Result<BytePos, D::Error> {
-        Ok(BytePos(try!{ d.read_u32() }))
+        Ok(BytePos(d.read_u32()?))
     }
 }
 
@@ -203,9 +203,9 @@ pub struct Spanned<T> {
 impl Encodable for Span {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("Span", 2, |s| {
-            try!(s.emit_struct_field("lo", 0, |s| {
+            s.emit_struct_field("lo", 0, |s| {
                 self.lo.encode(s)
-            }));
+            })?;
 
             s.emit_struct_field("hi", 1, |s| {
                 self.hi.encode(s)
@@ -217,13 +217,13 @@ impl Encodable for Span {
 impl Decodable for Span {
     fn decode<D: Decoder>(d: &mut D) -> Result<Span, D::Error> {
         d.read_struct("Span", 2, |d| {
-            let lo = try!(d.read_struct_field("lo", 0, |d| {
+            let lo = d.read_struct_field("lo", 0, |d| {
                 BytePos::decode(d)
-            }));
+            })?;
 
-            let hi = try!(d.read_struct_field("hi", 1, |d| {
+            let hi = d.read_struct_field("hi", 1, |d| {
                 BytePos::decode(d)
-            }));
+            })?;
 
             Ok(mk_sp(lo, hi))
         })
@@ -526,56 +526,55 @@ pub struct FileMap {
 impl Encodable for FileMap {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_struct("FileMap", 5, |s| {
-            try! { s.emit_struct_field("name", 0, |s| self.name.encode(s)) };
-            try! { s.emit_struct_field("start_pos", 1, |s| self.start_pos.encode(s)) };
-            try! { s.emit_struct_field("end_pos", 2, |s| self.end_pos.encode(s)) };
-            try! { s.emit_struct_field("lines", 3, |s| {
-                    let lines = self.lines.borrow();
-                    // store the length
-                    try! { s.emit_u32(lines.len() as u32) };
+            s.emit_struct_field("name", 0, |s| self.name.encode(s))?;
+            s.emit_struct_field("start_pos", 1, |s| self.start_pos.encode(s))?;
+            s.emit_struct_field("end_pos", 2, |s| self.end_pos.encode(s))?;
+            s.emit_struct_field("lines", 3, |s| {
+                let lines = self.lines.borrow();
+                // store the length
+                s.emit_u32(lines.len() as u32)?;
 
-                    if !lines.is_empty() {
-                        // In order to preserve some space, we exploit the fact that
-                        // the lines list is sorted and individual lines are
-                        // probably not that long. Because of that we can store lines
-                        // as a difference list, using as little space as possible
-                        // for the differences.
-                        let max_line_length = if lines.len() == 1 {
-                            0
-                        } else {
-                            lines.windows(2)
-                                 .map(|w| w[1] - w[0])
-                                 .map(|bp| bp.to_usize())
-                                 .max()
-                                 .unwrap()
-                        };
+                if !lines.is_empty() {
+                    // In order to preserve some space, we exploit the fact that
+                    // the lines list is sorted and individual lines are
+                    // probably not that long. Because of that we can store lines
+                    // as a difference list, using as little space as possible
+                    // for the differences.
+                    let max_line_length = if lines.len() == 1 {
+                        0
+                    } else {
+                        lines.windows(2)
+                             .map(|w| w[1] - w[0])
+                             .map(|bp| bp.to_usize())
+                             .max()
+                             .unwrap()
+                    };
 
-                        let bytes_per_diff: u8 = match max_line_length {
-                            0 ... 0xFF => 1,
-                            0x100 ... 0xFFFF => 2,
-                            _ => 4
-                        };
+                    let bytes_per_diff: u8 = match max_line_length {
+                        0 ... 0xFF => 1,
+                        0x100 ... 0xFFFF => 2,
+                        _ => 4
+                    };
 
-                        // Encode the number of bytes used per diff.
-                        try! { bytes_per_diff.encode(s) };
+                    // Encode the number of bytes used per diff.
+                    bytes_per_diff.encode(s)?;
 
-                        // Encode the first element.
-                        try! { lines[0].encode(s) };
+                    // Encode the first element.
+                    lines[0].encode(s)?;
 
-                        let diff_iter = (&lines[..]).windows(2)
-                                                    .map(|w| (w[1] - w[0]));
+                    let diff_iter = (&lines[..]).windows(2)
+                                                .map(|w| (w[1] - w[0]));
 
-                        match bytes_per_diff {
-                            1 => for diff in diff_iter { try! { (diff.0 as u8).encode(s) } },
-                            2 => for diff in diff_iter { try! { (diff.0 as u16).encode(s) } },
-                            4 => for diff in diff_iter { try! { diff.0.encode(s) } },
-                            _ => unreachable!()
-                        }
+                    match bytes_per_diff {
+                        1 => for diff in diff_iter { (diff.0 as u8).encode(s)? },
+                        2 => for diff in diff_iter { (diff.0 as u16).encode(s)? },
+                        4 => for diff in diff_iter { diff.0.encode(s)? },
+                        _ => unreachable!()
                     }
+                }
 
-                    Ok(())
-                })
-            };
+                Ok(())
+            })?;
             s.emit_struct_field("multibyte_chars", 4, |s| {
                 (*self.multibyte_chars.borrow()).encode(s)
             })
@@ -587,48 +586,39 @@ impl Decodable for FileMap {
     fn decode<D: Decoder>(d: &mut D) -> Result<FileMap, D::Error> {
 
         d.read_struct("FileMap", 5, |d| {
-            let name: String = try! {
-                d.read_struct_field("name", 0, |d| Decodable::decode(d))
-            };
-            let start_pos: BytePos = try! {
-                d.read_struct_field("start_pos", 1, |d| Decodable::decode(d))
-            };
-            let end_pos: BytePos = try! {
-                d.read_struct_field("end_pos", 2, |d| Decodable::decode(d))
-            };
-            let lines: Vec<BytePos> = try! {
-                d.read_struct_field("lines", 3, |d| {
-                    let num_lines: u32 = try! { Decodable::decode(d) };
-                    let mut lines = Vec::with_capacity(num_lines as usize);
+            let name: String = d.read_struct_field("name", 0, |d| Decodable::decode(d))?;
+            let start_pos: BytePos = d.read_struct_field("start_pos", 1, |d| Decodable::decode(d))?;
+            let end_pos: BytePos = d.read_struct_field("end_pos", 2, |d| Decodable::decode(d))?;
+            let lines: Vec<BytePos> = d.read_struct_field("lines", 3, |d| {
+                let num_lines: u32 = Decodable::decode(d)?;
+                let mut lines = Vec::with_capacity(num_lines as usize);
 
-                    if num_lines > 0 {
-                        // Read the number of bytes used per diff.
-                        let bytes_per_diff: u8 = try! { Decodable::decode(d) };
+                if num_lines > 0 {
+                    // Read the number of bytes used per diff.
+                    let bytes_per_diff: u8 = Decodable::decode(d)?;
 
-                        // Read the first element.
-                        let mut line_start: BytePos = try! { Decodable::decode(d) };
+                    // Read the first element.
+                    let mut line_start: BytePos = Decodable::decode(d)?;
+                    lines.push(line_start);
+
+                    for _ in 1..num_lines {
+                        let diff = match bytes_per_diff {
+                            1 => d.read_u8()? as u32,
+                            2 => d.read_u16()? as u32,
+                            4 => d.read_u32()?,
+                            _ => unreachable!()
+                        };
+
+                        line_start = line_start + BytePos(diff);
+
                         lines.push(line_start);
-
-                        for _ in 1..num_lines {
-                            let diff = match bytes_per_diff {
-                                1 => try! { d.read_u8() } as u32,
-                                2 => try! { d.read_u16() } as u32,
-                                4 => try! { d.read_u32() },
-                                _ => unreachable!()
-                            };
-
-                            line_start = line_start + BytePos(diff);
-
-                            lines.push(line_start);
-                        }
                     }
+                }
 
-                    Ok(lines)
-                })
-            };
-            let multibyte_chars: Vec<MultiByteChar> = try! {
-                d.read_struct_field("multibyte_chars", 4, |d| Decodable::decode(d))
-            };
+                Ok(lines)
+            })?;
+            let multibyte_chars: Vec<MultiByteChar> =
+                d.read_struct_field("multibyte_chars", 4, |d| Decodable::decode(d))?;
             Ok(FileMap {
                 name: name,
                 start_pos: start_pos,
@@ -730,7 +720,7 @@ impl FileLoader for RealFileLoader {
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
         let mut src = String::new();
-        try!(try!(fs::File::open(path)).read_to_string(&mut src));
+        fs::File::open(path)?.read_to_string(&mut src)?;
         Ok(src)
     }
 }
@@ -767,7 +757,7 @@ impl CodeMap {
     }
 
     pub fn load_file(&self, path: &Path) -> io::Result<Rc<FileMap>> {
-        let src = try!(self.file_loader.read_file(path));
+        let src = self.file_loader.read_file(path)?;
         Ok(self.new_filemap(path.to_str().unwrap().to_string(), src))
     }
 

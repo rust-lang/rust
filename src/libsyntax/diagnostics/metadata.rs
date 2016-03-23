@@ -76,11 +76,11 @@ pub fn output_metadata(ecx: &ExtCtxt, prefix: &str, name: &str, err_map: &ErrorM
 {
     // Create the directory to place the file in.
     let metadata_dir = get_metadata_dir(prefix);
-    try!(create_dir_all(&metadata_dir));
+    create_dir_all(&metadata_dir)?;
 
     // Open the metadata file.
     let metadata_path = get_metadata_path(metadata_dir, name);
-    let mut metadata_file = try!(File::create(&metadata_path));
+    let mut metadata_file = File::create(&metadata_path)?;
 
     // Construct a serializable map.
     let json_map = err_map.iter().map(|(k, &ErrorInfo { description, use_site })| {
@@ -95,7 +95,7 @@ pub fn output_metadata(ecx: &ExtCtxt, prefix: &str, name: &str, err_map: &ErrorM
     // Write the data to the file, deleting it if the write fails.
     let result = write!(&mut metadata_file, "{}", as_json(&json_map));
     if result.is_err() {
-        try!(remove_file(&metadata_path));
+        remove_file(&metadata_path)?;
     }
-    Ok(try!(result))
+    Ok(result?)
 }

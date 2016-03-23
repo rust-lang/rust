@@ -1182,7 +1182,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
         let var_id = upvar_def.var_id();
-        let var_ty = try!(self.typer.node_ty(var_id));
+        let var_ty = self.typer.node_ty(var_id)?;
         self.mc.cat_def(closure_id, closure_span, var_ty, upvar_def)
     }
 }

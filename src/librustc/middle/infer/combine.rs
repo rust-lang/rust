@@ -70,10 +70,10 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
     match (&a.sty, &b.sty) {
         // Relate integral variables to other types
         (&ty::TyInfer(ty::IntVar(a_id)), &ty::TyInfer(ty::IntVar(b_id))) => {
-            try!(infcx.int_unification_table
-                      .borrow_mut()
-                      .unify_var_var(a_id, b_id)
-                      .map_err(|e| int_unification_error(a_is_expected, e)));
+            infcx.int_unification_table
+                 .borrow_mut()
+                 .unify_var_var(a_id, b_id)
+                 .map_err(|e| int_unification_error(a_is_expected, e))?;
             Ok(a)
         }
         (&ty::TyInfer(ty::IntVar(v_id)), &ty::TyInt(v)) => {
@@ -91,10 +91,10 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
 
         // Relate floating-point variables to other types
         (&ty::TyInfer(ty::FloatVar(a_id)), &ty::TyInfer(ty::FloatVar(b_id))) => {
-            try!(infcx.float_unification_table
-                      .borrow_mut()
-                      .unify_var_var(a_id, b_id)
-                      .map_err(|e| float_unification_error(relation.a_is_expected(), e)));
+            infcx.float_unification_table
+                 .borrow_mut()
+                 .unify_var_var(a_id, b_id)
+                 .map_err(|e| float_unification_error(relation.a_is_expected(), e))?;
             Ok(a)
         }
         (&ty::TyInfer(ty::FloatVar(v_id)), &ty::TyFloat(v)) => {
@@ -123,11 +123,10 @@ fn unify_integral_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                     val: ty::IntVarValue)
                                     -> RelateResult<'tcx, Ty<'tcx>>
 {
-    try!(infcx
-         .int_unification_table
+    infcx.int_unification_table
          .borrow_mut()
          .unify_var_value(vid, val)
-         .map_err(|e| int_unification_error(vid_is_expected, e)));
+         .map_err(|e| int_unification_error(vid_is_expected, e))?;
     match val {
         IntType(v) => Ok(infcx.tcx.mk_mach_int(v)),
         UintType(v) => Ok(infcx.tcx.mk_mach_uint(v)),
@@ -140,11 +139,10 @@ fn unify_float_variable<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
                                  val: ast::FloatTy)
                                  -> RelateResult<'tcx, Ty<'tcx>>
 {
-    try!(infcx
-         .float_unification_table
+    infcx.float_unification_table
          .borrow_mut()
          .unify_var_value(vid, val)
-         .map_err(|e| float_unification_error(vid_is_expected, e)));
+         .map_err(|e| float_unification_error(vid_is_expected, e))?;
     Ok(infcx.tcx.mk_mach_float(val))
 }
 
@@ -229,10 +227,10 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
                 Some(t) => t, // ...already instantiated.
                 None => {     // ...not yet instantiated:
                     // Generalize type if necessary.
-                    let generalized_ty = try!(match dir {
+                    let generalized_ty = match dir {
                         EqTo => self.generalize(a_ty, b_vid, false),
                         BiTo | SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
-                    });
+                    }?;
                     debug!("instantiate(a_ty={:?}, dir={:?}, \
                                         b_vid={:?}, generalized_ty={:?})",
                            a_ty, dir, b_vid,
@@ -252,12 +250,12 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // relations wind up attributed to the same spans. We need
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
-            try!(match dir {
+            match dir {
                 BiTo => self.bivariate().relate(&a_ty, &b_ty),
                 EqTo => self.equate().relate(&a_ty, &b_ty),
                 SubtypeOf => self.sub().relate(&a_ty, &b_ty),
                 SupertypeOf => self.sub().relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
-            });
+            }?;
         }
 
         Ok(())

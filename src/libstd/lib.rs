@@ -270,6 +270,7 @@
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
+#![feature(question_mark)]
 
 // Issue# 30592: Systematically use alloc_system during stage0 since jemalloc
 // might be unavailable or disabled

@@ -131,7 +131,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
         // Start from -1 to avoid printing this stack frame, which will
         // always be exactly the same.
         let mut i = -1;
-        try!(write!(w, "stack backtrace:\n"));
+        write!(w, "stack backtrace:\n")?;
         while StackWalk64(image, process, thread, &mut frame, &mut context,
                           ptr::null_mut(),
                           ptr::null_mut(),
@@ -144,7 +144,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
             i += 1;
 
             if i >= 0 {
-                try!(printing::print(w, i, addr - 1, process, &dbghelp));
+                printing::print(w, i, addr - 1, process, &dbghelp)?;
             }
         }
 

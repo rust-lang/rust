@@ -208,12 +208,12 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
-                    try!(n_rec(p_s, next_m, res, ret_val, idx))
+                    n_rec(p_s, next_m, res, ret_val, idx)?
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
-                    try!(n_rec(p_s, next_m, res, ret_val, idx));
+                    n_rec(p_s, next_m, res, ret_val, idx)?;
                 }
             }
             TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {

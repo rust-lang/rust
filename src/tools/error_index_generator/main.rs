@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_private, rustdoc)]
+#![feature(question_mark)]
 
 extern crate syntax;
 extern crate rustdoc;
@@ -56,7 +57,7 @@ struct MarkdownFormatter;
 
 impl Formatter for HTMLFormatter {
     fn header(&self, output: &mut Write) -> Result<(), Box<Error>> {
-        try!(write!(output, r##"<!DOCTYPE html>
+        write!(output, r##"<!DOCTYPE html>
 <html>
 <head>
 <title>Rust Compiler Error Index</title>
@@ -71,12 +72,12 @@ impl Formatter for HTMLFormatter {
 </style>
 </head>
 <body>
-"##));
+"##)?;
         Ok(())
     }
 
     fn title(&self, output: &mut Write) -> Result<(), Box<Error>> {
-        try!(write!(output, "<h1>Rust Compiler Error Index</h1>\n"));
+        write!(output, "<h1>Rust Compiler Error Index</h1>\n")?;
         Ok(())
     }
 
@@ -91,25 +92,25 @@ impl Formatter for HTMLFormatter {
             Some(_) => "error-used",
             None => "error-unused",
         };
-        try!(write!(output, "<div class=\"{} {}\">", desc_desc, use_desc));
+        write!(output, "<div class=\"{} {}\">", desc_desc, use_desc)?;
 
         // Error title (with self-link).
-        try!(write!(output,
-                    "<h2 id=\"{0}\" class=\"section-header\"><a href=\"#{0}\">{0}</a></h2>\n",
-                    err_code));
+        write!(output,
+               "<h2 id=\"{0}\" class=\"section-header\"><a href=\"#{0}\">{0}</a></h2>\n",
+               err_code)?;
 
         // Description rendered as markdown.
         match info.description {
-            Some(ref desc) => try!(write!(output, "{}", Markdown(desc))),
-            None => try!(write!(output, "<p>No description.</p>\n")),
+            Some(ref desc) => write!(output, "{}", Markdown(desc))?,
+            None => write!(output, "<p>No description.</p>\n")?,
         }
 
-        try!(write!(output, "</div>\n"));
+        write!(output, "</div>\n")?;
         Ok(())
     }
 
     fn footer(&self, output: &mut Write) -> Result<(), Box<Error>> {
-        try!(write!(output, "</body>\n</html>"));
+        write!(output, "</body>\n</html>")?;
         Ok(())
     }
 }
@@ -121,14 +122,14 @@ impl Formatter for MarkdownFormatter {
     }
 
     fn title(&self, output: &mut Write) -> Result<(), Box<Error>> {
-        try!(write!(output, "# Rust Compiler Error Index\n"));
+        write!(output, "# Rust Compiler Error Index\n")?;
         Ok(())
     }
 
     fn error_code_block(&self, output: &mut Write, info: &ErrorMetadata,
                         err_code: &str) -> Result<(), Box<Error>> {
         Ok(match info.description {
-            Some(ref desc) => try!(write!(output, "## {}\n{}\n", err_code, desc)),
+            Some(ref desc) => write!(output, "## {}\n{}\n", err_code, desc)?,
             None => (),
         })
     }
@@ -143,13 +144,13 @@ impl Formatter for MarkdownFormatter {
 fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<Error>> {
     let mut all_errors = BTreeMap::new();
 
-    for entry in try!(read_dir(metadata_dir)) {
-        let path = try!(entry).path();
+    for entry in read_dir(metadata_dir)? {
+        let path = entry?.path();
 
         let mut metadata_str = String::new();
-        try!(File::open(&path).and_then(|mut f| f.read_to_string(&mut metadata_str)));
+        File::open(&path).and_then(|mut f| f.read_to_string(&mut metadata_str))?;
 
-        let some_errors: ErrorMetadataMap = try!(json::decode(&metadata_str));
+        let some_errors: ErrorMetadataMap = json::decode(&metadata_str)?;
 
         for (err_code, info) in some_errors {
             all_errors.insert(err_code, info);
@@ -162,26 +163,26 @@ fn load_all_errors(metadata_dir: &Path) -> Result<ErrorMetadataMap, Box<Error>> 
 /// Output an HTML page for the errors in `err_map` to `output_path`.
 fn render_error_page<T: Formatter>(err_map: &ErrorMetadataMap, output_path: &Path,
                                    formatter: T) -> Result<(), Box<Error>> {
-    let mut output_file = try!(File::create(output_path));
+    let mut output_file = File::create(output_path)?;
 
-    try!(formatter.header(&mut output_file));
-    try!(formatter.title(&mut output_file));
+    formatter.header(&mut output_file)?;
+    formatter.title(&mut output_file)?;
 
     for (err_code, info) in err_map {
-        try!(formatter.error_code_block(&mut output_file, info, err_code));
+        formatter.error_code_block(&mut output_file, info, err_code)?;
     }
 
     formatter.footer(&mut output_file)
 }
 
 fn main_with_result(format: OutputFormat, dst: &Path) -> Result<(), Box<Error>> {
-    let build_arch = try!(env::var("CFG_BUILD"));
+    let build_arch = env::var("CFG_BUILD")?;
     let metadata_dir = get_metadata_dir(&build_arch);
-    let err_map = try!(load_all_errors(&metadata_dir));
+    let err_map = load_all_errors(&metadata_dir)?;
     match format {
         OutputFormat::Unknown(s)  => panic!("Unknown output format: {}", s),
-        OutputFormat::HTML(h)     => try!(render_error_page(&err_map, dst, h)),
-        OutputFormat::Markdown(m) => try!(render_error_page(&err_map, dst, m)),
+        OutputFormat::HTML(h)     => render_error_page(&err_map, dst, h)?,
+        OutputFormat::Markdown(m) => render_error_page(&err_map, dst, m)?,
     }
     Ok(())
 }

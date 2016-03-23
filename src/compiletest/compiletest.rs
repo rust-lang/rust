@@ -15,6 +15,7 @@
 #![feature(rustc_private)]
 #![feature(str_char)]
 #![feature(test)]
+#![feature(question_mark)]
 
 #![deny(warnings)]
 
@@ -280,16 +281,16 @@ fn collect_tests_from_dir(config: &Config,
                           -> io::Result<()> {
     // Ignore directories that contain a file
     // `compiletest-ignore-dir`.
-    for file in try!(fs::read_dir(dir)) {
-        let file = try!(file);
+    for file in fs::read_dir(dir)? {
+        let file = file?;
         if file.file_name() == *"compiletest-ignore-dir" {
             return Ok(());
         }
     }
 
-    let dirs = try!(fs::read_dir(dir));
+    let dirs = fs::read_dir(dir)?;
     for file in dirs {
-        let file = try!(file);
+        let file = file?;
         let file_path = file.path();
         debug!("inspecting file {:?}", file_path.display());
         if is_test(config, &file_path) {
@@ -310,11 +311,11 @@ fn collect_tests_from_dir(config: &Config,
             tests.push(make_test(config, &paths))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
-            try!(collect_tests_from_dir(config,
-                                        base,
-                                        &file_path,
-                                        &relative_file_path,
-                                        tests));
+            collect_tests_from_dir(config,
+                                   base,
+                                   &file_path,
+                                   &relative_file_path,
+                                   tests)?;
         }
     }
     Ok(())

@@ -41,15 +41,15 @@ pub struct CodeExtent(u32);
 
 impl fmt::Debug for CodeExtent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "CodeExtent({:?}", self.0));
+        write!(f, "CodeExtent({:?}", self.0)?;
 
-        try!(ty::tls::with_opt(|opt_tcx| {
+        ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
                 let data = tcx.region_maps.code_extents.borrow()[self.0 as usize];
-                try!(write!(f, "/{:?}", data));
+                write!(f, "/{:?}", data)?;
             }
             Ok(())
-        }));
+        })?;
 
         write!(f, ")")
     }

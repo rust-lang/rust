@@ -34,23 +34,23 @@ fn fn_sig(f: &mut fmt::Formatter,
           variadic: bool,
           output: ty::FnOutput)
           -> fmt::Result {
-    try!(write!(f, "("));
+    write!(f, "(")?;
     let mut inputs = inputs.iter();
     if let Some(&ty) = inputs.next() {
-        try!(write!(f, "{}", ty));
+        write!(f, "{}", ty)?;
         for &ty in inputs {
-            try!(write!(f, ", {}", ty));
+            write!(f, ", {}", ty)?;
         }
         if variadic {
-            try!(write!(f, ", ..."));
+            write!(f, ", ...")?;
         }
     }
-    try!(write!(f, ")"));
+    write!(f, ")")?;
 
     match output {
         ty::FnConverging(ty) => {
             if !ty.is_nil() {
-                try!(write!(f, " -> {}", ty));
+                write!(f, " -> {}", ty)?;
             }
             Ok(())
         }
@@ -77,10 +77,10 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     where GG: for<'tcx> FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
 {
     if let (Ns::Value, Some(self_ty)) = (ns, substs.self_ty()) {
-        try!(write!(f, "<{} as ", self_ty));
+        write!(f, "<{} as ", self_ty)?;
     }
 
-    let (fn_trait_kind, verbose, last_name) = try!(ty::tls::with(|tcx| {
+    let (fn_trait_kind, verbose, last_name) = ty::tls::with(|tcx| {
         let (did, last_name) = if ns == Ns::Value {
             // Try to get the impl/trait parent, if this is an
             // associated value item (method or constant).
@@ -89,9 +89,9 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
         } else {
             (did, None)
         };
-        try!(write!(f, "{}", tcx.item_path_str(did)));
+        write!(f, "{}", tcx.item_path_str(did))?;
         Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose(), last_name))
-    }));
+    })?;
 
     let mut empty = true;
     let mut start_or_continue = |f: &mut fmt::Formatter, start: &str, cont: &str| {
@@ -106,25 +106,25 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     if verbose {
         match substs.regions {
             subst::ErasedRegions => {
-                try!(start_or_continue(f, "<", ", "));
-                try!(write!(f, ".."));
+                start_or_continue(f, "<", ", ")?;
+                write!(f, "..")?;
             }
             subst::NonerasedRegions(ref regions) => {
                 for region in regions {
-                    try!(start_or_continue(f, "<", ", "));
-                    try!(write!(f, "{:?}", region));
+                    start_or_continue(f, "<", ", ")?;
+                    write!(f, "{:?}", region)?;
                 }
             }
         }
         for &ty in &substs.types {
-            try!(start_or_continue(f, "<", ", "));
-            try!(write!(f, "{}", ty));
+            start_or_continue(f, "<", ", ")?;
+            write!(f, "{}", ty)?;
         }
         for projection in projections {
-            try!(start_or_continue(f, "<", ", "));
-            try!(write!(f, "{}={}",
-                        projection.projection_ty.item_name,
-                        projection.ty));
+            start_or_continue(f, "<", ", ")?;
+            write!(f, "{}={}",
+                   projection.projection_ty.item_name,
+                   projection.ty)?;
         }
         return start_or_continue(f, "", ">");
     }
@@ -140,7 +140,7 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
         subst::ErasedRegions => { }
         subst::NonerasedRegions(ref regions) => {
             for &r in regions {
-                try!(start_or_continue(f, "<", ", "));
+                start_or_continue(f, "<", ", ")?;
                 let s = r.to_string();
                 if s.is_empty() {
                     // This happens when the value of the region
@@ -148,9 +148,9 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
                     // because the user omitted it in the first place,
                     // or because it refers to some block in the code,
                     // etc. I'm not sure how best to serialize this.
-                    try!(write!(f, "'_"));
+                    write!(f, "'_")?;
                 } else {
-                    try!(write!(f, "{}", s));
+                    write!(f, "{}", s)?;
                 }
             }
         }
@@ -194,35 +194,35 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     });
 
     for &ty in &tps[..tps.len() - num_defaults] {
-        try!(start_or_continue(f, "<", ", "));
-        try!(write!(f, "{}", ty));
+        start_or_continue(f, "<", ", ")?;
+        write!(f, "{}", ty)?;
     }
 
     for projection in projections {
-        try!(start_or_continue(f, "<", ", "));
-        try!(write!(f, "{}={}",
-                    projection.projection_ty.item_name,
-                    projection.ty));
+        start_or_continue(f, "<", ", ")?;
+        write!(f, "{}={}",
+               projection.projection_ty.item_name,
+               projection.ty)?;
     }
 
-    try!(start_or_continue(f, "", ">"));
+    start_or_continue(f, "", ">")?;
 
     // For values, also print their name and type parameters.
     if ns == Ns::Value {
         if substs.self_ty().is_some() {
-            try!(write!(f, ">"));
+            write!(f, ">")?;
         }
 
         if let Some(name) = last_name {
-            try!(write!(f, "::{}", name));
+            write!(f, "::{}", name)?;
         }
         let tps = substs.types.get_slice(subst::FnSpace);
         if !tps.is_empty() {
-            try!(write!(f, "::<{}", tps[0]));
+            write!(f, "::<{}", tps[0])?;
             for ty in &tps[1..] {
-                try!(write!(f, ", {}", ty));
+                write!(f, ", {}", ty)?;
             }
-            try!(write!(f, ">"));
+            write!(f, ">")?;
         }
     }
 
@@ -273,7 +273,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
         })
     }).0;
 
-    try!(start_or_continue(f, "", "> "));
+    start_or_continue(f, "", "> ")?;
     write!(f, "{}", new_value)
 }
 
@@ -317,7 +317,7 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
         let bounds = &self.bounds;
 
         // Generate the main trait ref, including associated types.
-        try!(ty::tls::with(|tcx| {
+        ty::tls::with(|tcx| {
             let principal = tcx.lift(&self.principal.0)
                                .expect("could not lift TraitRef for printing");
             let projections = tcx.lift(&bounds.projection_bounds[..])
@@ -326,11 +326,11 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
 
             let tap = ty::Binder(TraitAndProjections(principal, projections));
             in_binder(f, tcx, &ty::Binder(""), Some(tap))
-        }));
+        })?;
 
         // Builtin bounds.
         for bound in &bounds.builtin_bounds {
-            try!(write!(f, " + {:?}", bound));
+            write!(f, " + {:?}", bound)?;
         }
 
         // FIXME: It'd be nice to compute from context when this bound
@@ -340,7 +340,7 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
         // people aware that it's there.
         let bound = bounds.region_bound.to_string();
         if !bound.is_empty() {
-            try!(write!(f, " + {}", bound));
+            write!(f, " + {}", bound)?;
         }
 
         Ok(())
@@ -648,19 +648,19 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
 
 impl<'tcx> fmt::Debug for ty::ImplOrTraitItem<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "ImplOrTraitItem("));
-        try!(match *self {
+        write!(f, "ImplOrTraitItem(")?;
+        match *self {
             ty::ImplOrTraitItem::MethodTraitItem(ref i) => write!(f, "{:?}", i),
             ty::ImplOrTraitItem::ConstTraitItem(ref i) => write!(f, "{:?}", i),
             ty::ImplOrTraitItem::TypeTraitItem(ref i) => write!(f, "{:?}", i),
-        });
+        }?;
         write!(f, ")")
     }
 }
 
 impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "fn"));
+        write!(f, "fn")?;
         fn_sig(f, &self.inputs, self.variadic, self.output)
     }
 }
@@ -679,18 +679,18 @@ impl<'tcx> fmt::Debug for ty::ExistentialBounds<'tcx> {
 
         let region_str = format!("{:?}", self.region_bound);
         if !region_str.is_empty() {
-            try!(maybe_continue(f));
-            try!(write!(f, "{}", region_str));
+            maybe_continue(f)?;
+            write!(f, "{}", region_str)?;
         }
 
         for bound in &self.builtin_bounds {
-            try!(maybe_continue(f));
-            try!(write!(f, "{:?}", bound));
+            maybe_continue(f)?;
+            write!(f, "{:?}", bound)?;
         }
 
         for projection_bound in &self.projection_bounds {
-            try!(maybe_continue(f));
-            try!(write!(f, "{:?}", projection_bound));
+            maybe_continue(f)?;
+            write!(f, "{:?}", projection_bound)?;
         }
 
         Ok(())
@@ -701,9 +701,9 @@ impl fmt::Display for ty::BuiltinBounds {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut bounds = self.iter();
         if let Some(bound) = bounds.next() {
-            try!(write!(f, "{:?}", bound));
+            write!(f, "{:?}", bound)?;
             for bound in bounds {
-                try!(write!(f, " + {:?}", bound));
+                write!(f, " + {:?}", bound)?;
             }
         }
         Ok(())
@@ -832,23 +832,23 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 },  tm.ty)
             }
             TyRef(r, ref tm) => {
-                try!(write!(f, "&"));
+                write!(f, "&")?;
                 let s = r.to_string();
-                try!(write!(f, "{}", s));
+                write!(f, "{}", s)?;
                 if !s.is_empty() {
-                    try!(write!(f, " "));
+                    write!(f, " ")?;
                 }
                 write!(f, "{}", tm)
             }
             TyTuple(ref tys) => {
-                try!(write!(f, "("));
+                write!(f, "(")?;
                 let mut tys = tys.iter();
                 if let Some(&ty) = tys.next() {
-                    try!(write!(f, "{},", ty));
+                    write!(f, "{},", ty)?;
                     if let Some(&ty) = tys.next() {
-                        try!(write!(f, " {}", ty));
+                        write!(f, " {}", ty)?;
                         for &ty in tys {
-                            try!(write!(f, ", {}", ty));
+                            write!(f, ", {}", ty)?;
                         }
                     }
                 }
@@ -856,25 +856,25 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             }
             TyFnDef(def_id, substs, ref bare_fn) => {
                 if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    try!(write!(f, "unsafe "));
+                    write!(f, "unsafe ")?;
                 }
 
                 if bare_fn.abi != Abi::Rust {
-                    try!(write!(f, "extern {} ", bare_fn.abi));
+                    write!(f, "extern {} ", bare_fn.abi)?;
                 }
 
-                try!(write!(f, "{} {{", bare_fn.sig.0));
-                try!(parameterized(f, substs, def_id, Ns::Value, &[],
-                                   |tcx| tcx.lookup_item_type(def_id).generics));
+                write!(f, "{} {{", bare_fn.sig.0)?;
+                parameterized(f, substs, def_id, Ns::Value, &[],
+                              |tcx| tcx.lookup_item_type(def_id).generics)?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
                 if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    try!(write!(f, "unsafe "));
+                    write!(f, "unsafe ")?;
                 }
 
                 if bare_fn.abi != Abi::Rust {
-                    try!(write!(f, "extern {} ", bare_fn.abi));
+                    write!(f, "extern {} ", bare_fn.abi)?;
                 }
 
                 write!(f, "{}", bare_fn.sig.0)
@@ -897,30 +897,30 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
             TyClosure(did, ref substs) => ty::tls::with(|tcx| {
-                try!(write!(f, "[closure"));
+                write!(f, "[closure")?;
 
                 if let Some(node_id) = tcx.map.as_local_node_id(did) {
-                    try!(write!(f, "@{:?}", tcx.map.span(node_id)));
+                    write!(f, "@{:?}", tcx.map.span(node_id))?;
                     let mut sep = " ";
-                    try!(tcx.with_freevars(node_id, |freevars| {
+                    tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
                             let node_id = freevar.def.var_id();
-                            try!(write!(f,
+                            write!(f,
                                         "{}{}:{}",
                                         sep,
                                         tcx.local_var_name_str(node_id),
-                                        upvar_ty));
+                                        upvar_ty)?;
                             sep = ", ";
                         }
                         Ok(())
-                    }))
+                    })?
                 } else {
                     // cross-crate closure types should only be
                     // visible in trans bug reports, I imagine.
-                    try!(write!(f, "@{:?}", did));
+                    write!(f, "@{:?}", did)?;
                     let mut sep = " ";
                     for (index, upvar_ty) in substs.upvar_tys.iter().enumerate() {
-                        try!(write!(f, "{}{}:{}", sep, index, upvar_ty));
+                        write!(f, "{}{}:{}", sep, index, upvar_ty)?;
                         sep = ", ";
                     }
                 }

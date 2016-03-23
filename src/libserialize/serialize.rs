@@ -410,13 +410,13 @@ impl<T: ?Sized + Encodable> Encodable for Box<T> {
 
 impl< T: Decodable> Decodable for Box<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Box<T>, D::Error> {
-        Ok(box try!(Decodable::decode(d)))
+        Ok(box Decodable::decode(d)?)
     }
 }
 
 impl< T: Decodable> Decodable for Box<[T]> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Box<[T]>, D::Error> {
-        let v: Vec<T> = try!(Decodable::decode(d));
+        let v: Vec<T> = Decodable::decode(d)?;
         Ok(v.into_boxed_slice())
     }
 }
@@ -431,7 +431,7 @@ impl<T:Encodable> Encodable for Rc<T> {
 impl<T:Decodable> Decodable for Rc<T> {
     #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Rc<T>, D::Error> {
-        Ok(Rc::new(try!(Decodable::decode(d))))
+        Ok(Rc::new(Decodable::decode(d)?))
     }
 }
 
@@ -439,7 +439,7 @@ impl<T:Encodable> Encodable for [T] {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                try!(s.emit_seq_elt(i, |s| e.encode(s)))
+                s.emit_seq_elt(i, |s| e.encode(s))?
             }
             Ok(())
         })
@@ -450,7 +450,7 @@ impl<T:Encodable> Encodable for Vec<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {
-                try!(s.emit_seq_elt(i, |s| e.encode(s)))
+                s.emit_seq_elt(i, |s| e.encode(s))?
             }
             Ok(())
         })
@@ -462,7 +462,7 @@ impl<T:Decodable> Decodable for Vec<T> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
             for i in 0..len {
-                v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
+                v.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
             }
             Ok(v)
         })
@@ -484,7 +484,7 @@ impl<T:Decodable> Decodable for Option<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Option<T>, D::Error> {
         d.read_option(|d, b| {
             if b {
-                Ok(Some(try!(Decodable::decode(d))))
+                Ok(Some(Decodable::decode(d)?))
             } else {
                 Ok(None)
             }
@@ -546,7 +546,7 @@ impl Encodable for path::PathBuf {
 
 impl Decodable for path::PathBuf {
     fn decode<D: Decoder>(d: &mut D) -> Result<path::PathBuf, D::Error> {
-        let bytes: String = try!(Decodable::decode(d));
+        let bytes: String = Decodable::decode(d)?;
         Ok(path::PathBuf::from(bytes))
     }
 }
@@ -559,7 +559,7 @@ impl<T: Encodable + Copy> Encodable for Cell<T> {
 
 impl<T: Decodable + Copy> Decodable for Cell<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Cell<T>, D::Error> {
-        Ok(Cell::new(try!(Decodable::decode(d))))
+        Ok(Cell::new(Decodable::decode(d)?))
     }
 }
 
@@ -576,7 +576,7 @@ impl<T: Encodable> Encodable for RefCell<T> {
 
 impl<T: Decodable> Decodable for RefCell<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<RefCell<T>, D::Error> {
-        Ok(RefCell::new(try!(Decodable::decode(d))))
+        Ok(RefCell::new(Decodable::decode(d)?))
     }
 }
 
@@ -588,7 +588,7 @@ impl<T:Encodable> Encodable for Arc<T> {
 
 impl<T:Decodable+Send+Sync> Decodable for Arc<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Arc<T>, D::Error> {
-        Ok(Arc::new(try!(Decodable::decode(d))))
+        Ok(Arc::new(Decodable::decode(d)?))
     }
 }
 
@@ -607,9 +607,9 @@ impl<S:Encoder> EncoderHelpers for S {
     {
         self.emit_seq(v.len(), |this| {
             for (i, e) in v.iter().enumerate() {
-                try!(this.emit_seq_elt(i, |this| {
+                this.emit_seq_elt(i, |this| {
                     f(this, e)
-                }));
+                })?;
             }
             Ok(())
         })
@@ -629,7 +629,7 @@ impl<D: Decoder> DecoderHelpers for D {
         self.read_seq(|this, len| {
             let mut v = Vec::with_capacity(len);
             for i in 0..len {
-                v.push(try!(this.read_seq_elt(i, |this| f(this))));
+                v.push(this.read_seq_elt(i, |this| f(this))?);
             }
             Ok(v)
         })

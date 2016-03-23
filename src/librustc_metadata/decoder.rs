@@ -1221,11 +1221,11 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
 
 fn list_crate_attributes(md: rbml::Doc, hash: &Svh,
                          out: &mut io::Write) -> io::Result<()> {
-    try!(write!(out, "=Crate Attributes ({})=\n", *hash));
+    write!(out, "=Crate Attributes ({})=\n", *hash)?;
 
     let r = get_attributes(md);
     for attr in &r {
-        try!(write!(out, "{}\n", pprust::attribute_to_string(attr)));
+        write!(out, "{}\n", pprust::attribute_to_string(attr))?;
     }
 
     write!(out, "\n\n")
@@ -1267,11 +1267,11 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
 }
 
 fn list_crate_deps(data: &[u8], out: &mut io::Write) -> io::Result<()> {
-    try!(write!(out, "=External Dependencies=\n"));
+    write!(out, "=External Dependencies=\n")?;
     for dep in &get_crate_deps(data) {
-        try!(write!(out, "{} {}-{}\n", dep.cnum, dep.name, dep.hash));
+        write!(out, "{} {}-{}\n", dep.cnum, dep.name, dep.hash)?;
     }
-    try!(write!(out, "\n"));
+    write!(out, "\n")?;
     Ok(())
 }
 
@@ -1308,7 +1308,7 @@ pub fn get_crate_name(data: &[u8]) -> String {
 pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Write) -> io::Result<()> {
     let hash = get_crate_hash(bytes);
     let md = rbml::Doc::new(bytes);
-    try!(list_crate_attributes(md, &hash, out));
+    list_crate_attributes(md, &hash, out)?;
     list_crate_deps(bytes, out)
 }
 

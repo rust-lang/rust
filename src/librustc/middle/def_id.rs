@@ -55,8 +55,8 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "DefId {{ krate: {:?}, node: {:?}",
-                    self.krate, self.index));
+        write!(f, "DefId {{ krate: {:?}, node: {:?}",
+               self.krate, self.index)?;
 
         // Unfortunately, there seems to be no way to attempt to print
         // a path for a def-id, so I'll just make a best effort for now
@@ -64,12 +64,12 @@ impl fmt::Debug for DefId {
         if self.is_local() { // (1)
             // (1) side-step fact that not all external things have paths at
             // the moment, such as type parameters
-            try!(ty::tls::with_opt(|opt_tcx| {
+            ty::tls::with_opt(|opt_tcx| {
                 if let Some(tcx) = opt_tcx {
-                    try!(write!(f, " => {}", tcx.item_path_str(*self)));
+                    write!(f, " => {}", tcx.item_path_str(*self))?;
                 }
                 Ok(())
-            }));
+            })?;
         }
 
         write!(f, " }}")

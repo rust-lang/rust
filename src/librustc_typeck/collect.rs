@@ -292,7 +292,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
             let def_ids = ensure_super_predicates_step(self, trait_def_id);
 
             for def_id in def_ids {
-                try!(self.ensure_super_predicates(span, def_id));
+                self.ensure_super_predicates(span, def_id)?;
             }
 
             Ok(())

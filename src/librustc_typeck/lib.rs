@@ -81,6 +81,7 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(question_mark)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -339,31 +340,27 @@ pub fn check_crate(tcx: &TyCtxt, trait_map: ty::TraitMap) -> CompileResult {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    try!(tcx.sess.track_errors(|| {
+    tcx.sess.track_errors(|| {
         time(time_passes, "type collecting", ||
              collect::collect_item_types(tcx));
 
-    }));
+    })?;
 
     time(time_passes, "variance inference", ||
          variance::infer_variance(tcx));
 
-    try!(tcx.sess.track_errors(|| {
+    tcx.sess.track_errors(|| {
       time(time_passes, "coherence checking", ||
           coherence::check_coherence(&ccx));
-    }));
+    })?;
 
-    try!(time(time_passes, "wf checking", ||
-        check::check_wf_new(&ccx)));
+    time(time_passes, "wf checking", || check::check_wf_new(&ccx))?;
 
-    try!(time(time_passes, "item-types checking", ||
-        check::check_item_types(&ccx)));
+    time(time_passes, "item-types checking", || check::check_item_types(&ccx))?;
 
-    try!(time(time_passes, "item-bodies checking", ||
-        check::check_item_bodies(&ccx)));
+    time(time_passes, "item-bodies checking", || check::check_item_bodies(&ccx))?;
 
-    try!(time(time_passes, "drop-impl checking", ||
-        check::check_drop_impls(&ccx)));
+    time(time_passes, "drop-impl checking", || check::check_drop_impls(&ccx))?;
 
     check_for_entry_fn(&ccx);
 

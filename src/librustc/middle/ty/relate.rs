@@ -108,7 +108,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TypeAndMut<'tcx> {
                 ast::Mutability::MutImmutable => ty::Covariant,
                 ast::Mutability::MutMutable => ty::Invariant,
             };
-            let ty = try!(relation.relate_with_variance(variance, &a.ty, &b.ty));
+            let ty = relation.relate_with_variance(variance, &a.ty, &b.ty)?;
             Ok(ty::TypeAndMut {ty: ty, mutbl: mutbl})
         }
     }
@@ -152,7 +152,7 @@ pub fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
         let a_tps = a_subst.types.get_slice(space);
         let b_tps = b_subst.types.get_slice(space);
         let t_variances = variances.map(|v| v.types.get_slice(space));
-        let tps = try!(relate_type_params(relation, t_variances, a_tps, b_tps));
+        let tps = relate_type_params(relation, t_variances, a_tps, b_tps)?;
         substs.types.replace(space, tps);
     }
 
@@ -166,10 +166,10 @@ pub fn relate_substs<'a,'tcx:'a,R>(relation: &mut R,
                 let a_regions = a.get_slice(space);
                 let b_regions = b.get_slice(space);
                 let r_variances = variances.map(|v| v.regions.get_slice(space));
-                let regions = try!(relate_region_params(relation,
-                                                        r_variances,
-                                                        a_regions,
-                                                        b_regions));
+                let regions = relate_region_params(relation,
+                                                   r_variances,
+                                                   a_regions,
+                                                   b_regions)?;
                 substs.mut_regions().replace(space, regions);
             }
         }
@@ -239,9 +239,9 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::BareFnTy<'tcx> {
                  -> RelateResult<'tcx, ty::BareFnTy<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let unsafety = try!(relation.relate(&a.unsafety, &b.unsafety));
-        let abi = try!(relation.relate(&a.abi, &b.abi));
-        let sig = try!(relation.relate(&a.sig, &b.sig));
+        let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
+        let abi = relation.relate(&a.abi, &b.abi)?;
+        let sig = relation.relate(&a.sig, &b.sig)?;
         Ok(ty::BareFnTy {unsafety: unsafety,
                          abi: abi,
                          sig: sig})
@@ -260,19 +260,19 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::FnSig<'tcx> {
                 expected_found(relation, &a.variadic, &b.variadic)));
         }
 
-        let inputs = try!(relate_arg_vecs(relation,
-                                          &a.inputs,
-                                          &b.inputs));
+        let inputs = relate_arg_vecs(relation,
+                                     &a.inputs,
+                                     &b.inputs)?;
 
-        let output = try!(match (a.output, b.output) {
+        let output = match (a.output, b.output) {
             (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>
-                Ok(ty::FnConverging(try!(relation.relate(&a_ty, &b_ty)))),
+                Ok(ty::FnConverging(relation.relate(&a_ty, &b_ty)?)),
             (ty::FnDiverging, ty::FnDiverging) =>
                 Ok(ty::FnDiverging),
             (a, b) =>
                 Err(TypeError::ConvergenceMismatch(
                     expected_found(relation, &(a != ty::FnDiverging), &(b != ty::FnDiverging)))),
-        });
+        }?;
 
         return Ok(ty::FnSig {inputs: inputs,
                              output: output,
@@ -336,7 +336,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ProjectionTy<'tcx> {
             Err(TypeError::ProjectionNameMismatched(
                 expected_found(relation, &a.item_name, &b.item_name)))
         } else {
-            let trait_ref = try!(relation.relate(&a.trait_ref, &b.trait_ref));
+            let trait_ref = relation.relate(&a.trait_ref, &b.trait_ref)?;
             Ok(ty::ProjectionTy { trait_ref: trait_ref, item_name: a.item_name })
         }
     }
@@ -349,8 +349,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ProjectionPredicate<'tcx> {
                  -> RelateResult<'tcx, ty::ProjectionPredicate<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let projection_ty = try!(relation.relate(&a.projection_ty, &b.projection_ty));
-        let ty = try!(relation.relate(&a.ty, &b.ty));
+        let projection_ty = relation.relate(&a.projection_ty, &b.projection_ty)?;
+        let ty = relation.relate(&a.ty, &b.ty)?;
         Ok(ty::ProjectionPredicate { projection_ty: projection_ty, ty: ty })
     }
 }
@@ -385,13 +385,13 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ExistentialBounds<'tcx> {
         where R: TypeRelation<'a,'tcx>
     {
         let r =
-            try!(relation.with_cause(
+            relation.with_cause(
                 Cause::ExistentialRegionBound,
                 |relation| relation.relate_with_variance(ty::Contravariant,
                                                          &a.region_bound,
-                                                         &b.region_bound)));
-        let nb = try!(relation.relate(&a.builtin_bounds, &b.builtin_bounds));
-        let pb = try!(relation.relate(&a.projection_bounds, &b.projection_bounds));
+                                                         &b.region_bound))?;
+        let nb = relation.relate(&a.builtin_bounds, &b.builtin_bounds)?;
+        let pb = relation.relate(&a.projection_bounds, &b.projection_bounds)?;
         Ok(ty::ExistentialBounds { region_bound: r,
                                    builtin_bounds: nb,
                                    projection_bounds: pb })
@@ -426,7 +426,7 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::TraitRef<'tcx> {
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
-            let substs = try!(relate_item_substs(relation, a.def_id, a.substs, b.substs));
+            let substs = relate_item_substs(relation, a.def_id, a.substs, b.substs)?;
             Ok(ty::TraitRef { def_id: a.def_id, substs: relation.tcx().mk_substs(substs) })
         }
     }
@@ -489,21 +489,21 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         (&ty::TyEnum(a_def, a_substs), &ty::TyEnum(b_def, b_substs))
             if a_def == b_def =>
         {
-            let substs = try!(relate_item_substs(relation, a_def.did, a_substs, b_substs));
+            let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
             Ok(tcx.mk_enum(a_def, tcx.mk_substs(substs)))
         }
 
         (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
         {
-            let principal = try!(relation.relate(&a_.principal, &b_.principal));
-            let bounds = try!(relation.relate(&a_.bounds, &b_.bounds));
+            let principal = relation.relate(&a_.principal, &b_.principal)?;
+            let bounds = relation.relate(&a_.bounds, &b_.bounds)?;
             Ok(tcx.mk_trait(principal, bounds))
         }
 
         (&ty::TyStruct(a_def, a_substs), &ty::TyStruct(b_def, b_substs))
             if a_def == b_def =>
         {
-            let substs = try!(relate_item_substs(relation, a_def.did, a_substs, b_substs));
+            let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
             Ok(tcx.mk_struct(a_def, tcx.mk_substs(substs)))
         }
 
@@ -514,32 +514,32 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
             // All TyClosure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
-            let substs = try!(relation.relate(a_substs, b_substs));
+            let substs = relation.relate(a_substs, b_substs)?;
             Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
         }
 
         (&ty::TyBox(a_inner), &ty::TyBox(b_inner)) =>
         {
-            let typ = try!(relation.relate(&a_inner, &b_inner));
+            let typ = relation.relate(&a_inner, &b_inner)?;
             Ok(tcx.mk_box(typ))
         }
 
         (&ty::TyRawPtr(ref a_mt), &ty::TyRawPtr(ref b_mt)) =>
         {
-            let mt = try!(relation.relate(a_mt, b_mt));
+            let mt = relation.relate(a_mt, b_mt)?;
             Ok(tcx.mk_ptr(mt))
         }
 
         (&ty::TyRef(a_r, ref a_mt), &ty::TyRef(b_r, ref b_mt)) =>
         {
-            let r = try!(relation.relate_with_variance(ty::Contravariant, a_r, b_r));
-            let mt = try!(relation.relate(a_mt, b_mt));
+            let r = relation.relate_with_variance(ty::Contravariant, a_r, b_r)?;
+            let mt = relation.relate(a_mt, b_mt)?;
             Ok(tcx.mk_ref(tcx.mk_region(r), mt))
         }
 
         (&ty::TyArray(a_t, sz_a), &ty::TyArray(b_t, sz_b)) =>
         {
-            let t = try!(relation.relate(&a_t, &b_t));
+            let t = relation.relate(&a_t, &b_t)?;
             if sz_a == sz_b {
                 Ok(tcx.mk_array(t, sz_a))
             } else {
@@ -549,16 +549,16 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
 
         (&ty::TySlice(a_t), &ty::TySlice(b_t)) =>
         {
-            let t = try!(relation.relate(&a_t, &b_t));
+            let t = relation.relate(&a_t, &b_t)?;
             Ok(tcx.mk_slice(t))
         }
 
         (&ty::TyTuple(ref as_), &ty::TyTuple(ref bs)) =>
         {
             if as_.len() == bs.len() {
-                let ts = try!(as_.iter().zip(bs)
-                                 .map(|(a, b)| relation.relate(a, b))
-                                 .collect::<Result<_, _>>());
+                let ts = as_.iter().zip(bs)
+                            .map(|(a, b)| relation.relate(a, b))
+                            .collect::<Result<_, _>>()?;
                 Ok(tcx.mk_tup(ts))
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
@@ -572,20 +572,20 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
          &ty::TyFnDef(b_def_id, b_substs, b_fty))
             if a_def_id == b_def_id =>
         {
-            let substs = try!(relate_substs(relation, None, a_substs, b_substs));
-            let fty = try!(relation.relate(a_fty, b_fty));
+            let substs = relate_substs(relation, None, a_substs, b_substs)?;
+            let fty = relation.relate(a_fty, b_fty)?;
             Ok(tcx.mk_fn_def(a_def_id, tcx.mk_substs(substs), fty))
         }
 
         (&ty::TyFnPtr(a_fty), &ty::TyFnPtr(b_fty)) =>
         {
-            let fty = try!(relation.relate(a_fty, b_fty));
+            let fty = relation.relate(a_fty, b_fty)?;
             Ok(tcx.mk_fn_ptr(fty))
         }
 
         (&ty::TyProjection(ref a_data), &ty::TyProjection(ref b_data)) =>
         {
-            let projection_ty = try!(relation.relate(a_data, b_data));
+            let projection_ty = relation.relate(a_data, b_data)?;
             Ok(tcx.mk_projection(projection_ty.trait_ref, projection_ty.item_name))
         }
 
@@ -603,8 +603,8 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ClosureSubsts<'tcx> {
                  -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>>
         where R: TypeRelation<'a,'tcx>
     {
-        let func_substs = try!(relate_substs(relation, None, a.func_substs, b.func_substs));
-        let upvar_tys = try!(relation.relate_zip(&a.upvar_tys, &b.upvar_tys));
+        let func_substs = relate_substs(relation, None, a.func_substs, b.func_substs)?;
+        let upvar_tys = relation.relate_zip(&a.upvar_tys, &b.upvar_tys)?;
         Ok(ty::ClosureSubsts { func_substs: relation.tcx().mk_substs(func_substs),
                                upvar_tys: upvar_tys })
     }
@@ -645,7 +645,7 @@ impl<'a,'tcx:'a,T> Relate<'a,'tcx> for Rc<T>
     {
         let a: &T = a;
         let b: &T = b;
-        Ok(Rc::new(try!(relation.relate(a, b))))
+        Ok(Rc::new(relation.relate(a, b)?))
     }
 }
 
@@ -660,7 +660,7 @@ impl<'a,'tcx:'a,T> Relate<'a,'tcx> for Box<T>
     {
         let a: &T = a;
         let b: &T = b;
-        Ok(Box::new(try!(relation.relate(a, b))))
+        Ok(Box::new(relation.relate(a, b)?))
     }
 }
 

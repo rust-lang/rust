@@ -29,7 +29,7 @@ impl<'a> fmt::Display for Escape<'a> {
         for (i, ch) in s.bytes().enumerate() {
             match ch as char {
                 '<' | '>' | '&' | '\'' | '"' => {
-                    try!(fmt.write_str(&pile_o_bits[last.. i]));
+                    fmt.write_str(&pile_o_bits[last.. i])?;
                     let s = match ch as char {
                         '>' => "&gt;",
                         '<' => "&lt;",
@@ -38,7 +38,7 @@ impl<'a> fmt::Display for Escape<'a> {
                         '"' => "&quot;",
                         _ => unreachable!()
                     };
-                    try!(fmt.write_str(s));
+                    fmt.write_str(s)?;
                     last = i + 1;
                 }
                 _ => {}
@@ -46,7 +46,7 @@ impl<'a> fmt::Display for Escape<'a> {
         }
 
         if last < s.len() {
-            try!(fmt.write_str(&pile_o_bits[last..]));
+            fmt.write_str(&pile_o_bits[last..])?;
         }
         Ok(())
     }

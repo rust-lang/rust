@@ -41,7 +41,7 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
                   current_page: &BookItem,
                   out: &mut Write) -> io::Result<()> {
         for (i, item) in items.iter().enumerate() {
-            try!(walk_item(item, &format!("{}{}.", section, i + 1)[..], current_page, out));
+            walk_item(item, &format!("{}{}.", section, i + 1)[..], current_page, out)?;
         }
         Ok(())
     }
@@ -55,32 +55,32 @@ fn write_toc(book: &Book, current_page: &BookItem, out: &mut Write) -> io::Resul
             ""
         };
 
-        try!(writeln!(out, "<li><a {} href='{}'><b>{}</b> {}</a>",
-                      class_string,
-                      current_page.path_to_root.join(&item.path).with_extension("html").display(),
-                      section,
-                      item.title));
+        writeln!(out, "<li><a {} href='{}'><b>{}</b> {}</a>",
+                 class_string,
+                 current_page.path_to_root.join(&item.path).with_extension("html").display(),
+                 section,
+                 item.title)?;
         if !item.children.is_empty() {
-            try!(writeln!(out, "<ul class='section'>"));
+            writeln!(out, "<ul class='section'>")?;
             let _ = walk_items(&item.children[..], section, current_page, out);
-            try!(writeln!(out, "</ul>"));
+            writeln!(out, "</ul>")?;
         }
-        try!(writeln!(out, "</li>"));
+        writeln!(out, "</li>")?;
 
         Ok(())
     }
 
-    try!(writeln!(out, "<div id='toc' class='mobile-hidden'>"));
-    try!(writeln!(out, "<ul class='chapter'>"));
-    try!(walk_items(&book.chapters[..], "", &current_page, out));
-    try!(writeln!(out, "</ul>"));
-    try!(writeln!(out, "</div>"));
+    writeln!(out, "<div id='toc' class='mobile-hidden'>")?;
+    writeln!(out, "<ul class='chapter'>")?;
+    walk_items(&book.chapters[..], "", &current_page, out)?;
+    writeln!(out, "</ul>")?;
+    writeln!(out, "</div>")?;
 
     Ok(())
 }
 
 fn render(book: &Book, tgt: &Path) -> CliResult<()> {
-    let tmp = try!(TempDir::new("rustbook"));
+    let tmp = TempDir::new("rustbook")?;
 
     for (_section, item) in book.iter() {
         let out_path = match item.path.parent() {
@@ -97,22 +97,22 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         // preprocess the markdown, rerouting markdown references to html
         // references
         let mut markdown_data = String::new();
-        try!(File::open(&src.join(&item.path)).and_then(|mut f| {
+        File::open(&src.join(&item.path)).and_then(|mut f| {
             f.read_to_string(&mut markdown_data)
-        }));
+        })?;
         let preprocessed_path = tmp.path().join(item.path.file_name().unwrap());
         {
             let urls = markdown_data.replace(".md)", ".html)");
-            try!(File::create(&preprocessed_path).and_then(|mut f| {
+            File::create(&preprocessed_path).and_then(|mut f| {
                 f.write_all(urls.as_bytes())
-            }));
+            })?;
         }
 
         // write the prelude to a temporary HTML file for rustdoc inclusion
         let prelude = tmp.path().join("prelude.html");
         {
-            let mut buffer = BufWriter::new(try!(File::create(&prelude)));
-            try!(writeln!(&mut buffer, r#"
+            let mut buffer = BufWriter::new(File::create(&prelude)?);
+            writeln!(&mut buffer, r#"
                 <div id="nav">
                     <button id="toggle-nav">
                         <span class="sr-only">Toggle navigation</span>
@@ -120,22 +120,22 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
                         <span class="bar"></span>
                         <span class="bar"></span>
                     </button>
-                </div>"#));
+                </div>"#)?;
             let _ = write_toc(book, &item, &mut buffer);
-            try!(writeln!(&mut buffer, "<div id='page-wrapper'>"));
-            try!(writeln!(&mut buffer, "<div id='page'>"));
+            writeln!(&mut buffer, "<div id='page-wrapper'>")?;
+            writeln!(&mut buffer, "<div id='page'>")?;
         }
 
         // write the postlude to a temporary HTML file for rustdoc inclusion
         let postlude = tmp.path().join("postlude.html");
         {
-            let mut buffer = BufWriter::new(try!(File::create(&postlude)));
-            try!(writeln!(&mut buffer, "<script src='rustbook.js'></script>"));
-            try!(writeln!(&mut buffer, "<script src='playpen.js'></script>"));
-            try!(writeln!(&mut buffer, "</div></div>"));
+            let mut buffer = BufWriter::new(File::create(&postlude)?);
+            writeln!(&mut buffer, "<script src='rustbook.js'></script>")?;
+            writeln!(&mut buffer, "<script src='playpen.js'></script>")?;
+            writeln!(&mut buffer, "</div></div>")?;
         }
 
-        try!(fs::create_dir_all(&out_path));
+        fs::create_dir_all(&out_path)?;
 
         let rustdoc_args: &[String] = &[
             "".to_string(),
@@ -156,12 +156,12 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
     }
 
     // create index.html from the root README
-    try!(fs::copy(&tgt.join("README.html"), &tgt.join("index.html")));
+    fs::copy(&tgt.join("README.html"), &tgt.join("index.html"))?;
 
     // Copy js for playpen
-    let mut playpen = try!(File::create(tgt.join("playpen.js")));
+    let mut playpen = File::create(tgt.join("playpen.js"))?;
     let js = include_bytes!("../../librustdoc/html/static/playpen.js");
-    try!(playpen.write_all(js));
+    playpen.write_all(js)?;
     Ok(())
 }
 
@@ -189,24 +189,24 @@ impl Subcommand for Build {
 
         // `_book` directory may already exist from previous runs. Check and
         // delete it if it exists.
-        for entry in try!(fs::read_dir(&cwd)) {
-            let path = try!(entry).path();
-            if path == tgt { try!(fs::remove_dir_all(&tgt)) }
+        for entry in fs::read_dir(&cwd)? {
+            let path = entry?.path();
+            if path == tgt { fs::remove_dir_all(&tgt)? }
         }
-        try!(fs::create_dir(&tgt));
+        fs::create_dir(&tgt)?;
 
         // Copy static files
         let css = include_bytes!("static/rustbook.css");
         let js = include_bytes!("static/rustbook.js");
 
-        let mut css_file = try!(File::create(tgt.join("rustbook.css")));
-        try!(css_file.write_all(css));
+        let mut css_file = File::create(tgt.join("rustbook.css"))?;
+        css_file.write_all(css)?;
 
-        let mut js_file = try!(File::create(tgt.join("rustbook.js")));
-        try!(js_file.write_all(js));
+        let mut js_file = File::create(tgt.join("rustbook.js"))?;
+        js_file.write_all(js)?;
 
 
-        let mut summary = try!(File::open(&src.join("SUMMARY.md")));
+        let mut summary = File::open(&src.join("SUMMARY.md"))?;
         match book::parse_summary(&mut summary, &src) {
             Ok(book) => {
                 // execute rustdoc on the whole book

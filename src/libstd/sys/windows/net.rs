@@ -92,35 +92,35 @@ impl Socket {
             SocketAddr::V4(..) => c::AF_INET,
             SocketAddr::V6(..) => c::AF_INET6,
         };
-        let socket = try!(unsafe {
+        let socket = unsafe {
             match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
                                 c::WSA_FLAG_OVERLAPPED) {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
     pub fn accept(&self, storage: *mut c::SOCKADDR,
                   len: *mut c_int) -> io::Result<Socket> {
-        let socket = try!(unsafe {
+        let socket = unsafe {
             match c::accept(self.0, storage, len) {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        let socket = try!(unsafe {
+        let socket = unsafe {
             let mut info: c::WSAPROTOCOL_INFO = mem::zeroed();
-            try!(cvt(c::WSADuplicateSocketW(self.0,
+            cvt(c::WSADuplicateSocketW(self.0,
                                             c::GetCurrentProcessId(),
-                                            &mut info)));
+                                            &mut info))?;
             match c::WSASocketW(info.iAddressFamily,
                                 info.iSocketType,
                                 info.iProtocol,
@@ -129,8 +129,8 @@ impl Socket {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
-        });
-        try!(socket.set_no_inherit());
+        }?;
+        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -169,7 +169,7 @@ impl Socket {
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
-        let raw: c::DWORD = try!(net::getsockopt(self, c::SOL_SOCKET, kind));
+        let raw: c::DWORD = net::getsockopt(self, c::SOL_SOCKET, kind)?;
         if raw == 0 {
             Ok(None)
         } else {
@@ -192,7 +192,7 @@ impl Socket {
             Shutdown::Read => c::SD_RECEIVE,
             Shutdown::Both => c::SD_BOTH,
         };
-        try!(cvt(unsafe { c::shutdown(self.0, how) }));
+        cvt(unsafe { c::shutdown(self.0, how) })?;
         Ok(())
     }
 
@@ -211,12 +211,12 @@ impl Socket {
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c::BYTE = try!(net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY));
+        let raw: c::BYTE = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = try!(net::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR));
+        let raw: c_int = net::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
         if raw == 0 {
             Ok(None)
         } else {

@@ -77,6 +77,7 @@
 #![feature(rustc_attrs)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(question_mark)]
 
 #[macro_use]
 mod macros;

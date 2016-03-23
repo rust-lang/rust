@@ -29,7 +29,7 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
             if self.on_newline {
-                try!(self.fmt.write_str("    "));
+                self.fmt.write_str("    ")?;
             }
 
             let split = match s.find('\n') {
@@ -42,7 +42,7 @@ impl<'a, 'b: 'a> fmt::Write for PadAdapter<'a, 'b> {
                     s.len()
                 }
             };
-            try!(self.fmt.write_str(&s[..split]));
+            self.fmt.write_str(&s[..split])?;
             s = &s[split..];
         }
 
@@ -169,10 +169,10 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
         if self.fields > 0 {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
-                    try!(self.fmt.write_str("\n"));
+                    self.fmt.write_str("\n")?;
                 }
                 if self.fields == 1 && self.empty_name {
-                    try!(self.fmt.write_str(","));
+                    self.fmt.write_str(",")?;
                 }
                 self.fmt.write_str(")")
             });

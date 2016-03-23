@@ -78,8 +78,8 @@ impl<'a, 'tcx> LatticeDir<'a,'tcx> for Glb<'a, 'tcx> {
 
     fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
         let mut sub = self.fields.sub();
-        try!(sub.relate(&v, &a));
-        try!(sub.relate(&v, &b));
+        sub.relate(&v, &a)?;
+        sub.relate(&v, &b)?;
         Ok(())
     }
 }

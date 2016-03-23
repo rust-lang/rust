@@ -205,7 +205,7 @@ impl<T: ?Sized> RwLock<T> {
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
         unsafe {
             if self.inner.lock.try_read() {
-                Ok(try!(RwLockReadGuard::new(&*self.inner, &self.data)))
+                Ok(RwLockReadGuard::new(&*self.inner, &self.data)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
@@ -257,7 +257,7 @@ impl<T: ?Sized> RwLock<T> {
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
         unsafe {
             if self.inner.lock.try_write() {
-                Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
+                Ok(RwLockWriteGuard::new(&*self.inner, &self.data)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
@@ -382,7 +382,7 @@ impl StaticRwLock {
                     -> TryLockResult<RwLockReadGuard<'static, ()>> {
         unsafe {
             if self.lock.try_read(){
-                Ok(try!(RwLockReadGuard::new(self, &DUMMY.0)))
+                Ok(RwLockReadGuard::new(self, &DUMMY.0)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
@@ -409,7 +409,7 @@ impl StaticRwLock {
                      -> TryLockResult<RwLockWriteGuard<'static, ()>> {
         unsafe {
             if self.lock.try_write() {
-                Ok(try!(RwLockWriteGuard::new(self, &DUMMY.0)))
+                Ok(RwLockWriteGuard::new(self, &DUMMY.0)?)
             } else {
                 Err(TryLockError::WouldBlock)
             }
