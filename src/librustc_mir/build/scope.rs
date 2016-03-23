@@ -100,7 +100,15 @@ use rustc_const_eval::ConstInt;
 pub struct Scope<'tcx> {
     /// the scope-id within the scope_datas
     id: ScopeId,
+
+    /// the extent of this scope within source code; also stored in
+    /// `ScopeAuxiliary`, but kept here for convenience
     extent: CodeExtent,
+
+    /// set of lvalues to drop when exiting this scope. This starts
+    /// out empty but grows as variables are declared during the
+    /// building process. This is a stack, so we always drop from the
+    /// end of the vector (top of the stack) first.
     drops: Vec<DropData<'tcx>>,
 
     /// A scope may only have one associated free, because:
