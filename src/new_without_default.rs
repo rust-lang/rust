@@ -46,7 +46,7 @@ impl LateLintPass for NewWithoutDefault {
             return;
         }
 
-        if let FnKind::Method(name, _, _) = kind {
+        if let FnKind::Method(name, _, _, _) = kind {
             if decl.inputs.is_empty() && name.as_str() == "new" {
                 let self_ty = cx.tcx.lookup_item_type(cx.tcx.map.local_def_id(cx.tcx.map.get_parent(id))).ty;
 
