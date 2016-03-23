@@ -314,7 +314,7 @@ fn collect_tests_from_dir(config: &Config,
             collect_tests_from_dir(config,
                                    base,
                                    &file_path,
-                                   relative_file_path,
+                                   &relative_file_path,
                                    tests)?;
         }
     }
