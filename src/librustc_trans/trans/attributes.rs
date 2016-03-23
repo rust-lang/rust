@@ -81,6 +81,18 @@ pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
     }
 }
 
+/// Tell LLVM if this function should be 'naked', i.e. skip the epilogue and prologue.
+#[inline]
+pub fn naked(val: ValueRef, is_naked: bool) {
+    if is_naked {
+        llvm::SetFunctionAttribute(val, llvm::Attribute::Naked);
+    } else {
+        unsafe {
+            llvm::LLVMRemoveFunctionAttr(val, llvm::Attribute::Naked.bits() as c_ulonglong);
+        }
+    }
+}
+
 /// Composite function which sets LLVM attributes for function depending on its AST (#[attribute])
 /// attributes.
 pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
@@ -105,6 +117,8 @@ pub fn from_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRe
         if attr.check_name("cold") {
             llvm::Attributes::default().set(llvm::Attribute::Cold)
                 .apply_llfn(llvm::FunctionIndex as usize, llfn)
+        } else if attr.check_name("naked") {
+            naked(llfn, true);
         } else if attr.check_name("allocator") {
             llvm::Attributes::default().set(llvm::Attribute::NoAlias)
                 .apply_llfn(llvm::ReturnIndex as usize, llfn)
