@@ -35,6 +35,7 @@
 #![feature(core_char_ext)]
 #![feature(lang_items)]
 #![feature(staged_api)]
+#![feature(unicode)]
 
 mod tables;
 mod u_str;

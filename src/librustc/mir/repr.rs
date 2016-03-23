@@ -499,13 +499,13 @@ pub enum Lvalue<'tcx> {
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
 /// shared between `Constant` and `Lvalue`. See the aliases
 /// `LvalueProjection` etc below.
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Projection<'tcx, B, V> {
     pub base: B,
     pub elem: ProjectionElem<'tcx, V>,
 }
 
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum ProjectionElem<'tcx, V> {
     Deref,
     Field(Field, Ty<'tcx>),
@@ -857,7 +857,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 /// this does not necessarily mean that they are "==" in Rust -- in
 /// particular one must be wary of `NaN`!
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
@@ -877,7 +877,7 @@ impl<'tcx> Debug for TypedConstVal<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Literal<'tcx> {
     Item {
         def_id: DefId,

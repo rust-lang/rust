@@ -99,9 +99,9 @@ pub trait Write {
     /// This function will return an instance of `Error` on error.
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
-        let mut utf_8 = [0u8; 4];
-        let bytes_written = c.encode_utf8(&mut utf_8).unwrap_or(0);
-        self.write_str(unsafe { str::from_utf8_unchecked(&utf_8[..bytes_written]) })
+        self.write_str(unsafe {
+            str::from_utf8_unchecked(c.encode_utf8().as_slice())
+        })
     }
 
     /// Glue for usage of the `write!` macro with implementors of this trait.
@@ -897,10 +897,9 @@ impl<'a> Formatter<'a> {
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |f: &mut Formatter| {
             if let Some(c) = sign {
-                let mut b = [0; 4];
-                let n = c.encode_utf8(&mut b).unwrap_or(0);
-                let b = unsafe { str::from_utf8_unchecked(&b[..n]) };
-                try!(f.buf.write_str(b));
+                try!(f.buf.write_str(unsafe {
+                    str::from_utf8_unchecked(c.encode_utf8().as_slice())
+                }));
             }
             if prefixed { f.buf.write_str(prefix) }
             else { Ok(()) }
@@ -1003,9 +1002,10 @@ impl<'a> Formatter<'a> {
             rt::v1::Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
-        let mut fill = [0; 4];
-        let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
-        let fill = unsafe { str::from_utf8_unchecked(&fill[..len]) };
+        let fill = self.fill.encode_utf8();
+        let fill = unsafe {
+            str::from_utf8_unchecked(fill.as_slice())
+        };
 
         for _ in 0..pre_pad {
             try!(self.buf.write_str(fill));
@@ -1391,10 +1391,9 @@ impl Display for char {
         if f.width.is_none() && f.precision.is_none() {
             f.write_char(*self)
         } else {
-            let mut utf8 = [0; 4];
-            let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-            let s: &str = unsafe { str::from_utf8_unchecked(&utf8[..amt]) };
-            f.pad(s)
+            f.pad(unsafe {
+                str::from_utf8_unchecked(self.encode_utf8().as_slice())
+            })
         }
     }
 }

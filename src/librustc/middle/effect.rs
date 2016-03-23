@@ -82,9 +82,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
                 block: &'v hir::Block, span: Span, _: ast::NodeId) {
 
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
-            FnKind::ItemFn(_, _, unsafety, _, _, _) =>
+            FnKind::ItemFn(_, _, unsafety, _, _, _, _) =>
                 (true, unsafety == hir::Unsafety::Unsafe),
-            FnKind::Method(_, sig, _) =>
+            FnKind::Method(_, sig, _, _) =>
                 (true, sig.unsafety == hir::Unsafety::Unsafe),
             _ => (false, false),
         };

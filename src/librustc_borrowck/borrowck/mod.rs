@@ -40,6 +40,7 @@ use std::fmt;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
+use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
@@ -49,11 +50,15 @@ use rustc_front::intravisit;
 use rustc_front::intravisit::{Visitor, FnKind};
 use rustc_front::util as hir_util;
 
+use rustc::mir::mir_map::MirMap;
+
 pub mod check_loans;
 
 pub mod gather_loans;
 
 pub mod move_data;
+
+mod mir;
 
 #[derive(Clone, Copy)]
 pub struct LoanDataFlowOperator;
@@ -66,15 +71,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
         match fk {
             FnKind::ItemFn(..) |
             FnKind::Method(..) => {
-                let new_free_region_map = self.tcx.free_region_map(id);
-                let old_free_region_map =
-                    mem::replace(&mut self.free_region_map, new_free_region_map);
-                borrowck_fn(self, fk, fd, b, s, id);
-                self.free_region_map = old_free_region_map;
+                self.with_temp_region_map(id, |this| {
+                    borrowck_fn(this, fk, fd, b, s, id, fk.attrs())
+                });
             }
 
-            FnKind::Closure => {
-                borrowck_fn(self, fk, fd, b, s, id);
+            FnKind::Closure(..) => {
+                borrowck_fn(self, fk, fd, b, s, id, fk.attrs());
             }
         }
     }
@@ -98,9 +101,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        mir_map: Some(mir_map),
         free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
@@ -159,8 +163,17 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                decl: &hir::FnDecl,
                body: &hir::Block,
                sp: Span,
-               id: ast::NodeId) {
+               id: ast::NodeId,
+               attributes: &[ast::Attribute]) {
     debug!("borrowck_fn(id={})", id);
+
+    if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
+        let mir = this.mir_map.unwrap().map.get(&id).unwrap();
+        this.with_temp_region_map(id, |this| {
+            mir::borrowck_mir(this, fk, decl, mir, body, sp, id, attributes)
+        });
+    }
+
     let cfg = cfg::CFG::new(this.tcx, body);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
@@ -233,6 +246,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: &'a TyCtxt<'tcx>,
+    mir_map: Option<&'a MirMap<'tcx>>,
     fn_parts: FnParts<'a>,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
@@ -240,6 +254,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
+        mir_map: mir_map,
         free_region_map: FreeRegionMap::new(),
         stats: BorrowStats {
             loaned_paths_same: 0,
@@ -279,9 +294,13 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     free_region_map: FreeRegionMap,
 
     // Statistics:
-    stats: BorrowStats
+    stats: BorrowStats,
+
+    // NodeId to MIR mapping (for methods that carry the #[rustc_mir] attribute).
+    mir_map: Option<&'a MirMap<'tcx>>,
 }
 
+#[derive(Clone)]
 struct BorrowStats {
     loaned_paths_same: usize,
     loaned_paths_imm: usize,
@@ -574,6 +593,15 @@ pub enum MovedValueUseKind {
 // Misc
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
+    fn with_temp_region_map<F>(&mut self, id: ast::NodeId, f: F)
+        where F: for <'b> FnOnce(&'b mut BorrowckCtxt<'a, 'tcx>)
+    {
+        let new_free_region_map = self.tcx.free_region_map(id);
+        let old_free_region_map = mem::replace(&mut self.free_region_map, new_free_region_map);
+        f(self);
+        self.free_region_map = old_free_region_map;
+    }
+
     pub fn is_subregion_of(&self, r_sub: ty::Region, r_sup: ty::Region)
                            -> bool
     {

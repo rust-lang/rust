@@ -27,19 +27,30 @@
 
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
+use syntax::attr::ThinAttributesExt;
 use syntax::codemap::Span;
 use hir::*;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Name, &'a Generics, Unsafety, Constness, Abi, Visibility),
+    ItemFn(Name, &'a Generics, Unsafety, Constness, Abi, Visibility, &'a [Attribute]),
 
     /// fn foo(&self)
-    Method(Name, &'a MethodSig, Option<Visibility>),
+    Method(Name, &'a MethodSig, Option<Visibility>, &'a [Attribute]),
 
     /// |x, y| {}
-    Closure,
+    Closure(&'a [Attribute]),
+}
+
+impl<'a> FnKind<'a> {
+    pub fn attrs(&self) -> &'a [Attribute] {
+        match *self {
+            FnKind::ItemFn(_, _, _, _, _, _, attrs) => attrs,
+            FnKind::Method(_, _, _, attrs) => attrs,
+            FnKind::Closure(attrs) => attrs,
+        }
+    }
 }
 
 /// Each method of the Visitor trait is a hook to be potentially
@@ -310,7 +321,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                                             unsafety,
                                             constness,
                                             abi,
-                                            item.vis),
+                                            item.vis,
+                                            &item.attrs),
                              declaration,
                              body,
                              item.span,
@@ -595,14 +607,14 @@ pub fn walk_fn_decl_nopat<'v, V: Visitor<'v>>(visitor: &mut V, function_declarat
 
 pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V, function_kind: FnKind<'v>) {
     match function_kind {
-        FnKind::ItemFn(_, generics, _, _, _, _) => {
+        FnKind::ItemFn(_, generics, _, _, _, _, _) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(_, sig, _) => {
+        FnKind::Method(_, sig, _, _) => {
             visitor.visit_generics(&sig.generics);
             visitor.visit_explicit_self(&sig.explicit_self);
         }
-        FnKind::Closure => {}
+        FnKind::Closure(_) => {}
     }
 }
 
@@ -630,7 +642,10 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_fn_decl(visitor, &sig.decl);
         }
         MethodTraitItem(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(trait_item.name, sig, None),
+            visitor.visit_fn(FnKind::Method(trait_item.name,
+                                            sig,
+                                            None,
+                                            &trait_item.attrs),
                              &sig.decl,
                              body,
                              trait_item.span,
@@ -652,7 +667,10 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_expr(expr);
         }
         ImplItemKind::Method(ref sig, ref body) => {
-            visitor.visit_fn(FnKind::Method(impl_item.name, sig, Some(impl_item.vis)),
+            visitor.visit_fn(FnKind::Method(impl_item.name,
+                                            sig,
+                                            Some(impl_item.vis),
+                                            &impl_item.attrs),
                              &sig.decl,
                              body,
                              impl_item.span,
@@ -758,7 +776,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_list!(visitor, visit_arm, arms);
         }
         ExprClosure(_, ref function_declaration, ref body) => {
-            visitor.visit_fn(FnKind::Closure,
+            visitor.visit_fn(FnKind::Closure(expression.attrs.as_attr_slice()),
                              function_declaration,
                              body,
                              expression.span,
