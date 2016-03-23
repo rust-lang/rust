@@ -85,7 +85,7 @@ pub struct Location {
     pub statement_index: usize,
 }
 
-pub struct MirPlusPlus<'tcx> {
+pub struct MirAndScopeAuxiliary<'tcx> {
     pub mir: Mir<'tcx>,
     pub scope_auxiliary: Vec<ScopeAuxiliary>,
 }
@@ -143,7 +143,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                           argument_extent: CodeExtent,
                           return_ty: FnOutput<'tcx>,
                           ast_block: &'tcx hir::Block)
-                          -> MirPlusPlus<'tcx> {
+                          -> MirAndScopeAuxiliary<'tcx> {
     let cfg = CFG { basic_blocks: vec![] };
 
     let mut builder = Builder {
@@ -188,7 +188,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                        true
                    }));
 
-    MirPlusPlus {
+    MirAndScopeAuxiliary {
         mir: Mir {
             basic_blocks: builder.cfg.basic_blocks,
             scopes: builder.scope_data_vec,
