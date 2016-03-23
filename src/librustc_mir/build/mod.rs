@@ -22,6 +22,8 @@ pub struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
     cfg: CFG<'tcx>,
 
+    fn_span: Span,
+
     // the current set of scopes, updated as we traverse;
     // see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
@@ -147,6 +149,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     let mut builder = Builder {
         hir: hir,
         cfg: cfg,
+        fn_span: span,
         scopes: vec![],
         scope_data_vec: ScopeDataVec::new(),
         scope_auxiliary: vec![],

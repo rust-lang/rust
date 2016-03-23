@@ -438,7 +438,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // generate B0 <- B1 <- B2 in left-to-right order. Control flow of the generated blocks
         // always ends up at a block with the Resume terminator.
         if scopes.iter().any(|scope| !scope.drops.is_empty() || scope.free.is_some()) {
-            Some(build_diverge_scope(hir.tcx(), cfg, &unit_temp, scopes))
+            Some(build_diverge_scope(hir.tcx(), self.fn_span, cfg, &unit_temp, scopes))
         } else {
             None
         }
@@ -611,6 +611,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
 }
 
 fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
+                             fn_span: Span,
                              cfg: &mut CFG<'tcx>,
                              unit_temp: &Lvalue<'tcx>,
                              scopes: &mut [Scope<'tcx>])
@@ -639,11 +640,11 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
         // Diverging from the root scope creates a RESUME terminator.
         // FIXME what span to use here?
         let resumeblk = cfg.start_new_cleanup_block();
-        cfg.terminate(resumeblk, scope.id, DUMMY_SP, TerminatorKind::Resume);
+        cfg.terminate(resumeblk, scope.id, fn_span, TerminatorKind::Resume);
         resumeblk
     } else {
         // Diverging from any other scope chains up to the previous scope.
-        build_diverge_scope(tcx, cfg, unit_temp, earlier_scopes)
+        build_diverge_scope(tcx, fn_span, cfg, unit_temp, earlier_scopes)
     };
     scope.cached_block = Some(target);
 
