@@ -14,7 +14,7 @@ use rustc::middle::ty::{FnOutput, Ty};
 use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir;
-
+use std::ops::{Index, IndexMut};
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -33,7 +33,7 @@ pub struct Builder<'a, 'tcx: 'a> {
     // but these are liable to get out of date once optimization
     // begins. They are also hopefully temporary, and will be
     // no longer needed when we adopt graph-based regions.
-    scope_auxiliary: Vec<ScopeAuxiliary>,
+    scope_auxiliary: ScopeAuxiliaryVec,
 
     // the current set of loops; see the `scope` module for more
     // details
@@ -85,9 +85,24 @@ pub struct Location {
     pub statement_index: usize,
 }
 
-pub struct MirAndScopeAuxiliary<'tcx> {
-    pub mir: Mir<'tcx>,
-    pub scope_auxiliary: Vec<ScopeAuxiliary>,
+pub struct ScopeAuxiliaryVec {
+    pub vec: Vec<ScopeAuxiliary>
+}
+
+impl Index<ScopeId> for ScopeAuxiliaryVec {
+    type Output = ScopeAuxiliary;
+
+    #[inline]
+    fn index(&self, index: ScopeId) -> &ScopeAuxiliary {
+        &self.vec[index.index()]
+    }
+}
+
+impl IndexMut<ScopeId> for ScopeAuxiliaryVec {
+    #[inline]
+    fn index_mut(&mut self, index: ScopeId) -> &mut ScopeAuxiliary {
+        &mut self.vec[index.index()]
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -143,7 +158,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                           argument_extent: CodeExtent,
                           return_ty: FnOutput<'tcx>,
                           ast_block: &'tcx hir::Block)
-                          -> MirAndScopeAuxiliary<'tcx> {
+                          -> (Mir<'tcx>, ScopeAuxiliaryVec) {
     let cfg = CFG { basic_blocks: vec![] };
 
     let mut builder = Builder {
@@ -152,7 +167,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         fn_span: span,
         scopes: vec![],
         scope_datas: vec![],
-        scope_auxiliary: vec![],
+        scope_auxiliary: ScopeAuxiliaryVec { vec: vec![] },
         loop_scopes: vec![],
         temp_decls: vec![],
         var_decls: vec![],
@@ -188,8 +203,8 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                        true
                    }));
 
-    MirAndScopeAuxiliary {
-        mir: Mir {
+    (
+        Mir {
             basic_blocks: builder.cfg.basic_blocks,
             scopes: builder.scope_datas,
             var_decls: builder.var_decls,
@@ -198,8 +213,8 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
             return_ty: return_ty,
             span: span
         },
-        scope_auxiliary: builder.scope_auxiliary,
-    }
+        builder.scope_auxiliary,
+    )
 }
 
 impl<'a,'tcx> Builder<'a,'tcx> {

@@ -633,7 +633,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             span: span,
         });
         let index = index as u32;
-        let extent = self.scope_auxiliary[var_scope_id.index()].extent;
+        let extent = self.scope_auxiliary[var_scope_id].extent;
         self.schedule_drop(span, extent, &Lvalue::Var(index), var_ty);
         self.var_indices.insert(var_id, index);
 
