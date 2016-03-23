@@ -81,7 +81,7 @@ impl<'tcx> Hir2Qmm<'tcx> {
 }
 
 fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
-    fn recurse(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr], mut s: String) -> String {
+    fn recurse(brackets: bool, cx: &LateContext, suggestion: &Bool, terminals: &[&Expr], mut s: String) -> String {
         use quine_mc_cluskey::Bool::*;
         match *suggestion {
             True => {
@@ -94,21 +94,33 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             },
             Not(ref inner) => {
                 s.push('!');
-                recurse(cx, inner, terminals, s)
+                recurse(true, cx, inner, terminals, s)
             },
             And(ref v) => {
-                s = recurse(cx, &v[0], terminals, s);
+                if brackets {
+                    s.push('(');
+                }
+                s = recurse(true, cx, &v[0], terminals, s);
                 for inner in &v[1..] {
                     s.extend(" && ".chars());
-                    s = recurse(cx, inner, terminals, s);
+                    s = recurse(true, cx, inner, terminals, s);
+                }
+                if brackets {
+                    s.push(')');
                 }
                 s
             },
             Or(ref v) => {
-                s = recurse(cx, &v[0], terminals, s);
+                if brackets {
+                    s.push('(');
+                }
+                s = recurse(true, cx, &v[0], terminals, s);
                 for inner in &v[1..] {
                     s.extend(" || ".chars());
-                    s = recurse(cx, inner, terminals, s);
+                    s = recurse(true, cx, inner, terminals, s);
+                }
+                if brackets {
+                    s.push(')');
                 }
                 s
             },
@@ -118,7 +130,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             }
         }
     }
-    recurse(cx, suggestion, terminals, String::new())
+    recurse(false, cx, suggestion, terminals, String::new())
 }
 
 impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
