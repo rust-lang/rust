@@ -118,7 +118,7 @@ pub fn write_mir_fn<'tcx>(tcx: &TyCtxt<'tcx>,
 
     // construct a scope tree and write it out
     let mut scope_tree: FnvHashMap<Option<ScopeId>, Vec<ScopeId>> = FnvHashMap();
-    for (index, scope_data) in mir.scopes.vec.iter().enumerate() {
+    for (index, scope_data) in mir.scopes.iter().enumerate() {
         scope_tree.entry(scope_data.parent_scope)
                   .or_insert(vec![])
                   .push(ScopeId::new(index));
