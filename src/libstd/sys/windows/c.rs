@@ -83,6 +83,8 @@ pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
 
 pub const FILE_ATTRIBUTE_READONLY: DWORD = 0x1;
+#[cfg(test)]
+pub const FILE_ATTRIBUTE_SYSTEM: DWORD = 0x4;
 pub const FILE_ATTRIBUTE_DIRECTORY: DWORD = 0x10;
 pub const FILE_ATTRIBUTE_REPARSE_POINT: DWORD = 0x400;
 
@@ -99,7 +101,9 @@ pub const TRUNCATE_EXISTING: DWORD = 5;
 pub const FILE_WRITE_DATA: DWORD = 0x00000002;
 pub const FILE_APPEND_DATA: DWORD = 0x00000004;
 pub const FILE_WRITE_EA: DWORD = 0x00000010;
+pub const FILE_READ_ATTRIBUTES: DWORD = 0x00000080;
 pub const FILE_WRITE_ATTRIBUTES: DWORD = 0x00000100;
+pub const DELETE: DWORD = 0x00010000;
 pub const READ_CONTROL: DWORD = 0x00020000;
 pub const SYNCHRONIZE: DWORD = 0x00100000;
 pub const GENERIC_READ: DWORD = 0x80000000;
@@ -113,6 +117,7 @@ pub const FILE_GENERIC_WRITE: DWORD = STANDARD_RIGHTS_WRITE | FILE_WRITE_DATA |
 
 pub const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
 pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
+pub const FILE_FLAG_DELETE_ON_CLOSE: DWORD = 0x04000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
@@ -400,6 +405,23 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
     FileIdExtdDirectoryInfo         = 19, // 0x13
     FileIdExtdDirectoryRestartInfo  = 20, // 0x14
     MaximumFileInfoByHandlesClass
+}
+
+#[repr(C)]
+pub struct FILE_BASIC_INFO {
+    pub CreationTime: LARGE_INTEGER,
+    pub LastAccessTime: LARGE_INTEGER,
+    pub LastWriteTime: LARGE_INTEGER,
+    pub ChangeTime: LARGE_INTEGER,
+    pub FileAttributes: DWORD,
+}
+
+#[repr(C)]
+pub struct FILE_RENAME_INFO {
+    pub ReplaceIfExists: BOOL, // for true use -1, not TRUE
+    pub RootDirectory: HANDLE, // NULL, or obtained with NtOpenDirectoryObject
+    pub FileNameLength: DWORD,
+    pub FileName: [WCHAR; 0],
 }
 
 #[repr(C)]
@@ -894,8 +916,6 @@ extern "system" {
     pub fn GetConsoleMode(hConsoleHandle: HANDLE,
                           lpMode: LPDWORD) -> BOOL;
     pub fn RemoveDirectoryW(lpPathName: LPCWSTR) -> BOOL;
-    pub fn SetFileAttributesW(lpFileName: LPCWSTR,
-                              dwFileAttributes: DWORD) -> BOOL;
     pub fn GetFileInformationByHandle(hFile: HANDLE,
                             lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
                             -> BOOL;

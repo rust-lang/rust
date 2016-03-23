@@ -24,6 +24,7 @@ use sys::handle::Handle;
 use sys::time::SystemTime;
 use sys::{c, cvt};
 use sys_common::FromInner;
+use vec::Vec;
 
 use super::to_u16s;
 
@@ -78,8 +79,8 @@ pub struct OpenOptions {
     security_attributes: usize, // FIXME: should be a reference
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions { attrs: c::DWORD }
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct FilePermissions { readonly: bool }
 
 pub struct DirBuilder;
 
@@ -338,6 +339,67 @@ impl File {
         Ok(newpos as u64)
     }
 
+    pub fn rename(&self, new: &Path, replace: bool) -> io::Result<()> {
+        // &self must be opened with DELETE permission
+        use iter;
+        #[cfg(target_arch = "x86")]
+        const STRUCT_SIZE: usize = 12;
+        #[cfg(target_arch = "x86_64")]
+        const STRUCT_SIZE: usize = 20;
+
+        // FIXME: check for internal NULs in 'new'
+        let mut data: Vec<u16> = iter::repeat(0u16).take(STRUCT_SIZE/2)
+                                 .chain(new.as_os_str().encode_wide())
+                                 .collect();
+        data.push(0);
+        let size = data.len() * 2;
+
+        unsafe {
+            // Thanks to alignment guarantees on Windows this works
+            // (8 for 32-bit and 16 for 64-bit)
+            let mut info = data.as_mut_ptr() as *mut c::FILE_RENAME_INFO;
+            // The type of ReplaceIfExists is BOOL, but it actually expects a
+            // BOOLEAN. This means true is -1, not c::TRUE.
+            (*info).ReplaceIfExists = if replace { -1 } else { c::FALSE };
+            (*info).RootDirectory = ptr::null_mut();
+            (*info).FileNameLength = (size - STRUCT_SIZE) as c::DWORD;
+            try!(cvt(c::SetFileInformationByHandle(self.handle().raw(),
+                                                   c::FileRenameInfo,
+                                                   data.as_mut_ptr() as *mut _ as *mut _,
+                                                   size as c::DWORD)));
+            Ok(())
+        }
+    }
+
+    pub fn set_attributes(&self, attr: c::DWORD) -> io::Result<()> {
+        let mut info = c::FILE_BASIC_INFO {
+            CreationTime: 0, // do not change
+            LastAccessTime: 0, // do not change
+            LastWriteTime: 0, // do not change
+            ChangeTime: 0, // do not change
+            FileAttributes: attr,
+        };
+        let size = mem::size_of_val(&info);
+        try!(cvt(unsafe {
+            c::SetFileInformationByHandle(self.handle.raw(),
+                                          c::FileBasicInfo,
+                                          &mut info as *mut _ as *mut _,
+                                          size as c::DWORD)
+        }));
+        Ok(())
+    }
+
+    pub fn set_perm(&self, perm: FilePermissions) -> io::Result<()> {
+        let attr = try!(self.file_attr()).attributes;
+        if perm.readonly == (attr & c::FILE_ATTRIBUTE_READONLY != 0) {
+            Ok(())
+        } else if perm.readonly {
+            self.set_attributes(attr | c::FILE_ATTRIBUTE_READONLY)
+        } else {
+            self.set_attributes(attr & !c::FILE_ATTRIBUTE_READONLY)
+        }
+    }
+
     pub fn duplicate(&self) -> io::Result<File> {
         Ok(File {
             handle: try!(self.handle.duplicate(0, true, c::DUPLICATE_SAME_ACCESS)),
@@ -427,7 +489,9 @@ impl FileAttr {
     }
 
     pub fn perm(&self) -> FilePermissions {
-        FilePermissions { attrs: self.attributes }
+        FilePermissions {
+            readonly: self.attributes & c::FILE_ATTRIBUTE_READONLY != 0
+        }
     }
 
     pub fn attrs(&self) -> u32 { self.attributes as u32 }
@@ -470,17 +534,9 @@ fn to_u64(ft: &c::FILETIME) -> u64 {
 }
 
 impl FilePermissions {
-    pub fn readonly(&self) -> bool {
-        self.attrs & c::FILE_ATTRIBUTE_READONLY != 0
-    }
-
-    pub fn set_readonly(&mut self, readonly: bool) {
-        if readonly {
-            self.attrs |= c::FILE_ATTRIBUTE_READONLY;
-        } else {
-            self.attrs &= !c::FILE_ATTRIBUTE_READONLY;
-        }
-    }
+    pub fn new() -> FilePermissions { Default::default() }
+    pub fn readonly(&self) -> bool { self.readonly }
+    pub fn set_readonly(&mut self, readonly: bool) { self.readonly = readonly }
 }
 
 impl FileType {
@@ -566,37 +622,148 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
-    let filetype = try!(lstat(path)).file_type();
-    if filetype.is_symlink() {
-        // On Windows symlinks to files and directories are removed differently.
-        // rmdir only deletes dir symlinks and junctions, not file symlinks.
-        rmdir(path)
+    // On Windows it is not enough to just recursively remove the contents of a
+    // directory and then the directory itself. Deleting does not happen
+    // instantaneously, but is scheduled.
+    // To work around this, we move the file or directory to some `base_dir`
+    // right before deletion to avoid races.
+    //
+    // As `base_dir` we choose the parent dir of the directory we want to
+    // remove. We very probably have permission to create files here, as we
+    // already need write permission in this dir to delete the directory. And it
+    // should be on the same volume.
+    //
+    // To handle files with names like `CON` and `morse .. .`,  and when a
+    // directory structure is so deep it needs long path names the path is first
+    // converted to a `//?/`-path with `get_path()`.
+    //
+    // To make sure we don't leave a moved file laying around if the process
+    // crashes before we can delete the file, we do all operations on an file
+    // handle. By opening a file with `FILE_FLAG_DELETE_ON_CLOSE` Windows will
+    // always delete the file when the handle closes.
+    //
+    // All files are renamed to be in the `base_dir`, and have their name
+    // changed to "rm-<counter>". After every rename the counter is increased.
+    // Rename should not overwrite possibly existing files in the base dir. So
+    // if it fails with `AlreadyExists`, we just increase the counter and try
+    // again.
+    //
+    // For read-only files and directories we first have to remove the read-only
+    // attribute before we can move or delete them. This also removes the
+    // attribute from possible hardlinks to the file, so just before closing we
+    // restore the read-only attribute.
+    //
+    // If 'path' points to a directory symlink or junction we should not
+    // recursively remove the target of the link, but only the link itself.
+    //
+    // Moving and deleting is guaranteed to succeed if we are able to open the
+    // file with `DELETE` permission. If others have the file open we only have
+    // `DELETE` permission if they have specified `FILE_SHARE_DELETE`. We can
+    // also delete the file now, but it will not disappear until all others have
+    // closed the file. But no-one can open the file after we have flagged it
+    // for deletion.
+
+    // Open the path once to get the canonical path, file type and attributes.
+    let (path, metadata) = {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::FILE_READ_ATTRIBUTES);
+        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS |
+                          c::FILE_FLAG_OPEN_REPARSE_POINT);
+        let file = try!(File::open(path, &opts));
+        (try!(get_path(&file)), try!(file.file_attr()))
+    };
+
+    let mut ctx = RmdirContext {
+        base_dir: match path.parent() {
+            Some(dir) => dir,
+            None => return Err(io::Error::new(io::ErrorKind::PermissionDenied,
+                                              "can't delete root directory"))
+        },
+        readonly: metadata.perm().readonly(),
+        counter: 0,
+    };
+
+    let filetype = metadata.file_type();
+    if filetype.is_dir() {
+        remove_dir_all_recursive(path.as_ref(), &mut ctx)
+    } else if filetype.is_symlink_dir() {
+        remove_item(path.as_ref(), &mut ctx)
     } else {
-        remove_dir_all_recursive(path)
+        Err(io::Error::new(io::ErrorKind::PermissionDenied, "Not a directory"))
     }
 }
 
-fn remove_dir_all_recursive(path: &Path) -> io::Result<()> {
+struct RmdirContext<'a> {
+    base_dir: &'a Path,
+    readonly: bool,
+    counter: u64,
+}
+
+fn remove_dir_all_recursive(path: &Path, ctx: &mut RmdirContext)
+                            -> io::Result<()> {
+    let dir_readonly = ctx.readonly;
     for child in try!(readdir(path)) {
         let child = try!(child);
         let child_type = try!(child.file_type());
+        ctx.readonly = try!(child.metadata()).perm().readonly();
         if child_type.is_dir() {
-            try!(remove_dir_all_recursive(&child.path()));
-        } else if child_type.is_symlink_dir() {
-            try!(rmdir(&child.path()));
+            try!(remove_dir_all_recursive(&child.path(), ctx));
         } else {
-            try!(unlink(&child.path()));
+            try!(remove_item(&child.path().as_ref(), ctx));
         }
     }
-    rmdir(path)
+    ctx.readonly = dir_readonly;
+    remove_item(path, ctx)
+}
+
+fn remove_item(path: &Path, ctx: &mut RmdirContext) -> io::Result<()> {
+    if !ctx.readonly {
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::DELETE);
+        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | // delete directory
+                          c::FILE_FLAG_OPEN_REPARSE_POINT | // delete symlink
+                          c::FILE_FLAG_DELETE_ON_CLOSE);
+        let file = try!(File::open(path, &opts));
+        move_item(&file, ctx)
+    } else {
+        // remove read-only permision
+        try!(set_perm(&path, FilePermissions::new()));
+        // move and delete file, similar to !readonly.
+        // only the access mode is different.
+        let mut opts = OpenOptions::new();
+        opts.access_mode(c::DELETE | c::FILE_WRITE_ATTRIBUTES);
+        opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS |
+                          c::FILE_FLAG_OPEN_REPARSE_POINT |
+                          c::FILE_FLAG_DELETE_ON_CLOSE);
+        let file = try!(File::open(path, &opts));
+        try!(move_item(&file, ctx));
+        // restore read-only flag just in case there are other hard links
+        let mut perm = FilePermissions::new();
+        perm.set_readonly(true);
+        let _ = file.set_perm(perm); // ignore if this fails
+        Ok(())
+    }
+}
+
+fn move_item(file: &File, ctx: &mut RmdirContext) -> io::Result<()> {
+    let mut tmpname = ctx.base_dir.join(format!{"rm-{}", ctx.counter});
+    ctx.counter += 1;
+    // Try to rename the file. If it already exists, just retry with an other
+    // filename.
+    while let Err(err) = file.rename(tmpname.as_ref(), false) {
+        if err.kind() != io::ErrorKind::AlreadyExists { return Err(err) };
+        tmpname = ctx.base_dir.join(format!("rm-{}", ctx.counter));
+        ctx.counter += 1;
+    }
+    Ok(())
 }
 
 pub fn readlink(path: &Path) -> io::Result<PathBuf> {
-    // Open the link with no access mode, instead of generic read.
+    // Open the link with as few permissions as possible, instead of generic read.
     // By default FILE_LIST_DIRECTORY is denied for the junction "C:\Documents and Settings", so
     // this is needed for a common case.
     let mut opts = OpenOptions::new();
-    opts.access_mode(0);
+    opts.access_mode(c::FILE_READ_ATTRIBUTES);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT |
                       c::FILE_FLAG_BACKUP_SEMANTICS);
     let file = try!(File::open(&path, &opts));
@@ -628,8 +795,7 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 
 pub fn stat(path: &Path) -> io::Result<FileAttr> {
     let mut opts = OpenOptions::new();
-    // No read or write permissions are necessary
-    opts.access_mode(0);
+    opts.access_mode(c::FILE_READ_ATTRIBUTES);
     // This flag is so we can open directories too
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
     let file = try!(File::open(path, &opts));
@@ -638,19 +804,18 @@ pub fn stat(path: &Path) -> io::Result<FileAttr> {
 
 pub fn lstat(path: &Path) -> io::Result<FileAttr> {
     let mut opts = OpenOptions::new();
-    // No read or write permissions are necessary
-    opts.access_mode(0);
+    opts.access_mode(c::FILE_READ_ATTRIBUTES);
     opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS | c::FILE_FLAG_OPEN_REPARSE_POINT);
     let file = try!(File::open(path, &opts));
     file.file_attr()
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = try!(to_u16s(p));
-    unsafe {
-        try!(cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs)));
-        Ok(())
-    }
+pub fn set_perm(path: &Path, perm: FilePermissions) -> io::Result<()> {
+    let mut opts = OpenOptions::new();
+    opts.access_mode(c::FILE_READ_ATTRIBUTES | c::FILE_WRITE_ATTRIBUTES);
+    opts.custom_flags(c::FILE_FLAG_BACKUP_SEMANTICS);
+    let file = try!(File::open(path, &opts));
+    file.set_perm(perm)
 }
 
 fn get_path(f: &File) -> io::Result<PathBuf> {
@@ -748,5 +913,80 @@ fn symlink_junction_inner(target: &Path, junction: &Path) -> io::Result<()> {
                                ptr::null_mut(), 0,
                                &mut ret,
                                ptr::null_mut())).map(|_| ())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use prelude::v1::*;
+    use env;
+    use fs::{self, File};
+    use path::PathBuf;
+    use rand::{self, Rng};
+    use sys::c;
+
+    macro_rules! check { ($e:expr) => (
+        match $e {
+            Ok(t) => t,
+            Err(e) => panic!("{} failed with: {}", stringify!($e), e),
+        }
+    ) }
+
+    macro_rules! error { ($e:expr, $s:expr) => (
+        match $e {
+            Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
+            Err(ref err) => assert!(err.to_string().contains($s),
+                                    format!("`{}` did not contain `{}`", err, $s))
+        }
+    ) }
+
+    pub struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn join(&self, path: &str) -> PathBuf {
+            let TempDir(ref p) = *self;
+            p.join(path)
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            // Gee, seeing how we're testing the fs module I sure hope that we
+            // at least implement this correctly!
+            let TempDir(ref p) = *self;
+            check!(fs::remove_dir_all(p));
+        }
+    }
+
+    pub fn tmpdir() -> TempDir {
+        let p = env::temp_dir();
+        let mut r = rand::thread_rng();
+        let ret = p.join(&format!("rust-{}", r.next_u32()));
+        check!(fs::create_dir(&ret));
+        TempDir(ret)
+    }
+
+    #[test]
+    fn set_perm_preserves_attr() {
+        let tmpdir = tmpdir();
+        let path = tmpdir.join("file");
+        check!(File::create(&path));
+
+        let mut opts = super::OpenOptions::new();
+        opts.read(true);
+        opts.write(true);
+        let file = check!(super::File::open(&path, &opts));
+
+        let metadata = check!(file.file_attr());
+        let attr = metadata.attributes;
+        check!(file.set_attributes(attr | c::FILE_ATTRIBUTE_SYSTEM));
+
+        let mut perm = metadata.perm();
+        perm.set_readonly(true);
+        check!(file.set_perm(perm));
+
+        let new_metadata = check!(file.file_attr());
+        assert!(new_metadata.attributes & c::FILE_ATTRIBUTE_SYSTEM != 0);
+        assert!(new_metadata.perm().readonly());
     }
 }

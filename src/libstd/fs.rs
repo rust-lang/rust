@@ -1357,7 +1357,8 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `chmod` function on Unix
-/// and the `SetFileAttributes` function on Windows.
+/// and the `CreateFile`, `GetFileInformationByHandle` and
+/// `SetFileInformationByHandle` function on Windows.
 /// Note that, this [may change in the future][changes].
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
@@ -1849,6 +1850,41 @@ mod tests {
             Ok(..) => panic!("wanted a failure"),
             Err(..) => {}
         }
+    }
+
+    #[test]
+    fn recursive_rmdir_tricky() {
+        let tmpdir = tmpdir();
+        let dir = tmpdir.join("dir");
+        check!(fs::create_dir(&dir));
+        // filenames that can only be accessed with `/??/`-paths
+        let fullpath = check!(dir.canonicalize());
+        check!(File::create(fullpath.join("morse .. .")));
+        check!(File::create(fullpath.join("con")));
+        // read-only file
+        let readonly = dir.join("readonly");
+        check!(File::create(&readonly));
+        let mut perms = check!(readonly.metadata()).permissions();
+        perms.set_readonly(true);
+        check!(fs::set_permissions(&readonly, perms));
+        // hardlink outside this directory should not lose its read-only flag
+        check!(fs::hard_link(&readonly, tmpdir.join("canary_ro")));
+        // read-only dir
+        let readonly_dir = dir.join("readonly_dir");
+        check!(fs::create_dir(&readonly_dir));
+        check!(File::create(readonly_dir.join("file")));
+        let mut perms = check!(readonly_dir.metadata()).permissions();
+        perms.set_readonly(true);
+        check!(fs::set_permissions(&readonly_dir, perms));
+        // open file
+        let mut opts = fs::OpenOptions::new();
+        let mut file_open = check!(opts.write(true).create(true)
+                                       .open(dir.join("remains_open")));
+
+        check!(fs::remove_dir_all(&dir));
+        assert!(check!(tmpdir.join("canary_ro").metadata())
+                             .permissions().readonly());
+        check!(file_open.write("something".as_bytes()));
     }
 
     #[test]
