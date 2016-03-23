@@ -38,7 +38,9 @@ fn main() {
     1 - 1; //~ERROR equal expressions
     1 / 1; //~ERROR equal expressions
     true && true; //~ERROR equal expressions
+    //~|WARN this boolean expression can be simplified
     true || true; //~ERROR equal expressions
+    //~|WARN this boolean expression can be simplified
 
     let mut a = vec![1];
     a == a; //~ERROR equal expressions

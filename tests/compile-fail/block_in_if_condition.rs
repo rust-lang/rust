@@ -67,7 +67,7 @@ fn pred_test() {
 
 fn condition_is_normal() -> i32 {
     let x = 3;
-    if true && x == 3 {
+    if true && x == 3 { //~ WARN this boolean expression can be simplified
         6
     } else {
         10
