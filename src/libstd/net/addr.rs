@@ -143,8 +143,8 @@ impl SocketAddrV6 {
                 sin6_family: c::AF_INET6 as c::sa_family_t,
                 sin6_port: hton(port),
                 sin6_addr: *ip.as_inner(),
-                sin6_flowinfo: hton(flowinfo),
-                sin6_scope_id: hton(scope_id),
+                sin6_flowinfo: flowinfo,
+                sin6_scope_id: scope_id,
                 .. unsafe { mem::zeroed() }
             },
         }
@@ -173,23 +173,23 @@ impl SocketAddrV6 {
     /// Returns the flow information associated with this address,
     /// corresponding to the `sin6_flowinfo` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn flowinfo(&self) -> u32 { ntoh(self.inner.sin6_flowinfo) }
+    pub fn flowinfo(&self) -> u32 { self.inner.sin6_flowinfo }
 
     /// Change the flow information associated with this socket address.
     #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
     pub fn set_flowinfo(&mut self, new_flowinfo: u32) {
-        self.inner.sin6_flowinfo = hton(new_flowinfo)
+        self.inner.sin6_flowinfo = new_flowinfo;
     }
 
     /// Returns the scope ID associated with this address,
     /// corresponding to the `sin6_scope_id` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn scope_id(&self) -> u32 { ntoh(self.inner.sin6_scope_id) }
+    pub fn scope_id(&self) -> u32 { self.inner.sin6_scope_id }
 
     /// Change the scope ID associated with this socket address.
     #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
     pub fn set_scope_id(&mut self, new_scope_id: u32) {
-        self.inner.sin6_scope_id = hton(new_scope_id)
+        self.inner.sin6_scope_id = new_scope_id;
     }
 }
 

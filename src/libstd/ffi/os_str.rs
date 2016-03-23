@@ -173,6 +173,14 @@ impl ops::Deref for OsString {
     }
 }
 
+#[stable(feature = "osstring_default", since = "1.9.0")]
+impl Default for OsString {
+    #[inline]
+    fn default() -> OsString {
+        OsString::new()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for OsString {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
@@ -299,6 +307,14 @@ impl OsStr {
     /// revealing the internal, platform-specific encodings.
     fn bytes(&self) -> &[u8] {
         unsafe { mem::transmute(&self.inner) }
+    }
+}
+
+#[stable(feature = "osstring_default", since = "1.9.0")]
+impl<'a> Default for &'a OsStr {
+    #[inline]
+    fn default() -> &'a OsStr {
+        OsStr::new("")
     }
 }
 
@@ -555,6 +571,12 @@ mod tests {
     }
 
     #[test]
+    fn test_os_string_default() {
+        let os_string: OsString = Default::default();
+        assert_eq!("", &os_string);
+    }
+
+    #[test]
     fn test_os_str_is_empty() {
         let mut os_string = OsString::new();
         assert!(os_string.is_empty());
@@ -576,5 +598,11 @@ mod tests {
 
         os_string.clear();
         assert_eq!(0, os_string.len());
+    }
+
+    #[test]
+    fn test_os_str_default() {
+        let os_str: &OsStr = Default::default();
+        assert_eq!("", os_str);
     }
 }
