@@ -256,7 +256,7 @@ pub fn build_impls(cx: &DocContext,
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
                     // Don't recurse if this is a #[doc(hidden)] module
-                    if load_attrs(cx, tcx, did).list_def("doc").has_word("hidden") {
+                    if load_attrs(cx, tcx, did).list("doc").has_word("hidden") {
                         return;
                     }
 
@@ -299,7 +299,7 @@ pub fn build_impl(cx: &DocContext,
     if let Some(ref t) = associated_trait {
         // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
         let trait_attrs = load_attrs(cx, tcx, t.def_id);
-        if trait_attrs.list_def("doc").has_word("hidden") {
+        if trait_attrs.list("doc").has_word("hidden") {
             return
         }
     }

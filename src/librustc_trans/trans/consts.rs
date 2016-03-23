@@ -381,7 +381,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     llconst = addr_of(cx, llconst, type_of::align_of(cx, ty), "autoref");
                     ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReStatic), ty);
                 }
-            } else {
+            } else if adj.autoderefs > 0 {
                 let (dv, dt) = const_deref(cx, llconst, ty);
                 llconst = dv;
 
