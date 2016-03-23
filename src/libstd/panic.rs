@@ -315,7 +315,7 @@ pub fn recover<F: FnOnce() -> R + RecoverSafe, R>(f: F) -> Result<R> {
     let mut result = None;
     unsafe {
         let result = &mut result;
-        try!(unwind::try(move || *result = Some(f())))
+        unwind::try(move || *result = Some(f()))?
     }
     Ok(result.unwrap())
 }

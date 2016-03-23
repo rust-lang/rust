@@ -91,6 +91,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a,'tcx>
     {
-        Ok(ty::Binder(try!(self.relate(a.skip_binder(), b.skip_binder()))))
+        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
     }
 }

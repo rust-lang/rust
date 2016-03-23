@@ -186,7 +186,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              steps,
                                              opt_simplified_steps);
         probe_cx.assemble_inherent_candidates();
-        try!(probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id));
+        probe_cx.assemble_extension_candidates_for_traits_in_scope(scope_expr_id)?;
         probe_cx.pick()
     })
 }
@@ -568,7 +568,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         if let Some(applicable_traits) = opt_applicable_traits {
             for &trait_did in applicable_traits {
                 if duplicates.insert(trait_did) {
-                    try!(self.assemble_extension_candidates_for_trait(trait_did));
+                    self.assemble_extension_candidates_for_trait(trait_did)?;
                 }
             }
         }
@@ -579,7 +579,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let mut duplicates = HashSet::new();
         for trait_info in suggest::all_traits(self.fcx.ccx) {
             if duplicates.insert(trait_info.def_id) {
-                try!(self.assemble_extension_candidates_for_trait(trait_info.def_id));
+                self.assemble_extension_candidates_for_trait(trait_info.def_id)?;
             }
         }
         Ok(())
@@ -612,7 +612,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         self.assemble_extension_candidates_for_trait_impls(trait_def_id, item.clone());
 
-        try!(self.assemble_closure_candidates(trait_def_id, item.clone()));
+        self.assemble_closure_candidates(trait_def_id, item.clone())?;
 
         self.assemble_projection_candidates(trait_def_id, item.clone());
 
@@ -854,7 +854,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let span = self.span;
         let tcx = self.tcx();
 
-        try!(self.assemble_extension_candidates_for_all_traits());
+        self.assemble_extension_candidates_for_all_traits()?;
 
         let out_of_scope_traits = match self.pick_core() {
             Some(Ok(p)) => vec![p.item.container().id()],

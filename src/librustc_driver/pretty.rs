@@ -325,24 +325,24 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
             pprust::NodeIdent(_) | pprust::NodeName(_) => Ok(()),
 
             pprust::NodeItem(item) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(item.id.to_string())
             }
             pprust::NodeSubItem(id) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(id.to_string())
             }
             pprust::NodeBlock(blk) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(format!("block {}", blk.id))
             }
             pprust::NodeExpr(expr) => {
-                try!(pp::space(&mut s.s));
-                try!(s.synth_comment(expr.id.to_string()));
+                pp::space(&mut s.s)?;
+                s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
             pprust::NodePat(pat) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
         }
@@ -374,24 +374,24 @@ impl<'ast> pprust_hir::PpAnn for IdentifiedAnnotation<'ast> {
         match node {
             pprust_hir::NodeName(_) => Ok(()),
             pprust_hir::NodeItem(item) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(item.id.to_string())
             }
             pprust_hir::NodeSubItem(id) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(id.to_string())
             }
             pprust_hir::NodeBlock(blk) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(format!("block {}", blk.id))
             }
             pprust_hir::NodeExpr(expr) => {
-                try!(pp::space(&mut s.s));
-                try!(s.synth_comment(expr.id.to_string()));
+                pp::space(&mut s.s)?;
+                s.synth_comment(expr.id.to_string())?;
                 s.pclose()
             }
             pprust_hir::NodePat(pat) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(format!("pat {}", pat.id))
             }
         }
@@ -421,13 +421,13 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
     fn post(&self, s: &mut pprust::State, node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeIdent(&ast::Ident { name: ast::Name(nm), ctxt }) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 // FIXME #16420: this doesn't display the connections
                 // between syntax contexts
                 s.synth_comment(format!("{}#{}", nm, ctxt.0))
             }
             pprust::NodeName(&ast::Name(nm)) => {
-                try!(pp::space(&mut s.s));
+                pp::space(&mut s.s)?;
                 s.synth_comment(nm.to_string())
             }
             _ => Ok(()),
@@ -464,10 +464,10 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn post(&self, s: &mut pprust_hir::State, node: pprust_hir::AnnNode) -> io::Result<()> {
         match node {
             pprust_hir::NodeExpr(expr) => {
-                try!(pp::space(&mut s.s));
-                try!(pp::word(&mut s.s, "as"));
-                try!(pp::space(&mut s.s));
-                try!(pp::word(&mut s.s, &self.tcx.expr_ty(expr).to_string()));
+                pp::space(&mut s.s)?;
+                pp::word(&mut s.s, "as")?;
+                pp::space(&mut s.s)?;
+                pp::word(&mut s.s, &self.tcx.expr_ty(expr).to_string())?;
                 s.pclose()
             }
             _ => Ok(()),
@@ -806,10 +806,10 @@ pub fn pretty_print_input(sess: Session,
                                                       Some(ast_map.krate()));
                 for node_id in uii.all_matching_node_ids(ast_map) {
                     let node = ast_map.get(node_id);
-                    try!(pp_state.print_node(&node));
-                    try!(pp::space(&mut pp_state.s));
-                    try!(pp_state.synth_comment(ast_map.path_to_string(node_id)));
-                    try!(pp::hardbreak(&mut pp_state.s));
+                    pp_state.print_node(&node)?;
+                    pp::space(&mut pp_state.s)?;
+                    pp_state.synth_comment(ast_map.path_to_string(node_id))?;
+                    pp::hardbreak(&mut pp_state.s)?;
                 }
                 pp::eof(&mut pp_state.s)
             })
@@ -836,15 +836,15 @@ pub fn pretty_print_input(sess: Session,
                         let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
                             sess.fatal(&format!("no MIR map entry for node {}", nodeid))
                         });
-                        try!(match pp_type {
+                        match pp_type {
                             PpmMir => write_mir_pretty(tcx, iter::once((&nodeid, mir)), &mut out),
                             _ => write_mir_graphviz(tcx, iter::once((&nodeid, mir)), &mut out)
-                        });
+                        }?;
                     } else {
-                        try!(match pp_type {
+                        match pp_type {
                             PpmMir => write_mir_pretty(tcx, mir_map.map.iter(), &mut out),
                             _ => write_mir_graphviz(tcx, mir_map.map.iter(), &mut out)
-                        });
+                        }?;
                     }
                 }
                 Ok(())

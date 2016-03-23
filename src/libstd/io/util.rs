@@ -55,7 +55,7 @@ pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<
             Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        try!(writer.write_all(&buf[..len]));
+        writer.write_all(&buf[..len])?;
         written += len as u64;
     }
 }

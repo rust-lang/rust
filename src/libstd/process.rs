@@ -520,7 +520,7 @@ impl Child {
             }
         }
 
-        let status = try!(self.wait());
+        let status = self.wait()?;
         Ok(Output {
             status: status,
             stdout: stdout,

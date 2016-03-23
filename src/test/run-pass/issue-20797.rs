@@ -12,6 +12,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(question_mark)]
+
 use std::default::Default;
 use std::io;
 use std::fs;
@@ -55,7 +57,7 @@ pub struct Subpaths<S: Strategy> {
 impl<S: Strategy> Subpaths<S> {
     /// Create a directory walker with a root path and strategy.
     pub fn new(p: &S::P, strategy: S) -> io::Result<Subpaths<S>> {
-        let stack = try!(strategy.get_more(p));
+        let stack = strategy.get_more(p)?;
         Ok(Subpaths { stack: stack, strategy: strategy })
     }
 }

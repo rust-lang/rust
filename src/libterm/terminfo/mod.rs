@@ -109,7 +109,7 @@ impl TermInfo {
     }
     // Keep the metadata small
     fn _from_path(path: &Path) -> Result<TermInfo, Error> {
-        let file = try!(File::open(path).map_err(|e| Error::IoError(e)));
+        let file = File::open(path).map_err(|e| Error::IoError(e))?;
         let mut reader = BufReader::new(file);
         parse(&mut reader, false).map_err(|e| Error::MalformedTerminfo(e))
     }

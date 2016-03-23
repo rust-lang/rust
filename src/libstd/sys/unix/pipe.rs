@@ -87,13 +87,13 @@ pub fn read2(p1: AnonPipe,
     let max = cmp::max(p1.raw(), p2.raw());
     loop {
         // wait for either pipe to become readable using `select`
-        try!(cvt_r(|| unsafe {
+        cvt_r(|| unsafe {
             let mut read: libc::fd_set = mem::zeroed();
             libc::FD_SET(p1.raw(), &mut read);
             libc::FD_SET(p2.raw(), &mut read);
             libc::select(max + 1, &mut read, 0 as *mut _, 0 as *mut _,
                          0 as *mut _)
-        }));
+        })?;
 
         // Read as much as we can from each pipe, ignoring EWOULDBLOCK or
         // EAGAIN. If we hit EOF, then this will happen because the underlying
@@ -113,11 +113,11 @@ pub fn read2(p1: AnonPipe,
                 }
             }
         };
-        if try!(read(&p1, v1)) {
+        if read(&p1, v1)? {
             p2.set_nonblocking(false);
             return p2.read_to_end(v2).map(|_| ());
         }
-        if try!(read(&p2, v2)) {
+        if read(&p2, v2)? {
             p1.set_nonblocking(false);
             return p1.read_to_end(v1).map(|_| ());
         }

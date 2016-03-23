@@ -19,12 +19,12 @@ const INDENT: &'static str = "    ";
 pub fn write_mir_pretty<'a, 't, W, I>(tcx: &ty::TyCtxt<'t>, iter: I, w: &mut W) -> io::Result<()>
 where W: Write, I: Iterator<Item=(&'a NodeId, &'a Mir<'a>)> {
     for (&nodeid, mir) in iter {
-        try!(write_mir_intro(tcx, nodeid, mir, w));
+        write_mir_intro(tcx, nodeid, mir, w)?;
         // Nodes
         for block in mir.all_basic_blocks() {
-            try!(write_basic_block(block, mir, w));
+            write_basic_block(block, mir, w)?;
         }
-        try!(writeln!(w, "}}"))
+        writeln!(w, "}}")?
     }
     Ok(())
 }
@@ -34,15 +34,15 @@ fn write_basic_block<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::R
     let data = mir.basic_block_data(block);
 
     // Basic block label at the top.
-    try!(writeln!(w, "\n{}{:?}: {{", INDENT, block));
+    writeln!(w, "\n{}{:?}: {{", INDENT, block)?;
 
     // List of statements in the middle.
     for statement in &data.statements {
-        try!(writeln!(w, "{0}{0}{1:?};", INDENT, statement));
+        writeln!(w, "{0}{0}{1:?};", INDENT, statement)?;
     }
 
     // Terminator at the bottom.
-    try!(writeln!(w, "{0}{0}{1:?};", INDENT, data.terminator()));
+    writeln!(w, "{0}{0}{1:?};", INDENT, data.terminator())?;
 
     writeln!(w, "{}}}", INDENT)
 }
@@ -52,38 +52,38 @@ fn write_basic_block<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::R
 fn write_mir_intro<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
 -> io::Result<()> {
 
-    try!(write!(w, "fn {}(", tcx.map.path_to_string(nid)));
+    write!(w, "fn {}(", tcx.map.path_to_string(nid))?;
 
     // fn argument types.
     for (i, arg) in mir.arg_decls.iter().enumerate() {
         if i > 0 {
-            try!(write!(w, ", "));
+            write!(w, ", ")?;
         }
-        try!(write!(w, "{:?}: {}", Lvalue::Arg(i as u32), arg.ty));
+        write!(w, "{:?}: {}", Lvalue::Arg(i as u32), arg.ty)?;
     }
 
-    try!(write!(w, ") -> "));
+    write!(w, ") -> ")?;
 
     // fn return type.
     match mir.return_ty {
-        ty::FnOutput::FnConverging(ty) => try!(write!(w, "{}", ty)),
-        ty::FnOutput::FnDiverging => try!(write!(w, "!")),
+        ty::FnOutput::FnConverging(ty) => write!(w, "{}", ty)?,
+        ty::FnOutput::FnDiverging => write!(w, "!")?,
     }
 
-    try!(writeln!(w, " {{"));
+    writeln!(w, " {{")?;
 
     // User variable types (including the user's name in a comment).
     for (i, var) in mir.var_decls.iter().enumerate() {
-        try!(write!(w, "{}let ", INDENT));
+        write!(w, "{}let ", INDENT)?;
         if var.mutability == Mutability::Mut {
-            try!(write!(w, "mut "));
+            write!(w, "mut ")?;
         }
-        try!(writeln!(w, "{:?}: {}; // {}", Lvalue::Var(i as u32), var.ty, var.name));
+        writeln!(w, "{:?}: {}; // {}", Lvalue::Var(i as u32), var.ty, var.name)?;
     }
 
     // Compiler-introduced temporary types.
     for (i, temp) in mir.temp_decls.iter().enumerate() {
-        try!(writeln!(w, "{}let mut {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty));
+        writeln!(w, "{}let mut {:?}: {};", INDENT, Lvalue::Temp(i as u32), temp.ty)?;
     }
 
     Ok(())

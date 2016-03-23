@@ -68,7 +68,7 @@ struct Matrix<'a>(Vec<Vec<&'a Pat>>);
 /// ++++++++++++++++++++++++++
 impl<'a> fmt::Debug for Matrix<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "\n"));
+        write!(f, "\n")?;
 
         let &Matrix(ref m) = self;
         let pretty_printed_matrix: Vec<Vec<String>> = m.iter().map(|row| {
@@ -85,16 +85,16 @@ impl<'a> fmt::Debug for Matrix<'a> {
 
         let total_width = column_widths.iter().cloned().sum::<usize>() + column_count * 3 + 1;
         let br = repeat('+').take(total_width).collect::<String>();
-        try!(write!(f, "{}\n", br));
+        write!(f, "{}\n", br)?;
         for row in pretty_printed_matrix {
-            try!(write!(f, "+"));
+            write!(f, "+")?;
             for (column, pat_str) in row.into_iter().enumerate() {
-                try!(write!(f, " "));
-                try!(write!(f, "{:1$}", pat_str, column_widths[column]));
-                try!(write!(f, " +"));
+                write!(f, " ")?;
+                write!(f, "{:1$}", pat_str, column_widths[column])?;
+                write!(f, " +")?;
             }
-            try!(write!(f, "\n"));
-            try!(write!(f, "{}\n", br));
+            write!(f, "\n")?;
+            write!(f, "{}\n", br)?;
         }
         Ok(())
     }

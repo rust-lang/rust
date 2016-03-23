@@ -75,13 +75,13 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
                 Ok(a)
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                try!(self.fields
-                         .switch_expected()
-                         .instantiate(b, SupertypeOf, a_id));
+                self.fields
+                    .switch_expected()
+                    .instantiate(b, SupertypeOf, a_id)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, SubtypeOf, b_id));
+                self.fields.instantiate(a, SubtypeOf, b_id)?;
                 Ok(a)
             }
 
@@ -90,7 +90,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             }
 
             _ => {
-                try!(combine::super_combine_tys(self.fields.infcx, self, a, b));
+                combine::super_combine_tys(self.fields.infcx, self, a, b)?;
                 Ok(a)
             }
         }

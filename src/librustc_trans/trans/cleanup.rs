@@ -175,9 +175,9 @@ impl<'blk, 'tcx: 'blk> fmt::Debug for CleanupScopeKind<'blk, 'tcx> {
             CustomScopeKind => write!(f, "CustomScopeKind"),
             AstScopeKind(nid) => write!(f, "AstScopeKind({})", nid),
             LoopScopeKind(nid, ref blks) => {
-                try!(write!(f, "LoopScopeKind({}, [", nid));
+                write!(f, "LoopScopeKind({}, [", nid)?;
                 for blk in blks {
-                    try!(write!(f, "{:p}, ", blk));
+                    write!(f, "{:p}, ", blk)?;
                 }
                 write!(f, "])")
             }

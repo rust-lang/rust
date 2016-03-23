@@ -75,7 +75,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             debug!("b_prime={:?}", b_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = try!(self.sub().relate(&a_prime, &b_prime));
+            let result = self.sub().relate(&a_prime, &b_prime)?;
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
@@ -118,7 +118,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
 
             // Collect constraints.
             let result0 =
-                try!(self.lub().relate(&a_with_fresh, &b_with_fresh));
+                self.lub().relate(&a_with_fresh, &b_with_fresh)?;
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("lub result0 = {:?}", result0);
@@ -212,7 +212,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
 
             // Collect constraints.
             let result0 =
-                try!(self.glb().relate(&a_with_fresh, &b_with_fresh));
+                self.glb().relate(&a_with_fresh, &b_with_fresh)?;
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("glb result0 = {:?}", result0);

@@ -320,12 +320,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let _task = self.tcx().dep_graph.in_task(dep_node);
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
-        match try!(self.candidate_from_obligation(&stack)) {
+        match self.candidate_from_obligation(&stack)? {
             None => {
                 self.consider_unification_despite_ambiguity(obligation);
                 Ok(None)
             }
-            Some(candidate) => Ok(Some(try!(self.confirm_candidate(obligation, candidate)))),
+            Some(candidate) => Ok(Some(self.confirm_candidate(obligation, candidate)?)),
         }
     }
 
@@ -786,7 +786,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(None);
         }
 
-        let candidate_set = try!(self.assemble_candidates(stack));
+        let candidate_set = self.assemble_candidates(stack)?;
 
         if candidate_set.ambiguous {
             debug!("candidate set contains ambig");
@@ -1034,19 +1034,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // User-defined copy impls are permitted, but only for
                 // structs and enums.
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
+                self.assemble_candidates_from_impls(obligation, &mut candidates)?;
 
                 // For other types, we'll use the builtin rules.
-                try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
-                                                            obligation,
-                                                            &mut candidates));
+                self.assemble_builtin_bound_candidates(ty::BoundCopy,
+                                                       obligation,
+                                                       &mut candidates)?;
             }
             Some(bound @ ty::BoundSized) => {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
-                try!(self.assemble_builtin_bound_candidates(bound,
-                                                            obligation,
-                                                            &mut candidates));
+                self.assemble_builtin_bound_candidates(bound,
+                                                       obligation,
+                                                       &mut candidates)?;
             }
 
             None if self.tcx().lang_items.unsize_trait() ==
@@ -1057,19 +1057,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(ty::BoundSend) |
             Some(ty::BoundSync) |
             None => {
-                try!(self.assemble_closure_candidates(obligation, &mut candidates));
-                try!(self.assemble_fn_pointer_candidates(obligation, &mut candidates));
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
+                self.assemble_closure_candidates(obligation, &mut candidates)?;
+                self.assemble_fn_pointer_candidates(obligation, &mut candidates)?;
+                self.assemble_candidates_from_impls(obligation, &mut candidates)?;
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
             }
         }
 
         self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
-        try!(self.assemble_candidates_from_caller_bounds(stack, &mut candidates));
+        self.assemble_candidates_from_caller_bounds(stack, &mut candidates)?;
         // Default implementations have lower priority, so we only
         // consider triggering a default if there is no other impl that can apply.
         if candidates.vec.is_empty() {
-            try!(self.assemble_candidates_from_default_impls(obligation, &mut candidates));
+            self.assemble_candidates_from_default_impls(obligation, &mut candidates)?;
         }
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
@@ -2044,7 +2044,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match candidate {
             BuiltinCandidate(builtin_bound) => {
                 Ok(VtableBuiltin(
-                    try!(self.confirm_builtin_candidate(obligation, builtin_bound))))
+                    self.confirm_builtin_candidate(obligation, builtin_bound)?))
             }
 
             ParamCandidate(param) => {
@@ -2064,13 +2064,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ImplCandidate(impl_def_id) => {
                 let vtable_impl =
-                    try!(self.confirm_impl_candidate(obligation, impl_def_id));
+                    self.confirm_impl_candidate(obligation, impl_def_id)?;
                 Ok(VtableImpl(vtable_impl))
             }
 
             ClosureCandidate(closure_def_id, substs) => {
                 let vtable_closure =
-                    try!(self.confirm_closure_candidate(obligation, closure_def_id, substs));
+                    self.confirm_closure_candidate(obligation, closure_def_id, substs)?;
                 Ok(VtableClosure(vtable_closure))
             }
 
@@ -2090,7 +2090,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             FnPointerCandidate => {
                 let fn_type =
-                    try!(self.confirm_fn_pointer_candidate(obligation));
+                    self.confirm_fn_pointer_candidate(obligation)?;
                 Ok(VtableFnPointer(fn_type))
             }
 
@@ -2100,7 +2100,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             BuiltinUnsizeCandidate => {
-                let data = try!(self.confirm_builtin_unsize_candidate(obligation));
+                let data = self.confirm_builtin_unsize_candidate(obligation)?;
                 Ok(VtableBuiltin(data))
             }
         }
@@ -2152,7 +2152,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("confirm_builtin_candidate({:?})",
                obligation);
 
-        match try!(self.builtin_bound(bound, obligation)) {
+        match self.builtin_bound(bound, obligation)? {
             If(nested) => Ok(self.vtable_builtin_data(obligation, bound, nested)),
             AmbiguousBuiltin | ParameterBuiltin => {
                 self.tcx().sess.span_bug(
@@ -2421,9 +2421,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                     util::TupleArgumentsFlag::Yes)
             .map_bound(|(trait_ref, _)| trait_ref);
 
-        try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                          obligation.predicate.to_poly_trait_ref(),
-                                          trait_ref));
+        self.confirm_poly_trait_refs(obligation.cause.clone(),
+                                     obligation.predicate.to_poly_trait_ref(),
+                                     trait_ref)?;
         Ok(self_ty)
     }
 
@@ -2449,9 +2449,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                trait_ref,
                obligations);
 
-        try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                          obligation.predicate.to_poly_trait_ref(),
-                                          trait_ref));
+        self.confirm_poly_trait_refs(obligation.cause.clone(),
+                                     obligation.predicate.to_poly_trait_ref(),
+                                     trait_ref)?;
 
         Ok(VtableClosureData {
             closure_def_id: closure_def_id,
@@ -2795,7 +2795,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     where_clause_trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> Result<Vec<PredicateObligation<'tcx>>,()>
     {
-        try!(self.match_poly_trait_ref(obligation, where_clause_trait_ref));
+        self.match_poly_trait_ref(obligation, where_clause_trait_ref)?;
         Ok(Vec::new())
     }
 

@@ -119,7 +119,7 @@ impl Encodable for Ident {
 
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::from_name(try!(Name::decode(d))))
+        Ok(Ident::from_name(Name::decode(d)?))
     }
 }
 

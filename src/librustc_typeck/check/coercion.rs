@@ -220,7 +220,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let (r_a, mt_a) = match a.sty {
             ty::TyRef(r_a, mt_a) => {
-                try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
+                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
                 (r_a, mt_a)
             }
             _ => return self.unify_and_identity(a, b)
@@ -414,7 +414,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // Handle reborrows before selecting `Source: CoerceUnsized<Target>`.
         let (source, reborrow) = match (&source.sty, &target.sty) {
             (&ty::TyRef(_, mt_a), &ty::TyRef(_, mt_b)) => {
-                try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
+                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
 
                 let coercion = Coercion(self.origin.span());
                 let r_borrow = self.fcx.infcx().next_region_var(coercion);
@@ -422,7 +422,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 (mt_a.ty, Some(AutoPtr(region, mt_b.mutbl)))
             }
             (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) => {
-                try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
+                coerce_mutbls(mt_a.mutbl, mt_b.mutbl)?;
                 (mt_a.ty, Some(AutoUnsafe(mt_b.mutbl)))
             }
             _ => (source, None)
@@ -564,8 +564,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Check that the types which they point at are compatible.
         let a_unsafe = self.tcx().mk_ptr(ty::TypeAndMut{ mutbl: mutbl_b, ty: mt_a.ty });
-        let (ty, noop) = try!(self.unify_and_identity(a_unsafe, b));
-        try!(coerce_mutbls(mt_a.mutbl, mutbl_b));
+        let (ty, noop) = self.unify_and_identity(a_unsafe, b)?;
+        coerce_mutbls(mt_a.mutbl, mutbl_b)?;
 
         // Although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
@@ -592,7 +592,7 @@ fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx>,
     where E: Fn() -> I,
           I: IntoIterator<Item=&'b hir::Expr> {
 
-    let (ty, adjustment) = try!(indent(|| coerce.coerce(exprs, a, b)));
+    let (ty, adjustment) = indent(|| coerce.coerce(exprs, a, b))?;
 
     let fcx = coerce.fcx;
     if let AdjustDerefRef(auto) = adjustment {
@@ -621,7 +621,7 @@ pub fn try<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let mut coerce = Coerce::new(fcx, TypeOrigin::ExprAssignable(expr.span));
     fcx.infcx().commit_if_ok(|_| {
         let (ty, adjustment) =
-            try!(apply(&mut coerce, &|| Some(expr), source, target));
+            apply(&mut coerce, &|| Some(expr), source, target)?;
         if !adjustment.is_identity() {
             debug!("Success, coerced with {:?}", adjustment);
             assert!(!fcx.inh.tables.borrow().adjustments.contains_key(&expr.id));
@@ -657,7 +657,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         (&ty::TyFnDef(a_def_id, a_substs, a_fty),
          &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
             // The signature must always match.
-            let fty = try!(lub.relate(a_fty, b_fty));
+            let fty = lub.relate(a_fty, b_fty)?;
 
             if a_def_id == b_def_id {
                 // Same function, maybe the parameters match.

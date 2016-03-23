@@ -138,7 +138,7 @@ mod imp {
                 return Ok(OsRng { inner: OsGetrandomRng });
             }
 
-            let reader = try!(File::open("/dev/urandom"));
+            let reader = File::open("/dev/urandom")?;
             let reader_rng = ReaderRng::new(reader);
 
             Ok(OsRng { inner: OsReaderRng(reader_rng) })

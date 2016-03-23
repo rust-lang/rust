@@ -14,6 +14,7 @@
 #![allow(unused_must_use)]
 #![allow(unknown_features)]
 #![feature(box_syntax)]
+#![feature(question_mark)]
 
 use std::fmt::{self, Write};
 use std::usize;
@@ -40,8 +41,8 @@ impl fmt::Display for C {
 }
 impl fmt::Binary for D {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(f.write_str("aa"));
-        try!(f.write_char('☃'));
+        f.write_str("aa")?;
+        f.write_char('☃')?;
         f.write_str("bb")
     }
 }

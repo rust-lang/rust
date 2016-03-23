@@ -225,11 +225,11 @@ impl Command {
                                       "nul byte found in provided data"));
         }
 
-        let (ours, theirs) = try!(self.setup_io(default, needs_stdin));
-        let (input, output) = try!(sys::pipe::anon_pipe());
+        let (ours, theirs) = self.setup_io(default, needs_stdin)?;
+        let (input, output) = sys::pipe::anon_pipe()?;
 
         let pid = unsafe {
-            match try!(cvt(libc::fork())) {
+            match cvt(libc::fork())? {
                 0 => {
                     drop(input);
                     let err = self.do_exec(theirs);
@@ -335,7 +335,7 @@ impl Command {
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke libc::exit)
     unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
-        macro_rules! try {
+        macro_rules! t {
             ($e:expr) => (match $e {
                 Ok(e) => e,
                 Err(e) => return e,
@@ -343,17 +343,17 @@ impl Command {
         }
 
         if let Some(fd) = stdio.stdin.fd() {
-            try!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
+            t!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
         }
         if let Some(fd) = stdio.stdout.fd() {
-            try!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
+            t!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
         }
         if let Some(fd) = stdio.stderr.fd() {
-            try!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
+            t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
         }
 
         if let Some(u) = self.gid {
-            try!(cvt(libc::setgid(u as gid_t)));
+            t!(cvt(libc::setgid(u as gid_t)));
         }
         if let Some(u) = self.uid {
             // When dropping privileges from root, the `setgroups` call
@@ -365,7 +365,7 @@ impl Command {
             // privilege dropping function.
             let _ = libc::setgroups(0, ptr::null());
 
-            try!(cvt(libc::setuid(u as uid_t)));
+            t!(cvt(libc::setuid(u as uid_t)));
         }
         if self.session_leader {
             // Don't check the error of setsid because it fails if we're the
@@ -374,7 +374,7 @@ impl Command {
             let _ = libc::setsid();
         }
         if let Some(ref cwd) = self.cwd {
-            try!(cvt(libc::chdir(cwd.as_ptr())));
+            t!(cvt(libc::chdir(cwd.as_ptr())));
         }
         if let Some(ref envp) = self.envp {
             *sys::os::environ() = envp.as_ptr();
@@ -390,9 +390,9 @@ impl Command {
             // need to clean things up now to avoid confusing the program
             // we're about to run.
             let mut set: libc::sigset_t = mem::uninitialized();
-            try!(cvt(libc::sigemptyset(&mut set)));
-            try!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
-                                           ptr::null_mut())));
+            t!(cvt(libc::sigemptyset(&mut set)));
+            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
+                                         ptr::null_mut())));
             let ret = libc::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
                 return io::Error::last_os_error()
@@ -400,7 +400,7 @@ impl Command {
         }
 
         for callback in self.closures.iter_mut() {
-            try!(callback());
+            t!(callback());
         }
 
         libc::execvp(self.argv[0], self.argv.as_ptr());
@@ -415,9 +415,9 @@ impl Command {
         let stdin = self.stdin.as_ref().unwrap_or(default_stdin);
         let stdout = self.stdout.as_ref().unwrap_or(&default);
         let stderr = self.stderr.as_ref().unwrap_or(&default);
-        let (their_stdin, our_stdin) = try!(stdin.to_child_stdio(true));
-        let (their_stdout, our_stdout) = try!(stdout.to_child_stdio(false));
-        let (their_stderr, our_stderr) = try!(stderr.to_child_stdio(false));
+        let (their_stdin, our_stdin) = stdin.to_child_stdio(true)?;
+        let (their_stdout, our_stdout) = stdout.to_child_stdio(false)?;
+        let (their_stderr, our_stderr) = stderr.to_child_stdio(false)?;
         let ours = StdioPipes {
             stdin: our_stdin,
             stdout: our_stdout,
@@ -454,14 +454,14 @@ impl Stdio {
             // overwritten prematurely.
             Stdio::Fd(ref fd) => {
                 if fd.raw() >= 0 && fd.raw() <= libc::STDERR_FILENO {
-                    Ok((ChildStdio::Owned(try!(fd.duplicate())), None))
+                    Ok((ChildStdio::Owned(fd.duplicate()?), None))
                 } else {
                     Ok((ChildStdio::Explicit(fd.raw()), None))
                 }
             }
 
             Stdio::MakePipe => {
-                let (reader, writer) = try!(pipe::anon_pipe());
+                let (reader, writer) = pipe::anon_pipe()?;
                 let (ours, theirs) = if readable {
                     (writer, reader)
                 } else {
@@ -477,7 +477,7 @@ impl Stdio {
                 let path = unsafe {
                     CStr::from_ptr("/dev/null\0".as_ptr() as *const _)
                 };
-                let fd = try!(File::open_c(&path, &opts));
+                let fd = File::open_c(&path, &opts)?;
                 Ok((ChildStdio::Owned(fd.into_fd()), None))
             }
         }
@@ -508,9 +508,9 @@ fn pair_to_key(key: &OsStr, value: &OsStr, saw_nul: &mut bool) -> CString {
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{:?}", self.program));
+        write!(f, "{:?}", self.program)?;
         for arg in &self.args {
-            try!(write!(f, " {:?}", arg));
+            write!(f, " {:?}", arg)?;
         }
         Ok(())
     }
@@ -589,7 +589,7 @@ impl Process {
             return Ok(status)
         }
         let mut status = 0 as c_int;
-        try!(cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) }));
+        cvt_r(|| unsafe { libc::waitpid(self.pid, &mut status, 0) })?;
         self.status = Some(ExitStatus(status));
         Ok(ExitStatus(status))
     }

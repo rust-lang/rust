@@ -318,9 +318,9 @@ impl From<CString> for Vec<u8> {
 #[stable(feature = "cstr_debug", since = "1.3.0")]
 impl fmt::Debug for CStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "\""));
+        write!(f, "\"")?;
         for byte in self.to_bytes().iter().flat_map(|&b| ascii::escape_default(b)) {
-            try!(f.write_char(byte as char));
+            f.write_char(byte as char)?;
         }
         write!(f, "\"")
     }

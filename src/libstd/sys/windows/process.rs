@@ -151,7 +151,7 @@ impl Command {
         si.dwFlags = c::STARTF_USESTDHANDLES;
 
         let program = program.as_ref().unwrap_or(&self.program);
-        let mut cmd_str = try!(make_command_line(program, &self.args));
+        let mut cmd_str = make_command_line(program, &self.args)?;
         cmd_str.push(0); // add null terminator
 
         // stolen from the libuv code.
@@ -160,8 +160,8 @@ impl Command {
             flags |= c::DETACHED_PROCESS | c::CREATE_NEW_PROCESS_GROUP;
         }
 
-        let (envp, _data) = try!(make_envp(self.env.as_ref()));
-        let (dirp, _data) = try!(make_dirp(self.cwd.as_ref()));
+        let (envp, _data) = make_envp(self.env.as_ref())?;
+        let (dirp, _data) = make_dirp(self.cwd.as_ref())?;
         let mut pi = zeroed_process_information();
 
         // Prepare all stdio handles to be inherited by the child. This
@@ -186,23 +186,23 @@ impl Command {
         let stdin = self.stdin.as_ref().unwrap_or(default_stdin);
         let stdout = self.stdout.as_ref().unwrap_or(&default);
         let stderr = self.stderr.as_ref().unwrap_or(&default);
-        let stdin = try!(stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin));
-        let stdout = try!(stdout.to_handle(c::STD_OUTPUT_HANDLE,
-                                           &mut pipes.stdout));
-        let stderr = try!(stderr.to_handle(c::STD_ERROR_HANDLE,
-                                           &mut pipes.stderr));
+        let stdin = stdin.to_handle(c::STD_INPUT_HANDLE, &mut pipes.stdin)?;
+        let stdout = stdout.to_handle(c::STD_OUTPUT_HANDLE,
+                                      &mut pipes.stdout)?;
+        let stderr = stderr.to_handle(c::STD_ERROR_HANDLE,
+                                      &mut pipes.stderr)?;
         si.hStdInput = stdin.raw();
         si.hStdOutput = stdout.raw();
         si.hStdError = stderr.raw();
 
-        try!(unsafe {
+        unsafe {
             cvt(c::CreateProcessW(ptr::null(),
                                   cmd_str.as_mut_ptr(),
                                   ptr::null_mut(),
                                   ptr::null_mut(),
                                   c::TRUE, flags, envp, dirp,
                                   &mut si, &mut pi))
-        });
+        }?;
 
         // We close the thread handle because we don't care about keeping
         // the thread id valid, and we aren't keeping the thread handle
@@ -216,9 +216,9 @@ impl Command {
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{:?}", self.program));
+        write!(f, "{:?}", self.program)?;
         for arg in &self.args {
-            try!(write!(f, " {:?}", arg));
+            write!(f, " {:?}", arg)?;
         }
         Ok(())
     }
@@ -240,18 +240,18 @@ impl Stdio {
             }
 
             Stdio::MakePipe => {
-                let (reader, writer) = try!(pipe::anon_pipe());
+                let (reader, writer) = pipe::anon_pipe()?;
                 let (ours, theirs) = if stdio_id == c::STD_INPUT_HANDLE {
                     (writer, reader)
                 } else {
                     (reader, writer)
                 };
                 *pipe = Some(ours);
-                try!(cvt(unsafe {
+                cvt(unsafe {
                     c::SetHandleInformation(theirs.handle().raw(),
                                             c::HANDLE_FLAG_INHERIT,
                                             c::HANDLE_FLAG_INHERIT)
-                }));
+                })?;
                 Ok(theirs.into_handle())
             }
 
@@ -296,9 +296,9 @@ pub struct Process {
 
 impl Process {
     pub fn kill(&mut self) -> io::Result<()> {
-        try!(cvt(unsafe {
+        cvt(unsafe {
             c::TerminateProcess(self.handle.raw(), 1)
-        }));
+        })?;
         Ok(())
     }
 
@@ -315,7 +315,7 @@ impl Process {
                 return Err(Error::last_os_error())
             }
             let mut status = 0;
-            try!(cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status)));
+            cvt(c::GetExitCodeProcess(self.handle.raw(), &mut status))?;
             Ok(ExitStatus(status))
         }
     }
@@ -381,10 +381,10 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
     // Encode the command and arguments in a command line string such
     // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
-    try!(append_arg(&mut cmd, prog));
+    append_arg(&mut cmd, prog)?;
     for arg in args {
         cmd.push(' ' as u16);
-        try!(append_arg(&mut cmd, arg));
+        append_arg(&mut cmd, arg)?;
     }
     return Ok(cmd);
 
@@ -392,7 +392,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> io::Result<Vec<u16>> {
         // If an argument has 0 characters then we need to quote it to ensure
         // that it actually gets passed through on the command line or otherwise
         // it will be dropped entirely when parsed on the other end.
-        try!(ensure_no_nuls(arg));
+        ensure_no_nuls(arg)?;
         let arg_bytes = &arg.as_inner().inner.as_inner();
         let quote = arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
             || arg_bytes.is_empty();
@@ -438,9 +438,9 @@ fn make_envp(env: Option<&collections::HashMap<OsString, OsString>>)
             let mut blk = Vec::new();
 
             for pair in env {
-                blk.extend(try!(ensure_no_nuls(pair.0)).encode_wide());
+                blk.extend(ensure_no_nuls(pair.0)?.encode_wide());
                 blk.push('=' as u16);
-                blk.extend(try!(ensure_no_nuls(pair.1)).encode_wide());
+                blk.extend(ensure_no_nuls(pair.1)?.encode_wide());
                 blk.push(0);
             }
             blk.push(0);
@@ -454,7 +454,7 @@ fn make_dirp(d: Option<&OsString>) -> io::Result<(*const u16, Vec<u16>)> {
 
     match d {
         Some(dir) => {
-            let mut dir_str: Vec<u16> = try!(ensure_no_nuls(dir)).encode_wide().collect();
+            let mut dir_str: Vec<u16> = ensure_no_nuls(dir)?.encode_wide().collect();
             dir_str.push(0);
             Ok((dir_str.as_ptr(), dir_str))
         },

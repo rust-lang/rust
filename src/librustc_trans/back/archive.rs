@@ -254,8 +254,8 @@ impl<'a> ArchiveBuilder<'a> {
         // want to modify this archive, so we use `io::copy` to not preserve
         // permission bits.
         if let Some(ref s) = self.config.src {
-            try!(io::copy(&mut try!(File::open(s)),
-                          &mut try!(File::create(&self.config.dst))));
+            io::copy(&mut File::open(s)?,
+                     &mut File::create(&self.config.dst)?)?;
         }
 
         if removals.len() > 0 {
@@ -267,12 +267,12 @@ impl<'a> ArchiveBuilder<'a> {
             match addition {
                 Addition::File { path, name_in_archive } => {
                     let dst = self.work_dir.path().join(&name_in_archive);
-                    try!(fs::copy(&path, &dst));
+                    fs::copy(&path, &dst)?;
                     members.push(PathBuf::from(name_in_archive));
                 }
                 Addition::Archive { archive, archive_name, mut skip } => {
-                    try!(self.add_archive_members(&mut members, archive,
-                                                  &archive_name, &mut *skip));
+                    self.add_archive_members(&mut members, archive,
+                                             &archive_name, &mut *skip)?;
                 }
             }
         }
@@ -334,7 +334,7 @@ impl<'a> ArchiveBuilder<'a> {
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
         for file in archive.iter() {
-            let file = try!(file.map_err(string_to_io_error));
+            let file = file.map_err(string_to_io_error)?;
             if !is_relevant_child(&file) {
                 continue
             }
@@ -388,7 +388,7 @@ impl<'a> ArchiveBuilder<'a> {
                 }
             }
             let dst = self.work_dir.path().join(&new_filename);
-            try!(try!(File::create(&dst)).write_all(file.data()));
+            File::create(&dst)?.write_all(file.data())?;
             members.push(PathBuf::from(new_filename));
         }
         Ok(())
@@ -455,7 +455,7 @@ impl<'a> ArchiveBuilder<'a> {
         unsafe {
             if let Some(archive) = self.src_archive() {
                 for child in archive.iter() {
-                    let child = try!(child.map_err(string_to_io_error));
+                    let child = child.map_err(string_to_io_error)?;
                     let child_name = match child.name() {
                         Some(s) => s,
                         None => continue,
@@ -464,7 +464,7 @@ impl<'a> ArchiveBuilder<'a> {
                         continue
                     }
 
-                    let name = try!(CString::new(child_name));
+                    let name = CString::new(child_name)?;
                     members.push(llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                 name.as_ptr(),
                                                                 child.raw()));
@@ -474,8 +474,8 @@ impl<'a> ArchiveBuilder<'a> {
             for addition in mem::replace(&mut self.additions, Vec::new()) {
                 match addition {
                     Addition::File { path, name_in_archive } => {
-                        let path = try!(CString::new(path.to_str().unwrap()));
-                        let name = try!(CString::new(name_in_archive));
+                        let path = CString::new(path.to_str().unwrap())?;
+                        let name = CString::new(name_in_archive)?;
                         members.push(llvm::LLVMRustArchiveMemberNew(path.as_ptr(),
                                                                     name.as_ptr(),
                                                                     ptr::null_mut()));
@@ -484,7 +484,7 @@ impl<'a> ArchiveBuilder<'a> {
                     }
                     Addition::Archive { archive, archive_name: _, mut skip } => {
                         for child in archive.iter() {
-                            let child = try!(child.map_err(string_to_io_error));
+                            let child = child.map_err(string_to_io_error)?;
                             if !is_relevant_child(&child) {
                                 continue
                             }
@@ -502,7 +502,7 @@ impl<'a> ArchiveBuilder<'a> {
                             let child_name = Path::new(child_name)
                                                   .file_name().unwrap()
                                                   .to_str().unwrap();
-                            let name = try!(CString::new(child_name));
+                            let name = CString::new(child_name)?;
                             let m = llvm::LLVMRustArchiveMemberNew(ptr::null(),
                                                                    name.as_ptr(),
                                                                    child.raw());
@@ -515,7 +515,7 @@ impl<'a> ArchiveBuilder<'a> {
             }
 
             let dst = self.config.dst.to_str().unwrap().as_bytes();
-            let dst = try!(CString::new(dst));
+            let dst = CString::new(dst)?;
             let r = llvm::LLVMRustWriteArchive(dst.as_ptr(),
                                                members.len() as libc::size_t,
                                                members.as_ptr(),

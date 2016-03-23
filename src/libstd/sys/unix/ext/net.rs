@@ -87,7 +87,7 @@ impl SocketAddr {
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
             let mut len = mem::size_of::<libc::sockaddr_un>() as libc::socklen_t;
-            try!(cvt(f(&mut addr as *mut _ as *mut _, &mut len)));
+            cvt(f(&mut addr as *mut _ as *mut _, &mut len))?;
             SocketAddr::from_parts(addr, len)
         }
     }
@@ -155,9 +155,9 @@ struct AsciiEscaped<'a>(&'a [u8]);
 
 impl<'a> fmt::Display for AsciiEscaped<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "\""));
+        write!(fmt, "\"")?;
         for byte in self.0.iter().cloned().flat_map(ascii::escape_default) {
-            try!(write!(fmt, "{}", byte as char));
+            write!(fmt, "{}", byte as char)?;
         }
         write!(fmt, "\"")
     }
@@ -200,10 +200,10 @@ impl UnixStream {
     pub fn connect<P: AsRef<Path>>(path: P) -> io::Result<UnixStream> {
         fn inner(path: &Path) -> io::Result<UnixStream> {
             unsafe {
-                let inner = try!(Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM));
-                let (addr, len) = try!(sockaddr_un(path));
+                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+                let (addr, len) = sockaddr_un(path)?;
 
-                try!(cvt(libc::connect(*inner.as_inner(), &addr as *const _ as *const _, len)));
+                cvt(libc::connect(*inner.as_inner(), &addr as *const _ as *const _, len))?;
                 Ok(UnixStream(inner))
             }
         }
@@ -214,7 +214,7 @@ impl UnixStream {
     ///
     /// Returns two `UnixStream`s which are connected to each other.
     pub fn pair() -> io::Result<(UnixStream, UnixStream)> {
-        let (i1, i2) = try!(Socket::new_pair(libc::AF_UNIX, libc::SOCK_STREAM));
+        let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_STREAM)?;
         Ok((UnixStream(i1), UnixStream(i2)))
     }
 
@@ -395,11 +395,11 @@ impl UnixListener {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixListener> {
         fn inner(path: &Path) -> io::Result<UnixListener> {
             unsafe {
-                let inner = try!(Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM));
-                let (addr, len) = try!(sockaddr_un(path));
+                let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
+                let (addr, len) = sockaddr_un(path)?;
 
-                try!(cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len)));
-                try!(cvt(libc::listen(*inner.as_inner(), 128)));
+                cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len))?;
+                cvt(libc::listen(*inner.as_inner(), 128))?;
 
                 Ok(UnixListener(inner))
             }
@@ -415,8 +415,8 @@ impl UnixListener {
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
         let mut len = mem::size_of_val(&storage) as libc::socklen_t;
-        let sock = try!(self.0.accept(&mut storage as *mut _ as *mut _, &mut len));
-        let addr = try!(SocketAddr::from_parts(storage, len));
+        let sock = self.0.accept(&mut storage as *mut _ as *mut _, &mut len)?;
+        let addr = SocketAddr::from_parts(storage, len)?;
         Ok((UnixStream(sock), addr))
     }
 
@@ -536,10 +536,10 @@ impl UnixDatagram {
     pub fn bind<P: AsRef<Path>>(path: P) -> io::Result<UnixDatagram> {
         fn inner(path: &Path) -> io::Result<UnixDatagram> {
             unsafe {
-                let socket = try!(UnixDatagram::unbound());
-                let (addr, len) = try!(sockaddr_un(path));
+                let socket = UnixDatagram::unbound()?;
+                let (addr, len) = sockaddr_un(path)?;
 
-                try!(cvt(libc::bind(*socket.0.as_inner(), &addr as *const _ as *const _, len)));
+                cvt(libc::bind(*socket.0.as_inner(), &addr as *const _ as *const _, len))?;
 
                 Ok(socket)
             }
@@ -549,7 +549,7 @@ impl UnixDatagram {
 
     /// Creates a Unix Datagram socket which is not bound to any address.
     pub fn unbound() -> io::Result<UnixDatagram> {
-        let inner = try!(Socket::new_raw(libc::AF_UNIX, libc::SOCK_DGRAM));
+        let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_DGRAM)?;
         Ok(UnixDatagram(inner))
     }
 
@@ -557,7 +557,7 @@ impl UnixDatagram {
     ///
     /// Returns two `UnixDatagrams`s which are connected to each other.
     pub fn pair() -> io::Result<(UnixDatagram, UnixDatagram)> {
-        let (i1, i2) = try!(Socket::new_pair(libc::AF_UNIX, libc::SOCK_DGRAM));
+        let (i1, i2) = Socket::new_pair(libc::AF_UNIX, libc::SOCK_DGRAM)?;
         Ok((UnixDatagram(i1), UnixDatagram(i2)))
     }
 
@@ -568,9 +568,9 @@ impl UnixDatagram {
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
         fn inner(d: &UnixDatagram, path: &Path) -> io::Result<()> {
             unsafe {
-                let (addr, len) = try!(sockaddr_un(path));
+                let (addr, len) = sockaddr_un(path)?;
 
-                try!(cvt(libc::connect(*d.0.as_inner(), &addr as *const _ as *const _, len)));
+                cvt(libc::connect(*d.0.as_inner(), &addr as *const _ as *const _, len))?;
 
                 Ok(())
             }
@@ -605,7 +605,7 @@ impl UnixDatagram {
     /// whence the data came.
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         let mut count = 0;
-        let addr = try!(SocketAddr::new(|addr, len| {
+        let addr = SocketAddr::new(|addr, len| {
             unsafe {
                 count = libc::recvfrom(*self.0.as_inner(),
                                        buf.as_mut_ptr() as *mut _,
@@ -621,7 +621,7 @@ impl UnixDatagram {
                     -1
                 }
             }
-        }));
+        })?;
 
         Ok((count as usize, addr))
     }
@@ -639,14 +639,14 @@ impl UnixDatagram {
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
         fn inner(d: &UnixDatagram, buf: &[u8], path: &Path) -> io::Result<usize> {
             unsafe {
-                let (addr, len) = try!(sockaddr_un(path));
+                let (addr, len) = sockaddr_un(path)?;
 
-                let count = try!(cvt(libc::sendto(*d.0.as_inner(),
-                                                  buf.as_ptr() as *const _,
-                                                  buf.len(),
-                                                  0,
-                                                  &addr as *const _ as *const _,
-                                                  len)));
+                let count = cvt(libc::sendto(*d.0.as_inner(),
+                                             buf.as_ptr() as *const _,
+                                             buf.len(),
+                                             0,
+                                             &addr as *const _ as *const _,
+                                             len))?;
                 Ok(count as usize)
             }
         }

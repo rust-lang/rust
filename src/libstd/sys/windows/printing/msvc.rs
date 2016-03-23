@@ -53,7 +53,7 @@ pub fn print(w: &mut Write,
             None
         };
 
-        try!(output(w, i, addr as usize as *mut c_void, name));
+        output(w, i, addr as usize as *mut c_void, name)?;
 
         // Now find out the filename and line number
         let mut line: c::IMAGEHLP_LINE64 = mem::zeroed();

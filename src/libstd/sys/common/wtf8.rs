@@ -388,32 +388,32 @@ impl fmt::Debug for Wtf8 {
         fn write_str_escaped(f: &mut fmt::Formatter, s: &str) -> fmt::Result {
             use fmt::Write;
             for c in s.chars().flat_map(|c| c.escape_default()) {
-                try!(f.write_char(c))
+                f.write_char(c)?
             }
             Ok(())
         }
 
-        try!(formatter.write_str("\""));
+        formatter.write_str("\"")?;
         let mut pos = 0;
         loop {
             match self.next_surrogate(pos) {
                 None => break,
                 Some((surrogate_pos, surrogate)) => {
-                    try!(write_str_escaped(
+                    write_str_escaped(
                         formatter,
                         unsafe { str::from_utf8_unchecked(
                             &self.bytes[pos .. surrogate_pos]
                         )},
-                    ));
-                    try!(write!(formatter, "\\u{{{:X}}}", surrogate));
+                    )?;
+                    write!(formatter, "\\u{{{:X}}}", surrogate)?;
                     pos = surrogate_pos + 3;
                 }
             }
         }
-        try!(write_str_escaped(
+        write_str_escaped(
             formatter,
             unsafe { str::from_utf8_unchecked(&self.bytes[pos..]) },
-        ));
+        )?;
         formatter.write_str("\"")
     }
 }
