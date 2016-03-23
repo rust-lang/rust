@@ -9,9 +9,8 @@
 // except according to those terms.
 
 
-use rustc::middle::ty;
-use rustc::mir::repr::{self, Mir, BasicBlock, Lvalue, Rvalue};
-use rustc::mir::repr::{StatementKind, TerminatorKind};
+use rustc::middle::ty::TyCtxt;
+use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
 
 use std::cell::{Cell};
@@ -361,7 +360,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     }
 
     fn lookup_proj(&mut self,
-                   proj: &repr::LvalueProjection<'tcx>,
+                   proj: &LvalueProjection<'tcx>,
                    base: MovePathIndex) -> Lookup<MovePathIndex> {
         let MovePathLookup { ref mut projections,
                              ref mut next_index, .. } = *self;
@@ -484,7 +483,7 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
 }
 
 impl<'tcx> MoveData<'tcx> {
-    pub fn gather_moves(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> Self {
+    pub fn gather_moves(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> Self {
         gather_moves(mir, tcx)
     }
 }
@@ -495,7 +494,7 @@ enum StmtKind {
     Aggregate, Drop, CallFn, CallArg, Return,
 }
 
-fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx> {
+fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> MoveData<'tcx> {
     use self::StmtKind as SK;
 
     let bbs = mir.all_basic_blocks();
@@ -554,9 +553,9 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
                         Rvalue::Box(ref _ty) => {
                             // this is creating uninitialized
                             // memory that needs to be initialized.
-                            let deref_lval = Lvalue::Projection(Box::new( repr::Projection {
+                            let deref_lval = Lvalue::Projection(Box::new(Projection {
                                 base: lval.clone(),
-                                elem: repr::ProjectionElem::Deref,
+                                elem: ProjectionElem::Deref,
                             }));
                             bb_ctxt.on_move_out_lval(SK::Box, &deref_lval, source);
                         }
@@ -668,7 +667,7 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
 }
 
 struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
-    tcx: &'b ty::TyCtxt<'tcx>,
+    tcx: &'b TyCtxt<'tcx>,
     moves: &'b mut Vec<MoveOut>,
     builder: MovePathDataBuilder<'a, 'tcx>,
     path_map: &'b mut Vec<Vec<MoveOutIndex>>,
@@ -678,7 +677,7 @@ struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
 impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
     fn on_move_out_lval(&mut self,
                         stmt_kind: StmtKind,
-                        lval: &repr::Lvalue<'tcx>,
+                        lval: &Lvalue<'tcx>,
                         source: Location) {
         let tcx = self.tcx;
         let lval_ty = self.builder.mir.lvalue_ty(tcx, lval);
@@ -724,10 +723,10 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
         self.loc_map_bb[i].push(index);
     }
 
-    fn on_operand(&mut self, stmt_kind: StmtKind, operand: &repr::Operand<'tcx>, source: Location) {
+    fn on_operand(&mut self, stmt_kind: StmtKind, operand: &Operand<'tcx>, source: Location) {
         match *operand {
-            repr::Operand::Constant(..) => {} // not-a-move
-            repr::Operand::Consume(ref lval) => { // a move
+            Operand::Constant(..) => {} // not-a-move
+            Operand::Consume(ref lval) => { // a move
                 self.on_move_out_lval(stmt_kind, lval, source);
             }
         }
