@@ -133,11 +133,40 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
     recurse(false, cx, suggestion, terminals, String::new())
 }
 
+fn simple_negate(b: Bool) -> Bool {
+    use quine_mc_cluskey::Bool::*;
+    match b {
+        True => False,
+        False => True,
+        t @ Term(_) => Not(Box::new(t)),
+        And(mut v) => {
+            for el in &mut v {
+                *el = simple_negate(::std::mem::replace(el, True));
+            }
+            Or(v)
+        },
+        Or(mut v) => {
+            for el in &mut v {
+                *el = simple_negate(::std::mem::replace(el, True));
+            }
+            And(v)
+        },
+        Not(inner) => *inner,
+    }
+}
+
 impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     fn bool_expr(&self, e: &Expr) {
         let mut h2q = Hir2Qmm(Vec::new());
         if let Ok(expr) = h2q.run(e) {
-            let simplified = expr.simplify();
+            let mut simplified = expr.simplify();
+            for simple in Bool::Not(Box::new(expr.clone())).simplify() {
+                let simple_negated = simple_negate(simple);
+                if simplified.iter().any(|s| *s == simple_negated) {
+                    continue;
+                }
+                simplified.push(simple_negated);
+            }
             if !simplified.iter().any(|s| *s == expr) {
                 span_lint_and_then(self.0, NONMINIMAL_BOOL, e.span, "this boolean expression can be simplified", |db| {
                     for suggestion in &simplified {
