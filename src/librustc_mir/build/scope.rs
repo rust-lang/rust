@@ -98,20 +98,24 @@ use rustc::middle::const_eval::ConstVal;
 use rustc_const_eval::ConstInt;
 
 pub struct Scope<'tcx> {
-    // the scope-id within the scope_data_vec
+    /// the scope-id within the scope_data_vec
     id: ScopeId,
     extent: CodeExtent,
     drops: Vec<DropData<'tcx>>,
 
-    // A scope may only have one associated free, because:
-    // 1. We require a `free` to only be scheduled in the scope of `EXPR` in `box EXPR`;
-    // 2. It only makes sense to have it translated into the diverge-path.
-    //
-    // This kind of drop will be run *after* all the regular drops scheduled onto this scope,
-    // because drops may have dependencies on the allocated memory.
-    //
-    // This is expected to go away once `box EXPR` becomes a sugar for placement protocol and gets
-    // desugared in some earlier stage.
+    /// A scope may only have one associated free, because:
+    ///
+    /// 1. We require a `free` to only be scheduled in the scope of
+    ///    `EXPR` in `box EXPR`;
+    /// 2. It only makes sense to have it translated into the diverge-path.
+    ///
+    /// This kind of drop will be run *after* all the regular drops
+    /// scheduled onto this scope, because drops may have dependencies
+    /// on the allocated memory.
+    ///
+    /// This is expected to go away once `box EXPR` becomes a sugar
+    /// for placement protocol and gets desugared in some earlier
+    /// stage.
     free: Option<FreeData<'tcx>>,
 
     /// The cached block for the cleanups-on-diverge path. This block
@@ -123,17 +127,21 @@ pub struct Scope<'tcx> {
 }
 
 struct DropData<'tcx> {
+    /// span where drop obligation was incurred (typically where lvalue was declared)
     span: Span,
-    value: Lvalue<'tcx>,
-    // NB: per-drop “cache” is necessary for the build_scope_drops function below.
 
-    /// The cached block for the cleanups-on-diverge path. This block contains code to run the
-    /// current drop and all the preceding drops (i.e. those having lower index in Drop’s
-    /// Scope drop array)
+    /// lvalue to drop
+    value: Lvalue<'tcx>,
+
+    /// The cached block for the cleanups-on-diverge path. This block
+    /// contains code to run the current drop and all the preceding
+    /// drops (i.e. those having lower index in Drop’s Scope drop
+    /// array)
     cached_block: Option<BasicBlock>
 }
 
 struct FreeData<'tcx> {
+    /// span where free obligation was incurred
     span: Span,
 
     /// Lvalue containing the allocated box.
