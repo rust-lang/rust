@@ -9,6 +9,16 @@
 // except according to those terms.
 
 //! Temporal quantification.
+//!
+//! Example:
+//!
+//! ```
+//! use std::time::Duration;
+//!
+//! let five_seconds = Duration::new(5, 0);
+//! // both declarations are equivalent
+//! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
+//! ```
 
 #![stable(feature = "time", since = "1.3.0")]
 
@@ -40,6 +50,22 @@ mod duration;
 /// no method to get "the number of seconds" from an instant. Instead, it only
 /// allows measuring the duration between two instants (or comparing two
 /// instants).
+///
+/// Example:
+///
+/// ```no_run
+/// use std::time::{Duration, Instant};
+/// use std::thread::sleep;
+///
+/// fn main() {
+///    let now = Instant::now();
+///
+///    // we sleep for 2 seconds
+///    sleep(Duration::new(2, 0));
+///    // it prints '2'
+///    println!("{}", now.elapsed().as_secs());
+/// }
+/// ```
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct Instant(time::Instant);
@@ -63,6 +89,30 @@ pub struct Instant(time::Instant);
 /// information about a `SystemTime`. By calculating the duration from this
 /// fixed point in time, a `SystemTime` can be converted to a human-readable time,
 /// or perhaps some other string representation.
+///
+/// Example:
+///
+/// ```no_run
+/// use std::time::{Duration, SystemTime};
+/// use std::thread::sleep;
+///
+/// fn main() {
+///    let now = SystemTime::now();
+///
+///    // we sleep for 2 seconds
+///    sleep(Duration::new(2, 0));
+///    match now.elapsed() {
+///        Ok(elapsed) => {
+///            // it prints '2'
+///            println!("{}", elapsed.as_secs());
+///        }
+///        Err(e) => {
+///            // an error occured!
+///            println!("Error: {:?}", e);
+///        }
+///    }
+/// }
+/// ```
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[stable(feature = "time2", since = "1.8.0")]
 pub struct SystemTime(time::SystemTime);
