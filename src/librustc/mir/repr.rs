@@ -156,11 +156,21 @@ pub enum BorrowKind {
 /// decl, a let, etc.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VarDecl<'tcx> {
+    /// `let mut x` vs `let x`
     pub mutability: Mutability,
+
+    /// name that user gave the variable; not that, internally,
+    /// mir references variables by index
     pub name: Name,
+
+    /// type inferred for this variable (`let x: ty = ...`)
     pub ty: Ty<'tcx>,
-    pub scope: ScopeId, // scope in which variable was declared
-    pub span: Span, // span where variable was declared
+
+    /// scope in which variable was declared
+    pub scope: ScopeId,
+
+    /// span where variable was declared
+    pub span: Span,
 }
 
 /// A "temp" is a temporary that we place on the stack. They are
