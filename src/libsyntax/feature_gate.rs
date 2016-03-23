@@ -212,6 +212,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // rust runtime internal
     ("unwind_attributes", "1.4.0", None, Active),
 
+    // allow the use of `#[naked]` on functions.
+    ("naked_functions", "1.9.0", None, Active),
+
     // allow empty structs and enum variants with braces
     ("braced_empty_structs", "1.5.0", Some(29720), Accepted),
 
@@ -376,6 +379,9 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     // FIXME: #14406 these are processed in trans, which happens after the
     // lint pass
     ("cold", Whitelisted, Ungated),
+    ("naked", Whitelisted, Gated("naked_functions",
+                                 "the `#[naked]` attribute \
+                                  is an experimental feature")),
     ("export_name", Whitelisted, Ungated),
     ("inline", Whitelisted, Ungated),
     ("link", Whitelisted, Ungated),
