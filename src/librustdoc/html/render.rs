@@ -432,7 +432,7 @@ pub fn run(mut krate: clean::Crate,
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
-    if let Some(attrs) = krate.module.as_ref().map(|m| m.attrs.list_def("doc")) {
+    if let Some(attrs) = krate.module.as_ref().map(|m| m.attrs.list("doc")) {
         for attr in attrs {
             match *attr {
                 clean::NameValue(ref x, ref s)
@@ -832,7 +832,7 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs.list_def("doc").value("html_root_url").map(|url| {
+    e.attrs.list("doc").value("html_root_url").map(|url| {
         let mut url = url.to_owned();
         if !url.ends_with("/") {
             url.push('/')
@@ -1846,6 +1846,7 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
+    // FIXME(#24111): remove when `const_fn` is stabilized
     let vis_constness = match get_unstable_features_setting() {
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
