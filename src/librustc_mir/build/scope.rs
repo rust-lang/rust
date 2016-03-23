@@ -87,7 +87,7 @@ should go to.
 */
 
 use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary};
-use rustc::middle::region::CodeExtent;
+use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
 use rustc::middle::subst::{Substs, Subst, VecPerParamSpace};
 use rustc::middle::ty::{self, Ty, TyCtxt};
@@ -326,9 +326,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 .push(self.cfg.current_location(block));
         }
 
-        let scope_id = self.innermost_scope_id();
+        assert!(scope_count < self.scopes.len(),
+                "should never use `exit_scope` to pop *ALL* scopes");
+        let scope = self.scopes.iter().rev().skip(scope_count)
+                                            .next()
+                                            .unwrap();
         self.cfg.terminate(block,
-                           scope_id,
+                           scope.id,
                            span,
                            TerminatorKind::Goto { target: target });
     }
@@ -365,8 +369,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         self.scopes.last().map(|scope| scope.extent).unwrap()
     }
 
-    pub fn extent_of_outermost_scope(&self) -> CodeExtent {
-        self.scopes.first().map(|scope| scope.extent).unwrap()
+    /// Returns the extent of the scope which should be exited by a
+    /// return.
+    pub fn extent_of_return_scope(&self) -> CodeExtent {
+        // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
+        // We want `scopes[1]`, which is the `ParameterScope`.
+        assert!(self.scopes.len() >= 2);
+        assert!(match self.hir.tcx().region_maps.code_extent_data(self.scopes[1].extent) {
+            CodeExtentData::ParameterScope { .. } => true,
+            _ => false,
+        });
+        self.scopes[1].extent
     }
 
     // Scheduling drops
