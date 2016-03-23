@@ -12,6 +12,7 @@ use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
+use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
 
@@ -35,6 +36,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::rc::Rc;
+use std::fmt;
 
 pub mod config;
 pub mod filesearch;
@@ -540,4 +542,36 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     } else {
         Err(err_count)
     }
+}
+
+#[cold]
+#[inline(never)]
+pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
+    // this wrapper mostly exists so I don't have to write a fully
+    // qualified path of None::<Span> inside the bug!() macro defintion
+    opt_span_bug_fmt(file, line, None::<Span>, args);
+}
+
+#[cold]
+#[inline(never)]
+pub fn span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
+                                        line: u32,
+                                        span: S,
+                                        args: fmt::Arguments) -> ! {
+    opt_span_bug_fmt(file, line, Some(span), args);
+}
+
+fn opt_span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
+                                          line: u32,
+                                          span: Option<S>,
+                                          args: fmt::Arguments) -> ! {
+    tls::with_opt(move |tcx| {
+        let msg = format!("{}:{}: {}", file, line, args);
+        match (tcx, span) {
+            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
+            (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
+            (None, _) => panic!(msg)
+        }
+    });
+    unreachable!();
 }
