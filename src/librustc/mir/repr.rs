@@ -34,7 +34,7 @@ pub struct Mir<'tcx> {
 
     /// List of lexical scopes; these are referenced by statements and
     /// used (eventually) for debuginfo. Indexed by a `ScopeId`.
-    pub scopes: ScopeDataVec,
+    pub scopes: Vec<ScopeData>,
 
     /// Return type of the function.
     pub return_ty: FnOutput<'tcx>,
@@ -651,30 +651,19 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Scopes
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct ScopeDataVec {
-    pub vec: Vec<ScopeData>
-}
-
-impl ScopeDataVec {
-    pub fn new() -> Self {
-        ScopeDataVec { vec: Vec::new() }
-    }
-}
-
-impl Index<ScopeId> for ScopeDataVec {
+impl Index<ScopeId> for Vec<ScopeData> {
     type Output = ScopeData;
 
     #[inline]
     fn index(&self, index: ScopeId) -> &ScopeData {
-        &self.vec[index.index()]
+        &self[index.index()]
     }
 }
 
-impl IndexMut<ScopeId> for ScopeDataVec {
+impl IndexMut<ScopeId> for Vec<ScopeData> {
     #[inline]
     fn index_mut(&mut self, index: ScopeId) -> &mut ScopeData {
-        &mut self.vec[index.index()]
+        &mut self[index.index()]
     }
 }
 

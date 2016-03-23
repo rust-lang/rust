@@ -41,7 +41,7 @@ pub struct Builder<'a, 'tcx: 'a> {
 
     // the vector of all scopes that we have created thus far;
     // we track this for debuginfo later
-    scope_data_vec: ScopeDataVec,
+    scope_datas: Vec<ScopeData>,
 
     var_decls: Vec<VarDecl<'tcx>>,
     var_indices: FnvHashMap<ast::NodeId, u32>,
@@ -151,7 +151,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         cfg: cfg,
         fn_span: span,
         scopes: vec![],
-        scope_data_vec: ScopeDataVec::new(),
+        scope_datas: vec![],
         scope_auxiliary: vec![],
         loop_scopes: vec![],
         temp_decls: vec![],
@@ -191,7 +191,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     MirAndScopeAuxiliary {
         mir: Mir {
             basic_blocks: builder.cfg.basic_blocks,
-            scopes: builder.scope_data_vec,
+            scopes: builder.scope_datas,
             var_decls: builder.var_decls,
             arg_decls: arg_decls,
             temp_decls: builder.temp_decls,

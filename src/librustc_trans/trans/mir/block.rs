@@ -569,4 +569,3 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         self.blocks[bb.index()].llbb
     }
 }
-

@@ -98,7 +98,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc_const_eval::ConstInt;
 
 pub struct Scope<'tcx> {
-    /// the scope-id within the scope_data_vec
+    /// the scope-id within the scope_datas
     id: ScopeId,
     extent: CodeExtent,
     drops: Vec<DropData<'tcx>>,
@@ -246,8 +246,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn push_scope(&mut self, extent: CodeExtent, entry: BasicBlock) -> ScopeId {
         debug!("push_scope({:?})", extent);
         let parent_id = self.scopes.last().map(|s| s.id);
-        let id = ScopeId::new(self.scope_data_vec.vec.len());
-        self.scope_data_vec.vec.push(ScopeData {
+        let id = ScopeId::new(self.scope_datas.len());
+        self.scope_datas.push(ScopeData {
             parent_scope: parent_id,
         });
         self.scopes.push(Scope {
