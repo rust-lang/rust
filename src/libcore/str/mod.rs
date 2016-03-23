@@ -1965,6 +1965,7 @@ impl StrExt for str {
         self.find(pat)
     }
 
+    #[inline]
     fn split_at(&self, mid: usize) -> (&str, &str) {
         // is_char_boundary checks that the index is in [0, .len()]
         if self.is_char_boundary(mid) {
