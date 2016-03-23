@@ -261,7 +261,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         block
                     }
                 };
-                let extent = this.extent_of_outermost_scope();
+                let extent = this.extent_of_return_scope();
                 this.exit_scope(expr_span, extent, block, END_BLOCK);
                 this.cfg.start_new_block().unit()
             }
