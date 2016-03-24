@@ -227,10 +227,8 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                         if stats[i] < simplified_stats[i] {
                             continue 'simplified;
                         }
-                        // if the number of occurrences of a terminal decreases, this expression is a candidate for improvement
-                        if stats[i] >= simplified_stats[i] {
-                            improvement = true;
-                        }
+                        // if the number of occurrences of a terminal doesn't increase, this expression is a candidate for improvement
+                        improvement = true;
                         if stats[i] != 0 && simplified_stats[i] == 0 {
                             span_lint_and_then(self.0, LOGIC_BUG, e.span, "this boolean expression contains a logic bug", |db| {
                                 db.span_help(h2q.terminals[i].span, "this expression can be optimized out by applying boolean operations to the outer expression");
