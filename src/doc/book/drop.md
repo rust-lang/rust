@@ -55,7 +55,7 @@ BOOM times 100!!!
 BOOM times 1!!!
 ```
 
-The TNT goes off before the firecracker does, because it was declared
+The `tnt` goes off before the `firecracker` does, because it was declared
 afterwards. Last in, first out.
 
 So what is `Drop` good for? Generally, `Drop` is used to clean up any resources
