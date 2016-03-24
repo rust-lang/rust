@@ -87,12 +87,11 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
                 _ => {},
             }
         }
-        if let Some((n, _)) = self.terminals
-                                  .iter()
-                                  .enumerate()
-                                  .find(|&(_, expr)| SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr)) {
-            #[allow(cast_possible_truncation)]
-            return Ok(Bool::Term(n as u8));
+        for (n, expr) in self.terminals.iter().enumerate() {
+            if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr) {
+                #[allow(cast_possible_truncation)]
+                return Ok(Bool::Term(n as u8));
+            }
         }
         let n = self.terminals.len();
         self.terminals.push(e);
