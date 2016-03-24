@@ -180,19 +180,35 @@ fn simple_negate(b: Bool) -> Bool {
     }
 }
 
-fn terminal_stats(b: &Bool) -> [usize; 32] {
-    fn recurse(b: &Bool, stats: &mut [usize; 32]) {
+#[derive(Default)]
+struct Stats {
+    terminals: [usize; 32],
+    negations: usize,
+    ops: usize,
+}
+
+fn terminal_stats(b: &Bool) -> Stats {
+    fn recurse(b: &Bool, stats: &mut Stats) {
         match *b {
-            True | False => {},
-            Not(ref inner) => recurse(inner, stats),
-            And(ref v) | Or(ref v) => for inner in v {
-                recurse(inner, stats)
+            True | False => stats.ops += 1,
+            Not(ref inner) => {
+                match **inner {
+                    And(_) | Or(_) => stats.ops += 1, // brackets are also operations
+                    _ => stats.negations += 1,
+                }
+                recurse(inner, stats);
             },
-            Term(n) => stats[n as usize] += 1,
+            And(ref v) | Or(ref v) => {
+                stats.ops += v.len() - 1;
+                for inner in v {
+                    recurse(inner, stats);
+                }
+            },
+            Term(n) => stats.terminals[n as usize] += 1,
         }
     }
     use quine_mc_cluskey::Bool::*;
-    let mut stats = [0; 32];
+    let mut stats = Stats::default();
     recurse(b, &mut stats);
     stats
 }
@@ -217,39 +233,38 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 }
                 simplified.push(simple_negated);
             }
-            if !simplified.iter().any(|s| *s == expr) {
-                let mut improvements = Vec::new();
-                'simplified: for suggestion in &simplified {
-                    let simplified_stats = terminal_stats(&suggestion);
-                    let mut improvement = false;
-                    for i in 0..32 {
-                        // ignore any "simplifications" that end up requiring a terminal more often than in the original expression
-                        if stats[i] < simplified_stats[i] {
-                            continue 'simplified;
-                        }
-                        // if the number of occurrences of a terminal doesn't increase, this expression is a candidate for improvement
-                        improvement = true;
-                        if stats[i] != 0 && simplified_stats[i] == 0 {
-                            span_lint_and_then(self.0, LOGIC_BUG, e.span, "this boolean expression contains a logic bug", |db| {
-                                db.span_help(h2q.terminals[i].span, "this expression can be optimized out by applying boolean operations to the outer expression");
-                                db.span_suggestion(e.span, "it would look like the following", suggest(self.0, suggestion, &h2q.terminals));
-                            });
-                            // don't also lint `NONMINIMAL_BOOL`
-                            improvements.clear();
-                            break 'simplified;
-                        }
+            let mut improvements = Vec::new();
+            'simplified: for suggestion in &simplified {
+                let simplified_stats = terminal_stats(&suggestion);
+                let mut improvement = false;
+                for i in 0..32 {
+                    // ignore any "simplifications" that end up requiring a terminal more often than in the original expression
+                    if stats.terminals[i] < simplified_stats.terminals[i] {
+                        continue 'simplified;
                     }
-                    if improvement {
-                        improvements.push(suggestion);
+                    if stats.terminals[i] != 0 && simplified_stats.terminals[i] == 0 {
+                        span_lint_and_then(self.0, LOGIC_BUG, e.span, "this boolean expression contains a logic bug", |db| {
+                            db.span_help(h2q.terminals[i].span, "this expression can be optimized out by applying boolean operations to the outer expression");
+                            db.span_suggestion(e.span, "it would look like the following", suggest(self.0, suggestion, &h2q.terminals));
+                        });
+                        // don't also lint `NONMINIMAL_BOOL`
+                        return;
                     }
+                    // if the number of occurrences of a terminal decreases or any of the stats decreases while none increases
+                    improvement = (stats.terminals[i] > simplified_stats.terminals[i]) ||
+                        (stats.negations > simplified_stats.negations && stats.ops == simplified_stats.ops) ||
+                        (stats.ops > simplified_stats.ops && stats.negations == simplified_stats.negations);
                 }
-                if !improvements.is_empty() {
-                    span_lint_and_then(self.0, NONMINIMAL_BOOL, e.span, "this boolean expression can be simplified", |db| {
-                        for suggestion in &improvements {
-                            db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
-                        }
-                    });
+                if improvement {
+                    improvements.push(suggestion);
                 }
+            }
+            if !improvements.is_empty() {
+                span_lint_and_then(self.0, NONMINIMAL_BOOL, e.span, "this boolean expression can be simplified", |db| {
+                    for suggestion in &improvements {
+                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
+                    }
+                });
             }
         }
     }

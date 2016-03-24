@@ -2,11 +2,13 @@
 #![plugin(clippy)]
 #![deny(nonminimal_bool, logic_bug)]
 
-#[allow(unused)]
+#[allow(unused, many_single_char_names)]
 fn main() {
     let a: bool = unimplemented!();
     let b: bool = unimplemented!();
     let c: bool = unimplemented!();
+    let d: bool = unimplemented!();
+    let e: bool = unimplemented!();
     let _ = a && b || a; //~ ERROR this boolean expression contains a logic bug
     //|~ HELP for further information visit
     //|~ HELP this expression can be optimized out
@@ -36,5 +38,11 @@ fn main() {
     // don't lint on cfgs
     let _ = cfg!(you_shall_not_not_pass) && a;
 
+    let _ = a || !b || !c || !d || !e;
+
     let _ = !(a && b || c);
+
+    let _ = !(!a && b); //~ ERROR this boolean expression can be simplified
+    //|~ HELP for further information visit
+    //|~ SUGGESTION let _ = !b || a;
 }
