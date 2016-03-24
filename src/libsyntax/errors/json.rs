@@ -20,7 +20,7 @@
 // FIXME spec the JSON output properly.
 
 
-use codemap::{MultiSpan, CodeMap};
+use codemap::{Span, MultiSpan, CodeMap};
 use diagnostics::registry::Registry;
 use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion};
 use errors::emitter::Emitter;
@@ -99,6 +99,16 @@ struct DiagnosticSpan {
     /// 1-based, character offset.
     column_start: usize,
     column_end: usize,
+    /// Source text from the start of line_start to the end of line_end.
+    text: Vec<DiagnosticSpanLine>,
+}
+
+#[derive(RustcEncodable)]
+struct DiagnosticSpanLine {
+    text: String,
+    /// 1-based, character offset in self.text.
+    highlight_start: usize,
+    highlight_end: usize,
 }
 
 #[derive(RustcEncodable)]
@@ -180,6 +190,7 @@ impl DiagnosticSpan {
                 line_end: end.line,
                 column_start: start.col.0 + 1,
                 column_end: end.col.0 + 1,
+                text: DiagnosticSpanLine::from_span(span, je),
             }
         }).collect()
     }
@@ -202,6 +213,7 @@ impl DiagnosticSpan {
                         line_end: end.line,
                         column_start: 0,
                         column_end: end.col.0 + 1,
+                        text: DiagnosticSpanLine::from_span(span, je),
                     }
                 }).collect()
             }
@@ -217,10 +229,36 @@ impl DiagnosticSpan {
                         line_end: end.line,
                         column_start: 0,
                         column_end: 0,
+                        text: DiagnosticSpanLine::from_span(span, je),
                     }
                 }).collect()
             }
         }
+    }
+}
+
+impl DiagnosticSpanLine {
+    fn from_span(span: &Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
+        let lines = match je.cm.span_to_lines(*span) {
+            Ok(lines) => lines,
+            Err(_) => {
+                debug!("unprintable span");
+                return Vec::new();
+            }
+        };
+
+        let mut result = Vec::new();
+        let fm = &*lines.file;
+
+        for line in &lines.lines {
+            result.push(DiagnosticSpanLine {
+                text: fm.get_line(line.line_index).unwrap().to_owned(),
+                highlight_start: line.start_col.0 + 1,
+                highlight_end: line.end_col.0 + 1,
+            });
+        }
+
+        result
     }
 }
 
