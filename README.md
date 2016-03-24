@@ -233,6 +233,8 @@ And, in your `main.rs` or `lib.rs`:
 #![cfg_attr(feature="clippy", plugin(clippy))]
 ```
 
+Instead of adding the `cfg_attr` attributes you can also run clippy on demand: `cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy` (the `-Z no trans`, while not neccessary, will stop the compilation process after typechecking (and lints) have completed, which can significantly reduce the runtime).
+
 ## Configuration
 Some lints can be configured in a `clippy.toml` file. It contains basic `variable = value` mapping eg.
 
