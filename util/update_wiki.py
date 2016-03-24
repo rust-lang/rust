@@ -51,6 +51,10 @@ def parse_file(d, f):
                         last_comment.append(line[3:])
                 elif line.startswith("declare_lint!"):
                     comment = False
+                    deprecated = False
+                elif line.startswith("declare_deprecated_lint!"):
+                    comment = False
+                    deprecated = True
                 else:
                     last_comment = []
             if not comment:
@@ -60,13 +64,17 @@ def parse_file(d, f):
                 if m:
                     name = m.group(1).lower()
 
-                    while True:
+                    # Intentionally either a never looping or infinite loop
+                    while not deprecated:
                         m = re.search(level_re, line)
                         if m:
                             level = m.group(0)
                             break
 
                         line = next(rs)
+
+                    if deprecated:
+                        level = "Deprecated"
 
                     print("found %s with level %s in %s" % (name, level, f))
                     d[name] = (level, last_comment)
@@ -107,14 +115,21 @@ conf_template = """
 """
 
 
+def level_message(level):
+    if level == "Deprecated":
+        return "\n**Those lints are deprecated**:\n\n"
+    else:
+        return "\n**Those lints are %s by default**:\n\n" % level
+
+
 def write_wiki_page(d, c, f):
     keys = list(d.keys())
     keys.sort()
     with open(f, "w") as w:
         w.write(PREFIX)
 
-        for level in ('Deny', 'Warn', 'Allow'):
-            w.write("\n**Those lints are %s by default**:\n\n" % level)
+        for level in ('Deny', 'Warn', 'Allow', 'Deprecated'):
+            w.write(level_message(level))
             for k in keys:
                 if d[k][0] == level:
                     w.write("[`%s`](#%s)\n" % (k, k))

@@ -81,7 +81,6 @@ pub mod mut_mut;
 pub mod mut_reference;
 pub mod mutex_atomic;
 pub mod needless_bool;
-pub mod needless_features;
 pub mod needless_update;
 pub mod new_without_default;
 pub mod no_effect;
@@ -141,6 +140,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
         }
     };
 
+    let mut store = reg.sess.lint_store.borrow_mut();
+    store.register_removed("unstable_as_slice", "`Vec::as_slice` has been stabilized in 1.7");
+    store.register_removed("unstable_as_mut_slice", "`Vec::as_mut_slice` has been stabilized in 1.7");
+    store.register_removed("str_to_string", "using `str::to_string` is common even today and specialization will likely happen soon");
+    store.register_removed("string_to_string", "using `string::to_string` is common even today and specialization will likely happen soon");
+    // end deprecated lints, do not remove this comment, it’s used in `update_lints`
+
     reg.register_late_lint_pass(box types::TypePass);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
@@ -185,7 +191,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box open_options::NonSensicalOpenOptions);
     reg.register_late_lint_pass(box zero_div_zero::ZeroDivZeroPass);
     reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
-    reg.register_late_lint_pass(box needless_features::NeedlessFeaturesPass);
     reg.register_late_lint_pass(box needless_update::NeedlessUpdatePass);
     reg.register_late_lint_pass(box no_effect::NoEffectPass);
     reg.register_late_lint_pass(box map_clone::MapClonePass);
@@ -308,8 +313,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::SEARCH_IS_SOME,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::SINGLE_CHAR_PATTERN,
-        methods::STR_TO_STRING,
-        methods::STRING_TO_STRING,
         methods::WRONG_SELF_CONVENTION,
         minmax::MIN_MAX,
         misc::CMP_NAN,
@@ -326,8 +329,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
-        needless_features::UNSTABLE_AS_MUT_SLICE,
-        needless_features::UNSTABLE_AS_SLICE,
         needless_update::NEEDLESS_UPDATE,
         new_without_default::NEW_WITHOUT_DEFAULT,
         no_effect::NO_EFFECT,

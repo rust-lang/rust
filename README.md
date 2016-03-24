@@ -14,7 +14,7 @@ Table of contents:
 * [License](#license)
 
 ##Lints
-There are 138 lints included in this crate:
+There are 134 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -124,11 +124,9 @@ name                                                                            
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                           | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                               | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead
-[str_to_string](https://github.com/Manishearth/rust-clippy/wiki#str_to_string)                                       | warn    | using `to_string()` on a str, which should be `to_owned()`
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                             | allow   | using `x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                               | allow   | using `x = x + ..` where x is a `String`; suggests using `push_str()` instead
 [string_lit_as_bytes](https://github.com/Manishearth/rust-clippy/wiki#string_lit_as_bytes)                           | warn    | calling `as_bytes` on a string literal; suggests using a byte string literal instead
-[string_to_string](https://github.com/Manishearth/rust-clippy/wiki#string_to_string)                                 | warn    | calling `String::to_string` which is inefficient
 [suspicious_assignment_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_assignment_formatting) | warn    | suspicious formatting of `*=`, `-=` or `!=`
 [suspicious_else_formatting](https://github.com/Manishearth/rust-clippy/wiki#suspicious_else_formatting)             | warn    | suspicious formatting of `else if`
 [temporary_assignment](https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment)                         | warn    | assignments to temporaries
@@ -140,8 +138,6 @@ name                                                                            
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                     | warn    | an argument is passed as a mutable reference although the function/method only demands an immutable reference
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                     | warn    | Struct fields are bound to a wildcard instead of using `..`
-[unstable_as_mut_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice)                       | warn    | as_mut_slice is not stable and can be replaced by &mut v[..]see https://github.com/rust-lang/rust/issues/27729
-[unstable_as_slice](https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice)                               | warn    | as_slice is not stable and can be replaced by & v[..]see https://github.com/rust-lang/rust/issues/27729
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                     | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
 [unused_label](https://github.com/Manishearth/rust-clippy/wiki#unused_label)                                         | warn    | unused label
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                                 | warn    | unused lifetimes in function definitions
