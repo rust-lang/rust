@@ -1,4 +1,4 @@
-use rustc::lint::*;
+use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
 use rustc_front::hir::*;
 use rustc_front::intravisit::*;
 use syntax::ast::LitKind;
@@ -110,11 +110,11 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
         use quine_mc_cluskey::Bool::*;
         match *suggestion {
             True => {
-                s.extend("true".chars());
+                s.push_str("true");
                 s
             },
             False => {
-                s.extend("false".chars());
+                s.push_str("false");
                 s
             },
             Not(ref inner) => {
@@ -127,7 +127,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 }
                 s = recurse(true, cx, &v[0], terminals, s);
                 for inner in &v[1..] {
-                    s.extend(" && ".chars());
+                    s.push_str(" && ");
                     s = recurse(true, cx, inner, terminals, s);
                 }
                 if brackets {
@@ -141,7 +141,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 }
                 s = recurse(true, cx, &v[0], terminals, s);
                 for inner in &v[1..] {
-                    s.extend(" || ".chars());
+                    s.push_str(" || ");
                     s = recurse(true, cx, inner, terminals, s);
                 }
                 if brackets {
@@ -150,7 +150,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 s
             },
             Term(n) => {
-                s.extend(snippet_opt(cx, terminals[n as usize].span).expect("don't try to improve booleans created by macros").chars());
+                s.push_str(&snippet_opt(cx, terminals[n as usize].span).expect("don't try to improve booleans created by macros"));
                 s
             }
         }
