@@ -21,4 +21,12 @@ fn main() {
     let _ = !!a; //~ ERROR this boolean expression can be simplified
     //|~ HELP for further information visit
     //|~ SUGGESTION let _ = a;
+
+    let _ = false && a; //~ ERROR this boolean expression can be simplified
+    //|~ HELP for further information visit
+    //|~ SUGGESTION let _ = false;
+
+    let _ = false || a; //~ ERROR this boolean expression can be simplified
+    //|~ HELP for further information visit
+    //|~ SUGGESTION let _ = a;
 }
