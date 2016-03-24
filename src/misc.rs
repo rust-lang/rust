@@ -167,8 +167,9 @@ impl LateLintPass for FloatCmp {
                 span_lint(cx,
                           FLOAT_CMP,
                           expr.span,
-                          &format!("{}-comparison of f32 or f64 detected. Consider changing this to `abs({} - {}) < \
-                                    epsilon` for some suitable value of epsilon",
+                          &format!("{}-comparison of f32 or f64 detected. Consider changing this to `({} - {}).abs() < \
+                                    epsilon` for some suitable value of epsilon. \
+                                    std::f32::EPSILON and std::f64::EPSILON are available.",
                                    binop_to_string(op),
                                    snippet(cx, left.span, ".."),
                                    snippet(cx, right.span, "..")));
