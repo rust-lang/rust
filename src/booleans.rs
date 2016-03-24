@@ -10,10 +10,22 @@ use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 ///
 /// **Known problems:** Ignores short circuting behavior, bitwise and/or and xor. Ends up suggesting things like !(a == b)
 ///
-/// **Example:** `if a && b || a` should be `if a`
+/// **Example:** `if a && true` should be `if a`
 declare_lint! {
     pub NONMINIMAL_BOOL, Allow,
     "checks for boolean expressions that can be written more concisely"
+}
+
+/// **What it does:** This lint checks for boolean expressions that contain terminals that can be eliminated
+///
+/// **Why is this bad?** This is most likely a logic bug
+///
+/// **Known problems:** Ignores short circuiting behavior
+///
+/// **Example:** The `b` in `if a && b || a` is unnecessary because the expression is equivalent to `if a`
+declare_lint! {
+    pub LOGIC_BUG, Warn,
+    "checks for boolean expressions that contain terminals which can be eliminated"
 }
 
 #[derive(Copy,Clone)]
@@ -21,7 +33,7 @@ pub struct NonminimalBool;
 
 impl LintPass for NonminimalBool {
     fn get_lints(&self) -> LintArray {
-        lint_array!(NONMINIMAL_BOOL)
+        lint_array!(NONMINIMAL_BOOL, LOGIC_BUG)
     }
 }
 
@@ -168,6 +180,23 @@ fn simple_negate(b: Bool) -> Bool {
     }
 }
 
+fn terminal_stats(b: &Bool) -> [usize; 32] {
+    fn recurse(b: &Bool, stats: &mut [usize; 32]) {
+        match *b {
+            True | False => {},
+            Not(ref inner) => recurse(inner, stats),
+            And(ref v) | Or(ref v) => for inner in v {
+                recurse(inner, stats)
+            },
+            Term(n) => stats[n as usize] += 1,
+        }
+    }
+    use quine_mc_cluskey::Bool::*;
+    let mut stats = [0; 32];
+    recurse(b, &mut stats);
+    stats
+}
+
 impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
     fn bool_expr(&self, e: &Expr) {
         let mut h2q = Hir2Qmm {
@@ -175,6 +204,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
             cx: self.0,
         };
         if let Ok(expr) = h2q.run(e) {
+            let stats = terminal_stats(&expr);
             let mut simplified = expr.simplify();
             for simple in Bool::Not(Box::new(expr.clone())).simplify() {
                 let simple_negated = simple_negate(simple);
@@ -184,11 +214,40 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                 simplified.push(simple_negated);
             }
             if !simplified.iter().any(|s| *s == expr) {
-                span_lint_and_then(self.0, NONMINIMAL_BOOL, e.span, "this boolean expression can be simplified", |db| {
-                    for suggestion in &simplified {
-                        db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
+                let mut improvements = Vec::new();
+                'simplified: for suggestion in &simplified {
+                    let simplified_stats = terminal_stats(&suggestion);
+                    let mut improvement = false;
+                    for i in 0..32 {
+                        // ignore any "simplifications" that end up requiring a terminal more often than in the original expression
+                        if stats[i] < simplified_stats[i] {
+                            continue 'simplified;
+                        }
+                        // if the number of occurrences of a terminal decreases, this expression is a candidate for improvement
+                        if stats[i] >= simplified_stats[i] {
+                            improvement = true;
+                        }
+                        if stats[i] != 0 && simplified_stats[i] == 0 {
+                            span_lint_and_then(self.0, LOGIC_BUG, e.span, "this boolean expression contains a logic bug", |db| {
+                                db.span_help(h2q.terminals[i].span, "this expression can be optimized out by applying boolean operations to the outer expression");
+                                db.span_suggestion(e.span, "it would look like the following", suggest(self.0, suggestion, &h2q.terminals));
+                            });
+                            // don't also lint `NONMINIMAL_BOOL`
+                            improvements.clear();
+                            break 'simplified;
+                        }
                     }
-                });
+                    if improvement {
+                        improvements.push(suggestion);
+                    }
+                }
+                if !improvements.is_empty() {
+                    span_lint_and_then(self.0, NONMINIMAL_BOOL, e.span, "this boolean expression can be simplified", |db| {
+                        for suggestion in &improvements {
+                            db.span_suggestion(e.span, "try", suggest(self.0, suggestion, &h2q.terminals));
+                        }
+                    });
+                }
             }
         }
     }
