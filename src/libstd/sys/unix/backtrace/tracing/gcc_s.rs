@@ -33,7 +33,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     static LOCK: StaticMutex = StaticMutex::new();
     let _g = LOCK.lock();
 
-    try!(writeln!(w, "stack backtrace:"));
+    writeln!(w, "stack backtrace:")?;
 
     let mut cx = Context { writer: w, last_error: None, idx: 0 };
     return match unsafe {

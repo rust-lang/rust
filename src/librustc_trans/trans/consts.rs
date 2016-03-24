@@ -316,9 +316,9 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let val = if qualif.intersects(ConstQualif::NON_STATIC_BORROWS) {
         // Avoid autorefs as they would create global instead of stack
         // references, even when only the latter are correct.
-        try!(const_expr_unadjusted(ccx, expr, ty, param_substs, None, trueconst))
+        const_expr_unadjusted(ccx, expr, ty, param_substs, None, trueconst)?
     } else {
-        try!(const_expr(ccx, expr, param_substs, None, trueconst)).0
+        const_expr(ccx, expr, param_substs, None, trueconst)?.0
     };
 
     // boolean SSA values are i1, but they have to be stored in i8 slots,
@@ -344,7 +344,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             -> Result<(ValueRef, Ty<'tcx>), ConstEvalFailure> {
     let ety = monomorphize::apply_param_substs(cx.tcx(), param_substs,
                                                &cx.tcx().expr_ty(e));
-    let llconst = try!(const_expr_unadjusted(cx, e, ety, param_substs, fn_args, trueconst));
+    let llconst = const_expr_unadjusted(cx, e, ety, param_substs, fn_args, trueconst)?;
     let mut llconst = llconst;
     let mut ety_adjusted = monomorphize::apply_param_substs(cx.tcx(), param_substs,
                                                             &cx.tcx().expr_ty_adjusted(e));
@@ -381,7 +381,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     llconst = addr_of(cx, llconst, type_of::align_of(cx, ty), "autoref");
                     ty = cx.tcx().mk_imm_ref(cx.tcx().mk_region(ty::ReStatic), ty);
                 }
-            } else {
+            } else if adj.autoderefs > 0 {
                 let (dv, dt) = const_deref(cx, llconst, ty);
                 llconst = dv;
 
@@ -594,18 +594,18 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprBinary(b, ref e1, ref e2) => {
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
-            let (te1, ty) = try!(const_expr(cx, &e1, param_substs, fn_args, trueconst));
+            let (te1, ty) = const_expr(cx, &e1, param_substs, fn_args, trueconst)?;
             debug!("const_expr_unadjusted: te1={:?}, ty={:?}",
                    Value(te1), ty);
             assert!(!ty.is_simd());
             let is_float = ty.is_fp();
             let signed = ty.is_signed();
 
-            let (te2, ty2) = try!(const_expr(cx, &e2, param_substs, fn_args, trueconst));
+            let (te2, ty2) = const_expr(cx, &e2, param_substs, fn_args, trueconst)?;
             debug!("const_expr_unadjusted: te2={:?}, ty={:?}",
                    Value(te2), ty2);
 
-            try!(check_binary_expr_validity(cx, e, ty, te1, te2, trueconst));
+            check_binary_expr_validity(cx, e, ty, te1, te2, trueconst)?;
 
             unsafe { match b.node {
                 hir::BiAdd if is_float => llvm::LLVMConstFAdd(te1, te2),
@@ -651,9 +651,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } } // unsafe { match b.node {
         },
         hir::ExprUnary(u, ref inner_e) => {
-            let (te, ty) = try!(const_expr(cx, &inner_e, param_substs, fn_args, trueconst));
+            let (te, ty) = const_expr(cx, &inner_e, param_substs, fn_args, trueconst)?;
 
-            try!(check_unary_expr_validity(cx, e, ty, te, trueconst));
+            check_unary_expr_validity(cx, e, ty, te, trueconst)?;
 
             let is_float = ty.is_fp();
             unsafe { match u {
@@ -664,21 +664,21 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } }
         },
         hir::ExprField(ref base, field) => {
-            let (bv, bt) = try!(const_expr(cx, &base, param_substs, fn_args, trueconst));
+            let (bv, bt) = const_expr(cx, &base, param_substs, fn_args, trueconst)?;
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
             let ix = vinfo.field_index(field.node);
             adt::const_get_field(cx, &brepr, bv, vinfo.discr, ix)
         },
         hir::ExprTupField(ref base, idx) => {
-            let (bv, bt) = try!(const_expr(cx, &base, param_substs, fn_args, trueconst));
+            let (bv, bt) = const_expr(cx, &base, param_substs, fn_args, trueconst)?;
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
             adt::const_get_field(cx, &brepr, bv, vinfo.discr, idx.node)
         },
         hir::ExprIndex(ref base, ref index) => {
-            let (bv, bt) = try!(const_expr(cx, &base, param_substs, fn_args, trueconst));
-            let iv = try!(const_expr(cx, &index, param_substs, fn_args, TrueConst::Yes)).0;
+            let (bv, bt) = const_expr(cx, &base, param_substs, fn_args, trueconst)?;
+            let iv = const_expr(cx, &index, param_substs, fn_args, TrueConst::Yes)?.0;
             let iv = if let Some(iv) = const_to_opt_uint(iv) {
                 iv
             } else {
@@ -729,7 +729,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprCast(ref base, _) => {
             let t_cast = ety;
             let llty = type_of::type_of(cx, t_cast);
-            let (v, t_expr) = try!(const_expr(cx, &base, param_substs, fn_args, trueconst));
+            let (v, t_expr) = const_expr(cx, &base, param_substs, fn_args, trueconst)?;
             debug!("trans_const_cast({:?} as {:?})", t_expr, t_cast);
             if expr::cast_is_noop(cx.tcx(), base, t_expr, t_cast) {
                 return Ok(v);
@@ -811,30 +811,30 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             } else {
                 // If this isn't the address of a static, then keep going through
                 // normal constant evaluation.
-                let (v, ty) = try!(const_expr(cx, &sub, param_substs, fn_args, trueconst));
+                let (v, ty) = const_expr(cx, &sub, param_substs, fn_args, trueconst)?;
                 addr_of(cx, v, type_of::align_of(cx, ty), "ref")
             }
         },
         hir::ExprAddrOf(hir::MutMutable, ref sub) => {
-            let (v, ty) = try!(const_expr(cx, &sub, param_substs, fn_args, trueconst));
+            let (v, ty) = const_expr(cx, &sub, param_substs, fn_args, trueconst)?;
             addr_of_mut(cx, v, type_of::align_of(cx, ty), "ref_mut_slice")
         },
         hir::ExprTup(ref es) => {
             let repr = adt::represent_type(cx, ety);
-            let vals = try!(map_list(&es[..]));
+            let vals = map_list(&es[..])?;
             adt::trans_const(cx, &repr, Disr(0), &vals[..])
         },
         hir::ExprStruct(_, ref fs, ref base_opt) => {
             let repr = adt::represent_type(cx, ety);
 
             let base_val = match *base_opt {
-                Some(ref base) => Some(try!(const_expr(
+                Some(ref base) => Some(const_expr(
                     cx,
                     &base,
                     param_substs,
                     fn_args,
                     trueconst,
-                ))),
+                )?),
                 None => None
             };
 
@@ -851,7 +851,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             .collect::<Vec<Result<_, ConstEvalFailure>>>()
             .into_iter()
             .collect::<Result<Vec<_>,ConstEvalFailure>>();
-            let cs = try!(cs);
+            let cs = cs?;
             if ety.is_simd() {
                 C_vector(&cs[..])
             } else {
@@ -872,7 +872,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                        .collect::<Vec<Result<_, ConstEvalFailure>>>()
                        .into_iter()
                        .collect::<Result<Vec<_>, ConstEvalFailure>>();
-            let vs = try!(vs);
+            let vs = vs?;
             // If the vector contains enums, an LLVM array won't work.
             if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
                 C_struct(cx, &vs[..], false)
@@ -884,7 +884,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
             let n = cx.tcx().eval_repeat_count(count);
-            let unit_val = try!(const_expr(cx, &elem, param_substs, fn_args, trueconst)).0;
+            let unit_val = const_expr(cx, &elem, param_substs, fn_args, trueconst)?.0;
             let vs = vec![unit_val; n];
             if val_ty(unit_val) != llunitty {
                 C_struct(cx, &vs[..], false)
@@ -904,7 +904,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
                 Def::Fn(..) | Def::Method(..) => C_nil(cx),
                 Def::Const(def_id) | Def::AssociatedConst(def_id) => {
-                    load_const(cx, try!(get_const_val(cx, def_id, e, param_substs)),
+                    load_const(cx, get_const_val(cx, def_id, e, param_substs)?,
                                ety)
                 }
                 Def::Variant(enum_did, variant_did) => {
@@ -940,17 +940,17 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 };
             }
             let def = cx.tcx().def_map.borrow()[&callee.id].full_def();
-            let arg_vals = try!(map_list(args));
+            let arg_vals = map_list(args)?;
             match def {
                 Def::Fn(did) | Def::Method(did) => {
-                    try!(const_fn_call(
+                    const_fn_call(
                         cx,
                         did,
                         cx.tcx().node_id_item_substs(callee.id).substs,
                         &arg_vals,
                         param_substs,
                         trueconst,
-                    ))
+                    )?
                 }
                 Def::Struct(..) => {
                     if ety.is_simd() {
@@ -972,22 +972,22 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         },
         hir::ExprMethodCall(_, _, ref args) => {
-            let arg_vals = try!(map_list(args));
+            let arg_vals = map_list(args)?;
             let method_call = ty::MethodCall::expr(e.id);
             let method = cx.tcx().tables.borrow().method_map[&method_call];
-            try!(const_fn_call(cx, method.def_id, method.substs.clone(),
-                               &arg_vals, param_substs, trueconst))
+            const_fn_call(cx, method.def_id, method.substs.clone(),
+                          &arg_vals, param_substs, trueconst)?
         },
-        hir::ExprType(ref e, _) => try!(const_expr(cx, &e, param_substs, fn_args, trueconst)).0,
+        hir::ExprType(ref e, _) => const_expr(cx, &e, param_substs, fn_args, trueconst)?.0,
         hir::ExprBlock(ref block) => {
             match block.expr {
-                Some(ref expr) => try!(const_expr(
+                Some(ref expr) => const_expr(
                     cx,
                     &expr,
                     param_substs,
                     fn_args,
                     trueconst,
-                )).0,
+                )?.0,
                 None => C_nil(cx),
             }
         },
@@ -1149,13 +1149,13 @@ pub fn trans_static(ccx: &CrateContext,
         let datum = get_static(ccx, def_id);
 
         let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-        let (v, _) = try!(const_expr(
+        let (v, _) = const_expr(
             ccx,
             expr,
             empty_substs,
             None,
             TrueConst::Yes,
-        ).map_err(|e| e.into_inner()));
+        ).map_err(|e| e.into_inner())?;
 
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected

@@ -31,7 +31,7 @@ pub fn print_borrowck_graph_to(mbcx: &MirBorrowckCtxt,
                                path: &str) -> io::Result<()> {
     let g = Graph { mbcx: mbcx, context: context };
     let mut v = Vec::new();
-    try!(dot::render(&g, &mut v));
+    dot::render(&g, &mut v)?;
     println!("print_borrowck_graph_to path: {} context: {} node_id: {}",
              path, context, mbcx.node_id);
     File::create(path).and_then(|mut f| f.write_all(&v))
@@ -121,18 +121,18 @@ impl<'c, 'b:'c, 'a:'b, 'tcx:'a> dot::Labeller<'c> for Graph<'c,'b,'a,'tcx> {
             for c in interpreted.chunks(chunk_size) {
                 if seen_one {
                     // if not the first row, finish off the previous row
-                    try!(write!(w, "</td><td></td><td></td></tr>"));
+                    write!(w, "</td><td></td><td></td></tr>")?;
                 }
-                try!(write!(w, "<tr><td></td><td {bg} {align}>{objs:?}",
-                            bg = BG_FLOWCONTENT,
-                            align = ALIGN_RIGHT,
-                            objs = c));
+                write!(w, "<tr><td></td><td {bg} {align}>{objs:?}",
+                       bg = BG_FLOWCONTENT,
+                       align = ALIGN_RIGHT,
+                       objs = c)?;
                 seen_one = true;
             }
             if !seen_one {
-                try!(write!(w, "<tr><td></td><td {bg} {align}>[]",
-                            bg = BG_FLOWCONTENT,
-                            align = ALIGN_RIGHT));
+                write!(w, "<tr><td></td><td {bg} {align}>[]",
+                       bg = BG_FLOWCONTENT,
+                       align = ALIGN_RIGHT)?;
             }
             Ok(())
         }
@@ -141,7 +141,7 @@ impl<'c, 'b:'c, 'a:'b, 'tcx:'a> dot::Labeller<'c> for Graph<'c,'b,'a,'tcx> {
             |w| {
                 let flow = &self.mbcx.flow_state;
                 let entry = flow.interpret_set(flow.sets.on_entry_set_for(i));
-                try!(chunked_present_left(w, &entry[..], chunk_size));
+                chunked_present_left(w, &entry[..], chunk_size)?;
                 write!(w, "= ENTRY:</td><td {bg}><FONT {face}>{entrybits:?}</FONT></td>\
                                         <td></td></tr>",
                        bg = BG_FLOWCONTENT,
@@ -153,40 +153,40 @@ impl<'c, 'b:'c, 'a:'b, 'tcx:'a> dot::Labeller<'c> for Graph<'c,'b,'a,'tcx> {
                 let flow = &self.mbcx.flow_state;
                 let gen = flow.interpret_set( flow.sets.gen_set_for(i));
                 let kill = flow.interpret_set(flow.sets.kill_set_for(i));
-                try!(chunked_present_left(w, &gen[..], chunk_size));
-                try!(write!(w, " = GEN:</td><td {bg}><FONT {face}>{genbits:?}</FONT></td>\
-                                            <td></td></tr>",
-                            bg = BG_FLOWCONTENT,
-                            face = FACE_MONOSPACE,
-                            genbits=bits_to_string( flow.sets.gen_set_for(i),
-                                                    flow.sets.bytes_per_block())));
-                try!(write!(w, "<tr><td></td><td {bg} {align}>KILL:</td>\
-                                             <td {bg}><FONT {face}>{killbits:?}</FONT></td>",
-                            bg = BG_FLOWCONTENT,
-                            align = ALIGN_RIGHT,
-                            face = FACE_MONOSPACE,
-                            killbits=bits_to_string(flow.sets.kill_set_for(i),
-                                                    flow.sets.bytes_per_block())));
+                chunked_present_left(w, &gen[..], chunk_size)?;
+                write!(w, " = GEN:</td><td {bg}><FONT {face}>{genbits:?}</FONT></td>\
+                                       <td></td></tr>",
+                       bg = BG_FLOWCONTENT,
+                       face = FACE_MONOSPACE,
+                       genbits=bits_to_string( flow.sets.gen_set_for(i),
+                                               flow.sets.bytes_per_block()))?;
+                write!(w, "<tr><td></td><td {bg} {align}>KILL:</td>\
+                                        <td {bg}><FONT {face}>{killbits:?}</FONT></td>",
+                       bg = BG_FLOWCONTENT,
+                       align = ALIGN_RIGHT,
+                       face = FACE_MONOSPACE,
+                       killbits=bits_to_string(flow.sets.kill_set_for(i),
+                                               flow.sets.bytes_per_block()))?;
 
                 // (chunked_present_right)
                 let mut seen_one = false;
                 for k in kill.chunks(chunk_size) {
                     if !seen_one {
                         // continuation of row; this is fourth <td>
-                        try!(write!(w, "<td {bg}>= {kill:?}</td></tr>",
-                                    bg = BG_FLOWCONTENT,
-                                    kill=k));
+                        write!(w, "<td {bg}>= {kill:?}</td></tr>",
+                               bg = BG_FLOWCONTENT,
+                               kill=k)?;
                     } else {
                         // new row, with indent of three <td>'s
-                        try!(write!(w, "<tr><td></td><td></td><td></td><td {bg}>{kill:?}</td></tr>",
-                                    bg = BG_FLOWCONTENT,
-                                    kill=k));
+                        write!(w, "<tr><td></td><td></td><td></td><td {bg}>{kill:?}</td></tr>",
+                               bg = BG_FLOWCONTENT,
+                               kill=k)?;
                     }
                     seen_one = true;
                 }
                 if !seen_one {
-                    try!(write!(w, "<td {bg}>= []</td></tr>",
-                                bg = BG_FLOWCONTENT));
+                    write!(w, "<td {bg}>= []</td></tr>",
+                           bg = BG_FLOWCONTENT)?;
                 }
 
                 Ok(())

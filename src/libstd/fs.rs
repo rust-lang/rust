@@ -305,7 +305,7 @@ impl File {
     #[unstable(feature = "file_try_clone", reason = "newly added", issue = "31405")]
     pub fn try_clone(&self) -> io::Result<File> {
         Ok(File {
-            inner: try!(self.inner.duplicate())
+            inner: self.inner.duplicate()?
         })
     }
 }
@@ -565,7 +565,7 @@ impl OpenOptions {
     }
 
     fn _open(&self, path: &Path) -> io::Result<File> {
-        let inner = try!(fs_imp::File::open(path, &self.0));
+        let inner = fs_imp::File::open(path, &self.0)?;
         Ok(File { inner: inner })
     }
 }
@@ -1440,7 +1440,7 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         if path == Path::new("") || path.is_dir() { return Ok(()) }
         if let Some(p) = path.parent() {
-            try!(self.create_dir_all(p))
+            self.create_dir_all(p)?
         }
         self.inner.mkdir(path)
     }

@@ -1,7 +1,7 @@
 % Patterns
 
 Patterns are quite common in Rust. We use them in [variable
-bindings][bindings], [match statements][match], and other places, too. Let’s go
+bindings][bindings], [match expressions][match], and other places, too. Let’s go
 on a whirlwind tour of all of the things patterns can do!
 
 [bindings]: variable-bindings.html

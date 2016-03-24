@@ -86,12 +86,12 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                try!(self.fields.instantiate(b, BiTo, a_id));
+                self.fields.instantiate(b, BiTo, a_id)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, BiTo, b_id));
+                self.fields.instantiate(a, BiTo, b_id)?;
                 Ok(a)
             }
 
@@ -111,7 +111,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     {
         let a1 = self.tcx().erase_late_bound_regions(a);
         let b1 = self.tcx().erase_late_bound_regions(b);
-        let c = try!(self.relate(&a1, &b1));
+        let c = self.relate(&a1, &b1)?;
         Ok(ty::Binder(c))
     }
 }

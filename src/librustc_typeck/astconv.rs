@@ -934,7 +934,7 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
                                                  tcx.mk_substs(dummy_substs)));
     }
 
-    try!(this.ensure_super_predicates(binding.span, trait_ref.def_id()));
+    this.ensure_super_predicates(binding.span, trait_ref.def_id())?;
 
     let mut candidates: Vec<ty::PolyTraitRef> =
         traits::supertraits(tcx, trait_ref.clone())
@@ -953,11 +953,11 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
         }
     }
 
-    let candidate = try!(one_bound_for_assoc_type(tcx,
-                                                  candidates,
-                                                  &trait_ref.to_string(),
-                                                  &binding.item_name.as_str(),
-                                                  binding.span));
+    let candidate = one_bound_for_assoc_type(tcx,
+                                             candidates,
+                                             &trait_ref.to_string(),
+                                             &binding.item_name.as_str(),
+                                             binding.span)?;
 
     Ok(ty::Binder(ty::ProjectionPredicate {             // <-------------------------+
         projection_ty: ty::ProjectionTy {               //                           |

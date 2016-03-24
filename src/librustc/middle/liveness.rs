@@ -686,7 +686,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         for var_idx in 0..self.ir.num_vars {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
-                try!(write!(wr, " {:?}", Variable(var_idx)));
+                write!(wr, " {:?}", Variable(var_idx))?;
             }
         }
         Ok(())

@@ -211,7 +211,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                                    infcx: &InferCtxt<'a,'tcx>)
                                    -> Result<(),Vec<FulfillmentError<'tcx>>>
     {
-        try!(self.select_where_possible(infcx));
+        self.select_where_possible(infcx)?;
         let errors: Vec<_> =
             self.predicates.to_errors(CodeAmbiguity)
                            .into_iter()

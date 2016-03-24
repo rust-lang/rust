@@ -418,7 +418,7 @@ impl Clean<Item> for doctree::Module {
 pub trait Attributes {
     fn has_word(&self, &str) -> bool;
     fn value<'a>(&'a self, &str) -> Option<&'a str>;
-    fn list_def<'a>(&'a self, &str) -> &'a [Attribute];
+    fn list<'a>(&'a self, &str) -> &'a [Attribute];
 }
 
 impl Attributes for [Attribute] {
@@ -447,7 +447,7 @@ impl Attributes for [Attribute] {
     }
 
     /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn list_def<'a>(&'a self, name: &str) -> &'a [Attribute] {
+    fn list<'a>(&'a self, name: &str) -> &'a [Attribute] {
         for attr in self {
             if let List(ref x, ref list) = *attr {
                 if name == *x {
@@ -1535,7 +1535,7 @@ impl PrimitiveType {
     }
 
     fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
-        for attr in attrs.list_def("doc") {
+        for attr in attrs.list("doc") {
             if let NameValue(ref k, ref v) = *attr {
                 if "primitive" == *k {
                     if let ret@Some(..) = PrimitiveType::from_str(v) {
@@ -1885,7 +1885,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                             source: Span::empty(),
                             name: Some(field.name.clean(cx)),
                             attrs: Vec::new(),
-                            visibility: Some(hir::Public),
+                            visibility: Some(field.vis),
                             // FIXME: this is not accurate, we need an id for
                             //        the specific field but we're using the id
                             //        for the whole variant. Thus we read the

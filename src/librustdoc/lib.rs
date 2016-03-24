@@ -29,6 +29,7 @@
 #![feature(std_panic)]
 #![feature(test)]
 #![feature(unicode)]
+#![feature(question_mark)]
 
 extern crate arena;
 extern crate getopts;
@@ -332,10 +333,10 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
     let mut externs = HashMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
-        let name = try!(parts.next().ok_or("--extern value must not be empty".to_string()));
-        let location = try!(parts.next()
+        let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
+        let location = parts.next()
                                  .ok_or("--extern value must be of the format `foo=bar`"
-                                    .to_string()));
+                                    .to_string())?;
         let name = name.to_string();
         externs.entry(name).or_insert(vec![]).push(location.to_string());
     }
@@ -383,7 +384,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
-    for attr in krate.module.as_ref().unwrap().attrs.list_def("doc") {
+    for attr in krate.module.as_ref().unwrap().attrs.list("doc") {
         match *attr {
             clean::Word(ref w) if "no_default_passes" == *w => {
                 default_passes = false;
@@ -502,6 +503,6 @@ fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
     json.insert("crate".to_string(), crate_json);
     json.insert("plugins".to_string(), Json::Object(plugins_json));
 
-    let mut file = try!(File::create(&dst));
+    let mut file = File::create(&dst)?;
     write!(&mut file, "{}", Json::Object(json))
 }

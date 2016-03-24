@@ -356,7 +356,7 @@ impl<'tcx> BasicBlockData<'tcx> {
 
 impl<'tcx> Debug for Terminator<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        try!(self.fmt_head(fmt));
+        self.fmt_head(fmt)?;
         let successors = self.successors();
         let labels = self.fmt_successor_labels();
         assert_eq!(successors.len(), labels.len());
@@ -367,12 +367,12 @@ impl<'tcx> Debug for Terminator<'tcx> {
             1 => write!(fmt, " -> {:?}", successors[0]),
 
             _ => {
-                try!(write!(fmt, " -> ["));
+                write!(fmt, " -> [")?;
                 for (i, target) in successors.iter().enumerate() {
                     if i > 0 {
-                        try!(write!(fmt, ", "));
+                        write!(fmt, ", ")?;
                     }
-                    try!(write!(fmt, "{}: {:?}", labels[i], target));
+                    write!(fmt, "{}: {:?}", labels[i], target)?;
                 }
                 write!(fmt, "]")
             }
@@ -397,14 +397,14 @@ impl<'tcx> Terminator<'tcx> {
             Drop { ref value, .. } => write!(fmt, "drop({:?})", value),
             Call { ref func, ref args, ref destination, .. } => {
                 if let Some((ref destination, _)) = *destination {
-                    try!(write!(fmt, "{:?} = ", destination));
+                    write!(fmt, "{:?} = ", destination)?;
                 }
-                try!(write!(fmt, "{:?}(", func));
+                write!(fmt, "{:?}(", func)?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
-                        try!(write!(fmt, ", "));
+                        write!(fmt, ", ")?;
                     }
-                    try!(write!(fmt, "{:?}", arg));
+                    write!(fmt, "{:?}", arg)?;
                 }
                 write!(fmt, ")")
             }
@@ -808,11 +808,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                     Adt(adt_def, variant, substs) => {
                         let variant_def = &adt_def.variants[variant];
 
-                        try!(ppaux::parameterized(fmt, substs, variant_def.did,
-                                                  ppaux::Ns::Value, &[],
-                                                  |tcx| {
+                        ppaux::parameterized(fmt, substs, variant_def.did,
+                                             ppaux::Ns::Value, &[],
+                                             |tcx| {
                             tcx.lookup_item_type(variant_def.did).generics
-                        }));
+                        })?;
 
                         match variant_def.kind() {
                             ty::VariantKind::Unit => Ok(()),
@@ -903,7 +903,7 @@ impl<'tcx> Debug for Literal<'tcx> {
                                      |tcx| tcx.lookup_item_type(def_id).generics)
             }
             Value { ref value } => {
-                try!(write!(fmt, "const "));
+                write!(fmt, "const ")?;
                 fmt_const_val(fmt, value)
             }
         }

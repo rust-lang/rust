@@ -99,11 +99,11 @@ pub fn compile_input(sess: &Session,
 
             let outputs = build_output_filenames(input, outdir, output, &krate.attrs, sess);
             let id = link::find_crate_name(Some(sess), &krate.attrs, input);
-            let expanded_crate = try!(phase_2_configure_and_expand(sess,
-                                                                   &cstore,
-                                                                   krate,
-                                                                   &id[..],
-                                                                   addl_plugins));
+            let expanded_crate = phase_2_configure_and_expand(sess,
+                                                              &cstore,
+                                                              krate,
+                                                              &id[..],
+                                                              addl_plugins)?;
 
             (outputs, expanded_crate, id)
         };
@@ -168,13 +168,13 @@ pub fn compile_input(sess: &Session,
             None
         };
 
-        try!(try!(phase_3_run_analysis_passes(sess,
-                                              &cstore,
-                                              hir_map,
-                                              &arenas,
-                                              &id,
-                                              control.make_glob_map,
-                                              |tcx, mir_map, analysis, result| {
+        phase_3_run_analysis_passes(sess,
+                                    &cstore,
+                                    hir_map,
+                                    &arenas,
+                                    &id,
+                                    control.make_glob_map,
+                                    |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
                 let _ignore = tcx.dep_graph.in_ignore();
@@ -196,7 +196,7 @@ pub fn compile_input(sess: &Session,
                 }
             }
 
-            try!(result);
+            result?;
 
             if log_enabled!(::log::INFO) {
                 println!("Pre-trans");
@@ -215,7 +215,7 @@ pub fn compile_input(sess: &Session,
             token::get_ident_interner().clear();
 
             Ok((outputs, trans))
-        })))
+        })??
     };
 
     let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
@@ -224,7 +224,7 @@ pub fn compile_input(sess: &Session,
                             sess,
                             CompileState::state_after_llvm(input, sess, outdir, &trans),
                             phase5_result);
-    try!(phase5_result);
+    phase5_result?;
 
     phase_6_link_output(sess, &trans, &outputs);
 
@@ -428,7 +428,7 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
 
-    let krate = try!(time(sess.time_passes(), "parsing", || {
+    let krate = time(sess.time_passes(), "parsing", || {
         match *input {
             Input::File(ref file) => {
                 parse::parse_crate_from_file(file, cfg.clone(), &sess.parse_sess)
@@ -440,7 +440,7 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
                                                    &sess.parse_sess)
             }
         }
-    }));
+    })?;
 
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
@@ -491,13 +491,13 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // baz! should not use this definition unless foo is enabled.
 
     let mut feature_gated_cfgs = vec![];
-    krate = try!(time(time_passes, "configuration 1", || {
+    krate = time(time_passes, "configuration 1", || {
         sess.track_errors(|| {
             syntax::config::strip_unconfigured_items(sess.diagnostic(),
                                                      krate,
                                                      &mut feature_gated_cfgs)
         })
-    }));
+    })?;
 
     *sess.crate_types.borrow_mut() = collect_crate_types(sess, &krate.attrs);
     *sess.crate_metadata.borrow_mut() = collect_crate_metadata(sess, &krate.attrs);
@@ -506,7 +506,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         middle::recursion_limit::update_recursion_limit(sess, &krate);
     });
 
-    try!(time(time_passes, "gated macro checking", || {
+    time(time_passes, "gated macro checking", || {
         sess.track_errors(|| {
             let features =
               syntax::feature_gate::check_crate_macros(sess.codemap(),
@@ -516,7 +516,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             // these need to be set "early" so that expansion sees `quote` if enabled.
             *sess.features.borrow_mut() = features;
         })
-    }));
+    })?;
 
 
     krate = time(time_passes, "crate injection", || {
@@ -553,7 +553,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
                    llvm_passes, attributes, mir_passes, .. } = registry;
 
-    try!(sess.track_errors(|| {
+    sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
         for pass in early_lint_passes {
             ls.register_early_pass(Some(sess), true, pass);
@@ -569,14 +569,14 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
         sess.mir_passes.borrow_mut().extend(mir_passes);
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
-    }));
+    })?;
 
     // Lint plugins are registered; now we can process command line flags.
     if sess.opts.describe_lints {
         super::describe_lints(&sess.lint_store.borrow(), true);
         return Err(0);
     }
-    try!(sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess)));
+    sess.track_errors(|| sess.lint_store.borrow_mut().process_command_line(sess))?;
 
     krate = time(time_passes, "expansion", || {
         // Windows dlls do not have rpaths, so they don't know how to find their
@@ -619,7 +619,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // of macro expansion.  This runs before #[cfg] to try to catch as
     // much as possible (e.g. help the programmer avoid platform
     // specific differences)
-    try!(time(time_passes, "complete gated feature checking 1", || {
+    time(time_passes, "complete gated feature checking 1", || {
         sess.track_errors(|| {
             let features = syntax::feature_gate::check_crate(sess.codemap(),
                                                              &sess.parse_sess.span_diagnostic,
@@ -628,12 +628,12 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                                              sess.opts.unstable_features);
             *sess.features.borrow_mut() = features;
         })
-    }));
+    })?;
 
     // JBC: make CFG processing part of expansion to avoid this problem:
 
     // strip again, in case expansion added anything with a #[cfg].
-    krate = try!(sess.track_errors(|| {
+    krate = sess.track_errors(|| {
         let krate = time(time_passes, "configuration 2", || {
             syntax::config::strip_unconfigured_items(sess.diagnostic(),
                                                      krate,
@@ -650,7 +650,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         });
 
         krate
-    }));
+    })?;
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess, &sess.opts.cfg, krate, sess.diagnostic())
@@ -671,7 +671,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     // One final feature gating of the true AST that gets compiled
     // later, to make sure we've got everything (e.g. configuration
     // can insert new attributes via `cfg_attr`)
-    try!(time(time_passes, "complete gated feature checking 2", || {
+    time(time_passes, "complete gated feature checking 2", || {
         sess.track_errors(|| {
             let features = syntax::feature_gate::check_crate(sess.codemap(),
                                                              &sess.parse_sess.span_diagnostic,
@@ -680,11 +680,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                                                              sess.opts.unstable_features);
             *sess.features.borrow_mut() = features;
         })
-    }));
+    })?;
 
-    try!(time(time_passes,
-              "const fn bodies and arguments",
-              || const_fn::check_crate(sess, &krate)));
+    time(time_passes,
+         "const fn bodies and arguments",
+         || const_fn::check_crate(sess, &krate))?;
 
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
@@ -756,11 +756,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          "external crate/lib resolution",
          || LocalCrateReader::new(sess, cstore, &hir_map).read_crates());
 
-    let lang_items = try!(time(time_passes, "language item collection", || {
+    let lang_items = time(time_passes, "language item collection", || {
         sess.track_errors(|| {
             middle::lang_items::collect_language_items(&sess, &hir_map)
         })
-    }));
+    })?;
 
     let resolve::CrateMap {
         def_map,
@@ -780,11 +780,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         glob_map: glob_map,
     };
 
-    let named_region_map = try!(time(time_passes,
-                                     "lifetime resolution",
-                                     || middle::resolve_lifetime::krate(sess,
-                                                                        &hir_map,
-                                                                        &def_map.borrow())));
+    let named_region_map = time(time_passes,
+                                "lifetime resolution",
+                                || middle::resolve_lifetime::krate(sess,
+                                                                   &hir_map,
+                                                                   &def_map.borrow()))?;
 
     time(time_passes,
          "looking for entry point",
@@ -802,9 +802,9 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          "loop checking",
          || loops::check_crate(sess, &hir_map));
 
-    try!(time(time_passes,
+    time(time_passes,
               "static item recursion checking",
-              || static_recursion::check_crate(sess, &def_map.borrow(), &hir_map)));
+              || static_recursion::check_crate(sess, &def_map.borrow(), &hir_map))?;
 
     let index = stability::Index::new(&hir_map);
 
@@ -1023,16 +1023,16 @@ fn write_out_deps(sess: &Session, outputs: &OutputFilenames, id: &str) {
                                          .filter(|fmap| !fmap.is_imported())
                                          .map(|fmap| escape_dep_filename(&fmap.name))
                                          .collect();
-            let mut file = try!(fs::File::create(&deps_filename));
+            let mut file = fs::File::create(&deps_filename)?;
             for path in &out_filenames {
-                try!(write!(file, "{}: {}\n\n", path.display(), files.join(" ")));
+                write!(file, "{}: {}\n\n", path.display(), files.join(" "))?;
             }
 
             // Emit a fake target for each input file to the compilation. This
             // prevents `make` from spitting out an error if a file is later
             // deleted. For more info see #28735
             for path in files {
-                try!(writeln!(file, "{}:", path));
+                writeln!(file, "{}:", path)?;
             }
             Ok(())
         })();

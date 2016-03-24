@@ -172,8 +172,8 @@ impl<R: Read> Read for BufReader<R> {
             return self.inner.read(buf);
         }
         let nread = {
-            let mut rem = try!(self.fill_buf());
-            try!(rem.read(buf))
+            let mut rem = self.fill_buf()?;
+            rem.read(buf)?
         };
         self.consume(nread);
         Ok(nread)
@@ -186,7 +186,7 @@ impl<R: Read> BufRead for BufReader<R> {
         // If we've reached the end of our internal buffer then we need to fetch
         // some more data from the underlying reader.
         if self.pos == self.cap {
-            self.cap = try!(self.inner.read(&mut self.buf));
+            self.cap = self.inner.read(&mut self.buf)?;
             self.pos = 0;
         }
         Ok(&self.buf[self.pos..self.cap])
@@ -237,16 +237,16 @@ impl<R: Seek> Seek for BufReader<R> {
             // support seeking by i64::min_value() so we need to handle underflow when subtracting
             // remainder.
             if let Some(offset) = n.checked_sub(remainder) {
-                result = try!(self.inner.seek(SeekFrom::Current(offset)));
+                result = self.inner.seek(SeekFrom::Current(offset))?;
             } else {
                 // seek backwards by our remainder, and then by the offset
-                try!(self.inner.seek(SeekFrom::Current(-remainder)));
+                self.inner.seek(SeekFrom::Current(-remainder))?;
                 self.pos = self.cap; // empty the buffer
-                result = try!(self.inner.seek(SeekFrom::Current(n)));
+                result = self.inner.seek(SeekFrom::Current(n))?;
             }
         } else {
             // Seeking with Start/End doesn't care about our buffer length.
-            result = try!(self.inner.seek(pos));
+            result = self.inner.seek(pos)?;
         }
         self.pos = self.cap; // empty the buffer
         Ok(result)
@@ -461,7 +461,7 @@ impl<W: Write> BufWriter<W> {
 impl<W: Write> Write for BufWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
-            try!(self.flush_buf());
+            self.flush_buf()?;
         }
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
@@ -761,7 +761,7 @@ impl<W: Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match memchr::memrchr(b'\n', buf) {
             Some(i) => {
-                let n = try!(self.inner.write(&buf[..i + 1]));
+                let n = self.inner.write(&buf[..i + 1])?;
                 if n != i + 1 || self.inner.flush().is_err() {
                     // Do not return errors on partial writes.
                     return Ok(n);

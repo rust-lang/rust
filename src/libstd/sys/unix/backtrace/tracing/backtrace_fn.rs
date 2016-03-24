@@ -40,7 +40,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
     static LOCK: StaticMutex = StaticMutex::new();
     let _g = LOCK.lock();
 
-    try!(writeln!(w, "stack backtrace:"));
+    writeln!(w, "stack backtrace:")?;
     // 100 lines should be enough
     const SIZE: usize = 100;
     let mut buf: [*mut libc::c_void; SIZE] = unsafe { mem::zeroed() };
@@ -48,7 +48,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
 
     // skipping the first one as it is write itself
     for i in 1..cnt {
-        try!(print(w, i as isize, buf[i], buf[i]))
+        print(w, i as isize, buf[i], buf[i])?
     }
     Ok(())
 }
