@@ -265,3 +265,27 @@ fn test_variance() {
     fn into_iter<'new>(v: IntoIter<&'static str>) -> IntoIter<&'new str> { v }
     fn range<'a, 'new>(v: Range<'a, &'static str>) -> Range<'a, &'new str> { v }
 }
+
+#[test]
+fn test_append() {
+    let mut a = BTreeSet::new();
+    a.insert(1);
+    a.insert(2);
+    a.insert(3);
+
+    let mut b = BTreeSet::new();
+    b.insert(3);
+    b.insert(4);
+    b.insert(5);
+
+    a.append(&mut b);
+
+    assert_eq!(a.len(), 5);
+    assert_eq!(b.len(), 0);
+
+    assert_eq!(a.contains(&1), true);
+    assert_eq!(a.contains(&2), true);
+    assert_eq!(a.contains(&3), true);
+    assert_eq!(a.contains(&4), true);
+    assert_eq!(a.contains(&5), true);
+}
