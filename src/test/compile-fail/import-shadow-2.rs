@@ -16,11 +16,11 @@ use foo::*;
 use foo::*; //~ERROR a type named `Baz` has already been imported in this module
 
 mod foo {
-    pub type Baz = isize;
+    pub type Baz = ();
 }
 
 mod bar {
-    pub type Baz = isize;
+    pub type Baz = ();
 }
 
 mod qux {

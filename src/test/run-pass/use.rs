@@ -27,4 +27,4 @@ mod baz {
 }
 
 #[start]
-pub fn start(_: isize, _: *const *const u8) -> isize { 0 }
+pub fn start(_: std::isize, _: *const *const ::std::u8) -> std::isize { 0 }

@@ -46,6 +46,7 @@
 #![feature(pattern)]
 #![feature(placement_in)]
 #![feature(placement_new_protocol)]
+#![cfg_attr(not(stage0), feature(primitive_type))]
 #![feature(shared)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
@@ -56,7 +57,6 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag)]
 #![cfg_attr(test, feature(rand, test))]
-
 #![no_std]
 
 extern crate rustc_unicode;
@@ -99,6 +99,7 @@ pub mod fmt;
 pub mod linked_list;
 pub mod range;
 pub mod slice;
+#[cfg_attr(not(stage0), primitive_type)]
 pub mod str;
 pub mod string;
 pub mod vec;

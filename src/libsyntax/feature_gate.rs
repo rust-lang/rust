@@ -89,6 +89,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // rustc internal.
     ("pushpop_unsafe", "1.2.0", None, Active),
+    ("local_prelude", "1.9.0", None, Active),
+    ("primitive_type", "1.9.0", None, Active),
 
     ("on_unimplemented", "1.0.0", Some(29628), Active),
     ("simd_ffi", "1.0.0", Some(27731), Active),
@@ -422,6 +424,9 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                         "unboxed_closures are still evolving")),
     ("rustc_reflect_like", Whitelisted, Gated("reflect",
                                               "defining reflective traits is still evolving")),
+    // Items marked with #[primitive_type] resolve to primitive types when used in type context
+    ("primitive_type", Whitelisted, Gated("primitive_type",
+                                        "primitive_type is internal to rustc and libcore")),
 
     // Crate level attributes
     ("crate_name", CrateLevel, Ungated),
@@ -432,6 +437,8 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("no_main", CrateLevel, Ungated),
     ("no_builtins", CrateLevel, Ungated),
     ("recursion_limit", CrateLevel, Ungated),
+    ("local_prelude", CrateLevel, Gated("local_prelude",
+                                          "this attribute is an implementation detail of libcore")),
 ];
 
 macro_rules! cfg_fn {

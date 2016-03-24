@@ -247,6 +247,7 @@
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
+#![cfg_attr(not(stage0), feature(primitive_type))]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_simd)]
@@ -383,6 +384,9 @@ pub mod prelude;
 // doc pages are inlined from the public re-exports of core_collections::{slice,
 // str} above.
 
+#[stable(feature = "core_primitive_types", since = "1.9.0")]
+pub use core::bool;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::isize;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -405,7 +409,9 @@ pub use core::u32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::u64;
 
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/f32.rs"]   pub mod f32;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/f64.rs"]   pub mod f64;
 
 pub mod ascii;

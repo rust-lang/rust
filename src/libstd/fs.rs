@@ -1461,7 +1461,6 @@ mod tests {
     use io::{ErrorKind, SeekFrom};
     use path::Path;
     use rand::{StdRng, Rng};
-    use str;
     use sys_common::io::test::{TempDir, tmpdir};
 
     #[cfg(windows)]

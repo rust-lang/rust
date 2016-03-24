@@ -51,3 +51,8 @@
 #[doc(no_inline)] pub use string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use vec::Vec;
+
+
+#[stable(feature = "core_primitive_types", since = "1.9.0")]
+#[doc(no_inline)] pub use {u8, u16, u32, u64, usize, i8, i16, i32, i64, isize,
+                           f32, f64, bool, char, str};

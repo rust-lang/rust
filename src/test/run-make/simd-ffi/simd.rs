@@ -12,11 +12,13 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
-#![feature(no_core)]
+#![feature(no_core, primitive_type)]
 #![no_core]
 
 #![feature(repr_simd, simd_ffi, link_llvm_intrinsics, lang_items)]
 
+#[primitive_type] type i32 = i32;
+#[primitive_type] type f32 = f32;
 
 #[repr(C)]
 #[derive(Copy)]

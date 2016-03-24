@@ -57,7 +57,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::pat_util::pat_bindings;
 use rustc::middle::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, FnvHashMap};
+use rustc::util::nodemap::{DefIdSet, NodeMap, FnvHashMap};
 
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
@@ -1082,6 +1082,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
     freevars_seen: NodeMap<NodeMap<usize>>,
     export_map: ExportMap,
     trait_map: TraitMap,
+    primitive_type_items: DefIdSet,
 
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
@@ -1172,6 +1173,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             trait_map: NodeMap(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
+            primitive_type_items: DefIdSet(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
@@ -1615,15 +1617,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         intravisit::walk_crate(self, krate);
     }
 
-    fn check_if_primitive_type_name(&self, name: Name, span: Span) {
-        if let Some(_) = self.primitive_type_table.primitive_types.get(&name) {
-            span_err!(self.session,
-                      span,
-                      E0317,
-                      "user-defined types or type parameters cannot shadow the primitive types");
-        }
-    }
-
     fn resolve_item(&mut self, item: &Item) {
         let name = item.name;
 
@@ -1633,8 +1626,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ItemEnum(_, ref generics) |
             ItemTy(_, ref generics) |
             ItemStruct(_, ref generics) => {
-                self.check_if_primitive_type_name(name, item.span);
-
                 self.with_type_parameter_rib(HasTypeParameters(generics, TypeSpace, ItemRibKind),
                                              |this| intravisit::walk_item(this, item));
             }
@@ -1655,8 +1646,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
-                self.check_if_primitive_type_name(name, item.span);
-
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                TypeSpace,
@@ -1691,8 +1680,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     });
                                 }
                                 hir::TypeTraitItem(..) => {
-                                    this.check_if_primitive_type_name(trait_item.name,
-                                                                      trait_item.span);
                                     this.with_type_parameter_rib(NoTypeParameters, |this| {
                                         intravisit::walk_trait_item(this, trait_item)
                                     });
@@ -1716,28 +1703,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemUse(ref view_path) => {
-                // check for imports shadowing primitive types
-                let check_rename = |this: &Self, id, name| {
-                    match this.def_map.borrow().get(&id).map(|d| d.full_def()) {
-                        Some(Def::Enum(..)) | Some(Def::TyAlias(..)) | Some(Def::Struct(..)) |
-                        Some(Def::Trait(..)) | None => {
-                            this.check_if_primitive_type_name(name, item.span);
-                        }
-                        _ => {}
-                    }
-                };
-
                 match view_path.node {
-                    hir::ViewPathSimple(name, _) => {
-                        check_rename(self, item.id, name);
-                    }
                     hir::ViewPathList(ref prefix, ref items) => {
-                        for item in items {
-                            if let Some(name) = item.node.rename() {
-                                check_rename(self, item.node.id(), name);
-                            }
-                        }
-
                         // Resolve prefix of an import with empty braces (issue #28388)
                         if items.is_empty() && !prefix.segments.is_empty() {
                             match self.resolve_crate_relative_path(prefix.span,
@@ -1918,9 +1885,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_generics(&mut self, generics: &Generics) {
-        for type_parameter in generics.ty_params.iter() {
-            self.check_if_primitive_type_name(type_parameter.name, type_parameter.span);
-        }
         for predicate in &generics.where_clause.predicates {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(_) |
@@ -2634,14 +2598,38 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ResolveAttempt(resolution)
     }
 
-    /// Skips `path_depth` trailing segments, which is also reflected in the
-    /// returned value. See `middle::def::PathResolution` for more info.
     pub fn resolve_path(&mut self,
                         id: NodeId,
                         path: &Path,
                         path_depth: usize,
                         namespace: Namespace)
                         -> Option<PathResolution> {
+        let resolution = self.resolve_path_noprim(id, path, path_depth, namespace);
+        // Check if the resolution is a #[primitive_type] item in type namespace,
+        // replace that item with a primitive type with the same name.
+        if let Some(PathResolution{base_def, ..}) = resolution {
+            if let Some(def_id) = base_def.opt_def_id() {
+                if namespace == TypeNS && self.primitive_type_items.contains(&def_id) {
+                    let name = &path.segments[path.segments.len() - path_depth - 1]
+                                    .identifier.unhygienic_name;
+                    if let Some(prim_ty) = self.primitive_type_table.primitive_types.get(name) {
+                        return Some(PathResolution::new(Def::PrimTy(*prim_ty), path_depth))
+                    }
+                }
+            }
+        }
+
+        resolution
+    }
+
+    /// Skips `path_depth` trailing segments, which is also reflected in the
+    /// returned value. See `middle::def::PathResolution` for more info.
+    pub fn resolve_path_noprim(&mut self,
+                               id: NodeId,
+                               path: &Path,
+                               path_depth: usize,
+                               namespace: Namespace)
+                               -> Option<PathResolution> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
@@ -2654,12 +2642,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Try to find a path to an item in a module.
         let last_ident = segments.last().unwrap().identifier;
-        if segments.len() <= 1 {
+        if segments.len() == 1 {
             let unqualified_def = self.resolve_identifier(last_ident, namespace, true);
-            return unqualified_def.and_then(|def| self.adjust_local_def(def, span))
-                                  .map(|def| {
-                                      PathResolution::new(def, path_depth)
-                                  });
+            return unqualified_def.and_then(|def| self.adjust_local_def(def, span)).map(mk_res);
         }
 
         let unqualified_def = self.resolve_identifier(last_ident, namespace, false);
@@ -2686,15 +2671,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           -> Option<LocalDef> {
         if identifier.name == special_idents::invalid.name {
             return Some(LocalDef::from_def(Def::Err));
-        }
-
-        // First, check to see whether the name is a primitive type.
-        if namespace == TypeNS {
-            if let Some(&prim_ty) = self.primitive_type_table
-                                        .primitive_types
-                                        .get(&identifier.unhygienic_name) {
-                return Some(LocalDef::from_def(Def::PrimTy(prim_ty)));
-            }
         }
 
         self.resolve_identifier_in_local_ribs(identifier, namespace, record_used)
@@ -2957,17 +2933,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span: Span,
                                 name_path: &[ast::Name])
                                 -> Option<Module<'a>> {
-            let last_name = name_path.last().unwrap();
-
-            if name_path.len() == 1 {
-                match this.primitive_type_table.primitive_types.get(last_name) {
-                    Some(_) => None,
-                    None => this.current_module.resolve_name(*last_name, TypeNS, true).success()
-                                               .and_then(NameBinding::module)
-                }
-            } else {
-                this.resolve_module_path(&name_path, UseLexicalScope, span).success()
-            }
+            this.resolve_module_path(&name_path, UseLexicalScope, span).success()
         }
 
         fn is_static_method(this: &Resolver, did: DefId) -> bool {

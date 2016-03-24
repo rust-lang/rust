@@ -26,6 +26,7 @@ mod uint_macros;
 
 mod u8;
 mod u16;
+#[primitive_type]
 mod u32;
 mod u64;
 

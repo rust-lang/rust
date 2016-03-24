@@ -52,16 +52,20 @@ pub fn maybe_inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>)
 }
 
 pub fn maybe_inject_prelude(sess: &ParseSess, krate: ast::Crate) -> ast::Crate {
-    if no_core(&krate) {
+    if no_core(&krate) && !local_prelude(&krate) {
         krate
     } else {
-        let name = if no_std(&krate) {"core"} else {"std"};
+        let name = if local_prelude(&krate) {""} else if no_std(&krate) {"core"} else {"std"};
         let mut fold = PreludeInjector {
             span: ignored_span(sess, DUMMY_SP),
             crate_identifier: token::str_to_ident(name),
         };
         fold.fold_crate(krate)
     }
+}
+
+pub fn local_prelude(krate: &ast::Crate) -> bool {
+    attr::contains_name(&krate.attrs, "local_prelude")
 }
 
 pub fn no_core(krate: &ast::Crate) -> bool {
@@ -126,7 +130,7 @@ impl fold::Folder for PreludeInjector {
     }
 
     fn fold_mod(&mut self, mut mod_: ast::Mod) -> ast::Mod {
-        let prelude_path = ast::Path {
+        let mut prelude_path = ast::Path {
             span: self.span,
             global: false,
             segments: vec![
@@ -144,6 +148,9 @@ impl fold::Folder for PreludeInjector {
                 },
             ],
         };
+        if self.crate_identifier.name.as_str().is_empty() {
+            prelude_path.segments.remove(0);
+        }
 
         let vp = P(codemap::dummy_spanned(ast::ViewPathGlob(prelude_path)));
         mod_.items.insert(0, P(ast::Item {

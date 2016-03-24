@@ -58,6 +58,9 @@
 #![deny(missing_docs)]
 #![deny(missing_debug_implementations)]
 #![cfg_attr(not(stage0), deny(warnings))]
+// This is a temporary way to use libcore's prelude in libcore
+#![cfg_attr(not(stage0), feature(primitive_type, local_prelude))]
+#![cfg_attr(not(stage0), local_prelude)]
 
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_defaults)]
@@ -94,19 +97,43 @@ mod int_macros;
 #[macro_use]
 mod uint_macros;
 
+/// The boolean type.
+#[cfg(not(stage0))]
+#[stable(feature = "core_primitive_types", since = "1.9.0")]
+#[allow(non_camel_case_types)]
+#[primitive_type]
+pub type bool = bool;
+
+/// The boolean type.
+#[cfg(stage0)]
+#[stable(feature = "core_primitive_types", since = "1.9.0")]
+pub mod bool {}
+
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/isize.rs"]  pub mod isize;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/i8.rs"]   pub mod i8;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/i16.rs"]  pub mod i16;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/i32.rs"]  pub mod i32;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/i64.rs"]  pub mod i64;
 
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/usize.rs"] pub mod usize;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/u8.rs"]   pub mod u8;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/u16.rs"]  pub mod u16;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/u32.rs"]  pub mod u32;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/u64.rs"]  pub mod u64;
 
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/f32.rs"]   pub mod f32;
+#[cfg_attr(not(stage0), primitive_type)]
 #[path = "num/f64.rs"]   pub mod f64;
 
 #[macro_use]
@@ -139,6 +166,7 @@ pub mod any;
 pub mod array;
 pub mod sync;
 pub mod cell;
+#[cfg_attr(not(stage0), primitive_type)]
 pub mod char;
 pub mod panicking;
 pub mod iter;
@@ -147,6 +175,7 @@ pub mod raw;
 pub mod result;
 
 pub mod slice;
+#[cfg_attr(not(stage0), primitive_type)]
 pub mod str;
 pub mod hash;
 pub mod fmt;

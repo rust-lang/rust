@@ -21,7 +21,6 @@ use prelude::v1::*;
 
 use cmp;
 use fmt;
-use usize;
 
 // Pattern
 

@@ -14,7 +14,6 @@ use ffi::CStr;
 use io;
 use libc::{self, c_int, size_t, sockaddr, socklen_t};
 use net::{SocketAddr, Shutdown};
-use str;
 use sys::fd::FileDesc;
 use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt};

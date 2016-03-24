@@ -12,6 +12,7 @@
 
 #![no_implicit_prelude]
 use std::vec::Vec;
+use std::{char, str, u32};
 
 fn last<T>(v: Vec<&T> ) -> std::option::Option<T> {
     panic!();

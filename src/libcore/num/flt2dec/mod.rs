@@ -131,7 +131,6 @@ functions.
             issue = "0")]
 
 use prelude::v1::*;
-use i16;
 pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 
 pub mod estimator;

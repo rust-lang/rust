@@ -15,6 +15,7 @@
 //! same manner as the standard library's prelude.
 
 #![stable(feature = "core_prelude", since = "1.4.0")]
+#![cfg_attr(not(stage0), no_implicit_prelude)]
 
 // Reexported core operators
 #[stable(feature = "core_prelude", since = "1.4.0")]
@@ -51,3 +52,7 @@
 #[doc(no_inline)] pub use str::StrExt;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)] pub use char::CharExt;
+
+#[stable(feature = "core_primitive_types", since = "1.9.0")]
+#[doc(no_inline)] pub use {u8, u16, u32, u64, usize, i8, i16, i32, i64, isize,
+                           f32, f64, bool, char, str};

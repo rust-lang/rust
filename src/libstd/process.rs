@@ -19,7 +19,6 @@ use ffi::OsStr;
 use fmt;
 use io;
 use path::Path;
-use str;
 use sys::pipe::{read2, AnonPipe};
 use sys::process as imp;
 use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
@@ -552,7 +551,6 @@ mod tests {
     use io::prelude::*;
 
     use io::ErrorKind;
-    use str;
     use super::{Command, Output, Stdio};
 
     // FIXME(#10380) these tests should not all be ignored on android.

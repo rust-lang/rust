@@ -603,7 +603,6 @@ mod tests {
     use super::{Builder};
     use thread;
     use time::Duration;
-    use u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!

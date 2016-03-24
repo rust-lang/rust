@@ -26,7 +26,6 @@ use memchr;
 use path::{self, PathBuf};
 use ptr;
 use slice;
-use str;
 use sync::StaticMutex;
 use sys::cvt;
 use sys::fd;

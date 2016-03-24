@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(intrinsics, lang_items, start, no_core, libc)]
+#![feature(intrinsics, lang_items, start, no_core, libc, primitive_type)]
 #![no_core]
 
 extern crate libc;
@@ -25,6 +25,9 @@ extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
 #[no_mangle] pub extern fn rust_eh_register_frames () {}
 #[no_mangle] pub extern fn rust_eh_unregister_frames () {}
+#[primitive_type] type isize = isize;
+#[primitive_type] type usize = usize;
+#[primitive_type] type u8 = u8;
 
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {

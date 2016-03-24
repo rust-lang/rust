@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::prelude::v1::*;
-use std::{i16, f64};
 use super::super::*;
 use core::num::flt2dec::*;
 use core::num::bignum::Big32x40 as Big;

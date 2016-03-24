@@ -34,11 +34,13 @@
 
 #![feature(core_char_ext)]
 #![feature(lang_items)]
+#![cfg_attr(not(stage0), feature(primitive_type))]
 #![feature(staged_api)]
 #![feature(unicode)]
 
 mod tables;
 mod u_str;
+#[cfg_attr(not(stage0), primitive_type)]
 pub mod char;
 
 #[allow(deprecated)]
