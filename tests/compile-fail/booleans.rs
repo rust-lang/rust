@@ -46,3 +46,19 @@ fn main() {
     //|~ HELP for further information visit
     //|~ SUGGESTION let _ = !b || a;
 }
+
+#[allow(unused, many_single_char_names)]
+fn equality_stuff() {
+    let a: i32 = unimplemented!();
+    let b: i32 = unimplemented!();
+    let c: i32 = unimplemented!();
+    let d: i32 = unimplemented!();
+    let e: i32 = unimplemented!();
+    let _ = a == b && a != b;
+    let _ = a == b && c == 5 && a == b; //~ ERROR this boolean expression can be simplified
+    //|~ HELP for further information visit
+    //|~ SUGGESTION let _ = c == 5 && a == b;
+    let _ = a < b && a >= b;
+    let _ = a > b && a <= b;
+    let _ = a > b && a == b;
+}
