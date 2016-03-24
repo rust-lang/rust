@@ -104,7 +104,7 @@ use rustc::middle::cstore;
 use rustc::middle::def_id::DefId;
 use rustc::middle::ty::{self, TypeFoldable};
 use rustc::middle::ty::item_path::{ItemPathBuffer, RootMode};
-use rustc::front::map::definitions::DefPath;
+use rustc::front::map::definitions::{DefPath, DefPathData};
 
 use std::fmt::Write;
 use syntax::parse::token::{self, InternedString};
@@ -134,7 +134,18 @@ pub fn def_path_to_string<'tcx>(tcx: &ty::TyCtxt<'tcx>, def_path: &DefPath) -> S
 }
 
 fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+
+                             // path to the item this name is for
                              def_path: &DefPath,
+
+                             // type of the item, without any generic
+                             // parameters substituted; this is
+                             // included in the hash as a kind of
+                             // safeguard.
+                             item_type: ty::Ty<'tcx>,
+
+                             // values for generic type parameters,
+                             // if any.
                              parameters: &[ty::Ty<'tcx>])
                              -> String {
     debug!("get_symbol_hash(def_path={:?}, parameters={:?})",
@@ -150,6 +161,13 @@ fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // compiler's internal def-path, guaranteeing each symbol has a
     // truly unique path
     hash_state.input_str(&def_path_to_string(tcx, def_path));
+
+    // Include the main item-type. Note that, in this case, the
+    // assertions about `needs_subst` may not hold, but this item-type
+    // ought to be the same for every reference anyway.
+    assert!(!item_type.has_erasable_regions());
+    let encoded_item_type = tcx.sess.cstore.encode_type(tcx, item_type, def_id_to_string);
+    hash_state.input(&encoded_item_type[..]);
 
     // also include any type parameters (for generic items)
     for t in parameters {
@@ -185,7 +203,38 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let def_path = ccx.tcx().def_path(def_id);
     assert_eq!(def_path.krate, def_id.krate);
-    let hash = get_symbol_hash(ccx, &def_path, parameters.as_slice());
+
+    // We want to compute the "type" of this item. Unfortunately, some
+    // kinds of items (e.g., closures) don't have an entry in the
+    // item-type array. So walk back up the find the closest parent
+    // that DOES have an entry.
+    let mut ty_def_id = def_id;
+    let instance_ty;
+    loop {
+        let key = ccx.tcx().def_key(ty_def_id);
+        match key.disambiguated_data.data {
+            DefPathData::TypeNs(_) |
+            DefPathData::ValueNs(_) => {
+                instance_ty = ccx.tcx().lookup_item_type(ty_def_id);
+                break;
+            }
+            _ => {
+                // if we're making a symbol for something, there ought
+                // to be a value or type-def or something in there
+                // *somewhere*
+                ty_def_id.index = key.parent.unwrap_or_else(|| {
+                    panic!("finding type for {:?}, encountered def-id {:?} with no \
+                            parent", def_id, ty_def_id);
+                });
+            }
+        }
+    }
+
+    // Erase regions because they may not be deterministic when hashed
+    // and should not matter anyhow.
+    let instance_ty = ccx.tcx().erase_regions(&instance_ty.ty);
+
+    let hash = get_symbol_hash(ccx, &def_path, instance_ty, parameters.as_slice());
 
     let mut buffer = SymbolPathBuffer {
         names: Vec::with_capacity(def_path.data.len())
@@ -239,7 +288,7 @@ pub fn internal_name_from_type_and_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>
         data: vec![],
         krate: cstore::LOCAL_CRATE,
     };
-    let hash = get_symbol_hash(ccx, &def_path, &[t]);
+    let hash = get_symbol_hash(ccx, &def_path, t, &[]);
     mangle(path.iter().cloned(), Some(&hash[..]))
 }
 
