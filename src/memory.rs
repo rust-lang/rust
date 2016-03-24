@@ -7,12 +7,6 @@ use std::ptr;
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
-pub struct Memory {
-    alloc_map: HashMap<u64, Allocation>,
-    next_id: u64,
-    pub pointer_size: usize,
-}
-
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct AllocId(u64);
 
@@ -27,6 +21,12 @@ pub struct Allocation {
 pub struct Pointer {
     pub alloc_id: AllocId,
     pub offset: usize,
+}
+
+impl Pointer {
+    pub fn offset(self, i: isize) -> Self {
+        Pointer { offset: (self.offset as isize + i) as usize, ..self }
+    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -63,6 +63,22 @@ pub enum Repr {
     },
 }
 
+impl Repr {
+    pub fn size(&self) -> usize {
+        match *self {
+            Repr::Primitive { size } => size,
+            Repr::Aggregate { size, .. } => size,
+            Repr::Array { elem_size, length } => elem_size * length,
+        }
+    }
+}
+
+pub struct Memory {
+    alloc_map: HashMap<u64, Allocation>,
+    next_id: u64,
+    pub pointer_size: usize,
+}
+
 impl Memory {
     pub fn new() -> Self {
         Memory {
@@ -88,6 +104,10 @@ impl Memory {
         }
     }
 
+    ////////////////////////////////////////////////////////////////////////////////
+    // Allocation accessors
+    ////////////////////////////////////////////////////////////////////////////////
+
     pub fn get(&self, id: AllocId) -> EvalResult<&Allocation> {
         self.alloc_map.get(&id.0).ok_or(EvalError::DanglingPointerDeref)
     }
@@ -95,6 +115,10 @@ impl Memory {
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<&mut Allocation> {
         self.alloc_map.get_mut(&id.0).ok_or(EvalError::DanglingPointerDeref)
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Byte accessors
+    ////////////////////////////////////////////////////////////////////////////////
 
     fn get_bytes_unchecked(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
         let alloc = try!(self.get(ptr.alloc_id));
@@ -125,42 +149,9 @@ impl Memory {
         self.get_bytes_unchecked_mut(ptr, size)
     }
 
-    fn relocations(&self, ptr: Pointer, size: usize)
-        -> EvalResult<btree_map::Range<usize, AllocId>>
-    {
-        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
-        let end = start + size;
-        Ok(try!(self.get(ptr.alloc_id)).relocations.range(Included(&start), Excluded(&end)))
-    }
-
-    fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
-        let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
-        let alloc = try!(self.get_mut(ptr.alloc_id));
-        for k in keys {
-            alloc.relocations.remove(&k);
-        }
-        Ok(())
-    }
-
-    fn check_relocation_edges(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
-        let overlapping_start = try!(self.relocations(ptr, 0)).count();
-        let overlapping_end = try!(self.relocations(ptr.offset(size as isize), 0)).count();
-        if overlapping_start + overlapping_end != 0 {
-            return Err(EvalError::ReadPointerAsBytes);
-        }
-        Ok(())
-    }
-
-    fn copy_relocations(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        let relocations: Vec<_> = try!(self.relocations(src, size))
-            .map(|(&offset, &alloc_id)| {
-                // Update relocation offsets for the new positions in the destination allocation.
-                (offset + dest.offset - src.offset, alloc_id)
-            })
-            .collect();
-        try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
-        Ok(())
-    }
+    ////////////////////////////////////////////////////////////////////////////////
+    // Reading and writing
+    ////////////////////////////////////////////////////////////////////////////////
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
         // TODO(tsion): Track and check for undef bytes.
@@ -271,20 +262,45 @@ impl Memory {
         let size = self.pointer_size;
         self.write_uint(ptr, n, size)
     }
-}
 
-impl Pointer {
-    pub fn offset(self, i: isize) -> Self {
-        Pointer { offset: (self.offset as isize + i) as usize, ..self }
+    ////////////////////////////////////////////////////////////////////////////////
+    // Relocations
+    ////////////////////////////////////////////////////////////////////////////////
+
+    fn relocations(&self, ptr: Pointer, size: usize)
+        -> EvalResult<btree_map::Range<usize, AllocId>>
+    {
+        let start = ptr.offset.saturating_sub(self.pointer_size - 1);
+        let end = start + size;
+        Ok(try!(self.get(ptr.alloc_id)).relocations.range(Included(&start), Excluded(&end)))
     }
-}
 
-impl Repr {
-    pub fn size(&self) -> usize {
-        match *self {
-            Repr::Primitive { size } => size,
-            Repr::Aggregate { size, .. } => size,
-            Repr::Array { elem_size, length } => elem_size * length,
+    fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
+        let alloc = try!(self.get_mut(ptr.alloc_id));
+        for k in keys {
+            alloc.relocations.remove(&k);
         }
+        Ok(())
+    }
+
+    fn check_relocation_edges(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        let overlapping_start = try!(self.relocations(ptr, 0)).count();
+        let overlapping_end = try!(self.relocations(ptr.offset(size as isize), 0)).count();
+        if overlapping_start + overlapping_end != 0 {
+            return Err(EvalError::ReadPointerAsBytes);
+        }
+        Ok(())
+    }
+
+    fn copy_relocations(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
+        let relocations: Vec<_> = try!(self.relocations(src, size))
+            .map(|(&offset, &alloc_id)| {
+                // Update relocation offsets for the new positions in the destination allocation.
+                (offset + dest.offset - src.offset, alloc_id)
+            })
+            .collect();
+        try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
+        Ok(())
     }
 }
