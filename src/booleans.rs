@@ -1,7 +1,8 @@
 use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
 use rustc_front::hir::*;
 use rustc_front::intravisit::*;
-use syntax::ast::LitKind;
+use syntax::ast::{LitKind, DUMMY_NODE_ID};
+use syntax::codemap::{DUMMY_SP, dummy_spanned};
 use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 
 /// **What it does:** This lint checks for boolean expressions that can be written more concisely
@@ -91,6 +92,30 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             if SpanlessEq::new(self.cx).ignore_fn().eq_expr(e, expr) {
                 #[allow(cast_possible_truncation)]
                 return Ok(Bool::Term(n as u8));
+            }
+            let negated = match e.node {
+                ExprBinary(binop, ref lhs, ref rhs) => {
+                    let mk_expr = |op| Expr {
+                        id: DUMMY_NODE_ID,
+                        span: DUMMY_SP,
+                        attrs: None,
+                        node: ExprBinary(dummy_spanned(op), lhs.clone(), rhs.clone()),
+                    };
+                    match binop.node {
+                        BiEq => mk_expr(BiNe),
+                        BiNe => mk_expr(BiEq),
+                        BiGt => mk_expr(BiLe),
+                        BiGe => mk_expr(BiLt),
+                        BiLt => mk_expr(BiGe),
+                        BiLe => mk_expr(BiGt),
+                        _ => continue,
+                    }
+                },
+                _ => continue,
+            };
+            if SpanlessEq::new(self.cx).ignore_fn().eq_expr(&negated, expr) {
+                #[allow(cast_possible_truncation)]
+                return Ok(Bool::Not(Box::new(Bool::Term(n as u8))));
             }
         }
         let n = self.terminals.len();
