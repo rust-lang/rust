@@ -2160,8 +2160,9 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             write!(w, "<h2 class='fields'>Fields</h2>\n<table>")?;
             for field in fields {
                 write!(w, "<tr class='stab {stab}'>
-                             <td id='structfield.{name}'>\
+                             <td id='{shortty}.{name}'>\
                                <code>{name}</code></td><td>",
+                       shortty = ItemType::StructField,
                        stab = field.stability_class(),
                        name = field.name.as_ref().unwrap())?;
                 document(w, cx, field)?;
@@ -2231,7 +2232,8 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if !e.variants.is_empty() {
         write!(w, "<h2 class='variants'>Variants</h2>\n<table class='variants_table'>")?;
         for variant in &e.variants {
-            write!(w, "<tr><td id='variant.{name}'><code>{name}</code></td><td>",
+            write!(w, "<tr><td id='{shortty}.{name}'><code>{name}</code></td><td>",
+                   shortty = ItemType::Variant,
                    name = variant.name.as_ref().unwrap())?;
             document(w, cx, variant)?;
 
@@ -2247,8 +2249,9 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                            <table>")?;
                 for field in fields {
                     write!(w, "<tr><td \
-                               id='variant.{v}.field.{f}'>\
+                               id='{shortty}.{v}.field.{f}'>\
                                <code>{f}</code></td><td>",
+                           shortty = ItemType::Variant,
                            v = variant.name.as_ref().unwrap(),
                            f = field.name.as_ref().unwrap())?;
                     document(w, cx, field)?;
@@ -2460,6 +2463,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
                     link: AssocItemLink, render_static: bool,
                     outer_version: Option<&str>) -> fmt::Result {
+        let shortty = shortty(item);
         let name = item.name.as_ref().unwrap();
 
         let is_static = match item.inner {
@@ -2472,8 +2476,8 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 // Only render when the method is not static or we allow static methods
                 if !is_static || render_static {
-                    let id = derive_id(format!("method.{}", name));
-                    write!(w, "<h4 id='{}' class='{}'>", id, shortty(item))?;
+                    let id = derive_id(format!("{}.{}", shortty, name));
+                    write!(w, "<h4 id='{}' class='{}'>", id, shortty)?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link)?;
@@ -2481,26 +2485,26 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
-                let id = derive_id(format!("associatedtype.{}", name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item))?;
+                let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
+                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
                 write!(w, "type {} = {}", name, tydef.type_)?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
-                let id = derive_id(format!("associatedconstant.{}", name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item))?;
+                let id = derive_id(format!("{}.{}", shortty, name));
+                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
                 assoc_const(w, item, ty, default.as_ref())?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::ConstantItem(ref c) => {
-                let id = derive_id(format!("associatedconstant.{}", name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item))?;
+                let id = derive_id(format!("{}.{}", shortty, name));
+                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
                 assoc_const(w, item, &c.type_, Some(&c.expr))?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
-                let id = derive_id(format!("associatedtype.{}", name));
-                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty(item))?;
+                let id = derive_id(format!("{}.{}", shortty, name));
+                write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
                 assoc_type(w, item, bounds, default)?;
                 write!(w, "</code></h4>\n")?;
             }
