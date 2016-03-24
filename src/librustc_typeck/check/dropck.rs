@@ -281,7 +281,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut RegionCtxt<'a
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            typ, scope);
 
-    let parent_scope = rcx.tcx().region_maps.opt_encl_scope(scope).unwrap_or_else(|| {
+    let parent_scope = rcx.tcx.region_maps.opt_encl_scope(scope).unwrap_or_else(|| {
         span_bug!(span, "no enclosing scope found for scope: {:?}", scope)
     });
 
@@ -298,7 +298,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut RegionCtxt<'a
     match result {
         Ok(()) => {}
         Err(Error::Overflow(ref ctxt, ref detected_on_typ)) => {
-            let tcx = rcx.tcx();
+            let tcx = rcx.tcx;
             let mut err = struct_span_err!(tcx.sess, span, E0320,
                                            "overflow while adding drop-check rules for {}", typ);
             match *ctxt {
@@ -360,7 +360,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     ty: Ty<'tcx>,
     depth: usize) -> Result<(), Error<'tcx>>
 {
-    let tcx = cx.rcx.tcx();
+    let tcx = cx.rcx.tcx;
     // Issue #22443: Watch out for overflow. While we are careful to
     // handle regular types properly, non-regular ones cause problems.
     let recursion_limit = tcx.sess.recursion_limit.get();
@@ -373,7 +373,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
 
     // canoncialize the regions in `ty` before inserting - infinitely many
     // region variables can refer to the same region.
-    let ty = cx.rcx.infcx().resolve_type_and_region_vars_if_possible(&ty);
+    let ty = cx.rcx.resolve_type_and_region_vars_if_possible(&ty);
 
     if !cx.breadcrumbs.insert(ty) {
         debug!("iterate_over_potentially_unsafe_regions_in_type \
@@ -453,7 +453,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
             for variant in &def.variants {
                 for field in variant.fields.iter() {
                     let fty = field.ty(tcx, substs);
-                    let fty = cx.rcx.fcx.resolve_type_vars_if_possible(
+                    let fty = cx.rcx.fcx.resolve_type_vars_with_obligations(
                         cx.rcx.fcx.normalize_associated_types_in(cx.span, &fty));
                     iterate_over_potentially_unsafe_regions_in_type(
                         cx,
@@ -504,7 +504,7 @@ fn has_dtor_of_interest<'a, 'b, 'tcx>(cx: &DropckContext<'a, 'b, 'tcx, 'tcx>,
                                       ty: ty::Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
-            def.is_dtorck(cx.rcx.tcx())
+            def.is_dtorck(cx.rcx.tcx)
         }
         ty::TyTrait(..) | ty::TyProjection(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);

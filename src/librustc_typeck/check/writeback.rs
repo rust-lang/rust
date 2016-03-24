@@ -54,7 +54,7 @@ pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
         wbcx.visit_pat(&arg.pat);
 
         // Privacy needs the type for the whole pattern, not just each binding
-        if !pat_util::pat_is_binding(&self.tcx().def_map.borrow(), &arg.pat) {
+        if !pat_util::pat_is_binding(&self.tcx.def_map.borrow(), &arg.pat) {
             wbcx.visit_node_id(ResolvingPattern(arg.pat.span),
                                arg.pat.id);
         }
@@ -84,7 +84,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
     }
 
     fn tcx(&self) -> TyCtxt<'cx, 'tcx, 'tcx> {
-        self.fcx.tcx()
+        self.fcx.tcx
     }
 
     // Hacky hack: During type-checking, we treat *all* operators
@@ -96,13 +96,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
             hir::ExprBinary(ref op, ref lhs, ref rhs) |
             hir::ExprAssignOp(ref op, ref lhs, ref rhs) => {
                 let lhs_ty = self.fcx.node_ty(lhs.id);
-                let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
+                let lhs_ty = self.fcx.resolve_type_vars_if_possible(&lhs_ty);
 
                 let rhs_ty = self.fcx.node_ty(rhs.id);
-                let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+                let rhs_ty = self.fcx.resolve_type_vars_if_possible(&rhs_ty);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
-                    self.fcx.inh.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
+                    self.fcx.tables.borrow_mut().method_map.remove(&MethodCall::expr(e.id));
 
                     // weird but true: the by-ref binops put an
                     // adjustment on the lhs but not the rhs; the
@@ -111,11 +111,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
                     match e.node {
                         hir::ExprBinary(..) => {
                             if !op.node.is_by_value() {
-                                self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
+                                self.fcx.tables.borrow_mut().adjustments.remove(&lhs.id);
                             }
                         },
                         hir::ExprAssignOp(..) => {
-                            self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
+                            self.fcx.tables.borrow_mut().adjustments.remove(&lhs.id);
                         },
                         _ => {},
                     }
@@ -220,7 +220,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
             return;
         }
 
-        for (upvar_id, upvar_capture) in self.fcx.inh.tables.borrow().upvar_capture_map.iter() {
+        for (upvar_id, upvar_capture) in self.fcx.tables.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
@@ -233,11 +233,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
             debug!("Upvar capture for {:?} resolved to {:?}",
                    upvar_id,
                    new_upvar_capture);
-            self.fcx.tcx()
-                    .tables
-                    .borrow_mut()
-                    .upvar_capture_map
-                    .insert(*upvar_id, new_upvar_capture);
+            self.tcx()
+                .tables
+                .borrow_mut()
+                .upvar_capture_map
+                .insert(*upvar_id, new_upvar_capture);
         }
     }
 
@@ -246,13 +246,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
             return
         }
 
-        for (def_id, closure_ty) in self.fcx.inh.tables.borrow().closure_tys.iter() {
+        for (def_id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
-            self.fcx.tcx().tables.borrow_mut().closure_tys.insert(*def_id, closure_ty);
+            self.tcx().tables.borrow_mut().closure_tys.insert(*def_id, closure_ty);
         }
 
-        for (def_id, &closure_kind) in self.fcx.inh.tables.borrow().closure_kinds.iter() {
-            self.fcx.tcx().tables.borrow_mut().closure_kinds.insert(*def_id, closure_kind);
+        for (def_id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
+            self.tcx().tables.borrow_mut().closure_kinds.insert(*def_id, closure_kind);
         }
     }
 
@@ -274,7 +274,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
     }
 
     fn visit_adjustments(&self, reason: ResolveReason, id: ast::NodeId) {
-        let adjustments = self.fcx.inh.tables.borrow_mut().adjustments.remove(&id);
+        let adjustments = self.fcx.tables.borrow_mut().adjustments.remove(&id);
         match adjustments {
             None => {
                 debug!("No adjustments for node {}", id);
@@ -318,7 +318,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
                               reason: ResolveReason,
                               method_call: MethodCall) {
         // Resolve any method map entry
-        let new_method = match self.fcx.inh.tables.borrow_mut().method_map.remove(&method_call) {
+        let new_method = match self.fcx.tables.borrow_mut().method_map.remove(&method_call) {
             Some(method) => {
                 debug!("writeback::resolve_method_map_entry(call={:?}, entry={:?})",
                        method_call,
@@ -346,14 +346,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
     }
 
     fn visit_liberated_fn_sigs(&self) {
-        for (&node_id, fn_sig) in self.fcx.inh.tables.borrow().liberated_fn_sigs.iter() {
+        for (&node_id, fn_sig) in self.fcx.tables.borrow().liberated_fn_sigs.iter() {
             let fn_sig = self.resolve(fn_sig, ResolvingFnSig(node_id));
             self.tcx().tables.borrow_mut().liberated_fn_sigs.insert(node_id, fn_sig.clone());
         }
     }
 
     fn visit_fru_field_types(&self) {
-        for (&node_id, ftys) in self.fcx.inh.tables.borrow().fru_field_types.iter() {
+        for (&node_id, ftys) in self.fcx.tables.borrow().fru_field_types.iter() {
             let ftys = self.resolve(ftys, ResolvingFieldTypes(node_id));
             self.tcx().tables.borrow_mut().fru_field_types.insert(node_id, ftys);
         }
@@ -420,7 +420,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx, 'tcx> {
            reason: ResolveReason)
            -> Resolver<'cx, 'tcx, 'tcx>
     {
-        Resolver::from_infcx(fcx.infcx(), &fcx.writeback_errors, reason)
+        Resolver::from_infcx(fcx, &fcx.writeback_errors, reason)
     }
 
     fn from_infcx(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>,

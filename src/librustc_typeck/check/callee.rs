@@ -128,13 +128,13 @@ fn try_overloaded_call_step(&self,
             // Check whether this is a call to a closure where we
             // haven't yet decided on whether the closure is fn vs
             // fnmut vs fnonce. If so, we have to defer further processing.
-            if self.infcx().closure_kind(def_id).is_none() {
+            if self.closure_kind(def_id).is_none() {
                 let closure_ty =
-                    self.infcx().closure_type(def_id, substs);
+                    self.closure_type(def_id, substs);
                 let fn_sig =
-                    self.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
-                                                                           infer::FnCall,
-                                                                           &closure_ty.sig).0;
+                    self.replace_late_bound_regions_with_fresh_var(call_expr.span,
+                                                                   infer::FnCall,
+                                                                   &closure_ty.sig).0;
                 self.record_deferred_call_resolution(def_id, Box::new(CallResolution {
                     call_expr: call_expr,
                     callee_expr: callee_expr,
@@ -175,9 +175,9 @@ fn try_overloaded_call_traits(&self,
 {
     // Try the options that are least restrictive on the caller first.
     for &(opt_trait_def_id, method_name) in &[
-        (self.tcx().lang_items.fn_trait(), token::intern("call")),
-        (self.tcx().lang_items.fn_mut_trait(), token::intern("call_mut")),
-        (self.tcx().lang_items.fn_once_trait(), token::intern("call_once")),
+        (self.tcx.lang_items.fn_trait(), token::intern("call")),
+        (self.tcx.lang_items.fn_mut_trait(), token::intern("call_mut")),
+        (self.tcx.lang_items.fn_once_trait(), token::intern("call_once")),
     ] {
         let trait_def_id = match opt_trait_def_id {
             Some(def_id) => def_id,
@@ -221,7 +221,7 @@ fn confirm_builtin_call(&self,
             }, callee_ty, None);
 
             if let hir::ExprCall(ref expr, _) = call_expr.node {
-                let tcx = self.tcx();
+                let tcx = self.tcx;
                 if let Some(pr) = tcx.def_map.borrow().get(&expr.id) {
                     if pr.depth == 0 && pr.base_def != Def::Err {
                         if let Some(span) = tcx.map.span_if_local(pr.def_id()) {
@@ -238,7 +238,7 @@ fn confirm_builtin_call(&self,
             // set up all the node type bindings.
             error_fn_sig = ty::Binder(ty::FnSig {
                 inputs: self.err_args(arg_exprs.len()),
-                output: ty::FnConverging(self.tcx().types.err),
+                output: ty::FnConverging(self.tcx.types.err),
                 variadic: false
             });
 
@@ -252,9 +252,9 @@ fn confirm_builtin_call(&self,
     // previously appeared within a `Binder<>` and hence would not
     // have been normalized before.
     let fn_sig =
-        self.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
-                                                               infer::FnCall,
-                                                               fn_sig).0;
+        self.replace_late_bound_regions_with_fresh_var(call_expr.span,
+                                                       infer::FnCall,
+                                                       fn_sig).0;
     let fn_sig =
         self.normalize_associated_types_in(call_expr.span, &fn_sig);
 
@@ -323,7 +323,7 @@ fn write_overloaded_call_method_map(&self,
                                     call_expr: &hir::Expr,
                                     method_callee: ty::MethodCallee<'tcx>) {
     let method_call = ty::MethodCall::expr(call_expr.id);
-    self.inh.tables.borrow_mut().method_map.insert(method_call, method_callee);
+    self.tables.borrow_mut().method_map.insert(method_call, method_callee);
 }
 }
 
@@ -344,7 +344,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
 
         // we should not be invoked until the closure kind has been
         // determined by upvar inference
-        assert!(fcx.infcx().closure_kind(self.closure_def_id).is_some());
+        assert!(fcx.closure_kind(self.closure_def_id).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr, self.callee_expr,
@@ -358,8 +358,8 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 // can't because of the annoying need for a TypeTrace.
                 // (This always bites me, should find a way to
                 // refactor it.)
-                let method_sig = fcx.tcx().no_late_bound_regions(method_callee.ty.fn_sig())
-                                          .unwrap();
+                let method_sig = fcx.tcx.no_late_bound_regions(method_callee.ty.fn_sig())
+                                        .unwrap();
 
                 debug!("attempt_resolution: method_callee={:?}",
                        method_callee);
@@ -370,7 +370,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                     fcx.demand_eqtype(self.call_expr.span, self_arg_ty, method_arg_ty);
                 }
 
-                let nilty = fcx.tcx().mk_nil();
+                let nilty = fcx.tcx.mk_nil();
                 fcx.demand_eqtype(self.call_expr.span,
                                   method_sig.output.unwrap_or(nilty),
                                   self.fn_sig.output.unwrap_or(nilty));

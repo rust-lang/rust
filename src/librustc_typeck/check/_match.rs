@@ -58,7 +58,7 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx, 'tcx> {
 pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     debug!("check_pat(pat={:?},expected={:?})", pat, expected);
 
@@ -126,15 +126,15 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
                 span_err!(tcx.sess, span, E0029,
                           "only char and numeric types are allowed in range patterns\n \
                            start type: {}\n end type: {}",
-                          self.infcx().ty_to_string(lhs_ty),
-                          self.infcx().ty_to_string(rhs_ty)
+                          self.ty_to_string(lhs_ty),
+                          self.ty_to_string(rhs_ty)
                 );
                 return;
             }
 
             // Check that the types of the end-points can be unified.
             let types_unify = require_same_types(
-                self.ccx, Some(self.infcx()), pat.span, rhs_ty, lhs_ty,
+                self.ccx, Some(self), pat.span, rhs_ty, lhs_ty,
                 "mismatched types in range",
             );
 
@@ -145,7 +145,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
 
             // Now that we know the types can be unified we find the unified type and use
             // it to type the entire expression.
-            let common_type = self.infcx().resolve_type_vars_if_possible(&lhs_ty);
+            let common_type = self.resolve_type_vars_if_possible(&lhs_ty);
 
             self.write_ty(pat.id, common_type);
 
@@ -181,7 +181,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
                     //    ref x | ref const x | ref mut x
                     // then `x` is assigned a value of type `&M T` where M is the mutability
                     // and T is the expected type.
-                    let region_var = self.infcx().next_region_var(infer::PatternRegion(pat.span));
+                    let region_var = self.next_region_var(infer::PatternRegion(pat.span));
                     let mt = ty::TypeAndMut { ty: expected, mutbl: mutbl };
                     let region_ty = tcx.mk_ref(tcx.mk_region(region_var), mt);
 
@@ -227,14 +227,14 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
             let self_ty = self.to_ty(&qself.ty);
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
                 if d.base_def == Def::Err {
-                    self.infcx().set_tainted_by_errors();
+                    self.set_tainted_by_errors();
                     self.write_error(pat.id);
                     return;
                 }
                 d
             } else if qself.position == 0 {
                 // This is just a sentinel for finish_resolving_def_to_ty.
-                let sentinel = self.tcx().map.local_def_id(ast::CRATE_NODE_ID);
+                let sentinel = self.tcx.map.local_def_id(ast::CRATE_NODE_ID);
                 def::PathResolution {
                     base_def: Def::Mod(sentinel),
                     depth: path.segments.len()
@@ -264,8 +264,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
         }
         PatKind::Tup(ref elements) => {
             let element_tys: Vec<_> =
-                (0..elements.len()).map(|_| self.infcx().next_ty_var())
-                                        .collect();
+                (0..elements.len()).map(|_| self.next_ty_var()).collect();
             let pat_ty = tcx.mk_tup(element_tys.clone());
             self.write_ty(pat.id, pat_ty);
             self.demand_eqtype(pat.span, expected, pat_ty);
@@ -274,7 +273,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
             }
         }
         PatKind::Box(ref inner) => {
-            let inner_ty = self.infcx().next_ty_var();
+            let inner_ty = self.next_ty_var();
             let uniq_ty = tcx.mk_box(inner_ty);
 
             if self.check_dereferencable(pat.span, expected, &inner) {
@@ -290,7 +289,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
             }
         }
         PatKind::Ref(ref inner, mutbl) => {
-            let expected = self.infcx().shallow_resolve(expected);
+            let expected = self.shallow_resolve(expected);
             if self.check_dereferencable(pat.span, expected, &inner) {
                 // `demand::subtype` would be good enough, but using
                 // `eqtype` turns out to be equally general. See (*)
@@ -305,9 +304,9 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
                         (expected, mt.ty)
                     }
                     _ => {
-                        let inner_ty = self.infcx().next_ty_var();
+                        let inner_ty = self.next_ty_var();
                         let mt = ty::TypeAndMut { ty: inner_ty, mutbl: mutbl };
-                        let region = self.infcx().next_region_var(infer::PatternRegion(pat.span));
+                        let region = self.next_region_var(infer::PatternRegion(pat.span));
                         let rptr_ty = tcx.mk_ref(tcx.mk_region(region), mt);
                         self.demand_eqtype(pat.span, expected, rptr_ty);
                         (rptr_ty, inner_ty)
@@ -323,7 +322,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
         }
         PatKind::Vec(ref before, ref slice, ref after) => {
             let expected_ty = self.structurally_resolved_type(pat.span, expected);
-            let inner_ty = self.infcx().next_ty_var();
+            let inner_ty = self.next_ty_var();
             let pat_ty = match expected_ty.sty {
                 ty::TyArray(_, size) => tcx.mk_array(inner_ty, {
                     let min_len = before.len() + after.len();
@@ -333,7 +332,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
                     }
                 }),
                 _ => {
-                    let region = self.infcx().next_region_var(infer::PatternRegion(pat.span));
+                    let region = self.next_region_var(infer::PatternRegion(pat.span));
                     tcx.mk_ref(tcx.mk_region(region), ty::TypeAndMut {
                         ty: tcx.mk_slice(inner_ty),
                         mutbl: expected_ty.builtin_deref(true, ty::NoPreference).map(|mt| mt.mutbl)
@@ -353,7 +352,7 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
                 self.check_pat(&elt, inner_ty);
             }
             if let Some(ref slice) = *slice {
-                let region = self.infcx().next_region_var(infer::PatternRegion(pat.span));
+                let region = self.next_region_var(infer::PatternRegion(pat.span));
                 let mutbl = expected_ty.builtin_deref(true, ty::NoPreference)
                     .map_or(hir::MutImmutable, |mt| mt.mutbl);
 
@@ -425,7 +424,7 @@ fn check_assoc_item_is_const(&self, def: Def, span: Span) -> bool {
     match def {
         Def::AssociatedConst(..) => true,
         Def::Method(..) => {
-            span_err!(self.tcx().sess, span, E0327,
+            span_err!(self.tcx.sess, span, E0327,
                       "associated items in match patterns must be constants");
             false
         }
@@ -436,16 +435,16 @@ fn check_assoc_item_is_const(&self, def: Def, span: Span) -> bool {
 }
 
 pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat) -> bool {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
     if pat_is_binding(&tcx.def_map.borrow(), inner) {
-        let expected = self.infcx().shallow_resolve(expected);
+        let expected = self.shallow_resolve(expected);
         expected.builtin_deref(true, ty::NoPreference).map_or(true, |mt| match mt.ty.sty {
             ty::TyTrait(_) => {
                 // This is "x = SomeTrait" being reduced from
                 // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
                 span_err!(tcx.sess, span, E0033,
                           "type `{}` cannot be dereferenced",
-                          self.infcx().ty_to_string(expected));
+                          self.ty_to_string(expected));
                 false
             }
             _ => true
@@ -463,7 +462,7 @@ pub fn check_match(&self,
                    arms: &'tcx [hir::Arm],
                    expected: Expectation<'tcx>,
                    match_src: hir::MatchSource) {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     // Not entirely obvious: if matches may create ref bindings, we
     // want to use the *precise* type of the discriminant, *not* some
@@ -482,7 +481,7 @@ pub fn check_match(&self,
         // ...but otherwise we want to use any supertype of the
         // discriminant. This is sort of a workaround, see note (*) in
         // `check_pat` for some details.
-        discrim_ty = self.infcx().next_ty_var();
+        discrim_ty = self.next_ty_var();
         self.check_expr_has_type(discrim, discrim_ty);
     };
 
@@ -508,14 +507,14 @@ pub fn check_match(&self,
     // of execution reach it, we will panic, so bottom is an appropriate
     // type in that case)
     let expected = expected.adjust_for_branches(self);
-    let mut result_ty = self.infcx().next_diverging_ty_var();
+    let mut result_ty = self.next_diverging_ty_var();
     let coerce_first = match expected {
         // We don't coerce to `()` so that if the match expression is a
         // statement it's branches can have any consistent type. That allows
         // us to give better error messages (pointing to a usually better
         // arm for inconsistent arms or to the whole match when a `()` type
         // is required).
-        Expectation::ExpectHasType(ety) if ety != self.tcx().mk_nil() => {
+        Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => {
             ety
         }
         _ => result_ty
@@ -547,7 +546,7 @@ pub fn check_match(&self,
         };
 
         let result = if is_if_let_fallback {
-            self.infcx().eq_types(true, origin, arm_ty, result_ty)
+            self.eq_types(true, origin, arm_ty, result_ty)
                 .map(|InferOk { obligations, .. }| {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
@@ -569,8 +568,8 @@ pub fn check_match(&self,
                 } else {
                     (result_ty, arm_ty)
                 };
-                self.infcx().report_mismatched_types(origin, expected, found, e);
-                self.tcx().types.err
+                self.report_mismatched_types(origin, expected, found, e);
+                self.tcx.types.err
             }
         };
     }
@@ -583,7 +582,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx, 'tcx> {
 pub fn check_pat_struct(&self, pat: &'tcx hir::Pat,
                         path: &hir::Path, fields: &'tcx [Spanned<hir::FieldPat>],
                         etc: bool, expected: Ty<'tcx>) {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
     let variant = match self.def_struct_variant(def, path.span) {
@@ -621,12 +620,12 @@ fn check_pat_enum(&self,
                   is_tuple_struct_pat: bool)
 {
     // Typecheck the path.
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     let path_res = match tcx.def_map.borrow().get(&pat.id) {
         Some(&path_res) if path_res.base_def != Def::Err => path_res,
         _ => {
-            self.infcx().set_tainted_by_errors();
+            self.set_tainted_by_errors();
             self.write_error(pat.id);
 
             if let Some(subpats) = subpats {
@@ -767,7 +766,7 @@ pub fn check_struct_pat_fields(&self,
                                variant: ty::VariantDef<'tcx>,
                                substs: &Substs<'tcx>,
                                etc: bool) {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     // Index the struct fields' types.
     let field_map = variant.fields
