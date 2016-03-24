@@ -267,6 +267,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
+        booleans::LOGIC_BUG,
         booleans::NONMINIMAL_BOOL,
         collapsible_if::COLLAPSIBLE_IF,
         copies::IF_SAME_THEN_ELSE,

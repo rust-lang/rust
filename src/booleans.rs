@@ -12,7 +12,7 @@ use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 ///
 /// **Example:** `if a && true` should be `if a`
 declare_lint! {
-    pub NONMINIMAL_BOOL, Allow,
+    pub NONMINIMAL_BOOL, Warn,
     "checks for boolean expressions that can be written more concisely"
 }
 
