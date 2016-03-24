@@ -51,6 +51,7 @@ pub const RANGE_TO_PATH: [&'static str; 3] = ["std", "ops", "RangeTo"];
 pub const REGEX_NEW_PATH: [&'static str; 3] = ["regex", "Regex", "new"];
 pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
+pub const TRANSMUTE_PATH: [&'static str; 3] = ["core", "intrinsics", "transmute"];
 pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];
 pub const VEC_PATH: [&'static str; 3] = ["collections", "vec", "Vec"];
 
