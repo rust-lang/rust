@@ -46,7 +46,7 @@ fn check_closure(&self,
                  decl: &'tcx hir::FnDecl,
                  body: &'tcx hir::Block,
                  expected_sig: Option<ty::FnSig<'tcx>>) {
-    let expr_def_id = self.tcx().map.local_def_id(expr.id);
+    let expr_def_id = self.tcx.map.local_def_id(expr.id);
 
     debug!("check_closure opt_kind={:?} expected_sig={:?}",
            opt_kind,
@@ -61,20 +61,20 @@ fn check_closure(&self,
     // Create type variables (for now) to represent the transformed
     // types of upvars. These will be unified during the upvar
     // inference phase (`upvar.rs`).
-    let num_upvars = self.tcx().with_freevars(expr.id, |fv| fv.len());
-    let upvar_tys = self.infcx().next_ty_vars(num_upvars);
+    let num_upvars = self.tcx.with_freevars(expr.id, |fv| fv.len());
+    let upvar_tys = self.next_ty_vars(num_upvars);
 
     debug!("check_closure: expr.id={:?} upvar_tys={:?}",
            expr.id, upvar_tys);
 
-    let closure_type = self.tcx().mk_closure(expr_def_id,
-        self.tcx().mk_substs(self.inh.infcx.parameter_environment.free_substs.clone()),
+    let closure_type = self.tcx.mk_closure(expr_def_id,
+        self.tcx.mk_substs(self.parameter_environment.free_substs.clone()),
         upvar_tys);
 
     self.write_ty(expr.id, closure_type);
 
-    let fn_sig = self.tcx().liberate_late_bound_regions(
-        self.tcx().region_maps.call_site_extent(expr.id, body.id), &fn_ty.sig);
+    let fn_sig = self.tcx.liberate_late_bound_regions(
+        self.tcx.region_maps.call_site_extent(expr.id, body.id), &fn_ty.sig);
 
     check_fn(self.ccx,
              hir::Unsafety::Normal,
@@ -83,20 +83,20 @@ fn check_closure(&self,
              decl,
              expr.id,
              &body,
-             self.inh);
+             self);
 
     // Tuple up the arguments and insert the resulting function type into
     // the `closures` table.
-    fn_ty.sig.0.inputs = vec![self.tcx().mk_tup(fn_ty.sig.0.inputs)];
+    fn_ty.sig.0.inputs = vec![self.tcx.mk_tup(fn_ty.sig.0.inputs)];
 
     debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
            expr_def_id,
            fn_ty.sig,
            opt_kind);
 
-    self.inh.tables.borrow_mut().closure_tys.insert(expr_def_id, fn_ty);
+    self.tables.borrow_mut().closure_tys.insert(expr_def_id, fn_ty);
     match opt_kind {
-        Some(kind) => { self.inh.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind); }
+        Some(kind) => { self.tables.borrow_mut().closure_kinds.insert(expr_def_id, kind); }
         None => { }
     }
 }
@@ -109,12 +109,12 @@ fn deduce_expectations_from_expected_type(&self, expected_ty: Ty<'tcx>)
 
     match expected_ty.sty {
         ty::TyTrait(ref object_type) => {
-            let proj_bounds = object_type.projection_bounds_with_self_ty(self.tcx(),
-                                                                         self.tcx().types.err);
+            let proj_bounds = object_type.projection_bounds_with_self_ty(self.tcx,
+                                                                         self.tcx.types.err);
             let sig = proj_bounds.iter()
                                  .filter_map(|pb| self.deduce_sig_from_projection(pb))
                                  .next();
-            let kind = self.tcx().lang_items.fn_trait_kind(object_type.principal_def_id());
+            let kind = self.tcx.lang_items.fn_trait_kind(object_type.principal_def_id());
             (sig, kind)
         }
         ty::TyInfer(ty::TyVar(vid)) => {
@@ -129,7 +129,7 @@ fn deduce_expectations_from_expected_type(&self, expected_ty: Ty<'tcx>)
 fn deduce_expectations_from_obligations(&self, expected_vid: ty::TyVid)
     -> (Option<ty::FnSig<'tcx>>, Option<ty::ClosureKind>)
 {
-    let fulfillment_cx = self.inh.fulfillment_cx.borrow();
+    let fulfillment_cx = self.fulfillment_cx.borrow();
     // Here `expected_ty` is known to be a type inference variable.
 
     let expected_sig =
@@ -188,7 +188,7 @@ fn deduce_expectations_from_obligations(&self, expected_vid: ty::TyVid)
             };
             opt_trait_ref
                 .and_then(|trait_ref| self.self_type_matches_expected_vid(trait_ref, expected_vid))
-                .and_then(|trait_ref| self.tcx().lang_items.fn_trait_kind(trait_ref.def_id()))
+                .and_then(|trait_ref| self.tcx.lang_items.fn_trait_kind(trait_ref.def_id()))
         })
         .fold(None, |best, cur| Some(best.map_or(cur, |best| cmp::min(best, cur))));
 
@@ -201,7 +201,7 @@ fn deduce_sig_from_projection(&self,
     projection: &ty::PolyProjectionPredicate<'tcx>)
     -> Option<ty::FnSig<'tcx>>
 {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     debug!("deduce_sig_from_projection({:?})",
            projection);
@@ -213,7 +213,7 @@ fn deduce_sig_from_projection(&self,
     }
 
     let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 0);
-    let arg_param_ty = self.infcx().resolve_type_vars_if_possible(&arg_param_ty);
+    let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
     debug!("deduce_sig_from_projection: arg_param_ty {:?}", arg_param_ty);
 
     let input_tys = match arg_param_ty.sty {
@@ -223,7 +223,7 @@ fn deduce_sig_from_projection(&self,
     debug!("deduce_sig_from_projection: input_tys {:?}", input_tys);
 
     let ret_param_ty = projection.0.ty;
-    let ret_param_ty = self.infcx().resolve_type_vars_if_possible(&ret_param_ty);
+    let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
     debug!("deduce_sig_from_projection: ret_param_ty {:?}", ret_param_ty);
 
     let fn_sig = ty::FnSig {
@@ -241,7 +241,7 @@ fn self_type_matches_expected_vid(&self,
     expected_vid: ty::TyVid)
     -> Option<ty::PolyTraitRef<'tcx>>
 {
-    let self_ty = self.infcx().shallow_resolve(trait_ref.self_ty());
+    let self_ty = self.shallow_resolve(trait_ref.self_ty());
     debug!("self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?})",
            trait_ref,
            self_ty);

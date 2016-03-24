@@ -127,11 +127,11 @@ pub fn lookup_method(&self,
            self_expr);
 
     let mode = probe::Mode::MethodCall;
-    let self_ty = self.infcx().resolve_type_vars_if_possible(&self_ty);
+    let self_ty = self.resolve_type_vars_if_possible(&self_ty);
     let pick = self.probe_method(span, mode, method_name, self_ty, call_expr.id)?;
 
     if let Some(import_id) = pick.import_id {
-        self.tcx().used_trait_imports.borrow_mut().insert(import_id);
+        self.tcx.used_trait_imports.borrow_mut().insert(import_id);
     }
 
     Ok(self.confirm_method(span, self_expr, call_expr, self_ty, pick, supplied_method_types))
@@ -176,7 +176,7 @@ pub fn lookup_method_in_trait_adjusted(&self,
            m_name,
            trait_def_id);
 
-    let trait_def = self.tcx().lookup_trait_def(trait_def_id);
+    let trait_def = self.tcx.lookup_trait_def(trait_def_id);
 
     let type_parameter_defs = trait_def.generics.types.get_slice(subst::TypeSpace);
     let expected_number_of_input_types = type_parameter_defs.len();
@@ -194,7 +194,7 @@ pub fn lookup_method_in_trait_adjusted(&self,
         }
 
         None => {
-            self.inh.infcx.type_vars_for_defs(
+            self.type_vars_for_defs(
                 span,
                 subst::ParamSpace::TypeSpace,
                 &mut substs,
@@ -202,7 +202,7 @@ pub fn lookup_method_in_trait_adjusted(&self,
         }
     }
 
-    let trait_ref = ty::TraitRef::new(trait_def_id, self.tcx().mk_substs(substs));
+    let trait_ref = ty::TraitRef::new(trait_def_id, self.tcx.mk_substs(substs));
 
     // Construct an obligation
     let poly_trait_ref = trait_ref.to_poly_trait_ref();
@@ -211,7 +211,7 @@ pub fn lookup_method_in_trait_adjusted(&self,
                                               poly_trait_ref.to_predicate());
 
     // Now we want to know if this can be matched
-    let mut selcx = traits::SelectionContext::new(self.infcx());
+    let mut selcx = traits::SelectionContext::new(self);
     if !selcx.evaluate_obligation(&obligation) {
         debug!("--> Cannot match obligation");
         return None; // Cannot be matched, no such method resolution is possible.
@@ -219,7 +219,7 @@ pub fn lookup_method_in_trait_adjusted(&self,
 
     // Trait must have a method named `m_name` and it should not have
     // type parameters or early-bound regions.
-    let tcx = self.tcx();
+    let tcx = self.tcx;
     let method_item = self.trait_item(trait_def_id, m_name).unwrap();
     let method_ty = method_item.as_opt_method().unwrap();
     assert_eq!(method_ty.generics.types.len(subst::FnSpace), 0);
@@ -234,9 +234,9 @@ pub fn lookup_method_in_trait_adjusted(&self,
     // NB: Instantiate late-bound regions first so that
     // `instantiate_type_scheme` can normalize associated types that
     // may reference those regions.
-    let fn_sig = self.infcx().replace_late_bound_regions_with_fresh_var(span,
-                                                                        infer::FnCall,
-                                                                        &method_ty.fty.sig).0;
+    let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
+                                                                infer::FnCall,
+                                                                &method_ty.fty.sig).0;
     let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
     let def_id = method_item.def_id();
@@ -347,14 +347,14 @@ pub fn resolve_ufcs(&self,
     let pick = self.probe_method(span, mode, method_name, self_ty, expr_id)?;
 
     if let Some(import_id) = pick.import_id {
-        self.tcx().used_trait_imports.borrow_mut().insert(import_id);
+        self.tcx.used_trait_imports.borrow_mut().insert(import_id);
     }
 
     let def = pick.item.def();
     if let probe::InherentImplPick = pick.kind {
-        if !pick.item.vis().is_accessible_from(self.body_id, &self.tcx().map) {
+        if !pick.item.vis().is_accessible_from(self.body_id, &self.tcx.map) {
             let msg = format!("{} `{}` is private", def.kind_name(), &method_name.as_str());
-            self.tcx().sess.span_err(span, &msg);
+            self.tcx.sess.span_err(span, &msg);
         }
     }
     Ok(def)
@@ -367,7 +367,7 @@ pub fn trait_item(&self,
                   item_name: ast::Name)
                   -> Option<ty::ImplOrTraitItem<'tcx>>
 {
-    let trait_items = self.tcx().trait_items(trait_def_id);
+    let trait_items = self.tcx.trait_items(trait_def_id);
     trait_items.iter()
                .find(|item| item.name() == item_name)
                .cloned()
@@ -378,11 +378,11 @@ pub fn impl_item(&self,
                  item_name: ast::Name)
                  -> Option<ty::ImplOrTraitItem<'tcx>>
 {
-    let impl_items = self.tcx().impl_items.borrow();
+    let impl_items = self.tcx.impl_items.borrow();
     let impl_items = impl_items.get(&impl_def_id).unwrap();
     impl_items
         .iter()
-        .map(|&did| self.tcx().impl_or_trait_item(did.def_id()))
+        .map(|&did| self.tcx.impl_or_trait_item(did.def_id()))
         .find(|m| m.name() == item_name)
 }
 }

@@ -27,10 +27,10 @@ pub fn check_binop_assign(&self,
 {
     self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
 
-    let lhs_ty = self.resolve_type_vars_if_possible(self.expr_ty(lhs_expr));
+    let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
     let (rhs_ty, return_ty) =
         self.check_overloaded_binop(expr, lhs_expr, lhs_ty, rhs_expr, op, IsAssign::Yes);
-    let rhs_ty = self.resolve_type_vars_if_possible(rhs_ty);
+    let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
 
     if !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() && is_builtin_binop(lhs_ty, rhs_ty, op) {
         self.enforce_builtin_binop_types(lhs_expr, lhs_ty, rhs_expr, rhs_ty, op);
@@ -39,7 +39,7 @@ pub fn check_binop_assign(&self,
         self.write_ty(expr.id, return_ty);
     }
 
-    let tcx = self.tcx();
+    let tcx = self.tcx;
     if !tcx.expr_is_lval(lhs_expr) {
         span_err!(tcx.sess, lhs_expr.span, E0067, "invalid left-hand side expression");
     }
@@ -52,7 +52,7 @@ pub fn check_binop(&self,
                    lhs_expr: &'tcx hir::Expr,
                    rhs_expr: &'tcx hir::Expr)
 {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
 
     debug!("check_binop(expr.id={}, expr={:?}, op={:?}, lhs_expr={:?}, rhs_expr={:?})",
            expr.id,
@@ -62,7 +62,7 @@ pub fn check_binop(&self,
            rhs_expr);
 
     self.check_expr(lhs_expr);
-    let lhs_ty = self.resolve_type_vars_if_possible(self.expr_ty(lhs_expr));
+    let lhs_ty = self.resolve_type_vars_with_obligations(self.expr_ty(lhs_expr));
 
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => {
@@ -90,7 +90,7 @@ pub fn check_binop(&self,
             // deduce that the result type should be `u32`, even
             // though we don't know yet what type 2 has and hence
             // can't pin this down to a specific impl.
-            let rhs_ty = self.resolve_type_vars_if_possible(rhs_ty);
+            let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
             if
                 !lhs_ty.is_ty_var() && !rhs_ty.is_ty_var() &&
                 is_builtin_binop(lhs_ty, rhs_ty, op)
@@ -115,7 +115,7 @@ fn enforce_builtin_binop_types(&self,
 {
     debug_assert!(is_builtin_binop(lhs_ty, rhs_ty, op));
 
-    let tcx = self.tcx();
+    let tcx = self.tcx;
     match BinOpCategory::from(op) {
         BinOpCategory::Shortcircuit => {
             self.demand_suptype(lhs_expr.span, tcx.mk_bool(), lhs_ty);
@@ -165,7 +165,7 @@ fn check_overloaded_binop(&self,
     // using this variable as the expected type, which sometimes lets
     // us do better coercions than we would be able to do otherwise,
     // particularly for things like `String + &String`.
-    let rhs_ty_var = self.infcx().next_ty_var();
+    let rhs_ty_var = self.next_ty_var();
 
     let return_ty = match self.lookup_op_method(expr, lhs_ty, vec![rhs_ty_var],
                                                 token::intern(name), trait_def_id,
@@ -175,12 +175,12 @@ fn check_overloaded_binop(&self,
             // error types are considered "builtin"
             if !lhs_ty.references_error() {
                 if let IsAssign::Yes = is_assign {
-                    span_err!(self.tcx().sess, lhs_expr.span, E0368,
+                    span_err!(self.tcx.sess, lhs_expr.span, E0368,
                               "binary assignment operation `{}=` cannot be applied to type `{}`",
                               op.node.as_str(),
                               lhs_ty);
                 } else {
-                    let mut err = struct_span_err!(self.tcx().sess, lhs_expr.span, E0369,
+                    let mut err = struct_span_err!(self.tcx.sess, lhs_expr.span, E0369,
                         "binary operation `{}` cannot be applied to type `{}`",
                         op.node.as_str(),
                         lhs_ty);
@@ -208,7 +208,7 @@ fn check_overloaded_binop(&self,
                     err.emit();
                 }
             }
-            self.tcx().types.err
+            self.tcx.types.err
         }
     };
 
@@ -238,7 +238,7 @@ pub fn check_user_unop(&self,
                 format!("cannot apply unary operator `{}` to type `{}`",
                         op_str, actual)
             }, operand_ty, None);
-            self.tcx().types.err
+            self.tcx.types.err
         }
     }
 }
@@ -247,7 +247,7 @@ fn name_and_trait_def_id(&self,
                          op: hir::BinOp,
                          is_assign: IsAssign)
                          -> (&'static str, Option<DefId>) {
-    let lang = &self.tcx().lang_items;
+    let lang = &self.tcx.lang_items;
 
     if let IsAssign::Yes = is_assign {
         match op.node {
@@ -329,12 +329,12 @@ fn lookup_op_method(&self,
 
             // HACK(eddyb) Fully qualified path to work around a resolve bug.
             let method_call = ::rustc::ty::MethodCall::expr(expr.id);
-            self.inh.tables.borrow_mut().method_map.insert(method_call, method);
+            self.tables.borrow_mut().method_map.insert(method_call, method);
 
             // extract return type for method; all late bound regions
             // should have been instantiated by now
             let ret_ty = method_ty.fn_ret();
-            Ok(self.tcx().no_late_bound_regions(&ret_ty).unwrap().unwrap())
+            Ok(self.tcx.no_late_bound_regions(&ret_ty).unwrap().unwrap())
         }
         None => {
             Err(())

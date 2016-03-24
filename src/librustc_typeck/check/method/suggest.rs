@@ -41,7 +41,7 @@ use super::probe::Mode;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 fn is_fn_ty(&self, ty: &Ty<'tcx>, span: Span) -> bool {
-    let tcx = self.tcx();
+    let tcx = self.tcx;
     match ty.sty {
         // Not all of these (e.g. unsafe fns) implement FnOnce
         // so we look for these beforehand
@@ -50,16 +50,15 @@ fn is_fn_ty(&self, ty: &Ty<'tcx>, span: Span) -> bool {
         _ => {
             if let Ok(fn_once_trait_did) =
                     tcx.lang_items.require(FnOnceTraitLangItem) {
-                let infcx = self.infcx();
                 let (_, _, opt_is_fn) = self.autoderef(span,
                                                        ty,
                                                        || None,
                                                        UnresolvedTypeAction::Ignore,
                                                        LvaluePreference::NoPreference,
                                                        |ty, _| {
-                    infcx.probe(|_| {
+                    self.probe(|_| {
                         let fn_once_substs =
-                            Substs::new_trait(vec![infcx.next_ty_var()], vec![], ty);
+                            Substs::new_trait(vec![self.next_ty_var()], vec![], ty);
                         let trait_ref =
                             ty::TraitRef::new(fn_once_trait_did,
                                               tcx.mk_substs(fn_once_substs));
@@ -68,7 +67,7 @@ fn is_fn_ty(&self, ty: &Ty<'tcx>, span: Span) -> bool {
                                                           self.body_id,
                                                           poly_trait_ref
                                                              .to_predicate());
-                        let mut selcx = SelectionContext::new(infcx);
+                        let mut selcx = SelectionContext::new(self);
 
                         if selcx.evaluate_obligation(&obligation) {
                             Some(())
@@ -111,22 +110,22 @@ pub fn report_method_error(&self,
                     let item = self.impl_item(impl_did, item_name)
                         .or_else(|| {
                             self.trait_item(
-                                self.tcx().impl_trait_ref(impl_did).unwrap().def_id,
+                                self.tcx.impl_trait_ref(impl_did).unwrap().def_id,
 
                                 item_name
                             )
                         }).unwrap();
-                    let note_span = self.tcx().map.span_if_local(item.def_id()).or_else(|| {
-                        self.tcx().map.span_if_local(impl_did)
+                    let note_span = self.tcx.map.span_if_local(item.def_id()).or_else(|| {
+                        self.tcx.map.span_if_local(impl_did)
                     });
 
                     let impl_ty = self.impl_self_ty(span, impl_did).ty;
 
-                    let insertion = match self.tcx().impl_trait_ref(impl_did) {
+                    let insertion = match self.tcx.impl_trait_ref(impl_did) {
                         None => format!(""),
                         Some(trait_ref) => {
                             format!(" of the trait `{}`",
-                                    self.tcx().item_path_str(trait_ref.def_id))
+                                    self.tcx.item_path_str(trait_ref.def_id))
                         }
                     };
 
@@ -144,11 +143,11 @@ pub fn report_method_error(&self,
                 }
                 CandidateSource::TraitSource(trait_did) => {
                     let item = self.trait_item(trait_did, item_name).unwrap();
-                    let item_span = self.tcx().map.def_id_span(item.def_id(), span);
+                    let item_span = self.tcx.map.def_id_span(item.def_id(), span);
                     span_note!(err, item_span,
                                "candidate #{} is defined in the trait `{}`",
                                idx + 1,
-                               self.tcx().item_path_str(trait_did));
+                               self.tcx.item_path_str(trait_did));
                 }
             }
         }
@@ -159,7 +158,7 @@ pub fn report_method_error(&self,
                                            unsatisfied_predicates,
                                            out_of_scope_traits,
                                            mode, .. }) => {
-            let tcx = self.tcx();
+            let tcx = self.tcx;
 
             let mut err = self.type_error_struct(
                 span,
@@ -258,7 +257,7 @@ pub fn report_method_error(&self,
                                invoked on this closure as we have not yet inferred what \
                                kind of closure it is",
                                item_name,
-                               self.tcx().item_path_str(trait_def_id));
+                               self.tcx.item_path_str(trait_def_id));
             let msg = if let Some(callee) = rcvr_expr {
                 format!("{}; use overloaded call notation instead (e.g., `{}()`)",
                         msg, pprust::expr_to_string(callee))
@@ -270,7 +269,7 @@ pub fn report_method_error(&self,
 
         MethodError::PrivateMatch(def) => {
             let msg = format!("{} `{}` is private", def.kind_name(), item_name);
-            self.tcx().sess.span_err(span, &msg);
+            self.tcx.sess.span_err(span, &msg);
         }
     }
 }
@@ -299,7 +298,7 @@ fn suggest_traits_to_import(&self,
         for (i, trait_did) in candidates.iter().enumerate() {
             err.help(&format!("candidate #{}: `use {}`",
                               i + 1,
-                              self.tcx().item_path_str(*trait_did)));
+                              self.tcx.item_path_str(*trait_did)));
         }
         return
     }
@@ -343,7 +342,7 @@ fn suggest_traits_to_import(&self,
         for (i, trait_info) in candidates.iter().enumerate() {
             err.help(&format!("candidate #{}: `{}`",
                               i + 1,
-                              self.tcx().item_path_str(trait_info.def_id)));
+                              self.tcx.item_path_str(trait_info.def_id)));
         }
     }
 }
@@ -373,7 +372,7 @@ fn type_derefs_to_local(&self,
     // This occurs for UFCS desugaring of `T::method`, where there is no
     // receiver expression for the method call, and thus no autoderef.
     if rcvr_expr.is_none() {
-        return is_local(self.resolve_type_vars_if_possible(rcvr_ty));
+        return is_local(self.resolve_type_vars_with_obligations(rcvr_ty));
     }
 
     self.autoderef(span, rcvr_ty, || None,
