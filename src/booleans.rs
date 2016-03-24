@@ -54,23 +54,26 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 
     fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
-        match e.node {
-            ExprUnary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
-            ExprBinary(binop, ref lhs, ref rhs) => {
-                match binop.node {
-                    BiOr => return Ok(Bool::Or(self.extract(BiOr, &[lhs, rhs], Vec::new())?)),
-                    BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
-                    _ => {},
-                }
-            },
-            ExprLit(ref lit) => {
-                match lit.node {
-                    LitKind::Bool(true) => return Ok(Bool::True),
-                    LitKind::Bool(false) => return Ok(Bool::False),
-                    _ => {},
-                }
-            },
-            _ => {},
+        // prevent folding of `cfg!` macros and the like
+        if !in_macro(self.cx, e.span) {
+            match e.node {
+                ExprUnary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
+                ExprBinary(binop, ref lhs, ref rhs) => {
+                    match binop.node {
+                        BiOr => return Ok(Bool::Or(self.extract(BiOr, &[lhs, rhs], Vec::new())?)),
+                        BiAnd => return Ok(Bool::And(self.extract(BiAnd, &[lhs, rhs], Vec::new())?)),
+                        _ => {},
+                    }
+                },
+                ExprLit(ref lit) => {
+                    match lit.node {
+                        LitKind::Bool(true) => return Ok(Bool::True),
+                        LitKind::Bool(false) => return Ok(Bool::False),
+                        _ => {},
+                    }
+                },
+                _ => {},
+            }
         }
         if let Some((n, _)) = self.terminals
                                   .iter()

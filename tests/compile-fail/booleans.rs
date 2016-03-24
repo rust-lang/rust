@@ -29,4 +29,7 @@ fn main() {
     let _ = false || a; //~ ERROR this boolean expression can be simplified
     //|~ HELP for further information visit
     //|~ SUGGESTION let _ = a;
+
+    // don't lint on cfgs
+    let _ = cfg!(you_shall_not_not_pass) && a;
 }
