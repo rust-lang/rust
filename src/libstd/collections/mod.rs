@@ -120,12 +120,10 @@
 //!
 //! For Sets, all operations have the cost of the equivalent Map operation.
 //!
-//! |          | get       | insert   | remove   | predecessor |
-//! |----------|-----------|----------|----------|-------------|
-//! | HashMap  | O(1)~     | O(1)~*   | O(1)~    | N/A         |
-//! | BTreeMap | O(log n)  | O(log n) | O(log n) | O(log n)    |
-//!
-//! Note that BTreeMap's precise performance depends on the value of B.
+//! |          | get       | insert   | remove   | predecessor | append |
+//! |----------|-----------|----------|----------|-------------|--------|
+//! | HashMap  | O(1)~     | O(1)~*   | O(1)~    | N/A         | N/A    |
+//! | BTreeMap | O(log n)  | O(log n) | O(log n) | O(log n)    | O(n+m) |
 //!
 //! # Correct and Efficient Usage of Collections
 //!
