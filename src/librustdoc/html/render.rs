@@ -62,7 +62,7 @@ use rustc::middle::stability;
 use rustc::session::config::get_unstable_features_setting;
 use rustc_front::hir;
 
-use clean::{self, SelfTy, Attributes};
+use clean::{self, SelfTy, Attributes, GetDefId};
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -144,9 +144,7 @@ pub struct Impl {
 
 impl Impl {
     fn trait_did(&self) -> Option<DefId> {
-        self.impl_.trait_.as_ref().and_then(|tr| {
-            if let clean::ResolvedPath { did, .. } = *tr {Some(did)} else {None}
-        })
+        self.impl_.trait_.def_id()
     }
 }
 
@@ -967,7 +965,7 @@ impl DocFolder for Cache {
 
         // Collect all the implementors of traits.
         if let clean::ImplItem(ref i) = item.inner {
-            if let Some(clean::ResolvedPath{ did, .. }) = i.trait_ {
+            if let Some(did) = i.trait_.def_id() {
                 self.implementors.entry(did).or_insert(vec![]).push(Implementor {
                     def_id: item.def_id,
                     stability: item.stability.clone(),
@@ -2066,10 +2064,11 @@ fn render_stability_since(w: &mut fmt::Formatter,
     render_stability_since_raw(w, item.stable_since(), containing_item.stable_since())
 }
 
-fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
+fn render_assoc_item(w: &mut fmt::Formatter,
+                     item: &clean::Item,
                      link: AssocItemLink) -> fmt::Result {
     fn method(w: &mut fmt::Formatter,
-              it: &clean::Item,
+              meth: &clean::Item,
               unsafety: hir::Unsafety,
               constness: hir::Constness,
               abi: abi::Abi,
@@ -2080,12 +2079,20 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
               -> fmt::Result {
         use syntax::abi::Abi;
 
-        let name = it.name.as_ref().unwrap();
-        let anchor = format!("#{}.{}", shortty(it), name);
+        let name = meth.name.as_ref().unwrap();
+        let anchor = format!("#{}.{}", shortty(meth), name);
         let href = match link {
             AssocItemLink::Anchor => anchor,
-            AssocItemLink::GotoSource(did) => {
-                href(did).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
+            AssocItemLink::GotoSource(did, provided_methods) => {
+                // We're creating a link from an impl-item to the corresponding
+                // trait-item and need to map the anchored type accordingly.
+                let ty = if provided_methods.contains(name) {
+                    ItemType::Method
+                } else {
+                    ItemType::TyMethod
+                };
+
+                href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
         let vis_constness = match get_unstable_features_setting() {
@@ -2106,21 +2113,21 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
     }
-    match meth.inner {
+    match item.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.unsafety, hir::Constness::NotConst,
+            method(w, item, m.unsafety, hir::Constness::NotConst,
                    m.abi, &m.generics, &m.self_, &m.decl, link)
         }
         clean::MethodItem(ref m) => {
-            method(w, meth, m.unsafety, m.constness,
+            method(w, item, m.unsafety, m.constness,
                    m.abi, &m.generics, &m.self_, &m.decl,
                    link)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
-            assoc_const(w, meth, ty, default.as_ref())
+            assoc_const(w, item, ty, default.as_ref())
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
-            assoc_type(w, meth, bounds, default)
+            assoc_type(w, item, bounds, default)
         }
         _ => panic!("render_assoc_item called on non-associated-item")
     }
@@ -2338,9 +2345,9 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 #[derive(Copy, Clone)]
-enum AssocItemLink {
+enum AssocItemLink<'a> {
     Anchor,
-    GotoSource(DefId),
+    GotoSource(DefId, &'a HashSet<String>),
 }
 
 enum AssocItemRender<'a> {
@@ -2383,12 +2390,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
     }
     if !traits.is_empty() {
         let deref_impl = traits.iter().find(|t| {
-            match *t.impl_.trait_.as_ref().unwrap() {
-                clean::ResolvedPath { did, .. } => {
-                    Some(did) == c.deref_trait_did
-                }
-                _ => false
-            }
+            t.impl_.trait_.def_id() == c.deref_trait_did
         });
         if let Some(impl_) = deref_impl {
             render_deref_methods(w, cx, impl_, containing_item)?;
@@ -2400,8 +2402,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         });
         for i in &manual {
             let did = i.trait_did().unwrap();
-            render_impl(w, cx, i, AssocItemLink::GotoSource(did), true,
-                        containing_item.stable_since())?;
+            let assoc_link = AssocItemLink::GotoSource(did, &i.impl_.provided_trait_methods);
+            render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
         }
         if !derived.is_empty() {
             write!(w, "<h3 id='derived_implementations'>\
@@ -2409,8 +2411,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
                        </h3>")?;
             for i in &derived {
                 let did = i.trait_did().unwrap();
-                render_impl(w, cx, i, AssocItemLink::GotoSource(did), true,
-                            containing_item.stable_since())?;
+                let assoc_link = AssocItemLink::GotoSource(did, &i.impl_.provided_trait_methods);
+                render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
             }
         }
     }
@@ -2427,17 +2429,16 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
         }
     }).next().expect("Expected associated type binding");
     let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
-    match *target {
-        clean::ResolvedPath { did, .. } => render_assoc_items(w, cx, container_item, did, what),
-        _ => {
-            if let Some(prim) = target.primitive_type() {
-                if let Some(c) = cache().primitive_locations.get(&prim) {
-                    let did = DefId { krate: *c, index: prim.to_def_index() };
-                    render_assoc_items(w, cx, container_item, did, what)?;
-                }
+    if let Some(did) = target.def_id() {
+        render_assoc_items(w, cx, container_item, did, what)
+    } else {
+        if let Some(prim) = target.primitive_type() {
+            if let Some(c) = cache().primitive_locations.get(&prim) {
+                let did = DefId { krate: *c, index: prim.to_def_index() };
+                render_assoc_items(w, cx, container_item, did, what)?;
             }
-            Ok(())
         }
+        Ok(())
     }
 }
 
@@ -2521,18 +2522,19 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     fn render_default_items(w: &mut fmt::Formatter,
                             cx: &Context,
-                            did: DefId,
                             t: &clean::Trait,
-                              i: &clean::Impl,
-                              render_static: bool,
-                              outer_version: Option<&str>) -> fmt::Result {
+                            i: &clean::Impl,
+                            render_static: bool,
+                            outer_version: Option<&str>) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
-            if i.items.iter().find(|m| { m.name == n }).is_some() {
+            if i.items.iter().find(|m| m.name == n).is_some() {
                 continue;
             }
+            let did = i.trait_.as_ref().unwrap().def_id().unwrap();
+            let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
-            doctraititem(w, cx, trait_item, AssocItemLink::GotoSource(did), render_static,
+            doctraititem(w, cx, trait_item, assoc_link, render_static,
                          outer_version)?;
         }
         Ok(())
@@ -2542,9 +2544,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // default methods which weren't overridden in the implementation block.
     // FIXME: this also needs to be done for associated types, whenever defaults
     // for them work.
-    if let Some(clean::ResolvedPath { did, .. }) = i.impl_.trait_ {
+    if let Some(did) = i.trait_did() {
         if let Some(t) = cache().traits.get(&did) {
-            render_default_items(w, cx, did, t, &i.impl_, render_header, outer_version)?;
+            render_default_items(w, cx, t, &i.impl_, render_header, outer_version)?;
         }
     }
     write!(w, "</div>")?;

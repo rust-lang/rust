@@ -26,7 +26,7 @@ use rustc::middle::const_eval;
 
 use core::DocContext;
 use doctree;
-use clean::{self, Attributes};
+use clean::{self, Attributes, GetDefId};
 
 use super::{Clean, ToSource};
 
@@ -414,15 +414,22 @@ pub fn build_impl(cx: &DocContext,
             clean::RegionBound(..) => unreachable!(),
         }
     });
-    if let Some(clean::ResolvedPath { did, .. }) = trait_ {
-        if Some(did) == cx.deref_trait_did.get() {
-            super::build_deref_target_impls(cx, &trait_items, ret);
-        }
+    if trait_.def_id() == cx.deref_trait_did.get() {
+        super::build_deref_target_impls(cx, &trait_items, ret);
     }
+
+    let provided = trait_.def_id().map(|did| {
+        cx.tcx().provided_trait_methods(did)
+                .into_iter()
+                .map(|meth| meth.name.to_string())
+                .collect()
+    }).unwrap_or(HashSet::new());
+
     ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             unsafety: hir::Unsafety::Normal, // FIXME: this should be decoded
             derived: clean::detect_derived(&attrs),
+            provided_trait_methods: provided,
             trait_: trait_,
             for_: ty.ty.clean(cx),
             generics: (&ty.generics, &predicates, subst::TypeSpace).clean(cx),
