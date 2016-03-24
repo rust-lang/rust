@@ -136,9 +136,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
             ItemDefaultImpl(..) | ItemImpl(..) =>
                 DefPathData::Impl,
             ItemEnum(..) | ItemStruct(..) | ItemTrait(..) |
-            ItemExternCrate(..) | ItemMod(..) | ItemForeignMod(..) |
-            ItemTy(..) =>
+            ItemExternCrate(..) | ItemForeignMod(..) | ItemTy(..) =>
                 DefPathData::TypeNs(i.name),
+            ItemMod(..) =>
+                DefPathData::Module(i.name),
             ItemStatic(..) | ItemConst(..) | ItemFn(..) =>
                 DefPathData::ValueNs(i.name),
             ItemUse(..) =>

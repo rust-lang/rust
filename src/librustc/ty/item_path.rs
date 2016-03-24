@@ -147,6 +147,7 @@ impl<'tcx> TyCtxt<'tcx> {
             data @ DefPathData::Misc |
             data @ DefPathData::TypeNs(..) |
             data @ DefPathData::ValueNs(..) |
+            data @ DefPathData::Module(..) |
             data @ DefPathData::TypeParam(..) |
             data @ DefPathData::LifetimeDef(..) |
             data @ DefPathData::EnumVariant(..) |
@@ -189,7 +190,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // the impl is either in the same module as the self-type or
         // as the trait.
         let self_ty = self.lookup_item_type(impl_def_id).ty;
-        let in_self_mod = match self.characteristic_def_id_of_type(self_ty) {
+        let in_self_mod = match characteristic_def_id_of_type(self_ty) {
             None => false,
             Some(ty_def_id) => self.parent_def_id(ty_def_id) == Some(parent_def_id),
         };
@@ -268,44 +269,53 @@ impl<'tcx> TyCtxt<'tcx> {
         buffer.push(&format!("<impl at {}>", span_str));
     }
 
-    /// As a heuristic, when we see an impl, if we see that the
-    /// 'self-type' is a type defined in the same module as the impl,
-    /// we can omit including the path to the impl itself. This
-    /// function tries to find a "characteristic def-id" for a
-    /// type. It's just a heuristic so it makes some questionable
-    /// decisions and we may want to adjust it later.
-    fn characteristic_def_id_of_type(&self, ty: Ty<'tcx>) -> Option<DefId> {
-        match ty.sty {
-            ty::TyStruct(adt_def, _) |
-            ty::TyEnum(adt_def, _) =>
-                Some(adt_def.did),
-
-            ty::TyTrait(ref data) =>
-                Some(data.principal_def_id()),
-
-            ty::TyBox(subty) =>
-                self.characteristic_def_id_of_type(subty),
-
-            ty::TyRawPtr(mt) |
-            ty::TyRef(_, mt) =>
-                self.characteristic_def_id_of_type(mt.ty),
-
-            ty::TyTuple(ref tys) =>
-                tys.iter()
-                   .filter_map(|ty| self.characteristic_def_id_of_type(ty))
-                   .next(),
-
-            _ =>
-                None
-        }
-    }
-
     /// Returns the def-id of `def_id`'s parent in the def tree. If
     /// this returns `None`, then `def_id` represents a crate root or
     /// inlined root.
     fn parent_def_id(&self, def_id: DefId) -> Option<DefId> {
         let key = self.def_key(def_id);
         key.parent.map(|index| DefId { krate: def_id.krate, index: index })
+    }
+}
+
+/// As a heuristic, when we see an impl, if we see that the
+/// 'self-type' is a type defined in the same module as the impl,
+/// we can omit including the path to the impl itself. This
+/// function tries to find a "characteristic def-id" for a
+/// type. It's just a heuristic so it makes some questionable
+/// decisions and we may want to adjust it later.
+pub fn characteristic_def_id_of_type<'tcx>(ty: Ty<'tcx>) -> Option<DefId> {
+    match ty.sty {
+        ty::TyStruct(adt_def, _) |
+        ty::TyEnum(adt_def, _) => Some(adt_def.did),
+
+        ty::TyTrait(ref data) => Some(data.principal_def_id()),
+
+        ty::TyArray(subty, _) |
+        ty::TySlice(subty) |
+        ty::TyBox(subty) => characteristic_def_id_of_type(subty),
+
+        ty::TyRawPtr(mt) |
+        ty::TyRef(_, mt) => characteristic_def_id_of_type(mt.ty),
+
+        ty::TyTuple(ref tys) => tys.iter()
+                                   .filter_map(|ty| characteristic_def_id_of_type(ty))
+                                   .next(),
+
+        ty::TyFnDef(def_id, _, _) |
+        ty::TyClosure(def_id, _) => Some(def_id),
+
+        ty::TyBool |
+        ty::TyChar |
+        ty::TyInt(_) |
+        ty::TyUint(_) |
+        ty::TyStr |
+        ty::TyFnPtr(_) |
+        ty::TyProjection(_) |
+        ty::TyParam(_) |
+        ty::TyInfer(_) |
+        ty::TyError |
+        ty::TyFloat(_) => None,
     }
 }
 
