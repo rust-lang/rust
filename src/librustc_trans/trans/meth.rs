@@ -15,7 +15,7 @@ use back::link;
 use llvm::{ValueRef, get_params};
 use middle::def_id::DefId;
 use middle::infer;
-use middle::subst::{Subst, Substs};
+use middle::subst::{FnSpace, Subst, Substs};
 use middle::subst;
 use middle::traits::{self, ProjectionMode};
 use trans::abi::FnType;
@@ -92,7 +92,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, method_ty, "object_shim");
     let llfn = declare::define_internal_fn(ccx, &function_name, method_ty);
 
-    let empty_substs = tcx.mk_substs(Substs::trans_empty());
+    let empty_substs = tcx.mk_substs(Substs::empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &block_arena);
@@ -268,9 +268,17 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             debug!("get_vtable_methods: trait_method_type={:?}",
                    trait_method_type);
 
+            // the method may have some early-bound lifetimes, add
+            // regions for those
+            let num_dummy_regions = trait_method_type.generics.regions.len(FnSpace);
+            let dummy_regions = vec![ty::ReStatic; num_dummy_regions];
+            let method_substs = substs.clone()
+                                      .with_method(vec![], dummy_regions);
+            let method_substs = tcx.mk_substs(method_substs);
+
             // The substitutions we have are on the impl, so we grab
             // the method type from the impl to substitute into.
-            let mth = get_impl_method(tcx, impl_id, substs, name);
+            let mth = get_impl_method(tcx, impl_id, method_substs, name);
 
             debug!("get_vtable_methods: mth={:?}", mth);
 

@@ -383,7 +383,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
 
     //
-    let empty_substs = tcx.mk_substs(Substs::trans_empty());
+    let empty_substs = tcx.mk_substs(Substs::empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &block_arena);

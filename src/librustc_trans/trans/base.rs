@@ -673,9 +673,11 @@ pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
-    let trait_substs = Substs::erased(subst::VecPerParamSpace::new(vec![target_ty],
-                                                                   vec![source_ty],
-                                                                   Vec::new()));
+    let trait_substs = Substs::new(subst::VecPerParamSpace::new(vec![target_ty],
+                                                                vec![source_ty],
+                                                                Vec::new()),
+                                   subst::VecPerParamSpace::empty());
+
     let trait_ref = ty::Binder(ty::TraitRef {
         def_id: ccx.tcx().lang_items.coerce_unsized_trait().unwrap(),
         substs: ccx.tcx().mk_substs(trait_substs)
@@ -1824,10 +1826,8 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
     if collector::collecting_debug_information(ccx) {
-        ccx.record_translation_item_as_generated(TransItem::Fn(Instance {
-            def: def_id,
-            params: &param_substs.types
-        }))
+        ccx.record_translation_item_as_generated(
+            TransItem::Fn(Instance::new(def_id, param_substs)));
     }
 
     let _icx = push_ctxt("trans_closure");
@@ -2259,8 +2259,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                 // compilation unit that references the item, so it will still get
                 // translated everywhere it's needed.
                 for (ref ccx, is_origin) in ccx.maybe_iter(!from_external && trans_everywhere) {
-                    let empty_substs = tcx.mk_substs(Substs::trans_empty());
                     let def_id = tcx.map.local_def_id(item.id);
+                    let empty_substs = ccx.empty_substs_for_def_id(def_id);
                     let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                     trans_fn(ccx, &decl, &body, llfn, empty_substs, item.id);
                     set_global_section(ccx, llfn, item);
@@ -2298,8 +2298,8 @@ pub fn trans_item(ccx: &CrateContext, item: &hir::Item) {
                     if sig.generics.ty_params.is_empty() {
                         let trans_everywhere = attr::requests_inline(&impl_item.attrs);
                         for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
-                            let empty_substs = tcx.mk_substs(Substs::trans_empty());
                             let def_id = tcx.map.local_def_id(impl_item.id);
+                            let empty_substs = ccx.empty_substs_for_def_id(def_id);
                             let llfn = Callee::def(ccx, def_id, empty_substs).reify(ccx).val;
                             trans_fn(ccx, &sig.decl, body, llfn, empty_substs, impl_item.id);
                             update_linkage(ccx, llfn, Some(impl_item.id),
@@ -2389,7 +2389,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                     Ok(id) => id,
                     Err(s) => ccx.sess().fatal(&s)
                 };
-                let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+                let empty_substs = ccx.tcx().mk_substs(Substs::empty());
                 let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx).val;
                 let args = {
                     let opaque_rust_main =

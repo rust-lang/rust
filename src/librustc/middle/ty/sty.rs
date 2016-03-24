@@ -1204,18 +1204,18 @@ impl<'tcx> TyS<'tcx> {
             TyTrait(ref obj) => {
                 let mut v = vec![obj.bounds.region_bound];
                 v.extend_from_slice(obj.principal.skip_binder()
-                                       .substs.regions().as_slice());
+                                       .substs.regions.as_slice());
                 v
             }
             TyEnum(_, substs) |
             TyStruct(_, substs) => {
-                substs.regions().as_slice().to_vec()
+                substs.regions.as_slice().to_vec()
             }
             TyClosure(_, ref substs) => {
-                substs.func_substs.regions().as_slice().to_vec()
+                substs.func_substs.regions.as_slice().to_vec()
             }
             TyProjection(ref data) => {
-                data.trait_ref.substs.regions().as_slice().to_vec()
+                data.trait_ref.substs.regions.as_slice().to_vec()
             }
             TyFnDef(..) |
             TyFnPtr(_) |

@@ -532,7 +532,7 @@ impl<'tcx> TyCtxt<'tcx> {
             fn fold_substs(&mut self,
                            substs: &subst::Substs<'tcx>)
                            -> subst::Substs<'tcx> {
-                subst::Substs { regions: subst::ErasedRegions,
+                subst::Substs { regions: substs.regions.fold_with(self),
                                 types: substs.types.fold_with(self) }
             }
         }

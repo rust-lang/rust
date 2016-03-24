@@ -45,10 +45,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let _icx = push_ctxt("monomorphic_fn");
 
-    let instance = Instance {
-        def: fn_id,
-        params: &psubsts.types
-    };
+    let instance = Instance::new(fn_id, psubsts);
 
     let item_ty = ccx.tcx().lookup_item_type(fn_id).ty;
 
@@ -179,26 +176,24 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Instance<'tcx> {
     pub def: DefId,
-    pub params: &'tcx subst::VecPerParamSpace<Ty<'tcx>>
+    pub substs: &'tcx Substs<'tcx>,
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let substs = Substs {
-            types: self.params.clone(),
-            regions: subst::ErasedRegions
-        };
-        ppaux::parameterized(f, &substs, self.def, ppaux::Ns::Value, &[],
+        ppaux::parameterized(f, &self.substs, self.def, ppaux::Ns::Value, &[],
                              |tcx| tcx.lookup_item_type(self.def).generics)
     }
 }
 
 impl<'tcx> Instance<'tcx> {
+    pub fn new(def_id: DefId, substs: &'tcx Substs<'tcx>)
+               -> Instance<'tcx> {
+        assert!(substs.regions.iter().all(|&r| r == ty::ReStatic));
+        Instance { def: def_id, substs: substs }
+    }
     pub fn mono(tcx: &TyCtxt<'tcx>, def_id: DefId) -> Instance<'tcx> {
-        Instance {
-            def: def_id,
-            params: &tcx.mk_substs(Substs::trans_empty()).types
-        }
+        Instance::new(def_id, &tcx.mk_substs(Substs::empty()))
     }
 }
 
