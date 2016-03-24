@@ -12,7 +12,7 @@
 
 #![deny(warnings)]
 #![allow(unused_must_use)]
-#![allow(unknown_features)]
+#![allow(unused_features)]
 #![feature(box_syntax)]
 #![feature(question_mark)]
 
