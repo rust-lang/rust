@@ -6,13 +6,13 @@ use rustc::middle::subst::{Subst, TypeSpace};
 use rustc::middle::ty;
 use rustc_front::hir::*;
 use std::borrow::Cow;
-use std::{fmt, iter};
+use std::fmt;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, snippet_opt, span_lint,
             span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
-use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH, STRING_PATH,
+use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH,
             VEC_PATH};
 use utils::MethodArgs;
 
@@ -43,31 +43,6 @@ declare_lint! {
 declare_lint! {
     pub RESULT_UNWRAP_USED, Allow,
     "using `Result.unwrap()`, which might be better handled"
-}
-
-/// **What it does:** This lint checks for `.to_string()` method calls on values of type `&str`.
-///
-/// **Why is this bad?** This uses the whole formatting machinery just to clone a string. Using `.to_owned()` is lighter on resources. You can also consider using a [`Cow<'a, str>`](http://doc.rust-lang.org/std/borrow/enum.Cow.html) instead in some cases.
-///
-/// **Known problems:** None
-///
-/// **Example:** `s.to_string()` where `s: &str`
-declare_lint! {
-    pub STR_TO_STRING, Warn,
-    "using `to_string()` on a str, which should be `to_owned()`"
-}
-
-/// **What it does:** This lint checks for `.to_string()` method calls on values of type `String`.
-///
-/// **Why is this bad?** This is an non-efficient way to clone a `String`, `.clone()` should be used
-/// instead. `String` implements `ToString` mostly for generics.
-///
-/// **Known problems:** None
-///
-/// **Example:** `s.to_string()` where `s: String`
-declare_lint! {
-    pub STRING_TO_STRING, Warn,
-    "calling `String::to_string` which is inefficient"
 }
 
 /// **What it does:** This lint checks for methods that should live in a trait implementation of a `std` trait (see [llogiq's blog post](http://llogiq.github.io/2015/07/30/traits.html) for further information) instead of an inherent implementation.
@@ -315,8 +290,6 @@ impl LintPass for MethodsPass {
         lint_array!(EXTEND_FROM_SLICE,
                     OPTION_UNWRAP_USED,
                     RESULT_UNWRAP_USED,
-                    STR_TO_STRING,
-                    STRING_TO_STRING,
                     SHOULD_IMPLEMENT_TRAIT,
                     WRONG_SELF_CONVENTION,
                     WRONG_PUB_SELF_CONVENTION,
@@ -343,8 +316,6 @@ impl LateLintPass for MethodsPass {
                 // Chain calls
                 if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                     lint_unwrap(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["to_string"]) {
-                    lint_to_string(cx, expr, arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
                     lint_ok_expect(cx, expr, arglists[0]);
                 } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
@@ -637,26 +608,6 @@ fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
                             message",
                            kind,
                            none_value));
-    }
-}
-
-#[allow(ptr_arg)]
-// Type of MethodArgs is potentially a Vec
-/// lint use of `to_string()` for `&str`s and `String`s
-fn lint_to_string(cx: &LateContext, expr: &Expr, to_string_args: &MethodArgs) {
-    let (obj_ty, ptr_depth) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&to_string_args[0]));
-
-    if obj_ty.sty == ty::TyStr {
-        let mut arg_str = snippet(cx, to_string_args[0].span, "_");
-        if ptr_depth > 1 {
-            arg_str = Cow::Owned(format!("({}{})", iter::repeat('*').take(ptr_depth - 1).collect::<String>(), arg_str));
-        }
-        span_lint(cx, STR_TO_STRING, expr.span, &format!("`{}.to_owned()` is faster", arg_str));
-    } else if match_type(cx, obj_ty, &STRING_PATH) {
-        span_lint(cx,
-                  STRING_TO_STRING,
-                  expr.span,
-                  "`String::to_string` is an inefficient way to clone a `String`; use `clone()` instead");
     }
 }
 

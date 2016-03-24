@@ -13,14 +13,20 @@ declare_lint_re = re.compile(r'''
     pub \s+ (?P<name>[A-Z_][A-Z_0-9]*) \s*,\s*
     (?P<level>Forbid|Deny|Warn|Allow) \s*,\s*
     " (?P<desc>(?:[^"\\]+|\\.)*) " \s* [})]
-''', re.X | re.S)
+''', re.VERBOSE | re.DOTALL)
+
+declare_deprecated_lint_re = re.compile(r'''
+    declare_deprecated_lint! \s* [{(] \s*
+    pub \s+ (?P<name>[A-Z_][A-Z_0-9]*) \s*,\s*
+    " (?P<desc>(?:[^"\\]+|\\.)*) " \s* [})]
+''', re.VERBOSE | re.DOTALL)
 
 nl_escape_re = re.compile(r'\\\n\s*')
 
 wiki_link = 'https://github.com/Manishearth/rust-clippy/wiki'
 
 
-def collect(lints, fn):
+def collect(lints, deprecated_lints, fn):
     """Collect all lints from a file.
 
     Adds entries to the lints list as `(module, name, level, desc)`.
@@ -34,6 +40,13 @@ def collect(lints, fn):
                       match.group('name').lower(),
                       match.group('level').lower(),
                       desc.replace('\\"', '"')))
+
+    for match in declare_deprecated_lint_re.finditer(code):
+        # remove \-newline escapes from description string
+        desc = nl_escape_re.sub('', match.group('desc'))
+        deprecated_lints.append((os.path.splitext(os.path.basename(fn))[0],
+                                match.group('name').lower(),
+                                desc.replace('\\"', '"')))
 
 
 def gen_table(lints, link=None):
@@ -65,6 +78,13 @@ def gen_mods(lints):
 
     for module in sorted(set(lint[0] for lint in lints)):
         yield 'pub mod %s;\n' % module
+
+
+def gen_deprecated(lints):
+    """Declare deprecated lints"""
+
+    for lint in lints:
+        yield '    store.register_removed("%s", "%s");\n' % (lint[1], lint[2])
 
 
 def replace_region(fn, region_start, region_end, callback,
@@ -107,6 +127,7 @@ def replace_region(fn, region_start, region_end, callback,
 
 def main(print_only=False, check=False):
     lints = []
+    deprecated_lints = []
 
     # check directory
     if not os.path.isfile('src/lib.rs'):
@@ -117,7 +138,7 @@ def main(print_only=False, check=False):
     for root, dirs, files in os.walk('src'):
         for fn in files:
             if fn.endswith('.rs'):
-                collect(lints, os.path.join(root, fn))
+                collect(lints, deprecated_lints, os.path.join(root, fn))
 
     if print_only:
         sys.stdout.writelines(gen_table(lints))
@@ -146,6 +167,13 @@ def main(print_only=False, check=False):
         'src/lib.rs', r'reg.register_lint_group\("clippy"', r'\]\);',
         lambda: gen_group(lints, levels=('warn', 'deny')),
         replace_start=False, write_back=not check)
+
+    # same for "deprecated" lint collection
+    changed |= replace_region(
+            'src/lib.rs', r'let mut store', r'end deprecated lints',
+            lambda: gen_deprecated(deprecated_lints),
+            replace_start=False,
+            write_back=not check)
 
     # same for "clippy_pedantic" lint collection
     changed |= replace_region(

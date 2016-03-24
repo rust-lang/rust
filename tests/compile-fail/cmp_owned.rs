@@ -3,7 +3,6 @@
 
 #[deny(cmp_owned)]
 fn main() {
-    #[allow(str_to_string)]
     fn with_to_string(x : &str) {
         x != "foo".to_string();
         //~^ ERROR this creates an owned instance just for comparison. Consider using `x != "foo"` to compare without allocation
