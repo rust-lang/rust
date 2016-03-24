@@ -11,12 +11,7 @@
 // See rsbegin.rs for details.
 
 #![crate_type="rlib"]
-#![feature(no_core, lang_items, optin_builtin_traits)]
-#![no_core]
-
-#[lang="sync"]
-trait Sync {}
-impl Sync for .. {}
+#![no_std]
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frames
