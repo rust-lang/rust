@@ -32,16 +32,7 @@ fn foo() {
         }
 
         // Test that earlier patterns can take the guard space
-        (aaaa,
-         bbbbb,
-         ccccccc,
-         aaaaa,
-         bbbbbbbb,
-         cccccc,
-         aaaa,
-         bbbbbbbb,
-         cccccc,
-         dddddd) |
+        (aaaa, bbbbb, ccccccc, aaaaa, bbbbbbbb, cccccc, aaaa, bbbbbbbb, cccccc, dddddd) |
         Patternnnnnnnnnnnnnnnnnnnnnnnnn if loooooooooooooooooooooooooooooooooooooooooong_guard => {}
 
         _ => {}
@@ -75,22 +66,13 @@ fn main() {
 fn main() {
     match r {
         Variableeeeeeeeeeeeeeeeee => {
-            ("variable",
-             vec!["id", "name", "qualname", "value", "type", "scopeid"],
-             true,
-             true)
+            ("variable", vec!["id", "name", "qualname", "value", "type", "scopeid"], true, true)
         }
         Enummmmmmmmmmmmmmmmmmmmm => {
-            ("enum",
-             vec!["id", "qualname", "scopeid", "value"],
-             true,
-             true)
+            ("enum", vec!["id", "qualname", "scopeid", "value"], true, true)
         }
         Variantttttttttttttttttttttttt => {
-            ("variant",
-             vec!["id", "name", "qualname", "type", "value", "scopeid"],
-             true,
-             true)
+            ("variant", vec!["id", "name", "qualname", "type", "value", "scopeid"], true, true)
         }
     };
 

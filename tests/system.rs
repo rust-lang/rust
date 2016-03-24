@@ -305,8 +305,7 @@ fn get_target(file_name: &str, target: Option<&str>, write_mode: Option<WriteMod
     let file_path = Path::new(file_name);
     let (source_path_prefix, target_path_prefix) = match write_mode {
         Some(WriteMode::Coverage) => {
-            (Path::new("tests/coverage-source/"),
-             "tests/coverage-target/")
+            (Path::new("tests/coverage-source/"), "tests/coverage-target/")
         }
         _ => (Path::new("tests/source/"), "tests/target/"),
     };

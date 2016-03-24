@@ -236,8 +236,7 @@ fn rewrite_method_call(method_name: ast::Ident,
                                               .map(|ty| ty.rewrite(context, width, offset))
                                               .collect());
 
-        (types.last().unwrap().span.hi,
-         format!("::<{}>", type_list.join(", ")))
+        (types.last().unwrap().span.hi, format!("::<{}>", type_list.join(", ")))
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);

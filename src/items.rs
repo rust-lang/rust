@@ -1581,9 +1581,7 @@ fn compute_budgets_for_args(context: &RewriteContext,
             let multi_line_budget = context.config.max_width -
                                     (indent.width() + result.len() + "()".len());
 
-            return (one_line_budget,
-                    multi_line_budget,
-                    indent + result.len() + 1);
+            return (one_line_budget, multi_line_budget, indent + result.len() + 1);
         }
     }
 

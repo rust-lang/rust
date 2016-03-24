@@ -2,9 +2,7 @@
 
 fn foo() {
     let a = (a, a, a, a, a);
-    let aaaaaaaaaaaaaaaa = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
-                            aaaaaaaaaaaaaa,
-                            aaaaaaaaaaaaaa);
+    let aaaaaaaaaaaaaaaa = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa, aaaaaaaaaaaaaa, aaaaaaaaaaaaaa);
     let aaaaaaaaaaaaaaaaaaaaaa = (aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
                                   aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
                                   aaaaaaaaaaaaaaaaaaaaaaaaa,
@@ -26,7 +24,6 @@ fn a() {
 }
 
 fn b() {
-    ((bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb,
-      bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb),
+    ((bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb, bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb),
      bbbbbbbbbbbbbbbbbb)
 }
