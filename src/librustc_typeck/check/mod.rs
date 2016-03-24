@@ -4431,7 +4431,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         assert_eq!(substs.types.len(space), type_defs.len(space));
 
         adjust_region_parameters(fcx, span, space, region_defs, &mut substs);
-        assert_eq!(substs.regions().len(space), region_defs.len(space));
+        assert_eq!(substs.regions.len(space), region_defs.len(space));
     }
 
     // The things we are substituting into the type should not contain
@@ -4459,7 +4459,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let impl_scheme = fcx.tcx().lookup_item_type(impl_def_id);
         assert_eq!(substs.types.len(subst::TypeSpace),
                    impl_scheme.generics.types.len(subst::TypeSpace));
-        assert_eq!(substs.regions().len(subst::TypeSpace),
+        assert_eq!(substs.regions.len(subst::TypeSpace),
                    impl_scheme.generics.regions.len(subst::TypeSpace));
 
         let impl_ty = fcx.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
@@ -4550,11 +4550,11 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         {
             let region_count = region_defs.len(space);
-            assert_eq!(substs.regions().len(space), 0);
+            assert_eq!(substs.regions.len(space), 0);
             for (i, lifetime) in data.lifetimes.iter().enumerate() {
                 let r = ast_region_to_region(fcx.tcx(), lifetime);
                 if i < region_count {
-                    substs.mut_regions().push(space, r);
+                    substs.regions.push(space, r);
                 } else if i == region_count {
                     span_err!(fcx.tcx().sess, lifetime.span, E0088,
                         "too many lifetime parameters provided: \
@@ -4563,7 +4563,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         if region_count == 1 {""} else {"s"},
                         data.lifetimes.len(),
                         if data.lifetimes.len() == 1 {""} else {"s"});
-                    substs.mut_regions().truncate(space, 0);
+                    substs.regions.truncate(space, 0);
                     break;
                 }
             }
@@ -4686,7 +4686,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         defs: &VecPerParamSpace<ty::RegionParameterDef>,
         substs: &mut Substs)
     {
-        let provided_len = substs.mut_regions().len(space);
+        let provided_len = substs.regions.len(space);
         let desired = defs.get_slice(space);
 
         // Enforced by `push_explicit_parameters_from_segment_to_substs()`.
@@ -4694,7 +4694,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         // If nothing was provided, just use inference variables.
         if provided_len == 0 {
-            substs.mut_regions().replace(
+            substs.regions.replace(
                 space,
                 fcx.infcx().region_vars_for_defs(span, desired));
             return;
@@ -4715,7 +4715,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             provided_len,
             if provided_len == 1 {""} else {"s"});
 
-        substs.mut_regions().replace(
+        substs.regions.replace(
             space,
             fcx.infcx().region_vars_for_defs(span, desired));
     }

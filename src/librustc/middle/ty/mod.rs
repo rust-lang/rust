@@ -2605,7 +2605,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
         Substs {
             types: types,
-            regions: subst::NonerasedRegions(regions)
+            regions: regions,
         }
     }
 

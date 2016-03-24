@@ -477,7 +477,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.declared_variance(p.def_id, def_id,
                                        RegionParam, p.space, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions().get(p.space, p.index as usize);
+            let substs_r = *substs.regions.get(p.space, p.index as usize);
             self.add_constraints_from_region(generics, substs_r, variance_i);
         }
     }

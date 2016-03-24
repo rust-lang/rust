@@ -334,7 +334,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                     .generics.regions.get_slice(subst::FnSpace));
 
         let subst::Substs { types, regions } = substs;
-        let regions = regions.map(|r| r.with_slice(subst::FnSpace, &method_regions));
+        let regions = regions.with_slice(subst::FnSpace, &method_regions);
         let mut final_substs = subst::Substs { types: types, regions: regions };
 
         if num_supplied_types == 0 {
