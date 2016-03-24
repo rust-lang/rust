@@ -47,6 +47,10 @@ pub struct Builder<'a, 'tcx: 'a> {
     var_indices: FnvHashMap<ast::NodeId, u32>,
     temp_decls: Vec<TempDecl<'tcx>>,
     unit_temp: Option<Lvalue<'tcx>>,
+
+    // cached block with a RESUME terminator; we create this at the
+    // first panic
+    cached_resume_block: Option<BasicBlock>,
 }
 
 struct CFG<'tcx> {
@@ -175,6 +179,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         var_decls: vec![],
         var_indices: FnvHashMap(),
         unit_temp: None,
+        cached_resume_block: None,
     };
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
