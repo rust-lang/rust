@@ -2021,10 +2021,33 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
-fn assoc_const(w: &mut fmt::Formatter, it: &clean::Item,
-               ty: &clean::Type, default: Option<&String>)
-               -> fmt::Result {
-    write!(w, "const {}", it.name.as_ref().unwrap())?;
+fn naive_assoc_href(it: &clean::Item, link: AssocItemLink) -> String {
+    use html::item_type::ItemType::*;
+
+    let name = it.name.as_ref().unwrap();
+    let ty = match shortty(it) {
+        Typedef | AssociatedType => AssociatedType,
+        s@_ => s,
+    };
+
+    let anchor = format!("#{}.{}", ty, name);
+    match link {
+        AssocItemLink::Anchor => anchor,
+        AssocItemLink::GotoSource(did, _) => {
+            href(did).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
+        }
+    }
+}
+
+fn assoc_const(w: &mut fmt::Formatter,
+               it: &clean::Item,
+               ty: &clean::Type,
+               default: Option<&String>,
+               link: AssocItemLink) -> fmt::Result {
+    write!(w, "const <a href='{}' class='constant'>{}</a>",
+           naive_assoc_href(it, link),
+           it.name.as_ref().unwrap())?;
+
     write!(w, ": {}", ty)?;
     if let Some(default) = default {
         write!(w, " = {}", default)?;
@@ -2034,13 +2057,15 @@ fn assoc_const(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
               bounds: &Vec<clean::TyParamBound>,
-              default: &Option<clean::Type>)
-              -> fmt::Result {
-    write!(w, "type {}", it.name.as_ref().unwrap())?;
+              default: Option<&clean::Type>,
+              link: AssocItemLink) -> fmt::Result {
+    write!(w, "type <a href='{}' class='type'>{}</a>",
+           naive_assoc_href(it, link),
+           it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
         write!(w, ": {}", TyParamBounds(bounds))?
     }
-    if let Some(ref default) = *default {
+    if let Some(default) = default {
         write!(w, " = {}", default)?;
     }
     Ok(())
@@ -2095,6 +2120,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                 href(did).map(|p| format!("{}#{}.{}", p.0, ty, name)).unwrap_or(anchor)
             }
         };
+        // FIXME(#24111): remove when `const_fn` is stabilized
         let vis_constness = match get_unstable_features_setting() {
             UnstableFeatures::Allow => constness,
             _ => hir::Constness::NotConst
@@ -2124,10 +2150,10 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                    link)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
-            assoc_const(w, item, ty, default.as_ref())
+            assoc_const(w, item, ty, default.as_ref(), link)
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
-            assoc_type(w, item, bounds, default)
+            assoc_type(w, item, bounds, default.as_ref(), link)
         }
         _ => panic!("render_assoc_item called on non-associated-item")
     }
@@ -2487,25 +2513,25 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::TypedefItem(ref tydef, _) => {
                 let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                write!(w, "type {} = {}", name, tydef.type_)?;
+                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link)?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
                 let id = derive_id(format!("{}.{}", shortty, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_const(w, item, ty, default.as_ref())?;
+                assoc_const(w, item, ty, default.as_ref(), link)?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::ConstantItem(ref c) => {
                 let id = derive_id(format!("{}.{}", shortty, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_const(w, item, &c.type_, Some(&c.expr))?;
+                assoc_const(w, item, &c.type_, Some(&c.expr), link)?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = derive_id(format!("{}.{}", shortty, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_type(w, item, bounds, default)?;
+                assoc_type(w, item, bounds, default.as_ref(), link)?;
                 write!(w, "</code></h4>\n")?;
             }
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
@@ -2545,9 +2571,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     // If we've implemented a trait, then also emit documentation for all
-    // default methods which weren't overridden in the implementation block.
-    // FIXME: this also needs to be done for associated types, whenever defaults
-    // for them work.
+    // default items which weren't overridden in the implementation block.
     if let Some(did) = i.trait_did() {
         if let Some(t) = cache().traits.get(&did) {
             render_default_items(w, cx, t, &i.impl_, render_header, outer_version)?;
