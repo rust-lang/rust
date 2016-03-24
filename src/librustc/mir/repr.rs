@@ -233,8 +233,23 @@ impl Debug for BasicBlock {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
+    /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
+
+    /// Terminator for this block.
+    ///
+    /// NB. This should generally ONLY be `None` during construction.
+    /// Therefore, you should generally access it via the
+    /// `terminator()` or `terminator_mut()` methods. The only
+    /// exception is that certain passes, such as `simplify_cfg`, swap
+    /// out the terminator temporarily with `None` while they continue
+    /// to recurse over the set of basic blocks.
     pub terminator: Option<Terminator<'tcx>>,
+
+    /// If true, this block lies on an unwind path. This is used
+    /// during trans where distinct kinds of basic blocks may be
+    /// generated (particularly for MSVC cleanup). Unwind blocks must
+    /// only branch to other unwind blocks.
     pub is_cleanup: bool,
 }
 
