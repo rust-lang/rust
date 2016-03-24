@@ -44,7 +44,7 @@ use rustc::middle::stability;
 
 use rustc_front::hir;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::u32;
@@ -559,15 +559,9 @@ impl TyParamBound {
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
         use rustc_front::hir::TraitBoundModifier as TBM;
         if let Some(tcx) = cx.tcx_opt() {
-            let sized_did = match tcx.lang_items.sized_trait() {
-                Some(did) => did,
-                None => return false
-            };
-            if let TyParamBound::TraitBound(PolyTrait {
-                trait_: Type::ResolvedPath { did, .. }, ..
-            }, TBM::None) = *self {
-                if did == sized_did {
-                    return true
+            if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
+                if trait_.def_id() == tcx.lang_items.sized_trait() {
+                    return true;
                 }
             }
         }
@@ -724,15 +718,18 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
             }
         }
 
-        TraitBound(PolyTrait {
-            trait_: ResolvedPath {
-                path: path,
-                typarams: None,
-                did: self.def_id,
-                is_generic: false,
+        TraitBound(
+            PolyTrait {
+                trait_: ResolvedPath {
+                    path: path,
+                    typarams: None,
+                    did: self.def_id,
+                    is_generic: false,
+                },
+                lifetimes: late_bounds,
             },
-            lifetimes: late_bounds
-        }, hir::TraitBoundModifier::None)
+            hir::TraitBoundModifier::None
+        )
     }
 }
 
@@ -932,7 +929,6 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
                                     &'a ty::GenericPredicates<'tcx>,
                                     subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
-        use std::collections::HashSet;
         use self::WherePredicate as WP;
 
         let (gens, preds, space) = *self;
@@ -1486,6 +1482,16 @@ pub enum TypeKind {
     TypeTypedef,
 }
 
+pub trait GetDefId {
+    fn def_id(&self) -> Option<DefId>;
+}
+
+impl<T: GetDefId> GetDefId for Option<T> {
+    fn def_id(&self) -> Option<DefId> {
+        self.as_ref().and_then(|d| d.def_id())
+    }
+}
+
 impl Type {
     pub fn primitive_type(&self) -> Option<PrimitiveType> {
         match *self {
@@ -1499,7 +1505,9 @@ impl Type {
             _ => None,
         }
     }
+}
 
+impl GetDefId for Type {
     fn def_id(&self) -> Option<DefId> {
         match *self {
             ResolvedPath { did, .. } => Some(did),
@@ -2208,6 +2216,7 @@ impl Clean<ImplPolarity> for hir::ImplPolarity {
 pub struct Impl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
+    pub provided_trait_methods: HashSet<String>,
     pub trait_: Option<Type>,
     pub for_: Type,
     pub items: Vec<Item>,
@@ -2227,11 +2236,18 @@ impl Clean<Vec<Item>> for doctree::Impl {
 
         // If this impl block is an implementation of the Deref trait, then we
         // need to try inlining the target's inherent impl blocks as well.
-        if let Some(ResolvedPath { did, .. }) = trait_ {
-            if Some(did) == cx.deref_trait_did.get() {
-                build_deref_target_impls(cx, &items, &mut ret);
-            }
+        if trait_.def_id() == cx.deref_trait_did.get() {
+            build_deref_target_impls(cx, &items, &mut ret);
         }
+
+        let provided = trait_.def_id().and_then(|did| {
+            cx.tcx_opt().map(|tcx| {
+                tcx.provided_trait_methods(did)
+                   .into_iter()
+                   .map(|meth| meth.name.to_string())
+                   .collect()
+            })
+        }).unwrap_or(HashSet::new());
 
         ret.push(Item {
             name: None,
@@ -2244,6 +2260,7 @@ impl Clean<Vec<Item>> for doctree::Impl {
             inner: ImplItem(Impl {
                 unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
+                provided_trait_methods: provided,
                 trait_: trait_,
                 for_: self.for_.clean(cx),
                 items: items,
