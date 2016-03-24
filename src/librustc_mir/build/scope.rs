@@ -456,21 +456,41 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
     pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
-        if self.scopes.is_empty() {
+        if self.scopes.iter().all(|scope| scope.drops.is_empty() && scope.free.is_none()) {
             return None;
         }
-        let unit_temp = self.get_unit_temp();
-        let Builder { ref mut hir, ref mut cfg, ref mut scopes, .. } = *self;
+        assert!(!self.scopes.is_empty()); // or `all` above would be true
 
-        // Given an array of scopes, we generate these from the outermost scope to the innermost
-        // one. Thus for array [S0, S1, S2] with corresponding cleanup blocks [B0, B1, B2], we will
-        // generate B0 <- B1 <- B2 in left-to-right order. Control flow of the generated blocks
-        // always ends up at a block with the Resume terminator.
-        if scopes.iter().any(|scope| !scope.drops.is_empty() || scope.free.is_some()) {
-            Some(build_diverge_scope(hir.tcx(), self.fn_span, cfg, &unit_temp, scopes))
+        let unit_temp = self.get_unit_temp();
+        let Builder { ref mut hir, ref mut cfg, ref mut scopes,
+                      ref mut cached_resume_block, .. } = *self;
+
+        // Build up the drops in **reverse** order. The end result will
+        // look like:
+        //
+        //    scopes[n] -> scopes[n-1] -> ... -> scopes[0]
+        //
+        // However, we build this in **reverse order**. That is, we
+        // process scopes[0], then scopes[1], etc, pointing each one at
+        // the result generates from the one before. Along the way, we
+        // store caches. If everything is cached, we'll just walk right
+        // to left reading the cached results but never created anything.
+
+        // To start, create the resume terminator.
+        let mut target = if let Some(target) = *cached_resume_block {
+            target
         } else {
-            None
+            let resumeblk = cfg.start_new_cleanup_block();
+            cfg.terminate(resumeblk, scopes[0].id, self.fn_span, TerminatorKind::Resume);
+            *cached_resume_block = Some(resumeblk);
+            resumeblk
+        };
+
+        for scope in scopes {
+            target = build_diverge_scope(hir.tcx(), cfg, &unit_temp, scope, target);
         }
+
+        Some(target)
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -640,42 +660,24 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
 }
 
 fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
-                             fn_span: Span,
                              cfg: &mut CFG<'tcx>,
                              unit_temp: &Lvalue<'tcx>,
-                             scopes: &mut [Scope<'tcx>])
+                             scope: &mut Scope<'tcx>,
+                             mut target: BasicBlock)
                              -> BasicBlock
 {
-    assert!(scopes.len() >= 1);
-
     // Build up the drops in **reverse** order. The end result will
     // look like:
     //
-    //    [drops[n]] -...-> [drops[0]] -> [Free] -> [scopes[..n-1]]
+    //    [drops[n]] -...-> [drops[0]] -> [Free] -> [target]
     //    |                                    |
     //    +------------------------------------+
-    //     code for scopes[n]
+    //     code for scope
     //
     // The code in this function reads from right to left. At each
     // point, we check for cached blocks representing the
     // remainder. If everything is cached, we'll just walk right to
     // left reading the cached results but never created anything.
-
-    // To start, translate scopes[1..].
-    let (scope, earlier_scopes) = scopes.split_last_mut().unwrap();
-    let mut target = if let Some(cached_block) = scope.cached_block {
-        cached_block
-    } else if earlier_scopes.is_empty() {
-        // Diverging from the root scope creates a RESUME terminator.
-        // FIXME what span to use here?
-        let resumeblk = cfg.start_new_cleanup_block();
-        cfg.terminate(resumeblk, scope.id, fn_span, TerminatorKind::Resume);
-        resumeblk
-    } else {
-        // Diverging from any other scope chains up to the previous scope.
-        build_diverge_scope(tcx, fn_span, cfg, unit_temp, earlier_scopes)
-    };
-    scope.cached_block = Some(target);
 
     // Next, build up any free.
     if let Some(ref mut free_data) = scope.free {
