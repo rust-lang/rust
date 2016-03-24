@@ -3,7 +3,7 @@
 
 #[deny(eq_op)]
 #[allow(identity_op)]
-#[allow(no_effect)]
+#[allow(no_effect, unused_variables)]
 #[deny(nonminimal_bool)]
 fn main() {
     // simple values and comparisons
@@ -41,6 +41,18 @@ fn main() {
     true && true; //~ERROR equal expressions
     //~|ERROR this boolean expression can be simplified
     true || true; //~ERROR equal expressions
+    //~|ERROR this boolean expression can be simplified
+
+    let a: u32 = unimplemented!();
+    let b: u32 = unimplemented!();
+
+    a == b && b == a; //~ERROR equal expressions
+    //~|ERROR this boolean expression can be simplified
+    a != b && b != a; //~ERROR equal expressions
+    //~|ERROR this boolean expression can be simplified
+    a < b && b > a; //~ERROR equal expressions
+    //~|ERROR this boolean expression can be simplified
+    a <= b && b >= a; //~ERROR equal expressions
     //~|ERROR this boolean expression can be simplified
 
     let mut a = vec![1];

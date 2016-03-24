@@ -58,6 +58,9 @@ fn equality_stuff() {
     let _ = a == b && c == 5 && a == b; //~ ERROR this boolean expression can be simplified
     //|~ HELP for further information visit
     //|~ SUGGESTION let _ = c == 5 && a == b;
+    let _ = a == b && c == 5 && b == a; //~ ERROR this boolean expression can be simplified
+    //|~ HELP for further information visit
+    //|~ SUGGESTION let _ = c == 5 && a == b;
     let _ = a < b && a >= b;
     let _ = a > b && a <= b;
     let _ = a > b && a == b;
