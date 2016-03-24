@@ -3,6 +3,7 @@ use rustc_front::hir::*;
 use rustc::middle::ty::TyS;
 use rustc::middle::ty::TypeVariants::TyRawPtr;
 use utils;
+use utils::TRANSMUTE_PATH;
 
 /// **What it does:** This lint checks for transmutes to the original type of the object.
 ///
@@ -17,7 +18,7 @@ declare_lint! {
     "transmutes that have the same to and from types"
 }
 
-/// **What it does:*** This lint checks for transmutes between a type T and *T.
+/// **What it does:*** This lint checks for transmutes between a type `T` and `*T`.
 ///
 /// **Why is this bad?** It's easy to mistakenly transmute between a type and a pointer to that type.
 ///
@@ -44,7 +45,7 @@ impl LateLintPass for UselessTransmute {
             if let ExprPath(None, _) = path_expr.node {
                 let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
 
-                if utils::match_def_path(cx, def_id, &["core", "intrinsics", "transmute"]) {
+                if utils::match_def_path(cx, def_id, &TRANSMUTE_PATH) {
                     let from_ty = cx.tcx.expr_ty(&args[0]);
                     let to_ty = cx.tcx.expr_ty(e);
 
@@ -81,7 +82,7 @@ impl LateLintPass for CrosspointerTransmute {
             if let ExprPath(None, _) = path_expr.node {
                 let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
 
-                if utils::match_def_path(cx, def_id, &["core", "intrinsics", "transmute"]) {
+                if utils::match_def_path(cx, def_id, &TRANSMUTE_PATH) {
                     let from_ty = cx.tcx.expr_ty(&args[0]);
                     let to_ty = cx.tcx.expr_ty(e);
 
@@ -89,9 +90,7 @@ impl LateLintPass for CrosspointerTransmute {
                         cx.span_lint(CROSSPOINTER_TRANSMUTE,
                                      e.span,
                                      &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)", from_ty, to_ty));
-                    }
-
-                    if is_ptr_to(from_ty, to_ty) {
+                    } else if is_ptr_to(from_ty, to_ty) {
                         cx.span_lint(CROSSPOINTER_TRANSMUTE,
                                      e.span,
                                      &format!("transmute from a type (`{}`) to the type that it points to (`{}`)", from_ty, to_ty));
