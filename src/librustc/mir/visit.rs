@@ -667,7 +667,8 @@ macro_rules! make_mir_visitor {
             fn super_substs(&mut self, _substs: & $($mutability)* &'tcx Substs<'tcx>) {
             }
 
-            fn super_closure_substs(&mut self, _substs: & $($mutability)* &'tcx ClosureSubsts<'tcx>) {
+            fn super_closure_substs(&mut self,
+                                    _substs: & $($mutability)* &'tcx ClosureSubsts<'tcx>) {
             }
 
             fn super_const_val(&mut self, _substs: & $($mutability)* ConstVal) {
