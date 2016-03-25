@@ -1339,10 +1339,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                                            cx.region_maps.item_extent(id))
                     }
                     _ => {
-                        cx.sess.span_bug(item.span,
-                                         "ParameterEnvironment::for_item():
-                                          can't create a parameter \
-                                          environment for this kind of item")
+                        span_bug!(item.span,
+                                  "ParameterEnvironment::for_item():
+                                   can't create a parameter \
+                                   environment for this kind of item")
                     }
                 }
             }
@@ -2003,8 +2003,7 @@ impl<'tcx> TyCtxt<'tcx> {
         match self.def_map.borrow().get(&expr.id) {
             Some(def) => def.full_def(),
             None => {
-                self.sess.span_bug(expr.span, &format!(
-                    "no def-map entry for expr {}", expr.id));
+                span_bug!(expr.span, "no def-map entry for expr {}", expr.id);
             }
         }
     }
@@ -2027,8 +2026,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     Some(&def::PathResolution { base_def: Def::Err, .. })=> true,
                     Some(..) => false,
-                    None => self.sess.span_bug(expr.span, &format!(
-                        "no def for path {}", expr.id))
+                    None => span_bug!(expr.span, "no def for path {}", expr.id)
                 }
             }
 

@@ -312,9 +312,9 @@ impl MutabilityCategory {
                         McImmutable
                     }
                 }
-                _ => tcx.sess.span_bug(p.span, "expected identifier pattern")
+                _ => span_bug!(p.span, "expected identifier pattern")
             },
-            _ => tcx.sess.span_bug(tcx.map.span(id), "expected identifier pattern")
+            _ => span_bug!(tcx.map.span(id), "expected identifier pattern")
         };
         debug!("MutabilityCategory::{}(tcx, id={:?}) => {:?}",
                "from_local", id, ret);
@@ -559,8 +559,8 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           Def::TyParam(..) |
           Def::Label(_) | Def::SelfTy(..) |
           Def::AssociatedTy(..) => {
-              self.tcx().sess.span_bug(span, &format!("Unexpected definition in \
-                                                       memory categorization: {:?}", def));
+              span_bug!(span, "Unexpected definition in \
+                               memory categorization: {:?}", def);
           }
 
           Def::Static(_, mutbl) => {
@@ -583,18 +583,19 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)
                           }
                           None => {
-                              self.tcx().sess.span_bug(
+                              span_bug!(
                                   span,
-                                  &format!("No closure kind for {:?}", closure_id));
+                                  "No closure kind for {:?}",
+                                  closure_id);
                           }
                       }
                   }
                   _ => {
-                      self.tcx().sess.span_bug(
+                      span_bug!(
                           span,
-                          &format!("Upvar of non-closure {} - {:?}",
-                                  fn_node_id,
-                                  ty));
+                          "Upvar of non-closure {} - {:?}",
+                          fn_node_id,
+                          ty);
                   }
               }
           }
@@ -926,7 +927,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                 let ptr = if implicit {
                     match ptr {
                         BorrowedPtr(bk, r) => Implicit(bk, r),
-                        _ => self.tcx().sess.span_bug(node.span(),
+                        _ => span_bug!(node.span(),
                             "Implicit deref of non-borrowed pointer")
                     }
                 } else {
@@ -1092,8 +1093,8 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                 },
 
                 _ => {
-                    tcx.sess.span_bug(pat.span,
-                                      "type of slice pattern is not a slice");
+                    span_bug!(pat.span,
+                              "type of slice pattern is not a slice");
                 }
             }
         }
@@ -1261,9 +1262,10 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                     }
                 }
                 _ => {
-                    self.tcx().sess.span_bug(
+                    span_bug!(
                         pat.span,
-                        &format!("enum pattern didn't resolve to enum or struct {:?}", opt_def));
+                        "enum pattern didn't resolve to enum or struct {:?}",
+                        opt_def);
                 }
             }
           }

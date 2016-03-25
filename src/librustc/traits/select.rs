@@ -1088,7 +1088,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_def_id = match obligation.predicate.0.trait_ref.self_ty().sty {
             ty::TyProjection(ref data) => data.trait_ref.def_id,
             ty::TyInfer(ty::TyVar(_)) => {
-                self.tcx().sess.span_bug(obligation.cause.span,
+                span_bug!(obligation.cause.span,
                     "Self=_ should have been handled by assemble_candidates");
             }
             _ => { return; }
@@ -1125,11 +1125,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
             ty::TyProjection(ref data) => &data.trait_ref,
             _ => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     obligation.cause.span,
-                    &format!("match_projection_obligation_against_bounds_from_trait() called \
-                              but self-ty not a projection: {:?}",
-                             skol_trait_predicate.trait_ref.self_ty()));
+                    "match_projection_obligation_against_bounds_from_trait() called \
+                     but self-ty not a projection: {:?}",
+                    skol_trait_predicate.trait_ref.self_ty());
             }
         };
         debug!("match_projection_obligation_against_bounds_from_trait: \
@@ -2150,10 +2150,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.builtin_bound(bound, obligation)? {
             If(nested) => Ok(self.vtable_builtin_data(obligation, bound, nested)),
             AmbiguousBuiltin | ParameterBuiltin => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     obligation.cause.span,
-                    &format!("builtin bound for {:?} was ambig",
-                            obligation));
+                    "builtin bound for {:?} was ambig",
+                    obligation);
             }
         }
     }
@@ -2353,8 +2353,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 data.principal_trait_ref_with_self_ty(self.tcx(), self_ty)
             }
             _ => {
-                self.tcx().sess.span_bug(obligation.cause.span,
-                                         "object candidate with non-object");
+                span_bug!(obligation.cause.span,
+                          "object candidate with non-object");
             }
         };
 

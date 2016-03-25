@@ -66,7 +66,7 @@ impl<'a, 'tcx> IntrinsicCheckingVisitor<'a, 'tcx> {
         let param_env = match self.param_envs.last() {
             Some(p) => p,
             None => {
-                self.tcx.sess.span_bug(
+                span_bug!(
                     span,
                     "transmute encountered outside of any fn");
             }
@@ -245,9 +245,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                             }
                         }
                         _ => {
-                            self.tcx
-                                .sess
-                                .span_bug(expr.span, "transmute wasn't a bare fn?!");
+                            span_bug!(expr.span, "transmute wasn't a bare fn?!");
                         }
                     }
                 }

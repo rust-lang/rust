@@ -516,8 +516,8 @@ pub fn check_expr(tcx: &TyCtxt, e: &hir::Expr,
             span = field.span;
             match tcx.expr_ty_adjusted(base_e).sty {
                 ty::TyStruct(def, _) => def.struct_variant().field_named(field.node).did,
-                _ => tcx.sess.span_bug(e.span,
-                                       "stability::check_expr: named field access on non-struct")
+                _ => span_bug!(e.span,
+                               "stability::check_expr: named field access on non-struct")
             }
         }
         hir::ExprTupField(ref base_e, ref field) => {
@@ -525,9 +525,9 @@ pub fn check_expr(tcx: &TyCtxt, e: &hir::Expr,
             match tcx.expr_ty_adjusted(base_e).sty {
                 ty::TyStruct(def, _) => def.struct_variant().fields[field.node].did,
                 ty::TyTuple(..) => return,
-                _ => tcx.sess.span_bug(e.span,
-                                       "stability::check_expr: unnamed field access on \
-                                        something other than a tuple or struct")
+                _ => span_bug!(e.span,
+                               "stability::check_expr: unnamed field access on \
+                                something other than a tuple or struct")
             }
         }
         hir::ExprStruct(_, ref expr_fields, _) => {
@@ -551,10 +551,10 @@ pub fn check_expr(tcx: &TyCtxt, e: &hir::Expr,
                 // a bug to have construct one.
                 ty::TyEnum(..) => return,
                 _ => {
-                    tcx.sess.span_bug(e.span,
-                                      &format!("stability::check_expr: struct construction \
-                                                of non-struct, type {:?}",
-                                               type_));
+                    span_bug!(e.span,
+                              "stability::check_expr: struct construction \
+                               of non-struct, type {:?}",
+                              type_);
                 }
             }
         }

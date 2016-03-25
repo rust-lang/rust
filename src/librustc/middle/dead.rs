@@ -125,7 +125,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         if let ty::TyStruct(def, _) = self.tcx.expr_ty_adjusted(lhs).sty {
             self.insert_def_id(def.struct_variant().field_named(name).did);
         } else {
-            self.tcx.sess.span_bug(lhs.span, "named field access on non-struct")
+            span_bug!(lhs.span, "named field access on non-struct")
         }
     }
 
@@ -141,7 +141,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         let pat_ty = self.tcx.node_id_to_type(lhs.id);
         let variant = match pat_ty.sty {
             ty::TyStruct(adt, _) | ty::TyEnum(adt, _) => adt.variant_of_def(def),
-            _ => self.tcx.sess.span_bug(lhs.span, "non-ADT in struct pattern")
+            _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
             if let PatKind::Wild = pat.node.pat.node {

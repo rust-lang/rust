@@ -234,12 +234,11 @@ impl<'tcx> ty::TyS<'tcx> {
         match adjusted_ty.builtin_deref(true, NoPreference) {
             Some(mt) => mt.ty,
             None => {
-                cx.sess.span_bug(
+                span_bug!(
                     expr_span,
-                    &format!("the {}th autoderef failed: {}",
-                             autoderef,
-                             adjusted_ty)
-                        );
+                    "the {}th autoderef failed: {}",
+                    autoderef,
+                    adjusted_ty);
             }
         }
     }
