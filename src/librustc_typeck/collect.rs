@@ -532,7 +532,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             container: ImplOrTraitItemContainer,
                             name: ast::Name,
                             id: ast::NodeId,
-                            vis: hir::Visibility,
+                            vis: &hir::Visibility,
                             sig: &hir::MethodSig,
                             defaultness: hir::Defaultness,
                             untransformed_rcvr_ty: Ty<'tcx>,
@@ -555,7 +555,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     ty_generic_predicates,
                                     fty,
                                     explicit_self_category,
-                                    vis,
+                                    ty::Visibility::from_hir(vis, id, ccx.tcx),
                                     defaultness,
                                     def_id,
                                     container);
@@ -602,7 +602,7 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                       container: ImplOrTraitItemContainer,
                                       name: ast::Name,
                                       id: ast::NodeId,
-                                      vis: hir::Visibility,
+                                      vis: &hir::Visibility,
                                       defaultness: hir::Defaultness,
                                       ty: ty::Ty<'tcx>,
                                       has_value: bool)
@@ -614,7 +614,7 @@ fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let associated_const = Rc::new(ty::AssociatedConst {
         name: name,
-        vis: vis,
+        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
         defaultness: defaultness,
         def_id: ccx.tcx.map.local_def_id(id),
         container: container,
@@ -629,13 +629,13 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      container: ImplOrTraitItemContainer,
                                      name: ast::Name,
                                      id: ast::NodeId,
-                                     vis: hir::Visibility,
+                                     vis: &hir::Visibility,
                                      defaultness: hir::Defaultness,
                                      ty: Option<Ty<'tcx>>)
 {
     let associated_type = Rc::new(ty::AssociatedType {
         name: name,
-        vis: vis,
+        vis: ty::Visibility::from_hir(vis, id, ccx.tcx),
         defaultness: defaultness,
         ty: ty,
         def_id: ccx.tcx.map.local_def_id(id),
@@ -761,8 +761,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                ty: ty,
                                            });
                     // Trait-associated constants are always public.
-                    let visibility =
-                        if opt_trait_ref.is_some() { hir::Public } else { impl_item.vis };
+                    let public = &hir::Public;
+                    let visibility = if opt_trait_ref.is_some() { public } else { &impl_item.vis };
                     convert_associated_const(ccx, ImplContainer(def_id),
                                              impl_item.name, impl_item.id,
                                              visibility,
@@ -782,7 +782,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                     let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
 
                     convert_associated_type(ccx, ImplContainer(def_id),
-                                            impl_item.name, impl_item.id, impl_item.vis,
+                                            impl_item.name, impl_item.id, &impl_item.vis,
                                             impl_item.defaultness, Some(typ));
                 }
             }
@@ -790,8 +790,8 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             for impl_item in impl_items {
                 if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
                     // Trait methods are always public.
-                    let method_vis =
-                        if opt_trait_ref.is_some() { hir::Public } else { impl_item.vis };
+                    let public = &hir::Public;
+                    let method_vis = if opt_trait_ref.is_some() { public } else { &impl_item.vis };
 
                     convert_method(ccx, ImplContainer(def_id),
                                    impl_item.name, impl_item.id, method_vis,
@@ -829,7 +829,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                              container,
                                              trait_item.name,
                                              trait_item.id,
-                                             hir::Public,
+                                             &hir::Public,
                                              hir::Defaultness::Default,
                                              ty,
                                              default.is_some())
@@ -847,7 +847,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                             container,
                                             trait_item.name,
                                             trait_item.id,
-                                            hir::Public,
+                                            &hir::Public,
                                             hir::Defaultness::Default,
                                             typ);
                 }
@@ -860,7 +860,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                    container,
                                    trait_item.name,
                                    trait_item.id,
-                                   hir::Inherited,
+                                   &hir::Inherited,
                                    sig,
                                    hir::Defaultness::Default,
                                    tcx.mk_self_type(),
@@ -977,6 +977,7 @@ fn convert_struct_variant<'tcx>(tcx: &TyCtxt<'tcx>,
                                 disr_val: ty::Disr,
                                 def: &hir::VariantData) -> ty::VariantDefData<'tcx, 'tcx> {
     let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
+    let node_id = tcx.map.as_local_node_id(did).unwrap();
     let fields = def.fields().iter().map(|f| {
         let fid = tcx.map.local_def_id(f.id);
         let dup_span = seen_fields.get(&f.name).cloned();
@@ -990,7 +991,7 @@ fn convert_struct_variant<'tcx>(tcx: &TyCtxt<'tcx>,
             seen_fields.insert(f.name, f.span);
         }
 
-        ty::FieldDefData::new(fid, f.name, f.vis)
+        ty::FieldDefData::new(fid, f.name, ty::Visibility::from_hir(&f.vis, node_id, tcx))
     }).collect();
     ty::VariantDefData {
         did: did,

@@ -1754,7 +1754,7 @@ impl Clean<Item> for hir::StructField {
             name: Some(self.name).clean(cx),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
-            visibility: Some(self.vis),
+            visibility: self.vis.clean(cx),
             stability: get_stability(cx, cx.map.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.map.local_def_id(self.id)),
             def_id: cx.map.local_def_id(self.id),
@@ -1771,7 +1771,7 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
             name: Some(self.name).clean(cx),
             attrs: attr_map.get(&self.did).unwrap_or(&Vec::new()).clean(cx),
             source: Span::empty(),
-            visibility: Some(self.vis),
+            visibility: self.vis.clean(cx),
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
             def_id: self.did,
@@ -1784,7 +1784,13 @@ pub type Visibility = hir::Visibility;
 
 impl Clean<Option<Visibility>> for hir::Visibility {
     fn clean(&self, _: &DocContext) -> Option<Visibility> {
-        Some(*self)
+        Some(self.clone())
+    }
+}
+
+impl Clean<Option<Visibility>> for ty::Visibility {
+    fn clean(&self, _: &DocContext) -> Option<Visibility> {
+        Some(if *self == ty::Visibility::Public { hir::Public } else { hir::Inherited })
     }
 }
 
@@ -1902,7 +1908,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                             source: Span::empty(),
                             name: Some(field.name.clean(cx)),
                             attrs: cx.tcx().get_attrs(field.did).clean(cx),
-                            visibility: Some(field.vis),
+                            visibility: field.vis.clean(cx),
                             def_id: field.did,
                             stability: get_stability(cx, field.did),
                             deprecation: get_deprecation(cx, field.did),

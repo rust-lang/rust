@@ -249,7 +249,7 @@ fn encode_struct_fields(rbml_w: &mut Encoder,
 fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                       rbml_w: &mut Encoder,
                                       did: DefId,
-                                      vis: hir::Visibility,
+                                      vis: &hir::Visibility,
                                       index: &mut CrateIndex<'tcx>) {
     debug!("encode_enum_variant_info(did={:?})", did);
     let repr_hints = ecx.tcx.lookup_repr_hints(did);
@@ -355,7 +355,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                        attrs: &[ast::Attribute],
                        id: NodeId,
                        name: Name,
-                       vis: hir::Visibility) {
+                       vis: &hir::Visibility) {
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id_and_key(ecx, rbml_w, ecx.tcx.map.local_def_id(id));
     encode_family(rbml_w, 'm');
@@ -383,7 +383,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
     encode_deprecation(rbml_w, depr);
 
     // Encode the reexports of this module, if this module is public.
-    if vis == hir::Public {
+    if *vis == hir::Public {
         debug!("(encoding info for module) encoding reexports for {}", id);
         encode_reexports(ecx, rbml_w, id);
     }
@@ -393,19 +393,29 @@ fn encode_info_for_mod(ecx: &EncodeContext,
 }
 
 fn encode_struct_field_family(rbml_w: &mut Encoder,
-                              visibility: hir::Visibility) {
-    encode_family(rbml_w, match visibility {
-        hir::Public => 'g',
-        hir::Inherited => 'N'
-    });
+                              visibility: ty::Visibility) {
+    encode_family(rbml_w, if visibility.is_public() { 'g' } else { 'N' });
 }
 
-fn encode_visibility(rbml_w: &mut Encoder, visibility: hir::Visibility) {
-    let ch = match visibility {
-        hir::Public => 'y',
-        hir::Inherited => 'i',
-    };
+fn encode_visibility<T: HasVisibility>(rbml_w: &mut Encoder, visibility: T) {
+    let ch = if visibility.is_public() { 'y' } else { 'i' };
     rbml_w.wr_tagged_u8(tag_items_data_item_visibility, ch as u8);
+}
+
+trait HasVisibility: Sized {
+    fn is_public(self) -> bool;
+}
+
+impl<'a> HasVisibility for &'a hir::Visibility {
+    fn is_public(self) -> bool {
+        *self == hir::Public
+    }
+}
+
+impl HasVisibility for ty::Visibility {
+    fn is_public(self) -> bool {
+        self == ty::Visibility::Public
+    }
 }
 
 fn encode_constness(rbml_w: &mut Encoder, constness: hir::Constness) {
@@ -861,7 +871,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     debug!("encoding info for item at {}",
            tcx.sess.codemap().span_to_string(item.span));
 
-    let vis = item.vis;
+    let vis = &item.vis;
     let def_id = ecx.tcx.map.local_def_id(item.id);
     let stab = stability::lookup_stability(tcx, ecx.tcx.map.local_def_id(item.id));
     let depr = stability::lookup_deprecation(tcx, ecx.tcx.map.local_def_id(item.id));
@@ -932,7 +942,7 @@ fn encode_info_for_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                             &item.attrs,
                             item.id,
                             item.name,
-                            item.vis);
+                            &item.vis);
       }
       hir::ItemForeignMod(ref fm) => {
         index.record(def_id, rbml_w);
@@ -1336,7 +1346,7 @@ fn encode_info_for_foreign_item<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     index.record(def_id, rbml_w);
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id_and_key(ecx, rbml_w, def_id);
-    encode_visibility(rbml_w, nitem.vis);
+    encode_visibility(rbml_w, &nitem.vis);
     match nitem.node {
       hir::ForeignItemFn(ref fndecl, _) => {
         encode_family(rbml_w, FN_FAMILY);
@@ -1443,7 +1453,7 @@ fn encode_info_for_items<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                         &[],
                         CRATE_NODE_ID,
                         syntax::parse::token::intern(&ecx.link_meta.crate_name),
-                        hir::Public);
+                        &hir::Public);
 
     krate.visit_all_items(&mut EncodeVisitor {
         index: &mut index,

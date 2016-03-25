@@ -1714,13 +1714,13 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 match *src {
                     Some(ref src) => {
                         write!(w, "<tr><td><code>{}extern crate {} as {};",
-                               VisSpace(myitem.visibility),
+                               VisSpace(&myitem.visibility),
                                src,
                                name)?
                     }
                     None => {
                         write!(w, "<tr><td><code>{}extern crate {};",
-                               VisSpace(myitem.visibility), name)?
+                               VisSpace(&myitem.visibility), name)?
                     }
                 }
                 write!(w, "</code></td></tr>")?;
@@ -1728,7 +1728,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
             clean::ImportItem(ref import) => {
                 write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                       VisSpace(myitem.visibility), *import)?;
+                       VisSpace(&myitem.visibility), *import)?;
             }
 
             _ => {
@@ -1831,7 +1831,7 @@ fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
     write!(w, "<pre class='rust const'>{vis}const \
                {name}: {typ}{init}</pre>",
-           vis = VisSpace(it.visibility),
+           vis = VisSpace(&it.visibility),
            name = it.name.as_ref().unwrap(),
            typ = c.type_,
            init = Initializer(&c.expr))?;
@@ -1842,7 +1842,7 @@ fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                s: &clean::Static) -> fmt::Result {
     write!(w, "<pre class='rust static'>{vis}static {mutability}\
                {name}: {typ}{init}</pre>",
-           vis = VisSpace(it.visibility),
+           vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
            name = it.name.as_ref().unwrap(),
            typ = s.type_,
@@ -1859,7 +1859,7 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     };
     write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
-           vis = VisSpace(it.visibility),
+           vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(vis_constness),
            unsafety = UnsafetySpace(f.unsafety),
            abi = AbiSpace(f.abi),
@@ -1887,7 +1887,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     // Output the trait definition
     write!(w, "<pre class='rust trait'>{}{}trait {}{}{}{} ",
-           VisSpace(it.visibility),
+           VisSpace(&it.visibility),
            UnsafetySpace(t.unsafety),
            it.name.as_ref().unwrap(),
            t.generics,
@@ -2214,7 +2214,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     write!(w, "<pre class='rust enum'>")?;
     render_attributes(w, it)?;
     write!(w, "{}enum {}{}{}",
-           VisSpace(it.visibility),
+           VisSpace(&it.visibility),
            it.name.as_ref().unwrap(),
            e.generics,
            WhereClause(&e.generics))?;
@@ -2326,7 +2326,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                  tab: &str,
                  structhead: bool) -> fmt::Result {
     write!(w, "{}{}{}",
-           VisSpace(it.visibility),
+           VisSpace(&it.visibility),
            if structhead {"struct "} else {""},
            it.name.as_ref().unwrap())?;
     if let Some(g) = g {
@@ -2338,7 +2338,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             for field in fields {
                 if let clean::StructFieldItem(ref ty) = field.inner {
                     write!(w, "    {}{}: {},\n{}",
-                           VisSpace(field.visibility),
+                           VisSpace(&field.visibility),
                            field.name.as_ref().unwrap(),
                            *ty,
                            tab)?;
@@ -2361,7 +2361,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                         write!(w, "_")?
                     }
                     clean::StructFieldItem(ref ty) => {
-                        write!(w, "{}{}", VisSpace(field.visibility), *ty)?
+                        write!(w, "{}{}", VisSpace(&field.visibility), *ty)?
                     }
                     _ => unreachable!()
                 }
