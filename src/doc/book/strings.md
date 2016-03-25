@@ -44,6 +44,11 @@ let s = "foo\
 assert_eq!("foobar", s);
 ```
 
+Note that you normally cannot access a `str` directly, but only through a `&str`
+reference. This is because `str` is an unsized type which requires additional
+runtime information to be usable. For more information see the chapter on
+[unsized types][ut].
+
 Rust has more than only `&str`s though. A `String` is a heap-allocated string.
 This string is growable, and is also guaranteed to be UTF-8. `String`s are
 commonly created by converting from a string slice using the `to_string`
@@ -185,5 +190,6 @@ let hello_world = hello + &world;
 This is because `&String` can automatically coerce to a `&str`. This is a
 feature called ‘[`Deref` coercions][dc]’.
 
+[ut]: unsized-types.html
 [dc]: deref-coercions.html
 [connect]: ../std/net/struct.TcpStream.html#method.connect
