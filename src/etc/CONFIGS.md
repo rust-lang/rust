@@ -13,4 +13,4 @@ These are some links to repos with configs which ease the use of rust.
 
 ## Community-maintained Configs
 
-* [.editorconfig](https://gist.github.com/derhuerst/c9d1b9309e308d9851fa) ([what is this?](http://editorconfig.org/))
+* [.editorconfig](https://gist.github.com/xtian/339112af8a11d0583d81) ([what is this?](http://editorconfig.org/))
