@@ -345,7 +345,7 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, pat_id: ast::NodeId, spa
                     span,
                     format!("to use a constant of type `{}` \
                              in a pattern, \
-                             `{}` must be annotated with `#[derive(Eq)]`",
+                             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
                             tcx.item_path_str(adt_def.did),
                             tcx.item_path_str(adt_def.did)));
             }
