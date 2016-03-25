@@ -312,12 +312,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeVariant(_) |
             ast_map::NodeStructCtor(_) => {}
             _ => {
-                self.tcx
-                    .sess
-                    .bug(&format!("found unexpected thingy in worklist: {}",
-                                 self.tcx
-                                     .map
-                                     .node_to_string(search_item)))
+                bug!("found unexpected thingy in worklist: {}",
+                     self.tcx.map.node_to_string(search_item))
             }
         }
     }

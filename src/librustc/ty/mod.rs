@@ -1241,9 +1241,8 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     cx.region_maps.call_site_extent(id, body.id))
                             }
                             _ => {
-                                cx.sess
-                                  .bug("ParameterEnvironment::for_item(): \
-                                        got non-method item from impl method?!")
+                                bug!("ParameterEnvironment::for_item(): \
+                                      got non-method item from impl method?!")
                             }
                         }
                     }
@@ -1295,10 +1294,9 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     extent)
                             }
                             _ => {
-                                cx.sess
-                                  .bug("ParameterEnvironment::for_item(): \
-                                        got non-method item from provided \
-                                        method?!")
+                                bug!("ParameterEnvironment::for_item(): \
+                                      got non-method item from provided \
+                                      method?!")
                             }
                         }
                     }
@@ -1353,9 +1351,9 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                 ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
             }
             _ => {
-                cx.sess.bug(&format!("ParameterEnvironment::for_item(): \
-                                     `{}` is not an item",
-                                    cx.map.node_to_string(id)))
+                bug!("ParameterEnvironment::from_item(): \
+                      `{}` is not an item",
+                     cx.map.node_to_string(id))
             }
         }
     }
@@ -1902,9 +1900,8 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn node_id_to_type(&self, id: NodeId) -> Ty<'tcx> {
         match self.node_id_to_type_opt(id) {
            Some(ty) => ty,
-           None => self.sess.bug(
-               &format!("node_id_to_type: no type for node `{}`",
-                        self.map.node_to_string(id)))
+           None => bug!("node_id_to_type: no type for node `{}`",
+                        self.map.node_to_string(id))
         }
     }
 
@@ -1980,12 +1977,10 @@ impl<'tcx> TyCtxt<'tcx> {
                 e.span
             }
             Some(f) => {
-                self.sess.bug(&format!("Node id {} is not an expr: {:?}",
-                                       id, f));
+                bug!("Node id {} is not an expr: {:?}", id, f);
             }
             None => {
-                self.sess.bug(&format!("Node id {} is not present \
-                                        in the node map", id));
+                bug!("Node id {} is not present in the node map", id);
             }
         }
     }
@@ -1996,11 +1991,11 @@ impl<'tcx> TyCtxt<'tcx> {
                 match pat.node {
                     PatKind::Ident(_, ref path1, _) => path1.node.name.as_str(),
                     _ => {
-                        self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, pat));
+                        bug!("Variable id {} maps to {:?}, not local", id, pat);
                     },
                 }
             },
-            r => self.sess.bug(&format!("Variable id {} maps to {:?}, not local", id, r)),
+            r => bug!("Variable id {} maps to {:?}, not local", id, r),
         }
     }
 
@@ -2085,9 +2080,9 @@ impl<'tcx> TyCtxt<'tcx> {
                         match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
                             MethodTraitItem(m) => Some(m),
                             _ => {
-                                self.sess.bug("provided_trait_methods(): \
-                                               non-method item found from \
-                                               looking up provided method?!")
+                                bug!("provided_trait_methods(): \
+                                      non-method item found from \
+                                      looking up provided method?!")
                             }
                         }
                     } else {
@@ -2095,7 +2090,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }).collect()
             } else {
-                self.sess.bug(&format!("provided_trait_methods: `{:?}` is not a trait", id))
+                bug!("provided_trait_methods: `{:?}` is not a trait", id)
             }
         } else {
             self.sess.cstore.provided_trait_methods(self, id)
@@ -2111,9 +2106,9 @@ impl<'tcx> TyCtxt<'tcx> {
                             match self.impl_or_trait_item(self.map.local_def_id(ti.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
-                                    self.sess.bug("associated_consts(): \
-                                                   non-const item found from \
-                                                   looking up a constant?!")
+                                    bug!("associated_consts(): \
+                                          non-const item found from \
+                                          looking up a constant?!")
                                 }
                             }
                         } else {
@@ -2127,9 +2122,9 @@ impl<'tcx> TyCtxt<'tcx> {
                             match self.impl_or_trait_item(self.map.local_def_id(ii.id)) {
                                 ConstTraitItem(ac) => Some(ac),
                                 _ => {
-                                    self.sess.bug("associated_consts(): \
-                                                   non-const item found from \
-                                                   looking up a constant?!")
+                                    bug!("associated_consts(): \
+                                          non-const item found from \
+                                          looking up a constant?!")
                                 }
                             }
                         } else {
@@ -2138,8 +2133,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }).collect()
                 }
                 _ => {
-                    self.sess.bug(&format!("associated_consts: `{:?}` is not a trait \
-                                            or impl", id))
+                    bug!("associated_consts: `{:?}` is not a trait or impl", id)
                 }
             }
         } else {
@@ -2174,9 +2168,9 @@ impl<'tcx> TyCtxt<'tcx> {
             match kind {
                 Some(kind) => kind,
                 None => {
-                    self.sess.bug(&format!("custom_coerce_unsized_kind: \
-                                            {} impl `{}` is missing its kind",
-                                           src, self.item_path_str(did)));
+                    bug!("custom_coerce_unsized_kind: \
+                          {} impl `{}` is missing its kind",
+                          src, self.item_path_str(did));
                 }
             }
         })

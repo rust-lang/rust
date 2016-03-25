@@ -1044,7 +1044,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
                     mutbl:m,
                     ty: match base_cmt.ty.builtin_deref(false, ty::NoPreference) {
                         Some(mt) => mt.ty,
-                        None => self.tcx().sess.bug("Found non-derefable type")
+                        None => bug!("Found non-derefable type")
                     },
                     note: NoteNone
                 })

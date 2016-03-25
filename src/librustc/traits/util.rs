@@ -481,8 +481,8 @@ pub fn get_vtable_index_of_object_method<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     }
 
-    tcx.sess.bug(&format!("get_vtable_index_of_object_method: {:?} was not found",
-                          method_def_id));
+    bug!("get_vtable_index_of_object_method: {:?} was not found",
+         method_def_id);
 }
 
 pub enum TupleArgumentsFlag { Yes, No }

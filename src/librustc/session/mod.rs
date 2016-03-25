@@ -270,7 +270,7 @@ impl Session {
 
         match id.checked_add(count) {
             Some(next) => self.next_node_id.set(next),
-            None => self.bug("Input too large, ran out of node ids!")
+            None => bug!("Input too large, ran out of node ids!")
         }
 
         id

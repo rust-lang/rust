@@ -49,7 +49,7 @@ impl FreeRegionMap {
     }
 
     pub fn relate_free_regions_from_predicates<'tcx>(&mut self,
-                                                     tcx: &TyCtxt<'tcx>,
+                                                     _tcx: &TyCtxt<'tcx>,
                                                      predicates: &[ty::Predicate<'tcx>]) {
         debug!("relate_free_regions_from_predicates(predicates={:?})", predicates);
         for predicate in predicates {
@@ -72,10 +72,9 @@ impl FreeRegionMap {
                         }
                         _ => {
                             // All named regions are instantiated with free regions.
-                            tcx.sess.bug(
-                                &format!("record_region_bounds: non free region: {:?} / {:?}",
-                                         r_a,
-                                         r_b));
+                            bug!("record_region_bounds: non free region: {:?} / {:?}",
+                                 r_a,
+                                 r_b);
                         }
                     }
                 }

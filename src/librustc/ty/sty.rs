@@ -978,8 +978,7 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
             TyStr => cx.mk_mach_uint(ast::UintTy::U8),
-            _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                      self)),
+            _ => bug!("sequence_element_type called on non-sequence value: {}", self),
         }
     }
 

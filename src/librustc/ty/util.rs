@@ -351,7 +351,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::ReScope(..) |
                     ty::ReVar(..) |
                     ty::ReSkolemized(..) => {
-                        tcx.sess.bug("unexpected region found when hashing a type")
+                        bug!("unexpected region found when hashing a type")
                     }
                 }
             };
@@ -632,7 +632,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 TyClosure(..) => {
                     // this check is run on type definitions, so we don't expect
                     // to see closure types
-                    cx.sess.bug(&format!("requires check invoked on inapplicable type: {:?}", ty))
+                    bug!("requires check invoked on inapplicable type: {:?}", ty)
                 }
                 _ => Representability::Representable,
             }
