@@ -146,13 +146,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
                         -> Vec<BasicBlock> {
+        let scope_id = self.innermost_scope_id();
         match test.kind {
             TestKind::Switch { adt_def } => {
                 let num_enum_variants = self.hir.num_variants(adt_def);
                 let target_blocks: Vec<_> =
                     (0..num_enum_variants).map(|_| self.cfg.start_new_block())
                                           .collect();
-                self.cfg.terminate(block, Terminator::Switch {
+                self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Switch {
                     discr: lvalue.clone(),
                     adt_def: adt_def,
                     targets: target_blocks.clone()
@@ -167,12 +168,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            .map(|_| self.cfg.start_new_block())
                            .chain(Some(otherwise))
                            .collect();
-                self.cfg.terminate(block, Terminator::SwitchInt {
-                    discr: lvalue.clone(),
-                    switch_ty: switch_ty,
-                    values: options.clone(),
-                    targets: targets.clone(),
-                });
+                self.cfg.terminate(block,
+                                   scope_id,
+                                   test.span,
+                                   TerminatorKind::SwitchInt {
+                                       discr: lvalue.clone(),
+                                       switch_ty: switch_ty,
+                                       values: options.clone(),
+                                       targets: targets.clone(),
+                                   });
                 targets
             }
 
@@ -189,7 +193,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                         if let ty::TyArray(_, _) = mt.ty.sty {
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(tcx.types.u8));
                             let val_slice = self.temp(ty);
-                            self.cfg.push_assign(block, test.span, &val_slice,
+                            self.cfg.push_assign(block, scope_id, test.span, &val_slice,
                                                  Rvalue::Cast(CastKind::Unsize, val, ty));
                             val = Operand::Consume(val_slice);
                         }
@@ -204,7 +208,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     });
 
                     let slice = self.temp(ty);
-                    self.cfg.push_assign(block, test.span, &slice,
+                    self.cfg.push_assign(block, scope_id, test.span, &slice,
                                          Rvalue::Cast(CastKind::Unsize, array, ty));
                     Operand::Consume(slice)
                 } else {
@@ -225,7 +229,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     let eq_result = self.temp(bool_ty);
                     let eq_block = self.cfg.start_new_block();
                     let cleanup = self.diverge_cleanup();
-                    self.cfg.terminate(block, Terminator::Call {
+                    self.cfg.terminate(block, scope_id, test.span, TerminatorKind::Call {
                         func: Operand::Constant(Constant {
                             span: test.span,
                             ty: mty,
@@ -238,7 +242,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
                     // check the result
                     let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, Terminator::If {
+                    self.cfg.terminate(eq_block, scope_id, test.span, TerminatorKind::If {
                         cond: Operand::Consume(eq_result),
                         targets: (block, fail),
                     });
@@ -268,13 +272,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let (actual, result) = (self.temp(usize_ty), self.temp(bool_ty));
 
                 // actual = len(lvalue)
-                self.cfg.push_assign(block, test.span, &actual, Rvalue::Len(lvalue.clone()));
+                self.cfg.push_assign(block, scope_id, test.span,
+                                     &actual, Rvalue::Len(lvalue.clone()));
 
                 // expected = <N>
-                let expected = self.push_usize(block, test.span, len);
+                let expected = self.push_usize(block, scope_id, test.span, len);
 
                 // result = actual == expected OR result = actual < expected
                 self.cfg.push_assign(block,
+                                     scope_id,
                                      test.span,
                                      &result,
                                      Rvalue::BinaryOp(op,
@@ -284,7 +290,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 // branch based on result
                 let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
                                                  self.cfg.start_new_block()];
-                self.cfg.terminate(block, Terminator::If {
+                self.cfg.terminate(block, scope_id, test.span, TerminatorKind::If {
                     cond: Operand::Consume(result),
                     targets: (target_blocks[0], target_blocks[1])
                 });
@@ -305,11 +311,13 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let result = self.temp(bool_ty);
 
         // result = op(left, right)
-        self.cfg.push_assign(block, span, &result, Rvalue::BinaryOp(op, left, right));
+        let scope_id = self.innermost_scope_id();
+        self.cfg.push_assign(block, scope_id, span, &result,
+                             Rvalue::BinaryOp(op, left, right));
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, Terminator::If {
+        self.cfg.terminate(block, scope_id, span, TerminatorKind::If {
             cond: Operand::Consume(result),
             targets: (target_block, fail_block)
         });
@@ -462,6 +470,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                                  .map(|(_, mp)| mp.clone())
                                  .collect();
         Candidate {
+            span: candidate.span,
             match_pairs: other_match_pairs,
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),
@@ -503,6 +512,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let all_match_pairs = consequent_match_pairs.chain(other_match_pairs).collect();
 
         Candidate {
+            span: candidate.span,
             match_pairs: all_match_pairs,
             bindings: candidate.bindings.clone(),
             guard: candidate.guard.clone(),

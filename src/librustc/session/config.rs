@@ -663,6 +663,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "print the result of the translation item collection pass"),
     mir_opt_level: Option<usize> = (None, parse_opt_uint,
           "set the MIR optimization level (0-3)"),
+    dump_mir: Option<String> = (None, parse_opt_string,
+          "dump MIR state at various points in translation"),
     orbit: bool = (false, parse_bool,
           "get MIR where it belongs - everywhere; most importantly, in orbit"),
 }

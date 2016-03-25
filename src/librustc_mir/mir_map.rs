@@ -22,11 +22,11 @@ extern crate rustc_front;
 use build;
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
+use pretty;
 use hair::cx::Cx;
 
 use rustc::mir::mir_map::MirMap;
 use rustc::middle::infer;
-use rustc::middle::region::CodeExtentData;
 use rustc::middle::traits::ProjectionMode;
 use rustc::middle::ty::{self, Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
@@ -179,11 +179,15 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
             })
             .collect();
 
-    let parameter_scope =
-        cx.tcx().region_maps.lookup_code_extent(
-            CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.id });
-    let mut mir = build::construct(cx, span, implicit_arg_tys, arguments,
-                                  parameter_scope, fn_sig.output, body);
+    let (mut mir, scope_auxiliary) =
+        build::construct(cx,
+                         span,
+                         fn_id,
+                         body.id,
+                         implicit_arg_tys,
+                         arguments,
+                         fn_sig.output,
+                         body);
 
     match cx.tcx().node_id_to_type(fn_id).sty {
         ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
@@ -194,6 +198,13 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
         }
         _ => {}
     }
+
+    pretty::dump_mir(cx.tcx(),
+                     "mir_map",
+                     &0,
+                     fn_id,
+                     &mir,
+                     Some(&scope_auxiliary));
 
     Ok(mir)
 }

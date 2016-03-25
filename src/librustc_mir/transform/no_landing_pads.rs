@@ -21,19 +21,19 @@ pub struct NoLandingPads;
 
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
     fn visit_terminator(&mut self, bb: BasicBlock, terminator: &mut Terminator<'tcx>) {
-        match *terminator {
-            Terminator::Goto { .. } |
-            Terminator::Resume |
-            Terminator::Return |
-            Terminator::If { .. } |
-            Terminator::Switch { .. } |
-            Terminator::SwitchInt { .. } => {
+        match terminator.kind {
+            TerminatorKind::Goto { .. } |
+            TerminatorKind::Resume |
+            TerminatorKind::Return |
+            TerminatorKind::If { .. } |
+            TerminatorKind::Switch { .. } |
+            TerminatorKind::SwitchInt { .. } => {
                 /* nothing to do */
             },
-            Terminator::Drop { ref mut unwind, .. } => {
+            TerminatorKind::Drop { ref mut unwind, .. } => {
                 unwind.take();
             },
-            Terminator::Call { ref mut cleanup, .. } => {
+            TerminatorKind::Call { ref mut cleanup, .. } => {
                 cleanup.take();
             },
         }

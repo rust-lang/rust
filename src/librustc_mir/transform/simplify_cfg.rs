@@ -12,6 +12,7 @@ use rustc::middle::const_eval::ConstVal;
 use rustc::middle::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, Pass};
+use pretty;
 use syntax::ast::NodeId;
 
 use super::remove_dead_blocks::RemoveDeadBlocks;
@@ -30,15 +31,22 @@ impl SimplifyCfg {
             let mut seen: Vec<BasicBlock> = Vec::with_capacity(8);
 
             while mir.basic_block_data(target).statements.is_empty() {
-                match mir.basic_block_data(target).terminator {
-                    Some(Terminator::Goto { target: next }) => {
-                        if seen.contains(&next) {
-                            return None;
+                // NB -- terminator may have been swapped with `None`
+                // below, in which case we have a cycle and just want
+                // to stop
+                if let Some(ref terminator) = mir.basic_block_data(target).terminator {
+                    match terminator.kind {
+                        TerminatorKind::Goto { target: next } => {
+                            if seen.contains(&next) {
+                                return None;
+                            }
+                            seen.push(next);
+                            target = next;
                         }
-                        seen.push(next);
-                        target = next;
+                        _ => break
                     }
-                    _ => break
+                } else {
+                    break
                 }
             }
 
@@ -50,6 +58,8 @@ impl SimplifyCfg {
             // Temporarily take ownership of the terminator we're modifying to keep borrowck happy
             let mut terminator = mir.basic_block_data_mut(bb).terminator.take()
                                     .expect("invalid terminator state");
+
+            debug!("remove_goto_chains: bb={:?} terminator={:?}", bb, terminator);
 
             for target in terminator.successors_mut() {
                 let new_target = match final_target(mir, *target) {
@@ -71,27 +81,27 @@ impl SimplifyCfg {
         for bb in mir.all_basic_blocks() {
             let basic_block = mir.basic_block_data_mut(bb);
             let mut terminator = basic_block.terminator_mut();
-            *terminator = match *terminator {
-                Terminator::If { ref targets, .. } if targets.0 == targets.1 => {
+            terminator.kind = match terminator.kind {
+                TerminatorKind::If { ref targets, .. } if targets.0 == targets.1 => {
                     changed = true;
-                    Terminator::Goto { target: targets.0 }
+                    TerminatorKind::Goto { target: targets.0 }
                 }
 
-                Terminator::If { ref targets, cond: Operand::Constant(Constant {
+                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
                     literal: Literal::Value {
                         value: ConstVal::Bool(cond)
                     }, ..
                 }) } => {
                     changed = true;
                     if cond {
-                        Terminator::Goto { target: targets.0 }
+                        TerminatorKind::Goto { target: targets.0 }
                     } else {
-                        Terminator::Goto { target: targets.1 }
+                        TerminatorKind::Goto { target: targets.1 }
                     }
                 }
 
-                Terminator::SwitchInt { ref targets, .. }  if targets.len() == 1 => {
-                    Terminator::Goto { target: targets[0] }
+                TerminatorKind::SwitchInt { ref targets, .. } if targets.len() == 1 => {
+                    TerminatorKind::Goto { target: targets[0] }
                 }
                 _ => continue
             }
@@ -103,8 +113,11 @@ impl SimplifyCfg {
 
 impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>) {
+        let mut counter = 0;
         let mut changed = true;
         while changed {
+            pretty::dump_mir(tcx, "simplify_cfg", &counter, id, mir, None);
+            counter += 1;
             changed = self.simplify_branches(mir);
             changed |= self.remove_goto_chains(mir);
             RemoveDeadBlocks.run_pass(tcx, id, mir);

@@ -83,7 +83,7 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
     // Terminator head at the bottom, not including the list of successor blocks. Those will be
     // displayed as labels on the edges between blocks.
     let mut terminator_head = String::new();
-    data.terminator().fmt_head(&mut terminator_head).unwrap();
+    data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
     write!(w, r#"<tr><td align="left">{}</td></tr>"#, dot::escape_html(&terminator_head))?;
 
     fini(w)?;
@@ -104,7 +104,7 @@ fn write_node<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<(
 /// Write graphviz DOT edges with labels between the given basic block and all of its successors.
 fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<()> {
     let terminator = &mir.basic_block_data(source).terminator();
-    let labels = terminator.fmt_successor_labels();
+    let labels = terminator.kind.fmt_successor_labels();
 
     for (&target, label) in terminator.successors().iter().zip(labels) {
         writeln!(w, r#"    {} -> {} [label="{}"];"#, node(source), node(target), label)?;

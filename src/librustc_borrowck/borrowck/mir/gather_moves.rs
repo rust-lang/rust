@@ -9,9 +9,8 @@
 // except according to those terms.
 
 
-use rustc::middle::ty;
-use rustc::mir::repr::{self, Mir, BasicBlock, Lvalue, Rvalue};
-use rustc::mir::repr::{StatementKind, Terminator};
+use rustc::middle::ty::TyCtxt;
+use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
 
 use std::cell::{Cell};
@@ -361,7 +360,7 @@ impl<'tcx> MovePathLookup<'tcx> {
     }
 
     fn lookup_proj(&mut self,
-                   proj: &repr::LvalueProjection<'tcx>,
+                   proj: &LvalueProjection<'tcx>,
                    base: MovePathIndex) -> Lookup<MovePathIndex> {
         let MovePathLookup { ref mut projections,
                              ref mut next_index, .. } = *self;
@@ -484,7 +483,7 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
 }
 
 impl<'tcx> MoveData<'tcx> {
-    pub fn gather_moves(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> Self {
+    pub fn gather_moves(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> Self {
         gather_moves(mir, tcx)
     }
 }
@@ -495,7 +494,7 @@ enum StmtKind {
     Aggregate, Drop, CallFn, CallArg, Return,
 }
 
-fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx> {
+fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> MoveData<'tcx> {
     use self::StmtKind as SK;
 
     let bbs = mir.all_basic_blocks();
@@ -554,9 +553,9 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
                         Rvalue::Box(ref _ty) => {
                             // this is creating uninitialized
                             // memory that needs to be initialized.
-                            let deref_lval = Lvalue::Projection(Box::new( repr::Projection {
+                            let deref_lval = Lvalue::Projection(Box::new(Projection {
                                 base: lval.clone(),
-                                elem: repr::ProjectionElem::Deref,
+                                elem: ProjectionElem::Deref,
                             }));
                             bb_ctxt.on_move_out_lval(SK::Box, &deref_lval, source);
                         }
@@ -577,50 +576,48 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
             }
         }
 
-        if let Some(ref term) = bb_data.terminator {
-            match *term {
-                Terminator::Goto { target: _ } | Terminator::Resume => { }
+        match bb_data.terminator().kind {
+            TerminatorKind::Goto { target: _ } | TerminatorKind::Resume => { }
 
-                Terminator::Return => {
-                    let source = Location { block: bb,
-                                            index: bb_data.statements.len() };
-                    let lval = &Lvalue::ReturnPointer.deref();
-                    bb_ctxt.on_move_out_lval(SK::Return, lval, source);
+            TerminatorKind::Return => {
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                let lval = &Lvalue::ReturnPointer.deref();
+                bb_ctxt.on_move_out_lval(SK::Return, lval, source);
+            }
+
+            TerminatorKind::If { ref cond, targets: _ } => {
+                // The `cond` is always of (copyable) type `bool`,
+                // so there will never be anything to move.
+                let _ = cond;
+            }
+
+            TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
+            TerminatorKind::Switch { adt_def: _, targets: _, ref discr } => {
+                // The `discr` is not consumed; that is instead
+                // encoded on specific match arms (and for
+                // SwitchInt`, it is always a copyable integer
+                // type anyway).
+                let _ = discr;
+            }
+
+            TerminatorKind::Drop { value: ref lval, target: _, unwind: _ } => {
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
+            }
+
+            TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                bb_ctxt.on_operand(SK::CallFn, func, source);
+                for arg in args {
+                    bb_ctxt.on_operand(SK::CallArg, arg, source);
                 }
-
-                Terminator::If { ref cond, targets: _ } => {
-                    // The `cond` is always of (copyable) type `bool`,
-                    // so there will never be anything to move.
-                    let _ = cond;
-                }
-
-                Terminator::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
-                Terminator::Switch { adt_def: _, targets: _, ref discr } => {
-                    // The `discr` is not consumed; that is instead
-                    // encoded on specific match arms (and for
-                    // SwitchInt`, it is always a copyable integer
-                    // type anyway).
-                    let _ = discr;
-                }
-
-                Terminator::Drop { value: ref lval, target: _, unwind: _ } => {
-                    let source = Location { block: bb,
-                                            index: bb_data.statements.len() };
-                    bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
-                }
-
-                Terminator::Call { ref func, ref args, ref destination, cleanup: _ } => {
-                    let source = Location { block: bb,
-                                            index: bb_data.statements.len() };
-                    bb_ctxt.on_operand(SK::CallFn, func, source);
-                    for arg in args {
-                        bb_ctxt.on_operand(SK::CallArg, arg, source);
-                    }
-                    if let Some((ref destination, _bb)) = *destination {
-                        // Create MovePath for `destination`, then
-                        // discard returned index.
-                        bb_ctxt.builder.move_path_for(destination);
-                    }
+                if let Some((ref destination, _bb)) = *destination {
+                    // Create MovePath for `destination`, then
+                    // discard returned index.
+                    bb_ctxt.builder.move_path_for(destination);
                 }
             }
         }
@@ -670,7 +667,7 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &ty::TyCtxt<'tcx>) -> MoveData<'tcx>
 }
 
 struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
-    tcx: &'b ty::TyCtxt<'tcx>,
+    tcx: &'b TyCtxt<'tcx>,
     moves: &'b mut Vec<MoveOut>,
     builder: MovePathDataBuilder<'a, 'tcx>,
     path_map: &'b mut Vec<Vec<MoveOutIndex>>,
@@ -680,7 +677,7 @@ struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
 impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
     fn on_move_out_lval(&mut self,
                         stmt_kind: StmtKind,
-                        lval: &repr::Lvalue<'tcx>,
+                        lval: &Lvalue<'tcx>,
                         source: Location) {
         let tcx = self.tcx;
         let lval_ty = self.builder.mir.lvalue_ty(tcx, lval);
@@ -726,10 +723,10 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
         self.loc_map_bb[i].push(index);
     }
 
-    fn on_operand(&mut self, stmt_kind: StmtKind, operand: &repr::Operand<'tcx>, source: Location) {
+    fn on_operand(&mut self, stmt_kind: StmtKind, operand: &Operand<'tcx>, source: Location) {
         match *operand {
-            repr::Operand::Constant(..) => {} // not-a-move
-            repr::Operand::Consume(ref lval) => { // a move
+            Operand::Constant(..) => {} // not-a-move
+            Operand::Consume(ref lval) => { // a move
                 self.on_move_out_lval(stmt_kind, lval, source);
             }
         }
