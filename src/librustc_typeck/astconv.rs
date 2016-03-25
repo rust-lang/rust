@@ -923,8 +923,8 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     //
     //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
     //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
-    let late_bound_in_trait_ref = tcx.collect_late_bound_regions(&trait_ref);
-    let late_bound_in_ty = tcx.collect_late_bound_regions(&ty::Binder(binding.ty));
+    let late_bound_in_trait_ref = tcx.collect_constrained_late_bound_regions(&trait_ref);
+    let late_bound_in_ty = tcx.collect_referenced_late_bound_regions(&ty::Binder(binding.ty));
     debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
     debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
     for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
@@ -1703,9 +1703,9 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             // checking for here would be considered early bound
             // anyway.)
             let inputs = bare_fn_ty.sig.inputs();
-            let late_bound_in_args = this.tcx().collect_late_bound_regions(&inputs);
+            let late_bound_in_args = this.tcx().collect_constrained_late_bound_regions(&inputs);
             let output = bare_fn_ty.sig.output();
-            let late_bound_in_ret = this.tcx().collect_late_bound_regions(&output);
+            let late_bound_in_ret = this.tcx().collect_referenced_late_bound_regions(&output);
             for br in late_bound_in_ret.difference(&late_bound_in_args) {
                 let br_name = match *br {
                     ty::BrNamed(_, name) => name,
