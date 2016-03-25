@@ -1,13 +1,17 @@
 use reexport::*;
+use rustc_const_eval::*;
 use rustc::lint::*;
 use rustc::middle::def;
 use rustc::ty;
+use rustc::middle::const_eval::ConstVal::Integral;
+use rustc_const_eval;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
 use utils::*;
+
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -640,24 +644,32 @@ enum AbsurdComparisonResult {
     InequalityImpossible,
 }
 
+enum Rel {
+    Lt,
+    Le,
+}
+
+// Put the expression in the form lhs < rhs or lhs <= rhs.
+fn normalize_comparison<'a>(op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
+                                -> Option<(Rel, &'a Expr, &'a Expr)> {
+    match op {
+        BiLt => Some((Rel::Lt, lhs, rhs)),
+        BiLe => Some((Rel::Le, lhs, rhs)),
+        BiGt => Some((Rel::Lt, rhs, lhs)),
+        BiGe => Some((Rel::Le, rhs, lhs)),
+        _ => return None,
+    }
+}
+
 fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
                                 -> Option<(ExtremeExpr<'a>, AbsurdComparisonResult)> {
     use types::ExtremeType::*;
     use types::AbsurdComparisonResult::*;
     type Extr<'a> = ExtremeExpr<'a>;
 
-    // Put the expression in the form lhs < rhs or lhs <= rhs.
-    enum Rel {
-        Lt,
-        Le,
-    };
-    let (rel, normalized_lhs, normalized_rhs) = match op {
-        BiLt => (Rel::Lt, lhs, rhs),
-        BiLe => (Rel::Le, lhs, rhs),
-        BiGt => (Rel::Lt, rhs, lhs),
-        BiGe => (Rel::Le, rhs, lhs),
-        _ => return None,
-    };
+    let normalized = normalize_comparison(op, lhs, rhs);
+    if normalized.is_none() { return None; } // Could be an if let, but this prevents rightward drift
+    let (rel, normalized_lhs, normalized_rhs) = normalized.unwrap();
 
     let lx = detect_extreme_expr(cx, normalized_lhs);
     let rx = detect_extreme_expr(cx, normalized_rhs);
@@ -773,6 +785,193 @@ impl LateLintPass for AbsurdExtremeComparisons {
                                        conclusion);
 
                     span_help_and_lint(cx, ABSURD_EXTREME_COMPARISONS, expr.span, msg, &help);
+                }
+            }
+        }
+    }
+}
+
+/// **What it does:** This lint checks for comparisons where the relation is always either true or false, but where one side has been upcast so that the comparison is necessary. Only integer types are checked.
+///
+/// **Why is this bad?** An expression like `let x : u8 = ...; (x as u32) > 300` will mistakenly imply that it is possible for `x` to be outside the range of `u8`.
+///
+/// **Known problems:** None
+///
+/// **Example:** `let x : u8 = ...; (x as u32) > 300`
+declare_lint! {
+    pub INVALID_UPCAST_COMPARISONS, Warn,
+    "a comparison involving an term's upcasting to be within the range of the other side of the \
+    term is always true or false"
+}
+
+pub struct InvalidUpcastComparisons;
+
+impl LintPass for InvalidUpcastComparisons {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(INVALID_UPCAST_COMPARISONS)
+    }
+}
+
+enum FullInt {
+    S(i64),
+    U(u64),
+}
+
+use std;
+use self::FullInt::*;
+use std::cmp::Ordering::*;
+
+impl FullInt {
+    fn cmp_s_u(s: &i64, u: &u64) -> std::cmp::Ordering {
+        if *s < 0 {
+            Less
+        } else if *u > (i64::max_value() as u64) {
+            Greater
+        } else {
+            (*s as u64).cmp(u)
+        }
+    }
+}
+
+impl PartialEq for FullInt {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Equal
+    }
+}
+impl Eq for FullInt {}
+
+impl PartialOrd for FullInt {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(match (self, other) {
+            (&S(ref s), &S(ref o)) => s.cmp(o),
+            (&U(ref s), &U(ref o)) => s.cmp(o),
+            (&S(ref s), &U(ref o)) => Self::cmp_s_u(s, o),
+            (&U(ref s), &S(ref o)) => Self::cmp_s_u(o, s).reverse(),
+        })
+    }
+}
+impl Ord for FullInt {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
+}
+
+
+fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
+    use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+
+    if let ExprCast(ref cast_exp,_) = expr.node {
+        let cv = match const_eval::eval_const_expr_partial(cx.tcx, cast_exp, ExprTypeChecked, None) {
+            Ok(val) => val,
+            Err(_) => return None,
+        };
+
+        if let Integral(const_int) = cv {
+            Some(match const_int {
+                I8(_) => (S(i8::min_value() as i64), S(i8::max_value() as i64)),
+                I16(_) => (S(i16::min_value() as i64), S(i16::max_value() as i64)),
+                I32(_) => (S(i32::min_value() as i64), S(i32::max_value() as i64)),
+                Isize(_) |
+                I64(_) |
+                InferSigned(_) => (S(i64::max_value()), S(i64::max_value())),
+                U8(_) => (U(u8::min_value() as u64), U(u8::max_value() as u64)),
+                U16(_) => (U(u16::min_value() as u64), U(u16::max_value() as u64)),
+                U32(_) => (U(u32::min_value() as u64), U(u32::max_value() as u64)),
+                Usize(_) |
+                U64(_) |
+                Infer(_) => (U(u64::max_value()), U(u64::max_value())),
+            })
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
+    use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+
+    match const_eval::eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
+        Ok(val) => {
+            if let Integral(const_int) = val {
+                Some(match const_int {
+                    I8(x) => S(x as i64),
+                    I16(x) => S(x as i64),
+                    I32(x) => S(x as i64),
+                    Isize(x) => S(match x {
+                        Is32(x_) => x_ as i64,
+                        Is64(x_) => x_
+                    }),
+                    I64(x) => S(x),
+                    InferSigned(x) => S(x as i64),
+                    U8(x) => U(x as u64),
+                    U16(x) => U(x as u64),
+                    U32(x) => U(x as u64),
+                    Usize(x) => U(match x {
+                        Us32(x_) => x_ as u64,
+                        Us64(x_) => x_,
+                    }),
+                    U64(x) => U(x),
+                    Infer(x) => U(x as u64),
+                })
+            } else {
+                None
+            }
+        },
+        Err(_) => return None,
+    }
+}
+
+impl LateLintPass for InvalidUpcastComparisons {
+    fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
+        if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
+            let normalized = normalize_comparison(cmp.node, lhs, rhs);
+            if normalized.is_none() { return; }
+            let (rel, normalized_lhs, normalized_rhs) = normalized.unwrap();
+
+            let norm_lhs_bounds = numeric_cast_precast_bounds(cx, normalized_lhs);
+            let norm_rhs_bounds = numeric_cast_precast_bounds(cx, normalized_rhs);
+
+            if let Some(nlb) = norm_lhs_bounds {
+                if let Some(norm_rhs_val) = node_as_const_fullint(cx, normalized_rhs) {
+                    if match rel {
+                        Rel::Lt => nlb.1 < norm_rhs_val,
+                        Rel::Le => nlb.1 <= norm_rhs_val,
+                    } {
+                        // Expression is always true
+                        cx.span_lint(INVALID_UPCAST_COMPARISONS,
+                                     expr.span,
+                                     &format!(""));
+                    } else if match rel {
+                        Rel::Lt => nlb.0 >= norm_rhs_val,
+                        Rel::Le => nlb.0 > norm_rhs_val,
+                    } {
+                        // Expression is always false
+                        cx.span_lint(INVALID_UPCAST_COMPARISONS,
+                                     expr.span,
+                                     &format!(""));
+                    }
+                }
+            } else if let Some(nrb) = norm_rhs_bounds {
+                if let Some(norm_lhs_val) = node_as_const_fullint(cx, normalized_lhs) {
+                    if match rel {
+                        Rel::Lt => norm_lhs_val < nrb.0,
+                        Rel::Le => norm_lhs_val <= nrb.0,
+                    } {
+                        // Expression is always true
+                        cx.span_lint(INVALID_UPCAST_COMPARISONS,
+                                     expr.span,
+                                     &format!(""));
+                    } else if match rel {
+                        Rel::Lt => norm_lhs_val >= nrb.1,
+                        Rel::Le => norm_lhs_val > nrb.1,
+                    } {
+                        // Expression is always false
+                        cx.span_lint(INVALID_UPCAST_COMPARISONS,
+                                     expr.span,
+                                     &format!(""));
+                    }
                 }
             }
         }
