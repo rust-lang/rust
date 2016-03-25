@@ -51,13 +51,30 @@ fn template(me: &str) -> Command {
     return m;
 }
 
+fn expected(fn_name: &str) -> String {
+    // FIXME(#32481)
+    //
+    // On windows, we read the function name from debuginfo using some
+    // system APIs. For whatever reason, these APIs seem to use the
+    // "name" field, which is only the "relative" name, not the full
+    // name with namespace info, so we just see `foo` and not
+    // `backtrace::foo` as we see on linux (which uses the linkage
+    // name).
+
+    if cfg!(windows) {
+        format!(" - {}", fn_name)
+    } else {
+        format!(" - backtrace::{}", fn_name)
+    }
+}
+
 fn runtest(me: &str) {
     // Make sure that the stack trace is printed
     let p = template(me).arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();
-    assert!(s.contains("stack backtrace") && s.contains(" - backtrace::foo"),
+    assert!(s.contains("stack backtrace") && s.contains(&expected("foo")),
             "bad output: {}", s);
 
     // Make sure the stack trace is *not* printed
@@ -67,7 +84,7 @@ fn runtest(me: &str) {
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.stderr).unwrap();
-    assert!(!s.contains("stack backtrace") && !s.contains(" - backtrace::foo"),
+    assert!(!s.contains("stack backtrace") && !s.contains(&expected("foo")),
             "bad output2: {}", s);
 
     // Make sure a stack trace is printed
@@ -77,7 +94,7 @@ fn runtest(me: &str) {
     let s = str::from_utf8(&out.stderr).unwrap();
     // loosened the following from double::h to double:: due to
     // spurious failures on mac, 32bit, optimized
-    assert!(s.contains("stack backtrace") && s.contains(" - backtrace::double"),
+    assert!(s.contains("stack backtrace") && s.contains(&expected("double")),
             "bad output3: {}", s);
 
     // Make sure a stack trace isn't printed too many times
