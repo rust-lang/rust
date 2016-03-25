@@ -60,8 +60,7 @@ fn expected(fn_name: &str) -> String {
     // name with namespace info, so we just see `foo` and not
     // `backtrace::foo` as we see on linux (which uses the linkage
     // name).
-
-    if cfg!(windows) {
+    if cfg!(windows) && cfg!(target_env = "msvc") {
         format!(" - {}", fn_name)
     } else {
         format!(" - backtrace::{}", fn_name)
