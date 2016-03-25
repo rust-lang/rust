@@ -12,7 +12,8 @@
 //! We want to do this once just before trans, so trans does not have to take
 //! care erasing regions all over the place.
 
-use rustc::middle::ty::{self, TyCtxt};
+use rustc::middle::subst::Substs;
+use rustc::middle::ty::{Ty, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{MirPass, Pass};
@@ -28,94 +29,16 @@ impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
             tcx: tcx
         }
     }
-
-    fn erase_regions_return_ty(&mut self, fn_output: &mut ty::FnOutput<'tcx>) {
-        match *fn_output {
-            ty::FnConverging(ref mut ty) => {
-                *ty = self.tcx.erase_regions(ty);
-            },
-            ty::FnDiverging => {}
-        }
-    }
-
-    fn erase_regions_tys<'b, T>(&mut self, tys: T)
-        where T: Iterator<Item = &'b mut ty::Ty<'tcx>>,
-              'tcx: 'b
-    {
-        for ty in tys {
-            *ty = self.tcx.erase_regions(ty);
-        }
-    }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
-    fn visit_mir(&mut self, mir: &mut Mir<'tcx>) {
-        self.erase_regions_return_ty(&mut mir.return_ty);
-        self.erase_regions_tys(mir.var_decls.iter_mut().map(|d| &mut d.ty));
-        self.erase_regions_tys(mir.arg_decls.iter_mut().map(|d| &mut d.ty));
-        self.erase_regions_tys(mir.temp_decls.iter_mut().map(|d| &mut d.ty));
-        self.super_mir(mir);
+    fn visit_ty(&mut self, ty: &mut Ty<'tcx>) {
+        let old_ty = *ty;
+        *ty = self.tcx.erase_regions(&old_ty);
     }
 
-    fn visit_terminator(&mut self, bb: BasicBlock, terminator: &mut Terminator<'tcx>) {
-        match terminator.kind {
-            TerminatorKind::Goto { .. } |
-            TerminatorKind::Resume |
-            TerminatorKind::Return |
-            TerminatorKind::If { .. } |
-            TerminatorKind::Switch { .. } |
-            TerminatorKind::Drop { .. } |
-            TerminatorKind::Call { .. } => {
-                /* nothing to do */
-            },
-            TerminatorKind::SwitchInt { ref mut switch_ty, .. } => {
-                *switch_ty = self.tcx.erase_regions(switch_ty);
-            },
-        }
-        self.super_terminator(bb, terminator);
-    }
-
-    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>) {
-        match *rvalue {
-            Rvalue::Use(_) |
-            Rvalue::Len(_) |
-            Rvalue::BinaryOp(_, _, _) |
-            Rvalue::UnaryOp(_, _) |
-            Rvalue::Slice { input: _, from_start: _, from_end: _ } |
-            Rvalue::InlineAsm {..} => {},
-
-            Rvalue::Repeat(_, ref mut value) => value.ty = self.tcx.erase_regions(&value.ty),
-            Rvalue::Ref(ref mut region, _, _) => *region = ty::ReStatic,
-            Rvalue::Cast(_, _, ref mut ty) => *ty = self.tcx.erase_regions(ty),
-            Rvalue::Box(ref mut ty) => *ty = self.tcx.erase_regions(ty),
-
-
-            Rvalue::Aggregate(AggregateKind::Vec, _) |
-            Rvalue::Aggregate(AggregateKind::Tuple, _) => {},
-            Rvalue::Aggregate(AggregateKind::Adt(_, _, ref mut substs), _) =>
-                *substs = self.tcx.mk_substs(self.tcx.erase_regions(*substs)),
-            Rvalue::Aggregate(AggregateKind::Closure(def_id, ref mut closure_substs), _) => {
-                let cloned = Box::new(closure_substs.clone());
-                let ty = self.tcx.mk_closure_from_closure_substs(def_id, cloned);
-                let erased = self.tcx.erase_regions(&ty);
-                *closure_substs = match erased.sty {
-                    ty::TyClosure(_, ref closure_substs) => &*closure_substs,
-                    _ => unreachable!()
-                };
-            }
-        }
-        self.super_rvalue(rvalue);
-    }
-
-    fn visit_constant(&mut self, constant: &mut Constant<'tcx>) {
-        constant.ty = self.tcx.erase_regions(&constant.ty);
-        match constant.literal {
-            Literal::Item { ref mut substs, .. } => {
-                *substs = self.tcx.mk_substs(self.tcx.erase_regions(substs));
-            }
-            Literal::Value { .. } => { /* nothing to do */ }
-        }
-        self.super_constant(constant);
+    fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
+        *substs = self.tcx.mk_substs(self.tcx.erase_regions(*substs));
     }
 }
 
