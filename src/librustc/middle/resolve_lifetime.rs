@@ -822,7 +822,7 @@ fn early_bound_lifetime_names(generics: &hir::Generics) -> Vec<ast::Name> {
                         collector.visit_lifetime(bound);
                     }
                 }
-                &hir::WherePredicate::EqPredicate(_) => unimplemented!()
+                &hir::WherePredicate::EqPredicate(_) => bug!("unimplemented")
             }
         }
     }
