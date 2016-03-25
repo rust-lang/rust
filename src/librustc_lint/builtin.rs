@@ -497,10 +497,10 @@ impl LateLintPass for MissingCopyImplementations {
         let parameter_environment = cx.tcx.empty_parameter_environment();
         // FIXME (@jroesch) should probably inver this so that the parameter env still impls this
         // method
-        if !ty.moves_by_default(&parameter_environment, item.span) {
+        if !ty.moves_by_default(cx.tcx, &parameter_environment, item.span) {
             return;
         }
-        if parameter_environment.can_type_implement_copy(ty, item.span).is_ok() {
+        if parameter_environment.can_type_implement_copy(cx.tcx, ty, item.span).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
                          "type could implement `Copy`; consider adding `impl \

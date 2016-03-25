@@ -55,7 +55,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
 
 struct RvalueContextDelegate<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    param_env: &'a ty::ParameterEnvironment<'a,'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'tcx>,
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
@@ -65,7 +65,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for RvalueContextDelegate<'a, 'tcx> {
                cmt: mc::cmt<'tcx>,
                _: euv::ConsumeMode) {
         debug!("consume; cmt: {:?}; type: {:?}", *cmt, cmt.ty);
-        if !cmt.ty.is_sized(self.param_env, span) {
+        if !cmt.ty.is_sized(self.tcx, self.param_env, span) {
             span_err!(self.tcx.sess, span, E0161,
                 "cannot move a value of type {0}: the size of {0} cannot be statically determined",
                 cmt.ty);

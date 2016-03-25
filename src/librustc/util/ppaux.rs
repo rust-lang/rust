@@ -557,7 +557,7 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
     }
 }
 
-impl<'a, 'tcx> fmt::Debug for ty::ParameterEnvironment<'a, 'tcx> {
+impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ParameterEnvironment(\
             free_substs={:?}, \

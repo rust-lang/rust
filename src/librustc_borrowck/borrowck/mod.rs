@@ -627,13 +627,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         db.emit();
     }
 
-    pub fn report_use_of_moved_value<'b>(&self,
-                                         use_span: Span,
-                                         use_kind: MovedValueUseKind,
-                                         lp: &LoanPath<'tcx>,
-                                         the_move: &move_data::Move,
-                                         moved_lp: &LoanPath<'tcx>,
-                                         _param_env: &ty::ParameterEnvironment<'b,'tcx>) {
+    pub fn report_use_of_moved_value(&self,
+                                     use_span: Span,
+                                     use_kind: MovedValueUseKind,
+                                     lp: &LoanPath<'tcx>,
+                                     the_move: &move_data::Move,
+                                     moved_lp: &LoanPath<'tcx>,
+                                     _param_env: &ty::ParameterEnvironment<'tcx>) {
         let (verb, verb_participle) = match use_kind {
             MovedInUse => ("use", "used"),
             MovedInCapture => ("capture", "captured"),

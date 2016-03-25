@@ -129,11 +129,10 @@ pub enum Representability {
     SelfRecursive,
 }
 
-impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
-    pub fn can_type_implement_copy(&self, self_type: Ty<'tcx>, span: Span)
-                                   -> Result<(),CopyImplementationError> {
-        let tcx = self.tcx;
-
+impl<'tcx> ParameterEnvironment<'tcx> {
+    pub fn can_type_implement_copy<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       self_type: Ty<'tcx>, span: Span)
+                                       -> Result<(),CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
         let infcx = InferCtxt::new(tcx, &tcx.tables, Some(self.clone()),
                                    ProjectionMode::Topmost);
@@ -509,12 +508,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
-    fn impls_bound(&'tcx self, param_env: &ParameterEnvironment<'a, 'tcx>,
-                   bound: ty::BuiltinBound,
-                   span: Span)
-                   -> bool
+    fn impls_bound(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                   param_env: &ParameterEnvironment<'tcx>,
+                   bound: ty::BuiltinBound, span: Span) -> bool
     {
-        let tcx = param_env.tcx;
         let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env.clone()),
                                    ProjectionMode::Topmost);
 
@@ -528,7 +525,8 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 
     // FIXME (@jroesch): I made this public to use it, not sure if should be private
-    pub fn moves_by_default(&'tcx self, param_env: &ParameterEnvironment<'a, 'tcx>,
+    pub fn moves_by_default(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            param_env: &ParameterEnvironment<'tcx>,
                             span: Span) -> bool {
         if self.flags.get().intersects(TypeFlags::MOVENESS_CACHED) {
             return self.flags.get().intersects(TypeFlags::MOVES_BY_DEFAULT);
@@ -550,7 +548,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             TyArray(..) | TySlice(_) | TyTrait(..) | TyTuple(..) |
             TyClosure(..) | TyEnum(..) | TyStruct(..) |
             TyProjection(..) | TyParam(..) | TyInfer(..) | TyError => None
-        }.unwrap_or_else(|| !self.impls_bound(param_env, ty::BoundCopy, span));
+        }.unwrap_or_else(|| !self.impls_bound(tcx, param_env, ty::BoundCopy, span));
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {
@@ -564,17 +562,19 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 
     #[inline]
-    pub fn is_sized(&'tcx self, param_env: &ParameterEnvironment<'a, 'tcx>,
+    pub fn is_sized(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    param_env: &ParameterEnvironment<'tcx>,
                     span: Span) -> bool
     {
         if self.flags.get().intersects(TypeFlags::SIZEDNESS_CACHED) {
             return self.flags.get().intersects(TypeFlags::IS_SIZED);
         }
 
-        self.is_sized_uncached(param_env, span)
+        self.is_sized_uncached(tcx, param_env, span)
     }
 
-    fn is_sized_uncached(&'tcx self, param_env: &ParameterEnvironment<'a, 'tcx>,
+    fn is_sized_uncached(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         param_env: &ParameterEnvironment<'tcx>,
                          span: Span) -> bool {
         assert!(!self.needs_infer());
 
@@ -588,7 +588,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
             TyEnum(..) | TyStruct(..) | TyProjection(..) | TyParam(..) |
             TyInfer(..) | TyError => None
-        }.unwrap_or_else(|| self.impls_bound(param_env, ty::BoundSized, span));
+        }.unwrap_or_else(|| self.impls_bound(tcx, param_env, ty::BoundSized, span));
 
         if !self.has_param_types() && !self.has_self_ty() {
             self.flags.set(self.flags.get() | if result {

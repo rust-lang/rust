@@ -92,7 +92,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // For region variables.
     region_vars: RegionVarBindings<'a, 'tcx>,
 
-    pub parameter_environment: ty::ParameterEnvironment<'a, 'tcx>,
+    pub parameter_environment: ty::ParameterEnvironment<'gcx>,
 
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
@@ -387,7 +387,7 @@ impl fmt::Display for FixupError {
 impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                tables: &'a RefCell<ty::Tables<'tcx>>,
-               param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
+               param_env: Option<ty::ParameterEnvironment<'tcx>>,
                projection_mode: ProjectionMode)
                -> Self {
         InferCtxt {
@@ -1440,7 +1440,7 @@ pub fn drain_fulfillment_cx<T>(&self,
             // cases.
             !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
         } else {
-            ty.moves_by_default(&self.parameter_environment, span)
+            ty.moves_by_default(self.tcx, &self.parameter_environment, span)
         }
     }
 
@@ -1484,7 +1484,7 @@ pub fn drain_fulfillment_cx<T>(&self,
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 
-    pub fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
+    pub fn param_env(&self) -> &ty::ParameterEnvironment<'tcx> {
         &self.parameter_environment
     }
 

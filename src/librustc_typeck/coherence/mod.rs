@@ -302,7 +302,7 @@ fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
             debug!("check_implementations_of_copy: self_type={:?} (free)",
                    self_type);
 
-            match param_env.can_type_implement_copy(self_type, span) {
+            match param_env.can_type_implement_copy(tcx, self_type, span) {
                 Ok(()) => {}
                 Err(CopyImplementationError::InfrigingField(name)) => {
                        span_err!(tcx.sess, span, E0204,
