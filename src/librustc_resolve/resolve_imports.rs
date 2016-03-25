@@ -686,9 +686,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 }
             }
 
-            // FIXME #31379: We can use methods from imported traits shadowed by non-import items
-            if !binding.is_import() {
-                for glob_binding in resolution.duplicate_globs.iter() {
+            // We can always use methods from the prelude traits
+            for glob_binding in resolution.duplicate_globs.iter() {
+                if glob_binding.defined_with(DefModifiers::PRELUDE) {
                     module.shadowed_traits.borrow_mut().push(glob_binding);
                 }
             }
