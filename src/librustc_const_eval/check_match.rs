@@ -107,7 +107,7 @@ impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    pub param_env: ParameterEnvironment<'a, 'tcx>,
+    pub param_env: ParameterEnvironment<'tcx>,
 }
 
 #[derive(Clone, PartialEq)]

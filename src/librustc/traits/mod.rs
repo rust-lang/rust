@@ -18,7 +18,7 @@ pub use self::ObligationCauseCode::*;
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst;
-use ty::{self, Ty, TypeFoldable};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 use infer::InferCtxt;
 
 use std::rc::Rc;
@@ -378,9 +378,10 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx, 'tcx
 
 // FIXME: this is gonna need to be removed ...
 /// Normalizes the parameter environment, reporting errors if they occur.
-pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvironment<'a,'tcx>,
-                                             cause: ObligationCause<'tcx>)
-                                             -> ty::ParameterEnvironment<'a,'tcx>
+pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    unnormalized_env: ty::ParameterEnvironment<'tcx>,
+    cause: ObligationCause<'tcx>)
+    -> ty::ParameterEnvironment<'tcx>
 {
     // I'm not wild about reporting errors here; I'd prefer to
     // have the errors get reported at a defined place (e.g.,
@@ -397,7 +398,6 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     // and errors will get reported then; so after typeck we
     // can be sure that no errors should occur.
 
-    let tcx = unnormalized_env.tcx;
     let span = cause.span;
     let body_id = cause.body_id;
 

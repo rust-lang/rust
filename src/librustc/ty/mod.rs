@@ -1209,9 +1209,7 @@ impl<'tcx> TraitRef<'tcx> {
 /// future I hope to refine the representation of types so as to make
 /// more distinctions clearer.
 #[derive(Clone)]
-pub struct ParameterEnvironment<'a, 'tcx:'a> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-
+pub struct ParameterEnvironment<'tcx> {
     /// See `construct_free_substs` for details.
     pub free_substs: Substs<'tcx>,
 
@@ -1243,13 +1241,12 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     pub free_id_outlive: CodeExtent,
 }
 
-impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
+impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     pub fn with_caller_bounds(&self,
                               caller_bounds: Vec<ty::Predicate<'tcx>>)
-                              -> ParameterEnvironment<'a,'tcx>
+                              -> ParameterEnvironment<'tcx>
     {
         ParameterEnvironment {
-            tcx: self.tcx,
             free_substs: self.free_substs.clone(),
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
@@ -1260,7 +1257,8 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     }
 
     /// Construct a parameter environment given an item, impl item, or trait item
-    pub fn for_item(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
+    pub fn for_item(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId)
+                    -> ParameterEnvironment<'tcx> {
         match tcx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
@@ -2546,14 +2544,14 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     ///
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `type_needs_drop` will definitely return `true` for `ty`.)
-    pub fn type_needs_drop_given_env<'b>(self,
-                                         ty: Ty<'tcx>,
-                                         param_env: &ty::ParameterEnvironment<'b,'tcx>) -> bool {
+    pub fn type_needs_drop_given_env(self,
+                                     ty: Ty<'tcx>,
+                                     param_env: &ty::ParameterEnvironment<'tcx>) -> bool {
         // Issue #22536: We first query type_moves_by_default.  It sees a
         // normalized version of the type, and therefore will definitely
         // know whether the type implements Copy (and thus needs no
         // cleanup/drop/zeroing) ...
-        let implements_copy = !ty.moves_by_default(param_env, DUMMY_SP);
+        let implements_copy = !ty.moves_by_default(self, param_env, DUMMY_SP);
 
         if implements_copy { return false; }
 
@@ -2803,13 +2801,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     /// Construct a parameter environment suitable for static contexts or other contexts where there
     /// are no free type/lifetime parameters in scope.
-    pub fn empty_parameter_environment(self) -> ParameterEnvironment<'a,'tcx> {
+    pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
 
         // for an empty parameter environment, there ARE no free
         // regions, so it shouldn't matter what we use for the free id
         let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
-        ty::ParameterEnvironment { tcx: self,
-                                   free_substs: Substs::empty(),
+        ty::ParameterEnvironment { free_substs: Substs::empty(),
                                    caller_bounds: Vec::new(),
                                    implicit_region_bound: ty::ReEmpty,
                                    selection_cache: traits::SelectionCache::new(),
@@ -2856,7 +2853,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
                                            generics: &ty::Generics<'tcx>,
                                            generic_predicates: &ty::GenericPredicates<'tcx>,
                                            free_id_outlive: CodeExtent)
-                                           -> ParameterEnvironment<'a, 'tcx>
+                                           -> ParameterEnvironment<'tcx>
     {
         //
         // Construct the free substs.
@@ -2886,7 +2883,6 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         //
 
         let unnormalized_env = ty::ParameterEnvironment {
-            tcx: self,
             free_substs: free_substs,
             implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
@@ -2896,7 +2892,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
-        traits::normalize_param_env_or_error(unnormalized_env, cause)
+        traits::normalize_param_env_or_error(self, unnormalized_env, cause)
     }
 
     pub fn is_method_call(self, expr_id: NodeId) -> bool {

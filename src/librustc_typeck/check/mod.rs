@@ -375,7 +375,7 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'tcx> Inherited<'a, 'tcx, 'tcx> {
     fn new(ccx: &'a CrateCtxt<'a, 'tcx>,
            tables: &'a RefCell<ty::Tables<'tcx>>,
-           param_env: ty::ParameterEnvironment<'a, 'tcx>)
+           param_env: ty::ParameterEnvironment<'tcx>)
            -> Inherited<'a, 'tcx, 'tcx> {
 
         Inherited {
@@ -490,7 +490,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            fn_id: ast::NodeId,
                            fn_span: Span,
                            raw_fty: Ty<'tcx>,
-                           param_env: ty::ParameterEnvironment<'a, 'tcx>)
+                           param_env: ty::ParameterEnvironment<'tcx>)
 {
     match raw_fty.sty {
         ty::TyFnDef(_, _, ref fn_ty) => {
@@ -1449,7 +1449,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
         }
     }
 
-    pub fn param_env(&self) -> &ty::ParameterEnvironment<'a,'tcx> {
+    pub fn param_env(&self) -> &ty::ParameterEnvironment<'tcx> {
         &self.parameter_environment
     }
 

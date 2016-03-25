@@ -59,7 +59,7 @@ pub use context::{CrateContext, SharedCrateContext};
 
 /// Is the type's representation size known at compile time?
 pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(&tcx.empty_parameter_environment(), DUMMY_SP)
+    ty.is_sized(tcx, &tcx.empty_parameter_environment(), DUMMY_SP)
 }
 
 pub fn type_is_fat_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -281,7 +281,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     pub llfn: ValueRef,
 
     // always an empty parameter-environment NOTE: @jroesch another use of ParamEnv
-    pub param_env: ty::ParameterEnvironment<'a, 'tcx>,
+    pub param_env: ty::ParameterEnvironment<'tcx>,
 
     // A pointer to where to store the return value. If the return type is
     // immediate, this points to an alloca in the function. Otherwise, it's a

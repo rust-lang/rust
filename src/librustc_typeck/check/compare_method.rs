@@ -239,7 +239,8 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // the new hybrid bounds we computed.
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
     let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.into_vec());
-    let trait_param_env = traits::normalize_param_env_or_error(trait_param_env,
+    let trait_param_env = traits::normalize_param_env_or_error(tcx,
+                                                               trait_param_env,
                                                                normalize_cause.clone());
     // FIXME(@jroesch) this seems ugly, but is a temporary change
     infcx.parameter_environment = trait_param_env;

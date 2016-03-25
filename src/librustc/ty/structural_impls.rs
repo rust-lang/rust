@@ -758,10 +758,9 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'a, 'tcx> where 'tcx: 'a {
+impl<'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'tcx> {
     fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         ty::ParameterEnvironment {
-            tcx: self.tcx,
             free_substs: self.free_substs.fold_with(folder),
             implicit_region_bound: self.implicit_region_bound.fold_with(folder),
             caller_bounds: self.caller_bounds.fold_with(folder),

@@ -1532,7 +1532,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &hir::Pat,
 
         let llmatch;
         let trmode;
-        let moves_by_default = variable_ty.moves_by_default(&param_env, span);
+        let moves_by_default = variable_ty.moves_by_default(tcx, &param_env, span);
         match bm {
             hir::BindByValue(_) if !moves_by_default || reassigned =>
             {

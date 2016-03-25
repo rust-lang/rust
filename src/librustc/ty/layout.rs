@@ -790,7 +790,7 @@ impl<'a, 'tcx> Layout {
             ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
             ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
                 let non_zero = !ty.is_unsafe_ptr();
-                if pointee.is_sized(&infcx.parameter_environment, DUMMY_SP) {
+                if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                     Scalar { value: Pointer, non_zero: non_zero }
                 } else {
                     let unsized_part = tcx.struct_tail(pointee);
@@ -883,7 +883,7 @@ impl<'a, 'tcx> Layout {
                 // the unsized field. Several other pieces of code assume that the unsized
                 // field is definitely the last one.
                 if def.dtor_kind().has_drop_flag() &&
-                   ty.is_sized(&infcx.parameter_environment, DUMMY_SP) {
+                   ty.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                     st.extend(dl, Some(Ok(&Scalar {
                         value: Int(I8),
                         non_zero: false
