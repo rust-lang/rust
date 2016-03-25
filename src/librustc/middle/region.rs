@@ -385,8 +385,8 @@ impl RegionMaps {
             }
             Entry::Vacant(v) => {
                 if self.code_extents.borrow().len() > 0xffffffffusize {
-                    unreachable!() // should pass a sess,
-                                   // but this isn't the only place
+                    bug!() // should pass a sess,
+                           // but this isn't the only place
                 }
                 let idx = CodeExtent(self.code_extents.borrow().len() as u32);
                 info!("CodeExtent({}) = {:?} [parent={}]", idx.0, e, parent.0);
@@ -601,12 +601,12 @@ impl RegionMaps {
                         scope_a
                     } else {
                         // neither fn encloses the other
-                        unreachable!()
+                        bug!()
                     }
                 }
                 _ => {
                     // root ids are always Misc right now
-                    unreachable!()
+                    bug!()
                 }
             };
         }

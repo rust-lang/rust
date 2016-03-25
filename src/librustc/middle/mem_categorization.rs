@@ -724,12 +724,12 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         let fn_body_id = {
             let fn_expr = match self.tcx().map.find(upvar_id.closure_expr_id) {
                 Some(ast_map::NodeExpr(e)) => e,
-                _ => unreachable!()
+                _ => bug!()
             };
 
             match fn_expr.node {
                 hir::ExprClosure(_, _, ref body) => body.id,
-                _ => unreachable!()
+                _ => bug!()
             }
         };
 
@@ -1453,10 +1453,10 @@ impl<'tcx> cmt_<'tcx> {
                         match inner.cat {
                             Categorization::Deref(ref inner, _, _) => inner.clone(),
                             Categorization::Upvar(..) => inner.clone(),
-                            _ => unreachable!()
+                            _ => bug!()
                         }
                     }
-                    _ => unreachable!()
+                    _ => bug!()
                 })
             }
             NoteNone => None
@@ -1485,7 +1485,7 @@ impl<'tcx> cmt_<'tcx> {
                     Some(&Categorization::Upvar(ref var)) => {
                         var.to_string()
                     }
-                    Some(_) => unreachable!(),
+                    Some(_) => bug!(),
                     None => {
                         match pk {
                             Implicit(..) => {

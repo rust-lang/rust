@@ -259,7 +259,7 @@ impl<'tcx> Decodable for &'tcx ClosureSubsts<'tcx> {
                                                               Box::new(closure_substs));
             match ty.sty {
                 TyClosure(_, ref closure_substs) => Ok(&**closure_substs),
-                _ => unreachable!()
+                _ => bug!()
             }
         })
     }
@@ -467,7 +467,7 @@ impl<'tcx> FnOutput<'tcx> {
     pub fn unwrap(self) -> Ty<'tcx> {
         match self {
             ty::FnConverging(t) => t,
-            ty::FnDiverging => unreachable!()
+            ty::FnDiverging => bug!()
         }
     }
 
