@@ -398,7 +398,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
                          // purposes of the ancestor check, we retain
                          // the invariant that all type variables are
                          // fully refreshed.
-                         if !(&mut is_ancestor)(&obligation.predicate) {
+                         if !is_ancestor(&obligation.predicate) {
                              return None;
                          }
                      }
