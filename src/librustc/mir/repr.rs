@@ -32,6 +32,10 @@ pub struct Mir<'tcx> {
     /// that indexes into this vector.
     pub basic_blocks: Vec<BasicBlockData<'tcx>>,
 
+    /// List of lexical scopes; these are referenced by statements and
+    /// used (eventually) for debuginfo. Indexed by a `ScopeId`.
+    pub scopes: Vec<ScopeData>,
+
     /// Return type of the function.
     pub return_ty: FnOutput<'tcx>,
 
@@ -152,9 +156,21 @@ pub enum BorrowKind {
 /// decl, a let, etc.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct VarDecl<'tcx> {
+    /// `let mut x` vs `let x`
     pub mutability: Mutability,
+
+    /// name that user gave the variable; not that, internally,
+    /// mir references variables by index
     pub name: Name,
+
+    /// type inferred for this variable (`let x: ty = ...`)
     pub ty: Ty<'tcx>,
+
+    /// scope in which variable was declared
+    pub scope: ScopeId,
+
+    /// span where variable was declared
+    pub span: Span,
 }
 
 /// A "temp" is a temporary that we place on the stack. They are
@@ -191,7 +207,7 @@ pub struct ArgDecl<'tcx> {
 /// list of the `Mir`.
 ///
 /// (We use a `u32` internally just to save memory.)
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct BasicBlock(u32);
 
 impl BasicBlock {
@@ -217,13 +233,35 @@ impl Debug for BasicBlock {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct BasicBlockData<'tcx> {
+    /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
+
+    /// Terminator for this block.
+    ///
+    /// NB. This should generally ONLY be `None` during construction.
+    /// Therefore, you should generally access it via the
+    /// `terminator()` or `terminator_mut()` methods. The only
+    /// exception is that certain passes, such as `simplify_cfg`, swap
+    /// out the terminator temporarily with `None` while they continue
+    /// to recurse over the set of basic blocks.
     pub terminator: Option<Terminator<'tcx>>,
+
+    /// If true, this block lies on an unwind path. This is used
+    /// during trans where distinct kinds of basic blocks may be
+    /// generated (particularly for MSVC cleanup). Unwind blocks must
+    /// only branch to other unwind blocks.
     pub is_cleanup: bool,
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct Terminator<'tcx> {
+    pub span: Span,
+    pub scope: ScopeId,
+    pub kind: TerminatorKind<'tcx>
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable)]
-pub enum Terminator<'tcx> {
+pub enum TerminatorKind<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
         target: BasicBlock,
@@ -293,7 +331,17 @@ pub enum Terminator<'tcx> {
 
 impl<'tcx> Terminator<'tcx> {
     pub fn successors(&self) -> Cow<[BasicBlock]> {
-        use self::Terminator::*;
+        self.kind.successors()
+    }
+
+    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+        self.kind.successors_mut()
+    }
+}
+
+impl<'tcx> TerminatorKind<'tcx> {
+    pub fn successors(&self) -> Cow<[BasicBlock]> {
+        use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
             If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
@@ -314,7 +362,7 @@ impl<'tcx> Terminator<'tcx> {
     // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
     // `Vec<&mut BasicBlock>` would look like in the first place.
     pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
-        use self::Terminator::*;
+        use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
             If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
@@ -354,7 +402,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 }
 
-impl<'tcx> Debug for Terminator<'tcx> {
+impl<'tcx> Debug for TerminatorKind<'tcx> {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         self.fmt_head(fmt)?;
         let successors = self.successors();
@@ -381,12 +429,12 @@ impl<'tcx> Debug for Terminator<'tcx> {
     }
 }
 
-impl<'tcx> Terminator<'tcx> {
+impl<'tcx> TerminatorKind<'tcx> {
     /// Write the "head" part of the terminator; that is, its name and the data it uses to pick the
     /// successor basic block, if any. The only information not inlcuded is the list of possible
     /// successors, which may be rendered differently between the text and the graphviz format.
     pub fn fmt_head<W: Write>(&self, fmt: &mut W) -> fmt::Result {
-        use self::Terminator::*;
+        use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
             If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
@@ -413,7 +461,7 @@ impl<'tcx> Terminator<'tcx> {
 
     /// Return the list of labels for the edges to the successor basic blocks.
     pub fn fmt_successor_labels(&self) -> Vec<Cow<'static, str>> {
-        use self::Terminator::*;
+        use self::TerminatorKind::*;
         match *self {
             Return | Resume => vec![],
             Goto { .. } => vec!["".into()],
@@ -452,6 +500,7 @@ impl<'tcx> Terminator<'tcx> {
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Statement<'tcx> {
     pub span: Span,
+    pub scope: ScopeId,
     pub kind: StatementKind<'tcx>,
 }
 
@@ -468,6 +517,7 @@ impl<'tcx> Debug for Statement<'tcx> {
         }
     }
 }
+
 ///////////////////////////////////////////////////////////////////////////
 // Lvalues
 
@@ -614,12 +664,49 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// Scopes
+
+impl Index<ScopeId> for Vec<ScopeData> {
+    type Output = ScopeData;
+
+    #[inline]
+    fn index(&self, index: ScopeId) -> &ScopeData {
+        &self[index.index()]
+    }
+}
+
+impl IndexMut<ScopeId> for Vec<ScopeData> {
+    #[inline]
+    fn index_mut(&mut self, index: ScopeId) -> &mut ScopeData {
+        &mut self[index.index()]
+    }
+}
+
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+pub struct ScopeId(u32);
+
+impl ScopeId {
+    pub fn new(index: usize) -> ScopeId {
+        assert!(index < (u32::MAX as usize));
+        ScopeId(index as u32)
+    }
+
+    pub fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct ScopeData {
+    pub parent_scope: Option<ScopeId>,
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Operands
-//
+
 /// These are values that can appear inside an rvalue (or an index
 /// lvalue). They are intentionally limited to prevent rvalues from
 /// being nested in one another.
-
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum Operand<'tcx> {
     Consume(Lvalue<'tcx>),

@@ -20,7 +20,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                      ast_block: &'tcx hir::Block)
                      -> BlockAnd<()> {
         let Block { extent, span, stmts, expr } = self.hir.mirror(ast_block);
-        self.in_scope(extent, block, move |this| {
+        self.in_scope(extent, block, move |this, _| {
             // This convoluted structure is to avoid using recursion as we walk down a list
             // of statements. Basically, the structure we get back is something like:
             //
@@ -42,23 +42,24 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let Stmt { span: _, kind } = this.hir.mirror(stmt);
                 match kind {
                     StmtKind::Expr { scope, expr } => {
-                        unpack!(block = this.in_scope(scope, block, |this| {
+                        unpack!(block = this.in_scope(scope, block, |this, _| {
                             let expr = this.hir.mirror(expr);
+                            let expr_span = expr.span;
                             let temp = this.temp(expr.ty.clone());
                             unpack!(block = this.into(&temp, block, expr));
-                            unpack!(block = this.build_drop(block, temp));
+                            unpack!(block = this.build_drop(block, expr_span, temp));
                             block.unit()
                         }));
                     }
                     StmtKind::Let { remainder_scope, init_scope, pattern, initializer } => {
-                        this.push_scope(remainder_scope);
+                        let remainder_scope_id = this.push_scope(remainder_scope, block);
                         let_extent_stack.push(remainder_scope);
-                        unpack!(block = this.in_scope(init_scope, block, move |this| {
+                        unpack!(block = this.in_scope(init_scope, block, move |this, _| {
                             // FIXME #30046                              ^~~~
                             if let Some(init) = initializer {
-                                this.expr_into_pattern(block, remainder_scope, pattern, init)
+                                this.expr_into_pattern(block, remainder_scope_id, pattern, init)
                             } else {
-                                this.declare_bindings(remainder_scope, &pattern);
+                                this.declare_bindings(remainder_scope_id, &pattern);
                                 block.unit()
                             }
                         }));
@@ -71,7 +72,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 unpack!(block = this.into(destination, block, expr));
             } else {
                 // FIXME(#31472)
-                this.cfg.push_assign_unit(block, span, destination);
+                let scope_id = this.innermost_scope_id();
+                this.cfg.push_assign_unit(block, scope_id, span, destination);
             }
             // Finally, we pop all the let scopes before exiting out from the scope of block
             // itself.

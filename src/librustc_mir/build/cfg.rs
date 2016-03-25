@@ -13,7 +13,7 @@
 
 //! Routines for manipulating the control-flow graph.
 
-use build::CFG;
+use build::{CFG, Location};
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
@@ -43,12 +43,19 @@ impl<'tcx> CFG<'tcx> {
         self.block_data_mut(block).statements.push(statement);
     }
 
+    pub fn current_location(&mut self, block: BasicBlock) -> Location {
+        let index = self.block_data(block).statements.len();
+        Location { block: block, statement_index: index }
+    }
+
     pub fn push_assign(&mut self,
                        block: BasicBlock,
+                       scope: ScopeId,
                        span: Span,
                        lvalue: &Lvalue<'tcx>,
                        rvalue: Rvalue<'tcx>) {
         self.push(block, Statement {
+            scope: scope,
             span: span,
             kind: StatementKind::Assign(lvalue.clone(), rvalue)
         });
@@ -56,26 +63,35 @@ impl<'tcx> CFG<'tcx> {
 
     pub fn push_assign_constant(&mut self,
                                 block: BasicBlock,
+                                scope: ScopeId,
                                 span: Span,
                                 temp: &Lvalue<'tcx>,
                                 constant: Constant<'tcx>) {
-        self.push_assign(block, span, temp, Rvalue::Use(Operand::Constant(constant)));
+        self.push_assign(block, scope, span, temp,
+                         Rvalue::Use(Operand::Constant(constant)));
     }
 
     pub fn push_assign_unit(&mut self,
                             block: BasicBlock,
+                            scope: ScopeId,
                             span: Span,
                             lvalue: &Lvalue<'tcx>) {
-        self.push_assign(block, span, lvalue, Rvalue::Aggregate(
+        self.push_assign(block, scope, span, lvalue, Rvalue::Aggregate(
             AggregateKind::Tuple, vec![]
         ));
     }
 
     pub fn terminate(&mut self,
                      block: BasicBlock,
-                     terminator: Terminator<'tcx>) {
+                     scope: ScopeId,
+                     span: Span,
+                     kind: TerminatorKind<'tcx>) {
         debug_assert!(self.block_data(block).terminator.is_none(),
                       "terminate: block {:?} already has a terminator set", block);
-        self.block_data_mut(block).terminator = Some(terminator);
+        self.block_data_mut(block).terminator = Some(Terminator {
+            span: span,
+            scope: scope,
+            kind: kind,
+        });
     }
 }

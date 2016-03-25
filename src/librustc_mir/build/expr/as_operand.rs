@@ -35,7 +35,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let this = self;
 
         if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope(extent, block, |this| this.as_operand(block, value));
+            return this.in_scope(extent, block, |this, _| this.as_operand(block, value));
         }
 
         let category = Category::of(&expr.kind).unwrap();

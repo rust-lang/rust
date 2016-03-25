@@ -56,8 +56,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
         debug!("trans_block: terminator: {:?}", data.terminator());
 
-        match *data.terminator() {
-            mir::Terminator::Resume => {
+        match data.terminator().kind {
+            mir::TerminatorKind::Resume => {
                 if let Some(cleanup_pad) = cleanup_pad {
                     bcx.cleanup_ret(cleanup_pad, None);
                 } else {
@@ -70,18 +70,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
             }
 
-            mir::Terminator::Goto { target } => {
+            mir::TerminatorKind::Goto { target } => {
                 funclet_br(bcx, self.llblock(target));
             }
 
-            mir::Terminator::If { ref cond, targets: (true_bb, false_bb) } => {
+            mir::TerminatorKind::If { ref cond, targets: (true_bb, false_bb) } => {
                 let cond = self.trans_operand(&bcx, cond);
                 let lltrue = self.llblock(true_bb);
                 let llfalse = self.llblock(false_bb);
                 bcx.cond_br(cond.immediate(), lltrue, llfalse);
             }
 
-            mir::Terminator::Switch { ref discr, ref adt_def, ref targets } => {
+            mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
                 let repr = adt::represent_type(bcx.ccx(), ty);
@@ -103,7 +103,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
             }
 
-            mir::Terminator::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
+            mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
                 let (otherwise, targets) = targets.split_last().unwrap();
                 let discr = bcx.load(self.trans_lvalue(&bcx, discr).llval);
                 let discr = bcx.with_block(|bcx| base::to_immediate(bcx, discr, switch_ty));
@@ -115,13 +115,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
             }
 
-            mir::Terminator::Return => {
+            mir::TerminatorKind::Return => {
                 bcx.with_block(|bcx| {
                     self.fcx.build_return_block(bcx, DebugLoc::None);
                 })
             }
 
-            mir::Terminator::Drop { ref value, target, unwind } => {
+            mir::TerminatorKind::Drop { ref value, target, unwind } => {
                 let lvalue = self.trans_lvalue(&bcx, value);
                 let ty = lvalue.ty.to_ty(bcx.tcx());
                 // Double check for necessity to drop
@@ -152,7 +152,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 }
             }
 
-            mir::Terminator::Call { ref func, ref args, ref destination, ref cleanup } => {
+            mir::TerminatorKind::Call { ref func, ref args, ref destination, ref cleanup } => {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 

@@ -58,17 +58,17 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_terminator(&mut self, bb: BasicBlock, terminator: &mut Terminator<'tcx>) {
-        match *terminator {
-            Terminator::Goto { .. } |
-            Terminator::Resume |
-            Terminator::Return |
-            Terminator::If { .. } |
-            Terminator::Switch { .. } |
-            Terminator::Drop { .. } |
-            Terminator::Call { .. } => {
+        match terminator.kind {
+            TerminatorKind::Goto { .. } |
+            TerminatorKind::Resume |
+            TerminatorKind::Return |
+            TerminatorKind::If { .. } |
+            TerminatorKind::Switch { .. } |
+            TerminatorKind::Drop { .. } |
+            TerminatorKind::Call { .. } => {
                 /* nothing to do */
             },
-            Terminator::SwitchInt { ref mut switch_ty, .. } => {
+            TerminatorKind::SwitchInt { ref mut switch_ty, .. } => {
                 *switch_ty = self.tcx.erase_regions(switch_ty);
             },
         }
