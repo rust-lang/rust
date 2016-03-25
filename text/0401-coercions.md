@@ -154,6 +154,9 @@ Coercion is allowed between the following types:
 
 * `&mut T` to `*mut T`
 
+* `T` to `fn` if `T` is a closure that does not capture any local variables
+  in its environment.
+
 * `T` to `U` if `T` implements `CoerceUnsized<U>` (see below) and `T = Foo<...>`
   and `U = Foo<...>` (for any `Foo`, when we get HKT I expect this could be a
   constraint on the `CoerceUnsized` trait, rather than being checked here)
@@ -338,7 +341,7 @@ and where unsize_kind(`T`) is the kind of the unsize info
 in `T` - the vtable for a trait definition (e.g. `fmt::Display` or
 `Iterator`, not `Iterator<Item=u8>`) or a length (or `()` if `T: Sized`).
 
-Note that lengths are not adjusted when casting raw slices - 
+Note that lengths are not adjusted when casting raw slices -
 `T: *const [u16] as *const [u8]` creates a slice that only includes
 half of the original memory.
 
@@ -440,5 +443,10 @@ These rules could be tweaked in any number of ways.
 Specifically for the DST custom coercions, the compiler could throw an error if
 it finds a user-supplied implementation of the `Unsize` trait, rather than
 silently ignoring them.
+
+# Amendments
+
+* Updated by [#1558](https://github.com/rust-lang/rfcs/pull/1558), which allows
+  coercions from a non-capturing closure to a function pointer.
 
 # Unresolved questions
