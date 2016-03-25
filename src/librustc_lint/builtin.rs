@@ -869,37 +869,37 @@ impl LateLintPass for UnconditionalRecursion {
                     // checking, so it's always local
                     let node_id = tcx.map.as_local_node_id(method.def_id).unwrap();
 
-                    let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
-                    let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env),
-                                               ProjectionMode::AnyFinal);
-                    let mut selcx = traits::SelectionContext::new(&infcx);
-                    match selcx.select(&obligation) {
-                        // The method comes from a `T: Trait` bound.
-                        // If `T` is `Self`, then this call is inside
-                        // a default method definition.
-                        Ok(Some(traits::VtableParam(_))) => {
-                            let self_ty = callee_substs.self_ty();
-                            let on_self = self_ty.map_or(false, |t| t.is_self());
-                            // We can only be recurring in a default
-                            // method if we're being called literally
-                            // on the `Self` type.
-                            on_self && callee_id == method.def_id
-                        }
+                    let param_env = Some(ty::ParameterEnvironment::for_item(tcx, node_id));
+                    InferCtxt::enter(tcx, None, param_env, ProjectionMode::AnyFinal, |infcx| {
+                        let mut selcx = traits::SelectionContext::new(&infcx);
+                        match selcx.select(&obligation) {
+                            // The method comes from a `T: Trait` bound.
+                            // If `T` is `Self`, then this call is inside
+                            // a default method definition.
+                            Ok(Some(traits::VtableParam(_))) => {
+                                let self_ty = callee_substs.self_ty();
+                                let on_self = self_ty.map_or(false, |t| t.is_self());
+                                // We can only be recurring in a default
+                                // method if we're being called literally
+                                // on the `Self` type.
+                                on_self && callee_id == method.def_id
+                            }
 
-                        // The `impl` is known, so we check that with a
-                        // special case:
-                        Ok(Some(traits::VtableImpl(vtable_impl))) => {
-                            let container = ty::ImplContainer(vtable_impl.impl_def_id);
-                            // It matches if it comes from the same impl,
-                            // and has the same method name.
-                            container == method.container
-                                && callee_item.name() == method.name
-                        }
+                            // The `impl` is known, so we check that with a
+                            // special case:
+                            Ok(Some(traits::VtableImpl(vtable_impl))) => {
+                                let container = ty::ImplContainer(vtable_impl.impl_def_id);
+                                // It matches if it comes from the same impl,
+                                // and has the same method name.
+                                container == method.container
+                                    && callee_item.name() == method.name
+                            }
 
-                        // There's no way to know if this call is
-                        // recursive, so we assume it's not.
-                        _ => return false
-                    }
+                            // There's no way to know if this call is
+                            // recursive, so we assume it's not.
+                            _ => false
+                        }
+                    })
                 }
             }
         }

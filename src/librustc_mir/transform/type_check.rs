@@ -584,19 +584,19 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env),
-                                   ProjectionMode::AnyFinal);
-        let mut checker = TypeChecker::new(&infcx);
-        {
-            let mut verifier = TypeVerifier::new(&mut checker, mir);
-            verifier.visit_mir(mir);
-            if verifier.errors_reported {
-                // don't do further checks to avoid ICEs
-                return;
+        InferCtxt::enter(tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
+            let mut checker = TypeChecker::new(&infcx);
+            {
+                let mut verifier = TypeVerifier::new(&mut checker, mir);
+                verifier.visit_mir(mir);
+                if verifier.errors_reported {
+                    // don't do further checks to avoid ICEs
+                    return;
+                }
             }
-        }
-        checker.typeck_mir(mir);
-        checker.verify_obligations(mir);
+            checker.typeck_mir(mir);
+            checker.verify_obligations(mir);
+        });
     }
 }
 

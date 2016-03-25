@@ -1466,12 +1466,10 @@ fn is_discr_reassigned(bcx: Block, discr: &hir::Expr, body: &hir::Expr) -> bool 
         field: field,
         reassigned: false
     };
-    {
-        let infcx = InferCtxt::normalizing(bcx.tcx(), &bcx.tcx().tables,
-                                           ProjectionMode::Any);
+    InferCtxt::enter_normalizing(bcx.tcx(), ProjectionMode::Any, |infcx| {
         let mut visitor = euv::ExprUseVisitor::new(&mut rc, &infcx);
         visitor.walk_expr(body);
-    }
+    });
     rc.reassigned
 }
 

@@ -56,12 +56,10 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = InferCtxt::new(bccx.tcx, &bccx.tcx.tables, Some(param_env),
-                               ProjectionMode::AnyFinal);
-    {
+    InferCtxt::enter(bccx.tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
         let mut euv = euv::ExprUseVisitor::new(&mut glcx, &infcx);
         euv.walk_fn(decl, body);
-    }
+    });
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -527,15 +525,17 @@ struct StaticInitializerCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
     fn visit_expr(&mut self, ex: &Expr) {
         if let hir::ExprAddrOf(mutbl, ref base) = ex.node {
-            let infcx = InferCtxt::new(self.bccx.tcx, &self.bccx.tcx.tables, None,
-                                       ProjectionMode::AnyFinal);
-            let mc = mc::MemCategorizationContext::new(&infcx);
-            let base_cmt = mc.cat_expr(&base).unwrap();
-            let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
-            // Check that we don't allow borrows of unsafe static items.
-            if check_aliasability(self.bccx, ex.span,
-                                  BorrowViolation(euv::AddrOf),
-                                  base_cmt, borrow_kind).is_err() {
+            let err = InferCtxt::enter(self.bccx.tcx, None, None,
+                                       ProjectionMode::AnyFinal, |infcx| {
+                let mc = mc::MemCategorizationContext::new(&infcx);
+                let base_cmt = mc.cat_expr(&base).unwrap();
+                let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
+                // Check that we don't allow borrows of unsafe static items.
+                check_aliasability(self.bccx, ex.span,
+                                   BorrowViolation(euv::AddrOf),
+                                   base_cmt, borrow_kind).is_err()
+            });
+            if err {
                 return; // reported an error, no sense in reporting more.
             }
         }

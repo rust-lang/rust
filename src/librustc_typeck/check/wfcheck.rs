@@ -17,7 +17,6 @@ use rustc::ty::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use std::cell::RefCell;
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::codemap::{Span};
@@ -180,12 +179,12 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         let ccx = self.ccx;
         let param_env = ty::ParameterEnvironment::for_item(ccx.tcx, id);
-        let tables = RefCell::new(ty::Tables::empty());
-        let inh = Inherited::new(ccx, &tables, param_env);
-        let fcx = FnCtxt::new(&inh, ty::FnDiverging, id);
-        let wf_tys = f(&fcx, self);
-        fcx.select_all_obligations_or_error();
-        fcx.regionck_item(id, span, &wf_tys);
+        Inherited::enter(ccx, param_env, |inh| {
+            let fcx = FnCtxt::new(&inh, ty::FnDiverging, id);
+            let wf_tys = f(&fcx, self);
+            fcx.select_all_obligations_or_error();
+            fcx.regionck_item(id, span, &wf_tys);
+        });
     }
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.

@@ -1488,18 +1488,14 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
                 let t_ret_subst = t_ret.subst(self.ir.tcx, &param_env.free_substs);
-                let infcx = InferCtxt::new(self.ir.tcx,
-                                           &self.ir.tcx.tables,
-                                           Some(param_env),
-                                           ProjectionMode::Any);
-                let cause = traits::ObligationCause::dummy();
-                let norm = traits::fully_normalize(&infcx,
-                                                   cause,
-                                                   &t_ret_subst);
+                let is_nil = InferCtxt::enter(self.ir.tcx, None, Some(param_env),
+                                              ProjectionMode::Any, |infcx| {
+                    let cause = traits::ObligationCause::dummy();
+                    traits::fully_normalize(&infcx, cause, &t_ret_subst).unwrap().is_nil()
+                });
 
-                if norm.unwrap().is_nil() {
-                    // for nil return types, it is ok to not return a value expl.
-                } else {
+                // for nil return types, it is ok to not return a value expl.
+                if !is_nil {
                     let ends_with_stmt = match body.expr {
                         None if !body.stmts.is_empty() =>
                             match body.stmts.last().unwrap().node {

@@ -85,11 +85,11 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
 
         for (i, &impl1_def_id) in impls.iter().enumerate() {
             for &impl2_def_id in &impls[(i+1)..] {
-                let infcx = InferCtxt::new(self.tcx, &self.tcx.tables, None,
-                                           ProjectionMode::Topmost);
-                if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
-                    self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
-                }
+                InferCtxt::enter(self.tcx, None, None, ProjectionMode::Topmost, |infcx| {
+                    if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
+                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
+                    }
+                });
             }
         }
     }
@@ -138,24 +138,12 @@ impl<'cx, 'tcx,'v> intravisit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
 
                 // insertion failed due to overlap
                 if let Err(overlap) = insert_result {
-                    // only print the Self type if it has at least some outer
-                    // concrete shell; otherwise, it's not adding much
-                    // information.
-                    let self_type = {
-                        overlap.on_trait_ref.substs.self_ty().and_then(|ty| {
-                            if ty.has_concrete_skeleton() {
-                                Some(format!(" for type `{}`", ty))
-                            } else {
-                                None
-                            }
-                        }).unwrap_or(String::new())
-                    };
-
                     let mut err = struct_span_err!(
                         self.tcx.sess, self.tcx.span_of_impl(impl_def_id).unwrap(), E0119,
                         "conflicting implementations of trait `{}`{}:",
-                        overlap.on_trait_ref,
-                        self_type);
+                        overlap.trait_desc,
+                        overlap.self_desc.map_or(String::new(),
+                                                 |ty| format!(" for type `{}`", ty)));
 
                     match self.tcx.span_of_impl(overlap.with_impl) {
                         Ok(span) => {

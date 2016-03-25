@@ -37,7 +37,7 @@ pub use self::object_safety::MethodViolationCode;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
-pub use self::specialize::{Overlap, specialization_graph, specializes, translate_substs};
+pub use self::specialize::{OverlapError, specialization_graph, specializes, translate_substs};
 pub use self::util::elaborate_predicates;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
@@ -422,42 +422,43 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    let infcx = InferCtxt::new(tcx, &tcx.tables, Some(elaborated_env),
-                               ProjectionMode::AnyFinal);
-    let predicates = match fully_normalize(&infcx,
-                                           cause,
-                                           &infcx.parameter_environment.caller_bounds) {
-        Ok(predicates) => predicates,
-        Err(errors) => {
-            infcx.report_fulfillment_errors(&errors);
-            return infcx.parameter_environment; // an unnormalized env is better than nothing
-        }
-    };
+    InferCtxt::enter(tcx, None, Some(elaborated_env), ProjectionMode::AnyFinal, |infcx| {
+        let predicates = match fully_normalize(&infcx, cause,
+                                               &infcx.parameter_environment.caller_bounds) {
+            Ok(predicates) => predicates,
+            Err(errors) => {
+                infcx.report_fulfillment_errors(&errors);
+                // An unnormalized env is better than nothing.
+                return infcx.parameter_environment;
+            }
+        };
 
-    debug!("normalize_param_env_or_error: normalized predicates={:?}",
-           predicates);
+        debug!("normalize_param_env_or_error: normalized predicates={:?}",
+            predicates);
 
-    let free_regions = FreeRegionMap::new();
-    infcx.resolve_regions_and_report_errors(&free_regions, body_id);
-    let predicates = match infcx.fully_resolve(&predicates) {
-        Ok(predicates) => predicates,
-        Err(fixup_err) => {
-            // If we encounter a fixup error, it means that some type
-            // variable wound up unconstrained. I actually don't know
-            // if this can happen, and I certainly don't expect it to
-            // happen often, but if it did happen it probably
-            // represents a legitimate failure due to some kind of
-            // unconstrained variable, and it seems better not to ICE,
-            // all things considered.
-            tcx.sess.span_err(span, &fixup_err.to_string());
-            return infcx.parameter_environment; // an unnormalized env is better than nothing
-        }
-    };
+        let free_regions = FreeRegionMap::new();
+        infcx.resolve_regions_and_report_errors(&free_regions, body_id);
+        let predicates = match infcx.fully_resolve(&predicates) {
+            Ok(predicates) => predicates,
+            Err(fixup_err) => {
+                // If we encounter a fixup error, it means that some type
+                // variable wound up unconstrained. I actually don't know
+                // if this can happen, and I certainly don't expect it to
+                // happen often, but if it did happen it probably
+                // represents a legitimate failure due to some kind of
+                // unconstrained variable, and it seems better not to ICE,
+                // all things considered.
+                tcx.sess.span_err(span, &fixup_err.to_string());
+                // An unnormalized env is better than nothing.
+                return infcx.parameter_environment;
+            }
+        };
 
-    debug!("normalize_param_env_or_error: resolved predicates={:?}",
-           predicates);
+        debug!("normalize_param_env_or_error: resolved predicates={:?}",
+            predicates);
 
-    infcx.parameter_environment.with_caller_bounds(predicates)
+        infcx.parameter_environment.with_caller_bounds(predicates)
+    })
 }
 
 pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx, 'tcx>,

@@ -12,8 +12,6 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_param, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
-use rustc::traits::ProjectionMode;
 use abi::{Abi, FnType};
 use adt;
 use attributes;
@@ -155,8 +153,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let symbol = symbol_names::exported_name(ccx, &instance);
 
     // Compute the rust-call form of the closure call method.
-    let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
-    let sig = &infcx.closure_type(closure_id, &substs).sig;
+    let sig = &ty::Tables::closure_type(&tcx.tables, tcx, closure_id, &substs).sig;
     let sig = tcx.erase_late_bound_regions(sig);
     let sig = tcx.normalize_associated_type(&sig);
     let closure_type = tcx.mk_closure_from_closure_substs(closure_id, Box::new(substs));
@@ -220,11 +217,11 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
 
-    let infcx = InferCtxt::normalizing(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
-    let function_type = infcx.closure_type(closure_def_id, closure_substs);
-
-    let sig = tcx.erase_late_bound_regions(&function_type.sig);
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = &ty::Tables::closure_type(&tcx.tables, tcx,
+                                        closure_def_id,
+                                        closure_substs).sig;
+    let sig = tcx.erase_late_bound_regions(sig);
+    let sig = tcx.normalize_associated_type(&sig);
 
     let closure_type = tcx.mk_closure_from_closure_substs(closure_def_id,
         Box::new(closure_substs.clone()));
@@ -344,7 +341,6 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
            closure_def_id, substs, Value(llreffn));
 
     let tcx = ccx.tcx();
-    let infcx = InferCtxt::normalizing(ccx.tcx(), &ccx.tcx().tables, ProjectionMode::Any);
 
     // Find a version of the closure type. Substitute static for the
     // region since it doesn't really matter.
@@ -352,7 +348,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, &substs);
+    let ty::ClosureTy { unsafety, abi, mut sig } =
+        ty::Tables::closure_type(&tcx.tables, tcx, closure_def_id, &substs);
     sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
     let llref_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: unsafety,
@@ -369,7 +366,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     sig.0.inputs[0] = closure_ty;
 
     let sig = tcx.erase_late_bound_regions(&sig);
-    let sig = ccx.tcx().normalize_associated_type(&sig);
+    let sig = tcx.normalize_associated_type(&sig);
     let fn_ty = FnType::new(ccx, abi, &sig, &[]);
 
     let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {

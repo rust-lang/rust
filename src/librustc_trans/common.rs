@@ -1066,53 +1066,49 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
         // Do the initial selection for the obligation. This yields the
         // shallow result we are looking for -- that is, what specific impl.
-        let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
-        let mut selcx = SelectionContext::new(&infcx);
+        let vtable = InferCtxt::enter_normalizing(tcx, ProjectionMode::Any, |infcx| {
+            let mut selcx = SelectionContext::new(&infcx);
 
-        let obligation_cause = traits::ObligationCause::misc(span,
+            let obligation_cause = traits::ObligationCause::misc(span,
                                                              ast::DUMMY_NODE_ID);
-        let obligation = traits::Obligation::new(obligation_cause,
-                                                 trait_ref.to_poly_trait_predicate());
+            let obligation = traits::Obligation::new(obligation_cause,
+                                                     trait_ref.to_poly_trait_predicate());
 
-        let selection = match selcx.select(&obligation) {
-            Ok(Some(selection)) => selection,
-            Ok(None) => {
-                // Ambiguity can happen when monomorphizing during trans
-                // expands to some humongo type that never occurred
-                // statically -- this humongo type can then overflow,
-                // leading to an ambiguous result. So report this as an
-                // overflow bug, since I believe this is the only case
-                // where ambiguity can result.
-                debug!("Encountered ambiguity selecting `{:?}` during trans, \
-                        presuming due to overflow",
-                       trait_ref);
-                tcx.sess.span_fatal(
-                    span,
-                    "reached the recursion limit during monomorphization \
-                     (selection ambiguity)");
-            }
-            Err(e) => {
-                span_bug!(
-                    span,
-                    "Encountered error `{:?}` selecting `{:?}` during trans",
-                    e,
-                    trait_ref)
-            }
-        };
+            let selection = match selcx.select(&obligation) {
+                Ok(Some(selection)) => selection,
+                Ok(None) => {
+                    // Ambiguity can happen when monomorphizing during trans
+                    // expands to some humongo type that never occurred
+                    // statically -- this humongo type can then overflow,
+                    // leading to an ambiguous result. So report this as an
+                    // overflow bug, since I believe this is the only case
+                    // where ambiguity can result.
+                    debug!("Encountered ambiguity selecting `{:?}` during trans, \
+                            presuming due to overflow",
+                           trait_ref);
+                    tcx.sess.span_fatal(span,
+                        "reached the recursion limit during monomorphization \
+                         (selection ambiguity)");
+                }
+                Err(e) => {
+                    span_bug!(span, "Encountered error `{:?}` selecting `{:?}` during trans",
+                              e, trait_ref)
+                }
+            };
 
-        // Currently, we use a fulfillment context to completely resolve
-        // all nested obligations. This is because they can inform the
-        // inference of the impl's type parameters.
-        let mut fulfill_cx = traits::FulfillmentContext::new();
-        let vtable = selection.map(|predicate| {
-            fulfill_cx.register_predicate_obligation(&infcx, predicate);
-        });
-        let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
+            // Currently, we use a fulfillment context to completely resolve
+            // all nested obligations. This is because they can inform the
+            // inference of the impl's type parameters.
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+            let vtable = selection.map(|predicate| {
+                fulfill_cx.register_predicate_obligation(&infcx, predicate);
+            });
+            let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
 
-        info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-
-        vtable
-    })
+            info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
+            vtable
+        })
+    });
 }
 
 /// Normalizes the predicates and checks whether they hold.  If this
@@ -1126,21 +1122,22 @@ pub fn normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
-    let mut selcx = SelectionContext::new(&infcx);
-    let mut fulfill_cx = traits::FulfillmentContext::new();
-    let cause = traits::ObligationCause::dummy();
-    let traits::Normalized { value: predicates, obligations } =
-        traits::normalize(&mut selcx, cause.clone(), &predicates);
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(&infcx, obligation);
-    }
-    for predicate in predicates {
-        let obligation = traits::Obligation::new(cause.clone(), predicate);
-        fulfill_cx.register_predicate_obligation(&infcx, obligation);
-    }
+    InferCtxt::enter_normalizing(tcx, ProjectionMode::Any, |infcx| {
+        let mut selcx = SelectionContext::new(&infcx);
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+        let cause = traits::ObligationCause::dummy();
+        let traits::Normalized { value: predicates, obligations } =
+            traits::normalize(&mut selcx, cause.clone(), &predicates);
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
+        for predicate in predicates {
+            let obligation = traits::Obligation::new(cause.clone(), predicate);
+            fulfill_cx.register_predicate_obligation(&infcx, obligation);
+        }
 
-    infcx.drain_fulfillment_cx(&mut fulfill_cx, &()).is_ok()
+        infcx.drain_fulfillment_cx(&mut fulfill_cx, &()).is_ok()
+    })
 }
 
 pub fn langcall(bcx: Block,

@@ -376,111 +376,111 @@ fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
             debug!("check_implementations_of_coerce_unsized: {:?} -> {:?} (free)",
                    source, target);
 
-            let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env), ProjectionMode::Topmost);
+            InferCtxt::enter(tcx, None, Some(param_env), ProjectionMode::Topmost, |infcx| {
+                let origin = TypeOrigin::Misc(span);
+                let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
+                                   mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
+                    if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
+                        infcx.report_mismatched_types(origin, mk_ptr(mt_b.ty),
+                                                      target, ty::error::TypeError::Mutability);
+                    }
+                    (mt_a.ty, mt_b.ty, unsize_trait, None)
+                };
+                let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
+                    (&ty::TyBox(a), &ty::TyBox(b)) => (a, b, unsize_trait, None),
 
-            let origin = TypeOrigin::Misc(span);
-            let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>, mt_b: ty::TypeAndMut<'tcx>,
-                               mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
-                if (mt_a.mutbl, mt_b.mutbl) == (hir::MutImmutable, hir::MutMutable) {
-                    infcx.report_mismatched_types(origin, mk_ptr(mt_b.ty),
-                                                  target, ty::error::TypeError::Mutability);
-                }
-                (mt_a.ty, mt_b.ty, unsize_trait, None)
-            };
-            let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
-                (&ty::TyBox(a), &ty::TyBox(b)) => (a, b, unsize_trait, None),
-
-                (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
-                    infcx.sub_regions(infer::RelateObjectBound(span), *r_b, *r_a);
-                    check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
-                }
-
-                (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) |
-                (&ty::TyRawPtr(mt_a), &ty::TyRawPtr(mt_b)) => {
-                    check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
-                }
-
-                (&ty::TyStruct(def_a, substs_a), &ty::TyStruct(def_b, substs_b)) => {
-                    if def_a != def_b {
-                        let source_path = tcx.item_path_str(def_a.did);
-                        let target_path = tcx.item_path_str(def_b.did);
-                        span_err!(tcx.sess, span, E0377,
-                                  "the trait `CoerceUnsized` may only be implemented \
-                                   for a coercion between structures with the same \
-                                   definition; expected {}, found {}",
-                                  source_path, target_path);
-                        return;
+                    (&ty::TyRef(r_a, mt_a), &ty::TyRef(r_b, mt_b)) => {
+                        infcx.sub_regions(infer::RelateObjectBound(span), *r_b, *r_a);
+                        check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ref(r_b, ty))
                     }
 
-                    let fields = &def_a.struct_variant().fields;
-                    let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
-                        let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
+                    (&ty::TyRef(_, mt_a), &ty::TyRawPtr(mt_b)) |
+                    (&ty::TyRawPtr(mt_a), &ty::TyRawPtr(mt_b)) => {
+                        check_mutbl(mt_a, mt_b, &|ty| tcx.mk_imm_ptr(ty))
+                    }
 
-                        if f.unsubst_ty().is_phantom_data() {
-                            // Ignore PhantomData fields
-                            None
-                        } else if infcx.sub_types(false, origin, b, a).is_ok() {
-                            // Ignore fields that aren't significantly changed
-                            None
-                        } else {
-                            // Collect up all fields that were significantly changed
-                            // i.e. those that contain T in coerce_unsized T -> U
-                            Some((i, a, b))
+                    (&ty::TyStruct(def_a, substs_a), &ty::TyStruct(def_b, substs_b)) => {
+                        if def_a != def_b {
+                            let source_path = tcx.item_path_str(def_a.did);
+                            let target_path = tcx.item_path_str(def_b.did);
+                            span_err!(tcx.sess, span, E0377,
+                                      "the trait `CoerceUnsized` may only be implemented \
+                                       for a coercion between structures with the same \
+                                       definition; expected {}, found {}",
+                                      source_path, target_path);
+                            return;
                         }
-                    }).collect::<Vec<_>>();
 
-                    if diff_fields.is_empty() {
-                        span_err!(tcx.sess, span, E0374,
-                                  "the trait `CoerceUnsized` may only be implemented \
-                                   for a coercion between structures with one field \
-                                   being coerced, none found");
-                        return;
-                    } else if diff_fields.len() > 1 {
-                        span_err!(tcx.sess, span, E0375,
-                                  "the trait `CoerceUnsized` may only be implemented \
-                                   for a coercion between structures with one field \
-                                   being coerced, but {} fields need coercions: {}",
-                                   diff_fields.len(), diff_fields.iter().map(|&(i, a, b)| {
-                                        format!("{} ({} to {})", fields[i].name, a, b)
-                                   }).collect::<Vec<_>>().join(", "));
-                        return;
+                        let fields = &def_a.struct_variant().fields;
+                        let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
+                            let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
+
+                            if f.unsubst_ty().is_phantom_data() {
+                                // Ignore PhantomData fields
+                                None
+                            } else if infcx.sub_types(false, origin, b, a).is_ok() {
+                                // Ignore fields that aren't significantly changed
+                                None
+                            } else {
+                                // Collect up all fields that were significantly changed
+                                // i.e. those that contain T in coerce_unsized T -> U
+                                Some((i, a, b))
+                            }
+                        }).collect::<Vec<_>>();
+
+                        if diff_fields.is_empty() {
+                            span_err!(tcx.sess, span, E0374,
+                                      "the trait `CoerceUnsized` may only be implemented \
+                                       for a coercion between structures with one field \
+                                       being coerced, none found");
+                            return;
+                        } else if diff_fields.len() > 1 {
+                            span_err!(tcx.sess, span, E0375,
+                                      "the trait `CoerceUnsized` may only be implemented \
+                                       for a coercion between structures with one field \
+                                       being coerced, but {} fields need coercions: {}",
+                                       diff_fields.len(), diff_fields.iter().map(|&(i, a, b)| {
+                                            format!("{} ({} to {})", fields[i].name, a, b)
+                                       }).collect::<Vec<_>>().join(", "));
+                            return;
+                        }
+
+                        let (i, a, b) = diff_fields[0];
+                        let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
+                        (a, b, coerce_unsized_trait, Some(kind))
                     }
 
-                    let (i, a, b) = diff_fields[0];
-                    let kind = ty::adjustment::CustomCoerceUnsized::Struct(i);
-                    (a, b, coerce_unsized_trait, Some(kind))
+                    _ => {
+                        span_err!(tcx.sess, span, E0376,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures");
+                        return;
+                    }
+                };
+
+                let mut fulfill_cx = traits::FulfillmentContext::new();
+
+                // Register an obligation for `A: Trait<B>`.
+                let cause = traits::ObligationCause::misc(span, impl_node_id);
+                let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0,
+                                                            source, vec![target]);
+                fulfill_cx.register_predicate_obligation(&infcx, predicate);
+
+                // Check that all transitive obligations are satisfied.
+                if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
+                    infcx.report_fulfillment_errors(&errors);
                 }
 
-                _ => {
-                    span_err!(tcx.sess, span, E0376,
-                              "the trait `CoerceUnsized` may only be implemented \
-                               for a coercion between structures");
-                    return;
+                // Finally, resolve all regions.
+                let mut free_regions = FreeRegionMap::new();
+                free_regions.relate_free_regions_from_predicates(
+                    &infcx.parameter_environment.caller_bounds);
+                infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
+
+                if let Some(kind) = kind {
+                    tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
                 }
-            };
-
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-
-            // Register an obligation for `A: Trait<B>`.
-            let cause = traits::ObligationCause::misc(span, impl_node_id);
-            let predicate = tcx.predicate_for_trait_def(cause, trait_def_id, 0,
-                                                        source, vec![target]);
-            fulfill_cx.register_predicate_obligation(&infcx, predicate);
-
-            // Check that all transitive obligations are satisfied.
-            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx) {
-                infcx.report_fulfillment_errors(&errors);
-            }
-
-            // Finally, resolve all regions.
-            let mut free_regions = FreeRegionMap::new();
-            free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
-                                                                   .caller_bounds);
-            infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
-
-            if let Some(kind) = kind {
-                tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
-            }
+            });
         });
     }
 }
@@ -511,18 +511,16 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: Def
     err.emit();
 }
 
-pub fn check_coherence(crate_context: &CrateCtxt) {
-    let _task = crate_context.tcx.dep_graph.in_task(DepNode::Coherence);
-    let infcx = InferCtxt::new(crate_context.tcx,
-                               &crate_context.tcx.tables,
-                               None,
-                               ProjectionMode::Topmost);
-    CoherenceChecker {
-        crate_context: crate_context,
-        inference_context: infcx,
-        inherent_impls: RefCell::new(FnvHashMap()),
-    }.check();
-    unsafety::check(crate_context.tcx);
-    orphan::check(crate_context.tcx);
-    overlap::check(crate_context.tcx);
+pub fn check_coherence(ccx: &CrateCtxt) {
+    let _task = ccx.tcx.dep_graph.in_task(DepNode::Coherence);
+    InferCtxt::enter(ccx.tcx, None, None, ProjectionMode::Topmost, |infcx| {
+        CoherenceChecker {
+            crate_context: ccx,
+            inference_context: infcx,
+            inherent_impls: RefCell::new(FnvHashMap()),
+        }.check();
+    });
+    unsafety::check(ccx.tcx);
+    orphan::check(ccx.tcx);
+    overlap::check(ccx.tcx);
 }

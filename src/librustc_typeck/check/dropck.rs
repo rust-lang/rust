@@ -84,43 +84,43 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    let infcx = InferCtxt::new(tcx, &tcx.tables, Some(impl_param_env),
-                               ProjectionMode::AnyFinal);
-    let mut fulfillment_cx = traits::FulfillmentContext::new();
+    InferCtxt::enter(tcx, None, Some(impl_param_env), ProjectionMode::AnyFinal, |infcx| {
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
 
-    let named_type = tcx.lookup_item_type(self_type_did).ty;
-    let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
+        let named_type = tcx.lookup_item_type(self_type_did).ty;
+        let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
 
-    let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
-    let fresh_impl_substs =
-        infcx.fresh_substs_for_generics(drop_impl_span, drop_impl_generics);
-    let fresh_impl_self_ty = drop_impl_ty.subst(tcx, &fresh_impl_substs);
+        let drop_impl_span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
+        let fresh_impl_substs =
+            infcx.fresh_substs_for_generics(drop_impl_span, drop_impl_generics);
+        let fresh_impl_self_ty = drop_impl_ty.subst(tcx, &fresh_impl_substs);
 
-    if let Err(_) = infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
-                                   named_type, fresh_impl_self_ty) {
-        let item_span = tcx.map.span(self_type_node_id);
-        struct_span_err!(tcx.sess, drop_impl_span, E0366,
-                         "Implementations of Drop cannot be specialized")
-            .span_note(item_span,
-                       "Use same sequence of generic type and region \
-                        parameters that is on the struct/enum definition")
-            .emit();
-        return Err(());
-    }
+        if let Err(_) = infcx.eq_types(true, infer::TypeOrigin::Misc(drop_impl_span),
+                                       named_type, fresh_impl_self_ty) {
+            let item_span = tcx.map.span(self_type_node_id);
+            struct_span_err!(tcx.sess, drop_impl_span, E0366,
+                             "Implementations of Drop cannot be specialized")
+                .span_note(item_span,
+                           "Use same sequence of generic type and region \
+                            parameters that is on the struct/enum definition")
+                .emit();
+            return Err(());
+        }
 
-    if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
-        // this could be reached when we get lazy normalization
-        infcx.report_fulfillment_errors(errors);
-        return Err(());
-    }
+        if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
+            // this could be reached when we get lazy normalization
+            infcx.report_fulfillment_errors(errors);
+            return Err(());
+        }
 
     if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
         infcx.report_fulfillment_errors_as_warnings(errors, drop_impl_node_id);
     }
 
-    let free_regions = FreeRegionMap::new();
-    infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_node_id);
-    Ok(())
+        let free_regions = FreeRegionMap::new();
+        infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_node_id);
+        Ok(())
+    })
 }
 
 /// Confirms that every predicate imposed by dtor_predicates is

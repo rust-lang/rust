@@ -1014,48 +1014,47 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            trait_ref);
 
     tcx.populate_implementations_for_trait_if_necessary(trait_ref.def_id());
-    let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::AnyFinal);
+    InferCtxt::enter(tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+        let mut selcx = traits::SelectionContext::new(&infcx);
+        let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
+                                                 trait_ref.to_poly_trait_predicate());
+        let selection = match selcx.select(&obligation) {
+            Ok(Some(vtable)) => vtable,
+            // Still ambiguous, so give up and let the caller decide whether this
+            // expression is really needed yet. Some associated constant values
+            // can't be evaluated until monomorphization is done in trans.
+            Ok(None) => {
+                return None
+            }
+            Err(_) => {
+                return None
+            }
+        };
 
-    let mut selcx = traits::SelectionContext::new(&infcx);
-    let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
-                                             trait_ref.to_poly_trait_predicate());
-    let selection = match selcx.select(&obligation) {
-        Ok(Some(vtable)) => vtable,
-        // Still ambiguous, so give up and let the caller decide whether this
-        // expression is really needed yet. Some associated constant values
-        // can't be evaluated until monomorphization is done in trans.
-        Ok(None) => {
-            return None
-        }
-        Err(_) => {
-            return None
-        }
-    };
-
-    // NOTE: this code does not currently account for specialization, but when
-    // it does so, it should hook into the ProjectionMode to determine when the
-    // constant should resolve; this will also require plumbing through to this
-    // function whether we are in "trans mode" to pick the right ProjectionMode
-    // when constructing the inference context above.
-    match selection {
-        traits::VtableImpl(ref impl_data) => {
-            match tcx.associated_consts(impl_data.impl_def_id)
-                     .iter().find(|ic| ic.name == ti.name) {
-                Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
-                None => match ti.node {
-                    hir::ConstTraitItem(ref ty, Some(ref expr)) => {
-                        Some((&*expr, tcx.ast_ty_to_prim_ty(ty)))
+        // NOTE: this code does not currently account for specialization, but when
+        // it does so, it should hook into the ProjectionMode to determine when the
+        // constant should resolve; this will also require plumbing through to this
+        // function whether we are in "trans mode" to pick the right ProjectionMode
+        // when constructing the inference context above.
+        match selection {
+            traits::VtableImpl(ref impl_data) => {
+                match tcx.associated_consts(impl_data.impl_def_id)
+                        .iter().find(|ic| ic.name == ti.name) {
+                    Some(ic) => lookup_const_by_id(tcx, ic.def_id, None),
+                    None => match ti.node {
+                        hir::ConstTraitItem(ref ty, Some(ref expr)) => {
+                            Some((&*expr, tcx.ast_ty_to_prim_ty(ty)))
+                        },
+                        _ => None,
                     },
-                    _ => None,
-                },
+                }
+            }
+            _ => {
+            span_bug!(ti.span,
+                      "resolve_trait_associated_const: unexpected vtable type")
             }
         }
-        _ => {
-            span_bug!(
-                ti.span,
-                "resolve_trait_associated_const: unexpected vtable type")
-        }
-    }
+    })
 }
 
 fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstInt, ty: ty::Ty) -> CastResult {

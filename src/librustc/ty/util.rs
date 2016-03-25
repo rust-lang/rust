@@ -134,34 +134,34 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(),CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        let infcx = InferCtxt::new(tcx, &tcx.tables, Some(self.clone()),
-                                   ProjectionMode::Topmost);
-
-        let adt = match self_type.sty {
-            ty::TyStruct(struct_def, substs) => {
-                for field in struct_def.all_fields() {
-                    let field_ty = field.ty(tcx, substs);
-                    if infcx.type_moves_by_default(field_ty, span) {
-                        return Err(CopyImplementationError::InfrigingField(
-                            field.name))
-                    }
-                }
-                struct_def
-            }
-            ty::TyEnum(enum_def, substs) => {
-                for variant in &enum_def.variants {
-                    for field in &variant.fields {
+        let adt = InferCtxt::enter(tcx, None, Some(self.clone()),
+                                   ProjectionMode::Topmost, |infcx| {
+            match self_type.sty {
+                ty::TyStruct(struct_def, substs) => {
+                    for field in struct_def.all_fields() {
                         let field_ty = field.ty(tcx, substs);
                         if infcx.type_moves_by_default(field_ty, span) {
-                            return Err(CopyImplementationError::InfrigingVariant(
-                                variant.name))
+                            return Err(CopyImplementationError::InfrigingField(
+                                field.name))
                         }
                     }
+                    Ok(struct_def)
                 }
-                enum_def
+                ty::TyEnum(enum_def, substs) => {
+                    for variant in &enum_def.variants {
+                        for field in &variant.fields {
+                            let field_ty = field.ty(tcx, substs);
+                            if infcx.type_moves_by_default(field_ty, span) {
+                                return Err(CopyImplementationError::InfrigingVariant(
+                                    variant.name))
+                            }
+                        }
+                    }
+                    Ok(enum_def)
+                }
+                _ => Err(CopyImplementationError::NotAnAdt)
             }
-            _ => return Err(CopyImplementationError::NotAnAdt),
-        };
+        })?;
 
         if adt.has_dtor() {
             return Err(CopyImplementationError::HasDestructor)
@@ -512,16 +512,9 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                    param_env: &ParameterEnvironment<'tcx>,
                    bound: ty::BuiltinBound, span: Span) -> bool
     {
-        let infcx = InferCtxt::new(tcx, &tcx.tables, Some(param_env.clone()),
-                                   ProjectionMode::Topmost);
-
-        let is_impld = traits::type_known_to_meet_builtin_bound(&infcx,
-                                                                self, bound, span);
-
-        debug!("Ty::impls_bound({:?}, {:?}) = {:?}",
-               self, bound, is_impld);
-
-        is_impld
+        InferCtxt::enter(tcx, None, Some(param_env.clone()), ProjectionMode::Topmost, |infcx| {
+            traits::type_known_to_meet_builtin_bound(&infcx, self, bound, span)
+        })
     }
 
     // FIXME (@jroesch): I made this public to use it, not sure if should be private
