@@ -394,11 +394,30 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn collect_late_bound_regions<T>(&self, value: &Binder<T>)
-                                         -> FnvHashSet<ty::BoundRegion>
+    /// Returns a set of all late-bound regions that are constrained
+    /// by `value`, meaning that if we instantiate those LBR with
+    /// variables and equate `value` with something else, those
+    /// variables will also be equated.
+    pub fn collect_constrained_late_bound_regions<T>(&self, value: &Binder<T>)
+                                                     -> FnvHashSet<ty::BoundRegion>
         where T : TypeFoldable<'tcx>
     {
-        let mut collector = LateBoundRegionsCollector::new();
+        self.collect_late_bound_regions(value, true)
+    }
+
+    /// Returns a set of all late-bound regions that appear in `value` anywhere.
+    pub fn collect_referenced_late_bound_regions<T>(&self, value: &Binder<T>)
+                                                    -> FnvHashSet<ty::BoundRegion>
+        where T : TypeFoldable<'tcx>
+    {
+        self.collect_late_bound_regions(value, false)
+    }
+
+    fn collect_late_bound_regions<T>(&self, value: &Binder<T>, just_constraint: bool)
+                                     -> FnvHashSet<ty::BoundRegion>
+        where T : TypeFoldable<'tcx>
+    {
+        let mut collector = LateBoundRegionsCollector::new(just_constraint);
         let result = value.skip_binder().visit_with(&mut collector);
         assert!(!result); // should never have stopped early
         collector.regions
@@ -655,13 +674,15 @@ impl<'tcx> TypeVisitor<'tcx> for HasTypeFlagsVisitor {
 struct LateBoundRegionsCollector {
     current_depth: u32,
     regions: FnvHashSet<ty::BoundRegion>,
+    just_constrained: bool,
 }
 
 impl LateBoundRegionsCollector {
-    fn new() -> Self {
+    fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
             current_depth: 1,
             regions: FnvHashSet(),
+            just_constrained: just_constrained,
         }
     }
 }
@@ -673,6 +694,20 @@ impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
 
     fn exit_region_binder(&mut self) {
         self.current_depth -= 1;
+    }
+
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+        // if we are only looking for "constrained" region, we have to
+        // ignore the inputs to a projection, as they may not appear
+        // in the normalized form
+        if self.just_constrained {
+            match t.sty {
+                ty::TyProjection(..) => { return false; }
+                _ => { }
+            }
+        }
+
+        t.super_visit_with(self)
     }
 
     fn visit_region(&mut self, r: ty::Region) -> bool {
