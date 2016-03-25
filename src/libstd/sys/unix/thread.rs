@@ -13,7 +13,7 @@ use prelude::v1::*;
 use alloc::boxed::FnBox;
 use cmp;
 #[cfg(not(any(target_env = "newlib", target_os = "solaris")))]
-use ffi::CString;
+use ffi::CStr;
 use io;
 use libc;
 use mem;
@@ -84,15 +84,12 @@ impl Thread {
     #[cfg(any(target_os = "linux",
               target_os = "android",
               target_os = "emscripten"))]
-    pub fn set_name(name: &str) {
+    pub fn set_name(name: &CStr) {
         const PR_SET_NAME: libc::c_int = 15;
-        let cname = CString::new(name).unwrap_or_else(|_| {
-            panic!("thread name may not contain interior null bytes")
-        });
         // pthread wrapper only appeared in glibc 2.12, so we use syscall
         // directly.
         unsafe {
-            libc::prctl(PR_SET_NAME, cname.as_ptr() as libc::c_ulong, 0, 0, 0);
+            libc::prctl(PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0);
         }
     }
 
@@ -100,32 +97,30 @@ impl Thread {
               target_os = "dragonfly",
               target_os = "bitrig",
               target_os = "openbsd"))]
-    pub fn set_name(name: &str) {
-        let cname = CString::new(name).unwrap();
+    pub fn set_name(name: &CStr) {
         unsafe {
-            libc::pthread_set_name_np(libc::pthread_self(), cname.as_ptr());
+            libc::pthread_set_name_np(libc::pthread_self(), name.as_ptr());
         }
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
-    pub fn set_name(name: &str) {
-        let cname = CString::new(name).unwrap();
+    pub fn set_name(name: &CStr) {
         unsafe {
-            libc::pthread_setname_np(cname.as_ptr());
+            libc::pthread_setname_np(name.as_ptr());
         }
     }
 
     #[cfg(target_os = "netbsd")]
-    pub fn set_name(name: &str) {
+    pub fn set_name(name: &CStr) {
+        use ffi::CString;
         let cname = CString::new(&b"%s"[..]).unwrap();
-        let carg = CString::new(name).unwrap();
         unsafe {
             libc::pthread_setname_np(libc::pthread_self(), cname.as_ptr(),
-                                     carg.as_ptr() as *mut libc::c_void);
+                                     name.as_ptr() as *mut libc::c_void);
         }
     }
     #[cfg(any(target_env = "newlib", target_os = "solaris"))]
-    pub fn set_name(_name: &str) {
+    pub fn set_name(_name: &CStr) {
         // Newlib and Illumos has no way to set a thread name.
     }
 
