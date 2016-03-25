@@ -190,10 +190,10 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                            instance: &Instance<'tcx>,
                                            suffix: Option<&str>)
                                            -> String {
-    let &Instance { def: mut def_id, params: parameters } = instance;
+    let &Instance { def: mut def_id, ref substs } = instance;
 
-    debug!("exported_name_with_opt_suffix(def_id={:?}, parameters={:?}, suffix={:?})",
-           def_id, parameters, suffix);
+    debug!("exported_name_with_opt_suffix(def_id={:?}, substs={:?}, suffix={:?})",
+           def_id, substs, suffix);
 
     if let Some(node_id) = ccx.tcx().map.as_local_node_id(def_id) {
         if let Some(&src_def_id) = ccx.external_srcs().borrow().get(&node_id) {
@@ -234,7 +234,7 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // and should not matter anyhow.
     let instance_ty = ccx.tcx().erase_regions(&instance_ty.ty);
 
-    let hash = get_symbol_hash(ccx, &def_path, instance_ty, parameters.as_slice());
+    let hash = get_symbol_hash(ccx, &def_path, instance_ty, substs.types.as_slice());
 
     let mut buffer = SymbolPathBuffer {
         names: Vec::with_capacity(def_path.data.len())
