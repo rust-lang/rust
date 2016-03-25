@@ -742,8 +742,6 @@
                 if ($(this).val().length === 0) {
                     if (browserSupportsHistoryApi()) {
                         history.replaceState("", "std - Rust", "?search=");
-                    } else {
-                        location.replace("?search=");
                     }
                     $('#main.content').removeClass('hidden');
                     $('#search.content').addClass('hidden');
