@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// revisions: func object clause 
+// revisions: func object clause
 
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
@@ -40,25 +40,25 @@ fn func2(_: for<'a> fn() -> <() as Foo<'a>>::Item) {
 
 #[cfg(object)]
 fn object1(_: Box<for<'a> Fn(<() as Foo<'a>>::Item) -> &'a i32>) {
-    //[object]~^ ERROR return type references lifetime `'a`
+    //[object]~^ ERROR `Output` references lifetime `'a`
     //[object]~| WARNING previously accepted
 }
 
 #[cfg(object)]
 fn object2(_: Box<for<'a> Fn() -> <() as Foo<'a>>::Item>) {
-    //[object]~^ ERROR return type references lifetime `'a`
+    //[object]~^ ERROR `Output` references lifetime `'a`
     //[object]~| WARNING previously accepted
 }
 
 #[cfg(clause)]
 fn clause1<T>() where T: for<'a> Fn(<() as Foo<'a>>::Item) -> &'a i32 {
-    //[clause]~^ ERROR return type references lifetime `'a`
+    //[clause]~^ ERROR `Output` references lifetime `'a`
     //[clause]~| WARNING previously accepted
 }
 
 #[cfg(clause)]
 fn clause2<T>() where T: for<'a> Fn() -> <() as Foo<'a>>::Item {
-    //[clause]~^ ERROR return type references lifetime `'a`
+    //[clause]~^ ERROR `Output` references lifetime `'a`
     //[clause]~| WARNING previously accepted
 }
 
