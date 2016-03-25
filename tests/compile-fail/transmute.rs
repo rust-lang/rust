@@ -19,6 +19,45 @@ unsafe fn _generic<'a, T, U: 'a>(t: &'a T) {
     let _: &'a U = core::intrinsics::transmute(t);
 }
 
+#[deny(transmute_ptr_to_ref)]
+unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
+    let _: &T = std::mem::transmute(p);
+    //~^ ERROR transmute from a pointer type (`*const T`) to a reference type (`&T`)
+    //~| HELP try
+    //~| SUGGESTION = &*p;
+    let _: &T = &*p;
+
+    let _: &mut T = std::mem::transmute(m);
+    //~^ ERROR transmute from a pointer type (`*mut T`) to a reference type (`&mut T`)
+    //~| HELP try
+    //~| SUGGESTION = &mut *m;
+    let _: &mut T = &mut *m;
+
+    let _: &T = std::mem::transmute(m);
+    //~^ ERROR transmute from a pointer type (`*mut T`) to a reference type (`&T`)
+    //~| HELP try
+    //~| SUGGESTION = &*m;
+    let _: &T = &*m;
+
+    let _: &T = std::mem::transmute(o);
+    //~^ ERROR transmute from a pointer type (`*const U`) to a reference type (`&T`)
+    //~| HELP try
+    //~| SUGGESTION = &*(o as *const T);
+    let _: &T = &*(o as *const T);
+
+    let _: &mut T = std::mem::transmute(om);
+    //~^ ERROR transmute from a pointer type (`*mut U`) to a reference type (`&mut T`)
+    //~| HELP try
+    //~| SUGGESTION = &mut *(om as *mut T);
+    let _: &mut T = &mut *(om as *mut T);
+
+    let _: &T = std::mem::transmute(om);
+    //~^ ERROR transmute from a pointer type (`*mut U`) to a reference type (`&T`)
+    //~| HELP try
+    //~| SUGGESTION = &*(om as *const T);
+    let _: &T = &*(om as *const T);
+}
+
 #[deny(useless_transmute)]
 fn useless() {
     unsafe {
