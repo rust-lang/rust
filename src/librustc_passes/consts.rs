@@ -87,8 +87,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         r
     }
 
-    fn with_euv<'b, F, R>(&'b mut self, item_id: Option<ast::NodeId>, f: F) -> R where
-        F: for<'c> FnOnce(&mut euv::ExprUseVisitor<'c, 'c, 'tcx, 'tcx>) -> R,
+    fn with_euv<F, R>(&mut self, item_id: Option<ast::NodeId>, f: F) -> R where
+        F: for<'b> FnOnce(&mut euv::ExprUseVisitor<'b, 'tcx, 'tcx>) -> R,
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
