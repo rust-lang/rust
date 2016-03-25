@@ -1,5 +1,4 @@
 use reexport::*;
-use rustc_const_eval::*;
 use rustc::lint::*;
 use rustc::middle::def;
 use rustc::ty;
@@ -657,7 +656,7 @@ fn normalize_comparison<'a>(op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
         BiLe => Some((Rel::Le, lhs, rhs)),
         BiGt => Some((Rel::Lt, rhs, lhs)),
         BiGe => Some((Rel::Le, rhs, lhs)),
-        _ => return None,
+        _ => None,
     }
 }
 
@@ -669,7 +668,7 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
 
     let normalized = normalize_comparison(op, lhs, rhs);
     if normalized.is_none() { return None; } // Could be an if let, but this prevents rightward drift
-    let (rel, normalized_lhs, normalized_rhs) = normalized.unwrap();
+    let (rel, normalized_lhs, normalized_rhs) = normalized.expect("Unreachable-- is none check above");
 
     let lx = detect_extreme_expr(cx, normalized_lhs);
     let rx = detect_extreme_expr(cx, normalized_rhs);
@@ -818,15 +817,15 @@ enum FullInt {
 }
 
 use std;
-use self::FullInt::*;
-use std::cmp::Ordering::*;
+use std::cmp::Ordering;
 
 impl FullInt {
+    #[allow(cast_sign_loss)]
     fn cmp_s_u(s: &i64, u: &u64) -> std::cmp::Ordering {
         if *s < 0 {
-            Less
+            Ordering::Less
         } else if *u > (i64::max_value() as u64) {
-            Greater
+            Ordering::Greater
         } else {
             (*s as u64).cmp(u)
         }
@@ -835,7 +834,7 @@ impl FullInt {
 
 impl PartialEq for FullInt {
     fn eq(&self, other: &Self) -> bool {
-        self.cmp(other) == Equal
+        self.cmp(other) == Ordering::Equal
     }
 }
 impl Eq for FullInt {}
@@ -843,46 +842,43 @@ impl Eq for FullInt {}
 impl PartialOrd for FullInt {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(match (self, other) {
-            (&S(ref s), &S(ref o)) => s.cmp(o),
-            (&U(ref s), &U(ref o)) => s.cmp(o),
-            (&S(ref s), &U(ref o)) => Self::cmp_s_u(s, o),
-            (&U(ref s), &S(ref o)) => Self::cmp_s_u(o, s).reverse(),
+            (&FullInt::S(ref s), &FullInt::S(ref o)) => s.cmp(o),
+            (&FullInt::U(ref s), &FullInt::U(ref o)) => s.cmp(o),
+            (&FullInt::S(ref s), &FullInt::U(ref o)) => Self::cmp_s_u(s, o),
+            (&FullInt::U(ref s), &FullInt::S(ref o)) => Self::cmp_s_u(o, s).reverse(),
         })
     }
 }
 impl Ord for FullInt {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap()
+        self.partial_cmp(other).expect("partial_cmp for FullInt can never return None")
     }
 }
 
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
-    use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+    use rustc::middle::ty::TypeVariants::{TyInt, TyUint};
+    use syntax::ast::UintTy;
+    use syntax::ast::IntTy;
+    use std::*;
 
     if let ExprCast(ref cast_exp,_) = expr.node {
-        let cv = match const_eval::eval_const_expr_partial(cx.tcx, cast_exp, ExprTypeChecked, None) {
-            Ok(val) => val,
-            Err(_) => return None,
-        };
-
-        if let Integral(const_int) = cv {
-            Some(match const_int {
-                I8(_) => (S(i8::min_value() as i64), S(i8::max_value() as i64)),
-                I16(_) => (S(i16::min_value() as i64), S(i16::max_value() as i64)),
-                I32(_) => (S(i32::min_value() as i64), S(i32::max_value() as i64)),
-                Isize(_) |
-                I64(_) |
-                InferSigned(_) => (S(i64::max_value()), S(i64::max_value())),
-                U8(_) => (U(u8::min_value() as u64), U(u8::max_value() as u64)),
-                U16(_) => (U(u16::min_value() as u64), U(u16::max_value() as u64)),
-                U32(_) => (U(u32::min_value() as u64), U(u32::max_value() as u64)),
-                Usize(_) |
-                U64(_) |
-                Infer(_) => (U(u64::max_value()), U(u64::max_value())),
-            })
-        } else {
-            None
+        match cx.tcx.expr_ty(cast_exp).sty {
+            TyInt(int_ty) => Some(match int_ty {
+                IntTy::I8 => (FullInt::S(i8::min_value() as i64), FullInt::S(i8::max_value() as i64)),
+                IntTy::I16 => (FullInt::S(i16::min_value() as i64), FullInt::S(i16::max_value() as i64)),
+                IntTy::I32 => (FullInt::S(i32::min_value() as i64), FullInt::S(i32::max_value() as i64)),
+                IntTy::I64 => (FullInt::S(i64::min_value() as i64), FullInt::S(i64::max_value() as i64)),
+                IntTy::Is => (FullInt::S(isize::min_value() as i64), FullInt::S(isize::max_value() as i64)),
+            }),
+            TyUint(uint_ty) => Some(match uint_ty {
+                UintTy::U8 => (FullInt::U(u8::min_value() as u64), FullInt::U(u8::max_value() as u64)),
+                UintTy::U16 => (FullInt::U(u16::min_value() as u64), FullInt::U(u16::max_value() as u64)),
+                UintTy::U32 => (FullInt::U(u32::min_value() as u64), FullInt::U(u32::max_value() as u64)),
+                UintTy::U64 => (FullInt::U(u64::min_value() as u64), FullInt::U(u64::max_value() as u64)),
+                UintTy::Us => (FullInt::U(usize::min_value() as u64), FullInt::U(usize::max_value() as u64)),
+            }),
+            _ => None,
         }
     } else {
         None
@@ -891,35 +887,36 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 
 fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
+    use rustc_const_eval::*;
 
     match const_eval::eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
         Ok(val) => {
             if let Integral(const_int) = val {
                 Some(match const_int {
-                    I8(x) => S(x as i64),
-                    I16(x) => S(x as i64),
-                    I32(x) => S(x as i64),
-                    Isize(x) => S(match x {
+                    I8(x) => FullInt::S(x as i64),
+                    I16(x) => FullInt::S(x as i64),
+                    I32(x) => FullInt::S(x as i64),
+                    Isize(x) => FullInt::S(match x {
                         Is32(x_) => x_ as i64,
                         Is64(x_) => x_
                     }),
-                    I64(x) => S(x),
-                    InferSigned(x) => S(x as i64),
-                    U8(x) => U(x as u64),
-                    U16(x) => U(x as u64),
-                    U32(x) => U(x as u64),
-                    Usize(x) => U(match x {
+                    I64(x) => FullInt::S(x),
+                    InferSigned(x) => FullInt::S(x as i64),
+                    U8(x) => FullInt::U(x as u64),
+                    U16(x) => FullInt::U(x as u64),
+                    U32(x) => FullInt::U(x as u64),
+                    Usize(x) => FullInt::U(match x {
                         Us32(x_) => x_ as u64,
                         Us64(x_) => x_,
                     }),
-                    U64(x) => U(x),
-                    Infer(x) => U(x as u64),
+                    U64(x) => FullInt::U(x),
+                    Infer(x) => FullInt::U(x as u64),
                 })
             } else {
                 None
             }
         },
-        Err(_) => return None,
+        Err(_) => None,
     }
 }
 
@@ -928,12 +925,14 @@ impl LateLintPass for InvalidUpcastComparisons {
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
             let normalized = normalize_comparison(cmp.node, lhs, rhs);
             if normalized.is_none() { return; }
-            let (rel, normalized_lhs, normalized_rhs) = normalized.unwrap();
+            let (rel, normalized_lhs, normalized_rhs) = normalized.expect("Unreachable-- is none check above");
 
-            let norm_lhs_bounds = numeric_cast_precast_bounds(cx, normalized_lhs);
-            let norm_rhs_bounds = numeric_cast_precast_bounds(cx, normalized_rhs);
+            let lhs_bounds = numeric_cast_precast_bounds(cx, normalized_lhs);
+            let rhs_bounds = numeric_cast_precast_bounds(cx, normalized_rhs);
 
-            if let Some(nlb) = norm_lhs_bounds {
+            let msg = "Because of the numeric bounds prior to casting, this expression is always ";
+
+            if let Some(nlb) = lhs_bounds {
                 if let Some(norm_rhs_val) = node_as_const_fullint(cx, normalized_rhs) {
                     if match rel {
                         Rel::Lt => nlb.1 < norm_rhs_val,
@@ -942,7 +941,7 @@ impl LateLintPass for InvalidUpcastComparisons {
                         // Expression is always true
                         cx.span_lint(INVALID_UPCAST_COMPARISONS,
                                      expr.span,
-                                     &format!(""));
+                                     &format!("{}{}.", msg, "true"));
                     } else if match rel {
                         Rel::Lt => nlb.0 >= norm_rhs_val,
                         Rel::Le => nlb.0 > norm_rhs_val,
@@ -950,10 +949,10 @@ impl LateLintPass for InvalidUpcastComparisons {
                         // Expression is always false
                         cx.span_lint(INVALID_UPCAST_COMPARISONS,
                                      expr.span,
-                                     &format!(""));
+                                     &format!("{}{}.", msg, "false"));
                     }
                 }
-            } else if let Some(nrb) = norm_rhs_bounds {
+            } else if let Some(nrb) = rhs_bounds {
                 if let Some(norm_lhs_val) = node_as_const_fullint(cx, normalized_lhs) {
                     if match rel {
                         Rel::Lt => norm_lhs_val < nrb.0,
@@ -962,7 +961,7 @@ impl LateLintPass for InvalidUpcastComparisons {
                         // Expression is always true
                         cx.span_lint(INVALID_UPCAST_COMPARISONS,
                                      expr.span,
-                                     &format!(""));
+                                     &format!("{}{}.", msg, "true"));
                     } else if match rel {
                         Rel::Lt => norm_lhs_val >= nrb.1,
                         Rel::Le => norm_lhs_val > nrb.1,
@@ -970,7 +969,7 @@ impl LateLintPass for InvalidUpcastComparisons {
                         // Expression is always false
                         cx.span_lint(INVALID_UPCAST_COMPARISONS,
                                      expr.span,
-                                     &format!(""));
+                                     &format!("{}{}.", msg, "false"));
                     }
                 }
             }
