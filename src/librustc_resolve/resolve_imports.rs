@@ -57,13 +57,6 @@ impl ImportDirectiveSubclass {
     }
 }
 
-/// Whether an import can be shadowed by another import.
-#[derive(Debug,PartialEq,Clone,Copy)]
-pub enum Shadowable {
-    Always,
-    Never,
-}
-
 /// One import directive.
 #[derive(Debug,Clone)]
 pub struct ImportDirective {
@@ -72,7 +65,7 @@ pub struct ImportDirective {
     pub span: Span,
     pub id: NodeId,
     pub is_public: bool, // see note in ImportResolutionPerNamespace about how to use this
-    pub shadowable: Shadowable,
+    pub is_prelude: bool,
 }
 
 impl ImportDirective {
@@ -81,7 +74,7 @@ impl ImportDirective {
                span: Span,
                id: NodeId,
                is_public: bool,
-               shadowable: Shadowable)
+               is_prelude: bool)
                -> ImportDirective {
         ImportDirective {
             module_path: module_path,
@@ -89,7 +82,7 @@ impl ImportDirective {
             span: span,
             id: id,
             is_public: is_public,
-            shadowable: shadowable,
+            is_prelude: is_prelude,
         }
     }
 
@@ -104,9 +97,6 @@ impl ImportDirective {
         };
         if let GlobImport = self.subclass {
             modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
-        }
-        if self.shadowable == Shadowable::Always {
-            modifiers = modifiers | DefModifiers::PRELUDE;
         }
 
         NameBinding {
@@ -135,44 +125,36 @@ pub struct NameResolution<'a> {
 
 impl<'a> NameResolution<'a> {
     fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
-        match self.binding {
-            Some(old_binding) if !old_binding.defined_with(DefModifiers::PRELUDE) => {
-                if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                    self.duplicate_globs.push(binding);
-                } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                    self.duplicate_globs.push(old_binding);
-                    self.binding = Some(binding);
-                } else {
-                    return Err(old_binding);
-                }
+        if let Some(old_binding) = self.binding {
+            if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+                self.duplicate_globs.push(binding);
+            } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+                self.duplicate_globs.push(old_binding);
+                self.binding = Some(binding);
+            } else {
+                return Err(old_binding);
             }
-            _ => self.binding = Some(binding),
+        } else {
+            self.binding = Some(binding);
         }
 
         Ok(())
-    }
-
-    // Returns the resolution of the name assuming no more globs will define it.
-    fn result(&self, allow_private_imports: bool) -> ResolveResult<&'a NameBinding<'a>> {
-        match self.binding {
-            Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) => Success(binding),
-            // If we don't allow private imports and no public imports can define the name, fail.
-            _ if !allow_private_imports && self.pub_outstanding_references == 0 &&
-                 !self.binding.map(NameBinding::is_public).unwrap_or(false) => Failed(None),
-            _ if self.outstanding_references > 0 => Indeterminate,
-            Some(binding) => Success(binding),
-            None => Failed(None),
-        }
     }
 
     // Returns Some(the resolution of the name), or None if the resolution depends
     // on whether more globs can define the name.
     fn try_result(&self, allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
-        match self.result(allow_private_imports) {
-            Success(binding) if binding.defined_with(DefModifiers::PRELUDE) => None,
-            Failed(_) => None,
-            result @ _ => Some(result),
+        match self.binding {
+            Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) =>
+                Some(Success(binding)),
+            // If (1) we don't allow private imports, (2) no public single import can define the
+            // name, and (3) no public glob has defined the name, the resolution depends on globs.
+            _ if !allow_private_imports && self.pub_outstanding_references == 0 &&
+                 !self.binding.map(NameBinding::is_public).unwrap_or(false) => None,
+            _ if self.outstanding_references > 0 => Some(Indeterminate),
+            Some(binding) => Some(Success(binding)),
+            None => None,
         }
     }
 
@@ -202,8 +184,6 @@ impl<'a> NameResolution<'a> {
         };
 
         for duplicate_glob in self.duplicate_globs.iter() {
-            if duplicate_glob.defined_with(DefModifiers::PRELUDE) { continue }
-
             // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
             if !binding.is_import() {
                 if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
@@ -259,7 +239,16 @@ impl<'a> ::ModuleS<'a> {
             }
         }
 
-        resolution.result(true)
+        Failed(None)
+    }
+
+    // Invariant: this may not be called until import resolution is complete.
+    pub fn resolve_name_in_lexical_scope(&self, name: Name, ns: Namespace)
+                                         -> Option<&'a NameBinding<'a>> {
+        self.resolutions.borrow().get(&(name, ns)).and_then(|resolution| resolution.binding)
+            .or_else(|| self.prelude.borrow().and_then(|prelude| {
+                prelude.resolve_name(name, ns, false).success()
+            }))
     }
 
     // Define the name or return the existing binding if there is a collision.
@@ -369,7 +358,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // resolution for it so that later resolve stages won't complain.
         if let SingleImport { target, .. } = e.import_directive.subclass {
             let dummy_binding = self.resolver.arenas.alloc_name_binding(NameBinding {
-                modifiers: DefModifiers::PRELUDE,
+                modifiers: DefModifiers::GLOB_IMPORTED,
                 kind: NameBindingKind::Def(Def::Err),
                 span: None,
             });
@@ -623,6 +612,11 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
         build_reduced_graph::populate_module_if_necessary(self.resolver, target_module);
 
+        if directive.is_prelude {
+            *module_.prelude.borrow_mut() = Some(target_module);
+            return Success(());
+        }
+
         // Add to target_module's glob_importers and module_'s resolved_globs
         target_module.glob_importers.borrow_mut().push((module_, directive));
         match *module_.resolved_globs.borrow_mut() {
@@ -683,13 +677,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                       name);
                     let lint = lint::builtin::PRIVATE_IN_PUBLIC;
                     self.resolver.session.add_lint(lint, id, binding.span.unwrap(), msg);
-                }
-            }
-
-            // We can always use methods from the prelude traits
-            for glob_binding in resolution.duplicate_globs.iter() {
-                if glob_binding.defined_with(DefModifiers::PRELUDE) {
-                    module.shadowed_traits.borrow_mut().push(glob_binding);
                 }
             }
         }
