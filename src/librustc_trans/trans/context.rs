@@ -28,7 +28,7 @@ use trans::mir::CachedMir;
 use trans::monomorphize::Instance;
 use trans::collector::{TransItem, TransItemState};
 use trans::type_::{Type, TypeNames};
-use middle::subst::Substs;
+use middle::subst::{Substs, VecPerParamSpace};
 use middle::ty::{self, Ty, TyCtxt};
 use session::config::NoDebugInfo;
 use session::Session;
@@ -551,7 +551,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local
     }
 
-
     /// Get a (possibly) different `CrateContext` from the same
     /// `SharedCrateContext`.
     pub fn rotate(&self) -> CrateContext<'b, 'tcx> {
@@ -855,6 +854,21 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         } else {
             codegen_items.insert(cgi, TransItemState::NotPredictedButGenerated);
         }
+    }
+
+    /// Given the def-id of some item that has no type parameters, make
+    /// a suitable "empty substs" for it.
+    pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
+        let scheme = self.tcx().lookup_item_type(item_def_id);
+        self.empty_substs_for_scheme(&scheme)
+    }
+
+    pub fn empty_substs_for_scheme(&self, scheme: &ty::TypeScheme<'tcx>)
+                                   -> &'tcx Substs<'tcx> {
+        assert!(scheme.generics.types.is_empty());
+        self.tcx().mk_substs(
+            Substs::new(VecPerParamSpace::empty(),
+                        scheme.generics.regions.map(|_| ty::ReStatic)))
     }
 }
 

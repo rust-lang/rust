@@ -487,14 +487,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region {
 
 impl<'tcx> TypeFoldable<'tcx> for subst::Substs<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        let regions = match self.regions {
-            subst::ErasedRegions => subst::ErasedRegions,
-            subst::NonerasedRegions(ref regions) => {
-                subst::NonerasedRegions(regions.fold_with(folder))
-            }
-        };
-
-        subst::Substs { regions: regions,
+        subst::Substs { regions: self.regions.fold_with(folder),
                         types: self.types.fold_with(folder) }
     }
 
@@ -503,10 +496,7 @@ impl<'tcx> TypeFoldable<'tcx> for subst::Substs<'tcx> {
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.types.visit_with(visitor) || match self.regions {
-            subst::ErasedRegions => false,
-            subst::NonerasedRegions(ref regions) => regions.visit_with(visitor),
-        }
+        self.types.visit_with(visitor) || self.regions.visit_with(visitor)
     }
 }
 

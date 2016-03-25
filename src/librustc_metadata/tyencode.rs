@@ -246,22 +246,10 @@ fn enc_vec_per_param_space<'a, 'tcx, T, F>(w: &mut Cursor<Vec<u8>>,
 
 pub fn enc_substs<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                             substs: &subst::Substs<'tcx>) {
-    enc_region_substs(w, cx, &substs.regions);
+    enc_vec_per_param_space(w, cx, &substs.regions,
+                            |w, cx, &r| enc_region(w, cx, r));
     enc_vec_per_param_space(w, cx, &substs.types,
                             |w, cx, &ty| enc_ty(w, cx, ty));
-}
-
-fn enc_region_substs(w: &mut Cursor<Vec<u8>>, cx: &ctxt, substs: &subst::RegionSubsts) {
-    match *substs {
-        subst::ErasedRegions => {
-            write!(w, "e");
-        }
-        subst::NonerasedRegions(ref regions) => {
-            write!(w, "n");
-            enc_vec_per_param_space(w, cx, regions,
-                                    |w, cx, &r| enc_region(w, cx, r));
-        }
-    }
 }
 
 pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: ty::Region) {

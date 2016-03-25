@@ -272,7 +272,7 @@ fn get_const_val<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            param_substs: &'tcx Substs<'tcx>)
                            -> Result<ValueRef, ConstEvalFailure> {
     let expr = get_const_expr(ccx, def_id, ref_expr, param_substs);
-    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+    let empty_substs = ccx.tcx().mk_substs(Substs::empty());
     match get_const_expr_as_global(ccx, expr, ConstQualif::empty(), empty_substs, TrueConst::Yes) {
         Err(Runtime(err)) => {
             ccx.tcx().sess.span_err(expr.span, &err.description());
@@ -1148,7 +1148,7 @@ pub fn trans_static(ccx: &CrateContext,
         let def_id = ccx.tcx().map.local_def_id(id);
         let datum = get_static(ccx, def_id);
 
-        let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+        let empty_substs = ccx.tcx().mk_substs(Substs::empty());
         let (v, _) = const_expr(
             ccx,
             expr,

@@ -1144,13 +1144,13 @@ impl LateLintPass for GatherNodeLevels {
     }
 }
 
-enum CheckLintNameResult<'a> {
+enum CheckLintNameResult {
     Ok,
     // Lint doesn't exist
     NoLint,
-    // The lint is either renamed or removed and a warning was
-    // generated in the DiagnosticBuilder
-    Mentioned(DiagnosticBuilder<'a>)
+    // The lint is either renamed or removed. This is the warning
+    // message.
+    Warning(String)
 }
 
 /// Checks the name of a lint for its existence, and whether it was
@@ -1160,27 +1160,18 @@ enum CheckLintNameResult<'a> {
 /// it emits non-fatal warnings and there are *two* lint passes that
 /// inspect attributes, this is only run from the late pass to avoid
 /// printing duplicate warnings.
-fn check_lint_name<'a>(sess: &'a Session,
-                       lint_cx: &LintStore,
-                       lint_name: &str,
-                       span: Option<Span>) -> CheckLintNameResult<'a> {
+fn check_lint_name(lint_cx: &LintStore,
+                   lint_name: &str) -> CheckLintNameResult {
     match lint_cx.by_name.get(lint_name) {
         Some(&Renamed(ref new_name, _)) => {
-            let warning = format!("lint {} has been renamed to {}",
-                                  lint_name, new_name);
-            let db = match span {
-                Some(span) => sess.struct_span_warn(span, &warning[..]),
-                None => sess.struct_warn(&warning[..]),
-            };
-            CheckLintNameResult::Mentioned(db)
+            CheckLintNameResult::Warning(
+                format!("lint {} has been renamed to {}", lint_name, new_name)
+            )
         },
         Some(&Removed(ref reason)) => {
-            let warning = format!("lint {} has been removed: {}", lint_name, reason);
-            let db = match span {
-                Some(span) => sess.struct_span_warn(span, &warning[..]),
-                None => sess.struct_warn(&warning[..])
-            };
-            CheckLintNameResult::Mentioned(db)
+            CheckLintNameResult::Warning(
+                format!("lint {} has been removed: {}", lint_name, reason)
+            )
         },
         None => {
             match lint_cx.lint_groups.get(lint_name) {
@@ -1209,10 +1200,12 @@ fn check_lint_name_attribute(cx: &LateContext, attr: &ast::Attribute) {
                 continue;
             }
             Ok((lint_name, _, span)) => {
-                match check_lint_name(&cx.tcx.sess, &cx.lints, &lint_name[..], Some(span)) {
+                match check_lint_name(&cx.lints,
+                                      &lint_name[..]) {
                     CheckLintNameResult::Ok => (),
-                    CheckLintNameResult::Mentioned(mut db) => {
-                        db.emit();
+                    CheckLintNameResult::Warning(ref msg) => {
+                        cx.span_lint(builtin::RENAMED_AND_REMOVED_LINTS,
+                                     span, msg);
                     }
                     CheckLintNameResult::NoLint => {
                         cx.span_lint(builtin::UNKNOWN_LINTS, span,
@@ -1228,9 +1221,11 @@ fn check_lint_name_attribute(cx: &LateContext, attr: &ast::Attribute) {
 // Checks the validity of lint names derived from the command line
 fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
                            lint_name: &str, level: Level) {
-    let db = match check_lint_name(sess, lint_cx, lint_name, None) {
+    let db = match check_lint_name(lint_cx, lint_name) {
         CheckLintNameResult::Ok => None,
-        CheckLintNameResult::Mentioned(db) => Some(db),
+        CheckLintNameResult::Warning(ref msg) => {
+            Some(sess.struct_warn(msg))
+        },
         CheckLintNameResult::NoLint => {
             Some(sess.struct_err(&format!("unknown lint: `{}`", lint_name)))
         }

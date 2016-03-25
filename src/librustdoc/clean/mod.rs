@@ -606,7 +606,7 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBound
 
 fn external_path_params(cx: &DocContext, trait_did: Option<DefId>,
                         bindings: Vec<TypeBinding>, substs: &subst::Substs) -> PathParameters {
-    let lifetimes = substs.regions().get_slice(subst::TypeSpace)
+    let lifetimes = substs.regions.get_slice(subst::TypeSpace)
                     .iter()
                     .filter_map(|v| v.clean(cx))
                     .collect();
@@ -739,7 +739,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
     fn clean(&self, cx: &DocContext) -> Option<Vec<TyParamBound>> {
         let mut v = Vec::new();
-        v.extend(self.regions().iter().filter_map(|r| r.clean(cx)).map(RegionBound));
+        v.extend(self.regions.iter().filter_map(|r| r.clean(cx)).map(RegionBound));
         v.extend(self.types.iter().map(|t| TraitBound(PolyTrait {
             trait_: t.clean(cx),
             lifetimes: vec![]
