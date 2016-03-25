@@ -48,7 +48,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_deprecation(&cdata, def.index)
     }
 
-    fn visibility(&self, def: DefId) -> hir::Visibility {
+    fn visibility(&self, def: DefId) -> ty::Visibility {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_visibility(&cdata, def.index)
     }
@@ -536,7 +536,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut visible_parent_map = self.visible_parent_map.borrow_mut();
         if !visible_parent_map.is_empty() { return visible_parent_map; }
 
-        use rustc::hir;
         use rustc::middle::cstore::{CrateStore, ChildItem};
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;
@@ -552,7 +551,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
             let mut bfs_queue = &mut VecDeque::new();
             let mut add_child = |bfs_queue: &mut VecDeque<_>, child: ChildItem, parent: DefId| {
                 let child = match child.def {
-                    DefLike::DlDef(def) if child.vis == hir::Public => def.def_id(),
+                    DefLike::DlDef(def) if child.vis == ty::Visibility::Public => def.def_id(),
                     _ => return,
                 };
 

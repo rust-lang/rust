@@ -383,11 +383,11 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn item_is_visible(&self, did: DefId) -> bool {
-        let visibility = match self.tcx.map.as_local_node_id(did) {
-            Some(node_id) => self.tcx.map.expect_item(node_id).vis,
-            None => self.tcx.sess.cstore.visibility(did),
+        let is_public = match self.tcx.map.as_local_node_id(did) {
+            Some(node_id) => self.tcx.map.expect_item(node_id).vis == hir::Public,
+            None => self.tcx.sess.cstore.visibility(did) == ty::Visibility::Public,
         };
-        visibility == hir::Public || self.private_accessible(did)
+        is_public || self.private_accessible(did)
     }
 
     /// True if `did` is private-accessible
@@ -401,7 +401,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Checks that a field is in scope.
     fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
         if def.adt_kind() == ty::AdtKind::Struct &&
-                field.vis != hir::Public && !self.private_accessible(def.did) {
+                field.vis != ty::Visibility::Public && !self.private_accessible(def.did) {
             span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
                       field.name, self.tcx.item_path_str(def.did));
         }
@@ -464,7 +464,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         _ => expr_ty
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
-                        f.vis != hir::Public && !self.private_accessible(def.did)
+                        f.vis != ty::Visibility::Public && !self.private_accessible(def.did)
                     });
                     if any_priv {
                         span_err!(self.tcx.sess, expr.span, E0450,
@@ -548,8 +548,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
     /// Such qualifiers can be set by syntax extensions even if the parser doesn't allow them,
     /// so we check things like variant fields too.
     fn check_sane_privacy(&self, item: &hir::Item) {
-        let check_inherited = |sp, vis, note: &str| {
-            if vis != hir::Inherited {
+        let check_inherited = |sp, vis: &hir::Visibility, note: &str| {
+            if *vis != hir::Inherited {
                 let mut err = struct_span_err!(self.tcx.sess, sp, E0449,
                                                "unnecessary visibility qualifier");
                 if !note.is_empty() {
@@ -561,29 +561,29 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 
         match item.node {
             hir::ItemImpl(_, _, _, Some(..), _, ref impl_items) => {
-                check_inherited(item.span, item.vis,
+                check_inherited(item.span, &item.vis,
                                 "visibility qualifiers have no effect on trait impls");
                 for impl_item in impl_items {
-                    check_inherited(impl_item.span, impl_item.vis,
+                    check_inherited(impl_item.span, &impl_item.vis,
                                     "visibility qualifiers have no effect on trait impl items");
                 }
             }
             hir::ItemImpl(_, _, _, None, _, _) => {
-                check_inherited(item.span, item.vis,
+                check_inherited(item.span, &item.vis,
                                 "place qualifiers on individual methods instead");
             }
             hir::ItemDefaultImpl(..) => {
-                check_inherited(item.span, item.vis,
+                check_inherited(item.span, &item.vis,
                                 "visibility qualifiers have no effect on trait impls");
             }
             hir::ItemForeignMod(..) => {
-                check_inherited(item.span, item.vis,
+                check_inherited(item.span, &item.vis,
                                 "place qualifiers on individual functions instead");
             }
             hir::ItemEnum(ref def, _) => {
                 for variant in &def.variants {
                     for field in variant.node.data.fields() {
-                        check_inherited(field.span, field.vis,
+                        check_inherited(field.span, &field.vis,
                                         "visibility qualifiers have no effect on variant fields");
                     }
                 }
@@ -659,8 +659,8 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn item_is_public(&self, id: &ast::NodeId, vis: hir::Visibility) -> bool {
-        self.access_levels.is_reachable(*id) || vis == hir::Public
+    fn item_is_public(&self, id: &ast::NodeId, vis: &hir::Visibility) -> bool {
+        self.access_levels.is_reachable(*id) || *vis == hir::Public
     }
 }
 
@@ -789,7 +789,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
                                 match impl_item.node {
                                     hir::ImplItemKind::Const(..) |
                                     hir::ImplItemKind::Method(..)
-                                        if self.item_is_public(&impl_item.id, impl_item.vis) =>
+                                        if self.item_is_public(&impl_item.id, &impl_item.vis) =>
                                     {
                                         intravisit::walk_impl_item(self, impl_item)
                                     }
@@ -831,14 +831,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
                     for impl_item in impl_items {
                         match impl_item.node {
                             hir::ImplItemKind::Const(..) => {
-                                if self.item_is_public(&impl_item.id, impl_item.vis) {
+                                if self.item_is_public(&impl_item.id, &impl_item.vis) {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
                             }
                             hir::ImplItemKind::Method(ref sig, _) => {
                                 if sig.explicit_self.node == hir::SelfStatic &&
-                                      self.item_is_public(&impl_item.id, impl_item.vis) {
+                                      self.item_is_public(&impl_item.id, &impl_item.vis) {
                                     found_pub_static = true;
                                     intravisit::walk_impl_item(self, impl_item);
                                 }
@@ -858,7 +858,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
             hir::ItemTy(..) => return,
 
             // not at all public, so we don't care
-            _ if !self.item_is_public(&item.id, item.vis) => {
+            _ if !self.item_is_public(&item.id, &item.vis) => {
                 return;
             }
 

@@ -16,7 +16,7 @@ use hir::def::Def;
 use hir::def_id::DefId;
 use rustc::ty::subst;
 use rustc::traits;
-use rustc::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable, Visibility};
 use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
 use rustc::infer;
 
@@ -343,7 +343,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let def = pick.item.def();
 
     if let probe::InherentImplPick = pick.kind {
-        if pick.item.vis() != hir::Public && !fcx.private_item_is_visible(def.def_id()) {
+        if pick.item.vis() != Visibility::Public && !fcx.private_item_is_visible(def.def_id()) {
             let msg = format!("{} `{}` is private", def.kind_name(), &method_name.as_str());
             fcx.tcx().sess.span_err(span, &msg);
         }

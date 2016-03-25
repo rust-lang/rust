@@ -116,7 +116,7 @@ pub const LOCAL_CRATE: ast::CrateNum = 0;
 pub struct ChildItem {
     pub def: DefLike,
     pub name: ast::Name,
-    pub vis: hir::Visibility
+    pub vis: ty::Visibility,
 }
 
 pub enum FoundAst<'ast> {
@@ -157,7 +157,7 @@ pub trait CrateStore<'tcx> : Any {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
-    fn visibility(&self, def: DefId) -> hir::Visibility;
+    fn visibility(&self, def: DefId) -> ty::Visibility;
     fn closure_kind(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
                     -> ty::ClosureKind;
     fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
@@ -334,7 +334,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // item info
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
-    fn visibility(&self, def: DefId) -> hir::Visibility { bug!("visibility") }
+    fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
     fn closure_kind(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
                     -> ty::ClosureKind  { bug!("closure_kind") }
     fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId)
