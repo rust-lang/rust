@@ -1892,18 +1892,11 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                         Item {
                             source: Span::empty(),
                             name: Some(field.name.clean(cx)),
-                            attrs: Vec::new(),
+                            attrs: cx.tcx().get_attrs(field.did).clean(cx),
                             visibility: Some(field.vis),
-                            // FIXME: this is not accurate, we need an id for
-                            //        the specific field but we're using the id
-                            //        for the whole variant. Thus we read the
-                            //        stability from the whole variant as well.
-                            //        Struct variants are experimental and need
-                            //        more infrastructure work before we can get
-                            //        at the needed information here.
-                            def_id: self.did,
-                            stability: get_stability(cx, self.did),
-                            deprecation: get_deprecation(cx, self.did),
+                            def_id: field.did,
+                            stability: get_stability(cx, field.did),
+                            deprecation: get_deprecation(cx, field.did),
                             inner: StructFieldItem(
                                 TypedStructField(field.unsubst_ty().clean(cx))
                             )
@@ -1916,7 +1909,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
             name: Some(self.name.clean(cx)),
             attrs: inline::load_attrs(cx, cx.tcx(), self.did),
             source: Span::empty(),
-            visibility: Some(hir::Public),
+            visibility: Some(hir::Inherited),
             def_id: self.did,
             inner: VariantItem(Variant { kind: kind }),
             stability: get_stability(cx, self.did),
