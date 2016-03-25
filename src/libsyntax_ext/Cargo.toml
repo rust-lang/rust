@@ -10,4 +10,5 @@ crate-type = ["dylib"]
 
 [dependencies]
 fmt_macros = { path = "../libfmt_macros" }
+log = { path = "../liblog" }
 syntax = { path = "../libsyntax" }
