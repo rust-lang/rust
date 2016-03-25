@@ -747,9 +747,9 @@ impl<'a> LifetimeContext<'a> {
                        lifetime_ref: &hir::Lifetime,
                        def: DefRegion) {
         if lifetime_ref.id == ast::DUMMY_NODE_ID {
-            self.sess.span_bug(lifetime_ref.span,
-                               "lifetime reference not renumbered, \
-                               probably a bug in syntax::fold");
+            span_bug!(lifetime_ref.span,
+                      "lifetime reference not renumbered, \
+                       probably a bug in syntax::fold");
         }
 
         debug!("lifetime_ref={:?} id={:?} resolved to {:?}",

@@ -339,10 +339,10 @@ impl<'cx, 'tcx> ty::fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
             // Early-bound regions should really have been substituted away before
             // we get to this point.
             ty::ReEarlyBound(..) => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     self.span,
-                    &format!("Encountered early bound region when generalizing: {:?}",
-                            r));
+                    "Encountered early bound region when generalizing: {:?}",
+                    r);
             }
 
             // Always make a fresh region variable for skolemized regions;

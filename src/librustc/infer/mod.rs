@@ -536,10 +536,10 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
     match drain_fulfillment_cx(infcx, fulfill_cx, result) {
         Ok(v) => v,
         Err(errors) => {
-            infcx.tcx.sess.span_bug(
+            span_bug!(
                 span,
-                &format!("Encountered errors `{:?}` fulfilling during trans",
-                         errors));
+                "Encountered errors `{:?}` fulfilling during trans",
+                errors);
         }
     }
 }

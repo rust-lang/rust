@@ -1275,9 +1275,9 @@ pub fn check_crate(tcx: &TyCtxt, access_levels: &AccessLevels) {
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v {
-            tcx.sess.span_bug(span,
-                              &format!("unprocessed lint {} at {}: {}",
-                                       lint.as_str(), tcx.map.node_to_string(*id), *msg))
+            span_bug!(span,
+                      "unprocessed lint {} at {}: {}",
+                      lint.as_str(), tcx.map.node_to_string(*id), *msg)
         }
     }
 
@@ -1314,9 +1314,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v {
-            sess.span_bug(span,
-                          &format!("unprocessed lint {}: {}",
-                                   lint.as_str(), *msg))
+            span_bug!(span, "unprocessed lint {}: {}", lint.as_str(), *msg)
         }
     }
 }
