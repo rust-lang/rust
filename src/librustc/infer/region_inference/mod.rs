@@ -413,7 +413,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.bound_count.set(sc + 1);
 
         if sc >= self.bound_count.get() {
-            self.tcx.sess.bug("rollover in RegionInference new_bound()");
+            bug!("rollover in RegionInference new_bound()");
         }
 
         ReLateBound(debruijn, BrFresh(sc))
@@ -733,7 +733,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (_, ReLateBound(..)) |
             (ReEarlyBound(..), _) |
             (_, ReEarlyBound(..)) => {
-                self.tcx.sess.bug(&format!("cannot relate bound region: LUB({:?}, {:?})", a, b));
+                bug!("cannot relate bound region: LUB({:?}, {:?})", a, b);
             }
 
             (ReStatic, _) | (_, ReStatic) => {

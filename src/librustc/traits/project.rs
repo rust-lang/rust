@@ -719,8 +719,8 @@ fn project_type<'cx,'tcx>(
                     // The essential problem here is that the projection fails,
                     // leaving two unnormalized types, which appear not to unify
                     // -- so the overlap check succeeds, when it should fail.
-                    selcx.tcx().sess.bug("Tried to project an inherited associated type during \
-                                          coherence checking, which is currently not supported.");
+                    bug!("Tried to project an inherited associated type during \
+                          coherence checking, which is currently not supported.");
                 }
             }
         }

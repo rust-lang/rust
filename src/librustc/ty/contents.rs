@@ -247,7 +247,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
                 ty::TyInfer(_) |
                 ty::TyError => {
-                    cx.sess.bug("asked to compute contents of error type");
+                    bug!("asked to compute contents of error type");
                 }
             };
 

@@ -183,7 +183,7 @@ impl LintStore {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
                     (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
-                    (Some(sess), false) => sess.bug(&msg[..]),
+                    (Some(_), false) => bug!("{}", msg),
 
                     // A duplicate name from a plugin is a user error.
                     (Some(sess), true)  => sess.err(&msg[..]),
@@ -221,7 +221,7 @@ impl LintStore {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
                 (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
-                (Some(sess), false) => sess.bug(&msg[..]),
+                (Some(_), false) => bug!("{}", msg),
 
                 // A duplicate name from a plugin is a user error.
                 (Some(sess), true)  => sess.err(&msg[..]),
@@ -447,7 +447,7 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
         (Warn, None)     => sess.struct_warn(&msg[..]),
         (Deny, Some(sp)) => sess.struct_span_err(sp, &msg[..]),
         (Deny, None)     => sess.struct_err(&msg[..]),
-        _ => sess.bug("impossible level in raw_emit_lint"),
+        _ => bug!("impossible level in raw_emit_lint"),
     };
 
     // Check for future incompatibility lints and issue a stronger warning.

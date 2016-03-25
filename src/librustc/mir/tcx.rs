@@ -70,7 +70,7 @@ impl<'tcx> LvalueTy<'tcx> {
                                              variant_index: index }
                     }
                     _ => {
-                        tcx.sess.bug(&format!("cannot downcast non-enum type: `{:?}`", self))
+                        bug!("cannot downcast non-enum type: `{:?}`", self)
                     }
                 },
             ProjectionElem::Field(_, fty) => LvalueTy::Ty { ty: fty }

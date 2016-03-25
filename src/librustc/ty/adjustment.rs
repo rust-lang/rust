@@ -159,9 +159,8 @@ impl<'tcx> ty::TyS<'tcx> {
                                 cx.mk_ty(ty::TyFnPtr(b))
                             }
                             _ => {
-                                cx.sess.bug(
-                                    &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
-                                              {:?}", self));
+                                bug!("AdjustReifyFnPointer adjustment on non-fn-item: {:?}",
+                                     self);
                             }
                         }
                     }
@@ -170,10 +169,8 @@ impl<'tcx> ty::TyS<'tcx> {
                         match self.sty {
                             ty::TyFnPtr(b) => cx.safe_to_unsafe_fn_ty(b),
                             ref b => {
-                                cx.sess.bug(
-                                    &format!("AdjustUnsafeFnPointer adjustment on non-fn-ptr: \
-                                             {:?}",
-                                            b));
+                                bug!("AdjustUnsafeFnPointer adjustment on non-fn-ptr: {:?}",
+                                     b);
                             }
                         }
                     }
@@ -185,10 +182,8 @@ impl<'tcx> ty::TyS<'tcx> {
                                 mutbl: hir::MutImmutable
                             }),
                             ref b => {
-                                cx.sess.bug(
-                                    &format!("AdjustMutToConstPointer on non-raw-ptr: \
-                                             {:?}",
-                                            b));
+                                bug!("AdjustMutToConstPointer on non-raw-ptr: {:?}",
+                                     b);
                             }
                         }
                     }

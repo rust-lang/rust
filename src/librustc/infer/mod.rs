@@ -471,7 +471,7 @@ pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     match (a.trait_ref, b.trait_ref) {
         (Some(a_ref), Some(b_ref)) => mk_eq_trait_refs(cx, a_is_expected, origin, a_ref, b_ref),
         (None, None) => mk_eqty(cx, a_is_expected, origin, a.self_ty, b.self_ty),
-        _ => cx.tcx.sess.bug("mk_eq_impl_headers given mismatched impl kinds"),
+        _ => bug!("mk_eq_impl_headers given mismatched impl kinds"),
     }
 }
 
@@ -1114,9 +1114,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             None if self.errors_since_creation() =>
                 self.tcx.types.err,
             None => {
-                self.tcx.sess.bug(
-                    &format!("no type for node {}: {} in fcx",
-                            id, self.tcx.map.node_to_string(id)));
+                bug!("no type for node {}: {} in fcx",
+                     id, self.tcx.map.node_to_string(id));
             }
         }
     }
@@ -1125,7 +1124,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match self.tables.borrow().node_types.get(&ex.id) {
             Some(&t) => t,
             None => {
-                self.tcx.sess.bug("no type for expr in fcx");
+                bug!("no type for expr in fcx");
             }
         }
     }

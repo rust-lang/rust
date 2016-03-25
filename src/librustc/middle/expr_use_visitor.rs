@@ -224,7 +224,7 @@ impl OverloadedCallType {
             }
         }
 
-        tcx.sess.bug("overloaded call didn't map to known function trait")
+        bug!("overloaded call didn't map to known function trait")
     }
 
     fn from_method_id(tcx: &TyCtxt, method_id: DefId)

@@ -90,7 +90,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
         };
 
         if output_template.is_empty() {
-            tcx.sess.bug("empty string provided as RUST_REGION_GRAPH");
+            bug!("empty string provided as RUST_REGION_GRAPH");
         }
 
         if output_template.contains('%') {
