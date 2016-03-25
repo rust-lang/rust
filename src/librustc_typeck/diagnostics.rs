@@ -327,6 +327,30 @@ fn main() {
     <Test as Trait1>::foo()
 }
 ```
+
+One last example:
+
+```
+trait F {
+    fn m(&self);
+}
+
+trait G {
+    fn m(&self);
+}
+
+struct X;
+
+impl F for X { fn m(&self) { println!("I am F"); } }
+impl G for X { fn m(&self) { println!("I am G"); } }
+
+fn main() {
+    let f = X;
+
+    F::m(&f); // it displays "I am F"
+    G::m(&f); // it displays "I am G"
+}
+```
 "##,
 
 E0035: r##"
