@@ -39,16 +39,17 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
                 b: &'v hir::Block,
                 s: Span,
                 fn_id: ast::NodeId) {
-        {
-            // FIXME (@jroesch) change this to be an inference context
-            let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
-            let infcx = InferCtxt::new(self.tcx, &self.tcx.tables,
-                                       Some(param_env.clone()),
-                                       ProjectionMode::AnyFinal);
-            let mut delegate = RvalueContextDelegate { tcx: self.tcx, param_env: &param_env };
+        // FIXME (@jroesch) change this to be an inference context
+        let param_env = ParameterEnvironment::for_item(self.tcx, fn_id);
+        InferCtxt::enter(self.tcx, None, Some(param_env.clone()),
+                         ProjectionMode::AnyFinal, |infcx| {
+            let mut delegate = RvalueContextDelegate {
+                tcx: self.tcx,
+                param_env: &param_env
+            };
             let mut euv = euv::ExprUseVisitor::new(&mut delegate, &infcx);
             euv.walk_fn(fd, b);
-        }
+        });
         intravisit::walk_fn(self, fk, fd, b, s)
     }
 }

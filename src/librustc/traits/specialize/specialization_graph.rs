@@ -11,7 +11,7 @@
 use std::cell;
 use std::rc::Rc;
 
-use super::{Overlap, specializes};
+use super::{OverlapError, specializes};
 
 use hir::def_id::DefId;
 use infer::InferCtxt;
@@ -66,7 +66,7 @@ struct Children {
 }
 
 /// The result of attempting to insert an impl into a group of children.
-enum InsertResult<'a, 'tcx: 'a> {
+enum Inserted {
     /// The impl was inserted as a new child in this group of children.
     BecameNewSibling,
 
@@ -75,10 +75,6 @@ enum InsertResult<'a, 'tcx: 'a> {
 
     /// The impl is a specialization of an existing child.
     ShouldRecurseOn(DefId),
-
-    /// The impl has an unresolvable overlap with an existing child (neither
-    /// specializes the other).
-    Overlapped(Overlap<'a, 'tcx, 'tcx>),
 }
 
 impl<'a, 'tcx> Children {
@@ -107,7 +103,7 @@ impl<'a, 'tcx> Children {
               tcx: TyCtxt<'a, 'tcx, 'tcx>,
               impl_def_id: DefId,
               simplified_self: Option<SimplifiedType>)
-              -> InsertResult<'a, 'tcx>
+              -> Result<Inserted, OverlapError>
     {
         for slot in match simplified_self {
             Some(sty) => self.filtered_mut(sty),
@@ -115,41 +111,62 @@ impl<'a, 'tcx> Children {
         } {
             let possible_sibling = *slot;
 
-            let infcx = InferCtxt::new(tcx, &tcx.tables, None, ProjectionMode::Topmost);
-            let overlap = traits::overlapping_impls(&infcx, possible_sibling, impl_def_id);
+            let (le, ge) = InferCtxt::enter(tcx, None, None,
+                                            ProjectionMode::Topmost, |infcx| {
+                let overlap = traits::overlapping_impls(&infcx,
+                                                        possible_sibling,
+                                                        impl_def_id);
+                if let Some(impl_header) = overlap {
+                    let le = specializes(tcx, impl_def_id, possible_sibling);
+                    let ge = specializes(tcx, possible_sibling, impl_def_id);
 
-            if let Some(impl_header) = overlap {
-                let le = specializes(tcx, impl_def_id, possible_sibling);
-                let ge = specializes(tcx, possible_sibling, impl_def_id);
+                    if le == ge {
+                        // overlap, but no specialization; error out
+                        let trait_ref = impl_header.trait_ref.unwrap();
+                        Err(OverlapError {
+                            with_impl: possible_sibling,
+                            trait_desc: trait_ref.to_string(),
+                            self_desc: trait_ref.substs.self_ty().and_then(|ty| {
+                                // only report the Self type if it has at least
+                                // some outer concrete shell; otherwise, it's
+                                // not adding much information.
+                                if ty.has_concrete_skeleton() {
+                                    Some(ty.to_string())
+                                } else {
+                                    None
+                                }
+                            })
+                        })
+                    } else {
+                        Ok((le, ge))
+                    }
+                } else {
+                    Ok((false, false))
+                }
+            })?;
 
-                if le && !ge {
-                    debug!("descending as child of TraitRef {:?}",
-                           tcx.impl_trait_ref(possible_sibling).unwrap());
+            if le && !ge {
+                debug!("descending as child of TraitRef {:?}",
+                       tcx.impl_trait_ref(possible_sibling).unwrap());
 
-                    // the impl specializes possible_sibling
-                    return InsertResult::ShouldRecurseOn(possible_sibling);
-                } else if ge && !le {
-                    debug!("placing as parent of TraitRef {:?}",
-                           tcx.impl_trait_ref(possible_sibling).unwrap());
+                // the impl specializes possible_sibling
+                return Ok(Inserted::ShouldRecurseOn(possible_sibling));
+            } else if ge && !le {
+                debug!("placing as parent of TraitRef {:?}",
+                       tcx.impl_trait_ref(possible_sibling).unwrap());
 
                     // possible_sibling specializes the impl
                     *slot = impl_def_id;
-                    return InsertResult::Replaced(possible_sibling);
-                } else {
-                    // overlap, but no specialization; error out
-                    return InsertResult::Overlapped(Overlap {
-                        with_impl: possible_sibling,
-                        on_trait_ref: impl_header.trait_ref.unwrap(),
-                        in_context: infcx,
-                    });
-                }
+                return Ok(Inserted::Replaced(possible_sibling));
+            } else {
+                // no overlap (error bailed already via ?)
             }
         }
 
         // no overlap with any potential siblings, so add as a new sibling
         debug!("placing as new sibling");
         self.insert_blindly(tcx, impl_def_id);
-        InsertResult::BecameNewSibling
+        Ok(Inserted::BecameNewSibling)
     }
 
     fn iter_mut(&'a mut self) -> Box<Iterator<Item = &'a mut DefId> + 'a> {
@@ -178,7 +195,7 @@ impl<'a, 'tcx> Graph {
     pub fn insert(&mut self,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   impl_def_id: DefId)
-                  -> Result<(), Overlap<'a, 'tcx, 'tcx>> {
+                  -> Result<(), OverlapError> {
         assert!(impl_def_id.is_local());
 
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -207,10 +224,10 @@ impl<'a, 'tcx> Graph {
 
         // Descend the specialization tree, where `parent` is the current parent node
         loop {
-            use self::InsertResult::*;
+            use self::Inserted::*;
 
             let insert_result = self.children.entry(parent).or_insert(Children::new())
-                .insert(tcx, impl_def_id, simplified);
+                .insert(tcx, impl_def_id, simplified)?;
 
             match insert_result {
                 BecameNewSibling => {
@@ -225,9 +242,6 @@ impl<'a, 'tcx> Graph {
                 }
                 ShouldRecurseOn(new_parent) => {
                     parent = new_parent;
-                }
-                Overlapped(error) => {
-                    return Err(error);
                 }
             }
         }

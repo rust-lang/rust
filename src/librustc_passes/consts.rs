@@ -88,17 +88,16 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn with_euv<'b, F, R>(&'b mut self, item_id: Option<ast::NodeId>, f: F) -> R where
-        F: for<'c> FnOnce(&mut euv::ExprUseVisitor<'b, 'c, 'tcx, 'tcx>) -> R,
+        F: for<'c> FnOnce(&mut euv::ExprUseVisitor<'c, 'c, 'tcx, 'tcx>) -> R,
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
             None => self.tcx.empty_parameter_environment()
         };
 
-        let infcx = InferCtxt::new(self.tcx, &self.tcx.tables, Some(param_env),
-                                   ProjectionMode::AnyFinal);
-
-        f(&mut euv::ExprUseVisitor::new(self, &infcx))
+        InferCtxt::enter(self.tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
+            f(&mut euv::ExprUseVisitor::new(self, &infcx))
+        })
     }
 
     fn global_expr(&mut self, mode: Mode, expr: &hir::Expr) -> ConstQualif {

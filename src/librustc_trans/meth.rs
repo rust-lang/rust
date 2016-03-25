@@ -314,13 +314,15 @@ pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
-    let infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Any);
 
     match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
         Some(node_item) => {
+            let substs = InferCtxt::enter_normalizing(tcx, ProjectionMode::Any, |infcx| {
+                traits::translate_substs(&infcx, impl_def_id, substs, node_item.node)
+            });
             ImplMethod {
                 method: node_item.item,
-                substs: traits::translate_substs(&infcx, impl_def_id, substs, node_item.node),
+                substs: substs,
                 is_provided: node_item.node.is_from_trait(),
             }
         }

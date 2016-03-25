@@ -385,12 +385,21 @@ impl fmt::Display for FixupError {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-               tables: &'a RefCell<ty::Tables<'tcx>>,
-               param_env: Option<ty::ParameterEnvironment<'tcx>>,
-               projection_mode: ProjectionMode)
-               -> Self {
-        InferCtxt {
+    pub fn enter<F, R>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       tables: Option<ty::Tables<'tcx>>,
+                       param_env: Option<ty::ParameterEnvironment<'tcx>>,
+                       projection_mode: ProjectionMode,
+                       f: F) -> R
+        where F: for<'b> FnOnce(InferCtxt<'b, 'tcx, 'tcx>) -> R
+    {
+        let new_tables;
+        let tables = if let Some(tables) = tables {
+            new_tables = RefCell::new(tables);
+            &new_tables
+        } else {
+            &tcx.tables
+        };
+        f(InferCtxt {
             tcx: tcx,
             tables: tables,
             type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
@@ -403,16 +412,18 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
             projection_mode: projection_mode,
         tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count()
-        }
+        })
     }
 
-    pub fn normalizing(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                       tables: &'a RefCell<ty::Tables<'tcx>>,
-                       projection_mode: ProjectionMode)
-                       -> Self {
-        let mut infcx = InferCtxt::new(tcx, tables, None, projection_mode);
-        infcx.normalize = true;
-        infcx
+    pub fn enter_normalizing<F, R>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   projection_mode: ProjectionMode,
+                                   f: F) -> R
+        where F: for<'b> FnOnce(InferCtxt<'b, 'tcx, 'tcx>) -> R
+    {
+        InferCtxt::enter(tcx, None, None, projection_mode, |mut infcx| {
+            infcx.normalize = true;
+            f(infcx)
+        })
     }
 }
 
@@ -453,23 +464,23 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             return value;
         }
 
-        let infcx = InferCtxt::new(self, &self.tables, None, ProjectionMode::Any);
-        let mut selcx = traits::SelectionContext::new(&infcx);
-        let cause = traits::ObligationCause::dummy();
-        let traits::Normalized { value: result, obligations } =
-            traits::normalize(&mut selcx, cause, &value);
+        InferCtxt::enter(self, None, None, ProjectionMode::Any, |infcx| {
+            let mut selcx = traits::SelectionContext::new(&infcx);
+            let cause = traits::ObligationCause::dummy();
+            let traits::Normalized { value: result, obligations } =
+                traits::normalize(&mut selcx, cause, &value);
 
-        debug!("normalize_associated_type: result={:?} obligations={:?}",
-            result,
-            obligations);
+            debug!("normalize_associated_type: result={:?} obligations={:?}",
+                   result, obligations);
 
-        let mut fulfill_cx = traits::FulfillmentContext::new();
+            let mut fulfill_cx = traits::FulfillmentContext::new();
 
-        for obligation in obligations {
-            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-        }
+            for obligation in obligations {
+                fulfill_cx.register_predicate_obligation(&infcx, obligation);
+            }
 
-        infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
+            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
+        })
     }
 }
 

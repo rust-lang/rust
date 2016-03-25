@@ -138,25 +138,25 @@ fn test_env<F>(source_string: &str,
     let region_map = region::resolve_crate(&sess, &ast_map);
     let index = stability::Index::new(&ast_map);
     TyCtxt::create_and_enter(&sess,
-                               &arenas,
-                               resolutions.def_map,
-                               named_region_map.unwrap(),
-                               ast_map,
-                               resolutions.freevars,
-                               resolutions.maybe_unused_trait_imports,
-                               region_map,
-                               lang_items,
-                               index,
-                               "test_crate",
-                               |tcx| {
-                                   let infcx = InferCtxt::new(tcx, &tcx.tables, None,
-                                                              ProjectionMode::AnyFinal);
-                                   body(Env { infcx: &infcx });
-                                   let free_regions = FreeRegionMap::new();
-                                   infcx.resolve_regions_and_report_errors(&free_regions,
-                                                                           ast::CRATE_NODE_ID);
-                                   assert_eq!(tcx.sess.err_count(), expected_err_count);
-                               });
+                             &arenas,
+                             resolutions.def_map,
+                             named_region_map.unwrap(),
+                             ast_map,
+                             resolutions.freevars,
+                             resolutions.maybe_unused_trait_imports,
+                             region_map,
+                             lang_items,
+                             index,
+                             "test_crate",
+                             |tcx| {
+        InferCtxt::enter(tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+
+            body(Env { infcx: &infcx });
+            let free_regions = FreeRegionMap::new();
+            infcx.resolve_regions_and_report_errors(&free_regions, ast::CRATE_NODE_ID);
+            assert_eq!(tcx.sess.err_count(), expected_err_count);
+        });
+    });
 }
 
 impl<'a, 'tcx> Env<'a, 'tcx> {

@@ -203,21 +203,17 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     debug!("check_loans(body id={})", body.id);
 
     let param_env = ty::ParameterEnvironment::for_item(bccx.tcx, fn_id);
-    let infcx = InferCtxt::new(bccx.tcx, &bccx.tcx.tables, Some(param_env),
-                               ProjectionMode::AnyFinal);
-
-    let mut clcx = CheckLoanCtxt {
-        bccx: bccx,
-        dfcx_loans: dfcx_loans,
-        move_data: move_data,
-        all_loans: all_loans,
-        param_env: &infcx.parameter_environment
-    };
-
-    {
+    InferCtxt::enter(bccx.tcx, None, Some(param_env), ProjectionMode::AnyFinal, |infcx| {
+        let mut clcx = CheckLoanCtxt {
+            bccx: bccx,
+            dfcx_loans: dfcx_loans,
+            move_data: move_data,
+            all_loans: all_loans,
+            param_env: &infcx.parameter_environment
+        };
         let mut euv = euv::ExprUseVisitor::new(&mut clcx, &infcx);
         euv.walk_fn(decl, body);
-    }
+    });
 }
 
 #[derive(PartialEq)]

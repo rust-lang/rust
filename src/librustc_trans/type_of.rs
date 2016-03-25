@@ -124,8 +124,10 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
 
     // FIXME(eddyb) Temporary sanity check for ty::layout.
-    let infcx = InferCtxt::normalizing(cx.tcx(), &cx.tcx().tables, ProjectionMode::Any);
-    match t.layout(&infcx) {
+    let layout = InferCtxt::enter_normalizing(cx.tcx(), ProjectionMode::Any, |infcx| {
+        t.layout(&infcx)
+    });
+    match layout {
         Ok(layout) => {
             if !type_is_sized(cx.tcx(), t) {
                 if !layout.is_unsized() {

@@ -75,13 +75,12 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
         };
 
         let param_env = ty::ParameterEnvironment::for_item(self.tcx, src.item_id());
-
-        let infcx = InferCtxt::new(self.tcx, &self.tcx.tables, Some(param_env),
-                                   ProjectionMode::AnyFinal);
-
-        let (mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
-
-        pretty::dump_mir(self.tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
+        let mir = InferCtxt::enter(self.tcx, None, Some(param_env),
+                                   ProjectionMode::AnyFinal, |infcx| {
+            let (mir, scope_auxiliary) = f(Cx::new(&infcx, constness));
+            pretty::dump_mir(self.tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
+            mir
+        });
 
         assert!(self.map.map.insert(src.item_id(), mir).is_none())
     }

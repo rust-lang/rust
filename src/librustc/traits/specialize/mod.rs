@@ -31,10 +31,10 @@ use syntax::codemap::DUMMY_SP;
 pub mod specialization_graph;
 
 /// Information pertinent to an overlapping impl error.
-pub struct Overlap<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
-    pub in_context: InferCtxt<'a, 'gcx, 'tcx>,
+pub struct OverlapError {
     pub with_impl: DefId,
-    pub on_trait_ref: ty::TraitRef<'tcx>,
+    pub trait_desc: String,
+    pub self_desc: Option<String>
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -135,8 +135,6 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return false;
     }
 
-    let mut infcx = InferCtxt::normalizing(tcx, &tcx.tables, ProjectionMode::Topmost);
-
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
     let scheme = tcx.lookup_item_type(impl1_def_id);
     let predicates = tcx.lookup_predicates(impl1_def_id);
@@ -148,18 +146,21 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              .unwrap()
                              .subst(tcx, &penv.free_substs);
 
-    // Normalize the trait reference, adding any obligations that arise into the impl1 assumptions
-    let Normalized { value: impl1_trait_ref, obligations: normalization_obligations } = {
-        let selcx = &mut SelectionContext::new(&infcx);
-        traits::normalize(selcx, ObligationCause::dummy(), &impl1_trait_ref)
-    };
-    penv.caller_bounds.extend(normalization_obligations.into_iter().map(|o| o.predicate));
+    InferCtxt::enter_normalizing(tcx, ProjectionMode::Topmost, |mut infcx| {
+        // Normalize the trait reference, adding any obligations
+        // that arise into the impl1 assumptions.
+        let Normalized { value: impl1_trait_ref, obligations: normalization_obligations } = {
+            let selcx = &mut SelectionContext::new(&infcx);
+            traits::normalize(selcx, ObligationCause::dummy(), &impl1_trait_ref)
+        };
+        penv.caller_bounds.extend(normalization_obligations.into_iter().map(|o| o.predicate));
 
-    // Install the parameter environment, taking the predicates of impl1 as assumptions:
-    infcx.parameter_environment = penv;
+        // Install the parameter environment, taking the predicates of impl1 as assumptions:
+        infcx.parameter_environment = penv;
 
-    // Attempt to prove that impl2 applies, given all of the above.
-    fulfill_implication(&infcx, impl1_trait_ref, impl2_def_id).is_ok()
+        // Attempt to prove that impl2 applies, given all of the above.
+        fulfill_implication(&infcx, impl1_trait_ref, impl2_def_id).is_ok()
+    })
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with

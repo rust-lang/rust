@@ -373,22 +373,25 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'tcx> Inherited<'a, 'tcx, 'tcx> {
-    fn new(ccx: &'a CrateCtxt<'a, 'tcx>,
-           tables: &'a RefCell<ty::Tables<'tcx>>,
-           param_env: ty::ParameterEnvironment<'tcx>)
-           -> Inherited<'a, 'tcx, 'tcx> {
-
-        Inherited {
-            ccx: ccx,
-            infcx: InferCtxt::new(ccx.tcx,
-                                  tables,
-                                  Some(param_env),
-                                  ProjectionMode::AnyFinal),
-            fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
-            locals: RefCell::new(NodeMap()),
-            deferred_call_resolutions: RefCell::new(DefIdMap()),
-            deferred_cast_checks: RefCell::new(Vec::new()),
-        }
+    fn enter<F, R>(ccx: &'a CrateCtxt<'a, 'tcx>,
+                   param_env: ty::ParameterEnvironment<'tcx>,
+                   f: F) -> R
+        where F: for<'b> FnOnce(Inherited<'b, 'tcx, 'tcx>) -> R
+    {
+        InferCtxt::enter(ccx.tcx,
+                         Some(ty::Tables::empty()),
+                         Some(param_env),
+                         ProjectionMode::AnyFinal,
+                         |infcx| {
+            f(Inherited {
+                ccx: ccx,
+                infcx: infcx,
+                fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
+                locals: RefCell::new(NodeMap()),
+                deferred_call_resolutions: RefCell::new(DefIdMap()),
+                deferred_cast_checks: RefCell::new(Vec::new()),
+            })
+        })
     }
 
     fn normalize_associated_types_in<T>(&self,
@@ -405,15 +408,6 @@ impl<'a, 'tcx> Inherited<'a, 'tcx, 'tcx> {
                                              value)
     }
 
-}
-
-fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
-                                     tables: &'a RefCell<ty::Tables<'tcx>>)
-                                    -> Inherited<'a, 'tcx, 'tcx> {
-    // It's kind of a kludge to manufacture a fake function context
-    // and statement context, but we might as well do write the code only once
-    let param_env = ccx.tcx.empty_parameter_environment();
-    Inherited::new(ccx, &tables, param_env)
 }
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
@@ -492,36 +486,33 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            raw_fty: Ty<'tcx>,
                            param_env: ty::ParameterEnvironment<'tcx>)
 {
-    match raw_fty.sty {
-        ty::TyFnDef(_, _, ref fn_ty) => {
-            let tables = RefCell::new(ty::Tables::empty());
-            let inh = Inherited::new(ccx, &tables, param_env);
-
-            // Compute the fty from point of view of inside fn.
-            let fn_scope = ccx.tcx.region_maps.call_site_extent(fn_id, body.id);
-            let fn_sig =
-                fn_ty.sig.subst(ccx.tcx, &inh.parameter_environment.free_substs);
-            let fn_sig =
-                ccx.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
-            let fn_sig =
-                inh.normalize_associated_types_in(body.span,
-                                                  body.id,
-                                                  &fn_sig);
-
-            let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
-                               decl, fn_id, body, &inh);
-
-            fcx.select_all_obligations_and_apply_defaults();
-            fcx.closure_analyze_fn(body);
-            fcx.select_obligations_where_possible();
-            fcx.check_casts();
-            fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
-
-            fcx.regionck_fn(fn_id, fn_span, decl, body);
-            fcx.resolve_type_vars_in_fn(decl, body);
-        }
+    let fn_ty = match raw_fty.sty {
+        ty::TyFnDef(_, _, f) => f,
         _ => span_bug!(body.span, "check_bare_fn: function type expected")
-    }
+    };
+
+    Inherited::enter(ccx, param_env, |inh| {
+        // Compute the fty from point of view of inside fn.
+        let fn_scope = ccx.tcx.region_maps.call_site_extent(fn_id, body.id);
+        let fn_sig =
+            fn_ty.sig.subst(ccx.tcx, &inh.parameter_environment.free_substs);
+        let fn_sig =
+            ccx.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
+        let fn_sig =
+            inh.normalize_associated_types_in(body.span, body.id, &fn_sig);
+
+        let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
+                           decl, fn_id, body, &inh);
+
+        fcx.select_all_obligations_and_apply_defaults();
+        fcx.closure_analyze_fn(body);
+        fcx.select_obligations_where_possible();
+        fcx.check_casts();
+        fcx.select_all_obligations_or_error(); // Casts can introduce new obligations.
+
+        fcx.regionck_fn(fn_id, fn_span, decl, body);
+        fcx.resolve_type_vars_in_fn(decl, body);
+    });
 }
 
 struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -1135,22 +1126,22 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn check_const_in_type<'a,'tcx>(ccx: &'a CrateCtxt<'a,'tcx>,
                                 expr: &'tcx hir::Expr,
                                 expected_type: Ty<'tcx>) {
-    let tables = RefCell::new(ty::Tables::empty());
-    let inh = static_inherited_fields(ccx, &tables);
-    let fcx = FnCtxt::new(&inh, ty::FnConverging(expected_type), expr.id);
-    fcx.check_const_with_ty(expr.span, expr, expected_type);
+    Inherited::enter(ccx, ccx.tcx.empty_parameter_environment(), |inh| {
+        let fcx = FnCtxt::new(&inh, ty::FnConverging(expected_type), expr.id);
+        fcx.check_const_with_ty(expr.span, expr, expected_type);
+    });
 }
 
 fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         sp: Span,
                         e: &'tcx hir::Expr,
                         id: ast::NodeId) {
-    let tables = RefCell::new(ty::Tables::empty());
-    let inh = static_inherited_fields(ccx, &tables);
-    let rty = ccx.tcx.node_id_to_type(id);
-    let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), e.id);
-    let declty = fcx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
-    fcx.check_const_with_ty(sp, e, declty);
+    Inherited::enter(ccx, ccx.tcx.empty_parameter_environment(), |inh| {
+        let rty = ccx.tcx.node_id_to_type(id);
+        let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), e.id);
+        let declty = fcx.tcx.lookup_item_type(ccx.tcx.map.local_def_id(id)).ty;
+        fcx.check_const_with_ty(sp, e, declty);
+    });
 }
 
 /// Checks whether a type can be represented in memory. In particular, it
@@ -1206,21 +1197,21 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::Node
     }
 }
 
+#[allow(trivial_numeric_casts)]
 pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                     sp: Span,
                                     vs: &'tcx [hir::Variant],
                                     id: ast::NodeId) {
-    fn do_check<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                          vs: &'tcx [hir::Variant],
-                          id: ast::NodeId,
-                          hint: attr::ReprAttr) {
-        #![allow(trivial_numeric_casts)]
+    let def_id = ccx.tcx.map.local_def_id(id);
+    let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
 
+    if hint != attr::ReprAny && vs.is_empty() {
+        span_err!(ccx.tcx.sess, sp, E0084,
+            "unsupported representation for zero-variant enum");
+    }
+
+    Inherited::enter(ccx, ccx.tcx.empty_parameter_environment(), |inh| {
         let rty = ccx.tcx.node_id_to_type(id);
-        let mut disr_vals: Vec<ty::Disr> = Vec::new();
-
-        let tables = RefCell::new(ty::Tables::empty());
-        let inh = static_inherited_fields(ccx, &tables);
         let fcx = FnCtxt::new(&inh, ty::FnConverging(rty), id);
 
         let repr_type_ty = ccx.tcx.enum_repr_type(Some(&hint)).to_ty(ccx.tcx);
@@ -1233,34 +1224,22 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         let def_id = ccx.tcx.map.local_def_id(id);
 
         let variants = &ccx.tcx.lookup_adt_def(def_id).variants;
+        let mut disr_vals: Vec<ty::Disr> = Vec::new();
         for (v, variant) in vs.iter().zip(variants.iter()) {
             let current_disr_val = variant.disr_val;
 
             // Check for duplicate discriminant values
-            match disr_vals.iter().position(|&x| x == current_disr_val) {
-                Some(i) => {
-                    let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0081,
-                        "discriminant value `{}` already exists", disr_vals[i]);
-                    let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
-                    span_note!(&mut err, ccx.tcx.map.span(variant_i_node_id),
-                        "conflicting discriminant here");
-                    err.emit();
-                }
-                None => {}
+            if let Some(i) = disr_vals.iter().position(|&x| x == current_disr_val) {
+                let mut err = struct_span_err!(ccx.tcx.sess, v.span, E0081,
+                    "discriminant value `{}` already exists", disr_vals[i]);
+                let variant_i_node_id = ccx.tcx.map.as_local_node_id(variants[i].did).unwrap();
+                span_note!(&mut err, ccx.tcx.map.span(variant_i_node_id),
+                    "conflicting discriminant here");
+                err.emit();
             }
             disr_vals.push(current_disr_val);
         }
-    }
-
-    let def_id = ccx.tcx.map.local_def_id(id);
-    let hint = *ccx.tcx.lookup_repr_hints(def_id).get(0).unwrap_or(&attr::ReprAny);
-
-    if hint != attr::ReprAny && vs.is_empty() {
-        span_err!(ccx.tcx.sess, sp, E0084,
-            "unsupported representation for zero-variant enum");
-    }
-
-    do_check(ccx, vs, id, hint);
+    });
 
     check_representable(ccx.tcx, sp, id, "enum");
 }

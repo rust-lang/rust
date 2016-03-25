@@ -197,7 +197,7 @@ impl<'a, 'tcx> TraitDef<'tcx> {
     pub fn add_impl_for_specialization(&self,
                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        impl_def_id: DefId)
-                                       -> Result<(), traits::Overlap<'a, 'tcx, 'tcx>> {
+                                       -> Result<(), traits::OverlapError> {
         assert!(impl_def_id.is_local());
 
         self.specialization_graph.borrow_mut()
