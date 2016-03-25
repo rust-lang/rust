@@ -259,7 +259,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                         // quick check to see if this variable was
                         // created since the snapshot started or not.
                         let escaping_type = match self.values.get(vid.index as usize).value {
-                            Bounded { .. } => unreachable!(),
+                            Bounded { .. } => bug!(),
                             Known(ty) => ty,
                         };
                         escaping_types.push(escaping_type);

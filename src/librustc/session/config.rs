@@ -362,7 +362,7 @@ macro_rules! options {
                                                              value, $outputname,
                                                              key, type_desc))
                         }
-                        (None, None) => unreachable!()
+                        (None, None) => bug!()
                     }
                 }
                 found = true;

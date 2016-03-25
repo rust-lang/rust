@@ -62,7 +62,7 @@ impl IntTypeExt for attr::IntType {
             SignedInt(ast::IntTy::Is) => match tcx.sess.target.int_type {
                 ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32(0)),
                 ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64(0)),
-                _ => unreachable!(),
+                _ => bug!(),
             },
             UnsignedInt(ast::UintTy::U8)  => ConstInt::U8(0),
             UnsignedInt(ast::UintTy::U16) => ConstInt::U16(0),
@@ -71,7 +71,7 @@ impl IntTypeExt for attr::IntType {
             UnsignedInt(ast::UintTy::Us) => match tcx.sess.target.uint_type {
                 ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(0)),
                 ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(0)),
-                _ => unreachable!(),
+                _ => bug!(),
             },
         }
     }
@@ -453,7 +453,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         hash!(p.idx);
                         hash!(p.name.as_str());
                     }
-                    TyInfer(_) => unreachable!(),
+                    TyInfer(_) => bug!(),
                     TyError => byte!(21),
                     TyClosure(d, _) => {
                         byte!(22);

@@ -1870,7 +1870,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::BoundSized => ok_if(types),
 
                 // Shouldn't be coming through here.
-                ty::BoundSend | ty::BoundSync => unreachable!(),
+                ty::BoundSend | ty::BoundSync => bug!(),
             }
         }
     }
@@ -2660,7 +2660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     vec![inner_target]));
             }
 
-            _ => unreachable!()
+            _ => bug!()
         };
 
         Ok(VtableBuiltinData { nested: nested })
