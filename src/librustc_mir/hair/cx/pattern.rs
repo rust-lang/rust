@@ -90,9 +90,16 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                         let substs = Some(self.cx.tcx.node_id_item_substs(pat.id).substs);
                         match const_eval::lookup_const_by_id(self.cx.tcx, def_id, substs) {
                             Some((const_expr, _const_ty)) => {
-                                let pat = const_eval::const_expr_to_pat(self.cx.tcx, const_expr,
-                                                                        pat.span);
-                                return self.to_pattern(&pat);
+                                match const_eval::const_expr_to_pat(self.cx.tcx,
+                                                                    const_expr,
+                                                                    pat.id,
+                                                                    pat.span) {
+                                    Ok(pat) =>
+                                        return self.to_pattern(&pat),
+                                    Err(_) =>
+                                        self.cx.tcx.sess.span_bug(
+                                            pat.span, "illegal constant"),
+                                }
                             }
                             None => {
                                 self.cx.tcx.sess.span_bug(
