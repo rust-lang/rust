@@ -378,8 +378,14 @@ fn init_ids() -> HashMap<String, usize> {
 /// This method resets the local table of used ID attributes. This is typically
 /// used at the beginning of rendering an entire HTML page to reset from the
 /// previous state (if any).
-pub fn reset_ids() {
-    USED_ID_MAP.with(|s| *s.borrow_mut() = init_ids());
+pub fn reset_ids(embedded: bool) {
+    USED_ID_MAP.with(|s| {
+        *s.borrow_mut() = if embedded {
+            init_ids()
+        } else {
+            HashMap::new()
+        };
+    });
 }
 
 pub fn derive_id(candidate: String) -> String {
@@ -1280,7 +1286,7 @@ impl Context {
                 keywords: &keywords,
             };
 
-            reset_ids();
+            reset_ids(true);
 
             // We have a huge number of calls to write, so try to alleviate some
             // of the pain by using a buffered writer instead of invoking the
@@ -2748,6 +2754,6 @@ fn test_unique_id() {
         assert_eq!(&actual[..], expected);
     };
     test();
-    reset_ids();
+    reset_ids(true);
     test();
 }
