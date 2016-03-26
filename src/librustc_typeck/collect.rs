@@ -738,17 +738,6 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             tcx.predicates.borrow_mut().insert(def_id, ty_predicates.clone());
 
 
-            // If there is a trait reference, treat the methods as always public.
-            // This is to work around some incorrect behavior in privacy checking:
-            // when the method belongs to a trait, it should acquire the privacy
-            // from the trait, not the impl. Forcing the visibility to be public
-            // makes things sorta work.
-            let parent_visibility = if opt_trait_ref.is_some() {
-                hir::Public
-            } else {
-                it.vis
-            };
-
             // Convert all the associated consts.
             // Also, check if there are any duplicate associated items
             let mut seen_type_items = FnvHashSet();
@@ -771,9 +760,12 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                                generics: ty_generics.clone(),
                                                ty: ty,
                                            });
+                    // Trait-associated constants are always public.
+                    let visibility =
+                        if opt_trait_ref.is_some() { hir::Public } else { impl_item.vis };
                     convert_associated_const(ccx, ImplContainer(def_id),
                                              impl_item.name, impl_item.id,
-                                             impl_item.vis.inherit_from(parent_visibility),
+                                             visibility,
                                              impl_item.defaultness,
                                              ty, true /* has_value */);
                 }
@@ -797,11 +789,9 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             for impl_item in impl_items {
                 if let hir::ImplItemKind::Method(ref sig, _) = impl_item.node {
-                    // if the method specifies a visibility, use that, otherwise
-                    // inherit the visibility from the impl (so `foo` in `pub impl
-                    // { fn foo(); }` is public, but private in `impl { fn
-                    // foo(); }`).
-                    let method_vis = impl_item.vis.inherit_from(parent_visibility);
+                    // Trait methods are always public.
+                    let method_vis =
+                        if opt_trait_ref.is_some() { hir::Public } else { impl_item.vis };
 
                     convert_method(ccx, ImplContainer(def_id),
                                    impl_item.name, impl_item.id, method_vis,
