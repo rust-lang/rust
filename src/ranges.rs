@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Spanned;
-use utils::{is_integer_literal, match_type, snippet, unsugar_range, UnsugaredRange};
+use utils::{is_integer_literal, match_type, snippet, span_lint, unsugar_range, UnsugaredRange};
 
 /// **What it does:** This lint checks for iterating over ranges with a `.step_by(0)`, which never terminates.
 ///
@@ -41,10 +41,11 @@ impl LateLintPass for StepByZero {
             // Range with step_by(0).
             if name.as_str() == "step_by" && args.len() == 2 && is_range(cx, &args[0]) &&
                is_integer_literal(&args[1], 0) {
-                cx.span_lint(RANGE_STEP_BY_ZERO,
-                             expr.span,
-                             "Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` \
-                              instead")
+                span_lint(cx,
+                          RANGE_STEP_BY_ZERO,
+                          expr.span,
+                          "Range::step_by(0) produces an infinite iterator. Consider using `std::iter::repeat()` \
+                           instead");
             } else if name.as_str() == "zip" && args.len() == 2 {
                 let iter = &args[0].node;
                 let zip_arg = &args[1];
@@ -64,9 +65,11 @@ impl LateLintPass for StepByZero {
                         let ExprPath(_, Path { segments: ref len_path, .. }) = len_args[0].node,
                         iter_path == len_path
                      ], {
-                        cx.span_lint(RANGE_ZIP_WITH_LEN, expr.span,
-                                     &format!("It is more idiomatic to use {}.iter().enumerate()",
-                                              snippet(cx, iter_args[0].span, "_")));
+                        span_lint(cx,
+                                  RANGE_ZIP_WITH_LEN,
+                                  expr.span,
+                                  &format!("It is more idiomatic to use {}.iter().enumerate()",
+                                           snippet(cx, iter_args[0].span, "_")));
                     }
                 }
             }

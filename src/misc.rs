@@ -312,7 +312,7 @@ impl LateLintPass for ModuloOne {
         if let ExprBinary(ref cmp, _, ref right) = expr.node {
             if let Spanned {node: BinOp_::BiRem, ..} = *cmp {
                 if is_integer_literal(right, 1) {
-                    cx.span_lint(MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+                    span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
             }
         }
@@ -347,11 +347,12 @@ impl LateLintPass for PatternPass {
     fn check_pat(&mut self, cx: &LateContext, pat: &Pat) {
         if let PatKind::Ident(_, ref ident, Some(ref right)) = pat.node {
             if right.node == PatKind::Wild {
-                cx.span_lint(REDUNDANT_PATTERN,
-                             pat.span,
-                             &format!("the `{} @ _` pattern can be written as just `{}`",
-                                      ident.node.name,
-                                      ident.node.name));
+                span_lint(cx,
+                          REDUNDANT_PATTERN,
+                          pat.span,
+                          &format!("the `{} @ _` pattern can be written as just `{}`",
+                                   ident.node.name,
+                                   ident.node.name));
             }
         }
     }
@@ -408,10 +409,11 @@ impl LateLintPass for UsedUnderscoreBinding {
             _ => false,
         };
         if needs_lint {
-            cx.span_lint(USED_UNDERSCORE_BINDING,
-                         expr.span,
-                         "used binding which is prefixed with an underscore. A leading underscore signals that a \
-                          binding will not be used.");
+            span_lint(cx,
+                      USED_UNDERSCORE_BINDING,
+                      expr.span,
+                      "used binding which is prefixed with an underscore. A leading underscore signals that a \
+                       binding will not be used.");
         }
     }
 }
