@@ -55,6 +55,7 @@ pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
 pub const TRANSMUTE_PATH: [&'static str; 3] = ["core", "intrinsics", "transmute"];
 pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];
 pub const VEC_PATH: [&'static str; 3] = ["collections", "vec", "Vec"];
+pub const BOX_PATH: [&'static str; 3] = ["std", "boxed", "Box"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
@@ -90,12 +91,22 @@ macro_rules! if_let_chain {
            $block
         }
     };
+    ([let $pat:pat = $expr:expr,], $block:block) => {
+        if let $pat = $expr {
+           $block
+        }
+    };
     ([$expr:expr, $($tt:tt)+], $block:block) => {
         if $expr {
            if_let_chain!{ [$($tt)+], $block }
         }
     };
     ([$expr:expr], $block:block) => {
+        if $expr {
+           $block
+        }
+    };
+    ([$expr:expr,], $block:block) => {
         if $expr {
            $block
         }
