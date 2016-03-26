@@ -611,7 +611,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             }))
           }
 
-          Def::Err => panic!("Def::Err in memory categorization")
+          Def::Err => bug!("Def::Err in memory categorization")
         }
     }
 

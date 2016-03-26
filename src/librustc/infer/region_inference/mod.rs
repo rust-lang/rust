@@ -309,7 +309,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         while undo_log.len() > snapshot.length + 1 {
             match undo_log.pop().unwrap() {
                 OpenSnapshot => {
-                    panic!("Failure to observe stack discipline");
+                    bug!("Failure to observe stack discipline");
                 }
                 CommitedSnapshot => {}
                 AddVar(vid) => {

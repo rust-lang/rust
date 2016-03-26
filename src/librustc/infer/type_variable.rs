@@ -159,8 +159,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
         let (relations, default) = match old_value {
             Bounded { relations, default } => (relations, default),
-            Known(_) => panic!("Asked to instantiate variable that is \
-                               already instantiated")
+            Known(_) => bug!("Asked to instantiate variable that is \
+                              already instantiated")
         };
 
         for &(dir, vid) in &relations {
@@ -318,7 +318,7 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
 
 fn relations<'a>(v: &'a mut TypeVariableData) -> &'a mut Vec<Relation> {
     match v.value {
-        Known(_) => panic!("var_sub_var: variable is known"),
+        Known(_) => bug!("var_sub_var: variable is known"),
         Bounded { ref mut relations, .. } => relations
     }
 }

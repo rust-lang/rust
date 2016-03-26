@@ -193,7 +193,7 @@ impl ParamSpace {
             0 => TypeSpace,
             1 => SelfSpace,
             2 => FnSpace,
-            _ => panic!("Invalid ParamSpace: {}", u)
+            _ => bug!("Invalid ParamSpace: {}", u)
         }
     }
 }
