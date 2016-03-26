@@ -478,15 +478,24 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                     Some(Def::Const(did)) => {
                         let substs = Some(self.tcx.node_id_item_substs(pat.id).substs);
                         if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, did, substs) {
-                            const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
-
-                                if let Some(ref mut renaming_map) = self.renaming_map {
-                                    // Record any renamings we do here
-                                    record_renamings(const_expr, &pat, renaming_map);
+                            match const_expr_to_pat(self.tcx, const_expr, pat.id, pat.span) {
+                                Ok(new_pat) => {
+                                    if let Some(ref mut map) = self.renaming_map {
+                                        // Record any renamings we do here
+                                        record_renamings(const_expr, &pat, map);
+                                    }
+                                    new_pat
                                 }
-
-                                new_pat
-                            })
+                                Err(def_id) => {
+                                    self.failed = true;
+                                    self.tcx.sess.span_err(
+                                        pat.span,
+                                        &format!("constants of the type `{}` \
+                                                  cannot be used in patterns",
+                                                 self.tcx.item_path_str(def_id)));
+                                    pat
+                                }
+                            }
                         } else {
                             self.failed = true;
                             span_err!(self.tcx.sess, pat.span, E0158,

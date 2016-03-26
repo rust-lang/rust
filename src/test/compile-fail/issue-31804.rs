@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Test that error recovery in the parser to an EOF does not give an infinite
+// spew of errors.
 
 fn main() {
-    foo! (
-        bar, "baz", 1, 2.0
-    } //~ ERROR incorrect close delimiter
-} //~ ERROR unexpected close delimiter: `}`
+    let
+} //~ ERROR unexpected token: `}`

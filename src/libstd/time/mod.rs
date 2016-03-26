@@ -24,7 +24,7 @@
 
 use error::Error;
 use fmt;
-use ops::{Add, Sub};
+use ops::{Add, Sub, AddAssign, SubAssign};
 use sys::time;
 use sys_common::FromInner;
 
@@ -172,12 +172,26 @@ impl Add<Duration> for Instant {
     }
 }
 
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl AddAssign<Duration> for Instant {
+    fn add_assign(&mut self, other: Duration) {
+        *self = *self + other;
+    }
+}
+
 #[stable(feature = "time2", since = "1.8.0")]
 impl Sub<Duration> for Instant {
     type Output = Instant;
 
     fn sub(self, other: Duration) -> Instant {
         Instant(self.0.sub_duration(&other))
+    }
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl SubAssign<Duration> for Instant {
+    fn sub_assign(&mut self, other: Duration) {
+        *self = *self - other;
     }
 }
 
@@ -254,12 +268,26 @@ impl Add<Duration> for SystemTime {
     }
 }
 
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl AddAssign<Duration> for SystemTime {
+    fn add_assign(&mut self, other: Duration) {
+        *self = *self + other;
+    }
+}
+
 #[stable(feature = "time2", since = "1.8.0")]
 impl Sub<Duration> for SystemTime {
     type Output = SystemTime;
 
     fn sub(self, dur: Duration) -> SystemTime {
         SystemTime(self.0.sub_duration(&dur))
+    }
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl SubAssign<Duration> for SystemTime {
+    fn sub_assign(&mut self, other: Duration) {
+        *self = *self - other;
     }
 }
 
