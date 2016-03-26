@@ -10,7 +10,7 @@
 
 use mir::mir_map::MirMap;
 use mir::repr::Mir;
-use middle::ty::TyCtxt;
+use ty::TyCtxt;
 use syntax::ast::NodeId;
 
 /// Various information about pass.

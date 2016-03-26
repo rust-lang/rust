@@ -10,10 +10,10 @@
 
 #![allow(non_snake_case)]
 
-use middle::{infer};
 use middle::def_id::DefId;
-use middle::subst::Substs;
-use middle::ty::{self, Ty, TyCtxt};
+use rustc::infer;
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
 use middle::const_eval::{eval_const_expr_partial, ConstVal};
 use middle::const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::{FnvHashSet};

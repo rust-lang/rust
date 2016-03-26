@@ -20,9 +20,9 @@ use rustc_front::hir;
 
 use middle::def_id::{DefId, DefIndex};
 use middle::region;
-use middle::subst;
-use middle::subst::VecPerParamSpace;
-use middle::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::subst;
+use rustc::ty::subst::VecPerParamSpace;
+use rustc::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 
 use rbml;
 use rbml::leb128;

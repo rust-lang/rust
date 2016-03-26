@@ -1152,9 +1152,10 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        match self {
-            NEG_INFINITY => NEG_INFINITY,
-            x => (x + ((x * x) + 1.0).sqrt()).ln(),
+        if self == NEG_INFINITY {
+            NEG_INFINITY
+        } else {
+            (self + ((self * self) + 1.0).sqrt()).ln()
         }
     }
 

@@ -38,8 +38,8 @@ standalone-docs:
 	$(Q)$(BOOTSTRAP) --step doc-standalone
 check:
 	$(Q)$(BOOTSTRAP) --step check
-cargotest:
-	$(Q)$(BOOTSTRAP) --step cargotest
+check-cargotest:
+	$(Q)$(BOOTSTRAP) --step check-cargotest
 dist:
 	$(Q)$(BOOTSTRAP) --step dist
 

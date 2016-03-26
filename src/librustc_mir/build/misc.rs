@@ -12,7 +12,7 @@
 //! kind of thing.
 
 use build::Builder;
-use rustc::middle::ty::Ty;
+use rustc::ty::Ty;
 use rustc::mir::repr::*;
 use std::u32;
 use syntax::codemap::Span;

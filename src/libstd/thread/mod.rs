@@ -166,6 +166,8 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use io;
+use str;
+use ffi::{CStr, CString};
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
 use sys_common::thread_info;
@@ -267,7 +269,7 @@ impl Builder {
         let their_packet = my_packet.clone();
 
         let main = move || {
-            if let Some(name) = their_thread.name() {
+            if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
             }
             unsafe {
@@ -450,7 +452,7 @@ pub fn park_timeout(dur: Duration) {
 
 /// The internal representation of a `Thread` handle
 struct Inner {
-    name: Option<String>,
+    name: Option<CString>,      // Guaranteed to be UTF-8
     lock: Mutex<bool>,          // true when there is a buffered unpark
     cvar: Condvar,
 }
@@ -465,9 +467,12 @@ pub struct Thread {
 impl Thread {
     // Used only internally to construct a thread object without spawning
     fn new(name: Option<String>) -> Thread {
+        let cname = name.map(|n| CString::new(n).unwrap_or_else(|_| {
+            panic!("thread name may not contain interior null bytes")
+        }));
         Thread {
             inner: Arc::new(Inner {
-                name: name,
+                name: cname,
                 lock: Mutex::new(false),
                 cvar: Condvar::new(),
             })
@@ -489,6 +494,10 @@ impl Thread {
     /// Gets the thread's name.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
+        self.cname().map(|s| unsafe { str::from_utf8_unchecked(s.to_bytes()) } )
+    }
+
+    fn cname(&self) -> Option<&CStr> {
         self.inner.name.as_ref().map(|s| &**s)
     }
 }
@@ -620,6 +629,12 @@ mod tests {
         Builder::new().name("ada lovelace".to_string()).spawn(move|| {
             assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
         }).unwrap().join().unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_invalid_named_thread() {
+        let _ = Builder::new().name("ada l\0velace".to_string()).spawn(|| {});
     }
 
     #[test]

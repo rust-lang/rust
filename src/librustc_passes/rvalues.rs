@@ -13,10 +13,10 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::infer;
+use rustc::infer;
 use rustc::middle::mem_categorization as mc;
-use rustc::middle::ty::{self, TyCtxt, ParameterEnvironment};
-use rustc::middle::traits::ProjectionMode;
+use rustc::ty::{self, TyCtxt, ParameterEnvironment};
+use rustc::traits::ProjectionMode;
 
 use rustc_front::hir;
 use rustc_front::intravisit;

@@ -73,11 +73,11 @@ use self::Aliasability::*;
 
 use middle::def_id::DefId;
 use front::map as ast_map;
-use middle::infer;
+use infer;
 use middle::const_qualif::ConstQualif;
 use middle::def::Def;
-use middle::ty::adjustment;
-use middle::ty::{self, Ty, TyCtxt};
+use ty::adjustment;
+use ty::{self, Ty, TyCtxt};
 
 use rustc_front::hir::{MutImmutable, MutMutable, PatKind};
 use rustc_front::hir;

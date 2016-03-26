@@ -14,11 +14,11 @@ use astconv::AstConv;
 use check::FnCtxt;
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::subst;
-use middle::traits;
-use middle::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
-use middle::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
-use middle::infer;
+use rustc::ty::subst;
+use rustc::traits;
+use rustc::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
+use rustc::ty::adjustment::{AdjustDerefRef, AutoDerefRef, AutoPtr};
+use rustc::infer;
 
 use syntax::ast;
 use syntax::codemap::Span;

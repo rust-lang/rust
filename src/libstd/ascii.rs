@@ -567,4 +567,10 @@ mod tests {
                     &from_u32(lower).unwrap().to_string()));
         }
     }
+
+    #[test]
+    fn inference_works() {
+        let x = "a".to_string();
+        x.eq_ignore_ascii_case("A");
+    }
 }

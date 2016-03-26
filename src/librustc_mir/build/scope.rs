@@ -89,8 +89,8 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG, ScopeAuxiliary};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
-use rustc::middle::subst::{Substs, Subst, VecPerParamSpace};
-use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::{Substs, Subst, VecPerParamSpace};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::intern_and_get_ident;

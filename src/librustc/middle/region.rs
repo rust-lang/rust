@@ -21,7 +21,7 @@ use front::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 use middle::cstore::InlinedItem;
-use middle::ty;
+use ty;
 
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
@@ -280,7 +280,7 @@ pub struct RegionMaps {
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
     /// closure defined by that fn. See the "Modeling closures"
-    /// section of the README in middle::infer::region_inference for
+    /// section of the README in infer::region_inference for
     /// more details.
     fn_tree: RefCell<NodeMap<ast::NodeId>>,
 }
@@ -291,7 +291,7 @@ pub struct Context {
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
     /// arranged into a tree. See the "Modeling closures" section of
-    /// the README in middle::infer::region_inference for more
+    /// the README in infer::region_inference for more
     /// details.
     root_id: Option<ast::NodeId>,
 
@@ -460,7 +460,7 @@ impl RegionMaps {
         self.scope_map.borrow()[id.0 as usize].into_option()
     }
 
-    #[allow(dead_code)] // used in middle::cfg
+    #[allow(dead_code)] // used in cfg
     pub fn encl_scope(&self, id: CodeExtent) -> CodeExtent {
         //! Returns the narrowest scope that encloses `id`, if any.
         self.opt_encl_scope(id).unwrap()
@@ -587,7 +587,7 @@ impl RegionMaps {
             // different functions.  Compare those fn for lexical
             // nesting. The reasoning behind this is subtle.  See the
             // "Modeling closures" section of the README in
-            // middle::infer::region_inference for more details.
+            // infer::region_inference for more details.
             let a_root_scope = self.code_extent_data(a_ancestors[a_index]);
             let b_root_scope = self.code_extent_data(a_ancestors[a_index]);
             return match (a_root_scope, b_root_scope) {
