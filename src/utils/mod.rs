@@ -4,6 +4,7 @@ use rustc::lint::{LintContext, LateContext, Level, Lint};
 use rustc::middle::def_id::DefId;
 use rustc::middle::traits::ProjectionMode;
 use rustc::middle::{cstore, def, infer, ty, traits};
+use rustc::middle::subst::Subst;
 use rustc::session::Session;
 use rustc_front::hir::*;
 use std::borrow::Cow;
@@ -764,8 +765,13 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
 }
 
 /// Convenience function to get the return type of a function or `None` if the function diverges.
-pub fn return_ty(fun: ty::Ty) -> Option<ty::Ty> {
-    if let ty::FnConverging(ret_ty) = fun.fn_sig().skip_binder().output {
+pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Option<ty::Ty<'tcx>> {
+    let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
+    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(parameter_env), ProjectionMode::Any);
+
+    let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(infcx.tcx, &infcx.parameter_environment.free_substs);
+    let fn_sig = infcx.tcx.liberate_late_bound_regions(infcx.parameter_environment.free_id_outlive, &fn_sig);
+    if let ty::FnConverging(ret_ty) = fn_sig.output {
         Some(ret_ty)
     } else {
         None
@@ -775,7 +781,10 @@ pub fn return_ty(fun: ty::Ty) -> Option<ty::Ty> {
 /// Check if two types are the same.
 // FIXME: this works correctly for lifetimes bounds (`for <'a> Foo<'a>` == `for <'b> Foo<'b>` but
 // not for type parameters.
-pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>) -> bool {
-    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, None, ProjectionMode::Any);
-    infcx.can_equate(&cx.tcx.erase_regions(&a), &cx.tcx.erase_regions(&b)).is_ok()
+pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty<'tcx>, parameter_item: NodeId) -> bool {
+    let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, parameter_item);
+    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(parameter_env), ProjectionMode::Any);
+    let new_a = a.subst(infcx.tcx, &infcx.parameter_environment.free_substs);
+    let new_b = b.subst(infcx.tcx, &infcx.parameter_environment.free_substs);
+    infcx.can_equate(&new_a, &new_b).is_ok()
 }
