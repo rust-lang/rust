@@ -246,7 +246,13 @@ impl Session {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
         match lints.get_mut(&id) {
-            Some(arr) => { arr.push((lint_id, sp, msg)); return; }
+            Some(arr) => {
+                let tuple = (lint_id, sp, msg);
+                if !arr.contains(&tuple) {
+                    arr.push(tuple);
+                }
+                return;
+            }
             None => {}
         }
         lints.insert(id, vec!((lint_id, sp, msg)));

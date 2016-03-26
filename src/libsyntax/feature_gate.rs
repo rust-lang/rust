@@ -109,6 +109,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", "1.0.0", None, Accepted),
 
+    ("structural_match", "1.8.0", Some(31434), Active),
+
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
     ("opt_out_copy", "1.0.0", None, Removed),
 
@@ -303,6 +305,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("reexport_test_harness_main", Normal, Ungated),
     ("link_args", Normal, Ungated),
     ("macro_escape", Normal, Ungated),
+
+    // RFC #1445.
+    ("structural_match", Whitelisted, Gated("structural_match",
+                                            "the semantics of constant patterns is \
+                                             not yet settled")),
 
     // Not used any more, but we can't feature gate it
     ("no_stack_check", Normal, Ungated),
@@ -676,7 +683,7 @@ impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         let has_feature = self.has_feature(feature);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", feature, span, has_feature);
-        if !has_feature {
+        if !has_feature && !self.cm.span_allows_unstable(span) {
             emit_feature_err(self.span_handler, feature, span, GateIssue::Language, explain);
         }
     }

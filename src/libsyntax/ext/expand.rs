@@ -33,7 +33,7 @@ use visit::Visitor;
 use std_inject;
 
 use std::collections::HashSet;
-
+use std::env;
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     let expr_span = e.span;
@@ -1275,11 +1275,41 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 }
 
 fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
-    /* this discards information in the case of macro-defining macros */
-    Span {
-        lo: sp.lo,
-        hi: sp.hi,
-        expn_id: cx.backtrace(),
+    debug!("new_span(sp={:?})", sp);
+
+    if cx.codemap().more_specific_trace(sp.expn_id, cx.backtrace()) {
+        // If the span we are looking at has a backtrace that has more
+        // detail than our current backtrace, then we keep that
+        // backtrace.  Honestly, I have no idea if this makes sense,
+        // because I have no idea why we are stripping the backtrace
+        // below. But the reason I made this change is because, in
+        // deriving, we were generating attributes with a specific
+        // backtrace, which was essential for `#[structural_match]` to
+        // be properly supported, but these backtraces were being
+        // stripped and replaced with a null backtrace. Sort of
+        // unclear why this is the case. --nmatsakis
+        debug!("new_span: keeping trace from {:?} because it is more specific",
+               sp.expn_id);
+        sp
+    } else {
+        // This discards information in the case of macro-defining macros.
+        //
+        // The comment above was originally added in
+        // b7ec2488ff2f29681fe28691d20fd2c260a9e454 in Feb 2012. I
+        // *THINK* the reason we are doing this is because we want to
+        // replace the backtrace of the macro contents with the
+        // backtrace that contains the macro use. But it's pretty
+        // unclear to me. --nmatsakis
+        let sp1 = Span {
+            lo: sp.lo,
+            hi: sp.hi,
+            expn_id: cx.backtrace(),
+        };
+        debug!("new_span({:?}) = {:?}", sp, sp1);
+        if sp.expn_id.into_u32() == 0 && env::var_os("NDM").is_some() {
+            panic!("NDM");
+        }
+        sp1
     }
 }
 
