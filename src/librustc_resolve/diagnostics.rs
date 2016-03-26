@@ -205,51 +205,6 @@ about what constitutes an Item declaration and what does not:
 https://doc.rust-lang.org/reference.html#statements
 "##,
 
-E0317: r##"
-User-defined types or type parameters cannot shadow the primitive types.
-This error indicates you tried to define a type, struct or enum with the same
-name as an existing primitive type:
-
-```compile_fail
-struct u8 {
-    // ...
-}
-```
-
-To fix this, simply name it something else.
-
-Such an error may also occur if you define a type parameter which shadows a
-primitive type. An example would be something like:
-
-```compile_fail
-impl<u8> MyTrait for Option<u8> {
-    // ...
-}
-```
-
-In such a case, if you meant for `u8` to be a generic type parameter (i.e. any
-type can be used in its place), use something like `T` instead:
-
-```ignore
-impl<T> MyTrait for Option<T> {
-    // ...
-}
-```
-
-On the other hand, if you wished to refer to the specific type `u8`, remove it
-from the type parameter list:
-
-```ignore
-impl MyTrait for Option<u8> {
-    // ...
-}
-
-See the Types section of the reference for more information about the primitive
-types:
-
-https://doc.rust-lang.org/reference.html#types
-"##,
-
 E0364: r##"
 Private items cannot be publicly re-exported.  This error indicates that you
 attempted to `pub use` a type or value that was not itself public.
