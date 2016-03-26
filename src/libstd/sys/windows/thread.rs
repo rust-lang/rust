@@ -12,6 +12,7 @@ use prelude::v1::*;
 
 use alloc::boxed::FnBox;
 use io;
+use ffi::CStr;
 use mem;
 use libc::c_void;
 use ptr;
