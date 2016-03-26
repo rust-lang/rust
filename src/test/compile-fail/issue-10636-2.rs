@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,11 +11,9 @@
 // FIXME(31528) we emit a bunch of silly errors here due to continuing past the
 // first one. This would be easy-ish to address by better recovery in tokenisation.
 
-// compile-flags: -Z parse-only
-
-pub fn trace_option(option: Option<isize>) { //~ HELP did you mean to close this delimiter?
+pub fn trace_option(option: Option<isize>) {
     option.map(|some| 42; //~ NOTE: unclosed delimiter
                           //~^ ERROR: expected one of
+                          //~^^ ERROR: mismatched types
 } //~ ERROR: incorrect close delimiter
 //~^ ERROR: expected one of
-//~ ERROR: this file contains an un-closed delimiter
