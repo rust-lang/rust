@@ -66,6 +66,25 @@ struct FileEntry {
 
 type Cache = HashMap<PathBuf, FileEntry>;
 
+impl FileEntry {
+    fn parse_ids(&mut self,
+                file: &Path,
+                contents: &str,
+                errors: &mut bool)
+{
+        if self.ids.is_empty() {
+            with_attrs_in_source(contents, " id", |fragment, i| {
+                let frag = fragment.trim_left_matches("#").to_owned();
+                if !self.ids.insert(frag) {
+                    *errors = true;
+                    println!("{}:{}: id is not unique: `{}`",
+                             file.display(), i, fragment);
+                }
+            });
+        }
+    }
+}
+
 fn walk(cache: &mut Cache,
         root: &Path,
         dir: &Path,
@@ -79,7 +98,13 @@ fn walk(cache: &mut Cache,
         if kind.is_dir() {
             walk(cache, root, &path, url, errors);
         } else {
-            check(cache, root, &path, url, errors);
+            let pretty_path = check(cache, root, &path, url, errors);
+            if let Some(pretty_path) = pretty_path {
+                let entry = cache.get_mut(&pretty_path).unwrap();
+                // we don't need the source anymore,
+                // so drop to to reduce memory-usage
+                entry.source = String::new();
+            }
         }
         url.path_mut().unwrap().pop();
     }
@@ -89,12 +114,12 @@ fn check(cache: &mut Cache,
          root: &Path,
          file: &Path,
          base: &Url,
-         errors: &mut bool)
+         errors: &mut bool) -> Option<PathBuf>
 {
     // ignore js files as they are not prone to errors as the rest of the
     // documentation is and they otherwise bring up false positives.
     if file.extension().and_then(|s| s.to_str()) == Some("js") {
-        return
+        return None;
     }
 
     // Unfortunately we're not 100% full of valid links today to we need a few
@@ -102,29 +127,29 @@ fn check(cache: &mut Cache,
     // FIXME(#32129)
     if file.ends_with("std/string/struct.String.html") ||
        file.ends_with("collections/string/struct.String.html") {
-        return
+        return None;
     }
     // FIXME(#32130)
     if file.ends_with("btree_set/struct.BTreeSet.html") ||
        file.ends_with("collections/struct.BTreeSet.html") ||
        file.ends_with("collections/btree_map/struct.BTreeMap.html") ||
        file.ends_with("collections/hash_map/struct.HashMap.html") {
-        return
+        return None;
     }
 
     if file.ends_with("std/sys/ext/index.html") {
-        return
+        return None;
     }
 
     if let Some(file) = file.to_str() {
         // FIXME(#31948)
         if file.contains("ParseFloatError") {
-            return
+            return None;
         }
         // weird reexports, but this module is on its way out, so chalk it up to
         // "rustdoc weirdness" and move on from there
         if file.contains("scoped_tls") {
-            return
+            return None;
         }
     }
 
@@ -134,8 +159,12 @@ fn check(cache: &mut Cache,
     let res = load_file(cache, root, PathBuf::from(file), false, false);
     let (pretty_file, contents) = match res {
         Ok(res) => res,
-        Err(_) => return,
+        Err(_) => return None,
     };
+    {
+        cache.get_mut(&pretty_file).unwrap()
+                                   .parse_ids(&pretty_file, &contents, errors);
+    }
 
     // Search for anything that's the regex 'href[ ]*=[ ]*".*?"'
     with_attrs_in_source(&contents, " href", |url, i| {
@@ -172,19 +201,10 @@ fn check(cache: &mut Cache,
                     return;
                 }
 
-                let ids = &mut cache.get_mut(&pretty_path).unwrap().ids;
-                if ids.is_empty() {
-                    // Search for anything that's the regex 'id[ ]*=[ ]*".*?"'
-                    with_attrs_in_source(&contents, " id", |fragment, i| {
-                        let frag = fragment.trim_left_matches("#").to_owned();
-                        if !ids.insert(frag) {
-                            *errors = true;
-                            println!("{}:{}: id is not unique: `{}`",
-                                     pretty_file.display(), i, fragment);
-                        }
-                    });
-                }
-                if !ids.contains(fragment) {
+                let entry = &mut cache.get_mut(&pretty_path).unwrap();
+                entry.parse_ids(&pretty_path, &contents, errors);
+
+                if !entry.ids.contains(fragment) {
                     *errors = true;
                     print!("{}:{}: broken link fragment  ",
                            pretty_file.display(), i + 1);
@@ -199,6 +219,7 @@ fn check(cache: &mut Cache,
             println!("{}", pretty_path.display());
         }
     });
+    Some(pretty_file)
 }
 
 fn load_file(cache: &mut Cache,
@@ -206,7 +227,6 @@ fn load_file(cache: &mut Cache,
              file: PathBuf,
              follow_redirects: bool,
              is_redirect: bool) -> Result<(PathBuf, String), LoadError> {
-
     let mut contents = String::new();
     let pretty_file = PathBuf::from(file.strip_prefix(root).unwrap_or(&file));
 
