@@ -153,14 +153,9 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let d = '1';
-    ///
-    /// assert!(d.is_digit(10));
-    ///
-    /// let d = 'f';
-    ///
-    /// assert!(d.is_digit(16));
-    /// assert!(!d.is_digit(10));
+    /// assert!('1'.is_digit(10));
+    /// assert!('f'.is_digit(16));
+    /// assert!(!'f'.is_digit(10));
     /// ```
     ///
     /// Passing a large radix, causing a panic:
@@ -169,10 +164,8 @@ impl char {
     /// use std::thread;
     ///
     /// let result = thread::spawn(|| {
-    ///     let d = '1';
-    ///
     ///     // this panics
-    ///     d.is_digit(37);
+    ///     '1'.is_digit(37);
     /// }).join();
     ///
     /// assert!(result.is_err());
@@ -209,25 +202,15 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let d = '1';
-    ///
-    /// assert_eq!(d.to_digit(10), Some(1));
-    ///
-    /// let d = 'f';
-    ///
-    /// assert_eq!(d.to_digit(16), Some(15));
+    /// assert_eq!('1'.to_digit(10), Some(1));
+    /// assert_eq!('f'.to_digit(16), Some(15));
     /// ```
     ///
     /// Passing a non-digit results in failure:
     ///
     /// ```
-    /// let d = 'f';
-    ///
-    /// assert_eq!(d.to_digit(10), None);
-    ///
-    /// let d = 'z';
-    ///
-    /// assert_eq!(d.to_digit(16), None);
+    /// assert_eq!('f'.to_digit(10), None);
+    /// assert_eq!('z'.to_digit(16), None);
     /// ```
     ///
     /// Passing a large radix, causing a panic:
@@ -236,9 +219,7 @@ impl char {
     /// use std::thread;
     ///
     /// let result = thread::spawn(|| {
-    ///   let d = '1';
-    ///
-    ///   d.to_digit(37);
+    ///     '1'.to_digit(37);
     /// }).join();
     ///
     /// assert!(result.is_err());
@@ -463,12 +444,8 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = 'a';
-    ///
-    /// assert!(c.is_alphabetic());
-    ///
-    /// let c = '京';
-    /// assert!(c.is_alphabetic());
+    /// assert!('a'.is_alphabetic());
+    /// assert!('京'.is_alphabetic());
     ///
     /// let c = '💝';
     /// // love is many things, but it is not alphabetic
@@ -522,21 +499,13 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = 'a';
-    /// assert!(c.is_lowercase());
-    ///
-    /// let c = 'δ';
-    /// assert!(c.is_lowercase());
-    ///
-    /// let c = 'A';
-    /// assert!(!c.is_lowercase());
-    ///
-    /// let c = 'Δ';
-    /// assert!(!c.is_lowercase());
+    /// assert!('a'.is_lowercase());
+    /// assert!('δ'.is_lowercase());
+    /// assert!(!'A'.is_lowercase());
+    /// assert!(!'Δ'.is_lowercase());
     ///
     /// // The various Chinese scripts do not have case, and so:
-    /// let c = '中';
-    /// assert!(!c.is_lowercase());
+    /// assert!(!'中'.is_lowercase());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -558,21 +527,13 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = 'a';
-    /// assert!(!c.is_uppercase());
-    ///
-    /// let c = 'δ';
-    /// assert!(!c.is_uppercase());
-    ///
-    /// let c = 'A';
-    /// assert!(c.is_uppercase());
-    ///
-    /// let c = 'Δ';
-    /// assert!(c.is_uppercase());
+    /// assert!(!'a'.is_uppercase());
+    /// assert!(!'δ'.is_uppercase());
+    /// assert!('A'.is_uppercase());
+    /// assert!('Δ'.is_uppercase());
     ///
     /// // The various Chinese scripts do not have case, and so:
-    /// let c = '中';
-    /// assert!(!c.is_uppercase());
+    /// assert!(!'中'.is_uppercase());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -594,15 +555,12 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = ' ';
-    /// assert!(c.is_whitespace());
+    /// assert!(' '.is_whitespace());
     ///
     /// // a non-breaking space
-    /// let c = '\u{A0}';
-    /// assert!(c.is_whitespace());
+    /// assert!('\u{A0}'.is_whitespace());
     ///
-    /// let c = '越';
-    /// assert!(!c.is_whitespace());
+    /// assert!(!'越'.is_whitespace());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -624,29 +582,14 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = '٣';
-    /// assert!(c.is_alphanumeric());
-    ///
-    /// let c = '7';
-    /// assert!(c.is_alphanumeric());
-    ///
-    /// let c = '৬';
-    /// assert!(c.is_alphanumeric());
-    ///
-    /// let c = 'K';
-    /// assert!(c.is_alphanumeric());
-    ///
-    /// let c = 'و';
-    /// assert!(c.is_alphanumeric());
-    ///
-    /// let c = '藏';
-    /// assert!(c.is_alphanumeric());
-    ///
-    /// let c = '¾';
-    /// assert!(!c.is_alphanumeric());
-    ///
-    /// let c = '①';
-    /// assert!(!c.is_alphanumeric());
+    /// assert!('٣'.is_alphanumeric());
+    /// assert!('7'.is_alphanumeric());
+    /// assert!('৬'.is_alphanumeric());
+    /// assert!('K'.is_alphanumeric());
+    /// assert!('و'.is_alphanumeric());
+    /// assert!('藏'.is_alphanumeric());
+    /// assert!(!'¾'.is_alphanumeric());
+    /// assert!(!'①'.is_alphanumeric());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -665,11 +608,8 @@ impl char {
     ///
     /// ```
     /// // U+009C, STRING TERMINATOR
-    /// let c = '';
-    /// assert!(c.is_control());
-    ///
-    /// let c = 'q';
-    /// assert!(!c.is_control());
+    /// assert!(''.is_control());
+    /// assert!(!'q'.is_control());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -687,29 +627,14 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = '٣';
-    /// assert!(c.is_numeric());
-    ///
-    /// let c = '7';
-    /// assert!(c.is_numeric());
-    ///
-    /// let c = '৬';
-    /// assert!(c.is_numeric());
-    ///
-    /// let c = 'K';
-    /// assert!(!c.is_numeric());
-    ///
-    /// let c = 'و';
-    /// assert!(!c.is_numeric());
-    ///
-    /// let c = '藏';
-    /// assert!(!c.is_numeric());
-    ///
-    /// let c = '¾';
-    /// assert!(!c.is_numeric());
-    ///
-    /// let c = '①';
-    /// assert!(!c.is_numeric());
+    /// assert!('٣'.is_numeric());
+    /// assert!('7'.is_numeric());
+    /// assert!('৬'.is_numeric());
+    /// assert!(!'K'.is_numeric());
+    /// assert!(!'و'.is_numeric());
+    /// assert!(!'藏'.is_numeric());
+    /// assert!(!'¾'.is_numeric());
+    /// assert!(!'①'.is_numeric());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -744,13 +669,10 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = 'C';
-    ///
-    /// assert_eq!(c.to_lowercase().next(), Some('c'));
+    /// assert_eq!('C'.to_lowercase().next(), Some('c'));
     ///
     /// // Japanese scripts do not have case, and so:
-    /// let c = '山';
-    /// assert_eq!(c.to_lowercase().next(), Some('山'));
+    /// assert_eq!('山'.to_lowercase().next(), Some('山'));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -781,12 +703,10 @@ impl char {
     /// Basic usage:
     ///
     /// ```
-    /// let c = 'c';
-    /// assert_eq!(c.to_uppercase().next(), Some('C'));
+    /// assert_eq!('c'.to_uppercase().next(), Some('C'));
     ///
     /// // Japanese does not have case, and so:
-    /// let c = '山';
-    /// assert_eq!(c.to_uppercase().next(), Some('山'));
+    /// assert_eq!('山'.to_uppercase().next(), Some('山'));
     /// ```
     ///
     /// In Turkish, the equivalent of 'i' in Latin has five forms instead of two:
@@ -797,9 +717,7 @@ impl char {
     /// Note that the lowercase dotted 'i' is the same as the Latin. Therefore:
     ///
     /// ```
-    /// let i = 'i';
-    ///
-    /// let upper_i = i.to_uppercase().next();
+    /// let upper_i = 'i'.to_uppercase().next();
     /// ```
     ///
     /// The value of `upper_i` here relies on the language of the text: if we're
@@ -807,9 +725,7 @@ impl char {
     /// be `Some('İ')`. `to_uppercase()` does not take this into account, and so:
     ///
     /// ```
-    /// let i = 'i';
-    ///
-    /// let upper_i = i.to_uppercase().next();
+    /// let upper_i = 'i'.to_uppercase().next();
     ///
     /// assert_eq!(Some('I'), upper_i);
     /// ```
