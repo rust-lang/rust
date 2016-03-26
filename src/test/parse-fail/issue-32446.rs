@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    for thing(x[]) in foo {} //~ error: expected one of `,` or `@`, found `[`
-    //~^ ERROR expected one of `@` or `in`, found `[`
-}
+// compile-flags: -Z parse-only
+
+fn main() {}
+
+// This used to end up in an infite loop trying to bump past EOF.
+trait T { ... } //~ ERROR
