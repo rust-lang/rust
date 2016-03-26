@@ -137,6 +137,19 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
+    Warn,
+    "floating-point constants cannot be used in patterns"
+}
+
+declare_lint! {
+    pub ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
+    Deny,
+    "constants of struct or enum type can only be used in a pattern if \
+     the struct or enum has `#[derive(PartialEq, Eq)]`"
+}
+
+declare_lint! {
     pub MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
     Deny,
     "unit struct or enum variant erroneously allowed to match via path::ident(..)"
@@ -193,6 +206,8 @@ impl LintPass for HardwiredLints {
             PRIVATE_IN_PUBLIC,
             INACCESSIBLE_EXTERN_CRATE,
             INVALID_TYPE_PARAM_DEFAULT,
+            ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN,
+            ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
             MATCH_OF_UNIT_VARIANT_VIA_PAREN_DOTDOT,
             CONST_ERR,
             RAW_POINTER_DERIVE,
