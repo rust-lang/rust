@@ -23,11 +23,8 @@ use session::Session;
 use middle::cstore::{self, CrateStore, LinkMeta};
 use middle::cstore::{LinkagePreference, NativeLibraryKind};
 use middle::dependency_format::Linkage;
-use middle::ty::{Ty, TyCtxt};
-use rustc::front::map::DefPath;
-use trans::{CrateContext, CrateTranslation, gensym_name};
+use trans::CrateTranslation;
 use util::common::time;
-use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;
 use rustc_back::tempdir::TempDir;
 
@@ -37,16 +34,13 @@ use std::env;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Read, Write};
-use std::iter::once;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 use flate;
-use serialize::hex::ToHex;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token::{self, InternedString};
 use syntax::attr::AttrMetaMethods;
 
 use rustc_front::hir;
@@ -80,58 +74,6 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
 pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
-
-/*
- * Name mangling and its relationship to metadata. This is complex. Read
- * carefully.
- *
- * The semantic model of Rust linkage is, broadly, that "there's no global
- * namespace" between crates. Our aim is to preserve the illusion of this
- * model despite the fact that it's not *quite* possible to implement on
- * modern linkers. We initially didn't use system linkers at all, but have
- * been convinced of their utility.
- *
- * There are a few issues to handle:
- *
- *  - Linkers operate on a flat namespace, so we have to flatten names.
- *    We do this using the C++ namespace-mangling technique. Foo::bar
- *    symbols and such.
- *
- *  - Symbols with the same name but different types need to get different
- *    linkage-names. We do this by hashing a string-encoding of the type into
- *    a fixed-size (currently 16-byte hex) cryptographic hash function (CHF:
- *    we use SHA256) to "prevent collisions". This is not airtight but 16 hex
- *    digits on uniform probability means you're going to need 2**32 same-name
- *    symbols in the same process before you're even hitting birthday-paradox
- *    collision probability.
- *
- *  - Symbols in different crates but with same names "within" the crate need
- *    to get different linkage-names.
- *
- *  - The hash shown in the filename needs to be predictable and stable for
- *    build tooling integration. It also needs to be using a hash function
- *    which is easy to use from Python, make, etc.
- *
- * So here is what we do:
- *
- *  - Consider the package id; every crate has one (specified with crate_id
- *    attribute).  If a package id isn't provided explicitly, we infer a
- *    versionless one from the output name. The version will end up being 0.0
- *    in this case. CNAME and CVERS are taken from this package id. For
- *    example, github.com/mozilla/CNAME#CVERS.
- *
- *  - Define CMH as SHA256(crateid).
- *
- *  - Define CMH8 as the first 8 characters of CMH.
- *
- *  - Compile our crate to lib CNAME-CMH8-CVERS.so
- *
- *  - Define STH(sym) as SHA256(CMH, type_str(sym))
- *
- *  - Suffix a mangled sym with ::STH@CVERS, so that it is unique in the
- *    name, non-name metadata, and type sense, and versioned in the way
- *    system linkers understand.
- */
 
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
@@ -188,185 +130,10 @@ pub fn build_link_meta(sess: &Session,
                        -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: Svh::calculate(&sess.opts.cg.metadata, krate),
+        crate_hash: Svh::calculate(&sess.crate_disambiguator.get().as_str(), krate),
     };
     info!("{:?}", r);
     return r;
-}
-
-fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
-    let output = symbol_hasher.result_bytes();
-    // 64 bits should be enough to avoid collisions.
-    output[.. 8].to_hex().to_string()
-}
-
-
-// This calculates STH for a symbol, as defined above
-fn symbol_hash<'tcx>(tcx: &TyCtxt<'tcx>,
-                     symbol_hasher: &mut Sha256,
-                     t: Ty<'tcx>,
-                     link_meta: &LinkMeta)
-                     -> String {
-    // NB: do *not* use abbrevs here as we want the symbol names
-    // to be independent of one another in the crate.
-
-    symbol_hasher.reset();
-    symbol_hasher.input_str(&link_meta.crate_name);
-    symbol_hasher.input_str("-");
-    symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    for meta in tcx.sess.crate_metadata.borrow().iter() {
-        symbol_hasher.input_str(&meta[..]);
-    }
-    symbol_hasher.input_str("-");
-    symbol_hasher.input(&tcx.sess.cstore.encode_type(tcx, t));
-    // Prefix with 'h' so that it never blends into adjacent digits
-    let mut hash = String::from("h");
-    hash.push_str(&truncated_hash_result(symbol_hasher));
-    hash
-}
-
-fn get_symbol_hash<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> String {
-    if let Some(h) = ccx.type_hashcodes().borrow().get(&t) {
-        return h.to_string()
-    }
-
-    let mut symbol_hasher = ccx.symbol_hasher().borrow_mut();
-    let hash = symbol_hash(ccx.tcx(), &mut *symbol_hasher, t, ccx.link_meta());
-    ccx.type_hashcodes().borrow_mut().insert(t, hash.clone());
-    hash
-}
-
-
-// Name sanitation. LLVM will happily accept identifiers with weird names, but
-// gas doesn't!
-// gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
-pub fn sanitize(s: &str) -> String {
-    let mut result = String::new();
-    for c in s.chars() {
-        match c {
-            // Escape these with $ sequences
-            '@' => result.push_str("$SP$"),
-            '*' => result.push_str("$BP$"),
-            '&' => result.push_str("$RF$"),
-            '<' => result.push_str("$LT$"),
-            '>' => result.push_str("$GT$"),
-            '(' => result.push_str("$LP$"),
-            ')' => result.push_str("$RP$"),
-            ',' => result.push_str("$C$"),
-
-            // '.' doesn't occur in types and functions, so reuse it
-            // for ':' and '-'
-            '-' | ':' => result.push('.'),
-
-            // These are legal symbols
-            'a' ... 'z'
-            | 'A' ... 'Z'
-            | '0' ... '9'
-            | '_' | '.' | '$' => result.push(c),
-
-            _ => {
-                result.push('$');
-                for c in c.escape_unicode().skip(1) {
-                    match c {
-                        '{' => {},
-                        '}' => result.push('$'),
-                        c => result.push(c),
-                    }
-                }
-            }
-        }
-    }
-
-    // Underscore-qualify anything that didn't start as an ident.
-    if !result.is_empty() &&
-        result.as_bytes()[0] != '_' as u8 &&
-        ! (result.as_bytes()[0] as char).is_xid_start() {
-        return format!("_{}", &result[..]);
-    }
-
-    return result;
-}
-
-pub fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: Option<&str>) -> String {
-    // Follow C++ namespace-mangling style, see
-    // http://en.wikipedia.org/wiki/Name_mangling for more info.
-    //
-    // It turns out that on OSX you can actually have arbitrary symbols in
-    // function names (at least when given to LLVM), but this is not possible
-    // when using unix's linker. Perhaps one day when we just use a linker from LLVM
-    // we won't need to do this name mangling. The problem with name mangling is
-    // that it seriously limits the available characters. For example we can't
-    // have things like &T in symbol names when one would theoretically
-    // want them for things like impls of traits on that type.
-    //
-    // To be able to work on all platforms and get *some* reasonable output, we
-    // use C++ name-mangling.
-
-    let mut n = String::from("_ZN"); // _Z == Begin name-sequence, N == nested
-
-    fn push(n: &mut String, s: &str) {
-        let sani = sanitize(s);
-        n.push_str(&format!("{}{}", sani.len(), sani));
-    }
-
-    // First, connect each component with <len, name> pairs.
-    for data in path {
-        push(&mut n, &data);
-    }
-
-    if let Some(s) = hash {
-        push(&mut n, s)
-    }
-
-    n.push('E'); // End name-sequence.
-    n
-}
-
-pub fn exported_name(path: DefPath, hash: &str) -> String {
-    let path = path.into_iter()
-                   .map(|e| e.data.as_interned_str());
-    mangle(path, Some(hash))
-}
-
-pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: DefPath,
-                                      t: Ty<'tcx>, id: ast::NodeId) -> String {
-    let mut hash = get_symbol_hash(ccx, t);
-
-    // Paths can be completely identical for different nodes,
-    // e.g. `fn foo() { { fn a() {} } { fn a() {} } }`, so we
-    // generate unique characters from the node id. For now
-    // hopefully 3 characters is enough to avoid collisions.
-    const EXTRA_CHARS: &'static str =
-        "abcdefghijklmnopqrstuvwxyz\
-         ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-         0123456789";
-    let id = id as usize;
-    let extra1 = id % EXTRA_CHARS.len();
-    let id = id / EXTRA_CHARS.len();
-    let extra2 = id % EXTRA_CHARS.len();
-    let id = id / EXTRA_CHARS.len();
-    let extra3 = id % EXTRA_CHARS.len();
-    hash.push(EXTRA_CHARS.as_bytes()[extra1] as char);
-    hash.push(EXTRA_CHARS.as_bytes()[extra2] as char);
-    hash.push(EXTRA_CHARS.as_bytes()[extra3] as char);
-
-    exported_name(path, &hash[..])
-}
-
-pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                      t: Ty<'tcx>,
-                                                      name: &str) -> String {
-    let path = [token::intern(&t.to_string()).as_str(), gensym_name(name).as_str()];
-    let hash = get_symbol_hash(ccx, t);
-    mangle(path.iter().cloned(), Some(&hash[..]))
-}
-
-pub fn mangle_internal_name_by_path_and_seq(path: DefPath, flav: &str) -> String {
-    let names =
-        path.into_iter()
-            .map(|e| e.data.as_interned_str())
-            .chain(once(gensym_name(flav).as_str())); // append unique version of "flav"
-    mangle(names, None)
 }
 
 pub fn get_linker(sess: &Session) -> (String, Command) {

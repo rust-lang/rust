@@ -1032,7 +1032,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                 // we need to get the symbol from metadata instead of
                 // using the current crate's name/version
                 // information in the hash of the symbol
-                let sym = exported_name(ccx, id, ty, attrs);
+                let sym = exported_name(ccx, instance, attrs);
                 debug!("making {}", sym);
 
                 // Create the global before evaluating the initializer;

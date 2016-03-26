@@ -568,8 +568,6 @@ impl RustcDefaultCalls {
                         continue;
                     }
                     let crate_types = driver::collect_crate_types(sess, attrs);
-                    let metadata = driver::collect_crate_metadata(sess, attrs);
-                    *sess.crate_metadata.borrow_mut() = metadata;
                     for &style in &crate_types {
                         let fname = link::filename_for_input(sess, style, &id, &t_outputs);
                         println!("{}",

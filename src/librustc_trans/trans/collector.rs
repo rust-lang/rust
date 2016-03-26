@@ -1261,28 +1261,20 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 fn push_item_name(ccx: &CrateContext,
                   def_id: DefId,
                   output: &mut String) {
-    if def_id.is_local() {
-        let node_id = ccx.tcx().map.as_local_node_id(def_id).unwrap();
-        let inlined_from = ccx.external_srcs()
-                              .borrow()
-                              .get(&node_id)
-                              .map(|def_id| *def_id);
+    let def_path = ccx.tcx().def_path(def_id);
 
-        if let Some(extern_def_id) = inlined_from {
-            push_item_name(ccx, extern_def_id, output);
-            return;
-        }
+    // some_crate::
+    output.push_str(&ccx.tcx().crate_name(def_path.krate));
+    output.push_str("::");
 
-        output.push_str(&ccx.link_meta().crate_name);
-        output.push_str("::");
-    }
-
-    for part in ccx.tcx().def_path(def_id) {
+    // foo::bar::ItemName::
+    for part in ccx.tcx().def_path(def_id).data {
         output.push_str(&format!("{}[{}]::",
                         part.data.as_interned_str(),
                         part.disambiguator));
     }
 
+    // remove final "::"
     output.pop();
     output.pop();
 }

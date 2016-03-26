@@ -14,7 +14,7 @@ use super::MapEntry::*;
 use rustc_front::hir::*;
 use rustc_front::util;
 use rustc_front::intravisit::{self, Visitor};
-use middle::def_id::{CRATE_DEF_INDEX, DefIndex};
+use middle::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;
@@ -50,6 +50,7 @@ impl<'ast> NodeCollector<'ast> {
                   parent: &'ast InlinedParent,
                   parent_node: NodeId,
                   parent_def_path: DefPath,
+                  parent_def_id: DefId,
                   map: Vec<MapEntry<'ast>>,
                   definitions: Definitions)
                   -> NodeCollector<'ast> {
@@ -60,8 +61,14 @@ impl<'ast> NodeCollector<'ast> {
             definitions: definitions,
         };
 
+        assert_eq!(parent_def_path.krate, parent_def_id.krate);
+        let root_path = Box::new(InlinedRootPath {
+            data: parent_def_path.data,
+            def_id: parent_def_id,
+        });
+
         collector.insert_entry(parent_node, RootInlinedParent(parent));
-        collector.create_def(parent_node, DefPathData::InlinedRoot(parent_def_path));
+        collector.create_def(parent_node, DefPathData::InlinedRoot(root_path));
 
         collector
     }
@@ -126,11 +133,16 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemDefaultImpl(..) | ItemImpl(..) => DefPathData::Impl(i.name),
-            ItemEnum(..) | ItemStruct(..) | ItemTrait(..) => DefPathData::Type(i.name),
-            ItemExternCrate(..) | ItemMod(..) => DefPathData::Mod(i.name),
-            ItemStatic(..) | ItemConst(..) | ItemFn(..) => DefPathData::Value(i.name),
-            _ => DefPathData::Misc,
+            ItemDefaultImpl(..) | ItemImpl(..) =>
+                DefPathData::Impl,
+            ItemEnum(..) | ItemStruct(..) | ItemTrait(..) |
+            ItemExternCrate(..) | ItemMod(..) | ItemForeignMod(..) |
+            ItemTy(..) =>
+                DefPathData::TypeNs(i.name),
+            ItemStatic(..) | ItemConst(..) | ItemFn(..) =>
+                DefPathData::ValueNs(i.name),
+            ItemUse(..) =>
+                DefPathData::Misc,
         };
 
         self.insert_def(i.id, NodeItem(i), def_data);
@@ -195,7 +207,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         self.insert_def(foreign_item.id,
                         NodeForeignItem(foreign_item),
-                        DefPathData::Value(foreign_item.name));
+                        DefPathData::ValueNs(foreign_item.name));
 
         let parent_node = self.parent_node;
         self.parent_node = foreign_item.id;
@@ -215,8 +227,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
         let def_data = match ti.node {
-            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::Value(ti.name),
-            TypeTraitItem(..) => DefPathData::Type(ti.name),
+            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::ValueNs(ti.name),
+            TypeTraitItem(..) => DefPathData::TypeNs(ti.name),
         };
 
         self.insert(ti.id, NodeTraitItem(ti));
@@ -239,8 +251,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
         let def_data = match ii.node {
-            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::Value(ii.name),
-            ImplItemKind::Type(..) => DefPathData::Type(ii.name),
+            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::ValueNs(ii.name),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name),
         };
 
         self.insert_def(ii.id, NodeImplItem(ii), def_data);

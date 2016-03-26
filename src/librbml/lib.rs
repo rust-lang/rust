@@ -166,7 +166,7 @@ impl<'doc> Doc<'doc> {
         }
     }
 
-    pub fn get<'a>(&'a self, tag: usize) -> Doc<'a> {
+    pub fn get(&self, tag: usize) -> Doc<'doc> {
         reader::get_doc(*self, tag)
     }
 
@@ -174,7 +174,7 @@ impl<'doc> Doc<'doc> {
         self.start == self.end
     }
 
-    pub fn as_str_slice<'a>(&'a self) -> &'a str {
+    pub fn as_str_slice(&self) -> &'doc str {
         str::from_utf8(&self.data[self.start..self.end]).unwrap()
     }
 

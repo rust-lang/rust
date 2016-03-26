@@ -803,25 +803,43 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
     let item_did = item_def_id(item_doc, cdata);
+    let parent_def_id = DefId {
+        krate: cdata.cnum,
+        index: def_key(cdata, id).parent.unwrap()
+    };
     let mut parent_path = item_path(item_doc);
     parent_path.pop();
     let mut parent_def_path = def_path(cdata, id);
-    parent_def_path.pop();
+    parent_def_path.data.pop();
     if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
-        let ii = decode_inlined_item(cdata, tcx, parent_path,
+        let ii = decode_inlined_item(cdata,
+                                     tcx,
+                                     parent_path,
                                      parent_def_path,
-                                     ast_doc, item_did);
+                                     parent_def_id,
+                                     ast_doc,
+                                     item_did);
         return FoundAst::Found(ii);
     } else if let Some(parent_did) = item_parent_item(cdata, item_doc) {
         // Remove the last element from the paths, since we are now
         // trying to inline the parent.
-        parent_path.pop();
-        parent_def_path.pop();
+        let grandparent_def_id = DefId {
+            krate: cdata.cnum,
+            index: def_key(cdata, parent_def_id.index).parent.unwrap()
+        };
+        let mut grandparent_path = parent_path;
+        grandparent_path.pop();
+        let mut grandparent_def_path = parent_def_path;
+        grandparent_def_path.data.pop();
         let parent_doc = cdata.lookup_item(parent_did.index);
         if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, tag_ast as usize) {
-            let ii = decode_inlined_item(cdata, tcx, parent_path,
-                                         parent_def_path,
-                                         ast_doc, parent_did);
+            let ii = decode_inlined_item(cdata,
+                                         tcx,
+                                         grandparent_path,
+                                         grandparent_def_path,
+                                         grandparent_def_id,
+                                         ast_doc,
+                                         parent_did);
             if let &InlinedItem::Item(ref i) = ii {
                 return FoundAst::FoundParent(parent_did, i);
             }
@@ -1288,11 +1306,18 @@ pub fn get_crate_hash(data: &[u8]) -> Svh {
     Svh::new(hashdoc.as_str_slice())
 }
 
-pub fn maybe_get_crate_name(data: &[u8]) -> Option<String> {
+pub fn maybe_get_crate_name(data: &[u8]) -> Option<&str> {
     let cratedoc = rbml::Doc::new(data);
     reader::maybe_get_doc(cratedoc, tag_crate_crate_name).map(|doc| {
-        doc.as_str_slice().to_string()
+        doc.as_str_slice()
     })
+}
+
+pub fn get_crate_disambiguator<'a>(data: &'a [u8]) -> &'a str {
+    let crate_doc = rbml::Doc::new(data);
+    let disambiguator_doc = reader::get_doc(crate_doc, tag_crate_disambiguator);
+    let slice: &'a str = disambiguator_doc.as_str_slice();
+    slice
 }
 
 pub fn get_crate_triple(data: &[u8]) -> Option<String> {
@@ -1301,7 +1326,7 @@ pub fn get_crate_triple(data: &[u8]) -> Option<String> {
     triple_doc.map(|s| s.as_str().to_string())
 }
 
-pub fn get_crate_name(data: &[u8]) -> String {
+pub fn get_crate_name(data: &[u8]) -> &str {
     maybe_get_crate_name(data).expect("no crate name in crate")
 }
 
@@ -1738,7 +1763,9 @@ pub fn closure_ty<'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: &TyCtxt<'tcx>)
         .parse_closure_ty()
 }
 
-fn def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
+pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
+    debug!("def_key: id={:?}", id);
+    let item_doc = cdata.lookup_item(id);
     match reader::maybe_get_doc(item_doc, tag_def_key) {
         Some(def_key_doc) => {
             let mut decoder = reader::Decoder::new(def_key_doc);
@@ -1754,9 +1781,5 @@ fn def_key(item_doc: rbml::Doc) -> hir_map::DefKey {
 
 pub fn def_path(cdata: Cmd, id: DefIndex) -> hir_map::DefPath {
     debug!("def_path(id={:?})", id);
-    hir_map::definitions::make_def_path(id, |parent| {
-        debug!("def_path: parent={:?}", parent);
-        let parent_doc = cdata.lookup_item(parent);
-        def_key(parent_doc)
-    })
+    hir_map::DefPath::make(cdata.cnum, id, |parent| def_key(cdata, parent))
 }

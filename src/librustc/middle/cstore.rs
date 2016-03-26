@@ -42,6 +42,7 @@ use syntax::ast_util::{IdVisitingOperation};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::ptr::P;
+use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
 use rustc_front::hir;
 use rustc_front::intravisit::Visitor;
@@ -126,6 +127,27 @@ pub enum FoundAst<'ast> {
     NotFound,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct ExternCrate {
+    /// def_id of an `extern crate` in the current crate that caused
+    /// this crate to be loaded; note that there could be multiple
+    /// such ids
+    pub def_id: DefId,
+
+    /// span of the extern crate that caused this to be loaded
+    pub span: Span,
+
+    /// If true, then this crate is the crate named by the extern
+    /// crate referenced above. If false, then this crate is a dep
+    /// of the crate.
+    pub direct: bool,
+
+    /// Number of links to reach the extern crate `def_id`
+    /// declaration; used to select the extern crate with the shortest
+    /// path
+    pub path_len: usize,
+}
+
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
 ///
@@ -146,7 +168,7 @@ pub trait CrateStore<'tcx> : Any {
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx>;
-    fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
+    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn item_name(&self, def: DefId) -> ast::Name;
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
@@ -202,9 +224,15 @@ pub trait CrateStore<'tcx> : Any {
     fn is_staged_api(&self, cnum: ast::CrateNum) -> bool;
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool;
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool;
+    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>;
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>;
-    fn crate_name(&self, cnum: ast::CrateNum) -> String;
+    /// The name of the crate as it is referred to in source code of the current
+    /// crate.
+    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString;
+    /// The name of the crate as it is stored in the crate's metadata.
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh;
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString;
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>;
     fn plugin_registrar_fn(&self, cnum: ast::CrateNum) -> Option<DefId>;
@@ -212,7 +240,8 @@ pub trait CrateStore<'tcx> : Any {
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId>;
 
     // resolve
-    fn def_path(&self, def: DefId) -> hir_map::DefPath;
+    fn def_key(&self, def: DefId) -> hir_map::DefKey;
+    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath;
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind>;
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>;
     fn tuple_struct_definition_if_ctor(&self, did: DefId) -> Option<DefId>;
@@ -236,7 +265,11 @@ pub trait CrateStore<'tcx> : Any {
     // utility functions
     fn metadata_filename(&self) -> &str;
     fn metadata_section_name(&self, target: &Target) -> &str;
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>;
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8>;
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>;
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<ast::CrateNum>;
@@ -313,7 +346,7 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { unimplemented!() }
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx> { unimplemented!() }
-    fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
+    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
     fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
     fn item_name(&self, def: DefId) -> ast::Name { unimplemented!() }
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
@@ -376,10 +409,15 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn is_staged_api(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
     fn is_explicitly_linked(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
     fn is_allocator(&self, cnum: ast::CrateNum) -> bool { unimplemented!() }
+    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate> { unimplemented!() }
     fn crate_attrs(&self, cnum: ast::CrateNum) -> Vec<ast::Attribute>
         { unimplemented!() }
-    fn crate_name(&self, cnum: ast::CrateNum) -> String { unimplemented!() }
+    fn crate_name(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> InternedString {
+        unimplemented!()
+    }
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh { unimplemented!() }
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> InternedString { unimplemented!() }
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
                                 -> FnvHashMap<DefId, Vec<ast::Attribute>>
         { unimplemented!() }
@@ -390,7 +428,8 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn reachable_ids(&self, cnum: ast::CrateNum) -> Vec<DefId> { unimplemented!() }
 
     // resolve
-    fn def_path(&self, def: DefId) -> hir_map::DefPath { unimplemented!() }
+    fn def_key(&self, def: DefId) -> hir_map::DefKey { unimplemented!() }
+    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath { unimplemented!() }
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> { unimplemented!() }
     fn struct_ctor_def_id(&self, struct_def_id: DefId) -> Option<DefId>
         { unimplemented!() }
@@ -419,8 +458,13 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     // utility functions
     fn metadata_filename(&self) -> &str { unimplemented!() }
     fn metadata_section_name(&self, target: &Target) -> &str { unimplemented!() }
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
-        { unimplemented!() }
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8> {
+        unimplemented!()
+    }
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>
         { vec![] }
     fn used_crate_source(&self, cnum: ast::CrateNum) -> CrateSource { unimplemented!() }

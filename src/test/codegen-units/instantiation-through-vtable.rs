@@ -31,12 +31,12 @@ impl<T> Trait for Struct<T> {
 fn main() {
     let s1 = Struct { _a: 0u32 };
 
-    //~ TRANS_ITEM fn instantiation_through_vtable::Struct<T>.Trait[0]::foo[0]<u32>
-    //~ TRANS_ITEM fn instantiation_through_vtable::Struct<T>.Trait[0]::bar[0]<u32>
+    //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::foo[0]<u32>
+    //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u32>
     let _ = &s1 as &Trait;
 
     let s1 = Struct { _a: 0u64 };
-    //~ TRANS_ITEM fn instantiation_through_vtable::Struct<T>.Trait[0]::foo[0]<u64>
-    //~ TRANS_ITEM fn instantiation_through_vtable::Struct<T>.Trait[0]::bar[0]<u64>
+    //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::foo[0]<u64>
+    //~ TRANS_ITEM fn instantiation_through_vtable::{{impl}}[0]::bar[0]<u64>
     let _ = &s1 as &Trait;
 }

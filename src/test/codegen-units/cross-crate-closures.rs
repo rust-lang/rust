@@ -19,12 +19,12 @@ extern crate cgu_extern_closures;
 //~ TRANS_ITEM fn cross_crate_closures::main[0]
 fn main() {
 
-    //~ TRANS_ITEM fn cgu_extern_closures[0]::inlined_fn[0]
-    //~ TRANS_ITEM fn cgu_extern_closures[0]::inlined_fn[0]::{{closure}}[0]
+    //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn[0]
+    //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn[0]::{{closure}}[0]
     let _ = cgu_extern_closures::inlined_fn(1, 2);
 
-    //~ TRANS_ITEM fn cgu_extern_closures[0]::inlined_fn_generic[0]<i32>
-    //~ TRANS_ITEM fn cgu_extern_closures[0]::inlined_fn_generic[0]::{{closure}}[0]<i32>
+    //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn_generic[0]<i32>
+    //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn_generic[0]::{{closure}}[0]<i32>
     let _ = cgu_extern_closures::inlined_fn_generic(3, 4, 5i32);
 
     // Nothing should be generated for this call, we just link to the instance instance

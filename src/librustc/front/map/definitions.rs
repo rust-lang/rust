@@ -59,23 +59,94 @@ pub struct DefData {
     pub node_id: ast::NodeId,
 }
 
-pub type DefPath = Vec<DisambiguatedDefPathData>;
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct DefPath {
+    /// the path leading from the crate root to the item
+    pub data: Vec<DisambiguatedDefPathData>,
+
+    /// what krate root is this path relative to?
+    pub krate: ast::CrateNum,
+}
+
+impl DefPath {
+    pub fn is_local(&self) -> bool {
+        self.krate == LOCAL_CRATE
+    }
+
+    pub fn make<FN>(start_krate: ast::CrateNum,
+                    start_index: DefIndex,
+                    mut get_key: FN) -> DefPath
+        where FN: FnMut(DefIndex) -> DefKey
+    {
+        let mut krate = start_krate;
+        let mut data = vec![];
+        let mut index = Some(start_index);
+        loop {
+            let p = index.unwrap();
+            let key = get_key(p);
+            match key.disambiguated_data.data {
+                DefPathData::CrateRoot => {
+                    assert!(key.parent.is_none());
+                    break;
+                }
+                DefPathData::InlinedRoot(ref p) => {
+                    assert!(key.parent.is_none());
+                    assert!(!p.def_id.is_local());
+                    data.extend(p.data.iter().cloned().rev());
+                    krate = p.def_id.krate;
+                    break;
+                }
+                _ => {
+                    data.push(key.disambiguated_data);
+                    index = key.parent;
+                }
+            }
+        }
+        data.reverse();
+        DefPath { data: data, krate: krate }
+    }
+}
+
+/// Root of an inlined item. We track the `DefPath` of the item within
+/// the original crate but also its def-id. This is kind of an
+/// augmented version of a `DefPath` that includes a `DefId`. This is
+/// all sort of ugly but the hope is that inlined items will be going
+/// away soon anyway.
+///
+/// Some of the constraints that led to the current approach:
+///
+/// - I don't want to have a `DefId` in the main `DefPath` because
+///   that gets serialized for incr. comp., and when reloaded the
+///   `DefId` is no longer valid. I'd rather maintain the invariant
+///   that every `DefId` is valid, and a potentially outdated `DefId` is
+///   represented as a `DefPath`.
+///   - (We don't serialize def-paths from inlined items, so it's ok to have one here.)
+/// - We need to be able to extract the def-id from inline items to
+///   make the symbol name. In theory we could retrace it from the
+///   data, but the metadata doesn't have the required indices, and I
+///   don't want to write the code to create one just for this.
+/// - It may be that we don't actually need `data` at all. We'll have
+///   to see about that.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct InlinedRootPath {
+    pub data: Vec<DisambiguatedDefPathData>,
+    pub def_id: DefId,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
     CrateRoot,
-    InlinedRoot(DefPath),
+    InlinedRoot(Box<InlinedRootPath>),
 
     // Catch-all for random DefId things like DUMMY_NODE_ID
     Misc,
 
     // Different kinds of items and item-like things:
-    Impl(ast::Name),
-    Type(ast::Name),
-    Mod(ast::Name),
-    Value(ast::Name),
+    Impl,
+    TypeNs(ast::Name), // something in the type NS
+    ValueNs(ast::Name), // something in the value NS
     MacroDef(ast::Name),
     ClosureExpr,
 
@@ -87,10 +158,6 @@ pub enum DefPathData {
     StructCtor, // implicit ctor for a tuple-like struct
     Initializer, // initializer for a const
     Binding(ast::Name), // pattern binding
-
-    // An external crate that does not have an `extern crate` in this
-    // crate.
-    DetachedCrate(ast::Name),
 }
 
 impl Definitions {
@@ -116,7 +183,7 @@ impl Definitions {
     /// will be the path of the item in the external crate (but the
     /// path will begin with the path to the external crate).
     pub fn def_path(&self, index: DefIndex) -> DefPath {
-        make_def_path(index, |p| self.def_key(p))
+        DefPath::make(LOCAL_CRATE, index, |p| self.def_key(p))
     }
 
     pub fn opt_def_index(&self, node: ast::NodeId) -> Option<DefIndex> {
@@ -175,18 +242,19 @@ impl DefPathData {
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         match *self {
-            Impl(name) |
-            Type(name) |
-            Mod(name) |
-            Value(name) |
+            TypeNs(name) |
+            ValueNs(name) |
             MacroDef(name) |
             TypeParam(name) |
             LifetimeDef(name) |
             EnumVariant(name) |
-            DetachedCrate(name) |
             Binding(name) |
             Field(name) => {
                 name.as_str()
+            }
+
+            Impl => {
+                InternedString::new("{{impl}}")
             }
 
             // note that this does not show up in user printouts
@@ -222,29 +290,3 @@ impl DefPathData {
     }
 }
 
-pub fn make_def_path<FN>(start_index: DefIndex, mut get_key: FN) -> DefPath
-    where FN: FnMut(DefIndex) -> DefKey
-{
-    let mut result = vec![];
-    let mut index = Some(start_index);
-    while let Some(p) = index {
-        let key = get_key(p);
-        match key.disambiguated_data.data {
-            DefPathData::CrateRoot => {
-                assert!(key.parent.is_none());
-                break;
-            }
-            DefPathData::InlinedRoot(ref p) => {
-                assert!(key.parent.is_none());
-                result.extend(p.iter().cloned().rev());
-                break;
-            }
-            _ => {
-                result.push(key.disambiguated_data);
-                index = key.parent;
-            }
-        }
-    }
-    result.reverse();
-    result
-}

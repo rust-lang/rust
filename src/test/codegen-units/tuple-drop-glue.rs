@@ -17,7 +17,7 @@
 struct Dropped;
 
 impl Drop for Dropped {
-    //~ TRANS_ITEM fn tuple_drop_glue::Dropped.Drop[0]::drop[0]
+    //~ TRANS_ITEM fn tuple_drop_glue::{{impl}}[0]::drop[0]
     fn drop(&mut self) {}
 }
 

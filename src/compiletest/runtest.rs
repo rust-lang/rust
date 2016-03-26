@@ -316,7 +316,7 @@ fn run_pretty_test_revision(config: &Config,
                                      testpaths,
                                      pretty_type.to_owned()),
                         props.exec_env.clone(),
-                        &config.compile_lib_path,
+                        config.compile_lib_path.to_str().unwrap(),
                         Some(aux_dir.to_str().unwrap()),
                         Some(src))
     }
@@ -635,7 +635,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testpaths: &TestPa
                                                   testpaths,
                                                   proc_args,
                                                   environment,
-                                                  &config.run_lib_path,
+                                                  config.run_lib_path.to_str().unwrap(),
                                                   None,
                                                   None);
         }
@@ -1315,7 +1315,7 @@ fn exec_compiled_test(config: &Config, props: &TestProps,
                             testpaths,
                             make_run_args(config, props, testpaths),
                             env,
-                            &config.run_lib_path,
+                            config.run_lib_path.to_str().unwrap(),
                             Some(aux_dir.to_str().unwrap()),
                             None)
         }
@@ -1387,7 +1387,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
                                      &aux_testpaths,
                                      aux_args,
                                      Vec::new(),
-                                     &config.compile_lib_path,
+                                     config.compile_lib_path.to_str().unwrap(),
                                      Some(aux_dir.to_str().unwrap()),
                                      None);
         if !auxres.status.success() {
@@ -1410,7 +1410,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
                     testpaths,
                     args,
                     props.rustc_env.clone(),
-                    &config.compile_lib_path,
+                    config.compile_lib_path.to_str().unwrap(),
                     Some(aux_dir.to_str().unwrap()),
                     input)
 }

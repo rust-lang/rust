@@ -90,7 +90,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
         for n in self.tcx.sess.cstore.crates() {
             result.push(CrateData {
-                name: self.tcx.sess.cstore.crate_name(n),
+                name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
                 number: n,
             });
         }
