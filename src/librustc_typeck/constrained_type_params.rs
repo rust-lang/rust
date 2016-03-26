@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::subst;
-use middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst;
+use rustc::ty::{self, Ty, TyCtxt};
 
 use std::collections::HashSet;
 

@@ -12,7 +12,7 @@
 //! We want to do this once just before trans, so trans does not have to take
 //! care erasing regions all over the place.
 
-use rustc::middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{MirPass, Pass};

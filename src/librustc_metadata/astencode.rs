@@ -27,14 +27,14 @@ use tydecode;
 use tyencode;
 
 use middle::cstore::{InlinedItem, InlinedItemRef};
-use middle::ty::adjustment;
-use middle::ty::cast;
+use rustc::ty::adjustment;
+use rustc::ty::cast;
 use middle::const_qualif::ConstQualif;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::region;
-use middle::subst;
-use middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst;
+use rustc::ty::{self, Ty, TyCtxt};
 
 use syntax::{ast, ast_util, codemap};
 use syntax::ast::NodeIdAssigner;

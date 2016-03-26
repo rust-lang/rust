@@ -32,9 +32,9 @@ use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
 use middle::def::Def;
 use middle::def_id::{DefId, DefIndex};
 use middle::lang_items;
-use middle::subst;
-use middle::ty::{ImplContainer, TraitContainer};
-use middle::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
+use rustc::ty::subst;
+use rustc::ty::{ImplContainer, TraitContainer};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, VariantKind};
 
 use rustc_const_eval::ConstInt;
 

@@ -19,10 +19,10 @@ use std::io::prelude::*;
 
 use middle::def_id::DefId;
 use middle::region;
-use middle::subst;
-use middle::subst::VecPerParamSpace;
-use middle::ty::ParamTy;
-use middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst;
+use rustc::ty::subst::VecPerParamSpace;
+use rustc::ty::ParamTy;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FnvHashMap;
 
 use rustc_front::hir;

@@ -18,13 +18,13 @@ use front::map as ast_map;
 use front::map::blocks::FnLikeNode;
 use lint;
 use middle::cstore::{self, CrateStore, InlinedItem};
-use middle::{infer, subst, traits};
+use {infer, traits};
 use middle::def::Def;
 use middle::def_id::DefId;
 use middle::pat_util::def_to_path;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::util::IntTypeExt;
-use middle::traits::ProjectionMode;
+use ty::{self, subst, Ty, TyCtxt};
+use ty::util::IntTypeExt;
+use traits::ProjectionMode;
 use middle::astconv_util::ast_ty_to_prim_ty;
 use util::nodemap::NodeMap;
 

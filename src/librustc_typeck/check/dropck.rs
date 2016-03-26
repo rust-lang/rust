@@ -12,11 +12,11 @@ use check::regionck::{self, Rcx};
 
 use middle::def_id::DefId;
 use middle::free_region::FreeRegionMap;
-use middle::infer;
+use rustc::infer;
 use middle::region;
-use middle::subst::{self, Subst};
-use middle::ty::{self, Ty, TyCtxt};
-use middle::traits::{self, ProjectionMode};
+use rustc::ty::subst::{self, Subst};
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::traits::{self, ProjectionMode};
 use util::nodemap::FnvHashSet;
 
 use syntax::ast;

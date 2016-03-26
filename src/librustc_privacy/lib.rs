@@ -42,7 +42,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::middle::def::{self, Def};
 use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
-use rustc::middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 use rustc::front::map as ast_map;
 

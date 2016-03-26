@@ -19,8 +19,8 @@ use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp,
 use rustc::middle::const_eval::ConstVal;
 use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
-use rustc::middle::subst::Substs;
-use rustc::middle::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use rustc_front::hir;
 use syntax::ast;
 use syntax::codemap::Span;

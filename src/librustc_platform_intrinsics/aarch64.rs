@@ -15,7 +15,7 @@
 
 use {Intrinsic, Type};
 use IntrinsicDef::Named;
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 
 // The default inlining settings trigger a pathological behaviour in
 // LLVM, which causes makes compilation very slow. See #28273.

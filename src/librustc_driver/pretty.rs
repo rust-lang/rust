@@ -20,9 +20,9 @@ use rustc_trans::back::link;
 use {driver, abort_on_err};
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::ty::{self, TyCtxt};
-use rustc::middle::cfg;
-use rustc::middle::cfg::graphviz::LabelledCFG;
+use rustc::ty::{self, TyCtxt};
+use rustc::cfg;
+use rustc::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
 use rustc::session::config::Input;
 use rustc_borrowck as borrowck;

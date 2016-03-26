@@ -14,10 +14,10 @@ use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::def_id::DefId;
 use middle::region::{CodeExtent};
-use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
-use middle::traits;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::fold::{TypeFolder};
+use rustc::ty::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
+use rustc::traits;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::fold::{TypeFolder};
 
 use std::cell::RefCell;
 use std::collections::HashSet;

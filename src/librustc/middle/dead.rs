@@ -17,8 +17,8 @@ use front::map as ast_map;
 use rustc_front::hir::{self, PatKind};
 use rustc_front::intravisit::{self, Visitor};
 
-use middle::{pat_util, privacy, ty};
-use middle::ty::TyCtxt;
+use middle::{pat_util, privacy};
+use ty::{self, TyCtxt};
 use middle::def::Def;
 use middle::def_id::{DefId};
 use lint;
@@ -84,7 +84,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
-        use middle::ty::TypeVariants::{TyEnum, TyStruct};
+        use ty::TypeVariants::{TyEnum, TyStruct};
 
         // If `bar` is a trait item, make sure to mark Foo as alive in `Foo::bar`
         self.tcx.tables.borrow().item_substs.get(id)

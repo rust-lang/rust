@@ -28,14 +28,15 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use middle::{cfg, infer, stability, traits};
 use middle::def::Def;
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
-use middle::subst::Substs;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::adjustment;
-use middle::traits::ProjectionMode;
+use middle::stability;
+use rustc::{cfg, infer};
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::adjustment;
+use rustc::traits::{self, ProjectionMode};
 use rustc::front::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};

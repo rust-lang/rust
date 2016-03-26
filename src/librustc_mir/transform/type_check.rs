@@ -12,10 +12,10 @@
 #![allow(unreachable_code)]
 
 use rustc::dep_graph::DepNode;
-use rustc::middle::infer::{self, InferCtxt};
-use rustc::middle::traits::{self, ProjectionMode};
-use rustc::middle::ty::fold::TypeFoldable;
-use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::infer::{self, InferCtxt};
+use rustc::traits::{self, ProjectionMode};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::{MirPass, Pass};

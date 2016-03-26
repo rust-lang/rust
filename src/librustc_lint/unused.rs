@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use middle::pat_util;
-use middle::ty;
-use middle::ty::adjustment;
+use rustc::ty;
+use rustc::ty::adjustment;
 use util::nodemap::FnvHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};

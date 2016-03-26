@@ -27,7 +27,7 @@ use self::TargetLint::*;
 
 use dep_graph::DepNode;
 use middle::privacy::AccessLevels;
-use middle::ty::TyCtxt;
+use ty::TyCtxt;
 use session::{config, early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
 use lint::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};
