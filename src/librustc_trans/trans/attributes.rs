@@ -9,7 +9,7 @@
 // except according to those terms.
 //! Set and unset common attributes on LLVM values.
 
-use libc::{c_uint, c_ulonglong};
+use libc::c_uint;
 use llvm::{self, ValueRef};
 use session::config::NoDebugInfo;
 pub use syntax::attr::InlineAttr;
@@ -28,9 +28,7 @@ pub fn inline(val: ValueRef, inline: InlineAttr) {
             let attr = llvm::Attribute::InlineHint |
                        llvm::Attribute::AlwaysInline |
                        llvm::Attribute::NoInline;
-            unsafe {
-                llvm::LLVMRemoveFunctionAttr(val, attr.bits() as c_ulonglong)
-            }
+            llvm::RemoveFunctionAttributes(val, attr)
         },
     };
 }
@@ -41,12 +39,7 @@ pub fn emit_uwtable(val: ValueRef, emit: bool) {
     if emit {
         llvm::SetFunctionAttribute(val, llvm::Attribute::UWTable);
     } else {
-        unsafe {
-            llvm::LLVMRemoveFunctionAttr(
-                val,
-                llvm::Attribute::UWTable.bits() as c_ulonglong,
-            );
-        }
+        llvm::RemoveFunctionAttributes(val, llvm::Attribute::UWTable);
     }
 }
 
@@ -54,12 +47,7 @@ pub fn emit_uwtable(val: ValueRef, emit: bool) {
 #[inline]
 pub fn unwind(val: ValueRef, can_unwind: bool) {
     if can_unwind {
-        unsafe {
-            llvm::LLVMRemoveFunctionAttr(
-                val,
-                llvm::Attribute::NoUnwind.bits() as c_ulonglong,
-            );
-        }
+        llvm::RemoveFunctionAttributes(val, llvm::Attribute::NoUnwind);
     } else {
         llvm::SetFunctionAttribute(val, llvm::Attribute::NoUnwind);
     }
@@ -72,12 +60,7 @@ pub fn set_optimize_for_size(val: ValueRef, optimize: bool) {
     if optimize {
         llvm::SetFunctionAttribute(val, llvm::Attribute::OptimizeForSize);
     } else {
-        unsafe {
-            llvm::LLVMRemoveFunctionAttr(
-                val,
-                llvm::Attribute::OptimizeForSize.bits() as c_ulonglong,
-            );
-        }
+        llvm::RemoveFunctionAttributes(val, llvm::Attribute::OptimizeForSize);
     }
 }
 
@@ -87,9 +70,7 @@ pub fn naked(val: ValueRef, is_naked: bool) {
     if is_naked {
         llvm::SetFunctionAttribute(val, llvm::Attribute::Naked);
     } else {
-        unsafe {
-            llvm::LLVMRemoveFunctionAttr(val, llvm::Attribute::Naked.bits() as c_ulonglong);
-        }
+        llvm::RemoveFunctionAttributes(val, llvm::Attribute::Naked);
     }
 }
 
