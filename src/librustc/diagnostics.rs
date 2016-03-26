@@ -1261,7 +1261,7 @@ compiled:
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
-trait Index<Idx> { ... }
+trait Index<Idx> { /* ... */ }
 
 foo(true); // `bool` does not implement `Index<u8>`
 ```
@@ -1291,7 +1291,7 @@ compiled:
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
-trait Index<Idx> { ... }
+trait Index<Idx> { /* ... */ }
 
 foo(true); // `bool` does not implement `Index<u8>`
 ```
@@ -1319,7 +1319,7 @@ compiled:
 fn foo<T: Index<u8>>(x: T){}
 
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
-trait Index<Idx> { ... }
+trait Index<Idx> { /* ... */ }
 
 foo(true); // `bool` does not implement `Index<u8>`
 ```
