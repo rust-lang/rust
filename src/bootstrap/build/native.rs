@@ -39,12 +39,7 @@ pub fn llvm(build: &Build, target: &str) {
 
     let _ = fs::remove_dir_all(&dst.join("build"));
     t!(fs::create_dir_all(&dst.join("build")));
-    let mut assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
-
-    // Disable LLVM assertions on ARM compilers until #32360 is fixed
-    if target.contains("arm") && target.contains("gnu") {
-        assertions = "OFF";
-    }
+    let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     // http://llvm.org/docs/CMake.html
     let mut cfg = cmake::Config::new(build.src.join("src/llvm"));

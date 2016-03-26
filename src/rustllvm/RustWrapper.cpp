@@ -151,6 +151,16 @@ extern "C" void LLVMAddFunctionAttrStringValue(LLVMValueRef Fn, unsigned index,
   F->addAttributes(index, AttributeSet::get(F->getContext(), index, B));
 }
 
+extern "C" void LLVMRemoveFunctionAttributes(LLVMValueRef Fn, unsigned index, uint64_t Val) {
+  Function *A = unwrap<Function>(Fn);
+  const AttributeSet PAL = A->getAttributes();
+  AttrBuilder B(Val);
+  const AttributeSet PALnew =
+    PAL.removeAttributes(A->getContext(), index,
+                         AttributeSet::get(A->getContext(), index, B));
+  A->setAttributes(PALnew);
+}
+
 extern "C" void LLVMRemoveFunctionAttrString(LLVMValueRef fn, unsigned index, const char *Name) {
   Function *f = unwrap<Function>(fn);
   LLVMContext &C = f->getContext();
