@@ -614,9 +614,15 @@ macro_rules! make_mir_visitor {
 
             fn super_constant(&mut self,
                               constant: & $($mutability)* Constant<'tcx>) {
-                self.visit_span(& $($mutability)* constant.span);
-                self.visit_ty(& $($mutability)* constant.ty);
-                self.visit_literal(& $($mutability)* constant.literal);
+                let Constant {
+                    ref $($mutability)* span,
+                    ref $($mutability)* ty,
+                    ref $($mutability)* literal,
+                } = *constant;
+
+                self.visit_span(span);
+                self.visit_ty(ty);
+                self.visit_literal(literal);
             }
 
             fn super_typed_const_val(&mut self,
@@ -626,6 +632,7 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* ty,
                     ref $($mutability)* value,
                 } = *constant;
+
                 self.visit_span(span);
                 self.visit_ty(ty);
                 self.visit_const_usize(value);
