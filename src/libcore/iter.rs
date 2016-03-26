@@ -434,7 +434,7 @@ pub trait Iterator {
     /// `None`. Once `None` is encountered, `count()` returns the number of
     /// times it called [`next()`].
     ///
-    /// [`next()`]: #method.next
+    /// [`next()`]: #tymethod.next
     ///
     /// # Overflow Behavior
     ///
@@ -497,7 +497,7 @@ pub trait Iterator {
     /// This method will evaluate the iterator `n` times, discarding those elements.
     /// After it does so, it will call [`next()`] and return its value.
     ///
-    /// [`next()`]: #method.next
+    /// [`next()`]: #tymethod.next
     ///
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
     /// returns the first value, `nth(1)` the second, and so on.

@@ -196,7 +196,7 @@ impl TcpStream {
     ///
     /// For more information about this option, see [`set_nodelay`][link].
     ///
-    /// [link]: #tymethod.set_nodelay
+    /// [link]: #method.set_nodelay
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn nodelay(&self) -> io::Result<bool> {
         self.0.nodelay()
@@ -215,7 +215,7 @@ impl TcpStream {
     ///
     /// For more information about this option, see [`set_ttl`][link].
     ///
-    /// [link]: #tymethod.set_ttl
+    /// [link]: #method.set_ttl
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
@@ -238,7 +238,7 @@ impl TcpStream {
     ///
     /// For more information about this option, see [`set_only_v6`][link].
     ///
-    /// [link]: #tymethod.set_only_v6
+    /// [link]: #method.set_only_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()
@@ -374,7 +374,7 @@ impl TcpListener {
     ///
     /// For more information about this option, see [`set_ttl`][link].
     ///
-    /// [link]: #tymethod.set_ttl
+    /// [link]: #method.set_ttl
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
@@ -397,7 +397,7 @@ impl TcpListener {
     ///
     /// For more information about this option, see [`set_only_v6`][link].
     ///
-    /// [link]: #tymethod.set_only_v6
+    /// [link]: #method.set_only_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()
