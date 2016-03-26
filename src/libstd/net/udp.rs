@@ -155,7 +155,7 @@ impl UdpSocket {
     /// For more information about this option, see
     /// [`set_broadcast`][link].
     ///
-    /// [link]: #tymethod.set_broadcast
+    /// [link]: #method.set_broadcast
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn broadcast(&self) -> io::Result<bool> {
         self.0.broadcast()
@@ -175,7 +175,7 @@ impl UdpSocket {
     /// For more information about this option, see
     /// [`set_multicast_loop_v4`][link].
     ///
-    /// [link]: #tymethod.set_multicast_loop_v4
+    /// [link]: #method.set_multicast_loop_v4
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn multicast_loop_v4(&self) -> io::Result<bool> {
         self.0.multicast_loop_v4()
@@ -198,7 +198,7 @@ impl UdpSocket {
     /// For more information about this option, see
     /// [`set_multicast_ttl_v4`][link].
     ///
-    /// [link]: #tymethod.set_multicast_ttl_v4
+    /// [link]: #method.set_multicast_ttl_v4
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
         self.0.multicast_ttl_v4()
@@ -218,7 +218,7 @@ impl UdpSocket {
     /// For more information about this option, see
     /// [`set_multicast_loop_v6`][link].
     ///
-    /// [link]: #tymethod.set_multicast_loop_v6
+    /// [link]: #method.set_multicast_loop_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn multicast_loop_v6(&self) -> io::Result<bool> {
         self.0.multicast_loop_v6()
@@ -237,7 +237,7 @@ impl UdpSocket {
     ///
     /// For more information about this option, see [`set_ttl`][link].
     ///
-    /// [link]: #tymethod.set_ttl
+    /// [link]: #method.set_ttl
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn ttl(&self) -> io::Result<u32> {
         self.0.ttl()
@@ -260,7 +260,7 @@ impl UdpSocket {
     ///
     /// For more information about this option, see [`set_only_v6`][link].
     ///
-    /// [link]: #tymethod.set_only_v6
+    /// [link]: #method.set_only_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn only_v6(&self) -> io::Result<bool> {
         self.0.only_v6()
@@ -293,7 +293,7 @@ impl UdpSocket {
     /// For more information about this option, see
     /// [`join_multicast_v4`][link].
     ///
-    /// [link]: #tymethod.join_multicast_v4
+    /// [link]: #method.join_multicast_v4
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v4(&self, multiaddr: &Ipv4Addr, interface: &Ipv4Addr) -> io::Result<()> {
         self.0.leave_multicast_v4(multiaddr, interface)
@@ -304,7 +304,7 @@ impl UdpSocket {
     /// For more information about this option, see
     /// [`join_multicast_v6`][link].
     ///
-    /// [link]: #tymethod.join_multicast_v6
+    /// [link]: #method.join_multicast_v6
     #[stable(feature = "net2_mutators", since = "1.9.0")]
     pub fn leave_multicast_v6(&self, multiaddr: &Ipv6Addr, interface: u32) -> io::Result<()> {
         self.0.leave_multicast_v6(multiaddr, interface)
