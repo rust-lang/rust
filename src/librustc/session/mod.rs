@@ -59,7 +59,7 @@ pub struct Session {
     pub local_crate_source_file: Option<PathBuf>,
     pub working_dir: PathBuf,
     pub lint_store: RefCell<lint::LintStore>,
-    pub lints: RefCell<NodeMap<Vec<(lint::LintId, Span, String)>>>,
+    pub lints: RefCell<NodeMap<Vec<(lint::LintId, MultiSpan, String)>>>,
     pub plugin_llvm_passes: RefCell<Vec<String>>,
     pub mir_passes: RefCell<mir_pass::Passes>,
     pub plugin_attributes: RefCell<Vec<(String, AttributeType)>>,
@@ -244,18 +244,18 @@ impl Session {
     pub fn unimpl(&self, msg: &str) -> ! {
         self.diagnostic().unimpl(msg)
     }
-    pub fn add_lint(&self,
+    pub fn add_lint<S: Into<MultiSpan>>(&self,
                     lint: &'static lint::Lint,
                     id: ast::NodeId,
-                    sp: Span,
+                    sp: S,
                     msg: String) {
         let lint_id = lint::LintId::of(lint);
         let mut lints = self.lints.borrow_mut();
         match lints.get_mut(&id) {
-            Some(arr) => { arr.push((lint_id, sp, msg)); return; }
+            Some(arr) => { arr.push((lint_id, sp.into(), msg)); return; }
             None => {}
         }
-        lints.insert(id, vec!((lint_id, sp, msg)));
+        lints.insert(id, vec!((lint_id, sp.into(), msg)));
     }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
         let id = self.next_node_id.get();

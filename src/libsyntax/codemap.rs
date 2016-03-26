@@ -364,6 +364,14 @@ impl MultiSpan {
     }
 }
 
+impl fmt::Debug for MultiSpan {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,
+               "MultiSpan ({})",
+               self.spans.iter().map(|s| format!("{:?}", s)).collect::<Vec<_>>().join(", "))
+    }
+}
+
 impl From<Span> for MultiSpan {
     fn from(span: Span) -> MultiSpan {
         MultiSpan { spans: vec![span] }
