@@ -969,11 +969,11 @@ then
     LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
-        (3.[5-8]*)
+        (3.[6-8]*)
             msg "found ok version of LLVM: $LLVM_VERSION"
             ;;
         (*)
-            err "bad LLVM version: $LLVM_VERSION, need >=3.5"
+            err "bad LLVM version: $LLVM_VERSION, need >=3.6"
             ;;
     esac
 fi
