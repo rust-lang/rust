@@ -6,8 +6,9 @@
 # Summary
 [summary]: #summary
 
-Provide native support for C-compatible unions, defined via a built-in syntax
-macro `union!`.
+Provide native support for C-compatible unions, defined via a new "contextual
+keyword" `union`, without breaking any existing code that uses `union` as an
+identifier.
 
 # Motivation
 [motivation]: #motivation
@@ -28,14 +29,11 @@ space-efficient or cache-efficient structures relying on value representation,
 such as machine-word-sized unions using the least-significant bits of aligned
 pointers to distinguish cases.
 
-The syntax proposed here avoids reserving a new keyword (such as `union`), and
-thus will not break any existing code.  This syntax also avoids adding a pragma
-to some existing keyword that doesn't quite fit, such as `struct` or `enum`,
-which avoids attaching any of the semantic significance of those keywords to
-this new construct.  Rust does not produce an error or warning about the
-redefinition of a macro already defined in the standard library, so the
-proposed syntax will not even break code that currently defines a macro named
-`union!`.
+The syntax proposed here recognizes `union` as though it were a keyword when
+used to introduce a union declaration, *without* breaking any existing code
+that uses `union` as an identifier.  Experiments by Niko Matsakis demonstrate
+that recognizing `union` in this manner works unambiguously with zero conflicts
+in the Rust grammar.
 
 To preserve memory safety, accesses to union fields may only occur in unsafe
 code.  Commonly, code using unions will provide safe wrappers around unsafe
@@ -47,16 +45,25 @@ union field accesses.
 ## Declaring a union type
 
 A union declaration uses the same field declaration syntax as a struct
-declaration, except with `union!` in place of `struct`.
+declaration, except with `union` in place of `struct`.
 
 ```rust
-union! MyUnion {
+union MyUnion {
     f1: u32,
     f2: f32,
 }
 ```
 
-`union!` implies `#[repr(C)]` as the default representation.
+`union` implies `#[repr(C)]` as the default representation.
+
+## Contextual keyword
+
+Rust normally prevents the use of a keyword as an identifier; for instance, a
+declaration `fn struct() {}` will produce an error "expected identifier, found
+keyword `struct`".  However, to avoid breaking existing declarations that use
+`union` as an identifier, Rust will only recognize `union` as a keyword when
+used to introduce a union declaration.  A declaration `fn union() {}` will not
+produce such an error.
 
 ## Instantiating a union
 
@@ -132,7 +139,7 @@ allows matching on the tag and the corresponding field simultaneously:
 #[repr(u32)]
 enum Tag { I, F }
 
-union! U {
+union U {
     i: i32,
     f: f32,
 }
@@ -168,7 +175,7 @@ entire union, such that any borrow conflicting with a borrow of the union
 containing the union) will produce an error.
 
 ```rust
-union! U {
+union U {
     f1: u32,
     f2: f32,
 }
@@ -194,7 +201,7 @@ struct S {
     y: u32,
 }
 
-union! U {
+union U {
     s: S,
     both: u64,
 }
@@ -252,7 +259,7 @@ size of any of its fields, and the maximum alignment of any of its fields.
 Note that those maximums may come from different fields; for instance:
 
 ```rust
-union! U {
+union U {
     f1: u16,
     f2: [u8; 4],
 }
@@ -275,26 +282,26 @@ of unsafe code.
 # Alternatives
 [alternatives]: #alternatives
 
-This proposal has a substantial history, with many variants and alternatives
-prior to the current macro-based syntax.  Thanks to many people in the Rust
-community for helping to refine this RFC.
+Proposals for unions in Rust have a substantial history, with many variants and
+alternatives prior to the syntax proposed here with a `union` pseudo-keyword.
+Thanks to many people in the Rust community for helping to refine this RFC.
 
-As an alternative to the macro syntax, Rust could support unions via a new
-keyword instead.  However, any introduction of a new keyword will necessarily
+The most obvious path to introducing unions in Rust would introduce `union` as
+a new keyword.  However, any introduction of a new keyword will necessarily
 break some code that previously compiled, such as code using the keyword as an
-identifier.  Using `union` as the keyword would break the substantial volume of
-existing Rust code using `union` for other purposes, including [multiple
-functions in the standard
-library](https://doc.rust-lang.org/std/?search=union).  Another keyword such as
-`untagged_union` would reduce the likelihood of breaking code in practice;
-however, in the absence of an explicit policy for introducing new keywords,
-this RFC opts to not propose a new keyword.
+identifier.  Making `union` a keyword in the standard way would break the
+substantial volume of existing Rust code using `union` for other purposes,
+including [multiple functions in the standard
+library](https://doc.rust-lang.org/std/?search=union).  The approach proposed
+here, recognizing `union` to introduce a union declaration without prohibiting
+`union` as an identifier, provides the most natural declaration syntax and
+avoids breaking any existing code.
 
-To avoid breakage caused by a new reserved keyword, Rust could use a compound
-keyword like `unsafe union` (currently not legal syntax in any context), while
-not reserving `union` on its own as a keyword, to avoid breaking use of `union`
-as an identifier.  This provides equally reasonable syntax, but potentially
-introduces more complexity in the Rust parser.
+Proposals for unions in Rust have extensively explored possible variations on
+declaration syntax, including longer keywords (`untagged_union`), built-in
+syntax macros (`union!`), compound keywords (`unsafe union`), pragmas
+(`#[repr(union)] struct`), and combinations of existing keywords (`unsafe
+enum`).
 
 In the absence of a new keyword, since unions represent unsafe, untagged sum
 types, and enum represents safe, tagged sum types, Rust could base unions on
@@ -321,7 +328,7 @@ pattern matching, and field access, the original version of this RFC used a
 pragma modifying the `struct` keyword: `#[repr(union)] struct`.  However, while
 the proposed unions match struct syntax, they do not share the semantics of
 struct; most notably, unions represent a sum type, while structs represent a
-product type.  The new construct `union!` avoids the semantics attached to
+product type.  The new construct `union` avoids the semantics attached to
 existing keywords.
 
 In the absence of any native support for unions, developers of existing Rust
