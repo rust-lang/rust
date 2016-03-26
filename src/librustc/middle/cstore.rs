@@ -309,7 +309,7 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     {
         let mut say = |s: &str| {
             match (sp, sess) {
-                (_, None) => panic!("{}", s),
+                (_, None) => bug!("{}", s),
                 (Some(sp), Some(sess)) => sess.span_err(sp, s),
                 (None, Some(sess)) => sess.err(s),
             }

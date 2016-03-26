@@ -987,14 +987,14 @@ impl<'tcx> TyS<'tcx> {
             TyStruct(def, substs) => {
                 def.struct_variant().fields[0].ty(cx, substs)
             }
-            _ => panic!("simd_type called on invalid type")
+            _ => bug!("simd_type called on invalid type")
         }
     }
 
     pub fn simd_size(&self, _cx: &TyCtxt) -> usize {
         match self.sty {
             TyStruct(def, _) => def.struct_variant().fields.len(),
-            _ => panic!("simd_size called on invalid type")
+            _ => bug!("simd_size called on invalid type")
         }
     }
 
@@ -1147,7 +1147,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
         match self.sty {
             TyFnDef(_, _, ref f) | TyFnPtr(ref f) => &f.sig,
-            _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self)
+            _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
 
@@ -1155,7 +1155,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn fn_abi(&self) -> abi::Abi {
         match self.sty {
             TyFnDef(_, _, ref f) | TyFnPtr(ref f) => f.abi,
-            _ => panic!("Ty::fn_abi() called on non-fn type"),
+            _ => bug!("Ty::fn_abi() called on non-fn type"),
         }
     }
 

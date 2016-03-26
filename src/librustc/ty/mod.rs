@@ -1647,7 +1647,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
         match def {
             Def::Variant(_, vid) => self.variant_with_id(vid),
             Def::Struct(..) | Def::TyAlias(..) => self.struct_variant(),
-            _ => panic!("unexpected def {:?} in variant_of_def", def)
+            _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
     }
 
@@ -1857,7 +1857,7 @@ fn lookup_locally_or_in_crate_store<M, F>(descr: &str,
 {
     map.memoize(def_id, || {
         if def_id.is_local() {
-            panic!("No def'n found for {:?} in tcx.{}", def_id, descr);
+            bug!("No def'n found for {:?} in tcx.{}", def_id, descr);
         }
         load_external()
     })

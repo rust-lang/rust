@@ -231,13 +231,13 @@ impl<'a> FnLikeNode<'a> {
                         span: i.span,
                         attrs: &i.attrs,
                     }),
-                _ => panic!("item FnLikeNode that is not fn-like"),
+                _ => bug!("item FnLikeNode that is not fn-like"),
             },
             map::NodeTraitItem(ti) => match ti.node {
                 ast::MethodTraitItem(ref sig, Some(ref body)) => {
                     method(ti.id, ti.name, sig, None, body, ti.span, &ti.attrs)
                 }
-                _ => panic!("trait method FnLikeNode that is not fn-like"),
+                _ => bug!("trait method FnLikeNode that is not fn-like"),
             },
             map::NodeImplItem(ii) => {
                 match ii.node {
@@ -245,7 +245,7 @@ impl<'a> FnLikeNode<'a> {
                         method(ii.id, ii.name, sig, Some(ii.vis), body, ii.span, &ii.attrs)
                     }
                     _ => {
-                        panic!("impl method FnLikeNode that is not fn-like")
+                        bug!("impl method FnLikeNode that is not fn-like")
                     }
                 }
             }
@@ -256,9 +256,9 @@ impl<'a> FnLikeNode<'a> {
                                               e.id,
                                               e.span,
                                               e.attrs.as_attr_slice())),
-                _ => panic!("expr FnLikeNode that is not fn-like"),
+                _ => bug!("expr FnLikeNode that is not fn-like"),
             },
-            _ => panic!("other FnLikeNode that is not fn-like"),
+            _ => bug!("other FnLikeNode that is not fn-like"),
         }
     }
 }

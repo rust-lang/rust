@@ -88,7 +88,7 @@ impl IntTypeExt for attr::IntType {
             (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
             (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
             (UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => {},
-            _ => panic!("disr type mismatch: {:?} vs {:?}", self, val),
+            _ => bug!("disr type mismatch: {:?} vs {:?}", self, val),
         }
     }
 

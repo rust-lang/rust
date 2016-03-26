@@ -148,7 +148,7 @@ impl DepGraphThreadData {
 
     // Outline this too.
     fn invalid_message(&self, string: &str) {
-        panic!("{}; see src/librustc/dep_graph/README.md for more information", string)
+        bug!("{}; see src/librustc/dep_graph/README.md for more information", string)
     }
 }
 

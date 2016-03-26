@@ -343,7 +343,7 @@ impl RegionMaps {
     pub fn lookup_code_extent(&self, e: CodeExtentData) -> CodeExtent {
         match self.code_extent_interner.borrow().get(&e) {
             Some(&d) => d,
-            None => panic!("unknown code extent {:?}", e)
+            None => bug!("unknown code extent {:?}", e)
         }
     }
     pub fn node_extent(&self, n: ast::NodeId) -> CodeExtent {
@@ -470,7 +470,7 @@ impl RegionMaps {
     pub fn var_scope(&self, var_id: ast::NodeId) -> CodeExtent {
         match self.var_map.borrow().get(&var_id) {
             Some(&r) => r,
-            None => { panic!("no enclosing scope for id {:?}", var_id); }
+            None => { bug!("no enclosing scope for id {:?}", var_id); }
         }
     }
 
