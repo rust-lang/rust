@@ -54,7 +54,7 @@ impl Thread {
         }
     }
 
-    pub fn set_name(_name: &str) {
+    pub fn set_name(_name: &CStr) {
         // Windows threads are nameless
         // The names in MSVC debugger are obtained using a "magic" exception,
         // which requires a use of MS C++ extensions.
