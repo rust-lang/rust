@@ -18,7 +18,10 @@ use empty_struct::*;
 
 struct Empty1 {}
 struct Empty2;
+
+#[derive(PartialEq, Eq)]
 struct Empty3 {}
+
 const Empty3: Empty3 = Empty3 {};
 
 enum E {

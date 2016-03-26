@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![allow(dead_code)]
+
+#[derive(PartialEq, Eq)]
+struct Foo {
+    x: u32
+}
+
+const FOO: Foo = Foo { x: 0 };
 
 fn main() {
-    foo! (
-        bar, "baz", 1, 2.0
-    } //~ ERROR incorrect close delimiter
-} //~ ERROR unexpected close delimiter: `}`
+    let y = Foo { x: 1 };
+    match y {
+        FOO => { }
+        _ => { }
+    }
+}
