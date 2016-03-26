@@ -778,10 +778,8 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
 /// Convenience function to get the return type of a function or `None` if the function diverges.
 pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> Option<ty::Ty<'tcx>> {
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
-    let infcx = infer::new_infer_ctxt(cx.tcx, &cx.tcx.tables, Some(parameter_env), ProjectionMode::Any);
-
-    let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(infcx.tcx, &infcx.parameter_environment.free_substs);
-    let fn_sig = infcx.tcx.liberate_late_bound_regions(infcx.parameter_environment.free_id_outlive, &fn_sig);
+    let fn_sig = cx.tcx.node_id_to_type(fn_item).fn_sig().subst(cx.tcx, &parameter_env.free_substs);
+    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
     if let ty::FnConverging(ret_ty) = fn_sig.output {
         Some(ret_ty)
     } else {
