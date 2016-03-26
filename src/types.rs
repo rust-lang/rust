@@ -1,7 +1,6 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::middle::const_eval;
-use rustc::middle::ty;
+use rustc::middle::{const_eval, def, ty};
 use rustc_front::hir::*;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc_front::util::{is_comparison_binop, binop_to_string};
@@ -53,21 +52,34 @@ impl LateLintPass for TypePass {
         if in_macro(cx, ast_ty.span) {
             return;
         }
-        if let Some(ty) = cx.tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
-            if let ty::TyBox(ref inner) = ty.sty {
-                if match_type(cx, inner, &VEC_PATH) {
+        if let Some(did) = cx.tcx.def_map.borrow().get(&ast_ty.id) {
+            if let def::Def::Struct(..) = did.full_def() {
+                if Some(did.def_id()) == cx.tcx.lang_items.owned_box() {
+                    if_let_chain! {
+                        [
+                            let TyPath(_, ref path) = ast_ty.node,
+                            let Some(ref last) = path.segments.last(),
+                            let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
+                            let Some(ref vec) = ag.types.get(0),
+                            let Some(did) = cx.tcx.def_map.borrow().get(&vec.id),
+                            let def::Def::Struct(..) = did.full_def(),
+                            match_def_path(cx, did.def_id(), &VEC_PATH),
+                        ],
+                        {
+                            span_help_and_lint(cx,
+                                               BOX_VEC,
+                                               ast_ty.span,
+                                               "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
+                                               "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                        }
+                    }
+                } else if match_def_path(cx, did.def_id(), &LL_PATH) {
                     span_help_and_lint(cx,
-                                       BOX_VEC,
+                                       LINKEDLIST,
                                        ast_ty.span,
-                                       "you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`",
-                                       "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
+                                       "I see you're using a LinkedList! Perhaps you meant some other data structure?",
+                                       "a VecDeque might work");
                 }
-            } else if match_type(cx, ty, &LL_PATH) {
-                span_help_and_lint(cx,
-                                   LINKEDLIST,
-                                   ast_ty.span,
-                                   "I see you're using a LinkedList! Perhaps you meant some other data structure?",
-                                   "a VecDeque might work");
             }
         }
     }

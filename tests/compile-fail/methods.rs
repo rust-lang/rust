@@ -47,6 +47,15 @@ impl<'a> Lt2<'a> {
     pub fn new(s: &str) -> Lt2 { unimplemented!() }
 }
 
+struct Lt3<'a> {
+    foo: &'a u32,
+}
+
+impl<'a> Lt3<'a> {
+    // The lifetime is different, but that’s irrelevant, see #734
+    pub fn new() -> Lt3<'static> { unimplemented!() }
+}
+
 #[derive(Clone,Copy)]
 struct U;
 
