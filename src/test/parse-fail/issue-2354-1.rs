@@ -10,4 +10,4 @@
 
 // compile-flags: -Z parse-only
 
-static foo: isize = 2; } //~ ERROR incorrect close delimiter:
+static foo: isize = 2; } //~ ERROR unexpected close delimiter:
