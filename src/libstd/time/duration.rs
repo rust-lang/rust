@@ -86,6 +86,45 @@ impl Duration {
     /// fractional portion of a second (e.g. it is less than one billion).
     #[stable(feature = "duration", since = "1.3.0")]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
+
+    /// Multiplies this `Duration`.
+    ///
+    /// This method takes a `u64` in contrast to `Duration`'s `Mul`
+    /// implementation which takes an `i32`. For technical reasons, this cannot
+    /// be provided as an additional `Mul` implementation, though that may
+    /// change in the future in which case this method will be deprecated.
+    #[unstable(feature = "duration_u64", reason = "newly added", issue = "0")]
+    pub fn mul_u64(&self, rhs: u64) -> Duration {
+        // for nanos, treat rhs as (NANOS_PER_SEC * a + b), where b < NANOS_PER_SEC
+        let a = rhs / NANOS_PER_SEC as u64;
+        let b = rhs % NANOS_PER_SEC as u64;
+        let total_nanos = self.nanos as u64 * b; // can't overflow
+        let nanos = (total_nanos % NANOS_PER_SEC as u64) as u32;
+
+        let secs = self.secs
+                       .checked_mul(rhs)
+                       .and_then(|s| s.checked_add(total_nanos / NANOS_PER_SEC as u64))
+                       .and_then(|s| s.checked_add(self.nanos as u64 * a))
+                       .expect("overflow when multiplying duration");
+        debug_assert!(nanos < NANOS_PER_SEC);
+        Duration { secs: secs, nanos: nanos }
+    }
+
+    /// Divides this `Duration`.
+    ///
+    /// This method takes a `u64` in contrast to `Duration`'s `Div`
+    /// implementation which takes an `i32`. For technical reasons, this cannot
+    /// be provided as an additional `Div` implementation, though that may
+    /// change in the future in which case this method will be deprecated.
+    #[unstable(feature = "duration_u64", reason = "newly added", issue = "0")]
+    pub fn div_u64(&self, rhs: u64) -> Duration {
+        let secs = self.secs / rhs;
+        let carry = self.secs - secs * rhs;
+        let extra_nanos = carry * (NANOS_PER_SEC as u64) / rhs;
+        let nanos = (self.nanos as u64 / rhs + extra_nanos) as u32;
+        debug_assert!(nanos < NANOS_PER_SEC);
+        Duration { secs: secs, nanos: nanos }
+    }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
@@ -250,6 +289,14 @@ mod tests {
         assert_eq!(Duration::new(0, 500_000_001) * 4, Duration::new(2, 4));
         assert_eq!(Duration::new(0, 500_000_001) * 4000,
                    Duration::new(2000, 4000));
+
+        assert_eq!(Duration::new(0, 1).mul_u64(2), Duration::new(0, 2));
+        assert_eq!(Duration::new(1, 1).mul_u64(3), Duration::new(3, 3));
+        assert_eq!(Duration::new(0, 500_000_001).mul_u64(4), Duration::new(2, 4));
+        assert_eq!(Duration::new(0, 500_000_001).mul_u64(4000),
+                   Duration::new(2000, 4000));
+        assert_eq!(Duration::new(0, 500_000_000).mul_u64(1 << 63),
+                   Duration::new(1 << 62, 0));
     }
 
     #[test]
@@ -258,5 +305,12 @@ mod tests {
         assert_eq!(Duration::new(1, 1) / 3, Duration::new(0, 333_333_333));
         assert_eq!(Duration::new(99, 999_999_000) / 100,
                    Duration::new(0, 999_999_990));
+
+        assert_eq!(Duration::new(0, 1).div_u64(2), Duration::new(0, 0));
+        assert_eq!(Duration::new(1, 1).div_u64(3), Duration::new(0, 333_333_333));
+        assert_eq!(Duration::new(99, 999_999_000).div_u64(100),
+                   Duration::new(0, 999_999_990));
+        assert_eq!(Duration::new(1 << 62, 0).div_u64(1 << 63),
+                   Duration::new(0, 500_000_000));
     }
 }
