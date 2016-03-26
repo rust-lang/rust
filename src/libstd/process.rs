@@ -339,7 +339,7 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
-        self.inner.spawn(imp::Stdio::Inherit, false).map(Child::from_inner)
+        self.inner.spawn(imp::Stdio::Inherit, true).map(Child::from_inner)
                   .and_then(|mut p| p.wait())
     }
 }
