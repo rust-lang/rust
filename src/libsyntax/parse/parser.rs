@@ -941,7 +941,9 @@ impl<'a> Parser<'a> {
     {
         try!(self.expect(bra));
         let result = self.parse_seq_to_before_end(ket, sep, f);
-        self.bump();
+        if self.token == *ket {
+            self.bump();
+        }
         Ok(result)
     }
 
@@ -1276,15 +1278,21 @@ impl<'a> Parser<'a> {
                     Ok(cua) => cua,
                     Err(e) => {
                         loop {
-                            p.bump();
-                            if p.token == token::Semi {
-                                p.bump();
-                                break;
-                            }
+                            match p.token {
+                                token::Eof => break,
 
-                            if p.token == token::OpenDelim(token::DelimToken::Brace) {
-                                try!(p.parse_token_tree());
-                                break;
+                                token::CloseDelim(token::Brace) |
+                                token::Semi => {
+                                    p.bump();
+                                    break;
+                                }
+
+                                token::OpenDelim(token::Brace) => {
+                                    try!(p.parse_token_tree());
+                                    break;
+                                }
+
+                                _ => p.bump()
                             }
                         }
 
