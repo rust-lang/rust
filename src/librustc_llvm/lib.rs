@@ -964,9 +964,10 @@ extern {
     pub fn LLVMAddFunctionAttrStringValue(Fn: ValueRef, index: c_uint,
                                           Name: *const c_char,
                                           Value: *const c_char);
+    pub fn LLVMRemoveFunctionAttributes(Fn: ValueRef, index: c_uint, attr: uint64_t);
     pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
-    pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
-    pub fn LLVMRemoveFunctionAttr(Fn: ValueRef, val: c_ulonglong);
+    pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_uint;
+    pub fn LLVMRemoveFunctionAttr(Fn: ValueRef, val: c_uint);
 
     /* Operations on parameters */
     pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;
@@ -2181,6 +2182,13 @@ pub fn SetFunctionAttribute(fn_: ValueRef, attr: Attribute) {
     unsafe {
         LLVMAddFunctionAttribute(fn_, FunctionIndex as c_uint,
                                  attr.bits() as uint64_t)
+    }
+}
+
+pub fn RemoveFunctionAttributes(fn_: ValueRef, attr: Attribute) {
+    unsafe {
+        LLVMRemoveFunctionAttributes(fn_, FunctionIndex as c_uint,
+                                           attr.bits() as uint64_t)
     }
 }
 
