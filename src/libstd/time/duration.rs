@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ops::{Add, Sub, Mul, Div};
+use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -105,6 +105,13 @@ impl Add for Duration {
     }
 }
 
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl AddAssign for Duration {
+    fn add_assign(&mut self, rhs: Duration) {
+        *self = *self + rhs;
+    }
+}
+
 #[stable(feature = "duration", since = "1.3.0")]
 impl Sub for Duration {
     type Output = Duration;
@@ -121,6 +128,13 @@ impl Sub for Duration {
         };
         debug_assert!(nanos < NANOS_PER_SEC);
         Duration { secs: secs, nanos: nanos }
+    }
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl SubAssign for Duration {
+    fn sub_assign(&mut self, rhs: Duration) {
+        *self = *self - rhs;
     }
 }
 
@@ -141,6 +155,13 @@ impl Mul<u32> for Duration {
     }
 }
 
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl MulAssign<u32> for Duration {
+    fn mul_assign(&mut self, rhs: u32) {
+        *self = *self * rhs;
+    }
+}
+
 #[stable(feature = "duration", since = "1.3.0")]
 impl Div<u32> for Duration {
     type Output = Duration;
@@ -152,6 +173,13 @@ impl Div<u32> for Duration {
         let nanos = self.nanos / rhs + (extra_nanos as u32);
         debug_assert!(nanos < NANOS_PER_SEC);
         Duration { secs: secs, nanos: nanos }
+    }
+}
+
+#[stable(feature = "time_augmented_assignment", since = "1.9.0")]
+impl DivAssign<u32> for Duration {
+    fn div_assign(&mut self, rhs: u32) {
+        *self = *self / rhs;
     }
 }
 
