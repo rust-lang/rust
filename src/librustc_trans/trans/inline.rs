@@ -97,6 +97,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
                     for (ast_v, ty_v) in ast_vs.iter().zip(ty_vs.iter()) {
                         if ty_v.did == fn_id { my_id = ast_v.node.data.id(); }
                         ccx.external().borrow_mut().insert(ty_v.did, Some(ast_v.node.data.id()));
+                        ccx.external_srcs().borrow_mut().insert(ast_v.node.data.id(), ty_v.did);
                     }
                 }
                 hir::ItemStruct(ref struct_def, _) => {
@@ -105,6 +106,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
                                                                  non-tuple struct")
                     } else {
                         ccx.external().borrow_mut().insert(fn_id, Some(struct_def.id()));
+                        ccx.external_srcs().borrow_mut().insert(struct_def.id(), fn_id);
                         my_id = struct_def.id();
                     }
                 }

@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:typeid-intrinsic.rs
-// aux-build:typeid-intrinsic2.rs
+// aux-build:typeid-intrinsic-aux1.rs
+// aux-build:typeid-intrinsic-aux2.rs
 
 #![feature(core_intrinsics)]
 
-extern crate typeid_intrinsic as other1;
-extern crate typeid_intrinsic2 as other2;
+extern crate typeid_intrinsic_aux1 as other1;
+extern crate typeid_intrinsic_aux2 as other2;
 
 use std::hash::{SipHasher, Hasher, Hash};
 use std::any::TypeId;

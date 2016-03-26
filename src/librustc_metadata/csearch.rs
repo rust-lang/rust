@@ -13,7 +13,7 @@ use decoder;
 use encoder;
 use loader;
 
-use middle::cstore::{CrateStore, CrateSource, ChildItem, FoundAst};
+use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
@@ -128,16 +128,9 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_method_arg_names(&cdata, did.index)
     }
 
-    fn item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
+    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
         let cdata = self.get_crate_data(def.krate);
-        let path = decoder::get_item_path(&cdata, def.index);
-
-        cdata.with_local_path(|cpath| {
-            let mut r = Vec::with_capacity(cpath.len() + path.len());
-            r.extend_from_slice(cpath);
-            r.extend_from_slice(&path);
-            r
-        })
+        decoder::get_item_path(&cdata, def.index)
     }
 
     fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
@@ -334,15 +327,31 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_crate_attributes(self.get_crate_data(cnum).data())
     }
 
-    fn crate_name(&self, cnum: ast::CrateNum) -> String
+    fn crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
     {
-        self.get_crate_data(cnum).name.clone()
+        token::intern_and_get_ident(&self.get_crate_data(cnum).name[..])
+    }
+
+    fn original_crate_name(&self, cnum: ast::CrateNum) -> token::InternedString
+    {
+        token::intern_and_get_ident(&self.get_crate_data(cnum).name())
+    }
+
+    fn extern_crate(&self, cnum: ast::CrateNum) -> Option<ExternCrate>
+    {
+        self.get_crate_data(cnum).extern_crate.get()
     }
 
     fn crate_hash(&self, cnum: ast::CrateNum) -> Svh
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_crate_hash(cdata.data())
+    }
+
+    fn crate_disambiguator(&self, cnum: ast::CrateNum) -> token::InternedString
+    {
+        let cdata = self.get_crate_data(cnum);
+        token::intern_and_get_ident(decoder::get_crate_disambiguator(cdata.data()))
     }
 
     fn crate_struct_field_attrs(&self, cnum: ast::CrateNum)
@@ -372,12 +381,17 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_reachable_ids(&cdata)
     }
 
-    fn def_path(&self, def: DefId) -> hir_map::DefPath
-    {
+    /// Returns the `DefKey` for a given `DefId`. This indicates the
+    /// parent `DefId` as well as some idea of what kind of data the
+    /// `DefId` refers to.
+    fn def_key(&self, def: DefId) -> hir_map::DefKey {
         let cdata = self.get_crate_data(def.krate);
-        let path = decoder::def_path(&cdata, def.index);
-        let local_path = cdata.local_def_path();
-        local_path.into_iter().chain(path).collect()
+        decoder::def_key(&cdata, def.index)
+    }
+
+    fn relative_def_path(&self, def: DefId) -> hir_map::DefPath {
+        let cdata = self.get_crate_data(def.krate);
+        decoder::def_path(&cdata, def.index)
     }
 
     fn variant_kind(&self, def_id: DefId) -> Option<VariantKind> {
@@ -478,9 +492,13 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         loader::meta_section_name(target)
     }
-    fn encode_type(&self, tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> Vec<u8>
+    fn encode_type(&self,
+                   tcx: &TyCtxt<'tcx>,
+                   ty: Ty<'tcx>,
+                   def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
+                   -> Vec<u8>
     {
-        encoder::encoded_ty(tcx, ty)
+        encoder::encoded_ty(tcx, ty, def_id_to_string)
     }
 
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(ast::CrateNum, Option<PathBuf>)>

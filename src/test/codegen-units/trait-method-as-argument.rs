@@ -39,7 +39,7 @@ fn take_foo_mut<T, F: FnMut(T) -> T>(mut f: F, arg: T) -> T {
 //~ TRANS_ITEM fn trait_method_as_argument::main[0]
 fn main() {
     //~ TRANS_ITEM fn trait_method_as_argument::take_foo_once[0]<u32, fn(u32) -> u32>
-    //~ TRANS_ITEM fn trait_method_as_argument::u32.Trait[0]::foo[0]
+    //~ TRANS_ITEM fn trait_method_as_argument::{{impl}}[0]::foo[0]
     take_foo_once(Trait::foo, 0u32);
 
     //~ TRANS_ITEM fn trait_method_as_argument::take_foo_once[0]<char, fn(char) -> char>

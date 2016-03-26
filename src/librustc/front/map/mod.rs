@@ -12,13 +12,14 @@ pub use self::Node::*;
 pub use self::PathElem::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
-pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData};
+pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
+                            DisambiguatedDefPathData, InlinedRootPath};
 
 use dep_graph::{DepGraph, DepNode};
 
 use middle::cstore::InlinedItem;
 use middle::cstore::InlinedItem as II;
-use middle::def_id::DefId;
+use middle::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
@@ -322,7 +323,8 @@ impl<'ast> Map<'ast> {
                     id = p,
 
                 RootCrate |
-                RootInlinedParent(_) => // FIXME(#2369) clarify story about cross-crate dep tracking
+                RootInlinedParent(_) =>
+                    // FIXME(#32015) clarify story about cross-crate dep tracking
                     return DepNode::Krate,
 
                 NotPresent =>
@@ -384,6 +386,15 @@ impl<'ast> Map<'ast> {
 
     pub fn krate(&self) -> &'ast Crate {
         self.forest.krate()
+    }
+
+    /// Get the attributes on the krate. This is preferable to
+    /// invoking `krate.attrs` because it registers a tighter
+    /// dep-graph access.
+    pub fn krate_attrs(&self) -> &'ast [ast::Attribute] {
+        let crate_root_def_id = DefId::local(CRATE_DEF_INDEX);
+        self.dep_graph.read(DepNode::Hir(crate_root_def_id));
+        &self.forest.krate.attrs
     }
 
     /// Retrieve the Node corresponding to `id`, panicking if it cannot
@@ -958,6 +969,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
                                           parent_path: Vec<PathElem>,
                                           parent_def_path: DefPath,
+                                          parent_def_id: DefId,
                                           ii: InlinedItem,
                                           fold_ops: F)
                                           -> &'ast InlinedItem {
@@ -987,6 +999,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             ii_parent,
             ii_parent_id,
             parent_def_path,
+            parent_def_id,
             mem::replace(&mut *map.map.borrow_mut(), vec![]),
             mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
     ii_parent.ii.visit(&mut collector);

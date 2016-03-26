@@ -19,7 +19,7 @@ struct StructWithDrop {
 }
 
 impl Drop for StructWithDrop {
-    //~ TRANS_ITEM fn non_generic_drop_glue::StructWithDrop.Drop[0]::drop[0]
+    //~ TRANS_ITEM fn non_generic_drop_glue::{{impl}}[0]::drop[0]
     fn drop(&mut self) {}
 }
 
@@ -33,7 +33,7 @@ enum EnumWithDrop {
 }
 
 impl Drop for EnumWithDrop {
-    //~ TRANS_ITEM fn non_generic_drop_glue::EnumWithDrop.Drop[0]::drop[0]
+    //~ TRANS_ITEM fn non_generic_drop_glue::{{impl}}[1]::drop[0]
     fn drop(&mut self) {}
 }
 

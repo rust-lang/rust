@@ -38,31 +38,31 @@ fn bar() {
 struct Struct { _x: i32 }
 
 impl Struct {
-    //~ TRANS_ITEM fn non_generic_functions::Struct[0]::foo[0]
+    //~ TRANS_ITEM fn non_generic_functions::{{impl}}[0]::foo[0]
     fn foo() {
         {
-            //~ TRANS_ITEM fn non_generic_functions::Struct[0]::foo[0]::foo[0]
+            //~ TRANS_ITEM fn non_generic_functions::{{impl}}[0]::foo[0]::foo[0]
             fn foo() {}
             foo();
         }
 
         {
-            //~ TRANS_ITEM fn non_generic_functions::Struct[0]::foo[0]::foo[1]
+            //~ TRANS_ITEM fn non_generic_functions::{{impl}}[0]::foo[0]::foo[1]
             fn foo() {}
             foo();
         }
     }
 
-    //~ TRANS_ITEM fn non_generic_functions::Struct[0]::bar[0]
+    //~ TRANS_ITEM fn non_generic_functions::{{impl}}[0]::bar[0]
     fn bar(&self) {
         {
-            //~ TRANS_ITEM fn non_generic_functions::Struct[0]::bar[0]::foo[0]
+            //~ TRANS_ITEM fn non_generic_functions::{{impl}}[0]::bar[0]::foo[0]
             fn foo() {}
             foo();
         }
 
         {
-            //~ TRANS_ITEM fn non_generic_functions::Struct[0]::bar[0]::foo[1]
+            //~ TRANS_ITEM fn non_generic_functions::{{impl}}[0]::bar[0]::foo[1]
             fn foo() {}
             foo();
         }

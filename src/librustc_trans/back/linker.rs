@@ -359,6 +359,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             for symbol in symbols {
                 writeln!(f, "  {}", symbol)?;
             }
+
             Ok(())
         })();
         if let Err(e) = res {
