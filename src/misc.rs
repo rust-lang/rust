@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::middle::const_eval::ConstVal::Float;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::const_eval::eval_const_expr_partial;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::FnKind;
 use rustc_front::util::{is_comparison_binop, binop_to_string};

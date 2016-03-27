@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc_front::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;

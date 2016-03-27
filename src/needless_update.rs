@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::middle::ty::TyStruct;
+use rustc::ty::TyStruct;
 use rustc_front::hir::{Expr, ExprStruct};
 use utils::span_lint;
 

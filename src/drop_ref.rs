@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 use utils::DROP_PATH;

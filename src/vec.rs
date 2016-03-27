@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::middle::ty::TypeVariants;
+use rustc::ty::TypeVariants;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 use syntax::ptr::P;

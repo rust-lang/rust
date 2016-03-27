@@ -4,7 +4,7 @@
 
 use rustc::front::map::NodeItem;
 use rustc::lint::*;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc_front::hir::*;
 use syntax::ast::NodeId;
 use utils::{STRING_PATH, VEC_PATH};

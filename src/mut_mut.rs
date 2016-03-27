@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc::middle::ty::{TypeAndMut, TyRef};
+use rustc::ty::{TypeAndMut, TyRef};
 use rustc_front::hir::*;
 use utils::{in_external_macro, span_lint};
 

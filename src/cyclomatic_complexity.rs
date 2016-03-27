@@ -1,8 +1,8 @@
 //! calculate cyclomatic complexity and warn about overly complex functions
 
 use rustc::lint::*;
-use rustc::middle::cfg::CFG;
-use rustc::middle::ty;
+use rustc::cfg::CFG;
+use rustc::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr};
 use syntax::ast::Attribute;

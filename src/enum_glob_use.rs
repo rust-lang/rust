@@ -3,7 +3,7 @@
 use rustc::front::map::Node::NodeItem;
 use rustc::front::map::definitions::DefPathData;
 use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray, LintContext};
-use rustc::middle::ty::TyEnum;
+use rustc::ty::TyEnum;
 use rustc_front::hir::*;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -51,8 +51,9 @@ impl EnumGlobUse {
                             }
                         }
                     } else {
-                        if let Some(dp) = cx.sess().cstore.def_path(def.def_id()).last() {
-                            if let DefPathData::Type(_) = dp.data {
+                        let dp = cx.sess().cstore.relative_def_path(def.def_id());
+                        if  let Some(dpa) = dp.data.last() {
+                            if let  DefPathData::TypeNs(_) = dpa.data {
                                 if let TyEnum(..) = cx.sess().cstore.item_type(&cx.tcx, def.def_id()).ty.sty {
                                     span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
                                 }

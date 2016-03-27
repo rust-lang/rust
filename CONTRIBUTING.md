@@ -31,7 +31,7 @@ the lint will end up to be a nested series of matches and ifs,
 [like so](https://github.com/Manishearth/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
 
 T-middle issues can be more involved and require verifying types. The
-[`middle::ty`](http://manishearth.github.io/rust-internals-docs/rustc/middle/ty) module contains a
+[`ty`](http://manishearth.github.io/rust-internals-docs/rustc/middle/ty) module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
 an AST expression). `match_def_path()` in Clippy's `utils` module can also be useful.
 

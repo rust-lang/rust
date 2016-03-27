@@ -1,6 +1,7 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::middle::{const_eval, def, ty};
+use rustc::middle::{const_eval, def};
+use rustc::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc_front::util::{is_comparison_binop, binop_to_string};

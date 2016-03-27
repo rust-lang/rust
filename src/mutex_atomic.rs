@@ -3,8 +3,8 @@
 //! This lint is **warn** by default
 
 use rustc::lint::{LintPass, LintArray, LateLintPass, LateContext};
-use rustc::middle::subst::ParamSpace;
-use rustc::middle::ty;
+use rustc::ty::subst::ParamSpace;
+use rustc::ty;
 use rustc_front::hir::Expr;
 use syntax::ast;
 use utils::{span_lint, MUTEX_PATH, match_type};

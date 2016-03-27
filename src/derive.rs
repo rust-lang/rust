@@ -1,8 +1,8 @@
 use rustc::lint::*;
-use rustc::middle::subst::Subst;
-use rustc::middle::ty::TypeVariants;
-use rustc::middle::ty::fast_reject::simplify_type;
-use rustc::middle::ty;
+use rustc::ty::subst::Subst;
+use rustc::ty::TypeVariants;
+use rustc::ty::fast_reject::simplify_type;
+use rustc::ty;
 use rustc_front::hir::*;
 use syntax::ast::{Attribute, MetaItemKind};
 use syntax::codemap::Span;

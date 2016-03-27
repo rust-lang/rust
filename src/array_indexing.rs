@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
 use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
-use rustc::middle::ty::TyArray;
+use rustc::ty::TyArray;
 use rustc_front::hir::*;
 use rustc_const_eval::ConstInt;
 use syntax::ast::RangeLimits;

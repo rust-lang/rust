@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc_front::hir::*;
-use rustc::middle::ty::TyS;
-use rustc::middle::ty::TypeVariants::TyRawPtr;
+use rustc::ty::TyS;
+use rustc::ty::TypeVariants::TyRawPtr;
 use utils;
 use utils::TRANSMUTE_PATH;
 

@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::middle::def_id::DefId;
-use rustc::middle::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
+use rustc::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
 use rustc_front::hir::*;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};

@@ -1,6 +1,6 @@
 use rustc::front::map::Node::NodeItem;
 use rustc::lint::*;
-use rustc::middle::ty::TypeVariants;
+use rustc::ty::TypeVariants;
 use rustc_front::hir::*;
 use syntax::ast::LitKind;
 use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH, STRING_PATH};
