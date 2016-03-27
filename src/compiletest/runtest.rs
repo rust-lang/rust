@@ -727,8 +727,11 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testpaths: &TestP
     script_str.push_str("type category enable Rust\n");
 
     // Set breakpoints on every line that contains the string "#break"
+    let source_file_name = testpaths.file.file_name().unwrap().to_string_lossy();
     for line in &breakpoint_lines {
-        script_str.push_str(&format!("breakpoint set --line {}\n", line));
+        script_str.push_str(&format!("breakpoint set --file '{}' --line {}\n",
+                                     source_file_name,
+                                     line));
     }
 
     // Append the other commands
