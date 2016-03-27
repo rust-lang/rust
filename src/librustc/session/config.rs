@@ -48,7 +48,9 @@ pub enum OptLevel {
     No, // -O0
     Less, // -O1
     Default, // -O2
-    Aggressive // -O3
+    Aggressive, // -O3
+    Size, // -Os
+    SizeMin, // -Oz
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -567,8 +569,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
     debuginfo: Option<usize> = (None, parse_opt_uint,
         "debug info emission level, 0 = no debug info, 1 = line tables only, \
          2 = full debug info with variable and type information"),
-    opt_level: Option<usize> = (None, parse_opt_uint,
-        "optimize with possible levels 0-3"),
+    opt_level: Option<String> = (None, parse_opt_string,
+        "optimize with possible levels 0-3, s, or z"),
     debug_assertions: Option<bool> = (None, parse_opt_bool,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint,
@@ -1125,15 +1127,17 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
             OptLevel::Default
         } else {
-            match cg.opt_level {
+            match cg.opt_level.as_ref().map(String::as_ref) {
                 None => OptLevel::No,
-                Some(0) => OptLevel::No,
-                Some(1) => OptLevel::Less,
-                Some(2) => OptLevel::Default,
-                Some(3) => OptLevel::Aggressive,
+                Some("0") => OptLevel::No,
+                Some("1") => OptLevel::Less,
+                Some("2") => OptLevel::Default,
+                Some("3") => OptLevel::Aggressive,
+                Some("s") => OptLevel::Size,
+                Some("z") => OptLevel::SizeMin,
                 Some(arg) => {
                     early_error(error_format, &format!("optimization level needs to be \
-                                                      between 0-3 (instead was `{}`)",
+                                                      between 0-3, s, or z (instead was `{}`)",
                                                      arg));
                 }
             }

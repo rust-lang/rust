@@ -44,6 +44,7 @@ pub use self::FileType::*;
 pub use self::MetadataType::*;
 pub use self::AsmDialect::*;
 pub use self::CodeGenOptLevel::*;
+pub use self::CodeGenOptSize::*;
 pub use self::RelocMode::*;
 pub use self::CodeGenModel::*;
 pub use self::DiagnosticKind::*;
@@ -373,6 +374,14 @@ pub enum CodeGenOptLevel {
     CodeGenLevelLess = 1,
     CodeGenLevelDefault = 2,
     CodeGenLevelAggressive = 3,
+}
+
+#[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
+pub enum CodeGenOptSize {
+    CodeGenOptSizeNone = 0,
+    CodeGenOptSizeDefault = 1,
+    CodeGenOptSizeAggressive = 2,
 }
 
 #[derive(Copy, Clone, PartialEq)]
