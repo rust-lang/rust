@@ -91,8 +91,8 @@ use middle::def_id::DefId;
 use rustc::infer;
 use rustc::infer::{TypeOrigin, TypeTrace, type_variable};
 use middle::pat_util::{self, pat_id_map};
+use rustc::traits::{self, report_fulfillment_errors, ProjectionMode, PredicateObligations};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -2904,7 +2904,12 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             } else {
                 fcx.infcx().commit_if_ok(|_| {
                     let trace = TypeTrace::types(origin, true, then_ty, else_ty);
-                    fcx.infcx().lub(true, trace).relate(&then_ty, &else_ty)
+                    let mut obligations = PredicateObligations::new();
+                    let result =
+                        fcx.infcx().lub(true, trace).relate(&then_ty, &else_ty, &mut obligations);
+                    // FIXME Propagate side-effect obligations
+                    assert!(obligations.is_empty());
+                    result
                 })
             };
             (origin, then_ty, else_ty, result)

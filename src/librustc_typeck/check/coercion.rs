@@ -63,7 +63,7 @@
 use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 
 use rustc::infer::{Coercion, TypeOrigin, TypeTrace};
-use rustc::traits::{self, ObligationCause};
+use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::traits::{predicate_for_trait_def, report_selection_error};
 use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use rustc::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
@@ -116,11 +116,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let infcx = self.fcx.infcx();
         infcx.commit_if_ok(|_| {
             let trace = TypeTrace::types(self.origin, false, a, b);
-            if self.use_lub {
-                infcx.lub(false, trace).relate(&a, &b)
+            let mut obligations = PredicateObligations::new();
+            let result = if self.use_lub {
+                infcx.lub(false, trace).relate(&a, &b, &mut obligations)
             } else {
-                infcx.sub(false, trace).relate(&a, &b)
-            }
+                infcx.sub(false, trace).relate(&a, &b, &mut obligations)
+            };
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            result
         })
     }
 
@@ -649,6 +653,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
 
     let trace = TypeTrace::types(origin, true, prev_ty, new_ty);
+    let mut obligations = PredicateObligations::new();
     let mut lub = fcx.infcx().lub(true, trace);
 
     // Special-case that coercion alone cannot handle:
@@ -657,13 +662,17 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         (&ty::TyFnDef(a_def_id, a_substs, a_fty),
          &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
             // The signature must always match.
-            let fty = lub.relate(a_fty, b_fty)?;
+            let fty = lub.relate(a_fty, b_fty, &mut obligations)?;
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
 
             if a_def_id == b_def_id {
                 // Same function, maybe the parameters match.
                 let substs = fcx.infcx().commit_if_ok(|_| {
-                    relate_substs(&mut lub, None, a_substs, b_substs)
+                    relate_substs(&mut lub, None, a_substs, b_substs, &mut obligations)
                 }).map(|s| fcx.tcx().mk_substs(s));
+                // FIXME Propagate side-effect obligations
+                assert!(obligations.is_empty());
 
                 if let Ok(substs) = substs {
                     // We have a LUB of prev_ty and new_ty, just return it.
@@ -724,7 +733,11 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         if !noop {
-            return fcx.infcx().commit_if_ok(|_| lub.relate(&prev_ty, &new_ty));
+            let result =
+                fcx.infcx().commit_if_ok(|_| lub.relate(&prev_ty, &new_ty, &mut obligations));
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            return result;
         }
     }
 
@@ -734,7 +747,13 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
             if let Some(e) = first_error {
                 Err(e)
             } else {
-                fcx.infcx().commit_if_ok(|_| lub.relate(&prev_ty, &new_ty))
+                fcx.infcx().commit_if_ok(|_| {
+                    let mut obligations = PredicateObligations::new();
+                    let result = lub.relate(&prev_ty, &new_ty, &mut obligations);
+                    // FIXME Propagate side-effect obligations
+                    assert!(obligations.is_empty());
+                    result
+                })
             }
         }
         Ok((ty, adjustment)) => {

@@ -14,6 +14,7 @@ use super::InferCtxt;
 use super::lattice::{self, LatticeDir};
 use super::Subtype;
 
+use traits::PredicateObligations;
 use ty::{self, Ty, TyCtxt};
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
@@ -28,7 +29,7 @@ impl<'a, 'tcx> Glb<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx, PredicateObligations<'tcx>> for Glb<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Glb" }
 
     fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
@@ -38,22 +39,28 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
                                                a: &T,
-                                               b: &T)
+                                               b: &T,
+                                               side_effects: &mut PredicateObligations<'tcx>)
                                                -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate().relate(a, b),
-            ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.fields.bivariate().relate(a, b),
-            ty::Contravariant => self.fields.lub().relate(a, b),
+            ty::Invariant => self.fields.equate().relate(a, b, side_effects),
+            ty::Covariant => self.relate(a, b, side_effects),
+            ty::Bivariant => self.fields.bivariate().relate(a, b, side_effects),
+            ty::Contravariant => self.fields.lub().relate(a, b, side_effects),
         }
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        lattice::super_lattice_tys(self, a, b)
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Ty<'tcx>>
+    {
+        lattice::super_lattice_tys(self, a, b, side_effects)
     }
 
-    fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
+    fn regions(&mut self, a: ty::Region, b: ty::Region,
+               _: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ty::Region>
+    {
         debug!("{}.regions({:?}, {:?})",
                self.tag(),
                a,
@@ -63,11 +70,12 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
         Ok(self.fields.infcx.region_vars.glb_regions(origin, a, b))
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>,
+                  side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a, 'tcx>
     {
-        self.fields.higher_ranked_glb(a, b)
+        self.fields.higher_ranked_glb(a, b, side_effects)
     }
 }
 
@@ -76,10 +84,13 @@ impl<'a, 'tcx> LatticeDir<'a,'tcx> for Glb<'a, 'tcx> {
         self.fields.infcx
     }
 
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
+    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>,
+                    side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ()>
+    {
         let mut sub = self.fields.sub();
-        sub.relate(&v, &a)?;
-        sub.relate(&v, &b)?;
+        sub.relate(&v, &a, side_effects)?;
+        sub.relate(&v, &b, side_effects)?;
         Ok(())
     }
 }

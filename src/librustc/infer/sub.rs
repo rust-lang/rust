@@ -13,6 +13,7 @@ use super::higher_ranked::HigherRankedRelations;
 use super::SubregionOrigin;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
+use traits::PredicateObligations;
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
@@ -29,7 +30,7 @@ impl<'a, 'tcx> Sub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx, PredicateObligations<'tcx>> for Sub<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
     fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
@@ -45,21 +46,24 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
         r
     }
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               variance: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'a, 'tcx>>(&mut self,
+                                                 variance: ty::Variance,
+                                                 a: &T,
+                                                 b: &T,
+                                                 side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, T>
     {
         match variance {
-            ty::Invariant => self.fields.equate().relate(a, b),
-            ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.fields.bivariate().relate(a, b),
-            ty::Contravariant => self.fields.switch_expected().sub().relate(b, a),
+            ty::Invariant => self.fields.equate().relate(a, b, side_effects),
+            ty::Covariant => self.relate(a, b, side_effects),
+            ty::Bivariant => self.fields.bivariate().relate(a, b, side_effects),
+            ty::Contravariant => self.fields.switch_expected().sub().relate(b, a, side_effects),
         }
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Ty<'tcx>>
+    {
         debug!("{}.tys({:?}, {:?})", self.tag(), a, b);
 
         if a == b { return Ok(a); }
@@ -77,11 +81,11 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             (&ty::TyInfer(TyVar(a_id)), _) => {
                 self.fields
                     .switch_expected()
-                    .instantiate(b, SupertypeOf, a_id)?;
+                    .instantiate(b, SupertypeOf, a_id, side_effects)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, SubtypeOf, b_id)?;
+                self.fields.instantiate(a, SubtypeOf, b_id, side_effects)?;
                 Ok(a)
             }
 
@@ -90,13 +94,15 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             }
 
             _ => {
-                combine::super_combine_tys(self.fields.infcx, self, a, b)?;
+                combine::super_combine_tys(self.fields.infcx, self, a, b, side_effects)?;
                 Ok(a)
             }
         }
     }
 
-    fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
+    fn regions(&mut self, a: ty::Region, b: ty::Region, _: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ty::Region>
+    {
         debug!("{}.regions({:?}, {:?}) self.cause={:?}",
                self.tag(), a, b, self.fields.cause);
         // FIXME -- we have more fine-grained information available
@@ -107,10 +113,11 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
         Ok(a)
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>,
+                  side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'a,'tcx>
     {
-        self.fields.higher_ranked_sub(a, b)
+        self.fields.higher_ranked_sub(a, b, side_effects)
     }
 }

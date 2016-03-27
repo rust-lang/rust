@@ -24,10 +24,8 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
-use ty::subst;
-use ty::subst::Substs;
-use ty::subst::Subst;
-use traits::{self, ProjectionMode};
+use ty::subst::{self, Subst, Substs};
+use traits::{self, ProjectionMode, PredicateObligations};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
@@ -407,7 +405,11 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).relate(&a, &b).map(|_| ())
+        let mut obligations = PredicateObligations::new();
+        let result = cx.sub(true, trace).relate(&a, &b, &mut obligations).map(|_| ());
+        // FIXME Propagate side-effect obligations
+        assert!(obligations.is_empty());
+        result
     })
 }
 
@@ -834,7 +836,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            let result =
+                self.sub(a_is_expected, trace).relate(&a, &b, &mut obligations).map(|_| ());
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            result
         })
     }
 
@@ -847,7 +854,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            let result =
+                self.equate(a_is_expected, trace).relate(&a, &b, &mut obligations).map(|_| ());
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            result
         })
     }
 
@@ -866,7 +878,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            let result =
+                self.equate(a_is_expected, trace).relate(&a, &b, &mut obligations).map(|_| ());
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            result
         })
     }
 
@@ -885,7 +902,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            let result =
+                self.sub(a_is_expected, trace).relate(&a, &b, &mut obligations).map(|_| ());
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            result
         })
     }
 
@@ -1434,7 +1456,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: TypeOrigin::Misc(codemap::DUMMY_SP),
                 values: Types(expected_found(true, e, e))
             };
-            self.equate(true, trace).relate(a, b)
+            let mut obligations = PredicateObligations::new();
+            let result = self.equate(true, trace).relate(a, b, &mut obligations);
+            // FIXME Propagate side-effect obligations
+            assert!(obligations.is_empty());
+            result
         }).map(|_| ())
     }
 

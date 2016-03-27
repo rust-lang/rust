@@ -28,6 +28,7 @@
 use super::combine::{self, CombineFields};
 use super::type_variable::{BiTo};
 
+use traits::PredicateObligations;
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
@@ -42,7 +43,7 @@ impl<'a, 'tcx> Bivariate<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx, PredicateObligations<'tcx>> for Bivariate<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Bivariate" }
 
     fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
@@ -52,7 +53,8 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
                                                variance: ty::Variance,
                                                a: &T,
-                                               b: &T)
+                                               b: &T,
+                                               side_effects: &mut PredicateObligations<'tcx>)
                                                -> RelateResult<'tcx, T>
     {
         match variance {
@@ -63,15 +65,17 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
             //     Foo<B> <: Foo<A>
             //
             // then still A must equal B.
-            ty::Invariant => self.relate(a, b),
+            ty::Invariant => self.relate(a, b, side_effects),
 
-            ty::Covariant => self.relate(a, b),
-            ty::Bivariant => self.relate(a, b),
-            ty::Contravariant => self.relate(a, b),
+            ty::Covariant => self.relate(a, b, side_effects),
+            ty::Bivariant => self.relate(a, b, side_effects),
+            ty::Contravariant => self.relate(a, b, side_effects),
         }
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Ty<'tcx>>
+    {
         debug!("{}.tys({:?}, {:?})", self.tag(),
                a, b);
         if a == b { return Ok(a); }
@@ -86,32 +90,35 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
             }
 
             (&ty::TyInfer(TyVar(a_id)), _) => {
-                self.fields.instantiate(b, BiTo, a_id)?;
+                self.fields.instantiate(b, BiTo, a_id, side_effects)?;
                 Ok(a)
             }
 
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, BiTo, b_id)?;
+                self.fields.instantiate(a, BiTo, b_id, side_effects)?;
                 Ok(a)
             }
 
             _ => {
-                combine::super_combine_tys(self.fields.infcx, self, a, b)
+                combine::super_combine_tys(self.fields.infcx, self, a, b, side_effects)
             }
         }
     }
 
-    fn regions(&mut self, a: ty::Region, _: ty::Region) -> RelateResult<'tcx, ty::Region> {
+    fn regions(&mut self, a: ty::Region, _: ty::Region, _: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ty::Region>
+    {
         Ok(a)
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a,'tcx>
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>,
+                  side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'a, 'tcx>
     {
         let a1 = self.tcx().erase_late_bound_regions(a);
         let b1 = self.tcx().erase_late_bound_regions(b);
-        let c = self.relate(&a1, &b1)?;
+        let c = self.relate(&a1, &b1, side_effects)?;
         Ok(ty::Binder(c))
     }
 }

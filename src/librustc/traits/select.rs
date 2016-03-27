@@ -2829,7 +2829,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                               -> bool
     {
         let mut matcher = ty::_match::Match::new(self.tcx());
-        matcher.relate(previous, current).is_ok()
+        matcher.relate(previous, current, &mut ()).is_ok()
     }
 
     fn push_stack<'o,'s:'o>(&mut self,
