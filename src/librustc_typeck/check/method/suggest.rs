@@ -16,13 +16,13 @@ use CrateCtxt;
 use astconv::AstConv;
 use check::{self, FnCtxt};
 use front::map as hir_map;
-use middle::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
+use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use middle::cstore::{self, CrateStore};
 use middle::def::Def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
-use middle::subst::Substs;
-use middle::traits::{Obligation, SelectionContext};
+use rustc::ty::subst::Substs;
+use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::{FnvHashSet};
 
 

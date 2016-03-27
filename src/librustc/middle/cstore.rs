@@ -26,7 +26,7 @@ use back::svh::Svh;
 use front::map as hir_map;
 use middle::def::{self, Def};
 use middle::lang_items;
-use middle::ty::{self, Ty, TyCtxt, VariantKind};
+use ty::{self, Ty, TyCtxt, VariantKind};
 use middle::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
@@ -498,8 +498,8 @@ pub mod tls {
     use serialize;
     use std::cell::Cell;
     use std::mem;
-    use middle::ty::{self, Ty, TyCtxt};
-    use middle::subst::Substs;
+    use ty::{self, Ty, TyCtxt};
+    use ty::subst::Substs;
     use middle::def_id::DefId;
 
     pub trait EncodingContext<'tcx> {

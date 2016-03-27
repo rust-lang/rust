@@ -10,14 +10,14 @@
 
 
 use middle::def_id::DefId;
-use middle::subst::{self, Subst};
-use middle::ty::{BrAnon, BrEnv, BrFresh, BrNamed};
-use middle::ty::{TyBool, TyChar, TyStruct, TyEnum};
-use middle::ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
-use middle::ty::{TyParam, TyRawPtr, TyRef, TyTuple};
-use middle::ty::TyClosure;
-use middle::ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
-use middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::subst::{self, Subst};
+use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
+use ty::{TyBool, TyChar, TyStruct, TyEnum};
+use ty::{TyError, TyStr, TyArray, TySlice, TyFloat, TyFnDef, TyFnPtr};
+use ty::{TyParam, TyRawPtr, TyRef, TyTuple};
+use ty::TyClosure;
+use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
+use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 use std::fmt;
 use syntax::abi::Abi;

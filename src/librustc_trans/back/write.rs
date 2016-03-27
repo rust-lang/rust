@@ -16,7 +16,7 @@ use session::config::{self, OutputType};
 use llvm;
 use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, ContextRef};
 use llvm::SMDiagnosticRef;
-use trans::{CrateTranslation, ModuleTranslation};
+use {CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
 use syntax::codemap;

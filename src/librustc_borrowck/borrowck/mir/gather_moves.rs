@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use rustc::middle::ty::TyCtxt;
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
 

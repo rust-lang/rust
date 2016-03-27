@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def_id::DefId;
-use middle::subst::ParamSpace;
+use ty::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use rustc_front::hir;

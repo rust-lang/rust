@@ -11,9 +11,9 @@
 use dep_graph::DepNode;
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::subst::{Subst, Substs, EnumeratedItems};
-use middle::ty::{TransmuteRestriction, TyCtxt};
-use middle::ty::{self, Ty, TypeFoldable};
+use ty::subst::{Subst, Substs, EnumeratedItems};
+use ty::{TransmuteRestriction, TyCtxt};
+use ty::{self, Ty, TypeFoldable};
 
 use std::fmt;
 

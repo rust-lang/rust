@@ -26,7 +26,7 @@ use front::map as hir_map;
 use session::Session;
 use middle::cstore::CrateStore;
 use middle::def_id::DefId;
-use middle::ty;
+use ty;
 use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;
 

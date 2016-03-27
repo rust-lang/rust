@@ -16,10 +16,10 @@
 use dep_graph::DepTrackingMapConfig;
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use middle::subst;
-use middle::subst::ParamSpace;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::maps::ItemVariances;
+use rustc::ty::subst;
+use rustc::ty::subst::ParamSpace;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::ItemVariances;
 use rustc::front::map as hir_map;
 use syntax::ast;
 use rustc_front::hir;

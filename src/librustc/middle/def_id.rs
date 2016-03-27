@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::cstore::LOCAL_CRATE;
-use middle::ty;
+use ty;
 use syntax::ast::CrateNum;
 use std::fmt;
 use std::u32;

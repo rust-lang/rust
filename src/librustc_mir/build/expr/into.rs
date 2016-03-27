@@ -15,7 +15,7 @@ use build::expr::category::{Category, RvalueFunc};
 use build::scope::LoopScope;
 use hair::*;
 use rustc::middle::region::CodeExtent;
-use rustc::middle::ty;
+use rustc::ty;
 use rustc::mir::repr::*;
 use syntax::codemap::Span;
 
