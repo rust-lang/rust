@@ -1,9 +1,9 @@
 //! lint on `use`ing all variants of an enum
 
 use rustc::front::map::Node::NodeItem;
-use rustc::front::map::definitions::DefPathData;
 use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray, LintContext};
-use rustc::ty::TyEnum;
+use rustc::middle::def::Def;
+use rustc::middle::cstore::DefLike;
 use rustc_front::hir::*;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
@@ -51,12 +51,10 @@ impl EnumGlobUse {
                             }
                         }
                     } else {
-                        let dp = cx.sess().cstore.relative_def_path(def.def_id());
-                        if  let Some(dpa) = dp.data.last() {
-                            if let  DefPathData::TypeNs(_) = dpa.data {
-                                if let TyEnum(..) = cx.sess().cstore.item_type(&cx.tcx, def.def_id()).ty.sty {
-                                    span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
-                                }
+                        let child = cx.sess().cstore.item_children(def.def_id());
+                        if let Some(child) = child.first() {
+                            if let DefLike::DlDef(Def::Variant(..)) = child.def {
+                                span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");   
                             }
                         }
                     }
