@@ -386,33 +386,6 @@ pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
     infcx
 }
 
-/// Computes the least upper-bound of `a` and `b`. If this is not possible, reports an error and
-/// returns ty::err.
-pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                  origin: TypeOrigin,
-                                  a_is_expected: bool,
-                                  a: Ty<'tcx>,
-                                  b: Ty<'tcx>)
-                                  -> Ty<'tcx>
-{
-    debug!("common_supertype({:?}, {:?})",
-           a, b);
-
-    let trace = TypeTrace {
-        origin: origin,
-        values: Types(expected_found(a_is_expected, a, b))
-    };
-
-    let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).relate(&a, &b));
-    match result {
-        Ok(t) => t,
-        Err(ref err) => {
-            cx.report_and_explain_type_error(trace, err).emit();
-            cx.tcx.types.err
-        }
-    }
-}
-
 pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           a_is_expected: bool,
                           origin: TypeOrigin,
