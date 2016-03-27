@@ -1202,6 +1202,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         }
     }
 
+    /// Construct a parameter environment given an item, impl item, or trait item
     pub fn for_item(cx: &'a TyCtxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
