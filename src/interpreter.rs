@@ -708,7 +708,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
                         let ptr = try!(self.memory.read_ptr(base_ptr));
                         let extra = match pointee_ty.sty {
-                            ty::TySlice(_) => {
+                            ty::TySlice(_) | ty::TyStr => {
                                 let len_ptr = base_ptr.offset(self.memory.pointer_size as isize);
                                 let len = try!(self.memory.read_usize(len_ptr));
                                 LvalueExtra::Length(len)
