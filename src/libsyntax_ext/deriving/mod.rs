@@ -18,6 +18,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::feature_gate;
 use syntax::codemap::Span;
 use syntax::parse::token::{intern, intern_and_get_ident};
+use syntax::ptr::P;
 
 macro_rules! pathvec {
     ($($x:ident)::+) => (
@@ -269,5 +270,21 @@ fn hygienic_type_parameter(item: &Annotatable, base: &str) -> String {
     }
 
     typaram
+}
+
+/// Constructs an expression that calls an intrinsic
+fn call_intrinsic(cx: &ExtCtxt,
+                  span: Span,
+                  intrinsic: &str,
+                  args: Vec<P<ast::Expr>>) -> P<ast::Expr> {
+    let path = cx.std_path(&["intrinsics", intrinsic]);
+    let call = cx.expr_call_global(span, path, args);
+
+    cx.expr_block(P(ast::Block {
+        stmts: vec![],
+        expr: Some(call),
+        id: ast::DUMMY_NODE_ID,
+        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
+        span: span }))
 }
 
