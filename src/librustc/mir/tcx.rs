@@ -14,9 +14,9 @@
  */
 
 use mir::repr::*;
-use middle::subst::{Subst, Substs};
-use middle::ty::{self, AdtDef, Ty, TyCtxt};
-use middle::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use ty::subst::{Subst, Substs};
+use ty::{self, AdtDef, Ty, TyCtxt};
+use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_front::hir;
 
 #[derive(Copy, Clone, Debug)]

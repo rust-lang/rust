@@ -54,10 +54,10 @@ use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
 use middle::resolve_lifetime as rl;
-use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
-use middle::traits;
-use middle::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
-use middle::ty::wf::object_region_bounds;
+use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
+use rustc::traits;
+use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::wf::object_region_bounds;
 use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,

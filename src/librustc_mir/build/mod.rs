@@ -10,7 +10,7 @@
 
 use hair::cx::Cx;
 use rustc::middle::region::{CodeExtent, CodeExtentData};
-use rustc::middle::ty::{FnOutput, Ty};
+use rustc::ty::{FnOutput, Ty};
 use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_front::hir;

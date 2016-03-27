@@ -23,7 +23,7 @@ use self::InteriorKind::*;
 use rustc::dep_graph::DepNode;
 use rustc::front::map as hir_map;
 use rustc::front::map::blocks::FnParts;
-use rustc::middle::cfg;
+use rustc::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
@@ -34,7 +34,7 @@ use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
-use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 
 use std::fmt;
 use std::mem;

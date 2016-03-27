@@ -17,7 +17,7 @@ use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
-use middle::ty::{self, Ty, TyCtxt, VariantKind};
+use rustc::ty::{self, Ty, TyCtxt, VariantKind};
 use middle::def_id::{DefId, DefIndex};
 
 use rustc::front::map as hir_map;

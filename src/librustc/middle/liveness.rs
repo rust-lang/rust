@@ -112,10 +112,10 @@ use self::VarKind::*;
 use dep_graph::DepNode;
 use middle::def::*;
 use middle::pat_util;
-use middle::ty::{self, TyCtxt, ParameterEnvironment};
-use middle::traits::{self, ProjectionMode};
-use middle::infer;
-use middle::subst::Subst;
+use ty::{self, TyCtxt, ParameterEnvironment};
+use traits::{self, ProjectionMode};
+use infer;
+use ty::subst::Subst;
 use lint;
 use util::nodemap::NodeMap;
 

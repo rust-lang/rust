@@ -88,21 +88,21 @@ use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
-use middle::infer;
-use middle::infer::{TypeOrigin, TypeTrace, type_variable};
+use rustc::infer;
+use rustc::infer::{TypeOrigin, TypeTrace, type_variable};
 use middle::pat_util::{self, pat_id_map};
-use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use middle::traits::{self, report_fulfillment_errors, ProjectionMode};
-use middle::ty::{GenericPredicates, TypeScheme};
-use middle::ty::{ParamTy, ParameterEnvironment};
-use middle::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
-use middle::ty::{self, ToPolyTraitRef, Ty, TyCtxt};
-use middle::ty::{MethodCall, MethodCallee};
-use middle::ty::adjustment;
-use middle::ty::error::TypeError;
-use middle::ty::fold::{TypeFolder, TypeFoldable};
-use middle::ty::relate::TypeRelation;
-use middle::ty::util::{Representability, IntTypeExt};
+use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
+use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
+use rustc::ty::{GenericPredicates, TypeScheme};
+use rustc::ty::{ParamTy, ParameterEnvironment};
+use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
+use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::{MethodCall, MethodCallee};
+use rustc::ty::adjustment;
+use rustc::ty::error::TypeError;
+use rustc::ty::fold::{TypeFolder, TypeFoldable};
+use rustc::ty::relate::TypeRelation;
+use rustc::ty::util::{Representability, IntTypeExt};
 use require_c_abi_if_variadic;
 use rscope::{ElisionFailureInfo, RegionScope};
 use session::{Session, CompileResult};
@@ -1769,8 +1769,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Apply "fallbacks" to some types
     /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
     fn default_type_parameters(&self) {
-        use middle::ty::error::UnconstrainedNumeric::Neither;
-        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
         for ty in &self.infcx().unsolved_variables() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
@@ -1805,8 +1805,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn new_select_all_obligations_and_apply_defaults(&self) {
-        use middle::ty::error::UnconstrainedNumeric::Neither;
-        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
         // For the time being this errs on the side of being memory wasteful but provides better
         // error reporting.
@@ -1978,8 +1978,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 default_map: &FnvHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
                                 conflict: Ty<'tcx>)
                                 -> Option<type_variable::Default<'tcx>> {
-        use middle::ty::error::UnconstrainedNumeric::Neither;
-        use middle::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+        use rustc::ty::error::UnconstrainedNumeric::Neither;
+        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
         // Ensure that we apply the conflicting default first
         let mut unbound_tyvars = Vec::with_capacity(unbound_vars.len() + 1);

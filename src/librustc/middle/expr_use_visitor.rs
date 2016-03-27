@@ -22,9 +22,9 @@ use self::OverloadedCallType::*;
 use middle::pat_util;
 use middle::def::Def;
 use middle::def_id::{DefId};
-use middle::infer;
+use infer;
 use middle::mem_categorization as mc;
-use middle::ty::{self, TyCtxt, adjustment};
+use ty::{self, TyCtxt, adjustment};
 
 use rustc_front::hir::{self, PatKind};
 

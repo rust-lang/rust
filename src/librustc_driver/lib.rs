@@ -48,6 +48,7 @@ extern crate rustc_privacy;
 extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;
+extern crate rustc_save_analysis;
 extern crate rustc_trans;
 extern crate rustc_typeck;
 extern crate serialize;
@@ -62,8 +63,8 @@ use driver::CompileController;
 use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
+use rustc_save_analysis as save;
 use rustc_trans::back::link;
-use rustc_trans::save;
 use rustc::session::{config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::{get_unstable_features_setting, OptionStability};

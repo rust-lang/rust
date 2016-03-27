@@ -78,6 +78,7 @@ pub mod back {
     pub use rustc_back::svh;
 }
 
+pub mod cfg;
 pub mod dep_graph;
 
 pub mod front {
@@ -85,10 +86,12 @@ pub mod front {
     pub mod map;
 }
 
+pub mod infer;
+pub mod lint;
+
 pub mod middle {
     pub mod astconv_util;
     pub mod expr_use_visitor; // STAGE0: increase glitch immunity
-    pub mod cfg;
     pub mod check_match;
     pub mod const_eval;
     pub mod const_qualif;
@@ -102,7 +105,6 @@ pub mod middle {
     pub mod entry;
     pub mod free_region;
     pub mod intrinsicck;
-    pub mod infer;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
@@ -113,9 +115,6 @@ pub mod middle {
     pub mod recursion_limit;
     pub mod resolve_lifetime;
     pub mod stability;
-    pub mod subst;
-    pub mod traits;
-    pub mod ty;
     pub mod weak_lang_items;
 }
 
@@ -128,8 +127,8 @@ pub mod mir {
 }
 
 pub mod session;
-
-pub mod lint;
+pub mod traits;
+pub mod ty;
 
 pub mod util {
     pub use rustc_back::sha2;

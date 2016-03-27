@@ -13,8 +13,8 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
-use middle::subst;
-use middle::ty::{self, ToPolyTraitRef, Ty};
+use rustc::ty::subst;
+use rustc::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi::Abi;
 use rustc_front::hir;

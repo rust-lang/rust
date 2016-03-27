@@ -10,7 +10,7 @@
 
 use build::{Location, ScopeAuxiliaryVec};
 use rustc::mir::repr::*;
-use rustc::middle::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt};
 use rustc_data_structures::fnv::FnvHashMap;
 use std::fmt::Display;
 use std::fs;

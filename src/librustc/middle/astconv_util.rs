@@ -15,7 +15,7 @@
  */
 
 use middle::def::Def;
-use middle::ty::{Ty, TyCtxt};
+use ty::{Ty, TyCtxt};
 
 use syntax::codemap::Span;
 use rustc_front::hir as ast;

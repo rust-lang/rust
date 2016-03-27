@@ -62,16 +62,16 @@
 
 use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 
-use middle::infer::{Coercion, TypeOrigin, TypeTrace};
-use middle::traits::{self, ObligationCause};
-use middle::traits::{predicate_for_trait_def, report_selection_error};
-use middle::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
-use middle::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
-use middle::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
-use middle::ty::{self, LvaluePreference, TypeAndMut, Ty, TyCtxt};
-use middle::ty::fold::TypeFoldable;
-use middle::ty::error::TypeError;
-use middle::ty::relate::{relate_substs, Relate, RelateResult, TypeRelation};
+use rustc::infer::{Coercion, TypeOrigin, TypeTrace};
+use rustc::traits::{self, ObligationCause};
+use rustc::traits::{predicate_for_trait_def, report_selection_error};
+use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
+use rustc::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
+use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
+use rustc::ty::{self, LvaluePreference, TypeAndMut, Ty, TyCtxt};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::error::TypeError;
+use rustc::ty::relate::{relate_substs, Relate, RelateResult, TypeRelation};
 use util::common::indent;
 
 use std::cell::RefCell;

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use middle::infer::{self, TypeOrigin};
-use middle::ty::{self, TyCtxt};
-use middle::traits::{self, ProjectionMode};
-use middle::subst::{self, Subst, Substs, VecPerParamSpace};
+use rustc::infer::{self, TypeOrigin};
+use rustc::ty::{self, TyCtxt};
+use rustc::traits::{self, ProjectionMode};
+use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
 
 use syntax::ast;
 use syntax::codemap::Span;

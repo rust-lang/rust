@@ -14,8 +14,8 @@ use self::RootUnsafeContext::*;
 
 use dep_graph::DepNode;
 use middle::def::Def;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::MethodCall;
+use ty::{self, Ty, TyCtxt};
+use ty::MethodCall;
 
 use syntax::ast;
 use syntax::codemap::Span;

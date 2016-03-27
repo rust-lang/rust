@@ -26,9 +26,9 @@ use pretty;
 use hair::cx::Cx;
 
 use rustc::mir::mir_map::MirMap;
-use rustc::middle::infer;
-use rustc::middle::traits::ProjectionMode;
-use rustc::middle::ty::{self, Ty, TyCtxt};
+use rustc::infer;
+use rustc::traits::ProjectionMode;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc_front::hir;

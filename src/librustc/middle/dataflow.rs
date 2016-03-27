@@ -14,9 +14,9 @@
 //! and thus uses bitvectors. Your job is simply to specify the so-called
 //! GEN and KILL bits for each expression.
 
-use middle::cfg;
-use middle::cfg::CFGIndex;
-use middle::ty::TyCtxt;
+use cfg;
+use cfg::CFGIndex;
+use ty::TyCtxt;
 use std::io;
 use std::mem;
 use std::usize;

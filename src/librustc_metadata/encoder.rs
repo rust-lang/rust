@@ -25,10 +25,10 @@ use middle::def;
 use middle::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use middle::stability;
-use middle::subst;
-use middle::traits::specialization_graph;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::util::IntTypeExt;
+use rustc::ty::subst;
+use rustc::traits::specialization_graph;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::util::IntTypeExt;
 
 use rustc::back::svh::Svh;
 use rustc::front::map::{LinkedPath, PathElem, PathElems};

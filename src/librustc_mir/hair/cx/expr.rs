@@ -19,7 +19,7 @@ use rustc::middle::def::Def;
 use rustc::middle::const_eval::{self, ConstVal};
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
-use rustc::middle::ty::{self, VariantDef, Ty};
+use rustc::ty::{self, VariantDef, Ty};
 use rustc::mir::repr::*;
 use rustc_front::hir;
 use rustc_front::util as hir_util;

@@ -61,6 +61,9 @@ pub use rustc::middle;
 pub use rustc::lint;
 pub use rustc::util;
 
+pub use base::trans_crate;
+pub use disr::Disr;
+
 pub mod back {
     pub use rustc_back::rpath;
     pub use rustc_back::svh;
@@ -76,11 +79,70 @@ pub mod back {
 
 pub mod diagnostics;
 
-pub mod trans;
-pub mod save;
+#[macro_use]
+mod macros;
 
-pub mod lib {
-    pub use llvm;
+mod abi;
+mod adt;
+mod asm;
+mod assert_dep_graph;
+mod attributes;
+mod base;
+mod basic_block;
+mod build;
+mod builder;
+mod cabi_aarch64;
+mod cabi_arm;
+mod cabi_asmjs;
+mod cabi_mips;
+mod cabi_powerpc;
+mod cabi_powerpc64;
+mod cabi_x86;
+mod cabi_x86_64;
+mod cabi_x86_win64;
+mod callee;
+mod cleanup;
+mod closure;
+mod common;
+mod consts;
+mod context;
+mod controlflow;
+mod datum;
+mod debuginfo;
+mod declare;
+mod disr;
+mod expr;
+mod glue;
+mod inline;
+mod intrinsic;
+mod machine;
+mod _match;
+mod meth;
+mod mir;
+mod monomorphize;
+mod collector;
+mod symbol_names_test;
+mod tvec;
+mod type_;
+mod type_of;
+mod value;
+
+#[derive(Copy, Clone)]
+pub struct ModuleTranslation {
+    pub llcx: llvm::ContextRef,
+    pub llmod: llvm::ModuleRef,
+}
+
+unsafe impl Send for ModuleTranslation { }
+unsafe impl Sync for ModuleTranslation { }
+
+pub struct CrateTranslation {
+    pub modules: Vec<ModuleTranslation>,
+    pub metadata_module: ModuleTranslation,
+    pub link: middle::cstore::LinkMeta,
+    pub metadata: Vec<u8>,
+    pub reachable: Vec<String>,
+    pub no_builtins: bool,
 }
 
 __build_diagnostic_array! { librustc_trans, DIAGNOSTICS }

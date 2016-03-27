@@ -13,10 +13,10 @@
 
 use astconv::AstConv;
 use intrinsics;
-use middle::subst::{self, Substs};
-use middle::ty::FnSig;
-use middle::ty::{self, Ty, TyCtxt};
-use middle::ty::fold::TypeFolder;
+use rustc::ty::subst::{self, Substs};
+use rustc::ty::FnSig;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::fold::TypeFolder;
 use {CrateCtxt, require_same_types};
 
 use std::collections::{HashMap};

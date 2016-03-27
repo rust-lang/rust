@@ -19,7 +19,7 @@ use dep_graph::DepNode;
 use front::map as ast_map;
 use middle::def::Def;
 use middle::def_id::DefId;
-use middle::ty::{self, TyCtxt};
+use ty::{self, TyCtxt};
 use middle::privacy;
 use session::config;
 use util::nodemap::NodeSet;

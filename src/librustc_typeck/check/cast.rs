@@ -45,8 +45,8 @@ use super::structurally_resolved_type;
 
 use lint;
 use middle::def_id::DefId;
-use middle::ty::{self, Ty, TypeFoldable};
-use middle::ty::cast::{CastKind, CastTy};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;
 use rustc_front::hir;
 use syntax::ast;
@@ -238,8 +238,8 @@ impl<'tcx> CastCheck<'tcx> {
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
     fn do_check<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) -> Result<CastKind, CastError> {
-        use middle::ty::cast::IntTy::*;
-        use middle::ty::cast::CastTy::*;
+        use rustc::ty::cast::IntTy::*;
+        use rustc::ty::cast::CastTy::*;
 
         let (t_from, t_cast) = match (CastTy::from_ty(self.expr_ty),
                                       CastTy::from_ty(self.cast_ty)) {

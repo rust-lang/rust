@@ -17,10 +17,10 @@ use astconv::AstConv;
 use check::FnCtxt;
 use middle::def_id::DefId;
 use middle::pat_util;
-use middle::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
-use middle::ty::adjustment;
-use middle::ty::fold::{TypeFolder,TypeFoldable};
-use middle::infer;
+use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
+use rustc::ty::adjustment;
+use rustc::ty::fold::{TypeFolder,TypeFoldable};
+use rustc::infer;
 use write_substs_to_tcx;
 use write_ty_to_tcx;
 
