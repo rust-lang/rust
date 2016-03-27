@@ -33,4 +33,23 @@ fn main() {
     macrowithbraces! {dont,    format, me}
 
     x!(fn);
+
+    some_macro!(
+        
+    );
+
+    some_macro![
+    ];
+
+    some_macro!{
+        // comment
+    };
+
+    some_macro!{
+        // comment
+    };
+}
+
+impl X {
+    empty_invoc!{}
 }
