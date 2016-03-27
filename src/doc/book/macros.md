@@ -470,7 +470,7 @@ which syntactic form it matches.
 * `ty`: a type. Examples: `i32`; `Vec<(char, String)>`; `&T`.
 * `pat`: a pattern. Examples: `Some(t)`; `(17, 'a')`; `_`.
 * `stmt`: a single statement. Example: `let x = 3`.
-* `block`: a brace-delimited sequence of statements and optional an expression. Example:
+* `block`: a brace-delimited sequence of statements and optionally an expression. Example:
   `{ log(error, "hi"); return 12; }`.
 * `item`: an [item][item]. Examples: `fn foo() { }`; `struct Bar;`.
 * `meta`: a "meta item", as found in attributes. Example: `cfg(target_os = "windows")`.
@@ -509,7 +509,7 @@ A macro defined within the body of a single `fn`, or anywhere else not at
 module scope, is visible only within that item.
 
 If a module has the `macro_use` attribute, its macros are also visible in its
-parent module after its `mod` item. If the parent also has `macro_use`
+parent module after the child’s `mod` item. If the parent also has `macro_use`
 then the macros will be visible in the grandparent after the parent’s `mod`
 item, and so forth.
 
