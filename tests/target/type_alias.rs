@@ -49,3 +49,7 @@ pub type Exactly100CharstoEqualWhereTest<T, U, PARAMET> where T: Clone + Ord + E
 
 pub type Exactly101CharstoEqualWhereTest<T, U, PARAMETE>
     where T: Clone + Ord + Eq + SomeOtherTrait = Option<T>;
+
+type RegisterPlugin = unsafe fn(pt: *const c_char,
+                                plugin: *mut c_void,
+                                data: *mut CallbackData);
