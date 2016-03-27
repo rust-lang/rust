@@ -93,6 +93,10 @@ impl X {
 
 impl Y5000 {
     fn bar(self: X<'a, 'b>, y: Y) {}
+
+    fn bad(&self, (x, y): CoorT) {}
+
+    fn turbo_bad(self: X<'a, 'b>, (x, y): CoorT) {}
 }
 
 pub impl<T> Foo for Bar<T>

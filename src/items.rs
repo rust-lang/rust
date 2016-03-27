@@ -20,9 +20,8 @@ use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
 use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
-use syntax::codemap;
 
-use syntax::{ast, abi, ptr};
+use syntax::{ast, abi, ptr, codemap};
 use syntax::codemap::{Span, BytePos, mk_sp};
 use syntax::parse::token;
 use syntax::ast::ImplItem;
@@ -1477,7 +1476,13 @@ fn rewrite_args(context: &RewriteContext,
     // it is explicit.
     if args.len() >= min_args || variadic {
         let comment_span_start = if min_args == 2 {
-            let reduced_span = mk_sp(span.lo, args[1].ty.span.lo);
+            let second_arg_start = if arg_has_pattern(&args[1]) {
+                args[1].pat.span.lo
+            } else {
+                args[1].ty.span.lo
+            };
+            let reduced_span = mk_sp(span.lo, second_arg_start);
+
             context.codemap.span_after_last(reduced_span, ",")
         } else {
             span.lo
@@ -1560,6 +1565,19 @@ fn rewrite_args(context: &RewriteContext,
     };
 
     write_list(&arg_items, &fmt)
+}
+
+fn arg_has_pattern(arg: &ast::Arg) -> bool {
+    if let ast::PatKind::Ident(_,
+                               codemap::Spanned {
+                                   node: ast::Ident { name: ast::Name(0u32), .. },
+                                   ..
+                               },
+                               _) = arg.pat.node {
+        false
+    } else {
+        true
+    }
 }
 
 fn compute_budgets_for_args(context: &RewriteContext,
