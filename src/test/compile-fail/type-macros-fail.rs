@@ -14,7 +14,7 @@ macro_rules! Id {
 
 struct Foo<T> {
     x: Id!(T)
-    //~^ ERROR: type macros are experimental (see issue #27336)
+    //~^ ERROR: type macros are experimental (see issue #27245)
 }
 
 fn main() {

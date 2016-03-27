@@ -199,7 +199,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("associated_type_defaults", "1.2.0", Some(29661), Active),
 
     // Allows macros to appear in the type position.
-    ("type_macros", "1.3.0", Some(27336), Active),
+    ("type_macros", "1.3.0", Some(27245), Active),
 
     // allow `repr(simd)`, and importing the various simd intrinsics
     ("repr_simd", "1.4.0", Some(27731), Active),
