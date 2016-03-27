@@ -7,6 +7,8 @@ itemmacro!(really,
 
 itemmacro!{this, is.bracket().formatted()}
 
+peg_file! modname("mygrammarfile.rustpeg");
+
 fn main() {
     foo!();
 

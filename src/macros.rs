@@ -51,12 +51,16 @@ impl MacroStyle {
 }
 
 pub fn rewrite_macro(mac: &ast::Mac,
+                     extra_ident: Option<ast::Ident>,
                      context: &RewriteContext,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
     let original_style = macro_style(mac, context);
-    let macro_name = format!("{}!", mac.node.path);
+    let macro_name = match extra_ident {
+        None | Some(ast::Ident { name: ast::Name(0), .. }) => format!("{}!", mac.node.path),
+        Some(ident) => format!("{}! {}", mac.node.path, ident),
+    };
     let style = if FORCED_BRACKET_MACROS.contains(&&macro_name[..]) {
         MacroStyle::Brackets
     } else {
