@@ -14,7 +14,21 @@ pub struct AllocId(u64);
 pub struct Allocation {
     pub bytes: Box<[u8]>,
     pub relocations: BTreeMap<usize, AllocId>,
-    // TODO(tsion): undef mask
+
+    /// Stores a list of indices `[a_0, a_1, ..., a_n]`. Bytes in the range `0..a_0` are considered
+    /// defined, `a_0..a_1` are undefined, `a_1..a_2` are defined and so on until
+    /// `a_n..bytes.len()`. These ranges are all end-exclusive.
+    ///
+    /// In general a byte's definedness can be found by binary searching this list of indices,
+    /// finding where the byte would fall, and taking the position of nearest index mod 2. This
+    /// yields 0 for defined and 1 for undefined.
+    ///
+    /// Some noteworthy cases:
+    ///   * `[]` represents a fully-defined allocation.
+    ///   * `[0]` represents a fully-undefined allocation. (The empty `0..0` is defined and
+    ///     `0..bytes.len()` is undefined.)
+    ///   * However, to avoid allocation, fully-undefined allocations can be represented as `None`.
+    pub undef_mask: Option<Vec<usize>>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -95,6 +109,7 @@ impl Memory {
         let alloc = Allocation {
             bytes: vec![0; size].into_boxed_slice(),
             relocations: BTreeMap::new(),
+            undef_mask: None,
         };
         self.alloc_map.insert(self.next_id, alloc);
         self.next_id += 1;
@@ -146,6 +161,7 @@ impl Memory {
 
     fn get_bytes_mut(&mut self, ptr: Pointer, size: usize) -> EvalResult<&mut [u8]> {
         try!(self.clear_relocations(ptr, size));
+        try!(self.mark_definedness(ptr, size, true));
         self.get_bytes_unchecked_mut(ptr, size)
     }
 
@@ -302,5 +318,207 @@ impl Memory {
             .collect();
         try!(self.get_mut(dest.alloc_id)).relocations.extend(relocations);
         Ok(())
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // Undefined bytes
+    ////////////////////////////////////////////////////////////////////////////////
+
+    fn mark_definedness(&mut self, ptr: Pointer, size: usize, new_state: bool) -> EvalResult<()> {
+        let mut alloc = try!(self.get_mut(ptr.alloc_id));
+        alloc.mark_definedness(ptr.offset, ptr.offset + size, new_state);
+        Ok(())
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Undefined byte tracking
+////////////////////////////////////////////////////////////////////////////////
+
+impl Allocation {
+    /// Mark the range `start..end` (end-exclusive) as defined or undefined, depending on
+    /// `new_state`.
+    fn mark_definedness(&mut self, start: usize, end: usize, new_state: bool) {
+        // There is no need to track undef masks for zero-sized allocations.
+        let len = self.bytes.len();
+        if len == 0 {
+            return;
+        }
+
+        // Returns whether the new state matches the state of a given undef mask index. The way
+        // undef masks are represented, boundaries at even indices are undefined and those at odd
+        // indices are defined.
+        let index_matches_new_state = |i| i % 2 == new_state as usize;
+
+        // Lookup the undef mask index where the given endpoint `i` is or should be inserted.
+        let lookup_endpoint = |undef_mask: &[usize], i: usize| -> (usize, bool) {
+            let (index, should_insert);
+            match undef_mask.binary_search(&i) {
+                // Region endpoint is on an undef mask boundary.
+                Ok(j) => {
+                    // This endpoint's index must be incremented if the boundary's state matches
+                    // the region's new state so that the boundary is:
+                    //   1. Excluded from deletion when handling the inclusive left-hand endpoint.
+                    //   2. Included for deletion when handling the exclusive right-hand endpoint.
+                    index = j + index_matches_new_state(j) as usize;
+
+                    // Don't insert a new mask boundary; simply reuse or delete the matched one.
+                    should_insert = false;
+                }
+
+                // Region endpoint is not on a mask boundary.
+                Err(j) => {
+                    // This is the index after the nearest mask boundary which has the same state.
+                    index = j;
+
+                    // Insert a new boundary if this endpoint's state doesn't match the state of
+                    // this position.
+                    should_insert = index_matches_new_state(j);
+                }
+            }
+            (index, should_insert)
+        };
+
+        match self.undef_mask {
+            // There is an existing undef mask, with arbitrary existing boundaries.
+            Some(ref mut undef_mask) => {
+                // Determine where the new range's endpoints fall within the current undef mask.
+                let (start_index, insert_start) = lookup_endpoint(undef_mask, start);
+                let (end_index, insert_end) = lookup_endpoint(undef_mask, end);
+
+                // Delete all the undef mask boundaries overwritten by the new range.
+                undef_mask.drain(start_index..end_index);
+
+                // Insert any new boundaries deemed necessary with two exceptions:
+                //   1. Never insert an endpoint equal to the allocation length; it's implicit.
+                //   2. Never insert a start boundary equal to the end boundary.
+                if insert_end && end != len {
+                    undef_mask.insert(start_index, end);
+                }
+                if insert_start && start != end {
+                    undef_mask.insert(start_index, start);
+                }
+            }
+
+            // There is no existing undef mask. This is taken as meaning the entire allocation is
+            // currently undefined. If the new state is false, meaning undefined, do nothing.
+            None => if new_state {
+                let mut mask = if start == 0 {
+                    // 0..end is defined.
+                    Vec::new()
+                } else {
+                    // 0..0 is defined, 0..start is undefined, start..end is defined.
+                    vec![0, start]
+                };
+
+                // Don't insert the end boundary if it's equal to the allocation length; that
+                // boundary is implicit.
+                if end != len {
+                    mask.push(end);
+                }
+                self.undef_mask = Some(mask);
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use memory::Allocation;
+    use std::collections::BTreeMap;
+
+    fn alloc_with_mask(len: usize, undef_mask: Option<Vec<usize>>) -> Allocation {
+        Allocation {
+            bytes: vec![0; len].into_boxed_slice(),
+            relocations: BTreeMap::new(),
+            undef_mask: undef_mask,
+        }
+    }
+
+    #[test]
+    fn large_undef_mask() {
+        let mut alloc = alloc_with_mask(20, Some(vec![4, 8, 12, 16]));
+
+        alloc.mark_definedness(8, 11, false);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 11, 12, 16]));
+
+        alloc.mark_definedness(8, 11, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 8, 12, 16]));
+
+        alloc.mark_definedness(8, 12, false);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 16]));
+
+        alloc.mark_definedness(8, 12, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 8, 12, 16]));
+
+        alloc.mark_definedness(9, 11, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 8, 12, 16]));
+
+        alloc.mark_definedness(9, 11, false);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 8, 9, 11, 12, 16]));
+
+        alloc.mark_definedness(9, 10, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 8, 10, 11, 12, 16]));
+
+        alloc.mark_definedness(8, 12, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4, 8, 12, 16]));
+    }
+
+    #[test]
+    fn empty_undef_mask() {
+        let mut alloc = alloc_with_mask(0, None);
+
+        alloc.mark_definedness(0, 0, false);
+        assert_eq!(alloc.undef_mask, None);
+
+        alloc.mark_definedness(0, 0, true);
+        assert_eq!(alloc.undef_mask, None);
+    }
+
+    #[test]
+    fn small_undef_mask() {
+        let mut alloc = alloc_with_mask(8, None);
+
+        alloc.mark_definedness(0, 4, false);
+        assert_eq!(alloc.undef_mask, None);
+
+        alloc.mark_definedness(0, 4, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4]));
+
+        alloc.mark_definedness(4, 8, false);
+        assert_eq!(alloc.undef_mask, Some(vec![4]));
+
+        alloc.mark_definedness(4, 8, true);
+        assert_eq!(alloc.undef_mask, Some(vec![]));
+
+        alloc.mark_definedness(0, 8, true);
+        assert_eq!(alloc.undef_mask, Some(vec![]));
+
+        alloc.mark_definedness(0, 8, false);
+        assert_eq!(alloc.undef_mask, Some(vec![0]));
+
+        alloc.mark_definedness(0, 8, true);
+        assert_eq!(alloc.undef_mask, Some(vec![]));
+
+        alloc.mark_definedness(4, 8, false);
+        assert_eq!(alloc.undef_mask, Some(vec![4]));
+
+        alloc.mark_definedness(0, 8, false);
+        assert_eq!(alloc.undef_mask, Some(vec![0]));
+
+        alloc.mark_definedness(2, 5, true);
+        assert_eq!(alloc.undef_mask, Some(vec![0, 2, 5]));
+
+        alloc.mark_definedness(4, 6, false);
+        assert_eq!(alloc.undef_mask, Some(vec![0, 2, 4]));
+
+        alloc.mark_definedness(0, 3, true);
+        assert_eq!(alloc.undef_mask, Some(vec![4]));
+
+        alloc.mark_definedness(2, 6, true);
+        assert_eq!(alloc.undef_mask, Some(vec![6]));
+
+        alloc.mark_definedness(3, 7, false);
+        assert_eq!(alloc.undef_mask, Some(vec![3]));
     }
 }
