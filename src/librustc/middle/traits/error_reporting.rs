@@ -25,13 +25,15 @@ use super::{
 
 use fmt_macros::{Parser, Piece, Position};
 use middle::def_id::DefId;
-use middle::infer::InferCtxt;
+use middle::infer::{self, InferCtxt, TypeOrigin};
 use middle::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable};
 use middle::ty::fast_reject;
+use middle::subst::{self, Subst};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
 use std::fmt;
+use syntax::ast;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
@@ -105,15 +107,123 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
+fn impl_substs<'a, 'tcx>(fcx: &InferCtxt<'a, 'tcx>,
+                          did: DefId,
+                          obligation: PredicateObligation<'tcx>)
+                          -> subst::Substs<'tcx> {
+    let tcx = fcx.tcx;
+
+    let ity = tcx.lookup_item_type(did);
+    let (tps, rps, _) =
+        (ity.generics.types.get_slice(subst::TypeSpace),
+         ity.generics.regions.get_slice(subst::TypeSpace),
+         ity.ty);
+
+    let rps = fcx.region_vars_for_defs(obligation.cause.span, rps);
+    let mut substs = subst::Substs::new(
+        subst::VecPerParamSpace::empty(),
+        subst::VecPerParamSpace::new(rps, Vec::new(), Vec::new()));
+    fcx.type_vars_for_defs(obligation.cause.span, subst::ParamSpace::TypeSpace, &mut substs, tps);
+    substs
+}
+
+fn check_type_parameters<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                   trait_substs: &subst::Substs<'tcx>,
+                                   impl_substs: &subst::Substs<'tcx>,
+                                   obligation: &PredicateObligation<'tcx>) -> bool {
+    let trait_types = trait_substs.types.as_slice();
+    let impl_types = impl_substs.types.as_slice();
+
+    let mut failed = 0;
+    for index_to_ignore in 0..trait_types.len() {
+        for (index, (trait_type, impl_type)) in trait_types.iter()
+                                                           .zip(impl_types.iter())
+                                                           .enumerate() {
+            if index_to_ignore != index &&
+               infer::mk_eqty(infcx, true,
+                              TypeOrigin::Misc(obligation.cause.span),
+                              trait_type,
+                              impl_type).is_err() {
+                failed += 1;
+                break;
+            }
+        }
+    }
+    failed == trait_types.len() - 1
+}
+
+fn get_current_failing_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                      trait_ref: &TraitRef<'tcx>,
+                                      obligation: &PredicateObligation<'tcx>)
+                                     -> Option<(DefId, subst::Substs<'tcx>)> {
+    let simp = fast_reject::simplify_type(infcx.tcx,
+                                          trait_ref.self_ty(),
+                                          true);
+    let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id);
+
+    match simp {
+        Some(_) => {
+            let mut matching_impls = Vec::new();
+            trait_def.for_each_impl(infcx.tcx, |def_id| {
+                let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
+                let substs = impl_substs(infcx, def_id, obligation.clone());
+                let imp = imp.subst(infcx.tcx, &substs);
+
+                if infer::mk_eqty(infcx, true,
+                              TypeOrigin::Misc(obligation.cause.span),
+                              trait_ref.self_ty(),
+                              imp.self_ty()).is_ok() {
+                    if check_type_parameters(infcx, &trait_ref.substs, &imp.substs, obligation) {
+                        matching_impls.push((def_id, imp.substs.clone()));
+                    }
+                }
+            });
+            if matching_impls.len() == 0 {
+                None
+            } else if matching_impls.len() == 1 {
+                Some(matching_impls[0].clone())
+            } else {
+                // we need to determine which type is the good one!
+                Some(matching_impls[0].clone())
+            }
+        },
+        None => None,
+    }
+}
+
+fn find_attr<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                       def_id: DefId,
+                       attr_name: &str)
+                      -> Option<ast::Attribute> {
+    for item in infcx.tcx.get_attrs(def_id).iter() {
+        if item.check_name(attr_name) {
+            return Some(item.clone());
+        }
+    }
+    None
+}
+
 fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                      trait_ref: &TraitRef<'tcx>,
-                                     span: Span) -> Option<String> {
-    let def_id = trait_ref.def_id;
+                                     obligation: &PredicateObligation<'tcx>)
+                                    -> Option<String> {
+    let def_id = match get_current_failing_impl(infcx, trait_ref, obligation) {
+        Some((def_id, _)) => {
+            if let Some(_) = find_attr(infcx, def_id, "rustc_on_unimplemented") {
+                def_id
+            } else {
+                trait_ref.def_id
+            }
+        },
+        None => trait_ref.def_id,
+    };
+    let span = obligation.cause.span;
     let mut report = None;
+
     for item in infcx.tcx.get_attrs(def_id).iter() {
         if item.check_name("rustc_on_unimplemented") {
             let err_sp = item.meta().span.substitute_dummy(span);
-            let def = infcx.tcx.lookup_trait_def(def_id);
+            let def = infcx.tcx.lookup_trait_def(trait_ref.def_id);
             let trait_str = def.trait_ref.to_string();
             if let Some(ref istring) = item.value_str() {
                 let mut generic_map = def.generics.types.iter_enumerated()
@@ -134,24 +244,24 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 Some(val) => Some(val),
                                 None => {
                                     span_err!(infcx.tcx.sess, err_sp, E0272,
-                                                   "the #[rustc_on_unimplemented] \
-                                                            attribute on \
-                                                            trait definition for {} refers to \
-                                                            non-existent type parameter {}",
-                                                           trait_str, s);
+                                              "the #[rustc_on_unimplemented] \
+                                               attribute on \
+                                               trait definition for {} refers to \
+                                               non-existent type parameter {}",
+                                              trait_str, s);
                                     errored = true;
                                     None
                                 }
                             },
                             _ => {
-                                     span_err!(infcx.tcx.sess, err_sp, E0273,
-                                               "the #[rustc_on_unimplemented] \
-                                                        attribute on \
-                                                        trait definition for {} must have named \
-                                                        format arguments, \
-                                                        eg `#[rustc_on_unimplemented = \
-                                                        \"foo {{T}}\"]`",
-                                                       trait_str);
+                                span_err!(infcx.tcx.sess, err_sp, E0273,
+                                          "the #[rustc_on_unimplemented] \
+                                           attribute on \
+                                           trait definition for {} must have named \
+                                           format arguments, \
+                                           eg `#[rustc_on_unimplemented = \
+                                           \"foo {{T}}\"]`",
+                                          trait_str);
                                 errored = true;
                                 None
                             }
@@ -164,10 +274,10 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                 }
             } else {
                 span_err!(infcx.tcx.sess, err_sp, E0274,
-                                        "the #[rustc_on_unimplemented] attribute on \
-                                                 trait definition for {} must have a value, \
-                                                 eg `#[rustc_on_unimplemented = \"foo\"]`",
-                                                 trait_str);
+                          "the #[rustc_on_unimplemented] attribute on \
+                           trait definition for {} must have a value, \
+                           eg `#[rustc_on_unimplemented = \"foo\"]`",
+                          trait_str);
             }
             break;
         }
@@ -368,7 +478,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             // Check if it has a custom "#[rustc_on_unimplemented]"
                             // error message, report with that message if it does
                             let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
-                                                                      obligation.cause.span);
+                                                                      obligation);
                             if let Some(s) = custom_note {
                                 err.fileline_note(obligation.cause.span, &s);
                             } else {
