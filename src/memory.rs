@@ -336,9 +336,38 @@ impl Memory {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl Allocation {
+    /// Check whether the range `start..end` (end-exclusive) in this allocation is entirely
+    /// defined.
+    fn is_range_defined(&self, start: usize, end: usize) -> bool {
+        debug_assert!(start <= end);
+        debug_assert!(end <= self.bytes.len());
+
+        // An empty range is always fully defined.
+        if start == end {
+            return true;
+        }
+
+        match self.undef_mask {
+            Some(ref undef_mask) => {
+                // If `start` lands directly on a boundary, it belongs to the range after the
+                // boundary, hence the increment in the `Ok` arm.
+                let i = match undef_mask.binary_search(&start) { Ok(j) => j + 1, Err(j) => j };
+
+                // The range is fully defined if and only if both:
+                //   1. The start value falls into a defined range (with even parity).
+                //   2. The end value is in the same range as the start value.
+                i % 2 == 0 && undef_mask.get(i).map(|&x| end <= x).unwrap_or(true)
+            }
+            None => false,
+        }
+    }
+
     /// Mark the range `start..end` (end-exclusive) as defined or undefined, depending on
     /// `new_state`.
     fn mark_definedness(&mut self, start: usize, end: usize, new_state: bool) {
+        debug_assert!(start <= end);
+        debug_assert!(end <= self.bytes.len());
+
         // There is no need to track undef masks for zero-sized allocations.
         let len = self.bytes.len();
         if len == 0 {
@@ -439,6 +468,22 @@ mod test {
     fn large_undef_mask() {
         let mut alloc = alloc_with_mask(20, Some(vec![4, 8, 12, 16]));
 
+        assert!(alloc.is_range_defined(0, 0));
+        assert!(alloc.is_range_defined(0, 3));
+        assert!(alloc.is_range_defined(0, 4));
+        assert!(alloc.is_range_defined(1, 3));
+        assert!(alloc.is_range_defined(1, 4));
+        assert!(alloc.is_range_defined(4, 4));
+        assert!(!alloc.is_range_defined(0, 5));
+        assert!(!alloc.is_range_defined(1, 5));
+        assert!(!alloc.is_range_defined(4, 5));
+        assert!(!alloc.is_range_defined(4, 8));
+        assert!(alloc.is_range_defined(8, 12));
+        assert!(!alloc.is_range_defined(12, 16));
+        assert!(alloc.is_range_defined(16, 20));
+        assert!(!alloc.is_range_defined(15, 20));
+        assert!(!alloc.is_range_defined(0, 20));
+
         alloc.mark_definedness(8, 11, false);
         assert_eq!(alloc.undef_mask, Some(vec![4, 11, 12, 16]));
 
@@ -467,12 +512,15 @@ mod test {
     #[test]
     fn empty_undef_mask() {
         let mut alloc = alloc_with_mask(0, None);
+        assert!(alloc.is_range_defined(0, 0));
 
         alloc.mark_definedness(0, 0, false);
         assert_eq!(alloc.undef_mask, None);
+        assert!(alloc.is_range_defined(0, 0));
 
         alloc.mark_definedness(0, 0, true);
         assert_eq!(alloc.undef_mask, None);
+        assert!(alloc.is_range_defined(0, 0));
     }
 
     #[test]
