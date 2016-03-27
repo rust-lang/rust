@@ -209,6 +209,8 @@ use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
+use deriving;
+
 pub mod ty;
 
 pub struct TraitDef<'a> {
@@ -379,22 +381,6 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
     visit::Visitor::visit_ty(&mut visitor, ty);
 
     visitor.types
-}
-
-/// Replacement for expr_unreachable which generates intrinsics::unreachable()
-/// instead of unreachable!()
-fn expr_unreachable_intrinsic(cx: &ExtCtxt, sp: Span) -> P<Expr> {
-    let path = cx.std_path(&["intrinsics", "unreachable"]);
-    let call = cx.expr_call_global(
-        sp, path, vec![]);
-    let unreachable = cx.expr_block(P(ast::Block {
-        stmts: vec![],
-        expr: Some(call),
-        id: ast::DUMMY_NODE_ID,
-        rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-        span: sp }));
-
-    unreachable
 }
 
 impl<'a> TraitDef<'a> {
@@ -1279,15 +1265,11 @@ impl<'a> MethodDef<'a> {
 
             let mut first_ident = None;
             for (&ident, self_arg) in vi_idents.iter().zip(&self_args) {
-                let path = cx.std_path(&["intrinsics", "discriminant_value"]);
-                let call = cx.expr_call_global(
-                    sp, path, vec![cx.expr_addr_of(sp, self_arg.clone())]);
-                let variant_value = cx.expr_block(P(ast::Block {
-                    stmts: vec![],
-                    expr: Some(call),
-                    id: ast::DUMMY_NODE_ID,
-                    rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
-                    span: sp }));
+                let self_addr = cx.expr_addr_of(sp, self_arg.clone());
+                let variant_value = deriving::call_intrinsic(cx,
+                                                             sp,
+                                                             "discriminant_value",
+                                                             vec![self_addr]);
 
                 let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
                 let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
@@ -1315,7 +1297,9 @@ impl<'a> MethodDef<'a> {
             //Since we know that all the arguments will match if we reach the match expression we
             //add the unreachable intrinsics as the result of the catch all which should help llvm
             //in optimizing it
-            match_arms.push(cx.arm(sp, vec![cx.pat_wild(sp)], expr_unreachable_intrinsic(cx, sp)));
+            match_arms.push(cx.arm(sp,
+                                   vec![cx.pat_wild(sp)],
+                                   deriving::call_intrinsic(cx, sp, "unreachable", vec![])));
 
             // Final wrinkle: the self_args are expressions that deref
             // down to desired l-values, but we cannot actually deref
@@ -1391,7 +1375,7 @@ impl<'a> MethodDef<'a> {
             // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
-            expr_unreachable_intrinsic(cx, sp)
+            deriving::call_intrinsic(cx, sp, "unreachable", vec![])
         }
         else {
 
