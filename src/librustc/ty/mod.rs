@@ -1342,7 +1342,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
-                                         "ParameterEnvironment::from_item():
+                                         "ParameterEnvironment::for_item():
                                           can't create a parameter \
                                           environment for this kind of item")
                     }
@@ -1353,7 +1353,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                 ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
             }
             _ => {
-                cx.sess.bug(&format!("ParameterEnvironment::from_item(): \
+                cx.sess.bug(&format!("ParameterEnvironment::for_item(): \
                                      `{}` is not an item",
                                     cx.map.node_to_string(id)))
             }
