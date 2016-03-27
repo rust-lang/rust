@@ -1442,6 +1442,27 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     }
 }
 
+#[stable(feature = "chain_bufread", since = "1.9.0")]
+impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
+    fn fill_buf(&mut self) -> Result<&[u8]> {
+        if !self.done_first {
+            match try!(self.first.fill_buf()) {
+                buf if buf.len() == 0 => { self.done_first = true; }
+                buf => return Ok(buf),
+            }
+        }
+        self.second.fill_buf()
+    }
+
+    fn consume(&mut self, amt: usize) {
+        if !self.done_first {
+            self.first.consume(amt)
+        } else {
+            self.second.consume(amt)
+        }
+    }
+}
+
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
 /// This struct is generally created by calling [`take()`][take] on a reader.
