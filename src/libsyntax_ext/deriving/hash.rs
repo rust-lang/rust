@@ -81,15 +81,13 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
 
     let fields = match *substr.fields {
         Struct(_, ref fs) => fs,
-        EnumMatching(index, variant, ref fs) => {
-            // Determine the discriminant. We will feed this value to the byte
-            // iteration function.
-            let discriminant = match variant.node.disr_expr {
-                Some(ref d) => d.clone(),
-                None => cx.expr_usize(trait_span, index)
-            };
+        EnumMatching(_, _, ref fs) => {
+            let variant_value = deriving::call_intrinsic(cx,
+                                                         trait_span,
+                                                         "discriminant_value",
+                                                         vec![cx.expr_self(trait_span)]);
 
-            stmts.push(call_hash(trait_span, discriminant));
+            stmts.push(call_hash(trait_span, variant_value));
 
             fs
         }
