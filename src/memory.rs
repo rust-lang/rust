@@ -155,7 +155,7 @@ impl Memory {
         if try!(self.relocations(ptr, size)).count() != 0 {
             return Err(EvalError::ReadPointerAsBytes);
         }
-        // TODO(tsion): Track and check for undef bytes.
+        try!(self.check_defined(ptr, size));
         self.get_bytes_unchecked(ptr, size)
     }
 
@@ -170,7 +170,6 @@ impl Memory {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn copy(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
-        // TODO(tsion): Track and check for undef bytes.
         try!(self.check_relocation_edges(src, size));
 
         let src_bytes = try!(self.get_bytes_unchecked_mut(src, size)).as_mut_ptr();
@@ -187,6 +186,7 @@ impl Memory {
             }
         }
 
+        // TODO(tsion): Copy undef ranges from src to dest.
         self.copy_relocations(src, dest, size)
     }
 
@@ -196,6 +196,7 @@ impl Memory {
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {
         let size = self.pointer_size;
+        try!(self.check_defined(ptr, size));
         let offset = try!(self.get_bytes_unchecked(ptr, size))
             .read_uint::<NativeEndian>(size).unwrap() as usize;
         let alloc = try!(self.get(ptr.alloc_id));
@@ -291,6 +292,7 @@ impl Memory {
         Ok(try!(self.get(ptr.alloc_id)).relocations.range(Included(&start), Excluded(&end)))
     }
 
+    // TODO(tsion): Mark partially-overwritten relocations as undefined.
     fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
         let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
         let alloc = try!(self.get_mut(ptr.alloc_id));
@@ -323,6 +325,15 @@ impl Memory {
     ////////////////////////////////////////////////////////////////////////////////
     // Undefined bytes
     ////////////////////////////////////////////////////////////////////////////////
+
+    fn check_defined(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        let alloc = try!(self.get(ptr.alloc_id));
+        if !alloc.is_range_defined(ptr.offset, ptr.offset + size) {
+            panic!();
+            return Err(EvalError::ReadUndefBytes);
+        }
+        Ok(())
+    }
 
     fn mark_definedness(&mut self, ptr: Pointer, size: usize, new_state: bool) -> EvalResult<()> {
         let mut alloc = try!(self.get_mut(ptr.alloc_id));
