@@ -292,13 +292,27 @@ impl Memory {
         Ok(try!(self.get(ptr.alloc_id)).relocations.range(Included(&start), Excluded(&end)))
     }
 
-    // TODO(tsion): Mark partially-overwritten relocations as undefined.
     fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        // Find all relocations overlapping the given range.
         let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
+        if keys.len() == 0 { return Ok(()); }
+
+        // Find the start and end of the given range and its outermost relocations.
+        let start = ptr.offset;
+        let end = start + size;
+        let first = *keys.first().unwrap();
+        let last = *keys.last().unwrap() + self.pointer_size;
+
         let alloc = try!(self.get_mut(ptr.alloc_id));
-        for k in keys {
-            alloc.relocations.remove(&k);
-        }
+
+        // Mark parts of the outermost relocations as undefined if they partially fall outside the
+        // given range.
+        if first < start { alloc.mark_definedness(first, start, false); }
+        if last > end { alloc.mark_definedness(end, last, false); }
+
+        // Forget all the relocations.
+        for k in keys { alloc.relocations.remove(&k); }
+
         Ok(())
     }
 
@@ -329,7 +343,6 @@ impl Memory {
     fn check_defined(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
         let alloc = try!(self.get(ptr.alloc_id));
         if !alloc.is_range_defined(ptr.offset, ptr.offset + size) {
-            panic!();
             return Err(EvalError::ReadUndefBytes);
         }
         Ok(())
