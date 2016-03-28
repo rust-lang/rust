@@ -14,7 +14,7 @@ use syntax::ast;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then,
-            unsugar_range, walk_ptrs_ty};
+            unsugar_range, walk_ptrs_ty, recover_for_loop};
 use utils::{BTREEMAP_PATH, HASHMAP_PATH, LL_PATH, OPTION_PATH, RESULT_PATH, VEC_PATH};
 use utils::UnsugaredRange;
 
@@ -639,30 +639,6 @@ impl<'a> Visitor<'a> for UsedVisitor {
 
         walk_expr(self, expr);
     }
-}
-
-/// Recover the essential nodes of a desugared for loop:
-/// `for pat in arg { body }` becomes `(pat, arg, body)`.
-fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
-    if_let_chain! {
-        [
-            let ExprMatch(ref iterexpr, ref arms, _) = expr.node,
-            let ExprCall(_, ref iterargs) = iterexpr.node,
-            iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
-            let ExprLoop(ref block, _) = arms[0].body.node,
-            block.stmts.is_empty(),
-            let Some(ref loopexpr) = block.expr,
-            let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
-            innerarms.len() == 2 && innerarms[0].pats.len() == 1,
-            let PatKind::TupleStruct(_, Some(ref somepats)) = innerarms[0].pats[0].node,
-            somepats.len() == 1
-        ], {
-            return Some((&somepats[0],
-                         &iterargs[0],
-                         &innerarms[0].body));
-        }
-    }
-    None
 }
 
 struct VarVisitor<'v, 't: 'v> {

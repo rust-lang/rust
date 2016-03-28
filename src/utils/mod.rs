@@ -800,3 +800,27 @@ pub fn same_tys<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, a: ty::Ty<'tcx>, b: ty::Ty
     let new_b = b.subst(infcx.tcx, &infcx.parameter_environment.free_substs);
     infcx.can_equate(&new_a, &new_b).is_ok()
 }
+
+/// Recover the essential nodes of a desugared for loop:
+/// `for pat in arg { body }` becomes `(pat, arg, body)`.
+pub fn recover_for_loop(expr: &Expr) -> Option<(&Pat, &Expr, &Expr)> {
+    if_let_chain! {
+        [
+            let ExprMatch(ref iterexpr, ref arms, _) = expr.node,
+            let ExprCall(_, ref iterargs) = iterexpr.node,
+            iterargs.len() == 1 && arms.len() == 1 && arms[0].guard.is_none(),
+            let ExprLoop(ref block, _) = arms[0].body.node,
+            block.stmts.is_empty(),
+            let Some(ref loopexpr) = block.expr,
+            let ExprMatch(_, ref innerarms, MatchSource::ForLoopDesugar) = loopexpr.node,
+            innerarms.len() == 2 && innerarms[0].pats.len() == 1,
+            let PatKind::TupleStruct(_, Some(ref somepats)) = innerarms[0].pats[0].node,
+            somepats.len() == 1
+        ], {
+            return Some((&somepats[0],
+                         &iterargs[0],
+                         &innerarms[0].body));
+        }
+    }
+    None
+}

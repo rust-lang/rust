@@ -41,4 +41,11 @@ fn main() {
     on_vec(&vec![]);
     on_vec(&vec![1, 2]);
     on_vec(&vec![1; 2]);
+
+    for a in vec![1, 2, 3] {
+        //~^ ERROR useless use of `vec!`
+        //~| HELP you can use
+        //~| SUGGESTION for a in &[1, 2, 3] {
+        println!("{}", a);
+    }
 }
