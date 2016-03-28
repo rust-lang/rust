@@ -223,12 +223,12 @@ impl<'a> SpanUtils<'a> {
         }
         if bracket_count != 0 {
             let loc = self.sess.codemap().lookup_char_pos(span.lo);
-            self.sess.span_bug(span,
-                               &format!("Mis-counted brackets when breaking path? Parsing '{}' \
-                                         in {}, line {}",
-                                        self.snippet(span),
-                                        loc.file.name,
-                                        loc.line));
+            span_bug!(span,
+                      "Mis-counted brackets when breaking path? Parsing '{}' \
+                       in {}, line {}",
+                      self.snippet(span),
+                      loc.file.name,
+                      loc.line);
         }
         if result.is_none() && prev.tok.is_ident() && bracket_count == 0 {
             return self.make_sub_span(span, Some(prev.sp));
@@ -256,12 +256,12 @@ impl<'a> SpanUtils<'a> {
                         return vec!();
                     }
                     let loc = self.sess.codemap().lookup_char_pos(span.lo);
-                    self.sess.span_bug(span,
-                                       &format!("Mis-counted brackets when breaking path? \
-                                                 Parsing '{}' in {}, line {}",
-                                                self.snippet(span),
-                                                loc.file.name,
-                                                loc.line));
+                    span_bug!(span,
+                              "Mis-counted brackets when breaking path? \
+                               Parsing '{}' in {}, line {}",
+                              self.snippet(span),
+                              loc.file.name,
+                              loc.line);
                 }
                 return result
             }
@@ -374,7 +374,7 @@ impl<'a> SpanUtils<'a> {
               loc.line);
         self.err_count.set(self.err_count.get() + 1);
         if self.err_count.get() > 1000 {
-            self.sess.bug("span errors reached 1000, giving up");
+            bug!("span errors reached 1000, giving up");
         }
     }
 
