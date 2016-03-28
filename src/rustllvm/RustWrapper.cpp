@@ -1189,3 +1189,16 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B, LLVMBasicBlockR
     auto point = unwrap(BB)->getFirstInsertionPt();
     unwrap(B)->SetInsertPoint(unwrap(BB), point);
 }
+
+extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V, const char *Name) {
+    Triple TargetTriple(unwrap(M)->getTargetTriple());
+    GlobalObject *GV = unwrap<GlobalObject>(V);
+    if (!TargetTriple.isOSBinFormatMachO()) {
+        GV->setComdat(unwrap(M)->getOrInsertComdat(Name));
+    }
+}
+
+extern "C" void LLVMRustUnsetComdat(LLVMValueRef V) {
+    GlobalObject *GV = unwrap<GlobalObject>(V);
+    GV->setComdat(nullptr);
+}

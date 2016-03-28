@@ -123,7 +123,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ref attrs, node: hir::ImplItemKind::Method(
                 hir::MethodSig { ref decl, .. }, ref body), ..
         }) => {
-            base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
             attributes::from_fn_attrs(ccx, attrs, lldecl);
 
             let is_first = !ccx.available_monomorphizations().borrow()
@@ -133,12 +132,14 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
 
             let trans_everywhere = attr::requests_inline(attrs);
-            if trans_everywhere && !is_first {
-                llvm::SetLinkage(lldecl, llvm::AvailableExternallyLinkage);
-            }
-
             if trans_everywhere || is_first {
+                let origin = if is_first { base::OriginalTranslation } else { base::InlinedCopy };
+                base::update_linkage(ccx, lldecl, None, origin);
                 trans_fn(ccx, decl, body, lldecl, psubsts, fn_node_id);
+            } else {
+                // We marked the value as using internal linkage earlier, but that is illegal for
+                // declarations, so switch back to external linkage.
+                llvm::SetLinkage(lldecl, llvm::ExternalLinkage);
             }
         }
 
