@@ -1,12 +1,13 @@
 use arena::TypedArena;
+use rustc::infer;
 use rustc::middle::const_eval;
 use rustc::middle::def_id::DefId;
-use rustc::middle::infer;
-use rustc::middle::subst::{self, Subst, Substs};
-use rustc::middle::traits;
-use rustc::middle::ty::{self, TyCtxt};
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
+use rustc::traits::{self, ProjectionMode};
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::subst::{self, Subst, Substs};
+use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::cell::RefCell;
@@ -195,8 +196,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
             -> EvalResult<TerminatorTarget> {
-        use rustc::mir::repr::Terminator::*;
-        let target = match *terminator {
+        use rustc::mir::repr::TerminatorKind::*;
+        let target = match terminator.kind {
             Return => TerminatorTarget::Return,
 
             Goto { target } => TerminatorTarget::Block(target),
@@ -632,7 +633,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Slice { .. } => unimplemented!(),
-            InlineAsm(_) => unimplemented!(),
+            InlineAsm { .. } => unimplemented!(),
         }
 
         Ok(())
@@ -973,7 +974,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn fulfill_obligation(&self, trait_ref: ty::PolyTraitRef<'tcx>) -> traits::Vtable<'tcx, ()> {
         // Do the initial selection for the obligation. This yields the shallow result we are
         // looking for -- that is, what specific impl.
-        let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables);
+        let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables, ProjectionMode::Any);
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let obligation = traits::Obligation::new(
@@ -997,7 +998,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
     /// Trait method, which has to be resolved to an impl method.
     pub fn trait_method(&self, def_id: DefId, substs: &'tcx Substs<'tcx>)
-            -> (DefId, &'tcx Substs<'tcx>) {
+        -> (DefId, &'tcx Substs<'tcx>)
+    {
         let method_item = self.tcx.impl_or_trait_item(def_id);
         let trait_id = method_item.container().id();
         let trait_ref = ty::Binder(substs.to_trait_ref(self.tcx, trait_id));
@@ -1009,7 +1011,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 // and those from the method:
                 let impl_substs = vtable_impl.substs.with_method_from(substs);
                 let substs = self.tcx.mk_substs(impl_substs);
-                let mth = self.tcx.get_impl_method(impl_did, substs, mname);
+                let mth = get_impl_method(self.tcx, impl_did, substs, mname);
 
                 (mth.method.def_id, mth.substs)
             }
@@ -1068,6 +1070,40 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
         match *self {
             CachedMir::Ref(r) => r,
             CachedMir::Owned(ref rc) => &rc,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ImplMethod<'tcx> {
+    pub method: Rc<ty::Method<'tcx>>,
+    pub substs: &'tcx Substs<'tcx>,
+    pub is_provided: bool,
+}
+
+/// Locates the applicable definition of a method, given its name.
+pub fn get_impl_method<'tcx>(
+    tcx: &TyCtxt<'tcx>,
+    impl_def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+    name: ast::Name,
+) -> ImplMethod<'tcx> {
+    assert!(!substs.types.needs_infer());
+
+    let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
+    let trait_def = tcx.lookup_trait_def(trait_def_id);
+    let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
+
+    match trait_def.ancestors(impl_def_id).fn_defs(tcx, name).next() {
+        Some(node_item) => {
+            ImplMethod {
+                method: node_item.item,
+                substs: traits::translate_substs(&infcx, impl_def_id, substs, node_item.node),
+                is_provided: node_item.node.is_from_trait(),
+            }
+        }
+        None => {
+            tcx.sess.bug(&format!("method {:?} not found in {:?}", name, impl_def_id))
         }
     }
 }
