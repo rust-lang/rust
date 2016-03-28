@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepNode;
+use hir::def_id::DefId;
 use ty::{Ty, TyS};
 use ty::tls;
 
@@ -46,7 +47,7 @@ impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
     }
 
     #[inline]
-    pub fn get(&self, dep_node: DepNode) -> Option<Ty<'tcx>> {
+    pub fn get(&self, dep_node: DepNode<DefId>) -> Option<Ty<'tcx>> {
         tls::with(|tcx| tcx.dep_graph.read(dep_node));
         self.untracked_get()
     }
@@ -61,11 +62,11 @@ impl<'tcx, 'lt> TyIVar<'tcx, 'lt> {
     }
 
     #[inline]
-    pub fn unwrap(&self, dep_node: DepNode) -> Ty<'tcx> {
+    pub fn unwrap(&self, dep_node: DepNode<DefId>) -> Ty<'tcx> {
         self.get(dep_node).unwrap()
     }
 
-    pub fn fulfill(&self, dep_node: DepNode, value: Ty<'lt>) {
+    pub fn fulfill(&self, dep_node: DepNode<DefId>, value: Ty<'lt>) {
         tls::with(|tcx| tcx.dep_graph.write(dep_node));
 
         // Invariant (A) is fulfilled, because by (B), every alias

@@ -179,7 +179,7 @@ pub struct TraitSelectionCache<'tcx> {
 impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
     type Key = ty::PolyTraitRef<'tcx>;
     type Value = traits::Vtable<'tcx, ()>;
-    fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode {
+    fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode<DefId> {
         ty::tls::with(|tcx| {
             let lifted_key = tcx.lift(key).unwrap();
             lifted_key.to_poly_trait_predicate().dep_node()

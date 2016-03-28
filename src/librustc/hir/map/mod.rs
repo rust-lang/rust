@@ -208,7 +208,7 @@ impl<'ast> Map<'ast> {
         self.dep_graph.read(self.dep_node(id));
     }
 
-    fn dep_node(&self, id0: NodeId) -> DepNode {
+    fn dep_node(&self, id0: NodeId) -> DepNode<DefId> {
         let map = self.map.borrow();
         let mut id = id0;
         loop {
