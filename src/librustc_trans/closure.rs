@@ -297,7 +297,6 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let llfn_closure_kind = ccx.tcx().closure_kind(closure_def_id);
 
     let _icx = push_ctxt("trans_closure_adapter_shim");
-    let tcx = ccx.tcx();
 
     debug!("trans_closure_adapter_shim(llfn_closure_kind={:?}, \
            trait_closure_kind={:?}, llfn={:?})",
@@ -329,9 +328,9 @@ pub fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
             trans_fn_once_adapter_shim(ccx, closure_def_id, substs, llfn)
         }
         _ => {
-            tcx.sess.bug(&format!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
-                                  llfn_closure_kind,
-                                  trait_closure_kind));
+            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
+                 llfn_closure_kind,
+                 trait_closure_kind);
         }
     }
 }

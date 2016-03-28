@@ -38,7 +38,7 @@ use libc::c_uint;
 pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRef {
     debug!("declare_global(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
-        ccx.sess().bug(&format!("name {:?} contains an interior null byte", name))
+        bug!("name {:?} contains an interior null byte", name)
     });
     unsafe {
         llvm::LLVMGetOrInsertGlobal(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
@@ -53,7 +53,7 @@ pub fn declare_global(ccx: &CrateContext, name: &str, ty: Type) -> llvm::ValueRe
 fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: Type) -> ValueRef {
     debug!("declare_raw_fn(name={:?}, ty={:?})", name, ty);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
-        ccx.sess().bug(&format!("name {:?} contains an interior null byte", name))
+        bug!("name {:?} contains an interior null byte", name)
     });
     let llfn = unsafe {
         llvm::LLVMGetOrInsertFunction(ccx.llmod(), namebuf.as_ptr(), ty.to_ref())
@@ -152,7 +152,7 @@ pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     debug!("get_defined_value(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
-        ccx.sess().bug(&format!("name {:?} contains an interior null byte", name))
+        bug!("name {:?} contains an interior null byte", name)
     });
     let val = unsafe { llvm::LLVMGetNamedValue(ccx.llmod(), namebuf.as_ptr()) };
     if val.is_null() {

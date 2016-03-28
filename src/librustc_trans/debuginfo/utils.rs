@@ -91,8 +91,8 @@ pub fn assert_type_for_node_id(cx: &CrateContext,
                            node_id: ast::NodeId,
                            error_reporting_span: Span) {
     if !cx.tcx().node_types().contains_key(&node_id) {
-        cx.sess().span_bug(error_reporting_span,
-                           "debuginfo: Could not find type for node id!");
+        span_bug!(error_reporting_span,
+                  "debuginfo: Could not find type for node id!");
     }
 }
 

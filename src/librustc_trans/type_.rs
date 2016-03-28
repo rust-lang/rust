@@ -124,7 +124,7 @@ impl Type {
         match &ccx.tcx().sess.target.target.target_pointer_width[..] {
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
-            tws => panic!("Unsupported target word size for int: {}", tws),
+            tws => bug!("Unsupported target word size for int: {}", tws),
         }
     }
 
@@ -288,7 +288,7 @@ impl Type {
             Double => 64,
             X86_FP80 => 80,
             FP128 | PPC_FP128 => 128,
-            _ => panic!("llvm_float_width called on a non-float type")
+            _ => bug!("llvm_float_width called on a non-float type")
         }
     }
 

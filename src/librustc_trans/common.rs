@@ -194,9 +194,7 @@ impl<'tcx> VariantInfo<'tcx> {
             }
 
             _ => {
-                tcx.sess.bug(&format!(
-                    "cannot get field types from the type {:?}",
-                    ty));
+                bug!("cannot get field types from the type {:?}", ty);
             }
         }
     }
@@ -209,7 +207,7 @@ impl<'tcx> VariantInfo<'tcx> {
 
     pub fn field_index(&self, name: ast::Name) -> usize {
         self.fields.iter().position(|&Field(n,_)| n == name).unwrap_or_else(|| {
-            panic!("unknown field `{}`", name)
+            bug!("unknown field `{}`", name)
         })
     }
 }
@@ -596,8 +594,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         match self.tcx().def_map.borrow().get(&nid) {
             Some(v) => v.full_def(),
             None => {
-                self.tcx().sess.bug(&format!(
-                    "no def associated with node id {}", nid));
+                bug!("no def associated with node id {}", nid);
             }
         }
     }
@@ -910,7 +907,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         let gsym = token::gensym("str");
         let sym = format!("str{}", gsym.0);
         let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
-            cx.sess().bug(&format!("symbol `{}` is already defined", sym));
+            bug!("symbol `{}` is already defined", sym);
         });
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
@@ -1102,11 +1099,11 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 "reached the recursion limit during monomorphization (selection ambiguity)");
         }
         Err(e) => {
-            tcx.sess.span_bug(
+            span_bug!(
                 span,
-                &format!("Encountered error `{:?}` selecting `{:?}` during trans",
-                        e,
-                        trait_ref))
+                "Encountered error `{:?}` selecting `{:?}` during trans",
+                e,
+                trait_ref)
         }
     };
 
@@ -1194,7 +1191,7 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         inlined_vid_def_id == v.did ||
             ccx.external().borrow().get(&v.did) == Some(&Some(inlined_vid))
     }).unwrap_or_else(|| {
-        ccx.sess().bug(&format!("no variant for {:?}::{}", adt_def, inlined_vid))
+        bug!("no variant for {:?}::{}", adt_def, inlined_vid)
     })
 }
 
@@ -1255,6 +1252,6 @@ pub fn shift_mask_val<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let mask = shift_mask_val(bcx, llty.element_type(), mask_llty.element_type(), invert);
             build::VectorSplat(bcx, mask_llty.vector_length(), mask)
         },
-        _ => panic!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
+        _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
 }

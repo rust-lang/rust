@@ -102,25 +102,22 @@ impl<'tcx> TypeMap<'tcx> {
     // Adds a Ty to metadata mapping to the TypeMap. The method will fail if
     // the mapping already exists.
     fn register_type_with_metadata<'a>(&mut self,
-                                       cx: &CrateContext<'a, 'tcx>,
                                        type_: Ty<'tcx>,
                                        metadata: DIType) {
         if self.type_to_metadata.insert(type_, metadata).is_some() {
-            cx.sess().bug(&format!("Type metadata for Ty '{}' is already in the TypeMap!",
-                                   type_));
+            bug!("Type metadata for Ty '{}' is already in the TypeMap!", type_);
         }
     }
 
     // Adds a UniqueTypeId to metadata mapping to the TypeMap. The method will
     // fail if the mapping already exists.
     fn register_unique_id_with_metadata(&mut self,
-                                        cx: &CrateContext,
                                         unique_type_id: UniqueTypeId,
                                         metadata: DIType) {
         if self.unique_id_to_metadata.insert(unique_type_id, metadata).is_some() {
             let unique_type_id_str = self.get_unique_type_id_as_string(unique_type_id);
-            cx.sess().bug(&format!("Type metadata for unique id '{}' is already in the TypeMap!",
-                                  &unique_type_id_str[..]));
+            bug!("Type metadata for unique id '{}' is already in the TypeMap!",
+                 &unique_type_id_str[..]);
         }
     }
 
@@ -305,8 +302,8 @@ impl<'tcx> TypeMap<'tcx> {
                 }
             },
             _ => {
-                cx.sess().bug(&format!("get_unique_type_id_of_type() - unexpected type: {:?}",
-                                       type_))
+                bug!("get_unique_type_id_of_type() - unexpected type: {:?}",
+                     type_)
             }
         };
 
@@ -415,8 +412,8 @@ fn create_and_register_recursive_type_forward_declaration<'a, 'tcx>(
 
     // Insert the stub into the TypeMap in order to allow for recursive references
     let mut type_map = debug_context(cx).type_map.borrow_mut();
-    type_map.register_unique_id_with_metadata(cx, unique_type_id, metadata_stub);
-    type_map.register_type_with_metadata(cx, unfinished_type, metadata_stub);
+    type_map.register_unique_id_with_metadata(unique_type_id, metadata_stub);
+    type_map.register_type_with_metadata(unfinished_type, metadata_stub);
 
     UnfinishedMetadata {
         unfinished_type: unfinished_type,
@@ -452,10 +449,9 @@ impl<'tcx> RecursiveTypeDescription<'tcx> {
                     let type_map = debug_context(cx).type_map.borrow();
                     if type_map.find_metadata_for_unique_id(unique_type_id).is_none() ||
                        type_map.find_metadata_for_type(unfinished_type).is_none() {
-                        cx.sess().bug(&format!("Forward declaration of potentially recursive type \
-                                              '{:?}' was not found in TypeMap!",
-                                              unfinished_type)
-                                      );
+                        bug!("Forward declaration of potentially recursive type \
+                              '{:?}' was not found in TypeMap!",
+                             unfinished_type);
                     }
                 }
 
@@ -640,9 +636,9 @@ fn trait_pointer_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let def_id = match trait_type.sty {
         ty::TyTrait(ref data) => data.principal_def_id(),
         _ => {
-            cx.sess().bug(&format!("debuginfo: Unexpected trait-object type in \
-                                   trait_pointer_metadata(): {:?}",
-                                   trait_type));
+            bug!("debuginfo: Unexpected trait-object type in \
+                  trait_pointer_metadata(): {:?}",
+                 trait_type);
         }
     };
 
@@ -688,7 +684,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         // There is already an equivalent type in the TypeMap.
                         // Register this Ty as an alias in the cache and
                         // return the cached metadata.
-                        type_map.register_type_with_metadata(cx, t, metadata);
+                        type_map.register_type_with_metadata(t, metadata);
                         return metadata;
                     },
                     None => {
@@ -803,8 +799,7 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    usage_site_span).finalize(cx)
         }
         _ => {
-            cx.sess().bug(&format!("debuginfo: unexpected type in type_metadata: {:?}",
-                                  sty))
+            bug!("debuginfo: unexpected type in type_metadata: {:?}", sty)
         }
     };
 
@@ -818,13 +813,13 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 None => {
                     let unique_type_id_str =
                         type_map.get_unique_type_id_as_string(unique_type_id);
-                    let error_message = format!("Expected type metadata for unique \
-                                                 type id '{}' to already be in \
-                                                 the debuginfo::TypeMap but it \
-                                                 was not. (Ty = {})",
-                                                &unique_type_id_str[..],
-                                                t);
-                    cx.sess().span_bug(usage_site_span, &error_message[..]);
+                    span_bug!(usage_site_span,
+                              "Expected type metadata for unique \
+                               type id '{}' to already be in \
+                               the debuginfo::TypeMap but it \
+                               was not. (Ty = {})",
+                              &unique_type_id_str[..],
+                              t);
                 }
             };
 
@@ -833,22 +828,22 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     if metadata != metadata_for_uid {
                         let unique_type_id_str =
                             type_map.get_unique_type_id_as_string(unique_type_id);
-                        let error_message = format!("Mismatch between Ty and \
-                                                     UniqueTypeId maps in \
-                                                     debuginfo::TypeMap. \
-                                                     UniqueTypeId={}, Ty={}",
-                            &unique_type_id_str[..],
-                            t);
-                        cx.sess().span_bug(usage_site_span, &error_message[..]);
+                        span_bug!(usage_site_span,
+                                  "Mismatch between Ty and \
+                                   UniqueTypeId maps in \
+                                   debuginfo::TypeMap. \
+                                   UniqueTypeId={}, Ty={}",
+                                  &unique_type_id_str[..],
+                                  t);
                     }
                 }
                 None => {
-                    type_map.register_type_with_metadata(cx, t, metadata);
+                    type_map.register_type_with_metadata(t, metadata);
                 }
             }
         } else {
-            type_map.register_type_with_metadata(cx, t, metadata);
-            type_map.register_unique_id_with_metadata(cx, unique_type_id, metadata);
+            type_map.register_type_with_metadata(t, metadata);
+            type_map.register_unique_id_with_metadata(unique_type_id, metadata);
         }
     }
 
@@ -901,16 +896,16 @@ pub fn scope_metadata(fcx: &FunctionContext,
                   error_reporting_span: Span)
                -> DIScope {
     let scope_map = &fcx.debug_context
-                        .get_ref(fcx.ccx, error_reporting_span)
+                        .get_ref(error_reporting_span)
                         .scope_map;
     match scope_map.borrow().get(&node_id).cloned() {
         Some(scope_metadata) => scope_metadata,
         None => {
             let node = fcx.ccx.tcx().map.get(node_id);
 
-            fcx.ccx.sess().span_bug(error_reporting_span,
-                &format!("debuginfo: Could not find scope info for node {:?}",
-                        node));
+            span_bug!(error_reporting_span,
+                      "debuginfo: Could not find scope info for node {:?}",
+                      node);
         }
     }
 }
@@ -945,7 +940,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyFloat(float_ty) => {
             (float_ty.ty_to_string(), DW_ATE_float)
         },
-        _ => cx.sess().bug("debuginfo::basic_type_metadata - t is invalid type")
+        _ => bug!("debuginfo::basic_type_metadata - t is invalid type")
     };
 
     let llvm_type = type_of::type_of(cx, t);
@@ -1162,7 +1157,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let (variant, substs) = match struct_type.sty {
         ty::TyStruct(def, substs) => (def.struct_variant(), substs),
-        _ => cx.tcx().sess.bug("prepare_struct_metadata on a non-struct")
+        _ => bug!("prepare_struct_metadata on a non-struct")
     };
 
     let (containing_scope, _) = get_namespace_and_span_for_item(cx, variant.did);
@@ -1362,7 +1357,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         ty::VariantKind::Struct => {
                             non_null_variant.fields[0].name.to_string()
                         }
-                        ty::VariantKind::Unit => unreachable!()
+                        ty::VariantKind::Unit => bug!()
                     },
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
@@ -1452,7 +1447,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     }
                 ]
             },
-            adt::CEnum(..) => cx.sess().span_bug(self.span, "This should be unreachable.")
+            adt::CEnum(..) => span_bug!(self.span, "This should be unreachable.")
         }
     }
 }
@@ -1747,8 +1742,8 @@ fn set_members_of_composite_type(cx: &CrateContext,
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
         if composite_types_completed.contains(&composite_type_metadata) {
-            cx.sess().bug("debuginfo::set_members_of_composite_type() - \
-                           Already completed forward declaration re-encountered.");
+            bug!("debuginfo::set_members_of_composite_type() - \
+                  Already completed forward declaration re-encountered.");
         } else {
             composite_types_completed.insert(composite_type_metadata);
         }
@@ -1855,20 +1850,19 @@ pub fn create_global_var_metadata(cx: &CrateContext,
                 hir::ItemStatic(..) => (item.name, item.span),
                 hir::ItemConst(..) => (item.name, item.span),
                 _ => {
-                    cx.sess()
-                      .span_bug(item.span,
-                                &format!("debuginfo::\
-                                         create_global_var_metadata() -
-                                         Captured var-id refers to \
-                                         unexpected ast_item variant: {:?}",
-                                        var_item))
+                    span_bug!(item.span,
+                              "debuginfo::\
+                               create_global_var_metadata() -
+                               Captured var-id refers to \
+                               unexpected ast_item variant: {:?}",
+                              var_item)
                 }
             }
         },
-        _ => cx.sess().bug(&format!("debuginfo::create_global_var_metadata() \
-                                    - Captured var-id refers to unexpected \
-                                    hir_map variant: {:?}",
-                                   var_item))
+        _ => bug!("debuginfo::create_global_var_metadata() \
+                   - Captured var-id refers to unexpected \
+                   hir_map variant: {:?}",
+                  var_item)
     };
 
     let (file_metadata, line_number) = if span != codemap::DUMMY_SP {
@@ -1924,15 +1918,15 @@ pub fn create_local_var_metadata(bcx: Block, local: &hir::Local) {
         let datum = match locals.get(&node_id) {
             Some(datum) => datum,
             None => {
-                bcx.sess().span_bug(span,
-                    &format!("no entry in lllocals table for {}",
-                            node_id));
+                span_bug!(span,
+                          "no entry in lllocals table for {}",
+                          node_id);
             }
         };
 
         if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            cx.sess().span_bug(span, "debuginfo::create_local_var_metadata() - \
-                                      Referenced variable location is not an alloca!");
+            span_bug!(span, "debuginfo::create_local_var_metadata() - \
+                             Referenced variable location is not an alloca!");
         }
 
         let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
@@ -1968,7 +1962,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let variable_name = match ast_item {
         None => {
-            cx.sess().span_bug(span, "debuginfo::create_captured_var_metadata: node not found");
+            span_bug!(span, "debuginfo::create_captured_var_metadata: node not found");
         }
         Some(hir_map::NodeLocal(pat)) => {
             match pat.node {
@@ -1976,28 +1970,25 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     path1.node.name
                 }
                 _ => {
-                    cx.sess()
-                      .span_bug(span,
-                                &format!(
-                                "debuginfo::create_captured_var_metadata() - \
-                                 Captured var-id refers to unexpected \
-                                 hir_map variant: {:?}",
-                                 ast_item));
+                    span_bug!(span,
+                              "debuginfo::create_captured_var_metadata() - \
+                               Captured var-id refers to unexpected \
+                               hir_map variant: {:?}",
+                              ast_item);
                 }
             }
         }
         _ => {
-            cx.sess()
-              .span_bug(span,
-                        &format!("debuginfo::create_captured_var_metadata() - \
-                                 Captured var-id refers to unexpected \
-                                 hir_map variant: {:?}",
-                                ast_item));
+            span_bug!(span,
+                      "debuginfo::create_captured_var_metadata() - \
+                       Captured var-id refers to unexpected \
+                       hir_map variant: {:?}",
+                      ast_item);
         }
     };
 
     let variable_type = common::node_id_type(bcx, node_id);
-    let scope_metadata = bcx.fcx.debug_context.get_ref(cx, span).fn_metadata;
+    let scope_metadata = bcx.fcx.debug_context.get_ref(span).fn_metadata;
 
     // env_pointer is the alloca containing the pointer to the environment,
     // so it's type is **EnvironmentType. In order to find out the type of
@@ -2096,7 +2087,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
     let scope_metadata = bcx
                          .fcx
                          .debug_context
-                         .get_ref(bcx.ccx(), arg.pat.span)
+                         .get_ref(arg.pat.span)
                          .fn_metadata;
     let locals = bcx.fcx.lllocals.borrow();
 
@@ -2104,22 +2095,20 @@ pub fn create_argument_metadata(bcx: Block, arg: &hir::Arg) {
         let datum = match locals.get(&node_id) {
             Some(v) => v,
             None => {
-                bcx.sess().span_bug(span,
-                    &format!("no entry in lllocals table for {}",
-                            node_id));
+                span_bug!(span, "no entry in lllocals table for {}", node_id);
             }
         };
 
         if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            bcx.sess().span_bug(span, "debuginfo::create_argument_metadata() - \
-                                       Referenced variable location is not an alloca!");
+            span_bug!(span, "debuginfo::create_argument_metadata() - \
+                             Referenced variable location is not an alloca!");
         }
 
         let argument_index = {
             let counter = &bcx
                           .fcx
                           .debug_context
-                          .get_ref(bcx.ccx(), span)
+                          .get_ref(span)
                           .argument_counter;
             let argument_index = counter.get();
             counter.set(argument_index + 1);

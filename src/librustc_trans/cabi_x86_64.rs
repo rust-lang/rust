@@ -112,7 +112,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 let elt = ty.element_type();
                 ty_align(elt) * len
             }
-            _ => panic!("ty_align: unhandled type")
+            _ => bug!("ty_align: unhandled type")
         }
     }
 
@@ -144,7 +144,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 len * eltsz
             }
 
-            _ => panic!("ty_size: unhandled type")
+            _ => bug!("ty_size: unhandled type")
         }
     }
 
@@ -255,7 +255,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                     Integer => SSEInt(elt.int_width()),
                     Float => SSEFv,
                     Double => SSEDv,
-                    _ => panic!("classify: unhandled vector element type")
+                    _ => bug!("classify: unhandled vector element type")
                 };
 
                 let mut i = 0;
@@ -268,7 +268,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                     i += 1;
                 }
             }
-            _ => panic!("classify: unhandled type")
+            _ => bug!("classify: unhandled type")
         }
     }
 
@@ -357,7 +357,7 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
                                 "llreg_ty: unsupported SSEInt width {}", bits);
                         (64 / bits, Type::ix(ccx, bits))
                     }
-                    _ => unreachable!(),
+                    _ => bug!(),
                 };
                 let vec_len = llvec_len(&cls[i + 1..]);
                 let vec_ty = Type::vector(&elt_ty, vec_len as u64 * elts_per_word);
@@ -371,7 +371,7 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
             SSEDs => {
                 tys.push(Type::f64(ccx));
             }
-            _ => panic!("llregtype: unhandled class")
+            _ => bug!("llregtype: unhandled class")
         }
         i += 1;
     }

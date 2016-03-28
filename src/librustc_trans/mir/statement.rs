@@ -36,9 +36,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 bcx
                             }
                             TempRef::Operand(Some(_)) => {
-                                bcx.tcx().sess.span_bug(
-                                    statement.span,
-                                    &format!("operand {:?} already assigned", rvalue));
+                                span_bug!(statement.span,
+                                          "operand {:?} already assigned",
+                                          rvalue);
                             }
                         }
                     }
