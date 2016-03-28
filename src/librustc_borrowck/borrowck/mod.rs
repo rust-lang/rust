@@ -420,10 +420,10 @@ pub fn closure_to_block(closure_id: ast::NodeId,
                 block.id
             }
             _ => {
-                panic!("encountered non-closure id: {}", closure_id)
+                bug!("encountered non-closure id: {}", closure_id)
             }
         },
-        _ => panic!("encountered non-expr id: {}", closure_id)
+        _ => bug!("encountered non-expr id: {}", closure_id)
     }
 }
 
@@ -704,10 +704,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         (self.tcx.expr_ty_adjusted(&expr), expr.span)
                     }
                     r => {
-                        self.tcx.sess.bug(&format!("MoveExpr({}) maps to \
-                                                   {:?}, not Expr",
-                                                  the_move.id,
-                                                  r))
+                        bug!("MoveExpr({}) maps to {:?}, not Expr",
+                             the_move.id,
+                             r)
                     }
                 };
                 let (suggestion, _) =
@@ -766,10 +765,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         (self.tcx.expr_ty_adjusted(&expr), expr.span)
                     }
                     r => {
-                        self.tcx.sess.bug(&format!("Captured({}) maps to \
-                                                   {:?}, not Expr",
-                                                  the_move.id,
-                                                  r))
+                        bug!("Captured({}) maps to {:?}, not Expr",
+                             the_move.id,
+                             r)
                     }
                 };
                 let (suggestion, help) =
@@ -852,10 +850,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
-    pub fn span_bug(&self, s: Span, m: &str) {
-        self.tcx.sess.span_bug(s, m);
-    }
-
     pub fn bckerr_to_string(&self, err: &BckError<'tcx>) -> String {
         match err.code {
             err_mutbl => {
@@ -895,7 +889,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         format!("cannot borrow {} as mutable", descr)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
-                        self.tcx.sess.span_bug(err.span,
+                        span_bug!(err.span,
                             "err_mutbl with a closure invocation");
                     }
                 }
@@ -1035,7 +1029,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         // We need to determine which is the case here.
                         let kind = match err.cmt.upvar().unwrap().cat {
                             Categorization::Upvar(mc::Upvar { kind, .. }) => kind,
-                            _ => unreachable!()
+                            _ => bug!()
                         };
                         if kind == ty::ClosureKind::Fn {
                             db.span_help(

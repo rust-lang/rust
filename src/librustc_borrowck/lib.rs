@@ -32,6 +32,7 @@
 // for "clarity", rename the graphviz crate to dot; graphviz within `borrowck`
 // refers to the borrowck-specific graphviz adapter traits.
 extern crate graphviz as dot;
+#[macro_use]
 extern crate rustc;
 extern crate rustc_front;
 extern crate rustc_mir;

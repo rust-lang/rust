@@ -515,7 +515,7 @@ impl<'tcx> MoveData<'tcx> {
                                          assignment_index);
                 }
                 LpExtend(..) => {
-                    tcx.sess.bug("var assignment for non var path");
+                    bug!("var assignment for non var path");
                 }
             }
         }
