@@ -161,7 +161,7 @@ pub fn ast_region_to_region(tcx: &TyCtxt, lifetime: &hir::Lifetime)
     let r = match tcx.named_region_map.get(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
-            tcx.sess.span_bug(lifetime.span, "unresolved lifetime");
+            span_bug!(lifetime.span, "unresolved lifetime");
         }
 
         Some(&rl::DefStaticRegion) => {
@@ -485,7 +485,7 @@ fn create_substs_for_ast_path<'tcx>(
                 substs.types.push(TypeSpace, default);
             }
         } else {
-            tcx.sess.span_bug(span, "extra parameter without default");
+            span_bug!(span, "extra parameter without default");
         }
     }
 
@@ -839,7 +839,7 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
         Err(ErrorReported) => {
             // No convenient way to recover from a cycle here. Just bail. Sorry!
             this.tcx().sess.abort_if_errors();
-            this.tcx().sess.bug("ErrorReported returned, but no errors reports?")
+            bug!("ErrorReported returned, but no errors reports?")
         }
     };
 
@@ -1353,7 +1353,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                       .expect("missing associated type");
                 tcx.map.local_def_id(item.id)
             }
-            _ => unreachable!()
+            _ => bug!()
         }
     } else {
         let trait_items = tcx.trait_items(trait_did);
@@ -1496,7 +1496,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                     ty
                 }
             } else {
-                tcx.sess.span_bug(span, "self type has not been fully resolved")
+                span_bug!(span, "self type has not been fully resolved")
             }
         }
         Def::SelfTy(Some(_), None) => {
@@ -1654,7 +1654,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     depth: path.segments.len()
                 }
             } else {
-                tcx.sess.span_bug(ast_ty.span, &format!("unbound path {:?}", ast_ty))
+                span_bug!(ast_ty.span, "unbound path {:?}", ast_ty)
             };
             let def = path_res.base_def;
             let base_ty_end = path.segments.len() - path_res.depth;
@@ -1961,7 +1961,7 @@ pub fn ty_of_closure<'tcx>(
             ty::FnConverging(this.ty_infer(None, None, None, decl.output.span())),
         hir::Return(ref output) =>
             ty::FnConverging(ast_ty_to_ty(this, &rb, &output)),
-        hir::DefaultReturn(..) => unreachable!(),
+        hir::DefaultReturn(..) => bug!(),
         hir::NoReturn(..) => ty::FnDiverging
     };
 

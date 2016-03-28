@@ -274,7 +274,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
         if let Some(trait_id) = tcx.map.as_local_node_id(trait_id) {
             let item = match tcx.map.get(trait_id) {
                 hir_map::NodeItem(item) => item,
-                _ => tcx.sess.bug(&format!("get_trait_def({:?}): not an item", trait_id))
+                _ => bug!("get_trait_def({:?}): not an item", trait_id)
             };
 
             trait_def_of_item(self, &item)
@@ -1165,13 +1165,13 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
     let superpredicates = superpredicates.unwrap_or_else(|| {
         let item = match ccx.tcx.map.get(trait_node_id) {
             hir_map::NodeItem(item) => item,
-            _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not an item", trait_node_id))
+            _ => bug!("trait_node_id {} is not an item", trait_node_id)
         };
 
         let (generics, bounds) = match item.node {
             hir::ItemTrait(_, ref generics, ref supertraits, _) => (generics, supertraits),
-            _ => tcx.sess.span_bug(item.span,
-                                   "ensure_super_predicates_step invoked on non-trait"),
+            _ => span_bug!(item.span,
+                           "ensure_super_predicates_step invoked on non-trait"),
         };
 
         // In-scope when converting the superbounds for `Trait` are
@@ -1237,7 +1237,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let (unsafety, generics, items) = match it.node {
         hir::ItemTrait(unsafety, ref generics, _, ref items) => (unsafety, generics, items),
-        _ => tcx.sess.span_bug(it.span, "trait_def_of_item invoked on non-trait"),
+        _ => span_bug!(it.span, "trait_def_of_item invoked on non-trait"),
     };
 
     let paren_sugar = tcx.has_attr(def_id, "rustc_paren_sugar");
@@ -1317,12 +1317,12 @@ fn trait_defines_associated_type_named(ccx: &CrateCtxt,
 {
     let item = match ccx.tcx.map.get(trait_node_id) {
         hir_map::NodeItem(item) => item,
-        _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not an item", trait_node_id))
+        _ => bug!("trait_node_id {} is not an item", trait_node_id)
     };
 
     let trait_items = match item.node {
         hir::ItemTrait(_, _, _, ref trait_items) => trait_items,
-        _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not a trait", trait_node_id))
+        _ => bug!("trait_node_id {} is not a trait", trait_node_id)
     };
 
     trait_items.iter().any(|trait_item| {
@@ -1342,9 +1342,10 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &hir::Item)
     let (generics, items) = match it.node {
         hir::ItemTrait(_, ref generics, _, ref items) => (generics, items),
         ref s => {
-            tcx.sess.span_bug(
+            span_bug!(
                 it.span,
-                &format!("trait_def_of_item invoked on {:?}", s));
+                "trait_def_of_item invoked on {:?}",
+                s);
         }
     };
 
@@ -1421,9 +1422,8 @@ fn type_scheme_of_def_id<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 type_scheme_of_foreign_item(ccx, &foreign_item, abi)
             }
             x => {
-                ccx.tcx.sess.bug(&format!("unexpected sort of node \
-                                           in get_item_type_scheme(): {:?}",
-                                          x));
+                bug!("unexpected sort of node in get_item_type_scheme(): {:?}",
+                     x);
             }
         }
     } else {
@@ -1489,10 +1489,10 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         hir::ItemForeignMod(..) |
         hir::ItemExternCrate(..) |
         hir::ItemUse(..) => {
-            tcx.sess.span_bug(
+            span_bug!(
                 it.span,
-                &format!("compute_type_scheme_of_item: unexpected item type: {:?}",
-                         it.node));
+                "compute_type_scheme_of_item: unexpected item type: {:?}",
+                it.node);
         }
     }
 }
@@ -1528,10 +1528,10 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         hir::ItemImpl(..) |
         hir::ItemMod(..) |
         hir::ItemForeignMod(..) => {
-            tcx.sess.span_bug(
+            span_bug!(
                 it.span,
-                &format!("compute_type_scheme_of_item: unexpected item type: {:?}",
-                         it.node));
+                "compute_type_scheme_of_item: unexpected item type: {:?}",
+                it.node);
         }
     };
 
@@ -1836,9 +1836,9 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
             &hir::WherePredicate::EqPredicate(ref eq_pred) => {
                 // FIXME(#20041)
-                tcx.sess.span_bug(eq_pred.span,
-                                    "Equality constraints are not yet \
-                                        implemented (#20041)")
+                span_bug!(eq_pred.span,
+                         "Equality constraints are not yet \
+                          implemented (#20041)")
             }
         }
     }

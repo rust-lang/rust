@@ -209,10 +209,10 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         let closure_substs = match self.fcx.node_ty(id).sty {
             ty::TyClosure(_, ref substs) => substs,
             ref t => {
-                self.fcx.tcx().sess.span_bug(
+                span_bug!(
                     span,
-                    &format!("type of closure expr {:?} is not a closure {:?}",
-                             id, t));
+                    "type of closure expr {:?} is not a closure {:?}",
+                    id, t);
             }
         };
 

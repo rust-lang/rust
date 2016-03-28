@@ -300,10 +300,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         match result {
             Some(r) => r,
             None => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     self.span,
-                    &format!("self-type `{}` for ObjectPick never dereferenced to an object",
-                            self_ty))
+                    "self-type `{}` for ObjectPick never dereferenced to an object",
+                    self_ty)
             }
         }
     }
@@ -372,10 +372,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         match self.fcx.mk_subty(false, TypeOrigin::Misc(self.span), self_ty, method_self_ty) {
             Ok(_) => {}
             Err(_) => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     self.span,
-                    &format!("{} was a subtype of {} but now is not?",
-                             self_ty, method_self_ty));
+                    "{} was a subtype of {} but now is not?",
+                    self_ty, method_self_ty);
             }
         }
     }
@@ -550,15 +550,15 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                 }))
                             }
                             Some(_) => {
-                                self.tcx().sess.span_bug(
+                                span_bug!(
                                     base_expr.span,
-                                    &format!("unexpected adjustment autoref {:?}",
-                                            adr));
+                                    "unexpected adjustment autoref {:?}",
+                                    adr);
                             }
                         },
                         None => (0, None),
                         Some(_) => {
-                            self.tcx().sess.span_bug(
+                            span_bug!(
                                 base_expr.span,
                                 "unexpected adjustment type");
                         }
@@ -646,12 +646,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // must be exactly one trait ref or we'd get an ambig error etc
         if upcast_trait_refs.len() != 1 {
-            self.tcx().sess.span_bug(
+            span_bug!(
                 self.span,
-                &format!("cannot uniquely upcast `{:?}` to `{:?}`: `{:?}`",
-                         source_trait_ref,
-                         target_trait_def_id,
-                         upcast_trait_refs));
+                "cannot uniquely upcast `{:?}` to `{:?}`: `{:?}`",
+                source_trait_ref,
+                target_trait_def_id,
+                upcast_trait_refs);
         }
 
         upcast_trait_refs.into_iter().next().unwrap()
