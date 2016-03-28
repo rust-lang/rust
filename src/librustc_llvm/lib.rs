@@ -2125,6 +2125,9 @@ extern {
     pub fn LLVMRustFreeOperandBundleDef(Bundle: OperandBundleDefRef);
 
     pub fn LLVMRustPositionBuilderAtStart(B: BuilderRef, BB: BasicBlockRef);
+
+    pub fn LLVMRustSetComdat(M: ModuleRef, V: ValueRef, Name: *const c_char);
+    pub fn LLVMRustUnsetComdat(V: ValueRef);
 }
 
 // LLVM requires symbols from this library, but apparently they're not printed
@@ -2146,6 +2149,24 @@ pub fn SetFunctionCallConv(fn_: ValueRef, cc: CallConv) {
 pub fn SetLinkage(global: ValueRef, link: Linkage) {
     unsafe {
         LLVMSetLinkage(global, link as c_uint);
+    }
+}
+
+// Externally visible symbols that might appear in multiple translation units need to appear in
+// their own comdat section so that the duplicates can be discarded at link time. This can for
+// example happen for generics when using multiple codegen units. This function simply uses the
+// value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
+// function.
+// For more details on COMDAT sections see e.g. http://www.airs.com/blog/archives/52
+pub fn SetUniqueComdat(llmod: ModuleRef, val: ValueRef) {
+    unsafe {
+        LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
+    }
+}
+
+pub fn UnsetComdat(val: ValueRef) {
+    unsafe {
+        LLVMRustUnsetComdat(val);
     }
 }
 

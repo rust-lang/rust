@@ -2215,18 +2215,27 @@ pub fn update_linkage(ccx: &CrateContext,
         }
     }
 
-    match id {
-        Some(id) if ccx.reachable().contains(&id) => {
+    let (is_reachable, is_generic) = if let Some(id) = id {
+        (ccx.reachable().contains(&id), false)
+    } else {
+        (false, true)
+    };
+
+    // We need external linkage for items reachable from other translation units, this include
+    // other codegen units in case of parallel compilations.
+    if is_reachable || ccx.sess().opts.cg.codegen_units > 1 {
+        if is_generic {
+            // This only happens with multiple codegen units, in which case we need to use weak_odr
+            // linkage because other crates might expose the same symbol. We cannot use
+            // linkonce_odr here because the symbol might then get dropped before the other codegen
+            // units get to link it.
+            llvm::SetUniqueComdat(ccx.llmod(), llval);
+            llvm::SetLinkage(llval, llvm::WeakODRLinkage);
+        } else {
             llvm::SetLinkage(llval, llvm::ExternalLinkage);
-        },
-        _ => {
-            // `id` does not refer to an item in `ccx.reachable`.
-            if ccx.sess().opts.cg.codegen_units > 1 {
-                llvm::SetLinkage(llval, llvm::ExternalLinkage);
-            } else {
-                llvm::SetLinkage(llval, llvm::InternalLinkage);
-            }
-        },
+        }
+    } else {
+        llvm::SetLinkage(llval, llvm::InternalLinkage);
     }
 }
 
@@ -2547,8 +2556,10 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
         // then give it internal linkage.
         for ccx in cx.iter() {
             for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+                let linkage = llvm::LLVMGetLinkage(val);
                 // We only care about external definitions.
-                if !(llvm::LLVMGetLinkage(val) == llvm::ExternalLinkage as c_uint &&
+                if !((linkage == llvm::ExternalLinkage as c_uint ||
+                      linkage == llvm::WeakODRLinkage as c_uint) &&
                      llvm::LLVMIsDeclaration(val) == 0) {
                     continue;
                 }
@@ -2560,6 +2571,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
                    !reachable.contains(str::from_utf8(&name).unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);
                     llvm::SetDLLStorageClass(val, llvm::DefaultStorageClass);
+                    llvm::UnsetComdat(val);
                 }
             }
         }
