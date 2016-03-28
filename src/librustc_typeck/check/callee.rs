@@ -397,7 +397,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 write_overloaded_call_method_map(fcx, self.call_expr, method_callee);
             }
             None => {
-                fcx.tcx().sess.span_bug(
+                span_bug!(
                     self.call_expr.span,
                     "failed to find an overloaded call trait for closure call");
             }

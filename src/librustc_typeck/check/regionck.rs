@@ -298,8 +298,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             match fn_sig_map.get(&id) {
                 Some(f) => f.clone(),
                 None => {
-                    self.tcx().sess.bug(
-                        &format!("No fn-sig entry for id={}", id));
+                    bug!("No fn-sig entry for id={}", id);
                 }
             }
         };
@@ -446,8 +445,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         let subject_node_id = match self.subject {
             Subject(s) => s,
             SubjectNode::None => {
-                self.tcx().sess.bug("cannot resolve_regions_and_report_errors \
-                                     without subject node");
+                bug!("cannot resolve_regions_and_report_errors \
+                      without subject node");
             }
         };
 
@@ -886,9 +885,10 @@ fn constrain_callee(rcx: &mut Rcx,
             // this should not happen, but it does if the program is
             // erroneous
             //
-            // tcx.sess.span_bug(
+            // bug!(
             //     callee_expr.span,
-            //     format!("Calling non-function: {}", callee_ty));
+            //     "Calling non-function: {}",
+            //     callee_ty);
         }
     }
 }
@@ -986,10 +986,10 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 let (m, r) = match self_ty.sty {
                     ty::TyRef(r, ref m) => (m.mutbl, r),
                     _ => {
-                        rcx.tcx().sess.span_bug(
+                        span_bug!(
                             deref_expr.span,
-                            &format!("bad overloaded deref type {:?}",
-                                     method.ty))
+                            "bad overloaded deref type {:?}",
+                            method.ty)
                     }
                 };
 
@@ -1014,7 +1014,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                           return_type, r_deref_expr);
                         return_type
                     }
-                    ty::FnDiverging => unreachable!()
+                    ty::FnDiverging => bug!()
                 }
             }
             None => derefd_ty
@@ -1057,12 +1057,10 @@ fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 't
                 }
                 ty::ReStatic => {}
                 region => {
-                    rcx.tcx()
-                       .sess
-                       .span_bug(span,
-                                 &format!("unexpected rvalue region in rvalue \
-                                           destructor safety checking: `{:?}`",
-                                          region));
+                    span_bug!(span,
+                              "unexpected rvalue region in rvalue \
+                               destructor safety checking: `{:?}`",
+                              region);
                 }
             }
         }
@@ -1394,10 +1392,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                     infer::ReborrowUpvar(span, *upvar_id)
                 }
                 _ => {
-                    rcx.tcx().sess.span_bug(
-                        span,
-                        &format!("Illegal upvar id: {:?}",
-                                upvar_id));
+                    span_bug!( span, "Illegal upvar id: {:?}", upvar_id);
                 }
             }
         }

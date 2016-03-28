@@ -463,8 +463,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
-        _ => ccx.tcx.sess.impossible_case(body.span,
-                                 "check_bare_fn: function type expected")
+        _ => span_bug!(body.span, "check_bare_fn: function type expected")
     }
 }
 
@@ -946,7 +945,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 hir::ImplItemKind::Const(..) => {
                     let impl_const = match ty_impl_item {
                         ty::ConstTraitItem(ref cti) => cti,
-                        _ => tcx.sess.span_bug(impl_item.span, "non-const impl-item for const")
+                        _ => span_bug!(impl_item.span, "non-const impl-item for const")
                     };
 
                     // Find associated const definition.
@@ -969,7 +968,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
                     let impl_method = match ty_impl_item {
                         ty::MethodTraitItem(ref mti) => mti,
-                        _ => tcx.sess.span_bug(impl_item.span, "non-method impl-item for method")
+                        _ => span_bug!(impl_item.span, "non-method impl-item for method")
                     };
 
                     if let &ty::MethodTraitItem(ref trait_method) = ty_trait_item {
@@ -990,7 +989,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 hir::ImplItemKind::Type(_) => {
                     let impl_type = match ty_impl_item {
                         ty::TypeTraitItem(ref tti) => tti,
-                        _ => tcx.sess.span_bug(impl_item.span, "non-type impl-item for type")
+                        _ => span_bug!(impl_item.span, "non-type impl-item for type")
                     };
 
                     if let &ty::TypeTraitItem(ref at) = ty_trait_item {
@@ -1567,8 +1566,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match self.inh.tables.borrow().node_types.get(&ex.id) {
             Some(&t) => t,
             None => {
-                self.tcx().sess.bug(&format!("no type for expr in fcx {}",
-                                            self.tag()));
+                bug!("no type for expr in fcx {}", self.tag());
             }
         }
     }
@@ -1593,10 +1591,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None if self.err_count_since_creation() != 0 => self.tcx().types.err,
             None => {
-                self.tcx().sess.bug(
-                    &format!("no type for node {}: {} in fcx {}",
-                            id, self.tcx().map.node_to_string(id),
-                            self.tag()));
+                bug!("no type for node {}: {} in fcx {}",
+                     id, self.tcx().map.node_to_string(id),
+                     self.tag());
             }
         }
     }
@@ -2386,8 +2383,7 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 fty.sig.0.output
             }
             _ => {
-                fcx.tcx().sess.span_bug(callee_expr.span,
-                                        "method without bare fn type");
+                span_bug!(callee_expr.span, "method without bare fn type");
             }
         }
     }
@@ -3139,7 +3135,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let tcx = fcx.ccx.tcx;
         let substs = match adt_ty.sty {
             ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
-            _ => tcx.sess.span_bug(span, "non-ADT passed to check_expr_struct_fields")
+            _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
         let mut remaining_fields = FnvHashMap();
@@ -3400,8 +3396,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     depth: path.segments.len()
                 }
             } else {
-              tcx.sess.span_bug(expr.span,
-                                &format!("unbound path {:?}", expr))
+              span_bug!(expr.span, "unbound path {:?}", expr)
           };
 
           if let Some((opt_ty, segments, def)) =
@@ -4224,7 +4219,7 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Def::Label(..) |
         Def::SelfTy(..) |
         Def::Err => {
-            fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
+            span_bug!(sp, "expected value, found {:?}", defn);
         }
     }
 }
@@ -4485,11 +4480,10 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         let impl_ty = fcx.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
         if fcx.mk_subty(false, TypeOrigin::Misc(span), self_ty, impl_ty).is_err() {
-            fcx.tcx().sess.span_bug(span,
-            &format!(
+            span_bug!(span,
                 "instantiate_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
                 self_ty,
-                impl_ty));
+                impl_ty);
         }
     }
 

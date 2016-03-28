@@ -139,7 +139,7 @@ impl<'tcx> CastCheck<'tcx> {
                             CastError::NeedViaThinPtr => "a thin pointer",
                             CastError::NeedViaInt => "an integer",
                             CastError::NeedViaUsize => "a usize",
-                            _ => unreachable!()
+                            _ => bug!()
                         }))
                     .emit();
             }
