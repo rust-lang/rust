@@ -58,7 +58,7 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_platform_intrinsics \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
-                rustc_const_eval rustc_const_math
+                rustc_const_eval rustc_const_math rustc_incremental
 HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros \
 		flate arena graphviz rbml log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
@@ -117,7 +117,8 @@ DEPS_rustc_plugin := rustc rustc_metadata syntax rustc_mir
 DEPS_rustc_privacy := rustc log syntax
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir \
                     log syntax serialize rustc_llvm rustc_platform_intrinsics \
-                    rustc_const_math rustc_const_eval
+                    rustc_const_math rustc_const_eval rustc_incremental
+DEPS_rustc_incremental := rbml rustc serialize rustc_data_structures
 DEPS_rustc_save_analysis := rustc log syntax
 DEPS_rustc_typeck := rustc syntax rustc_platform_intrinsics rustc_const_math \
                      rustc_const_eval

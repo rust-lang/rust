@@ -54,7 +54,6 @@ use session::Session;
 use _match;
 use abi::{self, Abi, FnType};
 use adt;
-use assert_dep_graph;
 use attributes;
 use build::*;
 use builder::{Builder, noname};
@@ -2730,7 +2729,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     }
 
-    let link_meta = link::build_link_meta(&tcx.sess, krate, name);
+    let link_meta = link::build_link_meta(&tcx, name);
 
     let codegen_units = tcx.sess.opts.cg.codegen_units;
     let shared_ccx = SharedCrateContext::new(&link_meta.crate_name,
@@ -2855,8 +2854,6 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         llmod: shared_ccx.metadata_llmod(),
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
-
-    assert_dep_graph::assert_dep_graph(tcx);
 
     CrateTranslation {
         modules: modules,
