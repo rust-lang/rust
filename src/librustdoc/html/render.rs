@@ -69,6 +69,7 @@ use html::escape::Escape;
 use html::format::{ConstnessSpace};
 use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
+use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
 use html::markdown::{self, Markdown};
 use html::{highlight, layout};
@@ -2006,7 +2007,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     match cache.implementors.get(&it.def_id) {
         Some(implementors) => {
             for i in implementors {
-                writeln!(w, "<li><code>{}</code></li>", i.impl_)?;
+                write!(w, "<li><code>")?;
+                fmt_impl_for_trait_page(&i.impl_, w)?;
+                writeln!(w, "</code></li>")?;
             }
         }
         None => {}
