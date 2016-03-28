@@ -25,7 +25,8 @@ pub enum Mode {
     DebugInfoLldb,
     Codegen,
     Rustdoc,
-    CodegenUnits
+    CodegenUnits,
+    Incremental,
 }
 
 impl FromStr for Mode {
@@ -43,6 +44,7 @@ impl FromStr for Mode {
           "codegen" => Ok(Codegen),
           "rustdoc" => Ok(Rustdoc),
           "codegen-units" => Ok(CodegenUnits),
+          "incremental" => Ok(Incremental),
           _ => Err(()),
         }
     }
@@ -62,6 +64,7 @@ impl fmt::Display for Mode {
             Codegen => "codegen",
             Rustdoc => "rustdoc",
             CodegenUnits => "codegen-units",
+            Incremental => "incremental",
         }, f)
     }
 }
