@@ -439,8 +439,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.copy(src, dest, dest_size));
             }
 
-            // TODO(tsion): Mark bytes as undef.
-            "uninit" => {}
+            "uninit" => {
+                try!(self.memory.mark_definedness(dest, dest_size, false));
+            }
 
             name => panic!("can't handle intrinsic: {}", name),
         }

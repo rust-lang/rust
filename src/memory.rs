@@ -348,7 +348,9 @@ impl Memory {
         Ok(())
     }
 
-    fn mark_definedness(&mut self, ptr: Pointer, size: usize, new_state: bool) -> EvalResult<()> {
+    pub fn mark_definedness(&mut self, ptr: Pointer, size: usize, new_state: bool)
+        -> EvalResult<()>
+    {
         let mut alloc = try!(self.get_mut(ptr.alloc_id));
         alloc.mark_definedness(ptr.offset, ptr.offset + size, new_state);
         Ok(())
