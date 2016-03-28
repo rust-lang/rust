@@ -28,6 +28,7 @@ use hir::def::{self, Def};
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt, VariantKind};
 use hir::def_id::{DefId, DefIndex};
+use hir::svh::Svh;
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;

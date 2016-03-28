@@ -24,6 +24,7 @@ use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
+use rustc_incremental;
 use rustc_resolve as resolve;
 use rustc_metadata::macro_import;
 use rustc_metadata::creader::LocalCrateReader;
@@ -952,9 +953,16 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
         passes.run_passes(tcx, &mut mir_map);
     });
 
+    let translation =
+        time(time_passes,
+             "translation",
+             move || trans::trans_crate(tcx, &mir_map, analysis));
+
     time(time_passes,
-         "translation",
-         move || trans::trans_crate(tcx, &mir_map, analysis))
+         "assert dep graph",
+         move || rustc_incremental::assert_dep_graph(tcx));
+
+    translation
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file
