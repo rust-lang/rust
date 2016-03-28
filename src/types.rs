@@ -268,7 +268,7 @@ fn format_function_type<'a, I>(inputs: I,
         FunctionRetTy::Default(..) => String::new(),
     };
 
-    let infix = if output.len() + list_str.len() > width {
+    let infix = if output.len() > 0 && output.len() + list_str.len() > width {
         format!("\n{}", (offset - 1).to_string(context.config))
     } else {
         String::new()
