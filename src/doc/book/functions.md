@@ -246,6 +246,19 @@ stack backtrace:
   13:                0x0 - <unknown>
 ```
 
+If you need to override an already set `RUST_BACKTRACE`, 
+in cases when you cannot just unset the variable, 
+then set it to `0` to avoid getting a backtrace. 
+Any other value(even no value at all) turns on backtrace.
+
+```text
+$ export RUST_BACKTRACE=1
+...
+$ RUST_BACKTRACE=0 ./diverges 
+thread '<main>' panicked at 'This function never returns!', hello.rs:2
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
+```
+
 `RUST_BACKTRACE` also works with Cargo’s `run` command:
 
 ```text

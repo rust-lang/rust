@@ -71,7 +71,8 @@ which includes important information about what platform you're on, what
 version of Rust you're using, etc.
 
 Sometimes, a backtrace is helpful, and so including that is nice. To get
-a backtrace, set the `RUST_BACKTRACE` environment variable. The easiest way
+a backtrace, set the `RUST_BACKTRACE` environment variable to a value
+other than `0`. The easiest way
 to do this is to invoke `rustc` like this:
 
 ```bash

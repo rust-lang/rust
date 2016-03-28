@@ -268,7 +268,7 @@ the maximum number of threads used for this purpose.
 
 .TP
 \fBRUST_TEST_NOCAPTURE\fR
-A synonym for the --nocapture flag.
+If set to a value other than "0", a synonym for the --nocapture flag.
 
 .TP
 \fBRUST_MIN_STACK\fR
@@ -276,7 +276,7 @@ Sets the minimum stack size for new threads.
 
 .TP
 \fBRUST_BACKTRACE\fR
-If set, produces a backtrace in the output of a program which panics.
+If set to a value different than "0", produces a backtrace in the output of a program which panics.
 
 .SH "EXAMPLES"
 To build an executable from a source file with a main function:
