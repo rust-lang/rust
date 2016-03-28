@@ -194,7 +194,7 @@ use vec::{self, Vec};
 ///
 /// // We can iterate over the items in the heap, although they are returned in
 /// // a random order.
-/// for x in heap.iter() {
+/// for x in &heap {
 ///     println!("{}", x);
 /// }
 ///
