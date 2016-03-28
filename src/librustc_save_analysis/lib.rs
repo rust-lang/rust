@@ -47,7 +47,6 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
 mod csv_dumper;
-#[macro_use]
 mod data;
 mod dump;
 mod dump_visitor;
