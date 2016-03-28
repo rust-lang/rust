@@ -11,7 +11,6 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
-getopts = { path = "../libgetopts" }
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_driver = { path = "../librustc_driver" }
@@ -22,7 +21,6 @@ rustc_resolve = { path = "../librustc_resolve" }
 rustc_trans = { path = "../librustc_trans" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
-test = { path = "../libtest" }
 log = { path = "../liblog" }
 
 [build-dependencies]

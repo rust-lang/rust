@@ -12,7 +12,6 @@ crate-type = ["dylib"]
 arena = { path = "../libarena" }
 flate = { path = "../libflate" }
 fmt_macros = { path = "../libfmt_macros" }
-getopts = { path = "../libgetopts" }
 graphviz = { path = "../libgraphviz" }
 log = { path = "../liblog" }
 rbml = { path = "../librbml" }

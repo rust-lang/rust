@@ -122,6 +122,22 @@ pub fn std(build: &Build, stage: u32, host: &str, out: &Path) {
     cp_r(&out_dir, out)
 }
 
+pub fn test(build: &Build, stage: u32, host: &str, out: &Path) {
+    println!("Documenting stage{} test ({})", stage, host);
+    let compiler = Compiler::new(stage, host);
+    let out_dir = build.stage_out(&compiler, Mode::Libtest)
+                       .join(host).join("doc");
+    let rustdoc = build.rustdoc(&compiler);
+
+    build.clear_if_dirty(&out_dir, &rustdoc);
+
+    let mut cargo = build.cargo(&compiler, Mode::Libtest, host, "doc");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+    build.run(&mut cargo);
+    cp_r(&out_dir, out)
+}
+
 pub fn rustc(build: &Build, stage: u32, host: &str, out: &Path) {
     println!("Documenting stage{} compiler ({})", stage, host);
     let compiler = Compiler::new(stage, host);
