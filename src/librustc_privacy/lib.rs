@@ -24,7 +24,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 
-extern crate rustc;
+#[macro_use] extern crate rustc;
 extern crate rustc_front;
 
 use std::cmp;
