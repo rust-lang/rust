@@ -132,8 +132,8 @@ Some common make targets are:
 - `make check-stage1-std NO_REBUILD=1` - test the standard library without
   rebuilding the entire compiler
 - `make check TESTNAME=<substring-of-test-name>` - Run a matching set of tests.
-  - `TESTNAME` should be a substring of the tests to match against e.g. it could 
-    be the fully qualified test name, or just a part of it. 
+  - `TESTNAME` should be a substring of the tests to match against e.g. it could
+    be the fully qualified test name, or just a part of it.
     `TESTNAME=collections::hash::map::test_map::test_capacity_not_less_than_len`
     or `TESTNAME=test_capacity_not_less_than_len`.
 - `make check-stage1-rpass TESTNAME=<substring-of-test-name>` - Run a single

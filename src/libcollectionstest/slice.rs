@@ -267,9 +267,9 @@ fn test_swap_remove_fail() {
 fn test_swap_remove_noncopyable() {
     // Tests that we don't accidentally run destructors twice.
     let mut v: Vec<Box<_>> = Vec::new();
-    v.push(box 0u8);
-    v.push(box 0u8);
-    v.push(box 0u8);
+    v.push(box 0);
+    v.push(box 0);
+    v.push(box 0);
     let mut _e = v.swap_remove(0);
     assert_eq!(v.len(), 2);
     _e = v.swap_remove(1);
@@ -884,7 +884,7 @@ fn test_overflow_does_not_cause_segfault_managed() {
 
 #[test]
 fn test_mut_split_at() {
-    let mut values = [1u8,2,3,4,5];
+    let mut values = [1,2,3,4,5];
     {
         let (left, right) = values.split_at_mut(2);
         {

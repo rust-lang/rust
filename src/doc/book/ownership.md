@@ -124,7 +124,7 @@ special annotation here, it’s the default thing that Rust does.
 ## The details
 
 The reason that we cannot use a binding after we’ve moved it is subtle, but
-important. 
+important.
 
 When we write code like this:
 
@@ -148,7 +148,7 @@ The first line allocates memory for the vector object `v` on the stack like
 it does for `x` above. But in addition to that it also allocates some memory
 on the [heap][sh] for the actual data (`[1, 2, 3]`). Rust copies the address
 of this heap allocation to an internal pointer, which is part of the vector
-object placed on the stack (let's call it the data pointer). 
+object placed on the stack (let's call it the data pointer).
 
 It is worth pointing out (even at the risk of stating the obvious) that the
 vector object and its data live in separate memory regions instead of being a
@@ -163,7 +163,7 @@ does not create a copy of the heap allocation containing the actual data.
 Which means that there would be two pointers to the contents of the vector
 both pointing to the same memory allocation on the heap. It would violate
 Rust’s safety guarantees by introducing a data race if one could access both
-`v` and `v2` at the same time. 
+`v` and `v2` at the same time.
 
 For example if we truncated the vector to just two elements through `v2`:
 
