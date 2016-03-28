@@ -181,7 +181,7 @@ impl LateLintPass for TypeLimits {
                                     return;
                                 }
                             }
-                            _ => panic!()
+                            _ => bug!()
                         };
                     },
                     ty::TyUint(t) => {
@@ -195,7 +195,7 @@ impl LateLintPass for TypeLimits {
                             // _v is u8, within range by definition
                             ast::LitKind::Byte(_v) => return,
                             ast::LitKind::Int(v, _) => v,
-                            _ => panic!()
+                            _ => bug!()
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
@@ -212,7 +212,7 @@ impl LateLintPass for TypeLimits {
                                     Err(_) => return
                                 }
                             }
-                            _ => panic!()
+                            _ => bug!()
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
@@ -233,7 +233,7 @@ impl LateLintPass for TypeLimits {
                 hir::BiGt => v >= min && v <  max,
                 hir::BiGe => v >  min && v <= max,
                 hir::BiEq | hir::BiNe => v >= min && v <= max,
-                _ => panic!()
+                _ => bug!()
             }
         }
 
@@ -319,7 +319,7 @@ impl LateLintPass for TypeLimits {
                             ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i64,
                             _ => return true
                         },
-                        _ => panic!()
+                        _ => bug!()
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -330,7 +330,7 @@ impl LateLintPass for TypeLimits {
                             ast::LitKind::Int(v, _) => v,
                             _ => return true
                         },
-                        _ => panic!()
+                        _ => bug!()
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -589,7 +589,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::TyParam(..) | ty::TyInfer(..) | ty::TyError |
             ty::TyClosure(..) | ty::TyProjection(..) |
             ty::TyFnDef(..) => {
-                panic!("Unexpected type in foreign function")
+                bug!("Unexpected type in foreign function")
             }
         }
     }
