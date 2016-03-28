@@ -8,12 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Make sure that inclusive ranges with no end point don't parse.
+// Make sure that invalid ranges generate an error during HIR lowering, not an ICE
 
-#![feature(inclusive_range_syntax, inclusive_range)]
+#![feature(inclusive_range_syntax)]
 
 pub fn main() {
-    for _ in 1... {} //~ERROR inclusive range with no end
-                     //~^HELP bounded at the end
+    ..;
+    0..;
+    ..1;
+    0..1;
+
+    ...; //~ERROR inclusive range with no end
+         //~^HELP bounded at the end
+    0...; //~ERROR inclusive range with no end
+          //~^HELP bounded at the end
+    ...1;
+    0...1;
 }
+
 

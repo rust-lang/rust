@@ -19,6 +19,7 @@ pub use self::PathParameters::*;
 use attr::ThinAttributes;
 use codemap::{Span, Spanned, DUMMY_SP, ExpnId};
 use abi::Abi;
+use errors;
 use ext::base;
 use ext::tt::macro_parser;
 use parse::token::InternedString;
@@ -344,6 +345,10 @@ pub const DUMMY_NODE_ID: NodeId = !0;
 pub trait NodeIdAssigner {
     fn next_node_id(&self) -> NodeId;
     fn peek_node_id(&self) -> NodeId;
+
+    fn diagnostic(&self) -> &errors::Handler {
+        panic!("this ID assigner cannot emit diagnostics")
+    }
 }
 
 /// The AST represents all type param bounds as types.
