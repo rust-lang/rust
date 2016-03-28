@@ -33,6 +33,7 @@ extern crate flate;
 extern crate rbml;
 extern crate serialize;
 
+#[macro_use]
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_front;

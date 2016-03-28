@@ -70,7 +70,7 @@ impl crate_metadata {
 
     fn lookup_item(&self, item_id: DefIndex) -> rbml::Doc {
         match self.get_item(item_id) {
-            None => panic!("lookup_item: id not found: {:?}", item_id),
+            None => bug!("lookup_item: id not found: {:?}", item_id),
             Some(d) => d
         }
     }
@@ -136,7 +136,7 @@ fn item_family(item: rbml::Doc) -> Family {
       'u' => Struct(VariantKind::Unit),
       'g' => PublicField,
       'N' => InheritedField,
-       c => panic!("unexpected family char: {}", c)
+       c => bug!("unexpected family char: {}", c)
     }
 }
 
@@ -147,7 +147,7 @@ fn item_visibility(item: rbml::Doc) -> hir::Visibility {
             match reader::doc_as_u8(visibility_doc) as char {
                 'y' => hir::Public,
                 'i' => hir::Inherited,
-                _ => panic!("unknown visibility character")
+                _ => bug!("unknown visibility character")
             }
         }
     }
@@ -160,7 +160,7 @@ fn fn_constness(item: rbml::Doc) -> hir::Constness {
             match reader::doc_as_u8(constness_doc) as char {
                 'c' => hir::Constness::Const,
                 'n' => hir::Constness::NotConst,
-                _ => panic!("unknown constness character")
+                _ => bug!("unknown constness character")
             }
         }
     }
@@ -173,7 +173,7 @@ fn item_defaultness(item: rbml::Doc) -> hir::Defaultness {
             match reader::doc_as_u8(defaultness_doc) as char {
                 'd' => hir::Defaultness::Default,
                 'f' => hir::Defaultness::Final,
-                _ => panic!("unknown defaultness character")
+                _ => bug!("unknown defaultness character")
             }
         }
     }
@@ -387,16 +387,15 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                          item_id: DefIndex,
                          tcx: &TyCtxt<'tcx>) -> ty::AdtDefMaster<'tcx>
 {
-    fn expect_variant_kind<'tcx>(family: Family, tcx: &TyCtxt<'tcx>) -> ty::VariantKind {
+    fn expect_variant_kind(family: Family) -> ty::VariantKind {
         match family_to_variant_kind(family) {
             Some(kind) => kind,
-            _ => tcx.sess.bug(&format!("unexpected family: {:?}", family)),
+            _ => bug!("unexpected family: {:?}", family),
         }
     }
     fn get_enum_variants<'tcx>(intr: &IdentInterner,
                                cdata: Cmd,
-                               doc: rbml::Doc,
-                               tcx: &TyCtxt<'tcx>) -> Vec<ty::VariantDefData<'tcx, 'tcx>> {
+                               doc: rbml::Doc) -> Vec<ty::VariantDefData<'tcx, 'tcx>> {
         let mut disr_val = 0;
         reader::tagged_docs(doc, tag_items_data_item_variant).map(|p| {
             let did = translated_def_id(cdata, p);
@@ -411,22 +410,21 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
             ty::VariantDefData {
                 did: did,
                 name: item_name(intr, item),
-                fields: get_variant_fields(intr, cdata, item, tcx),
+                fields: get_variant_fields(intr, cdata, item),
                 disr_val: ConstInt::Infer(disr),
-                kind: expect_variant_kind(item_family(item), tcx),
+                kind: expect_variant_kind(item_family(item)),
             }
         }).collect()
     }
     fn get_variant_fields<'tcx>(intr: &IdentInterner,
                                 cdata: Cmd,
-                                doc: rbml::Doc,
-                                tcx: &TyCtxt<'tcx>) -> Vec<ty::FieldDefData<'tcx, 'tcx>> {
+                                doc: rbml::Doc) -> Vec<ty::FieldDefData<'tcx, 'tcx>> {
         let mut index = 0;
         reader::tagged_docs(doc, tag_item_field).map(|f| {
             let ff = item_family(f);
             match ff {
                 PublicField | InheritedField => {},
-                _ => tcx.sess.bug(&format!("expected field, found {:?}", ff))
+                _ => bug!("expected field, found {:?}", ff)
             };
             ty::FieldDefData::new(item_def_id(f, cdata),
                                   item_name(intr, f),
@@ -442,14 +440,13 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
     fn get_struct_variant<'tcx>(intr: &IdentInterner,
                                 cdata: Cmd,
                                 doc: rbml::Doc,
-                                did: DefId,
-                                tcx: &TyCtxt<'tcx>) -> ty::VariantDefData<'tcx, 'tcx> {
+                                did: DefId) -> ty::VariantDefData<'tcx, 'tcx> {
         ty::VariantDefData {
             did: did,
             name: item_name(intr, doc),
-            fields: get_variant_fields(intr, cdata, doc, tcx),
+            fields: get_variant_fields(intr, cdata, doc),
             disr_val: ConstInt::Infer(0),
-            kind: expect_variant_kind(item_family(doc), tcx),
+            kind: expect_variant_kind(item_family(doc)),
         }
     }
 
@@ -458,18 +455,17 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
     let (kind, variants) = match item_family(doc) {
         Enum => {
             (ty::AdtKind::Enum,
-             get_enum_variants(intr, cdata, doc, tcx))
+             get_enum_variants(intr, cdata, doc))
         }
         Struct(..) => {
             let ctor_did =
                 reader::maybe_get_doc(doc, tag_items_data_item_struct_ctor).
                 map_or(did, |ctor_doc| translated_def_id(cdata, ctor_doc));
             (ty::AdtKind::Struct,
-             vec![get_struct_variant(intr, cdata, doc, ctor_did, tcx)])
+             vec![get_struct_variant(intr, cdata, doc, ctor_did)])
         }
-        _ => tcx.sess.bug(
-            &format!("get_adt_def called on a non-ADT {:?} - {:?}",
-                     item_family(doc), did))
+        _ => bug!("get_adt_def called on a non-ADT {:?} - {:?}",
+                  item_family(doc), did)
     };
 
     let adt = tcx.intern_adt_def(did, kind, variants);
@@ -495,7 +491,7 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                     assert!(!inputs.has_escaping_regions());
                     inputs
                 },
-                _ => tcx.sess.bug("tuple-variant ctor is not an ADT")
+                _ => bug!("tuple-variant ctor is not an ADT")
             };
             for (field, &ty) in variant.fields.iter().zip(field_tys.iter()) {
                 field.fulfill_ty(ty);
@@ -915,7 +911,7 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
         match ch as char {
             'i' => hir::MutImmutable,
             'm' => hir::MutMutable,
-            _ => panic!("unknown mutability character: `{}`", ch as char),
+            _ => bug!("unknown mutability character: `{}`", ch as char),
         }
     }
 
@@ -933,7 +929,7 @@ fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
                 ty::ReEmpty,
                 get_mutability(string.as_bytes()[1]))
         }
-        _ => panic!("unknown self type code: `{}`", explicit_self_kind as char)
+        _ => bug!("unknown self type code: `{}`", explicit_self_kind as char)
     }
 }
 
@@ -946,7 +942,7 @@ pub fn get_impl_items(cdata: Cmd, impl_id: DefIndex)
             Some('C') | Some('c') => ty::ConstTraitItemId(def_id),
             Some('r') | Some('p') => ty::MethodTraitItemId(def_id),
             Some('t') => ty::TypeTraitItemId(def_id),
-            _ => panic!("unknown impl item sort"),
+            _ => bug!("unknown impl item sort"),
         }
     }).collect()
 }
@@ -1012,9 +1008,9 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
                 ty::TyFnDef(_, _, fty) => fty.clone(),
-                _ => tcx.sess.bug(&format!(
+                _ => bug!(
                     "the type {:?} of the method {:?} is not a function?",
-                    ity, name))
+                    ity, name)
             };
             let explicit_self = get_explicit_self(item_doc);
 
@@ -1052,7 +1048,7 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: DefIndex)
             Some('C') | Some('c') => ty::ConstTraitItemId(def_id),
             Some('r') | Some('p') => ty::MethodTraitItemId(def_id),
             Some('t') => ty::TypeTraitItemId(def_id),
-            _ => panic!("unknown trait item sort"),
+            _ => bug!("unknown trait item sort"),
         }
     }).collect()
 }
@@ -1172,7 +1168,7 @@ fn struct_field_family_to_visibility(family: Family) -> hir::Visibility {
     match family {
       PublicField => hir::Public,
       InheritedField => hir::Inherited,
-      _ => panic!()
+      _ => bug!()
     }
 }
 
@@ -1354,7 +1350,7 @@ pub fn translate_def_id(cdata: Cmd, did: DefId) -> DefId {
                 index: did.index,
             }
         }
-        None => panic!("didn't find a crate in the cnum_map")
+        None => bug!("didn't find a crate in the cnum_map")
     }
 }
 
@@ -1544,7 +1540,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
         let cnum: ast::CrateNum = cnum.parse().unwrap();
         let cnum = match cdata.cnum_map.borrow().get(&cnum) {
             Some(&n) => n,
-            None => panic!("didn't find a crate in the cnum_map")
+            None => bug!("didn't find a crate in the cnum_map")
         };
         result.push((cnum, if link == "d" {
             LinkagePreference::RequireDynamic
@@ -1772,7 +1768,7 @@ pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
             hir_map::DefKey::decode(&mut decoder).unwrap()
         }
         None => {
-            panic!("failed to find block with tag {:?} for item with family {:?}",
+            bug!("failed to find block with tag {:?} for item with family {:?}",
                    tag_def_key,
                    item_family(item_doc))
         }

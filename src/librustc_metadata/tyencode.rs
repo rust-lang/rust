@@ -146,7 +146,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             enc_bare_fn_ty(w, cx, f);
         }
         ty::TyInfer(_) => {
-            cx.diag.bug("cannot encode inference variable types");
+            bug!("cannot encode inference variable types");
         }
         ty::TyParam(ParamTy {space, idx, name}) => {
             write!(w, "p[{}|{}|{}]", idx, space.to_uint(), name);
@@ -285,7 +285,7 @@ pub fn enc_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, r: ty::Region) {
         }
         ty::ReVar(_) | ty::ReSkolemized(..) => {
             // these should not crop up after typeck
-            cx.diag.bug("cannot encode region variables");
+            bug!("cannot encode region variables");
         }
     }
 }
