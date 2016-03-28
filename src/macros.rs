@@ -27,7 +27,7 @@ use syntax::codemap::{mk_sp, BytePos};
 use Indent;
 use rewrite::RewriteContext;
 use expr::{rewrite_call, rewrite_array};
-use comment::FindUncommented;
+use comment::{FindUncommented, contains_comment};
 use utils::{CodeMapSpanUtils, wrap_str};
 
 const FORCED_BRACKET_MACROS: &'static [&'static str] = &["vec!"];
@@ -63,11 +63,11 @@ pub fn rewrite_macro(mac: &ast::Mac,
         original_style
     };
 
-    if mac.node.tts.is_empty() {
-        return if let MacroStyle::Parens = style {
-            Some(format!("{}()", macro_name))
-        } else {
-            Some(format!("{}[]", macro_name))
+    if mac.node.tts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
+        return match style {
+            MacroStyle::Parens => Some(format!("{}()", macro_name)),
+            MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
+            MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
         };
     }
 
