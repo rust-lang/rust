@@ -282,6 +282,11 @@ impl<'ast> Map<'ast> {
         self.definitions.borrow().def_path(def_id.index)
     }
 
+    pub fn retrace_path(&self, path: &DefPath) -> Option<DefId> {
+        self.definitions.borrow().retrace_path(path)
+                                 .map(DefId::local)
+    }
+
     pub fn local_def_id(&self, node: NodeId) -> DefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
             bug!("local_def_id: no entry for `{}`, which has a map of `{:?}`",
