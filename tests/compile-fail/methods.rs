@@ -85,8 +85,8 @@ macro_rules! opt_map {
 }
 
 /// Checks implementation of the following lints:
-/// OPTION_MAP_UNWRAP_OR
-/// OPTION_MAP_UNWRAP_OR_ELSE
+/// * `OPTION_MAP_UNWRAP_OR`
+/// * `OPTION_MAP_UNWRAP_OR_ELSE`
 fn option_methods() {
     let opt = Some(1);
 
@@ -154,7 +154,7 @@ impl IteratorFalsePositives {
     }
 }
 
-/// Checks implementation of FILTER_NEXT lint
+/// Checks implementation of `FILTER_NEXT` lint
 fn filter_next() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
@@ -174,7 +174,7 @@ fn filter_next() {
     let _ = foo.filter().next();
 }
 
-/// Checks implementation of SEARCH_IS_SOME lint
+/// Checks implementation of `SEARCH_IS_SOME` lint
 fn search_is_some() {
     let v = vec![3, 2, 1, 0, -1, -2, -3];
 
@@ -218,7 +218,7 @@ fn search_is_some() {
     let _ = foo.rposition().is_some();
 }
 
-/// Checks implementation of the OR_FUN_CALL lint
+/// Checks implementation of the `OR_FUN_CALL` lint
 fn or_fun_call() {
     struct Foo;
 

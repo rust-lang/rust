@@ -251,7 +251,7 @@ impl EarlyLintPass for NonExpressiveNames {
     }
 }
 
-/// precondition: a_name.chars().count() < b_name.chars().count()
+/// Precondition: `a_name.chars().count() < b_name.chars().count()`.
 fn levenstein_not_1(a_name: &str, b_name: &str) -> bool {
     debug_assert!(a_name.chars().count() < b_name.chars().count());
     let mut a_chars = a_name.chars();

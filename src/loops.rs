@@ -571,7 +571,7 @@ fn check_for_loop_explicit_counter(cx: &LateContext, arg: &Expr, body: &Expr, ex
     }
 }
 
-/// Check for the FOR_KV_MAP lint.
+/// Check for the `FOR_KV_MAP` lint.
 fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Expr, expr: &Expr) {
     if let PatKind::Tup(ref pat) = pat.node {
         if pat.len() == 2 {
@@ -607,7 +607,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
 
 }
 
-/// Return true if the pattern is a `PatWild` or an ident prefixed with '_'.
+/// Return true if the pattern is a `PatWild` or an ident prefixed with `'_'`.
 fn pat_is_wild(pat: &PatKind, body: &Expr) -> bool {
     match *pat {
         PatKind::Wild => true,
@@ -750,8 +750,8 @@ impl<'v, 't> Visitor<'v> for VarUsedAfterLoopVisitor<'v, 't> {
 }
 
 
-/// Return true if the type of expr is one that provides IntoIterator impls
-/// for &T and &mut T, such as Vec.
+/// Return true if the type of expr is one that provides `IntoIterator` impls
+/// for `&T` and `&mut T`, such as `Vec`.
 #[cfg_attr(rustfmt, rustfmt_skip)]
 fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // no walk_ptrs_ty: calling iter() on a reference can make sense because it

@@ -129,8 +129,8 @@ pub fn in_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 /// Returns true if the macro that expanded the crate was outside of the current crate or was a
 /// compiler plugin.
 pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
-    /// Invokes in_macro with the expansion info of the given span slightly heavy, try to use this
-    /// after other checks have already happened.
+    /// Invokes `in_macro` with the expansion info of the given span slightly heavy, try to use
+    /// this after other checks have already happened.
     fn in_macro_ext<T: LintContext>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
         // no ExpnInfo = no macro
         opt_info.map_or(false, |info| {
@@ -657,7 +657,7 @@ pub fn is_direct_expn_of(cx: &LateContext, span: Span, name: &str) -> Option<Spa
     }
 }
 
-/// Returns index of character after first CamelCase component of `s`
+/// Return the index of the character after the first camel-case component of `s`.
 pub fn camel_case_until(s: &str) -> usize {
     let mut iter = s.char_indices();
     if let Some((_, first)) = iter.next() {
@@ -690,7 +690,7 @@ pub fn camel_case_until(s: &str) -> usize {
     }
 }
 
-/// Returns index of last CamelCase component of `s`.
+/// Return index of the last camel-case component of `s`.
 pub fn camel_case_from(s: &str) -> usize {
     let mut iter = s.char_indices().rev();
     if let Some((_, first)) = iter.next() {
@@ -719,7 +719,7 @@ pub fn camel_case_from(s: &str) -> usize {
     last_i
 }
 
-/// Represents a range akin to `ast::ExprKind::Range`.
+/// Represent a range akin to `ast::ExprKind::Range`.
 #[derive(Debug, Copy, Clone)]
 pub struct UnsugaredRange<'a> {
     pub start: Option<&'a Expr>,

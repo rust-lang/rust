@@ -13,7 +13,7 @@ use utils::span_lint;
 /// The formula for detecting if an expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
 /// is one of {`&`, `|`} and `<cmp_op>` is one of {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following table:
 ///
-/// |Comparison  |Bit-Op|Example     |is always|Formula               |
+/// |Comparison  |Bit Op|Example     |is always|Formula               |
 /// |------------|------|------------|---------|----------------------|
 /// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
 /// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
@@ -38,7 +38,7 @@ declare_lint! {
 
 /// **What it does:** This lint checks for bit masks in comparisons which can be removed without changing the outcome. The basic structure can be seen in the following table:
 ///
-/// |Comparison|Bit-Op   |Example    |equals |
+/// |Comparison| Bit Op  |Example    |equals |
 /// |----------|---------|-----------|-------|
 /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|
 /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|
@@ -61,7 +61,7 @@ declare_lint! {
 /// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
 /// `!=`, `>=`, `>`}) can be determined from the following table:
 ///
-/// |Comparison  |Bit-Op|Example     |is always|Formula               |
+/// |Comparison  |Bit Op|Example     |is always|Formula               |
 /// |------------|------|------------|---------|----------------------|
 /// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
 /// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
@@ -75,7 +75,7 @@ declare_lint! {
 /// There is also a lint that warns on ineffective masks that is *warn*
 /// by default.
 ///
-/// |Comparison|Bit-Op   |Example    |equals |Formula|
+/// |Comparison|Bit Op   |Example    |equals |Formula|
 /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|`¹ && m <= c`|
 /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|`¹ && m < c` |
 ///

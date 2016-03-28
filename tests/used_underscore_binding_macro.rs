@@ -3,7 +3,7 @@
 
 extern crate rustc_serialize;
 
-/// Test that we do not lint for unused underscores in a MacroAttribute expansion
+/// Test that we do not lint for unused underscores in a `MacroAttribute` expansion
 #[deny(used_underscore_binding)]
 #[derive(RustcEncodable)]
 struct MacroAttributesTest {

@@ -54,6 +54,7 @@ pub mod collapsible_if;
 pub mod copies;
 pub mod cyclomatic_complexity;
 pub mod derive;
+pub mod doc;
 pub mod drop_ref;
 pub mod entry;
 pub mod enum_clike;
@@ -134,7 +135,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         }
         Err((err, span)) => {
             reg.sess.struct_span_err(span, err)
-                    .span_note(span, "Clippy will use defaulf configuration")
+                    .span_note(span, "Clippy will use default configuration")
                     .emit();
             utils::conf::Conf::default()
         }
@@ -163,7 +164,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_early_lint_pass(box precedence::Precedence);
     reg.register_late_lint_pass(box eta_reduction::EtaPass);
     reg.register_late_lint_pass(box identity_op::IdentityOp);
-    reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatemets);
+    reg.register_early_lint_pass(box items_after_statements::ItemsAfterStatements);
     reg.register_late_lint_pass(box mut_mut::MutMut);
     reg.register_late_lint_pass(box mut_reference::UnnecessaryMutPassed);
     reg.register_late_lint_pass(box len_zero::LenZero);
@@ -223,6 +224,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
+    reg.register_early_lint_pass(box doc::Doc);
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -265,6 +267,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         derive::DERIVE_HASH_XOR_EQ,
         derive::EXPL_IMPL_CLONE_ON_COPY,
+        doc::DOC_MARKDOWN,
         drop_ref::DROP_REF,
         entry::MAP_ENTRY,
         enum_clike::ENUM_CLIKE_UNPORTABLE_VARIANT,
