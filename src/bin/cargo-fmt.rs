@@ -49,19 +49,22 @@ fn execute() -> i32 {
         }
     };
 
-    let (verbose, quiet) = (matches.opt_present("v"), matches.opt_present("q"));
-
-    if verbose && quiet {
-        print_usage(&opts, "quiet mode and verbose mode are not compatible");
-        return failure;
-    }
+    let verbosity = match (matches.opt_present("v"), matches.opt_present("q")) {
+        (false, false) => Verbosity::Normal,
+        (false, true) => Verbosity::Quiet,
+        (true, false) => Verbosity::Verbose,
+        (true, true) => {
+            print_usage(&opts, "quiet mode and verbose mode are not compatible");
+            return failure;
+        }
+    };
 
     if matches.opt_present("h") {
         print_usage(&opts, "");
         return success;
     }
 
-    match format_crate(verbose, quiet) {
+    match format_crate(verbosity) {
         Err(e) => {
             print_usage(&opts, &e.to_string());
             failure
@@ -83,21 +86,28 @@ fn print_usage(opts: &Options, reason: &str) {
              opts.usage(&msg));
 }
 
-fn format_crate(verbose: bool, quiet: bool) -> Result<ExitStatus, std::io::Error> {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Verbosity {
+    Verbose,
+    Normal,
+    Quiet,
+}
+
+fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
     let targets = try!(get_targets());
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets.into_iter()
                                .filter(|t| t.kind.is_lib() | t.kind.is_bin())
                                .inspect(|t| {
-                                   if verbose {
+                                   if verbosity == Verbosity::Verbose {
                                        println!("[{:?}] {:?}", t.kind, t.path)
                                    }
                                })
                                .map(|t| t.path)
                                .collect();
 
-    format_files(&files, &get_fmt_args(), verbose, quiet)
+    format_files(&files, &get_fmt_args(), verbosity)
 }
 
 fn get_fmt_args() -> Vec<String> {
@@ -173,15 +183,14 @@ fn target_from_json(jtarget: &Json) -> Target {
 
 fn format_files(files: &Vec<PathBuf>,
                 fmt_args: &Vec<String>,
-                verbose: bool,
-                quiet: bool)
+                verbosity: Verbosity)
                 -> Result<ExitStatus, std::io::Error> {
-    let stdout = if quiet {
+    let stdout = if verbosity == Verbosity::Quiet {
         std::process::Stdio::null()
     } else {
         std::process::Stdio::inherit()
     };
-    if verbose {
+    if verbosity == Verbosity::Verbose {
         print!("rustfmt");
         for a in fmt_args.iter() {
             print!(" {}", a);
