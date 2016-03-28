@@ -561,17 +561,31 @@ impl fmt::Display for clean::Type {
     }
 }
 
+fn fmt_impl(i: &clean::Impl, f: &mut fmt::Formatter, link_trait: bool) -> fmt::Result {
+    write!(f, "impl{} ", i.generics)?;
+    if let Some(ref ty) = i.trait_ {
+        write!(f, "{}",
+               if i.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" })?;
+        if link_trait {
+            write!(f, "{}", *ty)?;
+        } else {
+            write!(f, "{}", ty.trait_name().unwrap())?;
+        }
+        write!(f, " for ")?;
+    }
+    write!(f, "{}{}", i.for_, WhereClause(&i.generics))?;
+    Ok(())
+}
+
 impl fmt::Display for clean::Impl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "impl{} ", self.generics)?;
-        if let Some(ref ty) = self.trait_ {
-            write!(f, "{}{} for ",
-                   if self.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
-                   *ty)?;
-        }
-        write!(f, "{}{}", self.for_, WhereClause(&self.generics))?;
-        Ok(())
+        fmt_impl(self, f, true)
     }
+}
+
+// The difference from above is that trait is not hyperlinked.
+pub fn fmt_impl_for_trait_page(i: &clean::Impl, f: &mut fmt::Formatter) -> fmt::Result {
+    fmt_impl(i, f, false)
 }
 
 impl fmt::Display for clean::Arguments {
@@ -667,7 +681,7 @@ impl fmt::Display for clean::Import {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::SimpleImport(ref name, ref src) => {
-                if *name == src.path.segments.last().unwrap().name {
+                if *name == src.path.last_name() {
                     write!(f, "use {};", *src)
                 } else {
                     write!(f, "use {} as {};", *src, *name)
