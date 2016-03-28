@@ -72,7 +72,7 @@ a [`Drop`][drop] implementation.
 # Initializing
 
 Both `const` and `static` have requirements for giving them a value. They must
-be given a value that’s a constant expression. In other words, you cannot use 
+be given a value that’s a constant expression. In other words, you cannot use
 the result of a function call or anything similarly complex or at runtime.
 
 # Which construct should I use?
