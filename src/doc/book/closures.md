@@ -502,5 +502,5 @@ assert_eq!(6, answer);
 ```
 
 By making the inner closure a `move Fn`, we create a new stack frame for our
-closure. By `Box`ing it up, we’ve given it a known size, and allowing it to
+closure. By `Box`ing it up, we’ve given it a known size, allowing it to
 escape our stack frame.

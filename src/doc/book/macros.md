@@ -337,8 +337,8 @@ fn main() {
 }
 ```
 
-Instead you need to pass the variable name into the invocation, so it’s tagged
-with the right syntax context.
+Instead you need to pass the variable name into the invocation, so that it’s
+tagged with the right syntax context.
 
 ```rust
 macro_rules! foo {
@@ -470,7 +470,7 @@ which syntactic form it matches.
 * `ty`: a type. Examples: `i32`; `Vec<(char, String)>`; `&T`.
 * `pat`: a pattern. Examples: `Some(t)`; `(17, 'a')`; `_`.
 * `stmt`: a single statement. Example: `let x = 3`.
-* `block`: a brace-delimited sequence of statements. Example:
+* `block`: a brace-delimited sequence of statements and optionally an expression. Example:
   `{ log(error, "hi"); return 12; }`.
 * `item`: an [item][item]. Examples: `fn foo() { }`; `struct Bar;`.
 * `meta`: a "meta item", as found in attributes. Example: `cfg(target_os = "windows")`.

@@ -417,7 +417,7 @@ first. This leaves the top-level project directory (in this case,
 to your code. In this way, using Cargo helps you keep your projects nice and
 tidy. There's a place for everything, and everything is in its place.
 
-Now, copy *main.rs* to the *src* directory, and delete the compiled file you
+Now, move *main.rs* into the *src* directory, and delete the compiled file you
 created with `rustc`. As usual, replace `main` with `main.exe` if you're on
 Windows.
 
