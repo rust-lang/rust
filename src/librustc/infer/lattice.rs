@@ -32,23 +32,27 @@
 use super::combine;
 use super::InferCtxt;
 
+use traits::PredicateObligations;
 use ty::TyVar;
 use ty::{self, Ty};
 use ty::relate::{RelateResult, TypeRelation};
 
-pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
+pub trait LatticeDir<'f, 'tcx>: TypeRelation<'f, 'tcx, PredicateObligations<'tcx>> {
     fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
+    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>,
+                    side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, ()>;
 }
 
-pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
-                                                        a: Ty<'tcx>,
-                                                        b: Ty<'tcx>)
-                                                        -> RelateResult<'tcx, Ty<'tcx>>
-    where 'tcx: 'a
+pub fn super_lattice_tys<'a, 'tcx, L>(this: &mut L,
+                                      a: Ty<'tcx>,
+                                      b: Ty<'tcx>,
+                                      side_effects: &mut PredicateObligations<'tcx>)
+    -> RelateResult<'tcx, Ty<'tcx>>
+    where 'tcx: 'a, L: LatticeDir<'a,'tcx>
 {
     debug!("{}.lattice_tys({:?}, {:?})",
            this.tag(),
@@ -66,19 +70,19 @@ pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
         (&ty::TyInfer(TyVar(..)), &ty::TyInfer(TyVar(..)))
             if infcx.type_var_diverges(a) && infcx.type_var_diverges(b) => {
             let v = infcx.next_diverging_ty_var();
-            this.relate_bound(v, a, b)?;
+            this.relate_bound(v, a, b, side_effects)?;
             Ok(v)
         }
 
         (&ty::TyInfer(TyVar(..)), _) |
         (_, &ty::TyInfer(TyVar(..))) => {
             let v = infcx.next_ty_var();
-            this.relate_bound(v, a, b)?;
+            this.relate_bound(v, a, b, side_effects)?;
             Ok(v)
         }
 
         _ => {
-            combine::super_combine_tys(this.infcx(), this, a, b)
+            combine::super_combine_tys(this.infcx(), this, a, b, side_effects)
         }
     }
 }

@@ -24,16 +24,14 @@ use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::region::CodeExtent;
-use ty::subst;
-use ty::subst::Substs;
-use ty::subst::Subst;
-use traits::{self, ProjectionMode};
+use traits::{self, ProjectionMode, PredicateObligations};
+use ty::subst::{self, Subst, Substs};
 use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::{TypeFolder, TypeFoldable};
-use ty::relate::{Relate, RelateResult, TypeRelation};
+use ty::relate::{Relate, TypeRelation};
 use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell, Ref};
 use std::fmt;
@@ -63,8 +61,13 @@ pub mod sub;
 pub mod type_variable;
 pub mod unify_key;
 
+pub struct InferOk<'tcx> {
+    pub obligations: PredicateObligations<'tcx>,
+}
+pub type InferResult<'tcx> = Result<InferOk<'tcx>, TypeError<'tcx>>;
+
 pub type Bound<T> = Option<T>;
-pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
+pub type UnitResult<'tcx> = Result<(), TypeError<'tcx>>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
@@ -386,39 +389,12 @@ pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
     infcx
 }
 
-/// Computes the least upper-bound of `a` and `b`. If this is not possible, reports an error and
-/// returns ty::err.
-pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                  origin: TypeOrigin,
-                                  a_is_expected: bool,
-                                  a: Ty<'tcx>,
-                                  b: Ty<'tcx>)
-                                  -> Ty<'tcx>
-{
-    debug!("common_supertype({:?}, {:?})",
-           a, b);
-
-    let trace = TypeTrace {
-        origin: origin,
-        values: Types(expected_found(a_is_expected, a, b))
-    };
-
-    let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).relate(&a, &b));
-    match result {
-        Ok(t) => t,
-        Err(ref err) => {
-            cx.report_and_explain_type_error(trace, err).emit();
-            cx.tcx.types.err
-        }
-    }
-}
-
 pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           a_is_expected: bool,
                           origin: TypeOrigin,
                           a: Ty<'tcx>,
                           b: Ty<'tcx>)
-                          -> UnitResult<'tcx>
+    -> InferResult<'tcx>
 {
     debug!("mk_subty({:?} <: {:?})", a, b);
     cx.sub_types(a_is_expected, origin, a, b)
@@ -427,19 +403,22 @@ pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                               a: Ty<'tcx>,
                               b: Ty<'tcx>)
-                              -> UnitResult<'tcx> {
+    -> InferResult<'tcx>
+{
     debug!("can_mk_subty({:?} <: {:?})", a, b);
     cx.probe(|_| {
         let trace = TypeTrace {
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).relate(&a, &b).map(|_| ())
+        let mut obligations = PredicateObligations::new();
+        cx.sub(true, trace).relate(&a, &b, &mut obligations)
+            .map(|_| InferOk { obligations: obligations })
     })
 }
 
 pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
-                             -> UnitResult<'tcx>
+    -> InferResult<'tcx>
 {
     cx.can_equate(&a, &b)
 }
@@ -447,7 +426,8 @@ pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
 pub fn mk_subr<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          origin: SubregionOrigin<'tcx>,
                          a: ty::Region,
-                         b: ty::Region) {
+                         b: ty::Region)
+{
     debug!("mk_subr({:?} <: {:?})", a, b);
     let snapshot = cx.region_vars.start_snapshot();
     cx.region_vars.make_subregion(origin, a, b);
@@ -459,7 +439,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          origin: TypeOrigin,
                          a: Ty<'tcx>,
                          b: Ty<'tcx>)
-                         -> UnitResult<'tcx>
+    -> InferResult<'tcx>
 {
     debug!("mk_eqty({:?} <: {:?})", a, b);
     cx.eq_types(a_is_expected, origin, a, b)
@@ -470,7 +450,7 @@ pub fn mk_eq_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                   origin: TypeOrigin,
                                   a: ty::TraitRef<'tcx>,
                                   b: ty::TraitRef<'tcx>)
-                                  -> UnitResult<'tcx>
+    -> InferResult<'tcx>
 {
     debug!("mk_eq_trait_refs({:?} = {:?})", a, b);
     cx.eq_trait_refs(a_is_expected, origin, a, b)
@@ -481,7 +461,7 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                         origin: TypeOrigin,
                                         a: ty::PolyTraitRef<'tcx>,
                                         b: ty::PolyTraitRef<'tcx>)
-                                        -> UnitResult<'tcx>
+    -> InferResult<'tcx>
 {
     debug!("mk_sub_poly_trait_refs({:?} <: {:?})", a, b);
     cx.sub_poly_trait_refs(a_is_expected, origin, a, b)
@@ -492,7 +472,7 @@ pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                     origin: TypeOrigin,
                                     a: &ty::ImplHeader<'tcx>,
                                     b: &ty::ImplHeader<'tcx>)
-                                    -> UnitResult<'tcx>
+    -> InferResult<'tcx>
 {
     debug!("mk_eq_impl_header({:?} = {:?})", a, b);
     match (a.trait_ref, b.trait_ref) {
@@ -502,10 +482,8 @@ pub fn mk_eq_impl_headers<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn expected_found<T>(a_is_expected: bool,
-                     a: T,
-                     b: T)
-                     -> ExpectedFound<T>
+fn expected_found<T>(a_is_expected: bool, a: T, b: T)
+    -> ExpectedFound<T>
 {
     if a_is_expected {
         ExpectedFound {expected: a, found: b}
@@ -688,39 +666,42 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                      -> CombineFields<'a, 'tcx> {
-        CombineFields {infcx: self,
-                       a_is_expected: a_is_expected,
-                       trace: trace,
-                       cause: None}
+        -> CombineFields<'a, 'tcx>
+    {
+        CombineFields {
+            infcx: self,
+            a_is_expected: a_is_expected,
+            trace: trace,
+            cause: None,
+        }
     }
 
     // public so that it can be used from the rustc_driver unit tests
     pub fn equate(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-              -> equate::Equate<'a, 'tcx>
+        -> equate::Equate<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).equate()
+        equate::Equate::new(self.combine_fields(a_is_expected, trace))
     }
 
     // public so that it can be used from the rustc_driver unit tests
     pub fn sub(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> sub::Sub<'a, 'tcx>
+        -> sub::Sub<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).sub()
+        sub::Sub::new(self.combine_fields(a_is_expected, trace))
     }
 
     // public so that it can be used from the rustc_driver unit tests
     pub fn lub(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> lub::Lub<'a, 'tcx>
+        -> lub::Lub<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).lub()
+        lub::Lub::new(self.combine_fields(a_is_expected, trace))
     }
 
     // public so that it can be used from the rustc_driver unit tests
     pub fn glb(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> glb::Glb<'a, 'tcx>
+        -> glb::Glb<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).glb()
+        glb::Glb::new(self.combine_fields(a_is_expected, trace))
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
@@ -856,12 +837,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      origin: TypeOrigin,
                      a: Ty<'tcx>,
                      b: Ty<'tcx>)
-                     -> UnitResult<'tcx>
+        -> InferResult<'tcx>
     {
         debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            self.sub(a_is_expected, trace).relate(&a, &b, &mut obligations)
+                .map(|_| InferOk { obligations: obligations })
         })
     }
 
@@ -870,11 +853,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     origin: TypeOrigin,
                     a: Ty<'tcx>,
                     b: Ty<'tcx>)
-                    -> UnitResult<'tcx>
+        -> InferResult<'tcx>
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            self.equate(a_is_expected, trace).relate(&a, &b, &mut obligations)
+                .map(|_| InferOk { obligations: obligations })
         })
     }
 
@@ -883,7 +868,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                           origin: TypeOrigin,
                           a: ty::TraitRef<'tcx>,
                           b: ty::TraitRef<'tcx>)
-                          -> UnitResult<'tcx>
+        -> InferResult<'tcx>
     {
         debug!("eq_trait_refs({:?} <: {:?})",
                a,
@@ -893,7 +878,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            self.equate(a_is_expected, trace).relate(&a, &b, &mut obligations)
+                .map(|_| InferOk { obligations: obligations })
         })
     }
 
@@ -902,7 +889,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                origin: TypeOrigin,
                                a: ty::PolyTraitRef<'tcx>,
                                b: ty::PolyTraitRef<'tcx>)
-                               -> UnitResult<'tcx>
+        -> InferResult<'tcx>
     {
         debug!("sub_poly_trait_refs({:?} <: {:?})",
                a,
@@ -912,7 +899,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            self.sub(a_is_expected, trace).relate(&a, &b, &mut obligations).map(|_| ())
+                .map(|_| InferOk { obligations: obligations })
         })
     }
 
@@ -955,20 +944,23 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn equality_predicate(&self,
                               span: Span,
                               predicate: &ty::PolyEquatePredicate<'tcx>)
-                              -> UnitResult<'tcx> {
+        -> InferResult<'tcx>
+    {
         self.commit_if_ok(|snapshot| {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
-            let () = mk_eqty(self, false, origin, a, b)?;
+            let InferOk { obligations, .. } = try!(mk_eqty(self, false, origin, a, b));
             self.leak_check(&skol_map, snapshot)
+                .map(|_| InferOk { obligations: obligations })
         })
     }
 
     pub fn region_outlives_predicate(&self,
                                      span: Span,
                                      predicate: &ty::PolyRegionOutlivesPredicate)
-                                     -> UnitResult<'tcx> {
+        -> UnitResult<'tcx>
+    {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
@@ -1447,7 +1439,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
+    pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> InferResult<'tcx>
         where T: Relate<'b,'tcx> + fmt::Debug
     {
         debug!("can_equate({:?}, {:?})", a, b);
@@ -1461,8 +1453,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: TypeOrigin::Misc(codemap::DUMMY_SP),
                 values: Types(expected_found(true, e, e))
             };
-            self.equate(true, trace).relate(a, b)
-        }).map(|_| ())
+            let mut obligations = PredicateObligations::new();
+            self.equate(true, trace).relate(a, b, &mut obligations)
+                .map(|_| InferOk { obligations: obligations })
+        })
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {

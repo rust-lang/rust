@@ -14,6 +14,7 @@
 use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::CombineFields;
 
+use traits::PredicateObligations;
 use ty::{self, TyCtxt, Binder, TypeFoldable};
 use ty::error::TypeError;
 use ty::relate::{Relate, RelateResult, TypeRelation};
@@ -21,14 +22,20 @@ use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 pub trait HigherRankedRelations<'a,'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>;
+    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>,
+                            side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a, 'tcx>;
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>;
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>,
+                            side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a, 'tcx>;
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>;
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>,
+                            side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a, 'tcx>;
 }
 
 trait InferCtxtExt {
@@ -40,9 +47,10 @@ trait InferCtxtExt {
 }
 
 impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>,
+                            side_effects: &mut PredicateObligations<'tcx>)
                             -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>
+        where T: Relate<'a, 'tcx>
     {
         debug!("higher_ranked_sub(a={:?}, b={:?})",
                a, b);
@@ -75,7 +83,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             debug!("b_prime={:?}", b_prime);
 
             // Compare types now that bound regions have been replaced.
-            let result = self.sub().relate(&a_prime, &b_prime)?;
+            let result = self.sub().relate(&a_prime, &b_prime, side_effects)?;
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
@@ -101,8 +109,10 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
         });
     }
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>,
+                            side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a, 'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
@@ -118,7 +128,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
 
             // Collect constraints.
             let result0 =
-                self.lub().relate(&a_with_fresh, &b_with_fresh)?;
+                self.lub().relate(&a_with_fresh, &b_with_fresh, side_effects)?;
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("lub result0 = {:?}", result0);
@@ -191,7 +201,9 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
         }
     }
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>,
+                            side_effects: &mut PredicateObligations<'tcx>)
+        -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
     {
         debug!("higher_ranked_glb({:?}, {:?})",
@@ -212,7 +224,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
 
             // Collect constraints.
             let result0 =
-                self.glb().relate(&a_with_fresh, &b_with_fresh)?;
+                self.glb().relate(&a_with_fresh, &b_with_fresh, side_effects)?;
             let result0 =
                 self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("glb result0 = {:?}", result0);

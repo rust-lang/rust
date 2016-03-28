@@ -38,21 +38,24 @@ impl<'a, 'tcx> Match<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx, ()> for Match<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Match" }
     fn tcx(&self) -> &'a TyCtxt<'tcx> { self.tcx }
     fn a_is_expected(&self) -> bool { true } // irrelevant
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               _: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'a,'tcx>>(&mut self,
+                                                _: ty::Variance,
+                                                a: &T,
+                                                b: &T,
+                                                side_effects: &mut ())
+        -> RelateResult<'tcx, T>
     {
-        self.relate(a, b)
+        self.relate(a, b, side_effects)
     }
 
-    fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
+    fn regions(&mut self, a: ty::Region, b: ty::Region, _: &mut ())
+        -> RelateResult<'tcx, ty::Region>
+    {
         debug!("{}.regions({:?}, {:?})",
                self.tag(),
                a,
@@ -60,7 +63,9 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
         Ok(a)
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, side_effects: &mut ())
+        -> RelateResult<'tcx, Ty<'tcx>>
+    {
         debug!("{}.tys({:?}, {:?})", self.tag(),
                a, b);
         if a == b { return Ok(a); }
@@ -82,15 +87,16 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Match<'a, 'tcx> {
             }
 
             _ => {
-                relate::super_relate_tys(self, a, b)
+                relate::super_relate_tys(self, a, b, side_effects)
             }
         }
     }
 
-    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
-                  -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a,'tcx>
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>,
+                  side_effects: &mut ())
+        -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'a, 'tcx>
     {
-        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder())?))
+        Ok(ty::Binder(self.relate(a.skip_binder(), b.skip_binder(), side_effects)?))
     }
 }

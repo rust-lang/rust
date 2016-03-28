@@ -88,11 +88,10 @@ use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
 use middle::def::{self, Def};
 use middle::def_id::DefId;
-use rustc::infer;
-use rustc::infer::{TypeOrigin, TypeTrace, type_variable};
+use rustc::infer::{self, InferOk, TypeOrigin, TypeTrace, type_variable};
 use middle::pat_util::{self, pat_id_map};
+use rustc::traits::{self, report_fulfillment_errors, ProjectionMode, PredicateObligations};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
-use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
@@ -1629,6 +1628,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sup: Ty<'tcx>)
                     -> Result<(), TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
+            .map(|InferOk { obligations }| {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                ()
+            })
     }
 
     pub fn mk_eqty(&self,
@@ -1638,6 +1642,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    sup: Ty<'tcx>)
                    -> Result<(), TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
+            .map(|InferOk { obligations }| {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                ()
+            })
     }
 
     pub fn mk_subr(&self,
@@ -1916,7 +1925,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     match infer::mk_eqty(self.infcx(), false,
                                                          TypeOrigin::Misc(default.origin_span),
                                                          ty, default.ty) {
-                                        Ok(()) => {}
+                                        Ok(InferOk { obligations }) => {
+                                            // FIXME propagate obligations
+                                            assert!(obligations.is_empty());
+                                        }
                                         Err(_) => {
                                             conflicts.push((*ty, default));
                                         }
@@ -2009,7 +2021,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             match infer::mk_eqty(self.infcx(), false,
                                                  TypeOrigin::Misc(default.origin_span),
                                                  ty, default.ty) {
-                                Ok(()) => {}
+                                Ok(InferOk { obligations }) => {
+                                    // FIXME propagate obligations
+                                    assert!(obligations.is_empty());
+                                }
                                 Err(_) => {
                                     result = Some(default);
                                 }
@@ -2904,7 +2919,12 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             } else {
                 fcx.infcx().commit_if_ok(|_| {
                     let trace = TypeTrace::types(origin, true, then_ty, else_ty);
-                    fcx.infcx().lub(true, trace).relate(&then_ty, &else_ty)
+                    let mut obligations = PredicateObligations::new();
+                    let result =
+                        fcx.infcx().lub(true, trace).relate(&then_ty, &else_ty, &mut obligations);
+                    // FIXME Propagate side-effect obligations
+                    assert!(obligations.is_empty());
+                    result
                 })
             };
             (origin, then_ty, else_ty, result)

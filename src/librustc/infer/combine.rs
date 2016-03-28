@@ -41,6 +41,7 @@ use super::{InferCtxt};
 use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
+use traits::PredicateObligations;
 use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
@@ -58,12 +59,13 @@ pub struct CombineFields<'a, 'tcx: 'a> {
     pub cause: Option<ty::relate::Cause>,
 }
 
-pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
-                                       relation: &mut R,
-                                       a: Ty<'tcx>,
-                                       b: Ty<'tcx>)
-                                       -> RelateResult<'tcx, Ty<'tcx>>
-    where R: TypeRelation<'a,'tcx>
+pub fn super_combine_tys<'a, 'tcx, R>(infcx: &InferCtxt<'a, 'tcx>,
+                                      relation: &mut R,
+                                      a: Ty<'tcx>,
+                                      b: Ty<'tcx>,
+                                      side_effects: &mut PredicateObligations<'tcx>)
+                                      -> RelateResult<'tcx, Ty<'tcx>>
+    where R: TypeRelation<'a, 'tcx, PredicateObligations<'tcx>>, 'tcx: 'a
 {
     let a_is_expected = relation.a_is_expected();
 
@@ -112,7 +114,7 @@ pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
 
 
         _ => {
-            ty::relate::super_relate_tys(relation, a, b)
+            ty::relate::super_relate_tys(relation, a, b, side_effects)
         }
     }
 }
@@ -181,7 +183,8 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
     pub fn instantiate(&self,
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
-                       b_vid: ty::TyVid)
+                       b_vid: ty::TyVid,
+                       side_effects: &mut PredicateObligations<'tcx>)
                        -> RelateResult<'tcx, ()>
     {
         let mut stack = Vec::new();
@@ -251,10 +254,11 @@ impl<'a, 'tcx> CombineFields<'a, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
-                BiTo => self.bivariate().relate(&a_ty, &b_ty),
-                EqTo => self.equate().relate(&a_ty, &b_ty),
-                SubtypeOf => self.sub().relate(&a_ty, &b_ty),
-                SupertypeOf => self.sub().relate_with_variance(ty::Contravariant, &a_ty, &b_ty),
+                BiTo => self.bivariate().relate(&a_ty, &b_ty, side_effects),
+                EqTo => self.equate().relate(&a_ty, &b_ty, side_effects),
+                SubtypeOf => self.sub().relate(&a_ty, &b_ty, side_effects),
+                SupertypeOf => self.sub().relate_with_variance(ty::Contravariant, &a_ty, &b_ty,
+                                                               side_effects),
             }?;
         }
 

@@ -16,12 +16,10 @@ use super::suggest;
 use check;
 use check::{FnCtxt, UnresolvedTypeAction};
 use middle::def_id::DefId;
-use rustc::ty::subst;
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{self, Subst};
 use rustc::traits;
 use rustc::ty::{self, NoPreference, Ty, TyCtxt, ToPolyTraitRef, TraitRef, TypeFoldable};
-use rustc::infer;
-use rustc::infer::{InferCtxt, TypeOrigin};
+use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 use rustc_front::hir;
@@ -1135,6 +1133,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn make_sub_ty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>) -> infer::UnitResult<'tcx> {
         self.infcx().sub_types(false, TypeOrigin::Misc(DUMMY_SP), sub, sup)
+            .map(|InferOk { obligations }| {
+                // FIXME propagate obligations
+                assert!(obligations.is_empty());
+                ()
+            })
     }
 
     fn has_applicable_self(&self, item: &ty::ImplOrTraitItem) -> bool {
