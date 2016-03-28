@@ -4,7 +4,7 @@ use rustc_front::hir::*;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::VEC_FROM_ELEM_PATH;
-use utils::{is_expn_of, match_path, snippet, span_lint_and_then};
+use utils::{is_expn_of, match_path, recover_for_loop, snippet, span_lint_and_then};
 
 /// **What it does:** This lint warns about using `&vec![..]` when using `&[..]` would be possible.
 ///
@@ -38,32 +38,42 @@ impl LateLintPass for UselessVec {
             let TypeVariants::TyRef(_, ref ty) = cx.tcx.expr_ty_adjusted(expr).sty,
             let TypeVariants::TySlice(..) = ty.ty.sty,
             let ExprAddrOf(_, ref addressee) = expr.node,
-            let Some(vec_args) = unexpand_vec(cx, addressee)
         ], {
-            let snippet = match vec_args {
-                VecArgs::Repeat(elem, len) => {
-                    format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
-                }
-                VecArgs::Vec(args) => {
-                    if let Some(last) = args.iter().last() {
-                        let span = Span {
-                            lo: args[0].span.lo,
-                            hi: last.span.hi,
-                            expn_id: args[0].span.expn_id,
-                        };
-
-                        format!("&[{}]", snippet(cx, span, "..")).into()
-                    }
-                    else {
-                        "&[]".into()
-                    }
-                }
-            };
-
-            span_lint_and_then(cx, USELESS_VEC, expr.span, "useless use of `vec!`", |db| {
-                db.span_suggestion(expr.span, "you can use a slice directly", snippet);
-            });
+            check_vec_macro(cx, expr, addressee);
         }}
+
+        // search for `for _ in vec![…]`
+        if let Some((_, arg, _)) = recover_for_loop(expr) {
+            check_vec_macro(cx, arg, arg);
+        }
+    }
+}
+
+fn check_vec_macro(cx: &LateContext, expr: &Expr, vec: &Expr) {
+    if let Some(vec_args) = unexpand_vec(cx, vec) {
+        let snippet = match vec_args {
+            VecArgs::Repeat(elem, len) => {
+                format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len")).into()
+            }
+            VecArgs::Vec(args) => {
+                if let Some(last) = args.iter().last() {
+                    let span = Span {
+                        lo: args[0].span.lo,
+                        hi: last.span.hi,
+                        expn_id: args[0].span.expn_id,
+                    };
+
+                    format!("&[{}]", snippet(cx, span, "..")).into()
+                }
+                else {
+                    "&[]".into()
+                }
+            }
+        };
+
+        span_lint_and_then(cx, USELESS_VEC, expr.span, "useless use of `vec!`", |db| {
+            db.span_suggestion(expr.span, "you can use a slice directly", snippet);
+        });
     }
 }
 
