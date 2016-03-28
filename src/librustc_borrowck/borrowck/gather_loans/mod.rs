@@ -378,10 +378,10 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                     ty::ReEarlyBound(..) |
                     ty::ReVar(..) |
                     ty::ReSkolemized(..) => {
-                        self.tcx().sess.span_bug(
+                        span_bug!(
                             cmt.span,
-                            &format!("invalid borrow lifetime: {:?}",
-                                    loan_region));
+                            "invalid borrow lifetime: {:?}",
+                            loan_region);
                     }
                 };
                 debug!("loan_scope = {:?}", loan_scope);

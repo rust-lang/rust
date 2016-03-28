@@ -569,7 +569,7 @@ fn gather_moves<'tcx>(mir: &Mir<'tcx>, tcx: &TyCtxt<'tcx>) -> MoveData<'tcx> {
                         Rvalue::InlineAsm { .. } => {}
 
                         Rvalue::Slice {..} => {
-                            bb_ctxt.tcx.sess.bug("cannot move out of slice");
+                            bug!("cannot move out of slice");
                         }
                     }
                 }
