@@ -2072,8 +2072,15 @@ impl<'a> Parser<'a> {
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>,
                     limits: RangeLimits)
-                    -> ast::ExprKind {
-        ExprKind::Range(start, end, limits)
+                    -> PResult<'a, ast::ExprKind> {
+        if end.is_none() && limits == RangeLimits::Closed {
+            Err(self.span_fatal_help(self.span,
+                                     "inclusive range with no end",
+                                     "inclusive ranges must be bounded at the end \
+                                      (`...b` or `a...b`)"))
+        } else {
+            Ok(ExprKind::Range(start, end, limits))
+        }
     }
 
     pub fn mk_field(&mut self, expr: P<Expr>, ident: ast::SpannedIdent) -> ast::ExprKind {
@@ -2999,12 +3006,12 @@ impl<'a> Parser<'a> {
                 lhs = self.mk_expr(lhs_span.lo, rhs.span.hi,
                                    ExprKind::Type(lhs, rhs), None);
                 continue
-            } else if op == AssocOp::DotDot {
-                // If we didn’t have to handle `x..`, it would be pretty easy to generalise
-                // it to the Fixity::None code.
+            } else if op == AssocOp::DotDot || op == AssocOp::DotDotDot {
+                // If we didn’t have to handle `x..`/`x...`, it would be pretty easy to
+                // generalise it to the Fixity::None code.
                 //
-                // We have 2 alternatives here: `x..y` and `x..` The other two variants are
-                // handled with `parse_prefix_range_expr` call above.
+                // We have 2 alternatives here: `x..y`/`x...y` and `x..`/`x...` The other
+                // two variants are handled with `parse_prefix_range_expr` call above.
                 let rhs = if self.is_at_start_of_range_notation_rhs() {
                     let rhs = self.parse_assoc_expr_with(op.precedence() + 1,
                                                          LhsExpr::NotYetParsed);
@@ -3023,7 +3030,13 @@ impl<'a> Parser<'a> {
                 } else {
                     cur_op_span
                 });
-                let r = self.mk_range(Some(lhs), rhs, RangeLimits::HalfOpen);
+                let limits = if op == AssocOp::DotDot {
+                    RangeLimits::HalfOpen
+                } else {
+                    RangeLimits::Closed
+                };
+
+                let r = try!(self.mk_range(Some(lhs), rhs, limits));
                 lhs = self.mk_expr(lhs_span.lo, rhs_span.hi, r, None);
                 break
             }
@@ -3041,8 +3054,8 @@ impl<'a> Parser<'a> {
                         this.parse_assoc_expr_with(op.precedence() + 1,
                             LhsExpr::NotYetParsed)
                 }),
-                // the only operator handled here is `...` (the other non-associative operators are
-                // special-cased above)
+                // We currently have no non-associative operators that are not handled above by
+                // the special cases. The code is here only for future convenience.
                 Fixity::None => self.with_res(
                     restrictions - Restrictions::RESTRICTION_STMT_EXPR,
                     |this| {
@@ -3083,13 +3096,8 @@ impl<'a> Parser<'a> {
                     let aopexpr = self.mk_assign_op(codemap::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(lhs_span.lo, rhs_span.hi, aopexpr, None)
                 }
-                AssocOp::DotDotDot => {
-                    let (lhs_span, rhs_span) = (lhs.span, rhs.span);
-                    let r = self.mk_range(Some(lhs), Some(rhs), RangeLimits::Closed);
-                    self.mk_expr(lhs_span.lo, rhs_span.hi, r, None)
-                }
-                AssocOp::As | AssocOp::Colon | AssocOp::DotDot => {
-                    self.bug("As, Colon or DotDot branch reached")
+                AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotDot => {
+                    self.bug("As, Colon, DotDot or DotDotDot branch reached")
                 }
             };
 
@@ -3133,21 +3141,23 @@ impl<'a> Parser<'a> {
             // RHS must be parsed with more associativity than the dots.
             let next_prec = AssocOp::from_token(&tok).unwrap().precedence() + 1;
             Some(self.parse_assoc_expr_with(next_prec,
-                                                 LhsExpr::NotYetParsed)
-            .map(|x|{
-                hi = x.span.hi;
-                x
-            })?)
+                                            LhsExpr::NotYetParsed)
+                .map(|x|{
+                    hi = x.span.hi;
+                    x
+                })?)
          } else {
             None
         };
-        let r = self.mk_range(None,
-                              opt_end,
-                              if tok == token::DotDot {
-                                  RangeLimits::HalfOpen
-                              } else {
-                                  RangeLimits::Closed
-                              });
+        let limits = if tok == token::DotDot {
+            RangeLimits::HalfOpen
+        } else {
+            RangeLimits::Closed
+        };
+
+        let r = try!(self.mk_range(None,
+                                   opt_end,
+                                   limits));
         Ok(self.mk_expr(lo, hi, r, attrs))
     }
 

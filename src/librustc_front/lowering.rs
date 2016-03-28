@@ -68,6 +68,7 @@ use std::collections::HashMap;
 use std::iter;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
+use syntax::errors::Handler;
 use syntax::ext::mtwt;
 use syntax::ptr::P;
 use syntax::codemap::{respan, Spanned, Span};
@@ -139,6 +140,11 @@ impl<'a, 'hir> LoweringContext<'a> {
             self.gensym_cache.borrow_mut().insert((gensym_key, s), result);
             result
         }
+    }
+
+    // Panics if this LoweringContext's NodeIdAssigner is not able to emit diagnostics.
+    fn diagnostic(&self) -> &Handler {
+        self.id_assigner.diagnostic()
     }
 }
 
@@ -1289,7 +1295,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                             make_struct(lctx, e, &["RangeInclusive", "NonEmpty"],
                                                  &[("start", e1), ("end", e2)]),
 
-                        _ => panic!("impossible range in AST"),
+                        _ => panic!(lctx.diagnostic().span_fatal(e.span,
+                                                                 "inclusive range with no end"))
                     }
                 });
             }

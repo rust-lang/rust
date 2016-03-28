@@ -348,6 +348,10 @@ impl NodeIdAssigner for Session {
     fn peek_node_id(&self) -> NodeId {
         self.next_node_id.get().checked_add(1).unwrap()
     }
+
+    fn diagnostic(&self) -> &errors::Handler {
+        self.diagnostic()
+    }
 }
 
 fn split_msg_into_multilines(msg: &str) -> Option<String> {
