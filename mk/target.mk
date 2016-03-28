@@ -89,6 +89,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(RUSTFLAGS$(1)_$(4)_T_$(2)) \
 		--out-dir $$(@D) \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
+		-C metadata=$$(CFG_FILENAME_EXTRA) \
 		$$<
 	@touch -r $$@.start_time $$@ && rm $$@.start_time
 	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
