@@ -748,7 +748,7 @@ pub struct DecodeUtf16<I>
     buf: Option<u16>,
 }
 
-/// Create an iterator over the UTF-16 encoded code points in `iterable`,
+/// Create an iterator over the UTF-16 encoded code points in `iter`,
 /// returning unpaired surrogates as `Err`s.
 ///
 /// # Examples
@@ -796,9 +796,9 @@ pub struct DecodeUtf16<I>
 /// ```
 #[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
 #[inline]
-pub fn decode_utf16<I: IntoIterator<Item = u16>>(iterable: I) -> DecodeUtf16<I::IntoIter> {
+pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
     DecodeUtf16 {
-        iter: iterable.into_iter(),
+        iter: iter.into_iter(),
         buf: None,
     }
 }

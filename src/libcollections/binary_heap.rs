@@ -980,13 +980,13 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iterable: I) {
-        let iter = iterable.into_iter();
-        let (lower, _) = iter.size_hint();
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        let iterator = iter.into_iter();
+        let (lower, _) = iterator.size_hint();
 
         self.reserve(lower);
 
-        for elem in iter {
+        for elem in iterator {
             self.push(elem);
         }
     }

@@ -2458,10 +2458,10 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
 ///
 /// // and we'll implement FromIterator
 /// impl FromIterator<i32> for MyCollection {
-///     fn from_iter<I: IntoIterator<Item=i32>>(iterator: I) -> Self {
+///     fn from_iter<I: IntoIterator<Item=i32>>(iter: I) -> Self {
 ///         let mut c = MyCollection::new();
 ///
-///         for i in iterator {
+///         for i in iter {
 ///             c.add(i);
 ///         }
 ///
@@ -2508,7 +2508,7 @@ pub trait FromIterator<A>: Sized {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
+    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> Self;
 }
 
 /// Conversion into an `Iterator`.
@@ -2683,11 +2683,11 @@ impl<I: Iterator> IntoIterator for I {
 ///     // This is a bit simpler with the concrete type signature: we can call
 ///     // extend on anything which can be turned into an Iterator which gives
 ///     // us i32s. Because we need i32s to put into MyCollection.
-///     fn extend<T: IntoIterator<Item=i32>>(&mut self, iterable: T) {
+///     fn extend<T: IntoIterator<Item=i32>>(&mut self, iter: T) {
 ///
 ///         // The implementation is very straightforward: loop through the
 ///         // iterator, and add() each element to ourselves.
-///         for elem in iterable {
+///         for elem in iter {
 ///             self.add(elem);
 ///         }
 ///     }
@@ -2727,7 +2727,7 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
 }
 
 /// An iterator able to yield elements from both ends.

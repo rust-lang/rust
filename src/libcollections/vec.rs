@@ -1302,13 +1302,13 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I: IntoIterator<Item = T>>(iterable: I) -> Vec<T> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
         // Unroll the first iteration, as the vector is going to be
         // expanded on this iteration in every case when the iterable is not
         // empty, but the loop in extend_desugared() is not going to see the
         // vector being full in the few subsequent loop iterations.
         // So we get better branch prediction.
-        let mut iterator = iterable.into_iter();
+        let mut iterator = iter.into_iter();
         let mut vector = match iterator.next() {
             None => return Vec::new(),
             Some(element) => {
@@ -1389,8 +1389,8 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: IntoIterator<Item = T>>(&mut self, iterable: I) {
-        self.extend_desugared(iterable.into_iter())
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        self.extend_desugared(iter.into_iter())
     }
 }
 
