@@ -31,6 +31,7 @@ stable_whitelist = {
     'src/libcore',
     'src/libstd',
     'src/rustc/std_shim',
+    'src/rustc/test_shim',
     'src/test'
 }
 
