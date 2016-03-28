@@ -18,8 +18,15 @@ fn foo_bar() {
 /// That one tests multiline ticks.
 /// ```rust
 /// foo_bar FOO_BAR
+/// _foo bar_
 /// ```
 fn multiline_ticks() {
+}
+
+/// This _is a test for
+/// multiline
+/// emphasis_.
+fn test_emphasis() {
 }
 
 /// The `main` function is the entry point of the program. Here it only calls the `foo_bar` and
@@ -27,4 +34,5 @@ fn multiline_ticks() {
 fn main() {
     foo_bar();
     multiline_ticks();
+    test_emphasis();
 }

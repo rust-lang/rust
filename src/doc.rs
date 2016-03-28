@@ -8,7 +8,8 @@ use utils::span_lint;
 /// ticks in documentation.
 ///
 /// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and camel-case probably
-/// indicates some code which should be included between ticks.
+/// indicates some code which should be included between ticks. `_` can also be used for empasis in
+/// markdown, this lint tries to consider that.
 ///
 /// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks for is limited.
 ///
@@ -114,6 +115,7 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
             s
         };
 
+        s.chars().all(char::is_alphanumeric) &&
         s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1 &&
         s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
     }

@@ -13,14 +13,14 @@ use utils::span_lint;
 /// The formula for detecting if an expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
 /// is one of {`&`, `|`} and `<cmp_op>` is one of {`!=`, `>=`, `>`, `!=`, `>=`, `>`}) can be determined from the following table:
 ///
-/// |Comparison  |Bit Op |Example     |is always|Formula               |
-/// |------------|-------|------------|---------|----------------------|
-/// |`==` or `!=`|  `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
-/// |`<`  or `>=`|  `&`  |`x & 2 < 3` |`true`   |`m < c`               |
-/// |`>`  or `<=`|  `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
-/// |`==` or `!=`|  `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
-/// |`<`  or `>=`|  `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
-/// |`<=` or `>` |  `|`  |`x | 1 > 0` |`true`   |`m > c`               |
+/// |Comparison  |Bit Op|Example     |is always|Formula               |
+/// |------------|------|------------|---------|----------------------|
+/// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
+/// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
+/// |`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
+/// |`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
+/// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
+/// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
 ///
 /// **Why is this bad?** If the bits that the comparison cares about are always set to zero or one by the bit mask, the comparison is constant `true` or `false` (depending on mask, compared value, and operators).
 ///
@@ -61,21 +61,21 @@ declare_lint! {
 /// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
 /// `!=`, `>=`, `>`}) can be determined from the following table:
 ///
-/// |Comparison  |Bit Op |Example     |is always|Formula               |
-/// |------------|-------|------------|---------|----------------------|
-/// |`==` or `!=`|  `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
-/// |`<`  or `>=`|  `&`  |`x & 2 < 3` |`true`   |`m < c`               |
-/// |`>`  or `<=`|  `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
-/// |`==` or `!=`|  `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
-/// |`<`  or `>=`|  `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
-/// |`<=` or `>` |  `|`  |`x | 1 > 0` |`true`   |`m > c`               |
+/// |Comparison  |Bit Op|Example     |is always|Formula               |
+/// |------------|------|------------|---------|----------------------|
+/// |`==` or `!=`| `&`  |`x & 2 == 3`|`false`  |`c & m != c`          |
+/// |`<`  or `>=`| `&`  |`x & 2 < 3` |`true`   |`m < c`               |
+/// |`>`  or `<=`| `&`  |`x & 1 > 1` |`false`  |`m <= c`              |
+/// |`==` or `!=`| `|`  |`x | 1 == 0`|`false`  |`c | m != c`          |
+/// |`<`  or `>=`| `|`  |`x | 1 < 1` |`false`  |`m >= c`              |
+/// |`<=` or `>` | `|`  |`x | 1 > 0` |`true`   |`m > c`               |
 ///
 /// This lint is **deny** by default
 ///
 /// There is also a lint that warns on ineffective masks that is *warn*
 /// by default.
 ///
-/// |Comparison| Bit Op  |Example    |equals |Formula|
+/// |Comparison|Bit Op   |Example    |equals |Formula|
 /// |`>` / `<=`|`|` / `^`|`x | 2 > 3`|`x > 3`|`¹ && m <= c`|
 /// |`<` / `>=`|`|` / `^`|`x ^ 1 < 4`|`x < 4`|`¹ && m < c` |
 ///
