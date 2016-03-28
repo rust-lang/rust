@@ -71,7 +71,7 @@ pub fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
 
             let section_var = declare::define_global(ccx, section_var_name,
                                                      llvm_type).unwrap_or_else(||{
-                ccx.sess().bug(&format!("symbol `{}` is already defined", section_var_name))
+                bug!("symbol `{}` is already defined", section_var_name)
             });
             llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
             llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));

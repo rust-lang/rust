@@ -79,7 +79,7 @@ impl<'tcx> OperandRef<'tcx> {
     pub fn immediate(self) -> ValueRef {
         match self.val {
             OperandValue::Immediate(s) => s,
-            _ => unreachable!()
+            _ => bug!()
         }
     }
 }
@@ -124,8 +124,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             return o;
                         }
                         TempRef::Operand(None) => {
-                            bcx.tcx().sess.bug(
-                                &format!("use of {:?} before def", lvalue));
+                            bug!("use of {:?} before def", lvalue);
                         }
                         TempRef::Lvalue(..) => {
                             // use path below

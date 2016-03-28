@@ -43,7 +43,7 @@ extern crate flate;
 extern crate getopts;
 extern crate graphviz;
 extern crate libc;
-extern crate rustc;
+#[macro_use] extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_data_structures;
 extern crate rustc_front;

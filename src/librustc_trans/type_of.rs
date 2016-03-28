@@ -113,10 +113,9 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         }
 
         ty::TyProjection(..) | ty::TyInfer(..) | ty::TyParam(..) | ty::TyError => {
-            cx.sess().bug(&format!("fictitious type {:?} in sizing_type_of()",
-                                   t))
+            bug!("fictitious type {:?} in sizing_type_of()", t)
         }
-        ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => unreachable!()
+        ty::TySlice(_) | ty::TyTrait(..) | ty::TyStr => bug!()
     };
 
     debug!("--> mapped t={:?} to llsizingty={:?}", t, llsizingty);
@@ -132,7 +131,7 @@ fn unsized_info_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> Type
             Type::uint_from_ty(ccx, ast::UintTy::Us)
         }
         ty::TyTrait(_) => Type::vtable_ptr(ccx),
-        _ => unreachable!("Unexpected tail in unsized_info_ty: {:?} for ty={:?}",
+        _ => bug!("Unexpected tail in unsized_info_ty: {:?} for ty={:?}",
                           unsized_part, ty)
     }
 }
@@ -296,10 +295,10 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           }
       }
 
-      ty::TyInfer(..) => cx.sess().bug("type_of with TyInfer"),
-      ty::TyProjection(..) => cx.sess().bug("type_of with TyProjection"),
-      ty::TyParam(..) => cx.sess().bug("type_of with ty_param"),
-      ty::TyError => cx.sess().bug("type_of with TyError"),
+      ty::TyInfer(..) => bug!("type_of with TyInfer"),
+      ty::TyProjection(..) => bug!("type_of with TyProjection"),
+      ty::TyParam(..) => bug!("type_of with ty_param"),
+      ty::TyError => bug!("type_of with TyError"),
     };
 
     debug!("--> mapped t={:?} to llty={:?}", t, llty);

@@ -81,7 +81,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 assert!(lvalue.llextra != ptr::null_mut());
                 lvalue.llextra
             }
-            _ => bcx.sess().bug("unexpected type in lvalue_len"),
+            _ => bug!("unexpected type in lvalue_len"),
         }
     }
 
@@ -100,7 +100,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 TempRef::Lvalue(lvalue) =>
                     lvalue,
                 TempRef::Operand(..) =>
-                    tcx.sess.bug(&format!("using operand temp {:?} as lvalue", lvalue)),
+                    bug!("using operand temp {:?} as lvalue", lvalue),
             },
             mir::Lvalue::Arg(index) => self.args[index as usize],
             mir::Lvalue::Static(def_id) => {

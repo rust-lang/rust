@@ -119,18 +119,19 @@ pub enum FunctionDebugContext {
 
 impl FunctionDebugContext {
     fn get_ref<'a>(&'a self,
-                   cx: &CrateContext,
                    span: Span)
                    -> &'a FunctionDebugContextData {
         match *self {
             FunctionDebugContext::RegularContext(box ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {
-                cx.sess().span_bug(span,
-                                   FunctionDebugContext::debuginfo_disabled_message());
+                span_bug!(span,
+                          "{}",
+                          FunctionDebugContext::debuginfo_disabled_message());
             }
             FunctionDebugContext::FunctionWithoutDebugInfo => {
-                cx.sess().span_bug(span,
-                                   FunctionDebugContext::should_be_ignored_message());
+                span_bug!(span,
+                          "{}",
+                          FunctionDebugContext::should_be_ignored_message());
             }
         }
     }
@@ -253,7 +254,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (item.name, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
-                    cx.sess().span_bug(item.span,
+                    span_bug!(item.span,
                         "create_function_debug_context: item bound to non-function");
                 }
             }
@@ -273,9 +274,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                      true)
                 }
                 _ => {
-                    cx.sess().span_bug(impl_item.span,
-                                       "create_function_debug_context() \
-                                        called on non-method impl item?!")
+                    span_bug!(impl_item.span,
+                              "create_function_debug_context() \
+                               called on non-method impl item?!")
                 }
             }
         }
@@ -293,7 +294,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         // Don't try to lookup the item path:
                         false)
                 }
-                _ => cx.sess().span_bug(expr.span,
+                _ => span_bug!(expr.span,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
@@ -312,10 +313,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                      true)
                 }
                 _ => {
-                    cx.sess()
-                      .bug(&format!("create_function_debug_context: \
-                                    unexpected sort of node: {:?}",
-                                    fnitem))
+                    bug!("create_function_debug_context: \
+                          unexpected sort of node: {:?}",
+                         fnitem)
                 }
             }
         }
@@ -324,9 +324,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir_map::NodeStructCtor(..) => {
             return FunctionDebugContext::FunctionWithoutDebugInfo;
         }
-        _ => cx.sess().bug(&format!("create_function_debug_context: \
-                                    unexpected sort of node: {:?}",
-                                   fnitem))
+        _ => bug!("create_function_debug_context: \
+                   unexpected sort of node: {:?}",
+                  fnitem)
     };
 
     // This can be the case for functions inlined from another crate
@@ -441,7 +441,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 (sig, closure_type.abi)
             }
 
-            _ => cx.sess().bug("get_function_metdata: Expected a function type!")
+            _ => bug!("get_function_metdata: Expected a function type!")
         };
 
         let mut signature = Vec::with_capacity(sig.inputs.len() + 1);
@@ -640,7 +640,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ArgumentVariable(_) | CapturedVariable => {
             assert!(!bcx.fcx
                         .debug_context
-                        .get_ref(cx, span)
+                        .get_ref(span)
                         .source_locations_enabled
                         .get());
             source_loc::set_debug_location(cx, InternalDebugLocation::UnknownLocation);

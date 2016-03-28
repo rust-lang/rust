@@ -180,7 +180,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 
             let tupled_arg_tys = match arg_ty.sty {
                 ty::TyTuple(ref tys) => tys,
-                _ => unreachable!("spread argument isn't a tuple?!")
+                _ => bug!("spread argument isn't a tuple?!")
             };
 
             let lltemp = bcx.with_block(|bcx| {

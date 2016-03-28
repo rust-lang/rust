@@ -367,7 +367,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     });
     let vtbl = match fulfill_obligation(bcx.ccx(), DUMMY_SP, trait_ref) {
         traits::VtableImpl(data) => data,
-        _ => tcx.sess.bug(&format!("dtor for {:?} is not an impl???", t))
+        _ => bug!("dtor for {:?} is not an impl???", t)
     };
     let dtor_did = def.destructor().unwrap();
     bcx = Callee::def(bcx.ccx(), dtor_did, vtbl.substs)
@@ -482,7 +482,7 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
             (bcx.mul(info, C_uint(bcx.ccx(), unit_size)),
              C_uint(bcx.ccx(), unit_align))
         }
-        _ => bcx.sess().bug(&format!("Unexpected unsized type, found {}", t))
+        _ => bug!("Unexpected unsized type, found {}", t)
     }
 }
 
