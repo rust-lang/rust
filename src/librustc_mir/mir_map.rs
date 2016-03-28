@@ -165,8 +165,7 @@ fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
     let fn_sig = match cx.tcx().tables.borrow().liberated_fn_sigs.get(&fn_id) {
         Some(f) => f.clone(),
         None => {
-            cx.tcx().sess.span_bug(span,
-                                   &format!("no liberated fn sig for {:?}", fn_id));
+            span_bug!(span, "no liberated fn sig for {:?}", fn_id);
         }
     };
 

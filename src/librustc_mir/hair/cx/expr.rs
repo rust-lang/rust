@@ -64,11 +64,11 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
                     let sig = match method.ty.sty {
                         ty::TyFnDef(_, _, fn_ty) => &fn_ty.sig,
-                        _ => cx.tcx.sess.span_bug(self.span, "type of method is not an fn")
+                        _ => span_bug!(self.span, "type of method is not an fn")
                     };
 
                     let sig = cx.tcx.no_late_bound_regions(sig).unwrap_or_else(|| {
-                        cx.tcx.sess.span_bug(self.span, "method call has late-bound regions")
+                        span_bug!(self.span, "method call has late-bound regions")
                     });
 
                     assert_eq!(sig.inputs.len(), 2);
@@ -128,7 +128,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
             hir::ExprAddrOf(mutbl, ref expr) => {
                 let region = match expr_ty.sty {
                     ty::TyRef(r, _) => r,
-                    _ => cx.tcx.sess.span_bug(expr.span, "type of & not region"),
+                    _ => span_bug!(expr.span, "type of & not region"),
                 };
                 ExprKind::Borrow {
                     region: *region,
@@ -297,16 +297,18 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                 }
                             }
                             ref def => {
-                                cx.tcx.sess.span_bug(
+                                span_bug!(
                                     self.span,
-                                    &format!("unexpected def: {:?}", def));
+                                    "unexpected def: {:?}",
+                                    def);
                             }
                         }
                     }
                     _ => {
-                        cx.tcx.sess.span_bug(
+                        span_bug!(
                             self.span,
-                            &format!("unexpected type for struct literal: {:?}", expr_ty));
+                            "unexpected type for struct literal: {:?}",
+                            expr_ty);
                     }
                 }
             }
@@ -316,9 +318,9 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                 let (def_id, substs) = match closure_ty.sty {
                     ty::TyClosure(def_id, ref substs) => (def_id, substs),
                     _ => {
-                        cx.tcx.sess.span_bug(self.span,
-                                             &format!("closure expr w/o closure type: {:?}",
-                                                      closure_ty));
+                        span_bug!(self.span,
+                                  "closure expr w/o closure type: {:?}",
+                                  closure_ty);
                     }
                 };
                 let upvars = cx.tcx.with_freevars(self.id, |freevars| {
@@ -355,7 +357,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     span: c.span,
                     value: match const_eval::eval_const_expr(cx.tcx, c) {
                         ConstVal::Integral(ConstInt::Usize(u)) => u,
-                        other => panic!("constant evaluation of repeat count yielded {:?}", other),
+                        other => bug!("constant evaluation of repeat count yielded {:?}", other),
                     },
                 }
             },
@@ -383,14 +385,16 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     ty::TyStruct(adt_def, _) =>
                         adt_def.variants[0].index_of_field_named(name.node),
                     ref ty =>
-                        cx.tcx.sess.span_bug(
+                        span_bug!(
                             self.span,
-                            &format!("field of non-struct: {:?}", ty)),
+                            "field of non-struct: {:?}",
+                            ty),
                 };
                 let index = index.unwrap_or_else(|| {
-                    cx.tcx.sess.span_bug(
+                    span_bug!(
                         self.span,
-                        &format!("no index found for field `{}`", name.node));
+                        "no index found for field `{}`",
+                        name.node)
                 });
                 ExprKind::Field { lhs: source.to_ref(), name: Field::new(index) }
             }
@@ -474,8 +478,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                             Some(ty::FnConverging(&ty::TyS {
                                 sty: ty::TyRef(region, mt), ..
                             })) => (region, mt.mutbl),
-                            _ => cx.tcx.sess.span_bug(
-                                expr.span, "autoderef returned bad type")
+                            _ => span_bug!(expr.span, "autoderef returned bad type")
                         };
 
                         expr = Expr {
@@ -651,7 +654,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
                 fields: vec![],
                 base: None
             },
-            ref sty => panic!("unexpected sty: {:?}", sty)
+            ref sty => bug!("unexpected sty: {:?}", sty)
         },
         Def::Variant(enum_id, variant_id) => match cx.tcx.node_id_to_type(expr.id).sty {
             // A variant constructor. Should only be reached if not called in the same
@@ -669,7 +672,7 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
                     base: None
                 };
             },
-            ref sty => panic!("unexpected sty: {:?}", sty)
+            ref sty => bug!("unexpected sty: {:?}", sty)
         },
         Def::Const(def_id) |
         Def::AssociatedConst(def_id) => {
@@ -693,9 +696,10 @@ fn convert_path_expr<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr)
         def @ Def::Upvar(..) => return convert_var(cx, expr, def),
 
         def =>
-            cx.tcx.sess.span_bug(
+            span_bug!(
                 expr.span,
-                &format!("def `{:?}` not yet implemented", def)),
+                "def `{:?}` not yet implemented",
+                def),
     };
     ExprKind::Literal {
         literal: Literal::Item { def_id: def_id, substs: substs }
@@ -724,12 +728,12 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                     match expr.node {
                         hir::ExprClosure(_, _, ref body) => body.id,
                         _ => {
-                            cx.tcx.sess.span_bug(expr.span, "closure expr is not a closure expr");
+                            span_bug!(expr.span, "closure expr is not a closure expr");
                         }
                     }
                 }
                 _ => {
-                    cx.tcx.sess.span_bug(expr.span, "ast-map has garbage for closure expr");
+                    span_bug!(expr.span, "ast-map has garbage for closure expr");
                 }
             };
 
@@ -809,9 +813,10 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             let upvar_capture = match cx.tcx.upvar_capture(upvar_id) {
                 Some(c) => c,
                 None => {
-                    cx.tcx.sess.span_bug(
+                    span_bug!(
                         expr.span,
-                        &format!("no upvar_capture for {:?}", upvar_id));
+                        "no upvar_capture for {:?}",
+                        upvar_id);
                 }
             };
             match upvar_capture {
@@ -834,7 +839,7 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             }
         }
 
-        _ => cx.tcx.sess.span_bug(expr.span, "type of & not region"),
+        _ => span_bug!(expr.span, "type of & not region"),
     }
 }
 
@@ -857,7 +862,7 @@ fn bin_op(op: hir::BinOp_) -> BinOp {
         hir::BinOp_::BiNe => BinOp::Ne,
         hir::BinOp_::BiGe => BinOp::Ge,
         hir::BinOp_::BiGt => BinOp::Gt,
-        _ => panic!("no equivalent for ast binop {:?}", op),
+        _ => bug!("no equivalent for ast binop {:?}", op),
     }
 }
 
@@ -997,7 +1002,7 @@ fn loop_label<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr) -> Cod
     match cx.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
         Some(Def::Label(loop_id)) => cx.tcx.region_maps.node_extent(loop_id),
         d => {
-            cx.tcx.sess.span_bug(expr.span, &format!("loop scope resolved to {:?}", d));
+            span_bug!(expr.span, "loop scope resolved to {:?}", d);
         }
     }
 }

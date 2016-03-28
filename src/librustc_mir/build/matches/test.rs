@@ -521,8 +521,9 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     }
 
     fn error_simplifyable<'pat>(&mut self, match_pair: &MatchPair<'pat, 'tcx>) -> ! {
-        self.hir.span_bug(match_pair.pattern.span,
-                          &format!("simplifyable pattern found: {:?}", match_pair.pattern))
+        span_bug!(match_pair.pattern.span,
+                  "simplifyable pattern found: {:?}",
+                  match_pair.pattern)
     }
 }
 
