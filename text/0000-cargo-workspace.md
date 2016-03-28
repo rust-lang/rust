@@ -57,29 +57,34 @@ conventional project layouts but will have explicit controls for configuration.
 First, let's look at the new manifest keys which will be added to `Cargo.toml`:
 
 ```toml
+[package]
+workspace = "../foo"
+
+# or ...
+
 [workspace]
-root = true
-members = ["relative/path/to/child1", "child2"]
+members = ["relative/path/to/child1", "../child2"]
 ```
 
-Here the `workspace.root` key will be used to indicate whether a `Cargo.toml` is
-the root of a workspace, and the `members` key will be a list of paths to
-crates which should be added to the package's workspace. The paths listed in
-`members` must be valid paths to crates.
+Here the `package.workspace` key is used to point at a workspace root. For
+example this Cargo.toml indicates that the Cargo.toml in `../foo` is the
+workspace that this package is a member of.
+
+The root of a workspace, indicated by the presence of `[workspace]`, may also
+explicitly specify some members of the workspace as well via the
+`workspace.members` key. This example here means that two extra crates will be a
+member of the workspace.
 
 ### Implicit relations
 
 In addition to the keys above, Cargo will apply a few heuristics to infer the
 keys wherever possible:
 
-* All path dependencies of a crate are considered members of the `workspace` key
-  implicitly.
-* Starting from a package's `Cargo.toml`, Cargo will walk upwards on the
-  filesystem to find a sibling `Cargo.toml` and VCS directory (e.g. `.git` or
-  `.svn`). If found, this crate is also implicitly considered a member of the
+* All `path` dependencies of a crate are considered members of the same
   workspace.
-* A `Cargo.toml` which resides next to a VCS directory is implicitly a
-  workspace root.
+* If `package.workspace` isn't specified, then Cargo will walk upwards on the
+  filesystem until either a `Cargo.toml` with `[workspace]` is found or a VCS
+  root is found.
 
 These rules are intended to reflect some conventional Cargo project layouts.
 "Root crates" typically appear at the root of a repository with lots path
@@ -90,19 +95,18 @@ downwards to specific locations.
 ### "Virtual" `Cargo.toml`
 
 A good number of projects do not have a root `Cargo.toml` at the top of a
-repository, however. While the explicit `[workspace]` keys should be enough to
-configure the workspace in addition to the implicit relations above, this
-directory structure is common enough that it shouldn't require *that* much more
-configuration.
+repository, however. While the explicit `package.workspace` and
+`workspace.members` keys should be enough to configure the workspace in addition
+to the implicit relations above, this directory structure is common enough that
+it shouldn't require *that* much more configuration.
 
-To accomodate this project layout, Cargo will now allow for "virtual manifest"
+To accommodate this project layout, Cargo will now allow for "virtual manifest"
 files. These manifests will currently **only** contains the `[workspace]` key
 and will notably be lacking a `[project]` or `[package]` top level key.
 
 A virtual manifest does not itself define a crate, but can help when defining a
-root. For example a `Cargo.toml` file at the root of a repository with
-`workspace.members` keys would suffice for the project configurations in
-question.
+root. For example a `Cargo.toml` file at the root of a repository with a
+`[workspace]` key would suffice for the project configurations in question.
 
 Cargo will for the time being disallow many commands against a virtual manifest,
 for example `cargo build` will be rejected. Arguments that take a package,
@@ -112,10 +116,11 @@ get extended with `--all` flags so in a workspace root you could execute
 
 ### Constructing a workspace
 
-With the explicit and implicit relations defined above, each crate will now have
-a flag indicating whether it's the root and a number of outgoing edges to other
-crates. Two crates are then in the same workspace if they both transitively have
-edges to one another. A valid workspace then only has one crate that is a root.
+With the explicit and implicit relations defined above, each crate will have a
+number of outgoing edges to other crates via `workspace.members`, path
+dependencies, and `package.workspace`. Two crates are then in the same workspace
+if they both transitively have edges to one another. A valid workspace then has
+exactly one root crate with a `[workspace]` key.
 
 While the restriction of one-root-per workspace may make sense, the restriction
 of crates transitively having edges to one another may seem a bit odd. The
@@ -128,20 +133,20 @@ would not know how to get back to the "root package", so the workspace from the
 point of view of the path dependencies would be different than that of the root
 package. This could in turn lead to `Cargo.lock` getting out of sync.
 
-To alleviate misconfiguration, however, if the `workspace` configuration key
-contains a crate which is not a member of the constructed workspace, Cargo will
-emit an error indicating such.
+To alleviate misconfiguration, however, if the `workspace.members`
+configuration key contains a crate which is not a member of the constructed
+workspace, Cargo will emit an error indicating as such.
 
 ### Workspaces in practice
 
-The conventional layout for a Rust project is to have a `Cargo.toml` at the root
+A conventional layout for a Rust project is to have a `Cargo.toml` at the root
 with the "main project" with dependencies and/or satellite projects underneath.
-Consequently the conventional layout will need no extra configuration to benefit
-from the workspaces proposed in this RFC. For example, all of these project
-layouts (with `/` being the root of a repository) will not require any
-configuration to have all crates be members of a workspace:
+Consequently the conventional layout will only need a `[workspace]` key added to
+the root to benefit from the workspaces proposed in this RFC. For example, all
+of these project layouts (with `/` being the root of a repository) will not
+require any configuration to have all crates be members of a workspace:
 
-* An FFI crate with a sub-scrate for FFI bindings
+* An FFI crate with a sub-crate for FFI bindings
 
   ```
   Cargo.toml
@@ -166,8 +171,8 @@ configuration to have all crates be members of a workspace:
 
 Projects like the compiler, however, will likely need explicit configuration.
 The `rust` repo conceptually has two workspaces, the standard library and the
-compiler, and these would need to be manually configured with `workspace` and
-`workspace-root` keys amongst all crates.
+compiler, and these would need to be manually configured with
+`workspace.members` and `package.workspace` keys amongst all crates.
 
 Some examples of layouts that will require extra configuration, along with the
 configuration necessary, are:
@@ -191,11 +196,6 @@ configuration necessary, are:
 
   ```toml
   [workspace]
-  members = [
-    "crate1",
-    "crate2",
-    "crate3",
-  ]
   ```
 
 * Trees with multiple workspaces
@@ -222,33 +222,76 @@ configuration necessary, are:
   ```toml
   # ws1/Cargo.toml
   [workspace]
-  root = true
   members = ["crate1", "crate2"]
-  ```
-
-  ```toml
-  # ws1/crate1/Cargo.toml
-  [workspace]
-  members = [".."]
-  ```
-
-  ```toml
-  # ws1/crate2/Cargo.toml
-  [workspace]
-  members = [".."]
   ```
 
   ```toml
   # ws2/Cargo.toml
   [workspace]
-  root = true
+  ```
+
+* Trees with non-hierarchical workspaces
+
+  ```
+  root/
+    Cargo.toml
+    src/
+  crates/
+    crate1/
+      Cargo.toml
+      src/
+    crate2/
+      Cargo.toml
+      src/
+  ```
+
+  The workspace here can be configured by placing the following in the
+  manifests:
+
+  ```toml
+  # root/Cargo.toml
+  #
+  # Note that `members` aren't necessary if these are otherwise path
+  # dependencies.
+  [workspace]
+  members = ["../crates/crate1", "../crates/crate2"]
   ```
 
   ```toml
-  # ws2/crate3/Cargo.toml
-  [workspace]
-  members = [".."]
+  # crates/crate1/Cargo.toml
+  [package]
+  workspace = "../root"
   ```
+
+  ```toml
+  # crates/crate2/Cargo.toml
+  [package]
+  workspace = "../root"
+  ```
+
+### Lockfile and override interactions
+
+One of the main features of a workspace is that only one `Cargo.lock` is
+generated for the entire workspace. This lock file can be affected, however,
+with both [`[replace]` overrides][replace] as well as `paths` overrides.
+
+[replace]: https://github.com/rust-lang/cargo/pull/2385
+
+Primarily, the `Cargo.lock` generate will not simply be the concatenation of the
+lock files from each project. Instead the entire workspace will be resolved
+together all at once, minimizing versions of crates used and sharing
+dependencies as much as possible. For example one `path` dependency will always
+have the same set of dependencies no matter which crate is being compiled.
+
+When interacting with overrides, workspaces will be modified to only allow
+`[replace]` to exist in the workspace root. This Cargo.toml will affect lock
+file generation, but no other workspace members will be allowed to have a
+`[replace]` directive (with an informative error message being produced).
+
+Finally, the `paths` overrides will be applied as usual, and they'll continue to
+be applied relative to whatever crate is being compiled (not the workspace
+root). These are intended for much more local testing, so no restriction of
+"must be in the root" should be necessary.
 
 ### Future Extensions
 
@@ -270,13 +313,11 @@ show that workspaces can be used to solve other existing issues in Cargo.
   be incompatible. If all maintainers agree on versions of Cargo, however, this
   is not a problem.
 
-* If no crate exists at the root of a repository, it may be the case that an
-  unduly large amount of configuration is required to setup the workspace
-  correctly. A minor deviation from the normal conventions should in theory only
-  require a proportionally minor amount of configuration.
-
 * As proposed there is no method to disable implicit actions taken by Cargo.
   It's unclear what the use case for this is, but it could in theory arise.
+
+* No crate will implicitly benefit from workspaces after this is implemented.
+  Existing crates must opt-in with a `[workspace]` key somewhere at least.
 
 # Alternatives
 
