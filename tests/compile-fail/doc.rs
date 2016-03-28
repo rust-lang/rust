@@ -6,9 +6,13 @@
 
 #![deny(doc_markdown)]
 
-/// The foo_bar function does nothing.
-//~^ ERROR: you should put `foo_bar` between ticks
+/// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
+/// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
+/// which should be reported only once despite being __doubly bad__.
 fn foo_bar() {
+//~^ ERROR: you should put `foo_bar` between ticks
+//~| ERROR: you should put `foo::bar` between ticks
+//~| ERROR: you should put `Foo::some_fun` between ticks
 }
 
 /// That one tests multiline ticks.

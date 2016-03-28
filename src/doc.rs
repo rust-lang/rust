@@ -4,22 +4,23 @@ use syntax::ast;
 use syntax::codemap::Span;
 use utils::span_lint;
 
-/// **What it does:** This lint checks for the presence of the `_` character outside ticks in
-/// documentation.
+/// **What it does:** This lint checks for the presence of `_`, `::` or camel-case words outside
+/// ticks in documentation.
 ///
-/// **Why is this bad?** *Rustdoc* supports markdown formatting, the `_` character probably
+/// **Why is this bad?** *Rustdoc* supports markdown formatting, `_`, `::` and camel-case probably
 /// indicates some code which should be included between ticks.
 ///
-/// **Known problems:** Lots of bad docs won’t be fixed, the lint only checks for `_`.
+/// **Known problems:** Lots of bad docs won’t be fixed, what the lint checks for is limited.
 ///
 /// **Examples:**
 /// ```rust
-/// /// Do something with the foo_bar parameter.
+/// /// Do something with the foo_bar parameter. See also that::other::module::foo.
+/// // ^ `foo_bar` and `that::other::module::foo` should be ticked.
 /// fn doit(foo_bar) { .. }
 /// ```
 declare_lint! {
     pub DOC_MARKDOWN, Warn,
-    "checks for the presence of the `_` character outside ticks in documentation"
+    "checks for the presence of `_`, `::` or camel-case outside ticks in documentation"
 }
 
 #[derive(Copy,Clone)]
@@ -71,9 +72,20 @@ fn collect_doc(attrs: &[ast::Attribute]) -> (Cow<str>, Option<Span>) {
     }
 }
 
-fn check_attrs<'a>(cx: &EarlyContext, attrs: &'a [ast::Attribute], default_span: Span) {
+pub fn check_attrs<'a>(cx: &EarlyContext, attrs: &'a [ast::Attribute], default_span: Span) {
     let (doc, span) = collect_doc(attrs);
     let span = span.unwrap_or(default_span);
+
+    // In markdown, `_` can be used to emphasize something, or, is a raw `_` depending on context.
+    // There really is no markdown specification that would disambiguate this properly. This is
+    // what GitHub and Rustdoc do:
+    //
+    // foo_bar test_quz    → foo_bar test_quz
+    // foo_bar_baz         → foo_bar_baz (note that the “official” spec says this should be emphasized)
+    // _foo bar_ test_quz_ → <em>foo bar</em> test_quz_
+    // \_foo bar\_         → _foo bar_
+    // (_baz_)             → (<em>baz</em>)
+    // foo _ bar _ baz     → foo _ bar _ baz
 
     let mut in_ticks = false;
     for word in doc.split_whitespace() {
@@ -106,7 +118,16 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
         s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
     }
 
-    if word.contains('_') || is_camel_case(word) {
+    fn has_underscore(s: &str) -> bool {
+        s != "_" && !s.contains("\\_") && s.contains('_')
+    }
+
+    // Trim punctuation as in `some comment (see foo::bar).`
+    //                                                   ^^
+    // Or even as `_foo bar_` which is emphasized.
+    let word = word.trim_matches(|c: char| !c.is_alphanumeric());
+
+    if has_underscore(word) || word.contains("::") || is_camel_case(word) {
         span_lint(cx, DOC_MARKDOWN, span, &format!("you should put `{}` between ticks in the documentation", word));
     }
 }
