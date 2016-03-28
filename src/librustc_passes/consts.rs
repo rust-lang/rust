@@ -229,7 +229,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             Mode::Const => "constant",
             Mode::ConstFn => "constant function",
             Mode::StaticMut | Mode::Static => "static",
-            Mode::Var => unreachable!(),
+            Mode::Var => bug!(),
         }
     }
 
@@ -400,7 +400,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 // The count is checked elsewhere (typeck).
                 let count = match node_ty.sty {
                     ty::TyArray(_, n) => n,
-                    _ => unreachable!()
+                    _ => bug!()
                 };
                 // [element; 0] is always zero-sized.
                 if count == 0 {
@@ -570,7 +570,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprCast(ref from, _) => {
             debug!("Checking const cast(id={})", from.id);
             match v.tcx.cast_kinds.borrow().get(&from.id) {
-                None => v.tcx.sess.span_bug(e.span, "no kind for cast"),
+                None => span_bug!(e.span, "no kind for cast"),
                 Some(&CastKind::PtrAddrCast) | Some(&CastKind::FnPtrAddrCast) => {
                     v.add_qualif(ConstQualif::NOT_CONST);
                     if v.mode != Mode::Var {
