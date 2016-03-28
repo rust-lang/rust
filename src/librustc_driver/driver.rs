@@ -829,6 +829,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                index,
                                name,
                                |tcx| {
+        time(time_passes,
+             "load_dep_graph",
+             || rustc_incremental::load_dep_graph(tcx));
+
         // passes are timed inside typeck
         try_with_f!(typeck::check_crate(tcx, trait_map), (tcx, None, analysis));
 
@@ -961,6 +965,10 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
     time(time_passes,
          "assert dep graph",
          move || rustc_incremental::assert_dep_graph(tcx));
+
+    time(time_passes,
+         "serialize dep graph",
+         move || rustc_incremental::save_dep_graph(tcx));
 
     translation
 }
