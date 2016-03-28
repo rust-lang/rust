@@ -14,7 +14,7 @@ Table of contents:
 * [License](#license)
 
 ##Lints
-There are 135 lints included in this crate:
+There are 136 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -133,6 +133,7 @@ name                                                                            
 [temporary_assignment](https://github.com/Manishearth/rust-clippy/wiki#temporary_assignment)                         | warn    | assignments to temporaries
 [too_many_arguments](https://github.com/Manishearth/rust-clippy/wiki#too_many_arguments)                             | warn    | functions with too many arguments
 [toplevel_ref_arg](https://github.com/Manishearth/rust-clippy/wiki#toplevel_ref_arg)                                 | warn    | An entire binding was declared as `ref`, in a function argument (`fn foo(ref x: Bar)`), or a `let` statement (`let ref x = foo()`). In such cases, it is preferred to take references with `&`.
+[transmute_ptr_to_ref](https://github.com/Manishearth/rust-clippy/wiki#transmute_ptr_to_ref)                         | warn    | transmutes from a pointer to a reference type
 [trivial_regex](https://github.com/Manishearth/rust-clippy/wiki#trivial_regex)                                       | warn    | finds trivial regular expressions in `Regex::new(_)` invocations
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                   | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                   | allow   | using a unicode literal not in NFC normal form (see http://www.unicode.org/reports/tr15/ for further information)

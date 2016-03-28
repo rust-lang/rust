@@ -195,8 +195,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box no_effect::NoEffectPass);
     reg.register_late_lint_pass(box map_clone::MapClonePass);
     reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
-    reg.register_late_lint_pass(box transmute::CrosspointerTransmute);
-    reg.register_late_lint_pass(box transmute::UselessTransmute);
+    reg.register_late_lint_pass(box transmute::Transmute);
     reg.register_late_lint_pass(box cyclomatic_complexity::CyclomaticComplexity::new(conf.cyclomatic_complexity_threshold));
     reg.register_late_lint_pass(box escape::EscapePass);
     reg.register_early_lint_pass(box misc_early::MiscEarly);
@@ -352,6 +351,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         swap::MANUAL_SWAP,
         temporary_assignment::TEMPORARY_ASSIGNMENT,
         transmute::CROSSPOINTER_TRANSMUTE,
+        transmute::TRANSMUTE_PTR_TO_REF,
         transmute::USELESS_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BOX_VEC,
