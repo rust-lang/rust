@@ -349,8 +349,8 @@ By default, all tests are run in parallel. This can be altered with the
 RUST_TEST_THREADS environment variable when running tests (set it to 1).
 
 All tests have their standard output and standard error captured by default.
-This can be overridden with the --nocapture flag or the RUST_TEST_NOCAPTURE=1
-environment variable. Logging is not captured by default.
+This can be overridden with the --nocapture flag or setting RUST_TEST_NOCAPTURE
+environment variable to a value other than "0". Logging is not captured by default.
 
 Test Attributes:
 
@@ -399,7 +399,10 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
-        nocapture = env::var("RUST_TEST_NOCAPTURE").is_ok();
+        nocapture = match env::var("RUST_TEST_NOCAPTURE") {
+            Ok(val) => &val != "0",
+            Err(_) => false
+        };
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {

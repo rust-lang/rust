@@ -36,7 +36,7 @@ pub fn log_enabled() -> bool {
     }
 
     let val = match env::var_os("RUST_BACKTRACE") {
-        Some(..) => 2,
+        Some(x) => if &x == "0" { 1 } else { 2 },
         None => 1,
     };
     ENABLED.store(val, Ordering::SeqCst);
