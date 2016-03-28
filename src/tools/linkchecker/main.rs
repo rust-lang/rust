@@ -35,6 +35,8 @@ use std::collections::hash_map::Entry;
 
 use url::{Url, UrlParser};
 
+use Redirect::*;
+
 macro_rules! t {
     ($e:expr) => (match $e {
         Ok(e) => e,
@@ -57,6 +59,12 @@ fn main() {
 pub enum LoadError {
     IOError(std::io::Error),
     BrokenRedirect(PathBuf, std::io::Error),
+    IsRedirect,
+}
+
+enum Redirect {
+    SkipRedirect,
+    FromRedirect(bool),
 }
 
 struct FileEntry {
@@ -156,7 +164,7 @@ fn check(cache: &mut Cache,
     let mut parser = UrlParser::new();
     parser.base_url(base);
 
-    let res = load_file(cache, root, PathBuf::from(file), false, false);
+    let res = load_file(cache, root, PathBuf::from(file), SkipRedirect);
     let (pretty_file, contents) = match res {
         Ok(res) => res,
         Err(_) => return None,
@@ -182,7 +190,7 @@ fn check(cache: &mut Cache,
             if path.is_dir() {
                 return;
             }
-            let res = load_file(cache, root, path.clone(), true, false);
+            let res = load_file(cache, root, path.clone(), FromRedirect(false));
             let (pretty_path, contents) = match res {
                 Ok(res) => res,
                 Err(LoadError::IOError(err)) => panic!(format!("{}", err)),
@@ -191,6 +199,7 @@ fn check(cache: &mut Cache,
                            pretty_file.display(), i + 1, target.display());
                     return;
                 }
+                Err(LoadError::IsRedirect) => unreachable!(),
             };
 
             if let Some(ref fragment) = parsed_url.fragment {
@@ -225,8 +234,7 @@ fn check(cache: &mut Cache,
 fn load_file(cache: &mut Cache,
              root: &Path,
              file: PathBuf,
-             follow_redirects: bool,
-             is_redirect: bool) -> Result<(PathBuf, String), LoadError> {
+             redirect: Redirect) -> Result<(PathBuf, String), LoadError> {
     let mut contents = String::new();
     let pretty_file = PathBuf::from(file.strip_prefix(root).unwrap_or(&file));
 
@@ -237,7 +245,7 @@ fn load_file(cache: &mut Cache,
         },
         Entry::Vacant(entry) => {
             let mut fp = try!(File::open(file.clone()).map_err(|err| {
-                if is_redirect {
+                if let FromRedirect(true) = redirect {
                     LoadError::BrokenRedirect(file.clone(), err)
                 } else {
                     LoadError::IOError(err)
@@ -246,12 +254,12 @@ fn load_file(cache: &mut Cache,
             try!(fp.read_to_string(&mut contents)
                    .map_err(|err| LoadError::IOError(err)));
 
-            let maybe = if follow_redirects {
-                maybe_redirect(&contents)
+            let maybe = maybe_redirect(&contents);
+            if maybe.is_some() {
+                if let SkipRedirect = redirect {
+                    return Err(LoadError::IsRedirect);
+                }
             } else {
-                None
-            };
-            if maybe.is_none() {
                 entry.insert(FileEntry {
                     source: contents.clone(),
                     ids: HashSet::new(),
@@ -266,9 +274,8 @@ fn load_file(cache: &mut Cache,
 
     match maybe_redirect.and_then(|url| url_to_file_path(&parser, &url)) {
         Some((_, redirect_file)) => {
-            assert!(follow_redirects);
             let path = PathBuf::from(redirect_file);
-            load_file(cache, root, path, follow_redirects, true)
+            load_file(cache, root, path, FromRedirect(true))
         }
         None => Ok((pretty_file, contents))
     }
