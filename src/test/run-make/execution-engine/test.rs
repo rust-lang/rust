@@ -239,7 +239,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
 
         let krate = driver::assign_node_ids(&sess, krate);
         let lcx = LoweringContext::new(&sess, Some(&krate));
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+        let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
         let mut hir_forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
         let arenas = ty::CtxtArenas::new();
         let ast_map = driver::make_map(&sess, &mut hir_forest);
