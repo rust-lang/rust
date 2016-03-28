@@ -218,8 +218,8 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                    .enumerate()
                    .all(|(index, block)| {
                        if block.terminator.is_none() {
-                           panic!("no terminator on block {:?} in fn {:?}",
-                               index, fn_id)
+                           bug!("no terminator on block {:?} in fn {:?}",
+                                index, fn_id)
                        }
                        true
                    }));
