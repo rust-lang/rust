@@ -173,7 +173,7 @@ use vec::{self, Vec};
 /// ```
 /// use std::collections::BinaryHeap;
 ///
-/// // type inference lets us omit an explicit type signature (which
+/// // Type inference lets us omit an explicit type signature (which
 /// // would be `BinaryHeap<i32>` in this example).
 /// let mut heap = BinaryHeap::new();
 ///
