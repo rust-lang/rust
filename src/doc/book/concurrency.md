@@ -271,7 +271,7 @@ fn main() {
 }
 ```
 
-Similarly to las time, we use `clone()` to create a new owned handle.
+Similarly to last time, we use `clone()` to create a new owned handle.
 This handle is then moved into the new thread.
 
 And... still gives us an error.
@@ -282,7 +282,7 @@ And... still gives us an error.
                              ^~~~
 ```
 
-`Arc<T> by default has immutable contents. It allows the _sharing_ of data
+`Arc<T>` by default has immutable contents. It allows the _sharing_ of data
 between threads, but shared mutable data is unsafe and when threads are
 involved can cause data races!
 
