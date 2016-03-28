@@ -17,7 +17,7 @@ use super::Hasher;
 
 /// An implementation of SipHash 2-4.
 ///
-/// See: http://131002.net/siphash/
+/// See: https://131002.net/siphash/
 ///
 /// This is currently the default hashing function used by standard library
 /// (eg. `collections::HashMap` uses it by default).
