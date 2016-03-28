@@ -36,7 +36,6 @@ use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::errors::FatalError;
 use syntax::parse::token::InternedString;
 use rustc_front::intravisit::Visitor;
 use rustc_front::hir;
@@ -527,7 +526,7 @@ impl<'a> CrateReader<'a> {
                 load_ctxt.filesearch = self.sess.target_filesearch(PathKind::Crate);
                 load_ctxt.load_library_crate()
             }
-            None => { load_ctxt.report_load_errs(); unreachable!() },
+            None => { load_ctxt.report_load_errs(); },
         };
 
         let dylib = library.dylib.clone();
@@ -573,7 +572,8 @@ impl<'a> CrateReader<'a> {
                     Ok(body) => body,
                     Err(mut err) => {
                         err.emit();
-                        panic!(FatalError);
+                        self.sess.abort_if_errors();
+                        unreachable!();
                     }
                 };
                 let local_span = mk_sp(lo, p.last_span.hi);
