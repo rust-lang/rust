@@ -17,5 +17,5 @@ use std::cell::UnsafeCell;
 fn assert<T: RecoverSafe + ?Sized>() {}
 
 fn main() {
-    assert::<*const UnsafeCell<i32>>(); //~ ERROR: is not implemented
+    assert::<*const UnsafeCell<i32>>(); //~ ERROR E0277
 }

@@ -19,7 +19,7 @@ struct Struct {
 
 impl Struct {
     fn uhoh<T>(foo: <T as Get>::Value) {}
-    //~^ ERROR the trait `Get` is not implemented for the type `T`
+    //~^ ERROR the predicate `T : Get` is not satisfied
 }
 
 fn main() {

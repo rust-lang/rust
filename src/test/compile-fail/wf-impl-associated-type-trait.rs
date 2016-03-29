@@ -25,9 +25,8 @@ pub trait Foo {
 
 impl<T> Foo for T {
     type Bar = MySet<T>;
-    //~^ ERROR the trait `MyHash` is not implemented for the type `T`
+    //~^ ERROR the predicate `T : MyHash` is not satisfied
 }
 
 #[rustc_error]
 fn main() { }
-
