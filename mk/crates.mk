@@ -53,11 +53,12 @@ TARGET_CRATES := libc std term \
                  getopts collections test rand \
                  core alloc \
                  rustc_unicode rustc_bitflags \
-		 alloc_system alloc_jemalloc rustc_const_eval
+		 alloc_system alloc_jemalloc
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics \
-                rustc_plugin rustc_metadata rustc_passes rustc_save_analysis
+                rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
+                rustc_const_eval
 HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros \
 		flate arena graphviz rbml log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
