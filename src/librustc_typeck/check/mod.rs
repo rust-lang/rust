@@ -2904,7 +2904,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             } else {
                 fcx.infcx().commit_if_ok(|_| {
                     let trace = TypeTrace::types(origin, true, then_ty, else_ty);
-                    fcx.infcx().lub(true, trace).relate(&then_ty, &else_ty)
+                    fcx.infcx().lub(true, trace, &then_ty, &else_ty)
                 })
             };
             (origin, then_ty, else_ty, result)
