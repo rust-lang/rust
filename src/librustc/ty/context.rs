@@ -434,7 +434,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if cnum == LOCAL_CRATE {
             self.sess.crate_disambiguator.get().as_str()
         } else {
-            self.sess.cstore.crate_name(cnum)
+            self.sess.cstore.crate_disambiguator(cnum)
         }
     }
 
