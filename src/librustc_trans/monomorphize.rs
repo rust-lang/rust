@@ -23,10 +23,10 @@ use base;
 use common::*;
 use declare;
 use Disr;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::util::ppaux;
 
-use rustc_front::hir;
+use rustc::hir;
 
 use syntax::attr;
 use syntax::errors;

@@ -105,7 +105,7 @@ use rustc::middle::cstore;
 use rustc::middle::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::item_path::{ItemPathBuffer, RootMode};
-use rustc::front::map::definitions::{DefPath, DefPathData};
+use rustc::hir::map::definitions::{DefPath, DefPathData};
 
 use std::fmt::Write;
 use syntax::parse::token::{self, InternedString};

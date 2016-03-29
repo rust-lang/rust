@@ -29,7 +29,6 @@
 
 extern crate core;
 #[macro_use] extern crate rustc;
-extern crate rustc_front;
 extern crate rustc_const_eval;
 
 #[macro_use] extern crate log;

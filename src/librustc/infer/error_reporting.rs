@@ -73,9 +73,9 @@ use super::region_inference::SameRegions;
 
 use std::collections::HashSet;
 
-use front::map as ast_map;
-use rustc_front::hir;
-use rustc_front::print::pprust;
+use hir::map as ast_map;
+use hir;
+use hir::print as pprust;
 
 use middle::cstore::CrateStore;
 use middle::def::Def;

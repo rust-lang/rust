@@ -15,7 +15,7 @@ use super::utils::{DIB, debug_context};
 use llvm;
 use llvm::debuginfo::DIScope;
 use rustc::middle::def_id::DefId;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use common::CrateContext;
 
 use std::ffi::CString;

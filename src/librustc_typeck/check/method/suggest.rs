@@ -15,7 +15,7 @@ use CrateCtxt;
 
 use astconv::AstConv;
 use check::{self, FnCtxt, UnresolvedTypeAction, autoderef};
-use front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use middle::cstore::{self, CrateStore};
 use middle::def::Def;
@@ -30,9 +30,9 @@ use util::nodemap::{FnvHashSet};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
-use rustc_front::print::pprust;
-use rustc_front::hir;
-use rustc_front::hir::Expr_;
+use rustc::hir::print as pprust;
+use rustc::hir;
+use rustc::hir::Expr_;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -436,7 +436,7 @@ impl Ord for TraitInfo {
 /// Retrieve all traits in this crate and any dependent crates.
 pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
     if ccx.all_traits.borrow().is_none() {
-        use rustc_front::intravisit;
+        use rustc::hir::intravisit;
 
         let mut traits = vec![];
 

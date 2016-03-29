@@ -30,7 +30,7 @@ use std::usize;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
 
 #[path="fragments.rs"]
 pub mod fragments;

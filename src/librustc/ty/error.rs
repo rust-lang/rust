@@ -19,7 +19,7 @@ use syntax::ast::{self, Name};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
-use rustc_front::hir;
+use hir;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedFound<T> {

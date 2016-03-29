@@ -17,7 +17,7 @@ use rustc::ty::subst;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi::Abi;
-use rustc_front::hir;
+use rustc::hir;
 
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &hir::Expr,

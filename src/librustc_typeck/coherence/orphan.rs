@@ -18,8 +18,8 @@ use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::codemap::Span;
 use rustc::dep_graph::DepNode;
-use rustc_front::intravisit;
-use rustc_front::hir;
+use rustc::hir::intravisit;
+use rustc::hir;
 
 pub fn check(tcx: &TyCtxt) {
     let mut orphan = OrphanChecker { tcx: tcx };

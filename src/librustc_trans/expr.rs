@@ -80,8 +80,7 @@ use util::common::indenter;
 use machine::{llsize_of, llsize_of_alloc};
 use type_::Type;
 
-use rustc_front;
-use rustc_front::hir;
+use rustc::hir;
 
 use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
@@ -1181,7 +1180,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // if not overloaded, would be RvalueDatumExpr
             let lhs = unpack_datum!(bcx, trans(bcx, &lhs));
             let mut rhs = unpack_datum!(bcx, trans(bcx, &rhs_expr));
-            if !rustc_front::util::is_by_value_binop(op.node) {
+            if !hir::util::is_by_value_binop(op.node) {
                 rhs = unpack_datum!(bcx, auto_ref(bcx, rhs, rhs_expr));
             }
 
@@ -1205,7 +1204,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             span_bug!(
                 expr.span,
                 "augmented assignment `{}=` should always be a rvalue_stmt",
-                rustc_front::util::binop_to_string(op.node))
+                hir::util::binop_to_string(op.node))
         }
         _ => {
             span_bug!(

@@ -27,10 +27,9 @@ use syntax::attr::ThinAttributesExt;
 use syntax::codemap::{Span, Spanned};
 use syntax::parse::token;
 
-use rustc_front::hir::*;
-use rustc_front::fold::Folder;
-use rustc_front::intravisit;
-use rustc_front::print::pprust;
+use hir::*;
+use hir::fold::Folder;
+use hir::print as pprust;
 
 use arena::TypedArena;
 use std::cell::RefCell;

@@ -20,8 +20,8 @@ use std::fmt;
 use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::hir;
+use hir::intravisit::{self, Visitor, FnKind};
+use hir;
 
 pub fn check_crate(tcx: &TyCtxt) {
     let mut visitor = IntrinsicCheckingVisitor {

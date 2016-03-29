@@ -33,8 +33,6 @@ pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
-use intravisit::Visitor;
-use std::collections::BTreeMap;
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
@@ -43,9 +41,7 @@ use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
-use print::pprust;
-use util;
-
+use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -65,6 +61,15 @@ macro_rules! hir_vec {
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }
+
+pub mod check_attr;
+pub mod fold;
+pub mod intravisit;
+pub mod lowering;
+pub mod map;
+pub mod print;
+pub mod svh;
+pub mod util;
 
 /// Identifier in HIR
 #[derive(Clone, Copy, Eq)]
@@ -135,7 +140,7 @@ impl fmt::Debug for Lifetime {
         write!(f,
                "lifetime({}: {})",
                self.id,
-               pprust::lifetime_to_string(self))
+               print::lifetime_to_string(self))
     }
 }
 
@@ -161,13 +166,13 @@ pub struct Path {
 
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "path({})", pprust::path_to_string(self))
+        write!(f, "path({})", print::path_to_string(self))
     }
 }
 
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", pprust::path_to_string(self))
+        write!(f, "{}", print::path_to_string(self))
     }
 }
 
@@ -434,7 +439,9 @@ impl Crate {
     /// follows lexical scoping rules -- then you want a different
     /// approach. You should override `visit_nested_item` in your
     /// visitor and then call `intravisit::walk_crate` instead.
-    pub fn visit_all_items<'hir, V:Visitor<'hir>>(&'hir self, visitor: &mut V) {
+    pub fn visit_all_items<'hir, V>(&'hir self, visitor: &mut V)
+        where V: intravisit::Visitor<'hir>
+    {
         for (_, item) in &self.items {
             visitor.visit_item(item);
         }
@@ -479,7 +486,7 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id, pprust::pat_to_string(self))
+        write!(f, "pat({}: {})", self.id, print::pat_to_string(self))
     }
 }
 
@@ -619,7 +626,7 @@ impl fmt::Debug for Stmt_ {
         write!(f,
                "stmt({}: {})",
                util::stmt_id(&spanned),
-               pprust::stmt_to_string(&spanned))
+               print::stmt_to_string(&spanned))
     }
 }
 
@@ -722,7 +729,7 @@ pub struct Expr {
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
+        write!(f, "expr({}: {})", self.id, print::expr_to_string(self))
     }
 }
 
@@ -940,7 +947,7 @@ pub struct Ty {
 
 impl fmt::Debug for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "type({})", pprust::ty_to_string(self))
+        write!(f, "type({})", print::ty_to_string(self))
     }
 }
 

@@ -25,9 +25,9 @@ use syntax::ast_util::IdRange;
 use syntax::print::pp;
 use syntax::print::pprust::PrintState;
 use util::nodemap::NodeMap;
-use rustc_front::hir;
-use rustc_front::intravisit;
-use rustc_front::print::pprust;
+use hir;
+use hir::intravisit;
+use hir::print as pprust;
 
 
 #[derive(Copy, Clone, Debug)]

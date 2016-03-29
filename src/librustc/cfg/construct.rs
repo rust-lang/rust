@@ -16,7 +16,7 @@ use ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;
 
-use rustc_front::hir::{self, PatKind};
+use hir::{self, PatKind};
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
@@ -257,7 +257,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.match_(expr.id, &discr, &arms, pred)
             }
 
-            hir::ExprBinary(op, ref l, ref r) if ::rustc_front::util::lazy_binop(op.node) => {
+            hir::ExprBinary(op, ref l, ref r) if hir::util::lazy_binop(op.node) => {
                 //
                 //     [pred]
                 //       |

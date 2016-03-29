@@ -41,7 +41,7 @@ use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::ty;
 use rustc::middle::stability;
 
-use rustc_front::hir;
+use rustc::hir;
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -563,7 +563,7 @@ pub enum TyParamBound {
 
 impl TyParamBound {
     fn maybe_sized(cx: &DocContext) -> TyParamBound {
-        use rustc_front::hir::TraitBoundModifier as TBM;
+        use rustc::hir::TraitBoundModifier as TBM;
         let mut sized_bound = ty::BoundSized.clean(cx);
         if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
             *tbm = TBM::Maybe
@@ -572,7 +572,7 @@ impl TyParamBound {
     }
 
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
-        use rustc_front::hir::TraitBoundModifier as TBM;
+        use rustc::hir::TraitBoundModifier as TBM;
         if let Some(tcx) = cx.tcx_opt() {
             if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
                 if trait_.def_id() == tcx.lang_items.sized_trait() {
@@ -1609,7 +1609,7 @@ impl PrimitiveType {
 
 impl Clean<Type> for hir::Ty {
     fn clean(&self, cx: &DocContext) -> Type {
-        use rustc_front::hir::*;
+        use rustc::hir::*;
         match self.node {
             TyPtr(ref m) => RawPointer(m.mutbl.clean(cx), box m.ty.clean(cx)),
             TyRptr(ref l, ref m) =>
@@ -1826,7 +1826,7 @@ pub struct VariantStruct {
     pub fields_stripped: bool,
 }
 
-impl Clean<VariantStruct> for ::rustc_front::hir::VariantData {
+impl Clean<VariantStruct> for ::rustc::hir::VariantData {
     fn clean(&self, cx: &DocContext) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
@@ -2554,7 +2554,7 @@ fn lit_to_string(lit: &ast::Lit) -> String {
 }
 
 fn name_from_pat(p: &hir::Pat) -> String {
-    use rustc_front::hir::*;
+    use rustc::hir::*;
     debug!("Trying to get a name from pattern: {:?}", p);
 
     match p.node {

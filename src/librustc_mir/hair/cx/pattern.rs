@@ -16,7 +16,7 @@ use rustc::middle::def::Def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::ptr::P;

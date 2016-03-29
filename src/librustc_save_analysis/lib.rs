@@ -23,13 +23,12 @@
 #![feature(staged_api)]
 
 #[macro_use] extern crate rustc;
-extern crate rustc_front;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 
-use rustc_front::{hir, lowering};
-use rustc::front::map::NodeItem;
+use rustc::hir::{self, lowering};
+use rustc::hir::map::NodeItem;
 use rustc::middle::def::Def;
 use rustc::middle::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
@@ -278,7 +277,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     match item.node {
                         hir::ItemImpl(_, _, _, _, ref ty, _) => {
                             let mut result = String::from("<");
-                            result.push_str(&rustc_front::print::pprust::ty_to_string(&ty));
+                            result.push_str(&rustc::hir::print::ty_to_string(&ty));
 
                             match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                                 Some(def_id) => {

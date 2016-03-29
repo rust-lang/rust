@@ -12,7 +12,7 @@ use middle::def_id::DefId;
 use ty::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
-use rustc_front::hir;
+use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {

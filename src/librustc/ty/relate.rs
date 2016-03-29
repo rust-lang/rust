@@ -19,7 +19,7 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};
 use std::rc::Rc;
 use syntax::abi;
-use rustc_front::hir as ast;
+use hir as ast;
 
 pub type RelateResult<'tcx, T> = Result<T, TypeError<'tcx>>;
 

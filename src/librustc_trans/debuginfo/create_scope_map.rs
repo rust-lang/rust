@@ -21,8 +21,7 @@ use libc::c_uint;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
 
-use rustc_front;
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
 
 // This procedure builds the *scope map* for a given function, which maps any
 // given ast::NodeId in the function's AST to the correct DIScope metadata instance.
@@ -117,7 +116,7 @@ fn walk_block(cx: &CrateContext,
 
     // The interesting things here are statements and the concluding expression.
     for statement in &block.stmts {
-        scope_map.insert(rustc_front::util::stmt_id(statement),
+        scope_map.insert(hir::util::stmt_id(statement),
                          scope_stack.last().unwrap().scope_metadata);
 
         match statement.node {

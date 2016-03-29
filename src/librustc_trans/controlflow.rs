@@ -25,8 +25,8 @@ use debuginfo::{DebugLoc, ToDebugLoc};
 use expr;
 use machine;
 
-use rustc_front::hir;
-use rustc_front::util as ast_util;
+use rustc::hir;
+use rustc::hir::util as ast_util;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;

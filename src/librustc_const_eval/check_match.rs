@@ -32,17 +32,17 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
-use rustc_front::hir;
-use rustc_front::hir::{Pat, PatKind};
-use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::util as front_util;
+use rustc::hir;
+use rustc::hir::{Pat, PatKind};
+use rustc::hir::intravisit::{self, Visitor, FnKind};
+use rustc::hir::util as front_util;
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
 use syntax::ast_util;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
-use rustc_front::fold::{Folder, noop_fold_pat};
-use rustc_front::print::pprust::pat_to_string;
+use rustc::hir::fold::{Folder, noop_fold_pat};
+use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
 use rustc::util::nodemap::FnvHashMap;
 

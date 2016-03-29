@@ -42,7 +42,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
-use rustc_front::lowering::{lower_expr, LoweringContext};
+use rustc::hir::lowering::{lower_expr, LoweringContext};
 
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;

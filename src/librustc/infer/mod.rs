@@ -19,7 +19,7 @@ pub use self::freshen::TypeFreshener;
 pub use self::region_inference::{GenericKind, VerifyBound};
 
 use middle::def_id::DefId;
-use rustc_front::hir;
+use hir;
 use middle::free_region::FreeRegionMap;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;

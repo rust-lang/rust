@@ -18,7 +18,7 @@ use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty};
 
-use rustc_front::hir;
+use rustc::hir;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e. calling the function twice with the same type will also do

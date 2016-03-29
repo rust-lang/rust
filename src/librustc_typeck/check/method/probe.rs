@@ -24,7 +24,7 @@ use rustc::ty::{self, NoPreference, Ty, TyCtxt, ToPolyTraitRef, TraitRef, TypeFo
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
-use rustc_front::hir;
+use rustc::hir;
 use std::collections::HashSet;
 use std::mem;
 use std::rc::Rc;

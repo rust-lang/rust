@@ -42,11 +42,11 @@ use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
 
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::feature_gate::UnstableFeatures;
-use rustc_front::intravisit::{self, FnKind, Visitor};
+use rustc::hir::intravisit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;

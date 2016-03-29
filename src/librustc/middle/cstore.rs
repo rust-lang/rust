@@ -22,8 +22,8 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use back::svh::Svh;
-use front::map as hir_map;
+use hir::svh::Svh;
+use hir::map as hir_map;
 use middle::def::{self, Def};
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt, VariantKind};
@@ -44,9 +44,9 @@ use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
-use rustc_front::util::IdVisitor;
+use hir;
+use hir::intravisit::Visitor;
+use hir::util::IdVisitor;
 
 pub use self::DefLike::{DlDef, DlField, DlImpl};
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};

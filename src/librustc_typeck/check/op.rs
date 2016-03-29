@@ -22,8 +22,8 @@ use middle::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
-use rustc_front::hir;
-use rustc_front::util as hir_util;
+use rustc::hir;
+use rustc::hir::util as hir_util;
 
 /// Check a `a <op>= b`
 pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,

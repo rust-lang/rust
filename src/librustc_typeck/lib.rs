@@ -90,20 +90,19 @@ extern crate arena;
 extern crate fmt_macros;
 #[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate rustc_front;
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
 
 pub use rustc::dep_graph;
-pub use rustc::front;
+pub use rustc::hir;
 pub use rustc::lint;
 pub use rustc::middle;
 pub use rustc::session;
 pub use rustc::util;
 
 use dep_graph::DepNode;
-use front::map as hir_map;
+use hir::map as hir_map;
 use middle::def::Def;
 use rustc::infer::{self, TypeOrigin};
 use rustc::ty::subst::Substs;
@@ -111,7 +110,6 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::traits::ProjectionMode;
 use session::{config, CompileResult};
 use util::common::time;
-use rustc_front::hir;
 
 use syntax::codemap::Span;
 use syntax::ast;

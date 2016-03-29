@@ -20,10 +20,10 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::middle::stability;
 
-use rustc_front::hir;
+use rustc::hir;
 
 use core;
 use clean::{Clean, Attributes};

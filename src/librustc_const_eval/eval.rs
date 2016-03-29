@@ -15,8 +15,8 @@ use rustc::middle::const_val::ConstVal;
 use self::ErrKind::*;
 use self::EvalHint::*;
 
-use rustc::front::map as ast_map;
-use rustc::front::map::blocks::FnLikeNode;
+use rustc::hir::map as ast_map;
+use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::cstore::{self, CrateStore, InlinedItem};
 use rustc::{infer, traits};
 use rustc::middle::def::Def;
@@ -31,9 +31,9 @@ use rustc::lint;
 
 use graphviz::IntoCow;
 use syntax::ast;
-use rustc_front::hir::{Expr, PatKind};
-use rustc_front::hir;
-use rustc_front::intravisit::FnKind;
+use rustc::hir::{Expr, PatKind};
+use rustc::hir;
+use rustc::hir::intravisit::FnKind;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::codemap;

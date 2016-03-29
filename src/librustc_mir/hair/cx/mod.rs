@@ -25,7 +25,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
-use rustc_front::hir;
+use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]

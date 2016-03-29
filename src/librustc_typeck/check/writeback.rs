@@ -28,10 +28,10 @@ use std::cell::Cell;
 
 use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
-use rustc_front::print::pprust::pat_to_string;
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::util as hir_util;
-use rustc_front::hir;
+use rustc::hir::print::pat_to_string;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::util as hir_util;
+use rustc::hir;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use front::map::DefPathData;
+use hir::map::DefPathData;
 use middle::cstore::LOCAL_CRATE;
 use middle::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};

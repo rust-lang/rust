@@ -19,9 +19,9 @@ use ty::MethodCall;
 
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::hir;
-use rustc_front::intravisit;
-use rustc_front::intravisit::{FnKind, Visitor};
+use hir;
+use hir::intravisit;
+use hir::intravisit::{FnKind, Visitor};
 
 #[derive(Copy, Clone)]
 struct UnsafeContext {

@@ -31,7 +31,6 @@ extern crate arena;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;
-extern crate rustc_front;
 #[macro_use]
 extern crate rustc;
 
@@ -49,7 +48,7 @@ use self::ParentLink::*;
 use self::FallbackChecks::*;
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::middle::cstore::CrateStore;
@@ -68,24 +67,24 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, special_names, special_idents};
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_front::intravisit::{self, FnKind, Visitor};
-use rustc_front::hir;
-use rustc_front::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
-use rustc_front::hir::Crate;
-use rustc_front::hir::{Expr, ExprAgain, ExprBreak, ExprCall, ExprField};
-use rustc_front::hir::{ExprLoop, ExprWhile, ExprMethodCall};
-use rustc_front::hir::{ExprPath, ExprStruct, FnDecl};
-use rustc_front::hir::{ForeignItemFn, ForeignItemStatic, Generics};
-use rustc_front::hir::{ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
-use rustc_front::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
-use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use rustc_front::hir::Local;
-use rustc_front::hir::{Pat, PatKind, Path, PrimTy};
-use rustc_front::hir::{PathSegment, PathParameters};
-use rustc_front::hir::HirVec;
-use rustc_front::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
-use rustc_front::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
-use rustc_front::util::walk_pat;
+use rustc::hir::intravisit::{self, FnKind, Visitor};
+use rustc::hir;
+use rustc::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
+use rustc::hir::Crate;
+use rustc::hir::{Expr, ExprAgain, ExprBreak, ExprCall, ExprField};
+use rustc::hir::{ExprLoop, ExprWhile, ExprMethodCall};
+use rustc::hir::{ExprPath, ExprStruct, FnDecl};
+use rustc::hir::{ForeignItemFn, ForeignItemStatic, Generics};
+use rustc::hir::{ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
+use rustc::hir::{ItemFn, ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
+use rustc::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use rustc::hir::Local;
+use rustc::hir::{Pat, PatKind, Path, PrimTy};
+use rustc::hir::{PathSegment, PathParameters};
+use rustc::hir::HirVec;
+use rustc::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
+use rustc::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
+use rustc::hir::util::walk_pat;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};

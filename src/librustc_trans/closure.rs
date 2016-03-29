@@ -35,7 +35,7 @@ use session::config::FullDebugInfo;
 
 use syntax::ast;
 
-use rustc_front::hir;
+use rustc::hir;
 
 use libc::c_uint;
 

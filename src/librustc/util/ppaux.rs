@@ -23,7 +23,7 @@ use std::fmt;
 use syntax::abi::Abi;
 use syntax::parse::token;
 use syntax::ast::CRATE_NODE_ID;
-use rustc_front::hir;
+use hir;
 
 pub fn verbose() -> bool {
     ty::tls::with(|tcx| tcx.sess.verbose())

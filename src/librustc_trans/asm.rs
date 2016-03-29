@@ -18,7 +18,7 @@ use datum::{Datum, Lvalue};
 use type_of;
 use type_::Type;
 
-use rustc_front::hir as ast;
+use rustc::hir as ast;
 use std::ffi::CString;
 use syntax::ast::AsmDialect;
 use libc::{c_uint, c_char};

@@ -25,7 +25,7 @@ use rustc::ty::ParamTy;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FnvHashMap;
 
-use rustc_front::hir;
+use rustc::hir;
 
 use syntax::abi::Abi;
 use syntax::ast;

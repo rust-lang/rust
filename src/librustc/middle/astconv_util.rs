@@ -18,7 +18,7 @@ use middle::def::Def;
 use ty::{Ty, TyCtxt};
 
 use syntax::codemap::Span;
-use rustc_front::hir as ast;
+use hir as ast;
 
 pub fn prohibit_type_params(tcx: &TyCtxt, segments: &[ast::PathSegment]) {
     for segment in segments {

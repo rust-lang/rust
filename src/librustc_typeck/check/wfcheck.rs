@@ -25,8 +25,8 @@ use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{special_idents};
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,
