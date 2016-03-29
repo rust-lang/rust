@@ -106,7 +106,8 @@ and will notably be lacking a `[project]` or `[package]` top level key.
 
 A virtual manifest does not itself define a crate, but can help when defining a
 root. For example a `Cargo.toml` file at the root of a repository with a
-`[workspace]` key would suffice for the project configurations in question.
+`[workspace]` key plus `workspace.members` configuration would suffice for the
+project configurations in question.
 
 Cargo will for the time being disallow many commands against a virtual manifest,
 for example `cargo build` will be rejected. Arguments that take a package,
@@ -143,8 +144,9 @@ A conventional layout for a Rust project is to have a `Cargo.toml` at the root
 with the "main project" with dependencies and/or satellite projects underneath.
 Consequently the conventional layout will only need a `[workspace]` key added to
 the root to benefit from the workspaces proposed in this RFC. For example, all
-of these project layouts (with `/` being the root of a repository) will not
-require any configuration to have all crates be members of a workspace:
+of these project layouts (with `/` being the root of a repository) will only
+require the addition of `[workspace]` in the root to have all crates be members
+of a workspace:
 
 * An FFI crate with a sub-crate for FFI bindings
 
@@ -196,6 +198,7 @@ configuration necessary, are:
 
   ```toml
   [workspace]
+  members = ["crate1", "crate2", "crate3"]
   ```
 
 * Trees with multiple workspaces
@@ -320,6 +323,17 @@ show that workspaces can be used to solve other existing issues in Cargo.
   Existing crates must opt-in with a `[workspace]` key somewhere at least.
 
 # Alternatives
+
+* The `workspace.members` key could support globs to define a number of
+  directories at once. For example one could imagine:
+
+  ```toml
+  [workspace]
+  members = ["crates/*"]
+  ```
+
+  as an ergonomic method of slurping up all sub-folders in the `crates` folder
+  as crates.
 
 * Cargo could attempt to perform more inference of workspace members by simply
   walking the entire directory tree starting at `Cargo.toml`. All children found
