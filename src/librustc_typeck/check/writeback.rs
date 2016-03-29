@@ -15,8 +15,8 @@ use self::ResolveReason::*;
 
 use astconv::AstConv;
 use check::FnCtxt;
-use middle::def_id::DefId;
-use middle::pat_util;
+use hir::def_id::DefId;
+use hir::pat_util;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};

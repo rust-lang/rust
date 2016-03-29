@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def::{self, Def};
+use hir::def::{self, Def};
 use rustc::infer::{self, InferOk, TypeOrigin};
-use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
-use middle::pat_util::pat_is_resolved_const;
+use hir::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
+use hir::pat_util::pat_is_resolved_const;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};

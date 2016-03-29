@@ -21,7 +21,7 @@ use arena::TypedArena;
 use back::symbol_names;
 use llvm::{self, ValueRef, get_params};
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::subst::{Substs};

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def::*;
-use middle::def_id::DefId;
+use hir::def::*;
+use hir::def_id::DefId;
 use ty::TyCtxt;
 use util::nodemap::FnvHashMap;
 

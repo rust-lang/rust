@@ -10,7 +10,7 @@
 
 #![allow(non_snake_case)]
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};

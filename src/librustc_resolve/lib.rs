@@ -52,9 +52,9 @@ use rustc::hir::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::middle::cstore::CrateStore;
-use rustc::middle::def::*;
-use rustc::middle::def_id::DefId;
-use rustc::middle::pat_util::pat_bindings;
+use rustc::hir::def::*;
+use rustc::hir::def_id::DefId;
+use rustc::hir::pat_util::pat_bindings;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, FnvHashMap};
@@ -2570,7 +2570,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Skips `path_depth` trailing segments, which is also reflected in the
-    /// returned value. See `middle::def::PathResolution` for more info.
+    /// returned value. See `hir::def::PathResolution` for more info.
     fn resolve_path(&mut self, id: NodeId, path: &Path, path_depth: usize, namespace: Namespace)
                     -> Option<PathResolution> {
         let span = path.span;

@@ -15,10 +15,10 @@ use loader;
 
 use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst, DefLike};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
-use middle::def;
+use rustc::hir::def;
 use middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt, VariantKind};
-use middle::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 
 use rustc::hir::map as hir_map;
 use rustc::mir::repr::Mir;

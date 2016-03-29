@@ -29,8 +29,8 @@ use rustc::hir;
 
 use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
-use middle::def::Def;
-use middle::def_id::{DefId, DefIndex};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use rustc::ty::subst;
 use rustc::ty::{ImplContainer, TraitContainer};

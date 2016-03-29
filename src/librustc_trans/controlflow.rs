@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use middle::def::Def;
+use rustc::hir::def::Def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
 use rustc::ty::subst::Substs;
 use base::*;

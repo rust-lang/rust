@@ -24,10 +24,10 @@
 
 use hir::svh::Svh;
 use hir::map as hir_map;
-use middle::def::{self, Def};
+use hir::def::{self, Def};
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt, VariantKind};
-use middle::def_id::{DefId, DefIndex};
+use hir::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
@@ -504,7 +504,7 @@ pub mod tls {
     use std::mem;
     use ty::{self, Ty, TyCtxt};
     use ty::subst::Substs;
-    use middle::def_id::DefId;
+    use hir::def_id::DefId;
 
     pub trait EncodingContext<'tcx> {
         fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;

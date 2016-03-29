@@ -26,8 +26,8 @@ use super::write_call;
 
 use CrateCtxt;
 use middle::cstore::LOCAL_CRATE;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::{self, LvaluePreference, Ty};
 use syntax::codemap::Span;

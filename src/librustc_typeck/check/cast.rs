@@ -44,7 +44,7 @@ use super::FnCtxt;
 use super::structurally_resolved_type;
 
 use lint;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;

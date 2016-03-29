@@ -13,7 +13,7 @@
 use super::namespace::crate_root_namespace;
 
 use common::CrateContext;
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty};

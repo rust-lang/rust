@@ -17,8 +17,8 @@
 
 use dep_graph::DepNode;
 use hir::map as ast_map;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use ty::{self, TyCtxt};
 use middle::privacy;
 use session::config;

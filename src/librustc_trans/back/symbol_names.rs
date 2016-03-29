@@ -102,7 +102,7 @@ use monomorphize::Instance;
 use util::sha2::{Digest, Sha256};
 
 use rustc::middle::cstore;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::item_path::{ItemPathBuffer, RootMode};
 use rustc::hir::map::definitions::{DefPath, DefPathData};

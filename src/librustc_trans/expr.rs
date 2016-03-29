@@ -53,7 +53,7 @@ use self::lazy_binop_ty::*;
 
 use llvm::{self, ValueRef, TypeKind};
 use middle::const_qualif::ConstQualif;
-use middle::def::Def;
+use rustc::hir::def::Def;
 use rustc::ty::subst::Substs;
 use {_match, abi, adt, asm, base, closure, consts, controlflow};
 use base::*;

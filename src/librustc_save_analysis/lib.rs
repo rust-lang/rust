@@ -29,8 +29,8 @@
 
 use rustc::hir::{self, lowering};
 use rustc::hir::map::NodeItem;
-use rustc::middle::def::Def;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 

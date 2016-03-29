@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::pat_util;
+use rustc::hir::pat_util;
 use rustc::ty;
 use rustc::ty::adjustment;
 use util::nodemap::FnvHashMap;

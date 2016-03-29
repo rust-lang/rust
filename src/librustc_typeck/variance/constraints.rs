@@ -14,7 +14,7 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use dep_graph::DepTrackingMapConfig;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use rustc::ty::subst;
 use rustc::ty::subst::ParamSpace;

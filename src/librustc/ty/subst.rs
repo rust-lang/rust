@@ -13,7 +13,7 @@
 pub use self::ParamSpace::*;
 
 use middle::cstore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
 

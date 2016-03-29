@@ -10,7 +10,7 @@
 
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use middle::cstore::{CrateStore, FoundAst, InlinedItem};
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use base::{push_ctxt, trans_item, trans_fn};
 use callee::Callee;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::{DefId, DefIndex};
+use hir::def_id::{DefId, DefIndex};
 use rustc_data_structures::fnv::FnvHashMap;
 use syntax::ast;
 use syntax::parse::token::InternedString;

@@ -63,10 +63,13 @@ macro_rules! hir_vec {
 }
 
 pub mod check_attr;
+pub mod def;
+pub mod def_id;
 pub mod fold;
 pub mod intravisit;
 pub mod lowering;
 pub mod map;
+pub mod pat_util;
 pub mod print;
 pub mod svh;
 

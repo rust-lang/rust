@@ -11,7 +11,7 @@
 
 use dep_graph::DepNode;
 use hir::map as ast_map;
-use middle::def_id::{CRATE_DEF_INDEX};
+use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;

@@ -86,8 +86,6 @@ pub mod middle {
     pub mod cstore;
     pub mod dataflow;
     pub mod dead;
-    pub mod def;
-    pub mod def_id;
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;
@@ -96,7 +94,6 @@ pub mod middle {
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
-    pub mod pat_util;
     pub mod privacy;
     pub mod reachable;
     pub mod region;
