@@ -32,6 +32,12 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the HIR node with the given node-id
     Hir(D),
 
+    // Represents the meta-data for a node. For local def-ids, this is
+    // created by trans. For remote def-ids, we add a read of this
+    // node each time we pull the information for an item out of the
+    // crate store.
+    MetaData(D),
+
     // Represents different phases in the compiler.
     CrateReader,
     CollectLanguageItems,
