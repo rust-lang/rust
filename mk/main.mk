@@ -493,7 +493,7 @@ endif
 LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3) := \
     $$(CURDIR)/$$(HLIB$(1)_H_$(3)):$$(CFG_LLVM_INST_DIR_$(3))/lib
 LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3) := \
-    $$(CURDIR)/$$(TLIB$(1)_T_$(2)_H_$(CFG_BUILD))
+    $$(CURDIR)/$$(TLIB$(1)_T_$(2)_H_$(3))
 
 HOST_RPATH_VAR$(1)_T_$(2)_H_$(3) := \
   $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))=$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3)):$$$$$$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3))
@@ -506,18 +506,14 @@ RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(HOST_RPATH_VAR$(1)_T_$(2)_H_$(3))
 # if you're building a cross config, the host->* parts are
 # effectively stage1, since it uses the just-built stage0.
 #
-# This logic is similar to how the LD_LIBRARY_PATH variable must
-# change be slightly different when doing cross compilations.
-# The build doesn't copy over all target libraries into
-# a new directory, so we need to point the library path at
-# the build directory where all the target libraries came
-# from (the stage0 build host). Otherwise the relative rpaths
-# inside of the rustc binary won't get resolved correctly.
+# Also be sure to use the right rpath because we're loading libraries from the
+# CFG_BUILD's stage1 directory for our target, so switch this one instance of
+# `RPATH_VAR` to get the bootstrap working.
 ifeq ($(1),0)
 ifneq ($(strip $(CFG_BUILD)),$(strip $(3)))
 CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 
-RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR$(1)_T_$(2)_H_$(3))
+RPATH_VAR$(1)_T_$(2)_H_$(3) := $$(TARGET_RPATH_VAR1_T_$(2)_H_$$(CFG_BUILD))
 endif
 endif
 
