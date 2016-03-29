@@ -873,21 +873,10 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     match const_eval::eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
         Ok(val) => {
             if let Integral(const_int) = val {
-                Some(match const_int {
-                    I8(x) => FullInt::S(x as i64),
-                    I16(x) => FullInt::S(x as i64),
-                    I32(x) => FullInt::S(x as i64),
-                    Isize(Is32(x)) => FullInt::S(x as i64),
-                    Isize(Is64(x)) |
-                    I64(x) => FullInt::S(x),
+                Some(match const_int.erase_type() {
                     InferSigned(x) => FullInt::S(x as i64),
-                    U8(x) => FullInt::U(x as u64),
-                    U16(x) => FullInt::U(x as u64),
-                    U32(x) => FullInt::U(x as u64),
-                    Usize(Us32(x)) => FullInt::U(x as u64),
-                    Usize(Us64(x)) |
-                    U64(x) => FullInt::U(x),
                     Infer(x) => FullInt::U(x as u64),
+                    _ => unreachable!(),
                 })
             } else {
                 None
