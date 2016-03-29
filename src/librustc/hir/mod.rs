@@ -33,6 +33,10 @@ pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
+use hir::def::Def;
+use hir::def_id::DefId;
+use util::nodemap::{NodeMap, FnvHashSet};
+
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
@@ -1625,3 +1629,24 @@ impl ForeignItem_ {
         }
     }
 }
+
+/// A free variable referred to in a function.
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+pub struct Freevar {
+    /// The variable being accessed free.
+    pub def: Def,
+
+    // First span where it is accessed (there can be multiple).
+    pub span: Span
+}
+
+pub type FreevarMap = NodeMap<Vec<Freevar>>;
+
+pub type CaptureModeMap = NodeMap<CaptureClause>;
+
+// Trait method resolution
+pub type TraitMap = NodeMap<Vec<DefId>>;
+
+// Map from the NodeId of a glob import to a list of items which are actually
+// imported.
+pub type GlobMap = NodeMap<FnvHashSet<Name>>;

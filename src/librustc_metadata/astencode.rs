@@ -410,20 +410,20 @@ impl tr for Def {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &ty::Freevar) {
+fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &hir::Freevar) {
     (*fv).encode(rbml_w).unwrap();
 }
 
 trait rbml_decoder_helper {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> ty::Freevar;
+                          -> hir::Freevar;
     fn read_capture_mode(&mut self) -> hir::CaptureClause;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> ty::Freevar {
-        let fv: ty::Freevar = Decodable::decode(self).unwrap();
+                          -> hir::Freevar {
+        let fv: hir::Freevar = Decodable::decode(self).unwrap();
         fv.tr(dcx)
     }
 
@@ -433,9 +433,9 @@ impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     }
 }
 
-impl tr for ty::Freevar {
-    fn tr(&self, dcx: &DecodeContext) -> ty::Freevar {
-        ty::Freevar {
+impl tr for hir::Freevar {
+    fn tr(&self, dcx: &DecodeContext) -> hir::Freevar {
+        hir::Freevar {
             def: self.def.tr(dcx),
             span: self.span.tr(dcx),
         }

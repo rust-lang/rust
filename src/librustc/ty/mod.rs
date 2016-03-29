@@ -33,7 +33,7 @@ use ty::fold::TypeFolder;
 use ty::subst::{Subst, Substs, VecPerParamSpace};
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeMap, NodeSet};
+use util::nodemap::NodeSet;
 use util::nodemap::FnvHashMap;
 
 use serialize::{Encodable, Encoder, Decodable, Decoder};
@@ -44,7 +44,6 @@ use std::iter;
 use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
-use std::collections::{HashMap, HashSet};
 use syntax::ast::{self, CrateNum, Name, NodeId};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -115,7 +114,7 @@ pub struct CrateAnalysis<'a> {
     pub access_levels: middle::privacy::AccessLevels,
     pub reachable: NodeSet,
     pub name: &'a str,
-    pub glob_map: Option<GlobMap>,
+    pub glob_map: Option<hir::GlobMap>,
 }
 
 #[derive(Copy, Clone)]
@@ -2724,30 +2723,9 @@ pub enum ExplicitSelfCategory {
     ByBox,
 }
 
-/// A free variable referred to in a function.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
-pub struct Freevar {
-    /// The variable being accessed free.
-    pub def: Def,
-
-    // First span where it is accessed (there can be multiple).
-    pub span: Span
-}
-
-pub type FreevarMap = NodeMap<Vec<Freevar>>;
-
-pub type CaptureModeMap = NodeMap<hir::CaptureClause>;
-
-// Trait method resolution
-pub type TraitMap = NodeMap<Vec<DefId>>;
-
-// Map from the NodeId of a glob import to a list of items which are actually
-// imported.
-pub type GlobMap = HashMap<NodeId, HashSet<Name>>;
-
 impl<'tcx> TyCtxt<'tcx> {
     pub fn with_freevars<T, F>(&self, fid: NodeId, f: F) -> T where
-        F: FnOnce(&[Freevar]) -> T,
+        F: FnOnce(&[hir::Freevar]) -> T,
     {
         match self.freevars.borrow().get(&fid) {
             None => f(&[]),
