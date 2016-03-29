@@ -77,5 +77,8 @@ fn equality_stuff() {
     //|~ SUGGESTION let _ = false;
     let _ = a > b && a == b;
 
-    let _ = a != b || !(a != b || c == d);
+    let _ = a != b || !(a != b || c == d); //~ ERROR this boolean expression can be simplified
+    //|~ HELP for further information visit
+    //|~ SUGGESTION let _ = !c == d || a != b;
+    //|~ SUGGESTION let _ = !(!a != b && c == d);
 }
