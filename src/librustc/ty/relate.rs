@@ -602,6 +602,17 @@ impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::ClosureSubsts<'tcx> {
     }
 }
 
+impl<'a,'tcx:'a> Relate<'a,'tcx> for Substs<'tcx> {
+    fn relate<R>(relation: &mut R,
+                 a: &Substs<'tcx>,
+                 b: &Substs<'tcx>)
+                 -> RelateResult<'tcx, Substs<'tcx>>
+        where R: TypeRelation<'a,'tcx>
+    {
+        relate_substs(relation, None, a, b)
+    }
+}
+
 impl<'a,'tcx:'a> Relate<'a,'tcx> for ty::Region {
     fn relate<R>(relation: &mut R,
                  a: &ty::Region,

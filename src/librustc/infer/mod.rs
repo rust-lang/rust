@@ -386,33 +386,6 @@ pub fn normalizing_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
     infcx
 }
 
-/// Computes the least upper-bound of `a` and `b`. If this is not possible, reports an error and
-/// returns ty::err.
-pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                                  origin: TypeOrigin,
-                                  a_is_expected: bool,
-                                  a: Ty<'tcx>,
-                                  b: Ty<'tcx>)
-                                  -> Ty<'tcx>
-{
-    debug!("common_supertype({:?}, {:?})",
-           a, b);
-
-    let trace = TypeTrace {
-        origin: origin,
-        values: Types(expected_found(a_is_expected, a, b))
-    };
-
-    let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).relate(&a, &b));
-    match result {
-        Ok(t) => t,
-        Err(ref err) => {
-            cx.report_and_explain_type_error(trace, err).emit();
-            cx.tcx.types.err
-        }
-    }
-}
-
 pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           a_is_expected: bool,
                           origin: TypeOrigin,
@@ -434,7 +407,7 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).relate(&a, &b).map(|_| ())
+        cx.sub(true, trace, &a, &b).map(|_| ())
     })
 }
 
@@ -695,32 +668,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                        cause: None}
     }
 
-    // public so that it can be used from the rustc_driver unit tests
-    pub fn equate(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-              -> equate::Equate<'a, 'tcx>
+    pub fn equate<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+        -> RelateResult<'tcx, T>
+        where T: Relate<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).equate()
+        self.combine_fields(a_is_expected, trace).equate().relate(a, b)
     }
 
-    // public so that it can be used from the rustc_driver unit tests
-    pub fn sub(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> sub::Sub<'a, 'tcx>
+    pub fn sub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+        -> RelateResult<'tcx, T>
+        where T: Relate<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).sub()
+        self.combine_fields(a_is_expected, trace).sub().relate(a, b)
     }
 
-    // public so that it can be used from the rustc_driver unit tests
-    pub fn lub(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> lub::Lub<'a, 'tcx>
+    pub fn lub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+        -> RelateResult<'tcx, T>
+        where T: Relate<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).lub()
+        self.combine_fields(a_is_expected, trace).lub().relate(a, b)
     }
 
-    // public so that it can be used from the rustc_driver unit tests
-    pub fn glb(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> glb::Glb<'a, 'tcx>
+    pub fn glb<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
+        -> RelateResult<'tcx, T>
+        where T: Relate<'a, 'tcx>
     {
-        self.combine_fields(a_is_expected, trace).glb()
+        self.combine_fields(a_is_expected, trace).glb().relate(a, b)
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
@@ -861,7 +834,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.sub(a_is_expected, trace, &a, &b).map(|_| ())
         })
     }
 
@@ -874,7 +847,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.equate(a_is_expected, trace, &a, &b).map(|_| ())
         })
     }
 
@@ -893,7 +866,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.equate(a_is_expected, trace, &a, &b).map(|_| ())
         })
     }
 
@@ -912,7 +885,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
+            self.sub(a_is_expected, trace, &a, &b).map(|_| ())
         })
     }
 
@@ -1461,7 +1434,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: TypeOrigin::Misc(codemap::DUMMY_SP),
                 values: Types(expected_found(true, e, e))
             };
-            self.equate(true, trace).relate(a, b)
+            self.equate(true, trace, a, b)
         }).map(|_| ())
     }
 
