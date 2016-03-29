@@ -16,4 +16,7 @@ fn main() {
     -5 < (zero as i32); //~ERROR because of the numeric bounds on `zero` prior to casting, this expression is always true
     0 <= (zero as i32); //~ERROR because of the numeric bounds on `zero` prior to casting, this expression is always true
     0 < (zero as i32);
+
+    -5 > (zero as i32); //~ERROR because of the numeric bounds on `zero` prior to casting, this expression is always false
+    -5 >= (u8_max as i32); //~ERROR because of the numeric bounds on `u8_max` prior to casting, this expression is always false
 }
