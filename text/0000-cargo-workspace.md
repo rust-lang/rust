@@ -107,7 +107,9 @@ and will notably be lacking a `[project]` or `[package]` top level key.
 A virtual manifest does not itself define a crate, but can help when defining a
 root. For example a `Cargo.toml` file at the root of a repository with a
 `[workspace]` key plus `workspace.members` configuration would suffice for the
-project configurations in question.
+project configurations in question. Note that omitting `workspace.members` would
+not be useful as there are no outgoing edges (no `path` dependencies), so Cargo
+will emit an error in cases like this.
 
 Cargo will for the time being disallow many commands against a virtual manifest,
 for example `cargo build` will be rejected. Arguments that take a package,
