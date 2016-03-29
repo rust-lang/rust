@@ -34,11 +34,10 @@ use std::iter::{FromIterator, IntoIterator, repeat};
 
 use rustc::hir;
 use rustc::hir::{Pat, PatKind};
-use rustc::hir::intravisit::{self, IdVisitor, Visitor, FnKind};
+use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKind};
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
-use syntax::ast_util;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
@@ -460,7 +459,7 @@ struct RenamingRecorder<'map> {
     renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
 }
 
-impl<'map> ast_util::IdVisitingOperation for RenamingRecorder<'map> {
+impl<'map> IdVisitingOperation for RenamingRecorder<'map> {
     fn visit_id(&mut self, node_id: NodeId) {
         let key = (node_id, self.origin_span);
         self.renaming_map.insert(key, self.substituted_node_id);

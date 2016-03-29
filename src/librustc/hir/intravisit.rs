@@ -27,10 +27,12 @@
 
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
-use syntax::ast_util;
 use syntax::attr::ThinAttributesExt;
 use syntax::codemap::Span;
 use hir::*;
+
+use std::cmp;
+use std::u32;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -837,6 +839,54 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
     walk_list!(visitor, visit_attribute, &arm.attrs);
 }
 
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct IdRange {
+    pub min: NodeId,
+    pub max: NodeId,
+}
+
+impl IdRange {
+    pub fn max() -> IdRange {
+        IdRange {
+            min: u32::MAX,
+            max: u32::MIN,
+        }
+    }
+
+    pub fn empty(&self) -> bool {
+        self.min >= self.max
+    }
+
+    pub fn add(&mut self, id: NodeId) {
+        self.min = cmp::min(self.min, id);
+        self.max = cmp::max(self.max, id + 1);
+    }
+}
+
+pub trait IdVisitingOperation {
+    fn visit_id(&mut self, node_id: NodeId);
+}
+
+pub struct IdRangeComputingVisitor {
+    pub result: IdRange,
+}
+
+impl IdRangeComputingVisitor {
+    pub fn new() -> IdRangeComputingVisitor {
+        IdRangeComputingVisitor { result: IdRange::max() }
+    }
+
+    pub fn result(&self) -> IdRange {
+        self.result
+    }
+}
+
+impl IdVisitingOperation for IdRangeComputingVisitor {
+    fn visit_id(&mut self, id: NodeId) {
+        self.result.add(id);
+    }
+}
+
 pub struct IdVisitor<'a, O: 'a> {
     operation: &'a mut O,
 
@@ -853,7 +903,7 @@ pub struct IdVisitor<'a, O: 'a> {
     skip_members: bool,
 }
 
-impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
+impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     pub fn new(operation: &'a mut O) -> IdVisitor<'a, O> {
         IdVisitor { operation: operation, skip_members: false }
     }
@@ -868,7 +918,7 @@ impl<'a, O: ast_util::IdVisitingOperation> IdVisitor<'a, O> {
     }
 }
 
-impl<'a, 'v, O: ast_util::IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
+impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     fn visit_mod(&mut self, module: &Mod, _: Span, node_id: NodeId) {
         self.operation.visit_id(node_id);
         walk_mod(self, module)
@@ -1012,8 +1062,8 @@ pub fn compute_id_range_for_fn_body(fk: FnKind,
                                     body: &Block,
                                     sp: Span,
                                     id: NodeId)
-                                    -> ast_util::IdRange {
-    let mut visitor = ast_util::IdRangeComputingVisitor { result: ast_util::IdRange::max() };
+                                    -> IdRange {
+    let mut visitor = IdRangeComputingVisitor { result: IdRange::max() };
     let mut id_visitor = IdVisitor::new(&mut visitor);
     id_visitor.visit_fn(fk, decl, body, sp, id);
     id_visitor.operation.result

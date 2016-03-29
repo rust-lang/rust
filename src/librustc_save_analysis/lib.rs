@@ -39,7 +39,6 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind};
-use syntax::ast_util;
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
@@ -670,7 +669,7 @@ impl<'v> Visitor<'v> for PathCollector {
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 // collect path for either visit_local or visit_arm
-                let path = ast_util::ident_to_path(path1.span, path1.node);
+                let path = ast::Path::from_ident(path1.span, path1.node);
                 self.collected_paths.push((p.id, path, immut, recorder::VarRef));
             }
             _ => {}

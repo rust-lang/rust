@@ -18,6 +18,7 @@ use rustc::session::Session;
 use rustc::hir;
 use rustc::hir::fold;
 use rustc::hir::fold::Folder;
+use rustc::hir::intravisit::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
 
 use common as c;
 use cstore;
@@ -36,7 +37,7 @@ use middle::region;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use syntax::{ast, ast_util, codemap};
+use syntax::{ast, codemap};
 use syntax::ast::NodeIdAssigner;
 use syntax::ptr::P;
 
@@ -61,8 +62,8 @@ use serialize::EncoderHelpers;
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     cdata: &'b cstore::crate_metadata,
-    from_id_range: ast_util::IdRange,
-    to_id_range: ast_util::IdRange,
+    from_id_range: IdRange,
+    to_id_range: IdRange,
     // Cache the last used filemap for translating spans as an optimization.
     last_filemap_index: Cell<usize>,
 }
@@ -178,13 +179,13 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
 // Enumerating the IDs which appear in an AST
 
 fn reserve_id_range(sess: &Session,
-                    from_id_range: ast_util::IdRange) -> ast_util::IdRange {
+                    from_id_range: IdRange) -> IdRange {
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.reserve_node_ids(cnt);
     let to_id_max = to_id_min + cnt;
-    ast_util::IdRange { min: to_id_min, max: to_id_max }
+    IdRange { min: to_id_min, max: to_id_max }
 }
 
 impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
@@ -705,7 +706,7 @@ struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w: &'a mut Encoder<'b>,
 }
 
-impl<'a, 'b, 'c, 'tcx> ast_util::IdVisitingOperation for
+impl<'a, 'b, 'c, 'tcx> IdVisitingOperation for
         SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         encode_side_tables_for_id(self.ecx, self.rbml_w, id)
@@ -1261,8 +1262,8 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
     }
 }
 
-fn inlined_item_id_range(v: &InlinedItem) -> ast_util::IdRange {
-    let mut visitor = ast_util::IdRangeComputingVisitor::new();
+fn inlined_item_id_range(v: &InlinedItem) -> IdRange {
+    let mut visitor = IdRangeComputingVisitor::new();
     v.visit_ids(&mut visitor);
     visitor.result()
 }
