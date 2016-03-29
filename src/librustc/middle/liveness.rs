@@ -484,7 +484,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
-      hir::ExprBinary(op, _, _) if hir::util::lazy_binop(op.node) => {
+      hir::ExprBinary(op, _, _) if op.node.is_lazy() => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
@@ -1142,7 +1142,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_exprs(&exprs[..], succ)
           }
 
-          hir::ExprBinary(op, ref l, ref r) if hir::util::lazy_binop(op.node) => {
+          hir::ExprBinary(op, ref l, ref r) if op.node.is_lazy() => {
             let r_succ = self.propagate_through_expr(&r, succ);
 
             let ln = self.live_node(expr.id, expr.span);

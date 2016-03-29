@@ -712,7 +712,7 @@ fn cast_shift_rhs<F, G>(op: hir::BinOp_,
           G: FnOnce(ValueRef, Type) -> ValueRef
 {
     // Shifts may have any size int on the rhs
-    if hir::util::is_shift_binop(op) {
+    if op.is_shift() {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
         if rhs_llty.kind() == Vector {

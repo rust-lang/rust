@@ -84,7 +84,6 @@ use rustc::hir::{PathSegment, PathParameters};
 use rustc::hir::HirVec;
 use rustc::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
 use rustc::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
-use rustc::hir::util::walk_pat;
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -2244,7 +2243,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                        // pattern that binds them
                        bindings_list: &mut HashMap<Name, NodeId>) {
         let pat_id = pattern.id;
-        walk_pat(pattern, |pattern| {
+        pattern.walk(|pattern| {
             match pattern.node {
                 PatKind::Ident(binding_mode, ref path1, ref at_rhs) => {
                     // The meaning of PatKind::Ident with no type parameters

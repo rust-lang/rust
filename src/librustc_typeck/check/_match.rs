@@ -32,7 +32,6 @@ use syntax::ptr::P;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
-use rustc::hir::util as hir_util;
 
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                            pat: &'tcx hir::Pat,
@@ -197,7 +196,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
         }
         PatKind::Ident(_, ref path, _) => {
-            let path = hir_util::ident_to_path(path.span, path.node);
+            let path = hir::Path::from_ident(path.span, path.node);
             check_pat_enum(pcx, pat, &path, Some(&[]), expected, false);
         }
         PatKind::TupleStruct(ref path, ref subpats) => {

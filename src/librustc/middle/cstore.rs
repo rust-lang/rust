@@ -45,8 +45,7 @@ use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
 use hir;
-use hir::intravisit::Visitor;
-use hir::util::IdVisitor;
+use hir::intravisit::{IdVisitor, Visitor};
 
 pub use self::DefLike::{DlDef, DlField, DlImpl};
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};

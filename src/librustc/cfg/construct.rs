@@ -257,7 +257,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.match_(expr.id, &discr, &arms, pred)
             }
 
-            hir::ExprBinary(op, ref l, ref r) if hir::util::lazy_binop(op.node) => {
+            hir::ExprBinary(op, ref l, ref r) if op.node.is_lazy() => {
                 //
                 //     [pred]
                 //       |

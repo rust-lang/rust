@@ -1180,7 +1180,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // if not overloaded, would be RvalueDatumExpr
             let lhs = unpack_datum!(bcx, trans(bcx, &lhs));
             let mut rhs = unpack_datum!(bcx, trans(bcx, &rhs_expr));
-            if !hir::util::is_by_value_binop(op.node) {
+            if !op.node.is_by_value() {
                 rhs = unpack_datum!(bcx, auto_ref(bcx, rhs, rhs_expr));
             }
 
@@ -1204,7 +1204,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             span_bug!(
                 expr.span,
                 "augmented assignment `{}=` should always be a rvalue_stmt",
-                hir::util::binop_to_string(op.node))
+                op.node.as_str())
         }
         _ => {
             span_bug!(
