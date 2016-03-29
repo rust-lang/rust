@@ -143,8 +143,19 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     };
 
     let _ = match Some(42) {
+        Some(_) => 24,
+        None => 24,
+    };
+
+    let _ = match Some(42) {
         Some(42) => 24,
         Some(a) => 24, // bindings are different
+        None => 0,
+    };
+
+    let _ = match Some(42) {
+        Some(a) if a > 0 => 24,
+        Some(a) => 24, // one arm has a guard
         None => 0,
     };
 

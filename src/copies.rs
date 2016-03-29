@@ -132,13 +132,15 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
     };
 
     let eq = |lhs: &Arm, rhs: &Arm| -> bool {
-        SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
+        // Arms with a guard are ignored, those can’t always be merged together
+        lhs.guard.is_none() && rhs.guard.is_none() &&
+            SpanlessEq::new(cx).eq_expr(&lhs.body, &rhs.body) &&
             // all patterns should have the same bindings
             bindings(cx, &lhs.pats[0]) == bindings(cx, &rhs.pats[0])
     };
 
     if let ExprMatch(_, ref arms, MatchSource::Normal) = expr.node {
-        if let Some((i, j)) = search_same(&**arms, hash, eq) {
+        if let Some((i, j)) = search_same(&arms, hash, eq) {
             span_note_and_lint(cx,
                                MATCH_SAME_ARMS,
                                j.body.span,
