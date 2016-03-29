@@ -56,8 +56,8 @@ use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::pat_bindings;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
-use rustc::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
-use rustc::util::nodemap::{NodeMap, FnvHashMap};
+use rustc::hir::{Freevar, FreevarMap, TraitMap, GlobMap};
+use rustc::util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
@@ -1186,7 +1186,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
-            glob_map: HashMap::new(),
+            glob_map: NodeMap(),
 
             callback: None,
             resolved: false,
@@ -1253,7 +1253,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return;
         }
 
-        let mut new_set = HashSet::new();
+        let mut new_set = FnvHashSet();
         new_set.insert(name);
         self.glob_map.insert(import_id, new_set);
     }

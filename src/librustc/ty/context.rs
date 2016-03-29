@@ -27,7 +27,7 @@ use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants};
 use ty::{AdtDef, ClosureSubsts, ExistentialBounds, Region};
-use ty::{FreevarMap};
+use hir::FreevarMap;
 use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;

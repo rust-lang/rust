@@ -136,7 +136,7 @@ pub struct TypeAndSubsts<'tcx> {
 
 pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
-    pub trait_map: ty::TraitMap,
+    pub trait_map: hir::TraitMap,
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
     /// error reporting, and so is lazily initialised and generally
@@ -329,7 +329,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt, trait_map: ty::TraitMap) -> CompileResult {
+pub fn check_crate(tcx: &TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,

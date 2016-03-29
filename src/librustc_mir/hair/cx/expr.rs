@@ -958,7 +958,7 @@ fn overloaded_lvalue<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
 
 fn capture_freevar<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                                  closure_expr: &'tcx hir::Expr,
-                                 freevar: &ty::Freevar,
+                                 freevar: &hir::Freevar,
                                  freevar_ty: Ty<'tcx>)
                                  -> ExprRef<'tcx> {
     let id_var = freevar.def.var_id();
