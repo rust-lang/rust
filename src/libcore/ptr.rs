@@ -212,6 +212,16 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
     /// Returns true if the pointer is null.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s: &str = "Follow the rabbit";
+    /// let ptr: *const u8 = s.as_ptr();
+    /// assert!(ptr.is_null() == false);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_null(self) -> bool where T: Sized {
@@ -227,6 +237,20 @@ impl<T: ?Sized> *const T {
     /// null-safety, it is important to note that this is still an unsafe
     /// operation because the returned value could be pointing to invalid
     /// memory.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore
+    /// let val: *const u8 = &10u8 as *const u8;
+    ///
+    /// unsafe {
+    ///     if let Some(val_back) = val.as_ref() {
+    ///         println!("We got back the value: {}!", val_back);
+    ///     }
+    /// }
+    /// ```
     #[unstable(feature = "ptr_as_ref",
                reason = "Option is not clearly the right return type, and we \
                          may want to tie the return lifetime to a borrow of \
@@ -250,6 +274,20 @@ impl<T: ?Sized> *const T {
     /// byte past the end of an allocated object. If either pointer is out of
     /// bounds or arithmetic overflow occurs then
     /// any further use of the returned value will result in undefined behavior.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s: &str = "123";
+    /// let ptr: *const u8 = s.as_ptr();
+    ///
+    /// unsafe {
+    ///     println!("{}", *ptr.offset(1) as char);
+    ///     println!("{}", *ptr.offset(2) as char);
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *const T where T: Sized {
@@ -260,6 +298,16 @@ impl<T: ?Sized> *const T {
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
     /// Returns true if the pointer is null.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let mut s = [1, 2, 3];
+    /// let ptr: *mut u32 = s.as_mut_ptr();
+    /// assert!(ptr.is_null() == false);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_null(self) -> bool where T: Sized {
@@ -275,6 +323,20 @@ impl<T: ?Sized> *mut T {
     /// null-safety, it is important to note that this is still an unsafe
     /// operation because the returned value could be pointing to invalid
     /// memory.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```ignore
+    /// let val: *mut u8 = &mut 10u8 as *mut u8;
+    ///
+    /// unsafe {
+    ///     if let Some(val_back) = val.as_ref() {
+    ///         println!("We got back the value: {}!", val_back);
+    ///     }
+    /// }
+    /// ```
     #[unstable(feature = "ptr_as_ref",
                reason = "Option is not clearly the right return type, and we \
                          may want to tie the return lifetime to a borrow of \
@@ -297,6 +359,20 @@ impl<T: ?Sized> *mut T {
     /// The offset must be in-bounds of the object, or one-byte-past-the-end.
     /// Otherwise `offset` invokes Undefined Behavior, regardless of whether
     /// the pointer is used.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let mut s = [1, 2, 3];
+    /// let ptr: *mut u32 = s.as_mut_ptr();
+    ///
+    /// unsafe {
+    ///     println!("{}", *ptr.offset(1));
+    ///     println!("{}", *ptr.offset(2));
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *mut T where T: Sized {
@@ -310,6 +386,15 @@ impl<T: ?Sized> *mut T {
     ///
     /// As with `as_ref`, this is unsafe because it cannot verify the validity
     /// of the returned pointer.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let mut s = [1, 2, 3];
+    /// let ptr: *mut u32 = s.as_mut_ptr();
+    /// ```
     #[unstable(feature = "ptr_as_ref",
                reason = "return value does not necessarily convey all possible \
                          information",
