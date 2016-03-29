@@ -360,7 +360,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
             }
         }
         _ => {
-            match intrinsics::Intrinsic::find(tcx, &name) {
+            match intrinsics::Intrinsic::find(&name) {
                 Some(intr) => {
                     // this function is a platform specific intrinsic
                     if i_n_tps != 0 {
