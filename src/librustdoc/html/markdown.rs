@@ -607,7 +607,7 @@ mod tests {
     fn issue_17736() {
         let markdown = "# title";
         format!("{}", Markdown(markdown));
-        reset_ids();
+        reset_ids(true);
     }
 
     #[test]
@@ -615,7 +615,7 @@ mod tests {
         fn t(input: &str, expect: &str) {
             let output = format!("{}", Markdown(input));
             assert_eq!(output, expect);
-            reset_ids();
+            reset_ids(true);
         }
 
         t("# Foo bar", "\n<h1 id='foo-bar' class='section-header'>\
@@ -654,7 +654,7 @@ mod tests {
               <a href='#panics-1'>Panics</a></h1>");
         };
         test();
-        reset_ids();
+        reset_ids(true);
         test();
     }
 

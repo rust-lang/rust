@@ -1254,7 +1254,7 @@ pub trait BufRead: Read {
     /// longer be returned. As such, this function may do odd things if
     /// `fill_buf` isn't called before calling it.
     ///
-    /// [fillbuf]: #tymethod.fill_buff
+    /// [fillbuf]: #tymethod.fill_buf
     ///
     /// The `amt` must be `<=` the number of bytes in the buffer returned by
     /// `fill_buf`.
