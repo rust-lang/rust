@@ -21,7 +21,6 @@
 use ast::*;
 use ast;
 use attr::{ThinAttributes, ThinAttributesExt};
-use ast_util;
 use codemap::{respan, Span, Spanned};
 use parse::token;
 use ptr::P;
@@ -1073,13 +1072,6 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
                                         folder: &mut T) -> Item {
     let id = folder.new_id(id);
     let node = folder.fold_item_kind(node);
-    let ident = match node {
-        // The node may have changed, recompute the "pretty" impl name.
-        ItemKind::Impl(_, _, _, ref maybe_trait, ref ty, _) => {
-            ast_util::impl_pretty_name(maybe_trait, Some(&ty))
-        }
-        _ => ident
-    };
 
     Item {
         id: id,

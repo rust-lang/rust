@@ -38,14 +38,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::ast_util::{IdVisitingOperation};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
 use hir;
-use hir::intravisit::{IdVisitor, Visitor};
+use hir::intravisit::{IdVisitor, IdVisitingOperation, Visitor};
 
 pub use self::DefLike::{DlDef, DlField, DlImpl};
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};

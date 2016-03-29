@@ -194,7 +194,6 @@ use std::vec;
 
 use syntax::abi::Abi;
 use syntax::ast::{self, EnumDef, Expr, Ident, Generics, VariantData, BinOpKind, PatKind};
-use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::base::{ExtCtxt, Annotatable};
@@ -620,7 +619,6 @@ impl<'a> TraitDef<'a> {
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
-        let ident = ast_util::impl_pretty_name(&opt_trait_ref, Some(&self_type));
         let unused_qual = cx.attribute(
             self.span,
             cx.meta_list(self.span,
@@ -638,7 +636,7 @@ impl<'a> TraitDef<'a> {
 
         cx.item(
             self.span,
-            ident,
+            special_idents::invalid,
             a,
             ast::ItemKind::Impl(unsafety,
                                 ast::ImplPolarity::Positive,

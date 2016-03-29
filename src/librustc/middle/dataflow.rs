@@ -21,12 +21,11 @@ use std::io;
 use std::mem;
 use std::usize;
 use syntax::ast;
-use syntax::ast_util::IdRange;
 use syntax::print::pp;
 use syntax::print::pprust::PrintState;
 use util::nodemap::NodeMap;
 use hir;
-use hir::intravisit;
+use hir::intravisit::{self, IdRange};
 use hir::print as pprust;
 
 
