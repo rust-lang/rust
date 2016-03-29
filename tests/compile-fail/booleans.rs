@@ -76,4 +76,6 @@ fn equality_stuff() {
     //|~ HELP it would look like the following
     //|~ SUGGESTION let _ = false;
     let _ = a > b && a == b;
+
+    let _ = a != b || !(a != b || c == d);
 }
