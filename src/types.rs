@@ -799,7 +799,7 @@ impl LintPass for InvalidUpcastComparisons {
     }
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq)]
 enum FullInt {
     S(i64),
     U(u64),
@@ -817,6 +817,12 @@ impl FullInt {
         } else {
             (s as u64).cmp(&u)
         }
+    }
+}
+
+impl PartialEq for FullInt {
+    fn eq(&self, other: &Self) -> bool {
+        self.partial_cmp(other).expect("partial_cmp only returns Some(_)") == Ordering::Equal
     }
 }
 
