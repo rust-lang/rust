@@ -17,7 +17,7 @@ use std::cell::RefCell;
 use std::io::Cursor;
 use std::io::prelude::*;
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use middle::region;
 use rustc::ty::subst;
 use rustc::ty::subst::VecPerParamSpace;

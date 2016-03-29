@@ -14,7 +14,7 @@
  * Almost certainly this could (and should) be refactored out of existence.
  */
 
-use middle::def::Def;
+use hir::def::Def;
 use ty::{Ty, TyCtxt};
 
 use syntax::codemap::Span;

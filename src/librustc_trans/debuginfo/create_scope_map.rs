@@ -14,7 +14,7 @@ use super::utils::DIB;
 use llvm;
 use llvm::debuginfo::{DIScope, DISubprogram};
 use common::CrateContext;
-use middle::pat_util;
+use rustc::hir::pat_util;
 use rustc::util::nodemap::NodeMap;
 
 use libc::c_uint;

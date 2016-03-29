@@ -21,8 +21,8 @@ use tyencode;
 use index::{self, IndexData};
 
 use middle::cstore::{LOCAL_CRATE, CrateStore, InlinedItemRef, LinkMeta, tls};
-use middle::def;
-use middle::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
 use middle::stability;
 use rustc::ty::subst;

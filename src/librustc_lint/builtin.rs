@@ -28,9 +28,9 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use middle::def::Def;
+use rustc::hir::def::Def;
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use middle::stability;
 use rustc::{cfg, infer};
 use rustc::ty::subst::Substs;

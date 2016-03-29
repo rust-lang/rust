@@ -11,7 +11,7 @@
 use graphviz::IntoCow;
 use middle::const_val::ConstVal;
 use rustc_const_math::{ConstUsize, ConstInt};
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use util::ppaux;

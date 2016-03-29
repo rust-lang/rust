@@ -21,7 +21,7 @@ use self::ScopeChain::*;
 use dep_graph::DepNode;
 use hir::map::Map;
 use session::Session;
-use middle::def::{Def, DefMap};
+use hir::def::{Def, DefMap};
 use middle::region;
 use ty::subst;
 use ty;

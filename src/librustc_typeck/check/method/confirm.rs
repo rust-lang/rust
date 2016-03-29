@@ -12,7 +12,7 @@ use super::probe;
 
 use check::{self, FnCtxt, callee, demand};
 use check::UnresolvedTypeAction;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::ty::subst::{self};
 use rustc::traits;
 use rustc::ty::{self, NoPreference, PreferMutLvalue, Ty, TyCtxt};

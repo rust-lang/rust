@@ -20,7 +20,7 @@ use rustc::mir::repr::*;
 
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};

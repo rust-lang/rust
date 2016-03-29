@@ -14,13 +14,13 @@
 
 use dep_graph::DepNode;
 use hir::map as ast_map;
-use hir::{self, PatKind};
+use hir::{self, pat_util, PatKind};
 use hir::intravisit::{self, Visitor};
 
-use middle::{pat_util, privacy};
+use middle::privacy;
 use ty::{self, TyCtxt};
-use middle::def::Def;
-use middle::def_id::{DefId};
+use hir::def::Def;
+use hir::def_id::{DefId};
 use lint;
 
 use std::collections::HashSet;

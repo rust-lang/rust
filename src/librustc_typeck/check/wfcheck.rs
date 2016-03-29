@@ -12,7 +12,7 @@ use astconv::AstConv;
 use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::region::{CodeExtent};
 use rustc::ty::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use rustc::traits;

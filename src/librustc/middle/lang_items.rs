@@ -25,7 +25,7 @@ use dep_graph::DepNode;
 use hir::map as hir_map;
 use session::Session;
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty;
 use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;

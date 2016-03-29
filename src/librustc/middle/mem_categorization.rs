@@ -71,11 +71,11 @@ pub use self::deref_kind::*;
 
 use self::Aliasability::*;
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use hir::map as ast_map;
 use infer;
 use middle::const_qualif::ConstQualif;
-use middle::def::Def;
+use hir::def::Def;
 use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
 

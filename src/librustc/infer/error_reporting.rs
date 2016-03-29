@@ -78,8 +78,8 @@ use hir;
 use hir::print as pprust;
 
 use middle::cstore::CrateStore;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use infer::{self, TypeOrigin};
 use middle::region;
 use ty::subst;

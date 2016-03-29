@@ -10,8 +10,8 @@
 
 use rustc_data_structures::graph;
 use cfg::*;
-use middle::def::Def;
-use middle::pat_util;
+use hir::def::Def;
+use hir::pat_util;
 use ty::{self, TyCtxt};
 use syntax::ast;
 use syntax::ptr::P;

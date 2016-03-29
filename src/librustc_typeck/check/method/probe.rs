@@ -15,8 +15,8 @@ use super::suggest;
 
 use check;
 use check::{FnCtxt, UnresolvedTypeAction};
-use middle::def_id::DefId;
-use middle::def::Def;
+use hir::def_id::DefId;
+use hir::def::Def;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits;

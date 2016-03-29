@@ -12,7 +12,7 @@
 //! crate or pertains to a type defined in this crate.
 
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;

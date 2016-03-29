@@ -103,7 +103,7 @@ pub use rustc::util;
 
 use dep_graph::DepNode;
 use hir::map as hir_map;
-use middle::def::Def;
+use hir::def::Def;
 use rustc::infer::{self, TypeOrigin};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};

@@ -15,7 +15,7 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use rustc::ty::subst::{self, Subst};
 use rustc::ty::{self, TyCtxt, TypeFoldable};

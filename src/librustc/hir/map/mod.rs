@@ -19,7 +19,7 @@ use dep_graph::{DepGraph, DepNode};
 
 use middle::cstore::InlinedItem;
 use middle::cstore::InlinedItem as II;
-use middle::def_id::{CRATE_DEF_INDEX, DefId};
+use hir::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};

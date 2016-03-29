@@ -93,7 +93,7 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, TypeFoldable};
 use rustc::infer::{self, GenericKind, InferCtxt, InferOk, SubregionOrigin, TypeOrigin, VerifyBound};
-use middle::pat_util;
+use hir::pat_util;
 use rustc::ty::adjustment;
 use rustc::ty::wf::ImpliedBound;
 

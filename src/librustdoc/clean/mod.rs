@@ -35,8 +35,8 @@ use syntax::ptr::P;
 
 use rustc_trans::back::link;
 use rustc::middle::cstore::{self, CrateStore};
-use rustc::middle::def::Def;
-use rustc::middle::def_id::{DefId, DefIndex};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::ty;
 use rustc::middle::stability;

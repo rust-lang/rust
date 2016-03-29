@@ -27,8 +27,8 @@
 //! is used for recording the output in a format-agnostic way (see CsvDumper
 //! for an example).
 
-use rustc::middle::def::Def;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 

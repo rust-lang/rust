@@ -13,7 +13,7 @@
 //! can be other things. Examples of type relations are subtyping,
 //! type equality, etc.
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::{ParamSpace, Substs};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::error::{ExpectedFound, TypeError};

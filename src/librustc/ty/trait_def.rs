@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepNode;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use traits::{self, specialization_graph};
 use ty;
 use ty::fast_reject;

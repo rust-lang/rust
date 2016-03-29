@@ -13,7 +13,7 @@ use std::rc::Rc;
 use arena::TypedArena;
 use back::symbol_names;
 use llvm::{ValueRef, get_params};
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst::{FnSpace, Subst, Substs};
 use rustc::ty::subst;

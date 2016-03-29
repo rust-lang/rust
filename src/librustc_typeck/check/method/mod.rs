@@ -12,8 +12,8 @@
 
 use astconv::AstConv;
 use check::FnCtxt;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use rustc::ty::subst;
 use rustc::traits;
 use rustc::ty::{self, TyCtxt, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};

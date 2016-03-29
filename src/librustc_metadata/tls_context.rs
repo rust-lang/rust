@@ -14,7 +14,7 @@
 use rbml::opaque::Encoder as OpaqueEncoder;
 use rbml::opaque::Decoder as OpaqueDecoder;
 use rustc::middle::cstore::tls;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TyCtxt};
 

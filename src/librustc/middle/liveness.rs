@@ -110,8 +110,8 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use dep_graph::DepNode;
-use middle::def::*;
-use middle::pat_util;
+use hir::def::*;
+use hir::pat_util;
 use ty::{self, TyCtxt, ParameterEnvironment};
 use traits::{self, ProjectionMode};
 use infer;

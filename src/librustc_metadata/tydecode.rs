@@ -18,7 +18,7 @@
 
 use rustc::hir;
 
-use middle::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{DefId, DefIndex};
 use middle::region;
 use rustc::ty::subst;
 use rustc::ty::subst::VecPerParamSpace;

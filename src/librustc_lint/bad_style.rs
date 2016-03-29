@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def::Def;
+use rustc::hir::def::Def;
 use rustc::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};

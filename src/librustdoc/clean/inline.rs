@@ -17,8 +17,8 @@ use syntax::attr::AttrMetaMethods;
 use rustc::hir;
 
 use rustc::middle::cstore::{self, CrateStore};
-use rustc::middle::def::Def;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::subst;
 use rustc::middle::stability;

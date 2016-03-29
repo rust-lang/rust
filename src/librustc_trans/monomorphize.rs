@@ -11,7 +11,7 @@
 use back::symbol_names;
 use llvm::ValueRef;
 use llvm;
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer::normalize_associated_type;
 use rustc::ty::subst;
 use rustc::ty::subst::{Subst, Substs};

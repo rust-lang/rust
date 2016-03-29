@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::cmp;

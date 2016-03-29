@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyStruct, TyEnum};

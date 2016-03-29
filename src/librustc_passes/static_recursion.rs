@@ -14,7 +14,7 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as ast_map;
 use rustc::session::{Session, CompileResult};
-use rustc::middle::def::{Def, DefMap};
+use rustc::hir::def::{Def, DefMap};
 use rustc::util::nodemap::NodeMap;
 
 use syntax::{ast};

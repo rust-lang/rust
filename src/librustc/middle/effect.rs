@@ -13,7 +13,7 @@
 use self::RootUnsafeContext::*;
 
 use dep_graph::DepNode;
-use middle::def::Def;
+use hir::def::Def;
 use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
 

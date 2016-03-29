@@ -13,7 +13,7 @@ use super::MapEntry::*;
 
 use hir::*;
 use hir::intravisit::Visitor;
-use middle::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;

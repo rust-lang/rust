@@ -18,7 +18,7 @@ use super::{
     method,
     FnCtxt,
 };
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;

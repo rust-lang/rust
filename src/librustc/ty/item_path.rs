@@ -10,7 +10,7 @@
 
 use hir::map::DefPathData;
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::{DefId, CRATE_DEF_INDEX};
+use hir::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 

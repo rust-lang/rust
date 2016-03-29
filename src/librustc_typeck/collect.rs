@@ -60,8 +60,8 @@ There are some shortcomings in this design:
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use lint;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use constrained_type_params as ctp;
 use coherence;
 use middle::lang_items::SizedTraitLangItem;

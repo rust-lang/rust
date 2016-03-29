@@ -19,9 +19,9 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use middle::pat_util;
-use middle::def::Def;
-use middle::def_id::{DefId};
+use hir::pat_util;
+use hir::def::Def;
+use hir::def_id::{DefId};
 use infer;
 use middle::mem_categorization as mc;
 use ty::{self, TyCtxt, adjustment};

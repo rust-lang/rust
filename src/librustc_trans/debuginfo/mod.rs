@@ -26,7 +26,7 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer::normalize_associated_type;
 use rustc::ty::subst::{self, Substs};
 use rustc::hir;

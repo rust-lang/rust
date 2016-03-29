@@ -192,7 +192,7 @@ use rustc::hir;
 use rustc::hir::intravisit as hir_visit;
 
 use rustc::hir::map as hir_map;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::{self, Substs, Subst};

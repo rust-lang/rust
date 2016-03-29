@@ -10,7 +10,7 @@
 
 use check::regionck::{self, Rcx};
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use rustc::infer;
 use middle::region;

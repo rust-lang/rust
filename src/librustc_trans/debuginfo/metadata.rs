@@ -23,9 +23,9 @@ use super::{declare_local, VariableKind, VariableAccess};
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
-use middle::pat_util;
+use rustc::hir::pat_util;
 use rustc::ty::subst;
 use rustc::hir::map as hir_map;
 use rustc::hir::{self, PatKind};
