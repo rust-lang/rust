@@ -12,19 +12,30 @@
 
 #![cfg(not(test))]
 #![cfg(feature="cargo-fmt")]
+#![deny(warnings)]
 
 extern crate getopts;
 extern crate rustc_serialize;
 
-use std::path::PathBuf;
-use std::process::Command;
 use std::env;
+use std::io::Write;
+use std::path::PathBuf;
+use std::process::{Command, ExitStatus};
 use std::str;
 
 use getopts::Options;
 use rustc_serialize::json::Json;
 
 fn main() {
+    let exit_status = execute();
+    std::io::stdout().flush().unwrap();
+    std::process::exit(exit_status);
+}
+
+fn execute() -> i32 {
+    let success = 0;
+    let failure = 1;
+
     let mut opts = getopts::Options::new();
     opts.optflag("h", "help", "show this message");
     opts.optflag("q", "quiet", "no output printed to stdout");
@@ -34,7 +45,7 @@ fn main() {
         Ok(m) => m,
         Err(e) => {
             print_usage(&opts, &e.to_string());
-            return;
+            return failure;
         }
     };
 
@@ -42,13 +53,26 @@ fn main() {
 
     if verbose && quiet {
         print_usage(&opts, "quiet mode and verbose mode are not compatible");
-        return;
+        return failure;
     }
 
     if matches.opt_present("h") {
         print_usage(&opts, "");
-    } else {
-        format_crate(&opts, verbose, quiet);
+        return success;
+    }
+
+    match format_crate(verbose, quiet) {
+        Err(e) => {
+            print_usage(&opts, &e.to_string());
+            failure
+        }
+        Ok(status) => {
+            if status.success() {
+                success
+            } else {
+                status.code().unwrap_or(failure)
+            }
+        }
     }
 }
 
@@ -59,14 +83,8 @@ fn print_usage(opts: &Options, reason: &str) {
              opts.usage(&msg));
 }
 
-fn format_crate(opts: &Options, verbose: bool, quiet: bool) {
-    let targets = match get_targets() {
-        Ok(t) => t,
-        Err(e) => {
-            print_usage(opts, &e.to_string());
-            return;
-        }
-    };
+fn format_crate(verbose: bool, quiet: bool) -> Result<ExitStatus, std::io::Error> {
+    let targets = try!(get_targets());
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets.into_iter()
@@ -80,7 +98,6 @@ fn format_crate(opts: &Options, verbose: bool, quiet: bool) {
                                .collect();
 
     format_files(&files, &get_fmt_args(), verbose, quiet)
-        .unwrap_or_else(|e| print_usage(opts, &e.to_string()));
 }
 
 fn get_fmt_args() -> Vec<String> {
@@ -158,7 +175,7 @@ fn format_files(files: &Vec<PathBuf>,
                 fmt_args: &Vec<String>,
                 verbose: bool,
                 quiet: bool)
-                -> Result<(), std::io::Error> {
+                -> Result<ExitStatus, std::io::Error> {
     let stdout = if quiet {
         std::process::Stdio::null()
     } else {
@@ -179,7 +196,5 @@ fn format_files(files: &Vec<PathBuf>,
                                .args(files)
                                .args(fmt_args)
                                .spawn());
-    try!(command.wait());
-
-    Ok(())
+    command.wait()
 }
