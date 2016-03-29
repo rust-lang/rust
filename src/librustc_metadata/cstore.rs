@@ -20,6 +20,7 @@ use decoder;
 use index;
 use loader;
 
+use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{ExternCrate};
@@ -86,6 +87,7 @@ pub struct crate_metadata {
 }
 
 pub struct CStore {
+    _dep_graph: DepGraph,
     metas: RefCell<FnvHashMap<ast::CrateNum, Rc<crate_metadata>>>,
     /// Map from NodeId's of local extern crate statements to crate numbers
     extern_mod_crate_map: RefCell<NodeMap<ast::CrateNum>>,
@@ -98,8 +100,10 @@ pub struct CStore {
 }
 
 impl CStore {
-    pub fn new(intr: Rc<IdentInterner>) -> CStore {
+    pub fn new(dep_graph: &DepGraph,
+               intr: Rc<IdentInterner>) -> CStore {
         CStore {
+            _dep_graph: dep_graph.clone(),
             metas: RefCell::new(FnvHashMap()),
             extern_mod_crate_map: RefCell::new(FnvHashMap()),
             used_crate_sources: RefCell::new(Vec::new()),
