@@ -94,9 +94,9 @@ DEPS_syntax_ext := syntax fmt_macros
 DEPS_rustc_const_eval := std syntax
 
 DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml rustc_front\
-              log graphviz rustc_llvm rustc_back rustc_data_structures\
+              log graphviz rustc_back rustc_data_structures\
 		  	  rustc_const_eval
-DEPS_rustc_back := std syntax rustc_llvm rustc_front flate log libc
+DEPS_rustc_back := std syntax rustc_front flate log libc
 DEPS_rustc_borrowck := rustc rustc_front rustc_mir log graphviz syntax
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \

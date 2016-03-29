@@ -16,6 +16,7 @@ extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_front;
 extern crate rustc_lint;
+extern crate rustc_llvm as llvm;
 extern crate rustc_metadata;
 extern crate rustc_resolve;
 #[macro_use] extern crate syntax;
@@ -28,7 +29,6 @@ use std::thread::Builder;
 
 use rustc::dep_graph::DepGraph;
 use rustc::front::map as ast_map;
-use rustc::llvm;
 use rustc::middle::cstore::{CrateStore, LinkagePreference};
 use rustc::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
