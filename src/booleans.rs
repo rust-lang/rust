@@ -149,29 +149,26 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                         recurse(true, cx, inner, terminals, s)
                     },
                     Term(n) => {
-                        match terminals[n as usize].node {
-                            ExprBinary(binop, ref lhs, ref rhs) => {
-                                let op = match binop.node {
-                                    BiEq => " != ",
-                                    BiNe => " == ",
-                                    BiLt => " >= ",
-                                    BiGt => " <= ",
-                                    BiLe => " > ",
-                                    BiGe => " < ",
-                                    _ => {
-                                        s.push('!');
-                                        return recurse(true, cx, inner, terminals, s)
-                                    },
-                                };
-                                s.push_str(&snip(lhs));
-                                s.push_str(op);
-                                s.push_str(&snip(rhs));
-                                s
-                            },
-                            _ => {
-                                s.push('!');
-                                recurse(false, cx, inner, terminals, s)
-                            },
+                        if let ExprBinary(binop, ref lhs, ref rhs) = terminals[n as usize].node {
+                            let op = match binop.node {
+                                BiEq => " != ",
+                                BiNe => " == ",
+                                BiLt => " >= ",
+                                BiGt => " <= ",
+                                BiLe => " > ",
+                                BiGe => " < ",
+                                _ => {
+                                    s.push('!');
+                                    return recurse(true, cx, inner, terminals, s)
+                                },
+                            };
+                            s.push_str(&snip(lhs));
+                            s.push_str(op);
+                            s.push_str(&snip(rhs));
+                            s
+                        } else {
+                            s.push('!');
+                            recurse(false, cx, inner, terminals, s)
                         }
                     },
                     _ => {
