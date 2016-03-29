@@ -34,6 +34,6 @@ fn main() {
     //~| found box
 
     needs_fn(1);
-    //~^ ERROR `std::ops::Fn<(isize,)>`
-    //~| ERROR `std::ops::FnOnce<(isize,)>`
+    //~^ ERROR : std::ops::Fn<(isize,)>`
+    //~| ERROR : std::ops::FnOnce<(isize,)>`
 }

@@ -18,7 +18,7 @@ trait Foo<T> {
 
 fn f<T:Foo<isize>>(t: &T) {
     let u: <T as Foo<usize>>::Bar = t.get_bar();
-    //~^ ERROR the trait `Foo<usize>` is not implemented for the type `T`
+    //~^ ERROR the predicate `T : Foo<usize>` is not satisfied
 }
 
 fn main() { }

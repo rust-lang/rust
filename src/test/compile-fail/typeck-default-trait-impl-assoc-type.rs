@@ -16,7 +16,7 @@ trait Trait {
     fn dummy(&self) { }
 }
 fn bar<T:Trait+Send>() {
-    is_send::<T::AssocType>(); //~ ERROR not implemented
+    is_send::<T::AssocType>(); //~ ERROR E0277
 }
 
 fn is_send<T:Send>() {

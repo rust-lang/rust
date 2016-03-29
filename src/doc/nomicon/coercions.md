@@ -64,7 +64,7 @@ fn main() {
 ```
 
 ```text
-<anon>:10:5: 10:8 error: the trait `Trait` is not implemented for the type `&mut i32` [E0277]
+<anon>:10:5: 10:8 error: the predicate `&mut i32 : Trait` is not satisfied [E0277]
 <anon>:10     foo(t);
               ^~~
 ```

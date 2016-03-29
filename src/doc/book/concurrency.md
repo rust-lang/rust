@@ -231,8 +231,8 @@ fn main() {
 This won't work, however, and will give us the error:
 
 ```text
-13:9: 13:22 error: the trait `core::marker::Send` is not
-            implemented for the type `alloc::rc::Rc<collections::vec::Vec<i32>>`
+13:9: 13:22 error: the predicate `alloc::rc::Rc<collections::vec::Vec<i32>> : core::marker::Send`
+            is not satisfied
 ...
 13:9: 13:22 note: `alloc::rc::Rc<collections::vec::Vec<i32>>`
             cannot be sent between threads safely

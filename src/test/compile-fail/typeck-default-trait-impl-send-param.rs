@@ -12,7 +12,7 @@
 // an explicit trait bound.
 
 fn foo<T>() {
-    is_send::<T>() //~ ERROR not implemented
+    is_send::<T>() //~ ERROR E0277
 }
 
 fn is_send<T:Send>() {

@@ -15,5 +15,5 @@ fn f<T: Sync>(_: T) {}
 fn main() {
     let x = RefCell::new(0);
     f(x);
-    //~^ ERROR `std::marker::Sync` is not implemented
+    //~^ ERROR `std::cell::RefCell<_> : std::marker::Sync` is not satisfied
 }
