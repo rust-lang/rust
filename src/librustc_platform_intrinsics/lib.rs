@@ -16,7 +16,6 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 #![allow(bad_style)]
 
-extern crate rustc_llvm as llvm;
 extern crate rustc;
 
 use rustc::ty::TyCtxt;

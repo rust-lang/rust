@@ -38,8 +38,6 @@ use std::env;
 use std::fmt;
 use std::path::PathBuf;
 
-use llvm;
-
 pub struct Config {
     pub target: Target,
     pub int_type: IntTy,
@@ -1051,10 +1049,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let incremental_compilation = debugging_opts.incr_comp;
     let dump_dep_graph = debugging_opts.dump_dep_graph;
     let no_analysis = debugging_opts.no_analysis;
-
-    if debugging_opts.debug_llvm {
-        unsafe { llvm::LLVMSetDebug(1); }
-    }
 
     let mut output_types = HashMap::new();
     if !debugging_opts.parse_only && !no_trans {

@@ -50,7 +50,6 @@ extern crate getopts;
 extern crate graphviz;
 extern crate libc;
 extern crate rbml;
-pub extern crate rustc_llvm as llvm;
 extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_data_structures;
@@ -138,10 +137,6 @@ pub mod util {
     pub mod nodemap;
     pub mod num;
     pub mod fs;
-}
-
-pub mod lib {
-    pub use llvm;
 }
 
 // A private module so that macro-expanded idents like

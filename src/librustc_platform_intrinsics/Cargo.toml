@@ -9,5 +9,4 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-rustc_llvm = { path = "../librustc_llvm" }
 rustc = { path = "../librustc" }
