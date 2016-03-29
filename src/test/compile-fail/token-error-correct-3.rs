@@ -21,8 +21,9 @@ pub mod raw {
         if !is_directory(path.as_ref()) { //~ ERROR: unresolved name `is_directory`
             callback(path.as_ref();  //~ NOTE: unclosed delimiter
                      //~^ ERROR: expected one of
-            fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: expected one of
+            fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
         } else { //~ ERROR: incorrect close delimiter: `}`
+            //~^ ERROR: expected one of
             Ok(false);
         }
 
