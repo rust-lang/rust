@@ -129,18 +129,10 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 }
 
-macro_rules! brackets {
-    ($val:expr => $($name:ident),*) => {
-        match $val {
-            $($name(_) => true,)*
-            _ => false,
-        }
-    }
-}
-
 fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
     fn recurse(brackets: bool, cx: &LateContext, suggestion: &Bool, terminals: &[&Expr], mut s: String) -> String {
         use quine_mc_cluskey::Bool::*;
+        let snip = |e: &Expr| snippet_opt(cx, e.span).expect("don't try to improve booleans created by macros");
         match *suggestion {
             True => {
                 s.push_str("true");
@@ -151,17 +143,59 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 s
             },
             Not(ref inner) => {
-                s.push('!');
-                recurse(brackets!(**inner => And, Or, Term), cx, inner, terminals, s)
+                match **inner {
+                    And(_) | Or(_) => {
+                        s.push('!');
+                        recurse(true, cx, inner, terminals, s)
+                    },
+                    Term(n) => {
+                        match terminals[n as usize].node {
+                            ExprBinary(binop, ref lhs, ref rhs) => {
+                                let op = match binop.node {
+                                    BiEq => " != ",
+                                    BiNe => " == ",
+                                    BiLt => " >= ",
+                                    BiGt => " <= ",
+                                    BiLe => " > ",
+                                    BiGe => " < ",
+                                    _ => {
+                                        s.push('!');
+                                        return recurse(true, cx, inner, terminals, s)
+                                    },
+                                };
+                                s.push_str(&snip(lhs));
+                                s.push_str(op);
+                                s.push_str(&snip(rhs));
+                                s
+                            },
+                            _ => {
+                                s.push('!');
+                                recurse(false, cx, inner, terminals, s)
+                            },
+                        }
+                    },
+                    _ => {
+                        s.push('!');
+                        recurse(false, cx, inner, terminals, s)
+                    },
+                }
             },
             And(ref v) => {
                 if brackets {
                     s.push('(');
                 }
-                s = recurse(brackets!(v[0] => Or), cx, &v[0], terminals, s);
+                if let Or(_) = v[0] {
+                    s = recurse(true, cx, &v[0], terminals, s);
+                } else {
+                    s = recurse(false, cx, &v[0], terminals, s);
+                }
                 for inner in &v[1..] {
                     s.push_str(" && ");
-                    s = recurse(brackets!(*inner => Or), cx, inner, terminals, s);
+                    if let Or(_) = *inner {
+                        s = recurse(true, cx, inner, terminals, s);
+                    } else {
+                        s = recurse(false, cx, inner, terminals, s);
+                    }
                 }
                 if brackets {
                     s.push(')');
@@ -188,7 +222,7 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                         s.push('(');
                     }
                 }
-                s.push_str(&snippet_opt(cx, terminals[n as usize].span).expect("don't try to improve booleans created by macros"));
+                s.push_str(&snip(&terminals[n as usize]));
                 if brackets {
                     if let ExprBinary(..) = terminals[n as usize].node {
                         s.push(')');

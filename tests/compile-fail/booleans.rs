@@ -66,7 +66,7 @@ fn equality_stuff() {
     //~| HELP for further information visit
     //~| SUGGESTION let _ = a == b && c == 5;
     //~| HELP try
-    //~| SUGGESTION let _ = !(!(c == 5) || !(a == b));
+    //~| SUGGESTION let _ = !(c != 5 || a != b);
     let _ = a < b && a >= b; //~ ERROR this boolean expression contains a logic bug
     //~| HELP for further information visit
     //~| HELP this expression can be optimized out
@@ -81,7 +81,7 @@ fn equality_stuff() {
 
     let _ = a != b || !(a != b || c == d); //~ ERROR this boolean expression can be simplified
     //~| HELP for further information visit
-    //~| SUGGESTION let _ = !(c == d) || a != b;
+    //~| SUGGESTION let _ = c != d || a != b;
     //~| HELP try
-    //~| SUGGESTION let _ = !(!(a != b) && c == d);
+    //~| SUGGESTION let _ = !(a == b && c == d);
 }
