@@ -129,6 +129,15 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
     }
 }
 
+macro_rules! brackets {
+    ($val:expr => $($name:ident),*) => {
+        match $val {
+            $($name(_) => true,)*
+            _ => false,
+        }
+    }
+}
+
 fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
     fn recurse(brackets: bool, cx: &LateContext, suggestion: &Bool, terminals: &[&Expr], mut s: String) -> String {
         use quine_mc_cluskey::Bool::*;
@@ -143,16 +152,16 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
             },
             Not(ref inner) => {
                 s.push('!');
-                recurse(true, cx, inner, terminals, s)
+                recurse(brackets!(**inner => And, Or, Term), cx, inner, terminals, s)
             },
             And(ref v) => {
                 if brackets {
                     s.push('(');
                 }
-                s = recurse(true, cx, &v[0], terminals, s);
+                s = recurse(brackets!(v[0] => Or), cx, &v[0], terminals, s);
                 for inner in &v[1..] {
                     s.push_str(" && ");
-                    s = recurse(true, cx, inner, terminals, s);
+                    s = recurse(brackets!(*inner => Or), cx, inner, terminals, s);
                 }
                 if brackets {
                     s.push(')');
@@ -163,10 +172,10 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 if brackets {
                     s.push('(');
                 }
-                s = recurse(true, cx, &v[0], terminals, s);
+                s = recurse(false, cx, &v[0], terminals, s);
                 for inner in &v[1..] {
                     s.push_str(" || ");
-                    s = recurse(true, cx, inner, terminals, s);
+                    s = recurse(false, cx, inner, terminals, s);
                 }
                 if brackets {
                     s.push(')');
@@ -174,7 +183,17 @@ fn suggest(cx: &LateContext, suggestion: &Bool, terminals: &[&Expr]) -> String {
                 s
             },
             Term(n) => {
+                if brackets {
+                    if let ExprBinary(..) = terminals[n as usize].node {
+                        s.push('(');
+                    }
+                }
                 s.push_str(&snippet_opt(cx, terminals[n as usize].span).expect("don't try to improve booleans created by macros"));
+                if brackets {
+                    if let ExprBinary(..) = terminals[n as usize].node {
+                        s.push(')');
+                    }
+                }
                 s
             }
         }
