@@ -11,7 +11,6 @@ crate-type = ["dylib"]
 [dependencies]
 syntax = { path = "../libsyntax" }
 serialize = { path = "../libserialize" }
-rustc_llvm = { path = "../librustc_llvm" }
 rustc_front = { path = "../librustc_front" }
 log = { path = "../liblog" }
 

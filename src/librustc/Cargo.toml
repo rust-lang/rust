@@ -21,6 +21,5 @@ rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_front = { path = "../librustc_front" }
-rustc_llvm = { path = "../librustc_llvm" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }

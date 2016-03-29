@@ -12,14 +12,9 @@
 #![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
-#![feature(staged_api, rustc_private)]
+#![feature(staged_api)]
 #![cfg_attr(not(stage0), deny(warnings))]
 #![allow(bad_style)]
-
-extern crate rustc_llvm as llvm;
-extern crate rustc;
-
-use rustc::ty::TyCtxt;
 
 pub struct Intrinsic {
     pub inputs: &'static [&'static Type],
@@ -102,13 +97,13 @@ mod arm;
 mod aarch64;
 
 impl Intrinsic {
-    pub fn find<'tcx>(tcx: &TyCtxt<'tcx>, name: &str) -> Option<Intrinsic> {
+    pub fn find(name: &str) -> Option<Intrinsic> {
         if name.starts_with("x86_") {
-            x86::find(tcx, name)
+            x86::find(name)
         } else if name.starts_with("arm_") {
-            arm::find(tcx, name)
+            arm::find(name)
         } else if name.starts_with("aarch64_") {
-            aarch64::find(tcx, name)
+            aarch64::find(name)
         } else {
             None
         }
