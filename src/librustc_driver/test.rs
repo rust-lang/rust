@@ -24,11 +24,8 @@ use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::relate::TypeRelation;
+use rustc::ty::relate::{TypeRelation, RelateResult};
 use rustc::infer::{self, TypeOrigin};
-use rustc::infer::lub::Lub;
-use rustc::infer::glb::Glb;
-use rustc::infer::sub::Sub;
 use rustc_metadata::cstore::CStore;
 use rustc::front::map as hir_map;
 use rustc::session::{self, config};
@@ -358,25 +355,25 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
 
-    pub fn sub(&self) -> Sub<'a, 'tcx> {
+    pub fn sub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
-        self.infcx.sub(true, trace)
+        self.infcx.sub(true, trace, t1, t2)
     }
 
-    pub fn lub(&self) -> Lub<'a, 'tcx> {
+    pub fn lub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
-        self.infcx.lub(true, trace)
+        self.infcx.lub(true, trace, t1, t2)
     }
 
-    pub fn glb(&self) -> Glb<'a, 'tcx> {
+    pub fn glb(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
-        self.infcx.glb(true, trace)
+        self.infcx.glb(true, trace, t1, t2)
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub().relate(&t1, &t2) {
+        match self.sub(&t1, &t2) {
             Ok(_) => {}
             Err(ref e) => {
                 panic!("unexpected error computing sub({:?},{:?}): {}", t1, t2, e);
@@ -387,7 +384,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `t1 <: t2` is false (this may register additional
     /// region checks).
     pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub().relate(&t1, &t2) {
+        match self.sub(&t1, &t2) {
             Err(_) => {}
             Ok(_) => {
                 panic!("unexpected success computing sub({:?},{:?})", t1, t2);
@@ -397,7 +394,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     /// Checks that `LUB(t1,t2) == t_lub`
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
-        match self.lub().relate(&t1, &t2) {
+        match self.lub(&t1, &t2) {
             Ok(t) => {
                 self.assert_eq(t, t_lub);
             }
@@ -410,7 +407,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
-        match self.glb().relate(&t1, &t2) {
+        match self.glb(&t1, &t2) {
             Err(e) => {
                 panic!("unexpected error computing LUB: {:?}", e)
             }

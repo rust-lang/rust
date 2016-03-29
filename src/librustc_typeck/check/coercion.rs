@@ -71,7 +71,7 @@ use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, LvaluePreference, TypeAndMut, Ty, TyCtxt};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
-use rustc::ty::relate::{relate_substs, Relate, RelateResult, TypeRelation};
+use rustc::ty::relate::{RelateResult, TypeRelation};
 use util::common::indent;
 
 use std::cell::RefCell;
@@ -117,9 +117,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         infcx.commit_if_ok(|_| {
             let trace = TypeTrace::types(self.origin, false, a, b);
             if self.use_lub {
-                infcx.lub(false, trace).relate(&a, &b)
+                infcx.lub(false, trace, &a, &b)
             } else {
-                infcx.sub(false, trace).relate(&a, &b)
+                infcx.sub(false, trace, &a, &b)
             }
         })
     }
@@ -649,7 +649,6 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
 
     let trace = TypeTrace::types(origin, true, prev_ty, new_ty);
-    let mut lub = fcx.infcx().lub(true, trace);
 
     // Special-case that coercion alone cannot handle:
     // Two function item types of differing IDs or Substs.
@@ -657,12 +656,12 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         (&ty::TyFnDef(a_def_id, a_substs, a_fty),
          &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
             // The signature must always match.
-            let fty = lub.relate(a_fty, b_fty)?;
+            let fty = fcx.infcx().lub(true, trace.clone(), a_fty, b_fty)?;
 
             if a_def_id == b_def_id {
                 // Same function, maybe the parameters match.
                 let substs = fcx.infcx().commit_if_ok(|_| {
-                    relate_substs(&mut lub, None, a_substs, b_substs)
+                    fcx.infcx().lub(true, trace.clone(), a_substs, b_substs)
                 }).map(|s| fcx.tcx().mk_substs(s));
 
                 if let Ok(substs) = substs {
@@ -724,7 +723,9 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         if !noop {
-            return fcx.infcx().commit_if_ok(|_| lub.relate(&prev_ty, &new_ty));
+            return fcx.infcx().commit_if_ok(|_| {
+                fcx.infcx().lub(true, trace.clone(), &prev_ty, &new_ty)
+            });
         }
     }
 
@@ -734,7 +735,9 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
             if let Some(e) = first_error {
                 Err(e)
             } else {
-                fcx.infcx().commit_if_ok(|_| lub.relate(&prev_ty, &new_ty))
+                fcx.infcx().commit_if_ok(|_| {
+                    fcx.infcx().lub(true, trace, &prev_ty, &new_ty)
+                })
             }
         }
         Ok((ty, adjustment)) => {
