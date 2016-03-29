@@ -15,7 +15,6 @@ use regex::Regex;
 
 use Indent;
 use config::Config;
-use utils::round_up_to_power_of_two;
 
 use MIN_STRING;
 
@@ -41,7 +40,9 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let punctuation = ":,;.";
 
     let mut cur_start = 0;
-    let mut result = String::with_capacity(round_up_to_power_of_two(stripped_str.len()));
+    let mut result = String::with_capacity(stripped_str.len()
+                                                       .checked_next_power_of_two()
+                                                       .unwrap_or(usize::max_value()));
     result.push_str(fmt.opener);
 
     let ender_length = fmt.line_end.len();

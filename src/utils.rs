@@ -180,33 +180,6 @@ pub fn trim_newlines(input: &str) -> &str {
     }
 }
 
-#[inline]
-#[cfg(target_pointer_width="64")]
-// Based on the trick layed out at
-// http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-pub fn round_up_to_power_of_two(mut x: usize) -> usize {
-    x = x.wrapping_sub(1);
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    x |= x >> 32;
-    x.wrapping_add(1)
-}
-
-#[inline]
-#[cfg(target_pointer_width="32")]
-pub fn round_up_to_power_of_two(mut x: usize) -> usize {
-    x = x.wrapping_sub(1);
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    x.wrapping_add(1)
-}
-
 // Macro for deriving implementations of Decodable for enums
 #[macro_export]
 macro_rules! impl_enum_decodable {
@@ -343,12 +316,4 @@ fn bin_search_test() {
     assert_eq!(Some(()), binary_search(0, 44, &closure));
     assert_eq!(Some(()), binary_search(4, 125, &closure));
     assert_eq!(None, binary_search(6, 100, &closure));
-}
-
-#[test]
-fn power_rounding() {
-    assert_eq!(0, round_up_to_power_of_two(0));
-    assert_eq!(1, round_up_to_power_of_two(1));
-    assert_eq!(64, round_up_to_power_of_two(33));
-    assert_eq!(256, round_up_to_power_of_two(256));
 }
