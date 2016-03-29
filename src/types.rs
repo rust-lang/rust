@@ -679,6 +679,7 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
                 _ => return None,
             }
         }
+        Rel::Ne | Rel::Eq => return None,
     })
 }
 
@@ -914,14 +915,20 @@ fn upcast_comparison_bounds_err(
 
     if let Some(nlb) = lhs_bounds {
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {
-            if match rel {
+            if rel == Rel::Eq || rel == Rel::Ne {
+                if norm_rhs_val < nlb.0 || norm_rhs_val > nlb.0 {
+                    err_upcast_comparison(cx, &span, lhs, rel == Rel::Ne);
+                }
+            } else if match rel {
                 Rel::Lt => if invert { norm_rhs_val < nlb.0 } else { nlb.1 < norm_rhs_val },
                 Rel::Le => if invert { norm_rhs_val <= nlb.0  } else { nlb.1 <= norm_rhs_val },
+                Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, &span, lhs, true)
             } else if match rel {
                 Rel::Lt => if invert { norm_rhs_val >= nlb.1 } else { nlb.0 >= norm_rhs_val },
                 Rel::Le => if invert { norm_rhs_val > nlb.1 } else { nlb.0 > norm_rhs_val },
+                Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, &span, lhs, false)
             }

@@ -4,6 +4,8 @@ use rustc_front::hir::{BinOp_, Expr};
 pub enum Rel {
     Lt,
     Le,
+    Eq,
+    Ne,
 }
 
 /// Put the expression in the form  `lhs < rhs` or `lhs <= rhs`.
@@ -14,6 +16,8 @@ pub fn normalize_comparison<'a>(op: BinOp_, lhs: &'a Expr, rhs: &'a Expr)
         BinOp_::BiLe => Some((Rel::Le, lhs, rhs)),
         BinOp_::BiGt => Some((Rel::Lt, rhs, lhs)),
         BinOp_::BiGe => Some((Rel::Le, rhs, lhs)),
+        BinOp_::BiEq => Some((Rel::Eq, rhs, lhs)),
+        BinOp_::BiNe => Some((Rel::Ne, rhs, lhs)),
         _ => None,
     }
 }
