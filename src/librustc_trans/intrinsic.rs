@@ -818,7 +818,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
 
         (_, _) => {
-            let intr = match Intrinsic::find(tcx, &name) {
+            let intr = match Intrinsic::find(&name) {
                 Some(intr) => intr,
                 None => unreachable!("unknown intrinsic '{}'", name),
             };

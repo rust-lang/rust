@@ -7,6 +7,3 @@ version = "0.0.0"
 name = "rustc_platform_intrinsics"
 path = "lib.rs"
 crate-type = ["dylib"]
-
-[dependencies]
-rustc = { path = "../librustc" }
