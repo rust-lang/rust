@@ -381,7 +381,8 @@ pub fn format_string(input: String, config: &Config) -> FileMap {
     let krate = parse::parse_crate_from_source_str(path.to_owned(),
                                                    input,
                                                    Vec::new(),
-                                                   &parse_session);
+                                                   &parse_session)
+                    .unwrap();
 
     // Suppress error output after parsing.
     let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
@@ -412,7 +413,7 @@ pub fn format(file: &Path, config: &Config) -> FileMap {
                                                 codemap.clone());
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
-    let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session);
+    let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session).unwrap();
 
     // Suppress error output after parsing.
     let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));

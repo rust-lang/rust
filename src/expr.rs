@@ -185,19 +185,21 @@ impl Rewrite for ast::Expr {
             ast::ExprKind::Repeat(ref expr, ref repeats) => {
                 rewrite_pair(&**expr, &**repeats, "[", "; ", "]", context, width, offset)
             }
-            ast::ExprKind::Range(Some(ref lhs), Some(ref rhs)) => {
+            // TODO(#890): Handle closed ranges; rust tracking issue
+            //   https://github.com/rust-lang/rust/issues/28237
+            ast::ExprKind::Range(Some(ref lhs), Some(ref rhs), _range_limits) => {
                 rewrite_pair(&**lhs, &**rhs, "", "..", "", context, width, offset)
             }
-            ast::ExprKind::Range(None, Some(ref rhs)) => {
+            ast::ExprKind::Range(None, Some(ref rhs), _range_limits) => {
                 rewrite_unary_prefix(context, "..", &**rhs, width, offset)
             }
-            ast::ExprKind::Range(Some(ref lhs), None) => {
+            ast::ExprKind::Range(Some(ref lhs), None, _range_limits) => {
                 Some(format!("{}..",
                              try_opt!(lhs.rewrite(context,
                                                   try_opt!(width.checked_sub(2)),
                                                   offset))))
             }
-            ast::ExprKind::Range(None, None) => {
+            ast::ExprKind::Range(None, None, _range_limits) => {
                 if width >= 2 {
                     Some("..".into())
                 } else {
@@ -213,6 +215,9 @@ impl Rewrite for ast::Expr {
                          width,
                          offset)
             }
+            // TODO(#867): Handle type ascription; rust tracking issue
+            //   https://github.com/rust-lang/rust/issues/31436
+            ast::ExprKind::Try(_) => unimplemented!(),
         };
         result.and_then(|res| recover_comment_removed(res, self.span, context, width, offset))
     }
