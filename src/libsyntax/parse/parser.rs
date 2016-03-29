@@ -254,6 +254,7 @@ pub struct Parser<'a> {
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
     last_token_interpolated: bool,
+    last_token_eof: bool,
     pub buffer: [TokenAndSpan; 4],
     pub buffer_start: isize,
     pub buffer_end: isize,
@@ -366,6 +367,7 @@ impl<'a> Parser<'a> {
             last_span: span,
             last_token: None,
             last_token_interpolated: false,
+            last_token_eof: false,
             buffer: [
                 placeholder.clone(),
                 placeholder.clone(),
@@ -955,7 +957,9 @@ impl<'a> Parser<'a> {
     {
         self.expect(bra)?;
         let result = self.parse_seq_to_before_end(ket, sep, f);
-        self.bump();
+        if self.token == *ket {
+            self.bump();
+        }
         Ok(result)
     }
 
@@ -998,6 +1002,15 @@ impl<'a> Parser<'a> {
 
     /// Advance the parser by one token
     pub fn bump(&mut self) {
+        if self.last_token_eof {
+            // Bumping after EOF is a bad sign, usually an infinite loop.
+            self.bug("attempted to bump the parser past EOF (may be stuck in a loop)");
+        }
+
+        if self.token == token::Eof {
+            self.last_token_eof = true;
+        }
+
         self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if self.token.is_ident() ||
@@ -1281,15 +1294,21 @@ impl<'a> Parser<'a> {
                     Ok(cua) => cua,
                     Err(e) => {
                         loop {
-                            p.bump();
-                            if p.token == token::Semi {
-                                p.bump();
-                                break;
-                            }
+                            match p.token {
+                                token::Eof => break,
 
-                            if p.token == token::OpenDelim(token::DelimToken::Brace) {
-                                p.parse_token_tree()?;
-                                break;
+                                token::CloseDelim(token::Brace) |
+                                token::Semi => {
+                                    p.bump();
+                                    break;
+                                }
+
+                                token::OpenDelim(token::Brace) => {
+                                    p.parse_token_tree()?;
+                                    break;
+                                }
+
+                                _ => p.bump()
                             }
                         }
 
