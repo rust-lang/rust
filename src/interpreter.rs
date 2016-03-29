@@ -228,7 +228,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 TerminatorTarget::Block(target_block)
             }
 
-            Switch { ref discr, ref targets, .. } => {
+            Switch { ref discr, ref targets, adt_def } => {
                 let adt_ptr = try!(self.eval_lvalue(discr)).to_ptr();
                 let adt_repr = self.lvalue_repr(discr);
                 let discr_size = match *adt_repr {
@@ -236,7 +236,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     _ => panic!("attmpted to switch on non-aggregate type"),
                 };
                 let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size));
-                TerminatorTarget::Block(targets[discr_val as usize])
+
+                let matching = adt_def.variants.iter()
+                    .position(|v| discr_val == v.disr_val.to_u64_unchecked());
+
+                match matching {
+                    Some(i) => TerminatorTarget::Block(targets[i]),
+                    None => return Err(EvalError::InvalidDiscriminant),
+                }
             }
 
             Call { ref func, ref args, ref destination, .. } => {
@@ -481,13 +488,18 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(TerminatorTarget::Call)
     }
 
-    fn assign_to_aggregate(&mut self, dest: Pointer, dest_repr: &Repr, variant: usize,
-                         operands: &[mir::Operand<'tcx>]) -> EvalResult<()> {
+    fn assign_to_aggregate(
+        &mut self,
+        dest: Pointer,
+        dest_repr: &Repr,
+        variant: usize,
+        discr: Option<u64>,
+        operands: &[mir::Operand<'tcx>],
+    ) -> EvalResult<()> {
         match *dest_repr {
             Repr::Aggregate { discr_size, ref variants, .. } => {
                 if discr_size > 0 {
-                    let discr = variant as u64;
-                    try!(self.memory.write_uint(dest, discr, discr_size));
+                    try!(self.memory.write_uint(dest, discr.unwrap(), discr_size));
                 }
                 let after_discr = dest.offset(discr_size as isize);
                 for (field, operand) in variants[variant].iter().zip(operands) {
@@ -538,10 +550,12 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 use rustc::mir::repr::AggregateKind::*;
                 match *kind {
                     Tuple | Closure(..) =>
-                        try!(self.assign_to_aggregate(dest, &dest_repr, 0, operands)),
+                        try!(self.assign_to_aggregate(dest, &dest_repr, 0, None, operands)),
 
-                    Adt(_, variant_idx, _) =>
-                        try!(self.assign_to_aggregate(dest, &dest_repr, variant_idx, operands)),
+                    Adt(adt_def, variant, _) => {
+                        let discr = Some(adt_def.variants[variant].disr_val.to_u64_unchecked());
+                        try!(self.assign_to_aggregate(dest, &dest_repr, variant, discr, operands));
+                    }
 
                     Vec => if let Repr::Array { elem_size, length } = *dest_repr {
                         assert_eq!(length, operands.len());
@@ -668,7 +682,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         use rustc::mir::tcx::LvalueTy;
         match self.mir().lvalue_ty(self.tcx, lvalue) {
             LvalueTy::Ty { ty } => self.ty_to_repr(ty),
-            LvalueTy::Downcast { ref adt_def, substs, variant_index } => {
+            LvalueTy::Downcast { adt_def, substs, variant_index } => {
                 let field_tys = adt_def.variants[variant_index].fields.iter()
                     .map(|f| f.ty(self.tcx, substs));
                 self.repr_arena.alloc(self.make_aggregate_repr(iter::once(field_tys)))

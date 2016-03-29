@@ -5,6 +5,7 @@ use std::fmt;
 pub enum EvalError {
     DanglingPointerDeref,
     InvalidBool,
+    InvalidDiscriminant,
     PointerOutOfBounds,
     ReadPointerAsBytes,
     ReadBytesAsPointer,
@@ -21,6 +22,8 @@ impl Error for EvalError {
                 "dangling pointer was dereferenced",
             EvalError::InvalidBool =>
                 "invalid boolean value read",
+            EvalError::InvalidDiscriminant =>
+                "invalid enum discriminant value read",
             EvalError::PointerOutOfBounds =>
                 "pointer offset outside bounds of allocation",
             EvalError::ReadPointerAsBytes =>
