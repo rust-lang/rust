@@ -633,11 +633,11 @@ impl<T, S> FromIterator<T> for HashSet<T, S>
     where T: Eq + Hash,
           S: BuildHasher + Default,
 {
-    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> HashSet<T, S> {
-        let iter = iterable.into_iter();
-        let lower = iter.size_hint().0;
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> HashSet<T, S> {
+        let iterator = iter.into_iter();
+        let lower = iterator.size_hint().0;
         let mut set = HashSet::with_capacity_and_hasher(lower, Default::default());
-        set.extend(iter);
+        set.extend(iterator);
         set
     }
 }
