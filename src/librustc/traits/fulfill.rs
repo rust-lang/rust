@@ -407,17 +407,17 @@ fn process_child_obligations<'a,'tcx>(
                 //                            ~~~ (*) see above
                 debug!("process_child_obligations: cycle index = {}", index);
 
-                if coinductive_match(selcx, &obligation, &backtrace) {
+                let backtrace = backtrace.clone();
+                let cycle: Vec<_> =
+                    iter::once(&obligation)
+                    .chain(Some(pending_obligation))
+                    .chain(backtrace.take(index + 1).map(|p| &p.obligation))
+                    .cloned()
+                    .collect();
+                if coinductive_match(selcx, &cycle) {
                     debug!("process_child_obligations: coinductive match");
                     None
                 } else {
-                    let backtrace = backtrace.clone();
-                    let cycle: Vec<_> =
-                        iter::once(&obligation)
-                        .chain(Some(pending_obligation))
-                        .chain(backtrace.take(index + 1).map(|p| &p.obligation))
-                        .cloned()
-                        .collect();
                     report_overflow_error_cycle(selcx.infcx(), &cycle);
                 }
             } else {
@@ -663,47 +663,40 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 
 /// For defaulted traits, we use a co-inductive strategy to solve, so
 /// that recursion is ok. This routine returns true if the top of the
-/// stack (`top_obligation` and `top_data`):
+/// stack (`cycle[0]`):
 /// - is a defaulted trait, and
 /// - it also appears in the backtrace at some position `X`; and,
 /// - all the predicates at positions `X..` between `X` an the top are
 ///   also defaulted traits.
 fn coinductive_match<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
-                              top_obligation: &PredicateObligation<'tcx>,
-                              backtrace: &Backtrace<PendingPredicateObligation<'tcx>>)
+                              cycle: &[PredicateObligation<'tcx>])
                               -> bool
 {
-    // only trait predicates can be coinductive matches
-    let top_data = match top_obligation.predicate {
-        ty::Predicate::Trait(ref data) => data,
-        _ => return false
-    };
+    let len = cycle.len();
 
-    if selcx.tcx().trait_has_default_impl(top_data.def_id()) {
-        debug!("coinductive_match: top_data={:?}", top_data);
-        for bt_obligation in backtrace.clone() {
-            debug!("coinductive_match: bt_obligation={:?}", bt_obligation);
+    assert_eq!(cycle[0].predicate, cycle[len - 1].predicate);
 
-            // *Everything* in the backtrace must be a defaulted trait.
-            match bt_obligation.obligation.predicate {
-                ty::Predicate::Trait(ref data) => {
-                    if !selcx.tcx().trait_has_default_impl(data.def_id()) {
-                        debug!("coinductive_match: trait does not have default impl");
-                        break;
-                    }
-                }
-                _ => { break; }
-            }
+    cycle[0..len-1]
+        .iter()
+        .all(|bt_obligation| {
+            let result = coinductive_obligation(selcx, bt_obligation);
+            debug!("coinductive_match: bt_obligation={:?} coinductive={}",
+                   bt_obligation, result);
+            result
+        })
+}
 
-            // And we must find a recursive match.
-            if bt_obligation.obligation.predicate == top_obligation.predicate {
-                debug!("coinductive_match: found a match in the backtrace");
-                return true;
-            }
+fn coinductive_obligation<'a, 'tcx>(selcx: &SelectionContext<'a, 'tcx>,
+                                    obligation: &PredicateObligation<'tcx>)
+                                    -> bool {
+    match obligation.predicate {
+        ty::Predicate::Trait(ref data) => {
+            selcx.tcx().trait_has_default_impl(data.def_id())
+        }
+        _ => {
+            false
         }
     }
-
-    false
 }
 
 fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
