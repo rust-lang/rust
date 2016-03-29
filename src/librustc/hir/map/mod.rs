@@ -160,10 +160,10 @@ pub struct Forest {
 }
 
 impl Forest {
-    pub fn new(krate: Crate, dep_graph: DepGraph) -> Forest {
+    pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
         Forest {
             krate: krate,
-            dep_graph: dep_graph,
+            dep_graph: dep_graph.clone(),
             inlined_items: TypedArena::new()
         }
     }

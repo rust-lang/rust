@@ -34,7 +34,6 @@ use session::Session;
 use session::config::PanicStrategy;
 use session::search_paths::PathKind;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
-use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
