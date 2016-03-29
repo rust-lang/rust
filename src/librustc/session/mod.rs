@@ -218,21 +218,9 @@ impl Session {
             None => self.warn(msg),
         }
     }
-    pub fn opt_span_bug<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) -> ! {
-        match opt_sp {
-            Some(sp) => self.span_bug(sp, msg),
-            None => self.bug(msg),
-        }
-    }
     /// Delay a span_bug() call until abort_if_errors()
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
-    }
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_bug(sp, msg)
-    }
-    pub fn bug(&self, msg: &str) -> ! {
-        self.diagnostic().bug(msg)
     }
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
@@ -280,11 +268,6 @@ impl Session {
     }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         self.parse_sess.codemap()
-    }
-    // This exists to help with refactoring to eliminate impossible
-    // cases later on
-    pub fn impossible_case<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.span_bug(sp, &format!("impossible case reached: {}", msg));
     }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
