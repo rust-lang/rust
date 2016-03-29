@@ -16,7 +16,7 @@ use std::string::String;
 use std::usize;
 use rustc_front::hir;
 
-use clean::{self, Attributes};
+use clean::{self, Attributes, GetDefId};
 use clean::Item;
 use plugins;
 use fold;
@@ -74,7 +74,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
                         return None;
                     }
                     // Impls of stripped traits also don't need to exist
-                    if let Some(clean::ResolvedPath { did, .. }) = *trait_ {
+                    if let Some(did) = trait_.def_id() {
                         if self.stripped.contains(&did) {
                             return None;
                         }
@@ -223,13 +223,10 @@ struct ImplStripper<'a>(&'a DefIdSet);
 impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
-            match imp.trait_ {
-                Some(clean::ResolvedPath{ did, .. }) => {
-                    if did.is_local() && !self.0.contains(&did) {
-                        return None;
-                    }
+            if let Some(did) = imp.trait_.def_id() {
+                if did.is_local() && !self.0.contains(&did) {
+                    return None;
                 }
-                Some(..) | None => {}
             }
         }
         self.fold_item_recur(i)

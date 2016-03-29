@@ -190,7 +190,7 @@
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
 //! [`use`]: ../book/crates-and-modules.html#importing-modules-with-use
-//! [crate root]: ../book/crates-and-modules.html#basic-terminology:-crates-and-modules
+//! [crate root]: ../book/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
 //! [deref coercions]: ../book/deref-coercions.html
 //! [files]: fs/struct.File.html
