@@ -1388,35 +1388,35 @@ impl Clone for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item = char>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterable);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item = &'a str>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterable);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item = String>>(iterable: I) -> String {
+    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterable);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<char> for String {
-    fn extend<I: IntoIterator<Item = char>>(&mut self, iterable: I) {
-        let iterator = iterable.into_iter();
+    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
+        let iterator = iter.into_iter();
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
         for ch in iterator {
@@ -1427,15 +1427,15 @@ impl Extend<char> for String {
 
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iterable: I) {
-        self.extend(iterable.into_iter().cloned());
+    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned());
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iterable: I) {
-        for s in iterable {
+    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
+        for s in iter {
             self.push_str(s)
         }
     }
@@ -1443,8 +1443,8 @@ impl<'a> Extend<&'a str> for String {
 
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iterable: I) {
-        for s in iterable {
+    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
+        for s in iter {
             self.push_str(&s)
         }
     }

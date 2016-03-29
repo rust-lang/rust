@@ -2057,8 +2057,8 @@ impl<A> IndexMut<usize> for VecDeque<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for VecDeque<A> {
-    fn from_iter<T: IntoIterator<Item = A>>(iterable: T) -> VecDeque<A> {
-        let iterator = iterable.into_iter();
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> VecDeque<A> {
+        let iterator = iter.into_iter();
         let (lower, _) = iterator.size_hint();
         let mut deq = VecDeque::with_capacity(lower);
         deq.extend(iterator);
