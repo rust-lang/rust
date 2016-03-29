@@ -100,9 +100,9 @@ use rustc::ty::wf::ImpliedBound;
 use std::mem;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir::{self, PatKind};
-use rustc_front::util as hir_util;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::{self, PatKind};
+use rustc::hir::util as hir_util;
 
 use self::SubjectNode::Subject;
 

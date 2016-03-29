@@ -14,7 +14,7 @@
 use rustc_data_structures::graph;
 use ty::TyCtxt;
 use syntax::ast;
-use rustc_front::hir;
+use hir;
 
 mod construct;
 pub mod graphviz;

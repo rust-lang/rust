@@ -16,7 +16,6 @@ rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_bitflags = { path = "../librustc_bitflags" }
 rustc_const_math = { path = "../librustc_const_math" }
-rustc_front = { path = "../librustc_front" }
 rustc_llvm = { path = "../librustc_llvm" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }

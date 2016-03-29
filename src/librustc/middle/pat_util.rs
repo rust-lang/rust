@@ -14,8 +14,8 @@ use ty::TyCtxt;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
-use rustc_front::hir::{self, PatKind};
-use rustc_front::util::walk_pat;
+use hir::{self, PatKind};
+use hir::util::walk_pat;
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
 
 use std::cell::RefCell;

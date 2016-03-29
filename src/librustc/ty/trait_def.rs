@@ -17,7 +17,7 @@ use ty::{Ty, TyCtxt, TraitRef};
 use std::borrow::{Borrow};
 use std::cell::{Cell, Ref, RefCell};
 use syntax::ast::Name;
-use rustc_front::hir;
+use hir;
 use util::nodemap::FnvHashMap;
 
 /// As `TypeScheme` but for a trait ref.

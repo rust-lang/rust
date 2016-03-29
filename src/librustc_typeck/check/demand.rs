@@ -14,7 +14,7 @@ use rustc::ty::Ty;
 use rustc::infer::{InferOk, TypeOrigin};
 
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
 
 // Requires that the two types unify, and prints an error message if
 // they don't.

@@ -216,7 +216,7 @@ use cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use decoder;
 use encoder;
 
-use rustc::back::svh::Svh;
+use rustc::hir::svh::Svh;
 use rustc::session::Session;
 use rustc::session::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use rustc::session::search_paths::PathKind;

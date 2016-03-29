@@ -229,10 +229,10 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::fmt;
 use std::rc::Rc;
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
 use syntax::codemap::Span;
-use rustc_front::fold::Folder;
+use rustc::hir::fold::Folder;
 use syntax::ptr::P;
 
 #[derive(Copy, Clone, Debug)]

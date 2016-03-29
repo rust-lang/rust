@@ -30,9 +30,9 @@ use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
 
-use rustc::back::svh::Svh;
-use rustc::front::map::{LinkedPath, PathElem, PathElems};
-use rustc::front::map as ast_map;
+use rustc::hir::svh::Svh;
+use rustc::hir::map::{LinkedPath, PathElem, PathElems};
+use rustc::hir::map as ast_map;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::config;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
@@ -52,9 +52,9 @@ use syntax::errors::Handler;
 use syntax;
 use rbml::writer::Encoder;
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::Visitor;
-use rustc_front::intravisit;
+use rustc::hir::{self, PatKind};
+use rustc::hir::intravisit::Visitor;
+use rustc::hir::intravisit;
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,

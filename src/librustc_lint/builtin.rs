@@ -37,7 +37,7 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment;
 use rustc::traits::{self, ProjectionMode};
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
 use lint::{LintPass, LateLintPass};
@@ -48,8 +48,8 @@ use syntax::{ast};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::FnKind;
+use rustc::hir::{self, PatKind};
+use rustc::hir::intravisit::FnKind;
 
 use bad_style::{MethodLateContext, method_context};
 

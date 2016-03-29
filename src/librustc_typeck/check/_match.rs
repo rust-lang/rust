@@ -30,9 +30,9 @@ use syntax::ast;
 use syntax::codemap::{Span, Spanned};
 use syntax::ptr::P;
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::print::pprust;
-use rustc_front::util as hir_util;
+use rustc::hir::{self, PatKind};
+use rustc::hir::print as pprust;
+use rustc::hir::util as hir_util;
 
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                            pat: &'tcx hir::Pat,

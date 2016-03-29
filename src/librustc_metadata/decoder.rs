@@ -22,10 +22,10 @@ use index;
 use tls_context;
 use tydecode::TyDecoder;
 
-use rustc::back::svh::Svh;
-use rustc::front::map as hir_map;
+use rustc::hir::svh::Svh;
+use rustc::hir::map as hir_map;
 use rustc::util::nodemap::FnvHashMap;
-use rustc_front::hir;
+use rustc::hir;
 
 use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};

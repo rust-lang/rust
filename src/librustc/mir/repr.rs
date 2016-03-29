@@ -16,7 +16,7 @@ use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use util::ppaux;
 use rustc_back::slice;
-use rustc_front::hir::InlineAsm;
+use hir::InlineAsm;
 use std::ascii;
 use std::borrow::{Cow};
 use std::fmt::{self, Debug, Formatter, Write};

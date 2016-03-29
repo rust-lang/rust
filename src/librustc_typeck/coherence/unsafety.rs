@@ -12,8 +12,8 @@
 //! crate or pertains to a type defined in this crate.
 
 use rustc::ty::TyCtxt;
-use rustc_front::intravisit;
-use rustc_front::hir;
+use rustc::hir::intravisit;
+use rustc::hir;
 
 pub fn check(tcx: &TyCtxt) {
     let mut orphan = UnsafetyChecker { tcx: tcx };

@@ -11,9 +11,8 @@
 use super::*;
 use super::MapEntry::*;
 
-use rustc_front::hir::*;
-use rustc_front::util;
-use rustc_front::intravisit::{self, Visitor};
+use hir::*;
+use hir::intravisit::Visitor;
 use middle::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};

@@ -17,7 +17,7 @@
 //! `middle/infer/region_inference/README.md`
 
 use dep_graph::DepNode;
-use front::map as ast_map;
+use hir::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 use middle::cstore::InlinedItem;
@@ -30,10 +30,10 @@ use std::mem;
 use syntax::codemap::{self, Span};
 use syntax::ast::{self, NodeId};
 
-use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
-use rustc_front::util::stmt_id;
+use hir;
+use hir::intravisit::{self, Visitor, FnKind};
+use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
+use hir::util::stmt_id;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
            RustcDecodable, Copy)]

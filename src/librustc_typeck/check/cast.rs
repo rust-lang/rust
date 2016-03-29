@@ -48,7 +48,7 @@ use middle::def_id::DefId;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::cast::{CastKind, CastTy};
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
 use syntax::ast;
 
 

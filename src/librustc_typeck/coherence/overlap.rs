@@ -19,8 +19,8 @@ use rustc::infer;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use rustc::dep_graph::DepNode;
-use rustc_front::hir;
-use rustc_front::intravisit;
+use rustc::hir;
+use rustc::hir::intravisit;
 use util::nodemap::DefIdMap;
 use lint;
 

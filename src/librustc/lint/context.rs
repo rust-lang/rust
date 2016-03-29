@@ -46,9 +46,9 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax::attr::ThinAttributesExt;
-use rustc_front::hir;
-use rustc_front::util;
-use rustc_front::intravisit as hir_visit;
+use hir;
+use hir::util;
+use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
 
 /// Information about the registered lints.

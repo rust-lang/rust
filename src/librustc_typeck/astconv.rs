@@ -74,8 +74,8 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token;
 
-use rustc_front::print::pprust;
-use rustc_front::hir;
+use rustc::hir::print as pprust;
+use rustc::hir;
 use rustc_back::slice;
 
 pub trait AstConv<'tcx> {

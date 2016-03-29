@@ -17,7 +17,7 @@ use callee::Callee;
 use common::*;
 
 use rustc::dep_graph::DepNode;
-use rustc_front::hir;
+use rustc::hir;
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
     debug!("instantiate_inline({:?})", fn_id);

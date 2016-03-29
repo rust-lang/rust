@@ -13,9 +13,9 @@
 // from live codes are live, and everything else is dead.
 
 use dep_graph::DepNode;
-use front::map as ast_map;
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::{self, Visitor};
+use hir::map as ast_map;
+use hir::{self, PatKind};
+use hir::intravisit::{self, Visitor};
 
 use middle::{pat_util, privacy};
 use ty::{self, TyCtxt};

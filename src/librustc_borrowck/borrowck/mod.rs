@@ -21,8 +21,8 @@ pub use self::MovedValueUseKind::*;
 use self::InteriorKind::*;
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
-use rustc::front::map::blocks::FnParts;
+use rustc::hir::map as hir_map;
+use rustc::hir::map::blocks::FnParts;
 use rustc::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -44,11 +44,11 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
-use rustc_front::hir;
-use rustc_front::hir::{FnDecl, Block};
-use rustc_front::intravisit;
-use rustc_front::intravisit::{Visitor, FnKind};
-use rustc_front::util as hir_util;
+use rustc::hir;
+use rustc::hir::{FnDecl, Block};
+use rustc::hir::intravisit;
+use rustc::hir::intravisit::{Visitor, FnKind};
+use rustc::hir::util as hir_util;
 
 use rustc::mir::mir_map::MirMap;
 

@@ -21,7 +21,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtDef, ClosureSubsts, Region, Ty};
-use rustc_front::hir;
+use rustc::hir;
 use syntax::ast;
 use syntax::codemap::Span;
 use self::cx::Cx;

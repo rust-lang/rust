@@ -27,7 +27,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::relate::TypeRelation;
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use std::rc::Rc;
 use syntax::ast;
@@ -39,8 +39,8 @@ use syntax::errors::{Level, RenderSpan};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
 
-use rustc_front::lowering::{lower_crate, LoweringContext};
-use rustc_front::hir;
+use rustc::hir::lowering::{lower_crate, LoweringContext};
+use rustc::hir;
 
 struct Env<'a, 'tcx: 'a> {
     infcx: &'a infer::InferCtxt<'a, 'tcx>,

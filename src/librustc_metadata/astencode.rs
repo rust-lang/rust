@@ -12,12 +12,12 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
-use rustc::front::map as ast_map;
+use rustc::hir::map as ast_map;
 use rustc::session::Session;
 
-use rustc_front::hir;
-use rustc_front::fold;
-use rustc_front::fold::Folder;
+use rustc::hir;
+use rustc::hir::fold;
+use rustc::hir::fold::Folder;
 
 use common as c;
 use cstore;
@@ -55,8 +55,8 @@ use serialize::EncoderHelpers;
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::ast::NodeId;
-#[cfg(test)] use rustc_front::print::pprust;
-#[cfg(test)] use rustc_front::lowering::{lower_item, LoweringContext};
+#[cfg(test)] use rustc::hir::print as pprust;
+#[cfg(test)] use rustc::hir::lowering::{lower_item, LoweringContext};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
@@ -168,7 +168,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
     copy_item_types(dcx, ii, orig_did);
     if let InlinedItem::Item(ref i) = *ii {
         debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-               ::rustc_front::print::pprust::item_to_string(&i));
+               ::rustc::hir::print::item_to_string(&i));
     }
 
     ii

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use rustc::dep_graph::DepGraph;
-use rustc::front;
-use rustc::front::map as hir_map;
+use rustc::hir;
+use rustc::hir::map as hir_map;
 use rustc_mir as mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
@@ -35,8 +35,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_front::hir;
-use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
 use rustc_const_eval::check_match;
 use super::Compilation;
@@ -155,7 +154,7 @@ pub fn compile_input(sess: &Session,
         }
 
         time(sess.time_passes(), "attribute checking", || {
-            front::check_attr::check_crate(sess, &expanded_crate);
+            hir::check_attr::check_crate(sess, &expanded_crate);
         });
 
         time(sess.time_passes(),

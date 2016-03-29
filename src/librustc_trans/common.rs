@@ -40,7 +40,7 @@ use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, SelectionContext, ProjectionMode};
 use rustc::ty::fold::{TypeFolder, TypeFoldable};
-use rustc_front::hir;
+use rustc::hir;
 use util::nodemap::NodeMap;
 
 use arena::TypedArena;

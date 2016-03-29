@@ -26,7 +26,7 @@ use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::subst::{Substs};
 use rustc::traits;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use abi::{Abi, FnType};
 use adt;
 use attributes;
@@ -54,7 +54,7 @@ use type_of;
 use value::Value;
 use Disr;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc_front::hir;
+use rustc::hir;
 
 use syntax::codemap::DUMMY_SP;
 use syntax::errors;

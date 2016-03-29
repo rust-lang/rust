@@ -18,8 +18,8 @@ use rustc::middle::mem_categorization as mc;
 use rustc::ty::{self, TyCtxt, ParameterEnvironment};
 use rustc::traits::ProjectionMode;
 
-use rustc_front::hir;
-use rustc_front::intravisit;
+use rustc::hir;
+use rustc::hir::intravisit;
 use syntax::ast;
 use syntax::codemap::Span;
 

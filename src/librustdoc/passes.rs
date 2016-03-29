@@ -14,7 +14,7 @@ use rustc::util::nodemap::DefIdSet;
 use std::cmp;
 use std::string::String;
 use std::usize;
-use rustc_front::hir;
+use rustc::hir;
 
 use clean::{self, Attributes, GetDefId};
 use clean::Item;

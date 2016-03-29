@@ -21,7 +21,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::infer;
 use rustc::infer::{InferCtxt, TypeOrigin};
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
 
 struct ConfirmContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,

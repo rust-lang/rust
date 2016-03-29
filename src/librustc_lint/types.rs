@@ -29,8 +29,8 @@ use syntax::abi::Abi;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
-use rustc_front::hir;
-use rustc_front::util::is_shift_binop;
+use rustc::hir;
+use rustc::hir::util::is_shift_binop;
 
 register_long_diagnostics! {
 E0519: r##"

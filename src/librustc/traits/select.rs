@@ -49,7 +49,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use syntax::abi::Abi;
-use rustc_front::hir;
+use hir;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashMap;
 

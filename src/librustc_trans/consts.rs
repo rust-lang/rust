@@ -17,7 +17,7 @@ use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, lookup_const_by_id, 
 use rustc_const_eval::eval_repeat_count;
 use middle::def::Def;
 use middle::def_id::DefId;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use {abi, adt, closure, debuginfo, expr, machine};
 use base::{self, exported_name, imported_name, push_ctxt};
 use callee::Callee;
@@ -41,7 +41,7 @@ use rustc::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
 use rustc_const_math::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
 
-use rustc_front::hir;
+use rustc::hir;
 
 use std::ffi::{CStr, CString};
 use std::borrow::Cow;

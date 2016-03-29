@@ -134,7 +134,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => {
                         // FIXME Shouldn't need to manually trigger closure instantiations.
                         if let mir::AggregateKind::Closure(def_id, substs) = *kind {
-                            use rustc_front::hir;
+                            use rustc::hir;
                             use syntax::ast::DUMMY_NODE_ID;
                             use syntax::codemap::DUMMY_SP;
                             use syntax::ptr::P;

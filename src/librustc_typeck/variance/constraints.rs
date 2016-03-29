@@ -20,10 +20,10 @@ use rustc::ty::subst;
 use rustc::ty::subst::ParamSpace;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::ItemVariances;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use syntax::ast;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::intravisit::Visitor;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;

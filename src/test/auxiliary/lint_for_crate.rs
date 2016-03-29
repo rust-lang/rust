@@ -14,13 +14,12 @@
 #![feature(box_syntax)]
 
 #[macro_use] extern crate rustc;
-extern crate rustc_front;
 extern crate rustc_plugin;
 extern crate syntax;
 
 use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
 use rustc_plugin::Registry;
-use rustc_front::hir;
+use rustc::hir;
 use syntax::attr;
 
 declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");

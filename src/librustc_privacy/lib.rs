@@ -25,13 +25,12 @@
 #[macro_use] extern crate syntax;
 
 #[macro_use] extern crate rustc;
-extern crate rustc_front;
 
 use std::cmp;
 use std::mem::replace;
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::{self, Visitor};
+use rustc::hir::{self, PatKind};
+use rustc::hir::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
 use rustc::lint;
@@ -41,7 +40,7 @@ use rustc::middle::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::NodeSet;
-use rustc::front::map as ast_map;
+use rustc::hir::map as ast_map;
 
 use syntax::ast;
 use syntax::codemap::Span;

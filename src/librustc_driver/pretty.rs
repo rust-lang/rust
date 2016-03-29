@@ -50,11 +50,11 @@ use std::option;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use rustc::front::map as hir_map;
-use rustc::front::map::{blocks, NodePrinter};
-use rustc_front::hir;
-use rustc_front::lowering::{lower_crate, LoweringContext};
-use rustc_front::print::pprust as pprust_hir;
+use rustc::hir::map as hir_map;
+use rustc::hir::map::{blocks, NodePrinter};
+use rustc::hir;
+use rustc::hir::lowering::{lower_crate, LoweringContext};
+use rustc::hir::print as pprust_hir;
 
 use rustc::mir::mir_map::MirMap;
 

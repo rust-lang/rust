@@ -23,7 +23,7 @@ use rustc::infer;
 use syntax::ast;
 use syntax::codemap::Span;
 
-use rustc_front::hir;
+use rustc::hir;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;

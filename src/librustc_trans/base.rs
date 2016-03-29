@@ -46,7 +46,7 @@ use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use rustc::mir::mir_map::MirMap;
 use session::config::{self, NoDebugInfo, FullDebugInfo};
@@ -106,9 +106,8 @@ use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::InternedString;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use rustc_front;
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir;
 use syntax::ast;
 
 thread_local! {
@@ -713,7 +712,7 @@ fn cast_shift_rhs<F, G>(op: hir::BinOp_,
           G: FnOnce(ValueRef, Type) -> ValueRef
 {
     // Shifts may have any size int on the rhs
-    if rustc_front::util::is_shift_binop(op) {
+    if hir::util::is_shift_binop(op) {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
         if rhs_llty.kind() == Vector {

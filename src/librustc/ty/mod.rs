@@ -19,8 +19,8 @@ pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
-use front::map as ast_map;
-use front::map::LinkedPath;
+use hir::map as ast_map;
+use hir::map::LinkedPath;
 use middle;
 use middle::cstore::{self, CrateStore, LOCAL_CRATE};
 use middle::def::{self, Def, ExportMap};
@@ -52,9 +52,9 @@ use syntax::parse::token::InternedString;
 
 use rustc_const_math::ConstInt;
 
-use rustc_front::hir;
-use rustc_front::hir::{ItemImpl, ItemTrait, PatKind};
-use rustc_front::intravisit::Visitor;
+use hir;
+use hir::{ItemImpl, ItemTrait, PatKind};
+use hir::intravisit::Visitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{BuiltinBound, BuiltinBounds, ExistentialBounds};

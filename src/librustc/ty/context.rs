@@ -11,7 +11,7 @@
 //! type context book-keeping
 
 use dep_graph::{DepGraph, DepTrackingMap};
-use front::map as ast_map;
+use hir::map as ast_map;
 use session::Session;
 use lint;
 use middle;
@@ -45,7 +45,7 @@ use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::{self, special_idents};
 
-use rustc_front::hir;
+use hir;
 
 /// Internal storage
 pub struct CtxtArenas<'tcx> {

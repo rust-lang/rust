@@ -34,7 +34,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
 
-use rustc_front::hir;
+use rustc::hir;
 
 /// Check that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific

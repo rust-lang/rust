@@ -28,7 +28,7 @@ use syntax::parse::token::special_idents;
 
 use serialize::{Decodable, Decoder};
 
-use rustc_front::hir;
+use hir;
 
 use self::FnOutput::*;
 use self::InferTy::*;
