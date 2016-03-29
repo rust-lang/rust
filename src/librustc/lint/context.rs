@@ -47,8 +47,8 @@ use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax::attr::ThinAttributesExt;
 use hir;
-use hir::util;
 use hir::intravisit as hir_visit;
+use hir::intravisit::IdVisitor;
 use syntax::visit as ast_visit;
 
 /// Information about the registered lints.
@@ -685,9 +685,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 
     fn visit_ids<F>(&mut self, f: F)
-        where F: FnOnce(&mut util::IdVisitor<LateContext>)
+        where F: FnOnce(&mut IdVisitor<LateContext>)
     {
-        let mut v = util::IdVisitor::new(self);
+        let mut v = IdVisitor::new(self);
         f(&mut v);
     }
 }

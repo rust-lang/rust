@@ -34,8 +34,7 @@ use std::iter::{FromIterator, IntoIterator, repeat};
 
 use rustc::hir;
 use rustc::hir::{Pat, PatKind};
-use rustc::hir::intravisit::{self, Visitor, FnKind};
-use rustc::hir::util as front_util;
+use rustc::hir::intravisit::{self, IdVisitor, Visitor, FnKind};
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
@@ -241,7 +240,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
 }
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
-    front_util::walk_pat(pat, |p| {
+    pat.walk(|p| {
         match p.node {
             PatKind::Ident(hir::BindByValue(hir::MutImmutable), ident, None) => {
                 let pat_ty = cx.tcx.pat_ty(p);
@@ -274,7 +273,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 
 // Check that we do not match against a static NaN (#6804)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
-    front_util::walk_pat(pat, |p| {
+    pat.walk(|p| {
         if let PatKind::Lit(ref expr) = p.node {
             match eval_const_expr_partial(cx.tcx, &expr, ExprTypeChecked, None) {
                 Ok(ConstVal::Float(f)) if f.is_nan() => {
@@ -518,7 +517,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 renaming_map: renaming_map,
             };
 
-            let mut id_visitor = front_util::IdVisitor::new(&mut renaming_recorder);
+            let mut id_visitor = IdVisitor::new(&mut renaming_recorder);
 
             id_visitor.visit_expr(const_expr);
         }
@@ -1100,7 +1099,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     };
 
     for pat in pats {
-        front_util::walk_pat(&pat, |p| {
+        pat.walk(|p| {
             if pat_is_binding(&def_map.borrow(), &p) {
                 match p.node {
                     PatKind::Ident(hir::BindByValue(_), _, ref sub) => {

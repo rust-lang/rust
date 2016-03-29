@@ -26,7 +26,6 @@ use expr;
 use machine;
 
 use rustc::hir;
-use rustc::hir::util as ast_util;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -49,7 +48,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let mut bcx = cx;
 
-    let id = ast_util::stmt_id(s);
+    let id = s.node.id();
     let cleanup_debug_loc =
         debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), id, s.span, false);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
@@ -70,7 +69,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     }
 
-    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, ast_util::stmt_id(s));
+    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, s.node.id());
 
     return bcx;
 }

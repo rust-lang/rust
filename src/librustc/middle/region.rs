@@ -33,7 +33,6 @@ use syntax::ast::{self, NodeId};
 use hir;
 use hir::intravisit::{self, Visitor, FnKind};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
-use hir::util::stmt_id;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
            RustcDecodable, Copy)]
@@ -765,7 +764,7 @@ fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &hir::Pat) {
 }
 
 fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &hir::Stmt) {
-    let stmt_id = stmt_id(stmt);
+    let stmt_id = stmt.node.id();
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     // Every statement will clean up the temporaries created during

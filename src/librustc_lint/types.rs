@@ -30,7 +30,6 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
 use rustc::hir;
-use rustc::hir::util::is_shift_binop;
 
 register_long_diagnostics! {
 E0519: r##"
@@ -130,7 +129,7 @@ impl LateLintPass for TypeLimits {
                                  "comparison is useless due to type limits");
                 }
 
-                if is_shift_binop(binop.node) {
+                if binop.node.is_shift() {
                     let opt_ty_bits = match cx.tcx.node_id_to_type(l.id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),

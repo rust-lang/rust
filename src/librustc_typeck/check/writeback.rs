@@ -30,7 +30,6 @@ use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use rustc::hir::print::pat_to_string;
 use rustc::hir::intravisit::{self, Visitor};
-use rustc::hir::util as hir_util;
 use rustc::hir;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -112,7 +111,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // system.
                     match e.node {
                         hir::ExprBinary(..) => {
-                            if !hir_util::is_by_value_binop(op.node) {
+                            if !op.node.is_by_value() {
                                 self.fcx.inh.tables.borrow_mut().adjustments.remove(&lhs.id);
                             }
                         },
@@ -142,7 +141,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        self.visit_node_id(ResolvingExpr(s.span), hir_util::stmt_id(s));
+        self.visit_node_id(ResolvingExpr(s.span), s.node.id());
         intravisit::walk_stmt(self, s);
     }
 

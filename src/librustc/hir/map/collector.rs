@@ -304,7 +304,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        let id = util::stmt_id(stmt);
+        let id = stmt.node.id();
         self.insert(id, NodeStmt(stmt));
         let parent_node = self.parent_node;
         self.parent_node = id;

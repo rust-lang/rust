@@ -3987,7 +3987,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let mut any_err = false;
     for s in &blk.stmts {
         check_stmt(fcx, s);
-        let s_id = hir::util::stmt_id(s);
+        let s_id = s.node.id();
         let s_ty = fcx.node_ty(s_id);
         if any_diverges && !warned && match s.node {
             hir::StmtDecl(ref decl, _) => {

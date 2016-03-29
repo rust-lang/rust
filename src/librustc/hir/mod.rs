@@ -59,7 +59,7 @@ macro_rules! hir_vec {
     ($($x:expr),*) => (
         $crate::hir::HirVec::from(vec![$($x),*])
     );
-    ($($x:expr,)*) => (vec![$($x),*])
+    ($($x:expr,)*) => (hir_vec![$($x),*])
 }
 
 pub mod check_attr;
@@ -69,7 +69,6 @@ pub mod lowering;
 pub mod map;
 pub mod print;
 pub mod svh;
-pub mod util;
 
 /// Identifier in HIR
 #[derive(Clone, Copy, Eq)]
@@ -173,6 +172,21 @@ impl fmt::Debug for Path {
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", print::path_to_string(self))
+    }
+}
+
+impl Path {
+    /// Convert a span and an identifier to the corresponding
+    /// 1-segment path.
+    pub fn from_ident(s: Span, ident: Ident) -> Path {
+        Path {
+            span: s,
+            global: false,
+            segments: hir_vec![PathSegment {
+                identifier: ident,
+                parameters: PathParameters::none()
+            }],
+        }
     }
 }
 
@@ -349,12 +363,25 @@ pub struct Generics {
 }
 
 impl Generics {
+    pub fn empty() -> Generics {
+        Generics {
+            lifetimes: HirVec::new(),
+            ty_params: HirVec::new(),
+            where_clause: WhereClause {
+                id: DUMMY_NODE_ID,
+                predicates: HirVec::new(),
+            },
+        }
+    }
+
     pub fn is_lt_parameterized(&self) -> bool {
         !self.lifetimes.is_empty()
     }
+
     pub fn is_type_parameterized(&self) -> bool {
         !self.ty_params.is_empty()
     }
+
     pub fn is_parameterized(&self) -> bool {
         self.is_lt_parameterized() || self.is_type_parameterized()
     }
@@ -490,6 +517,50 @@ impl fmt::Debug for Pat {
     }
 }
 
+impl Pat {
+    // FIXME(#19596) this is a workaround, but there should be a better way
+    fn walk_<G>(&self, it: &mut G) -> bool
+        where G: FnMut(&Pat) -> bool
+    {
+        if !it(self) {
+            return false;
+        }
+
+        match self.node {
+            PatKind::Ident(_, _, Some(ref p)) => p.walk_(it),
+            PatKind::Struct(_, ref fields, _) => {
+                fields.iter().all(|field| field.node.pat.walk_(it))
+            }
+            PatKind::TupleStruct(_, Some(ref s)) | PatKind::Tup(ref s) => {
+                s.iter().all(|p| p.walk_(it))
+            }
+            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
+                s.walk_(it)
+            }
+            PatKind::Vec(ref before, ref slice, ref after) => {
+                before.iter().all(|p| p.walk_(it)) &&
+                slice.iter().all(|p| p.walk_(it)) &&
+                after.iter().all(|p| p.walk_(it))
+            }
+            PatKind::Wild |
+            PatKind::Lit(_) |
+            PatKind::Range(_, _) |
+            PatKind::Ident(_, _, _) |
+            PatKind::TupleStruct(..) |
+            PatKind::Path(..) |
+            PatKind::QPath(_, _) => {
+                true
+            }
+        }
+    }
+
+    pub fn walk<F>(&self, mut it: F) -> bool
+        where F: FnMut(&Pat) -> bool
+    {
+        self.walk_(&mut it)
+    }
+}
+
 /// A single field in a struct pattern
 ///
 /// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
@@ -604,6 +675,68 @@ pub enum BinOp_ {
     BiGt,
 }
 
+impl BinOp_ {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BiAdd => "+",
+            BiSub => "-",
+            BiMul => "*",
+            BiDiv => "/",
+            BiRem => "%",
+            BiAnd => "&&",
+            BiOr => "||",
+            BiBitXor => "^",
+            BiBitAnd => "&",
+            BiBitOr => "|",
+            BiShl => "<<",
+            BiShr => ">>",
+            BiEq => "==",
+            BiLt => "<",
+            BiLe => "<=",
+            BiNe => "!=",
+            BiGe => ">=",
+            BiGt => ">",
+        }
+    }
+
+    pub fn is_lazy(self) -> bool {
+        match self {
+            BiAnd | BiOr => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_shift(self) -> bool {
+        match self {
+            BiShl | BiShr => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_comparison(self) -> bool {
+        match self {
+            BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+            BiAnd |
+            BiOr |
+            BiAdd |
+            BiSub |
+            BiMul |
+            BiDiv |
+            BiRem |
+            BiBitXor |
+            BiBitAnd |
+            BiBitOr |
+            BiShl |
+            BiShr => false,
+        }
+    }
+
+    /// Returns `true` if the binary operator takes its arguments by value
+    pub fn is_by_value(self) -> bool {
+        !self.is_comparison()
+    }
+}
+
 pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -616,6 +749,24 @@ pub enum UnOp {
     UnNeg,
 }
 
+impl UnOp {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            UnDeref => "*",
+            UnNot => "!",
+            UnNeg => "-",
+        }
+    }
+
+    /// Returns `true` if the unary operator takes its argument by value
+    pub fn is_by_value(self) -> bool {
+        match self {
+            UnNeg | UnNot => true,
+            _ => false,
+        }
+    }
+}
+
 /// A statement
 pub type Stmt = Spanned<Stmt_>;
 
@@ -625,7 +776,7 @@ impl fmt::Debug for Stmt_ {
         let spanned = codemap::dummy_spanned(self.clone());
         write!(f,
                "stmt({}: {})",
-               util::stmt_id(&spanned),
+               spanned.node.id(),
                print::stmt_to_string(&spanned))
     }
 }
@@ -648,6 +799,14 @@ impl Stmt_ {
             StmtDecl(ref d, _) => d.node.attrs(),
             StmtExpr(ref e, _) |
             StmtSemi(ref e, _) => e.attrs.as_attr_slice(),
+        }
+    }
+
+    pub fn id(&self) -> NodeId {
+        match *self {
+            StmtDecl(_, id) => id,
+            StmtExpr(_, id) => id,
+            StmtSemi(_, id) => id,
         }
     }
 }

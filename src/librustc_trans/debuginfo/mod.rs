@@ -238,7 +238,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
-    let empty_generics = hir::util::empty_generics();
+    let empty_generics = hir::Generics::empty();
 
     let fnitem = cx.tcx().map.get(fn_ast_id);
 

@@ -116,7 +116,7 @@ fn walk_block(cx: &CrateContext,
 
     // The interesting things here are statements and the concluding expression.
     for statement in &block.stmts {
-        scope_map.insert(hir::util::stmt_id(statement),
+        scope_map.insert(statement.node.id(),
                          scope_stack.last().unwrap().scope_metadata);
 
         match statement.node {

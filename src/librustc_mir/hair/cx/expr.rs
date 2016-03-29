@@ -23,7 +23,6 @@ use rustc::middle::pat_util;
 use rustc::ty::{self, VariantDef, Ty};
 use rustc::mir::repr::*;
 use rustc::hir;
-use rustc::hir::util as hir_util;
 use syntax::ptr::P;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
@@ -150,7 +149,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 if cx.tcx.is_method_call(self.id) {
-                    let pass_args = if hir_util::is_by_value_binop(op.node) {
+                    let pass_args = if op.node.is_by_value() {
                         PassArgs::ByValue
                     } else {
                         PassArgs::ByRef
@@ -172,7 +171,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprBinary(op, ref lhs, ref rhs) => {
                 if cx.tcx.is_method_call(self.id) {
-                    let pass_args = if hir_util::is_by_value_binop(op.node) {
+                    let pass_args = if op.node.is_by_value() {
                         PassArgs::ByValue
                     } else {
                         PassArgs::ByRef
