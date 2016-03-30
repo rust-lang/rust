@@ -19,7 +19,7 @@ use common::{self, Block, BlockAndBuilder, FunctionContext};
 use std::ops::Deref;
 use std::rc::Rc;
 
-use trans::basic_block::BasicBlock;
+use basic_block::BasicBlock;
 
 use rustc_data_structures::bitvec::BitVector;
 
