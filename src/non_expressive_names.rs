@@ -133,46 +133,36 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
             } else {
                 let mut interned_chars = interned_name.chars();
                 let mut existing_chars = existing_name.chars();
+                let first_i = interned_chars.next().expect("we know we have at least one char");
+                let first_e = existing_chars.next().expect("we know we have at least one char");
+                let eq_or_numeric = |a: char, b: char| a == b || a.is_numeric() && b.is_numeric();
 
-                if interned_chars.next() != existing_chars.next() {
-                    let i = interned_chars.next().expect("we know we have more than 1 char");
-                    let e = existing_chars.next().expect("we know we have more than 1 char");
-                    if i == e {
-                        if i == '_' {
-                            // allowed similarity x_foo, y_foo
-                            // or too many chars differ (x_foo, y_boo)
+                if eq_or_numeric(first_i, first_e) {
+                    let last_i = interned_chars.next_back().expect("we know we have at least two chars");
+                    let last_e = existing_chars.next_back().expect("we know we have at least two chars");
+                    if eq_or_numeric(last_i, last_e) {
+                        if interned_chars.zip(existing_chars).filter(|&(i, e)| !eq_or_numeric(i, e)).count() != 1 {
                             continue;
-                        } else if interned_chars.ne(existing_chars) {
-                            // too many chars differ
-                            continue
                         }
                     } else {
-                        // too many chars differ
+                        let second_last_i = interned_chars.next_back().expect("we know we have at least three chars");
+                        let second_last_e = existing_chars.next_back().expect("we know we have at least three chars");
+                        if !eq_or_numeric(second_last_i, second_last_e) || second_last_i == '_' || !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
+                            // allowed similarity foo_x, foo_y
+                            // or too many chars differ (foo_x, boo_y) or (foox, booy)
+                            continue;
+                        }
+                        split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
+                    }
+                } else {
+                    let second_i = interned_chars.next().expect("we know we have at least two chars");
+                    let second_e = existing_chars.next().expect("we know we have at least two chars");
+                    if !eq_or_numeric(second_i, second_e) || second_i == '_' || !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
+                        // allowed similarity x_foo, y_foo
+                        // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
                         continue;
                     }
                     split_at = interned_name.chars().next().map(|c| c.len_utf8());
-                } else if interned_chars.next_back() == existing_chars.next_back() {
-                    if interned_chars.zip(existing_chars).filter(|&(i, e)| i != e).count() != 1 {
-                        // too many chars differ, or none differ (aka shadowing)
-                        continue;
-                    }
-                } else {
-                    let i = interned_chars.next_back().expect("we know we have more than 2 chars");
-                    let e = existing_chars.next_back().expect("we know we have more than 2 chars");
-                    if i == e {
-                        if i == '_' {
-                            // allowed similarity foo_x, foo_x
-                            // or too many chars differ (foo_x, boo_x)
-                            continue;
-                        } else if interned_chars.ne(existing_chars) {
-                            // too many chars differ
-                            continue
-                        }
-                    } else {
-                        // too many chars differ
-                        continue;
-                    }
-                    split_at = interned_name.char_indices().rev().next().map(|(i, _)| i);
                 }
             }
             span_lint_and_then(self.0.cx,
