@@ -827,7 +827,7 @@ pub struct ModuleS<'a> {
     // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
     extern_crate_id: Option<NodeId>,
 
-    resolutions: RefCell<HashMap<(Name, Namespace), NameResolution<'a>>>,
+    resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
     unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // The module children of this node, including normal modules and anonymous modules.
@@ -885,7 +885,7 @@ impl<'a> ModuleS<'a> {
 
     fn for_each_child<F: FnMut(Name, Namespace, &'a NameBinding<'a>)>(&self, mut f: F) {
         for (&(name, ns), name_resolution) in self.resolutions.borrow().iter() {
-            name_resolution.binding.map(|binding| f(name, ns, binding));
+            name_resolution.borrow().binding.map(|binding| f(name, ns, binding));
         }
     }
 
@@ -1117,6 +1117,7 @@ struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective<'a>>,
+    name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
 }
 
 impl<'a> ResolverArenas<'a> {
@@ -1129,6 +1130,9 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_import_directive(&'a self, import_directive: ImportDirective<'a>)
                               -> &'a ImportDirective {
         self.import_directives.alloc(import_directive)
+    }
+    fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
+        self.name_resolutions.alloc(Default::default())
     }
 }
 
@@ -1198,6 +1202,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             modules: arena::TypedArena::new(),
             name_bindings: arena::TypedArena::new(),
             import_directives: arena::TypedArena::new(),
+            name_resolutions: arena::TypedArena::new(),
         }
     }
 
