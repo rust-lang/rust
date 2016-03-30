@@ -22,6 +22,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 
 use build_helper::output;
@@ -130,6 +131,35 @@ pub fn check(build: &mut Build) {
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {
             panic!("the iOS target is only supported on OSX");
+        }
+
+        // Ensure that LLVM's libraries are reachable so we can run the compiler
+        if let Some(config) = build.config.target_config.get(target) {
+            if let Some(ref llvm_config) = config.llvm_config {
+                let llvm_mode = output(Command::new(&llvm_config).arg("--shared-mode"));
+                if llvm_mode.trim() == "shared" {
+                    if cfg!(target_os = "macos") {
+                        let dypath = env::var_os("DYLD_LIBRARY_PATH").unwrap_or(OsString::new());
+                        let lib = output(Command::new(&llvm_config).arg("--libdir"));
+                        let lib_canonical = PathBuf::from(lib.trim()).canonicalize().unwrap();
+                        let lib_in_dypath = env::split_paths(&dypath).find(|p| {
+                            p.canonicalize().ok().map_or(false, |c| c.eq(&lib_canonical))
+                        });
+                        if lib_in_dypath.is_none() {
+                            panic!("Unable to find LLVM's library folder {} in DYLD_LIBRARY_PATH", lib.trim());
+                        }
+                    } else if cfg!(windows) {
+                        let bin = output(Command::new(&llvm_config).arg("--bindir"));
+                        let bin_canonical = PathBuf::from(bin.trim()).canonicalize().unwrap();
+                        let bin_in_path = env::split_paths(&path).find(|p| {
+                            p.canonicalize().ok().map_or(false, |c| c.eq(&bin_canonical))
+                        });
+                        if bin_in_path.is_none() {
+                            panic!("Unable to find LLVM's binary folder {} in PATH", bin.trim());
+                        }
+                    }
+                }
+            }
         }
 
         // Make sure musl-root is valid if specified
