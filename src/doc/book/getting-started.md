@@ -164,13 +164,13 @@ installed. Doing so will depend on your specific system, consult its
 documentation for more details.
 
 If not, there are a number of places where we can get help. The easiest is
-[the #rust IRC channel on irc.mozilla.org][irc], which we can access through
+[the #rust-beginners IRC channel on irc.mozilla.org][irc], which we can access through
 [Mibbit][mibbit]. Click that link, and we'll be chatting with other Rustaceans
 (a silly nickname we call ourselves) who can help us out. Other great resources
 include [the user’s forum][users], and [Stack Overflow][stackoverflow].
 
-[irc]: irc://irc.mozilla.org/#rust
-[mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
+[irc]: irc://irc.mozilla.org/#rust-begginers
+[mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-beginners
 [users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust
 
