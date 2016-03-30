@@ -120,7 +120,7 @@ You can iterate the vector multiple times by taking a reference to the vector wh
 For example, the following code does not compile.
 
 ```rust,ignore
-let mut v = vec![1, 2, 3, 4, 5];
+let v = vec![1, 2, 3, 4, 5];
 
 for i in v {
     println!("Take ownership of the vector and its element {}", i);
@@ -134,7 +134,7 @@ for i in v {
 Whereas the following works perfectly,
 
 ```rust
-let mut v = vec![1, 2, 3, 4, 5];
+let v = vec![1, 2, 3, 4, 5];
 
 for i in &v {
     println!("This is a reference to {}", i);
