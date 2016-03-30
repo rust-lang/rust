@@ -38,6 +38,7 @@ use rustc_plugin as plugin;
 use rustc_front::hir;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
+use rustc_const_eval::check_match;
 use super::Compilation;
 
 use serialize::json;
@@ -428,6 +429,8 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
     // memory, but they do not restore the initial state.
     syntax::ext::mtwt::reset_tables();
     token::reset_ident_interner();
+    let continue_after_error = sess.opts.continue_parse_after_error;
+    sess.diagnostic().set_continue_after_error(continue_after_error);
 
     let krate = time(sess.time_passes(), "parsing", || {
         match *input {
@@ -442,6 +445,8 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session,
             }
         }
     })?;
+
+    sess.diagnostic().set_continue_after_error(true);
 
     if sess.opts.debugging_opts.ast_json_noexpand {
         println!("{}", json::as_json(&krate));
@@ -851,7 +856,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes,
              "match checking",
-             || middle::check_match::check_crate(tcx));
+             || check_match::check_crate(tcx));
 
         // this must run before MIR dump, because
         // "not all control paths return a value" is reported here.

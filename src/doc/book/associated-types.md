@@ -131,7 +131,7 @@ declarations.
 ## Trait objects with associated types
 
 There’s one more bit of syntax we should talk about: trait objects. If you
-try to create a trait object from an associated type, like this:
+try to create a trait object from a trait with an associated type, like this:
 
 ```rust,ignore
 # trait Graph {

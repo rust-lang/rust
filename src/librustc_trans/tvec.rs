@@ -30,6 +30,7 @@ use value::Value;
 use rustc::ty::{self, Ty};
 
 use rustc_front::hir;
+use rustc_const_eval::eval_repeat_count;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -218,7 +219,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     return expr::trans_into(bcx, &element, Ignore);
                 }
                 SaveIn(lldest) => {
-                    match bcx.tcx().eval_repeat_count(&count_expr) {
+                    match eval_repeat_count(bcx.tcx(), &count_expr) {
                         0 => expr::trans_into(bcx, &element, Ignore),
                         1 => expr::trans_into(bcx, &element, SaveIn(lldest)),
                         count => {
@@ -270,7 +271,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
         },
         hir::ExprVec(ref es) => es.len(),
         hir::ExprRepeat(_, ref count_expr) => {
-            bcx.tcx().eval_repeat_count(&count_expr)
+            eval_repeat_count(bcx.tcx(), &count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
                                      "unexpected vec content")

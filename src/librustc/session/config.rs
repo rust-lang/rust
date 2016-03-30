@@ -136,6 +136,7 @@ pub struct Options {
     pub no_trans: bool,
     pub error_format: ErrorOutputType,
     pub treat_err_as_bug: bool,
+    pub continue_parse_after_error: bool,
     pub mir_opt_level: usize,
 
     /// if true, build up the dep-graph
@@ -257,6 +258,7 @@ pub fn basic_options() -> Options {
         parse_only: false,
         no_trans: false,
         treat_err_as_bug: false,
+        continue_parse_after_error: false,
         mir_opt_level: 1,
         build_dep_graph: false,
         dump_dep_graph: false,
@@ -631,6 +633,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "run all passes except translation; no output"),
     treat_err_as_bug: bool = (false, parse_bool,
           "treat all errors that occur as bugs"),
+    continue_parse_after_error: bool = (false, parse_bool,
+          "attempt to recover from parse errors (experimental)"),
     incr_comp: bool = (false, parse_bool,
           "enable incremental compilation (experimental)"),
     dump_dep_graph: bool = (false, parse_bool,
@@ -1045,6 +1049,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
     let treat_err_as_bug = debugging_opts.treat_err_as_bug;
+    let continue_parse_after_error = debugging_opts.continue_parse_after_error;
     let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
     let incremental_compilation = debugging_opts.incr_comp;
     let dump_dep_graph = debugging_opts.dump_dep_graph;
@@ -1224,6 +1229,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         parse_only: parse_only,
         no_trans: no_trans,
         treat_err_as_bug: treat_err_as_bug,
+        continue_parse_after_error: continue_parse_after_error,
         mir_opt_level: mir_opt_level,
         build_dep_graph: incremental_compilation || dump_dep_graph,
         dump_dep_graph: dump_dep_graph,

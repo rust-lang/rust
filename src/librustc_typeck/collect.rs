@@ -66,8 +66,9 @@ use constrained_type_params as ctp;
 use coherence;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
-use middle::const_eval::{self, ConstVal};
-use middle::const_eval::EvalHint::UncheckedExprHint;
+use middle::const_val::ConstVal;
+use rustc_const_eval::EvalHint::UncheckedExprHint;
+use rustc_const_eval::eval_const_expr_partial;
 use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
@@ -81,7 +82,7 @@ use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
 
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -1045,7 +1046,7 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
 
         let ty_hint = repr_ty.to_ty(tcx);
         let hint = UncheckedExprHint(ty_hint);
-        match const_eval::eval_const_expr_partial(tcx, e, hint, None) {
+        match eval_const_expr_partial(tcx, e, hint, None) {
             Ok(ConstVal::Integral(i)) => {
                 // FIXME: eval_const_expr_partial should return an error if the hint is wrong
                 match (repr_ty, i) {

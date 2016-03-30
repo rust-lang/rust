@@ -415,8 +415,6 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((T, ())) -> T = first; // coerce to fn pointer
-
         Drain { iter: self.map.drain().map(first) }
     }
 
@@ -892,8 +890,6 @@ impl<T, S> IntoIterator for HashSet<T, S>
     /// ```
     fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((T, ())) -> T = first;
-
         IntoIter { iter: self.map.into_iter().map(first) }
     }
 }
