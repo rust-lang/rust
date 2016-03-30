@@ -19,14 +19,14 @@
 //!
 //! - Impl the `As*` traits for reference-to-reference conversions
 //! - Impl the `Into` trait when you want to consume the value in the conversion
-//! - The `From` trait is the most flexible, useful for values _and_ references conversions
+//! - The `From` trait is the most flexible, useful for value _and_ reference conversions
 //!
-//! As a library writer, you should prefer implementing `From<T>` rather than
-//! `Into<U>`, as `From` provides greater flexibility and offer the equivalent `Into`
+//! As a library author, you should prefer implementing `From<T>` rather than
+//! `Into<U>`, as `From` provides greater flexibility and offers an equivalent `Into`
 //! implementation for free, thanks to a blanket implementation in the standard library.
 //!
 //! **Note: these traits must not fail**. If the conversion can fail, you must use a dedicated
-//! method which return an `Option<T>` or a `Result<T, E>`.
+//! method which returns an `Option<T>` or a `Result<T, E>`.
 //!
 //! # Generic impl
 //!
@@ -49,7 +49,7 @@ use marker::Sized;
 /// [book]: ../../book/borrow-and-asref.html
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// return an `Option<T>` or a `Result<T, E>`.
+/// returns an `Option<T>` or a `Result<T, E>`.
 ///
 /// # Examples
 ///
@@ -82,7 +82,7 @@ pub trait AsRef<T: ?Sized> {
 /// A cheap, mutable reference-to-mutable reference conversion.
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// return an `Option<T>` or a `Result<T, E>`.
+/// returns an `Option<T>` or a `Result<T, E>`.
 ///
 /// # Generic Impls
 ///
@@ -99,10 +99,10 @@ pub trait AsMut<T: ?Sized> {
 /// A conversion that consumes `self`, which may or may not be expensive.
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// return an `Option<T>` or a `Result<T, E>`.
+/// returns an `Option<T>` or a `Result<T, E>`.
 ///
-/// Library writer should not implement directly this trait, but should prefer the implementation
-/// of the `From` trait, which offer greater flexibility and provide the equivalent `Into`
+/// Library authors should not directly implement this trait, but should prefer implementing
+/// the `From` trait, which offers greater flexibility and provides an equivalent `Into`
 /// implementation for free, thanks to a blanket implementation in the standard library.
 ///
 /// # Examples
@@ -134,7 +134,7 @@ pub trait Into<T>: Sized {
 /// Construct `Self` via a conversion.
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// return an `Option<T>` or a `Result<T, E>`.
+/// returns an `Option<T>` or a `Result<T, E>`.
 ///
 /// # Examples
 ///
