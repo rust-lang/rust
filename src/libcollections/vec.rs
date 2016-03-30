@@ -969,7 +969,7 @@ impl<T: Clone> Vec<T> {
     #[allow(missing_docs)]
     #[inline]
     #[unstable(feature = "vec_push_all",
-               reason = "likely to be replaced by a more optimized extend",
+               reason = "renamed to extend_from_slice",
                issue = "27744")]
     #[rustc_deprecated(reason = "renamed to extend_from_slice",
                        since = "1.6.0")]
