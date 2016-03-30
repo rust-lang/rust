@@ -416,7 +416,7 @@ impl Error for JoinPathsError {
     fn description(&self) -> &str { self.inner.description() }
 }
 
-/// Returns the path to the current user's home directory if known.
+/// Returns the path of the current user's home directory if known.
 ///
 /// # Unix
 ///
@@ -450,7 +450,7 @@ pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
 }
 
-/// Returns the path to a temporary directory.
+/// Returns the path of a temporary directory.
 ///
 /// On Unix, returns the value of the 'TMPDIR' environment variable if it is
 /// set, otherwise for non-Android it returns '/tmp'. If Android, since there
@@ -459,7 +459,7 @@ pub fn home_dir() -> Option<PathBuf> {
 ///
 /// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
 /// 'USERPROFILE' environment variable  if any are set and not the empty
-/// string. Otherwise, tmpdir returns the path to the Windows directory. This
+/// string. Otherwise, tmpdir returns the path of the Windows directory. This
 /// behavior is identical to that of [GetTempPath][msdn], which this function
 /// uses internally.
 ///
@@ -482,14 +482,14 @@ pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
 
-/// Returns the full filesystem path to the current running executable.
+/// Returns the full filesystem path of the current running executable.
 ///
-/// The path returned is not necessarily a "real path" to the executable as
+/// The path returned is not necessarily a "real path" of the executable as
 /// there may be intermediate symlinks.
 ///
 /// # Errors
 ///
-/// Acquiring the path to the current executable is a platform-specific operation
+/// Acquiring the path of the current executable is a platform-specific operation
 /// that can fail for a good number of reasons. Some errors can include, but not
 /// be limited to, filesystem operations failing or general syscall failures.
 ///
@@ -526,7 +526,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
 ///
-/// The first element is traditionally the path to the executable, but it can be
+/// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and may not even exist. This means this property should
 /// not be relied upon for security purposes.
 ///
@@ -554,7 +554,7 @@ pub fn args() -> Args {
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line).
 ///
-/// The first element is traditionally the path to the executable, but it can be
+/// The first element is traditionally the path of the executable, but it can be
 /// set to arbitrary text, and it may not even exist, so this property should
 /// not be relied upon for security purposes.
 ///
