@@ -10,40 +10,51 @@
 
 // Check we do not select a private method or field when computing autoderefs
 
-#![feature(rustc_attrs)]
 #![allow(unused)]
 
+#[derive(Default)]
 pub struct Bar2 { i: i32 }
+#[derive(Default)]
 pub struct Baz2(i32);
 
 impl Bar2 {
-    fn f(&self) {}
+    fn f(&self) -> bool { true }
 }
 
 mod foo {
-    pub struct Bar { i: i32 }
-    pub struct Baz(i32);
+    #[derive(Default)]
+    pub struct Bar { i: ::Bar2 }
+    #[derive(Default)]
+    pub struct Baz(::Baz2);
 
     impl Bar {
-        fn f(&self) {}
+        fn f(&self) -> bool { false }
     }
 
     impl ::std::ops::Deref for Bar {
         type Target = ::Bar2;
-        fn deref(&self) -> &::Bar2 { unimplemented!() }
+        fn deref(&self) -> &::Bar2 { &self.i }
     }
 
     impl ::std::ops::Deref for Baz {
         type Target = ::Baz2;
-        fn deref(&self) -> &::Baz2 { unimplemented!() }
+        fn deref(&self) -> &::Baz2 { &self.0 }
+    }
+
+    pub fn f(bar: &Bar, baz: &Baz) {
+        // Since the private fields and methods are visible here, there should be no autoderefs.
+        let _: &::Bar2 = &bar.i;
+        let _: &::Baz2 = &baz.0;
+        assert!(!bar.f());
     }
 }
 
-fn f(bar: foo::Bar, baz: foo::Baz) {
-    let _ = bar.i;
-    let _ = baz.0;
-    let _ = bar.f();
-}
+fn main() {
+    let bar = foo::Bar::default();
+    let baz = foo::Baz::default();
+    foo::f(&bar, &baz);
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+    let _: i32 = bar.i;
+    let _: i32 = baz.0;
+    assert!(bar.f());
+}
