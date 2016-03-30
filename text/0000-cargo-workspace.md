@@ -343,18 +343,6 @@ show that workspaces can be used to solve other existing issues in Cargo.
   unfortunately, isn't always efficient to do and it would be unfortunate to
   have to unconditionally do this.
 
-* Cargo could support "virtual packages" where a `Cargo.toml` is placed at the
-  root of a repository but only to serve as a global project configuration. No
-  crate would actually be described by a virtual package, but it would play into
-  the workspace heuristics described here. This feature could alleviate the "too
-  much extra configuration" drawback described above, but it's unclear whether
-  it's needed at this point.
-
-* Implicit members are currently only path dependencies and a "Cargo.toml next
-  to VCS" traveling upwards. Instead all Cargo.toml members found traveling
-  upwards could be implicit members of a workspace. This behavior, however, may
-  end up picking up too many crates.
-
 # Unresolved questions
 
 * Does this approach scale well to repositories with a large number of crates?
