@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use graphviz::IntoCow;
-use middle::const_eval::ConstVal;
-use rustc_const_eval::{ConstUsize, ConstInt};
+use middle::const_val::ConstVal;
+use rustc_const_math::{ConstUsize, ConstInt};
 use middle::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
@@ -999,7 +999,7 @@ impl<'tcx> Debug for Literal<'tcx> {
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
 fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
-    use middle::const_eval::ConstVal::*;
+    use middle::const_val::ConstVal::*;
     match *const_val {
         Float(f) => write!(fmt, "{:?}", f),
         Integral(n) => write!(fmt, "{}", n),

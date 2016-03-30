@@ -19,7 +19,7 @@ use build::Builder;
 use build::matches::{Candidate, MatchPair, Test, TestKind};
 use hair::*;
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc::middle::const_eval::ConstVal;
+use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use syntax::codemap::Span;

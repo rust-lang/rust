@@ -55,7 +55,7 @@ extern crate rustc_front;
 extern crate rustc_data_structures;
 extern crate serialize;
 extern crate collections;
-extern crate rustc_const_eval;
+extern crate rustc_const_math;
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -91,8 +91,7 @@ pub mod lint;
 pub mod middle {
     pub mod astconv_util;
     pub mod expr_use_visitor; // STAGE0: increase glitch immunity
-    pub mod check_match;
-    pub mod const_eval;
+    pub mod const_val;
     pub mod const_qualif;
     pub mod cstore;
     pub mod dataflow;

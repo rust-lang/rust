@@ -58,7 +58,7 @@ RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_front rustc_platform_intrinsics \
                 rustc_plugin rustc_metadata rustc_passes rustc_save_analysis \
-                rustc_const_eval
+                rustc_const_eval rustc_const_math
 HOST_CRATES := syntax syntax_ext $(RUSTC_CRATES) rustdoc fmt_macros \
 		flate arena graphviz rbml log serialize
 TOOLS := compiletest rustdoc rustc rustbook error_index_generator
@@ -92,36 +92,39 @@ DEPS_test := std getopts term native:rust_test_helpers
 DEPS_syntax := std term serialize log arena libc rustc_bitflags rustc_unicode
 DEPS_syntax_ext := syntax fmt_macros
 
-DEPS_rustc_const_eval := std syntax
+DEPS_rustc_const_math := std syntax log serialize
+DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize rustc_front \
+					     rustc_back graphviz
 
 DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml rustc_front\
               log graphviz rustc_back rustc_data_structures\
-		  	  rustc_const_eval
+		  	  rustc_const_math
 DEPS_rustc_back := std syntax rustc_front flate log libc
 DEPS_rustc_borrowck := rustc rustc_front rustc_mir log graphviz syntax
 DEPS_rustc_data_structures := std log serialize
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
 	             rustc_trans rustc_privacy rustc_lint rustc_front rustc_plugin \
-                     rustc_metadata syntax_ext rustc_passes rustc_save_analysis
+                     rustc_metadata syntax_ext rustc_passes rustc_save_analysis rustc_const_eval
 DEPS_rustc_front := std syntax log serialize
-DEPS_rustc_lint := rustc log syntax
+DEPS_rustc_lint := rustc log syntax rustc_const_eval
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
-DEPS_rustc_metadata := rustc rustc_front syntax rbml rustc_const_eval
-DEPS_rustc_passes := syntax rustc core rustc_front
-DEPS_rustc_mir := rustc rustc_front syntax rustc_const_eval
+DEPS_rustc_metadata := rustc rustc_front syntax rbml rustc_const_math
+DEPS_rustc_passes := syntax rustc core rustc_front rustc_const_eval
+DEPS_rustc_mir := rustc rustc_front syntax rustc_const_math rustc_const_eval
 DEPS_rustc_resolve := arena rustc rustc_front log syntax
 DEPS_rustc_platform_intrinsics := std
 DEPS_rustc_plugin := rustc rustc_metadata syntax rustc_mir
 DEPS_rustc_privacy := rustc rustc_front log syntax
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir \
                     log syntax serialize rustc_llvm rustc_front rustc_platform_intrinsics \
-					rustc_const_eval
+                    rustc_const_math rustc_const_eval
 DEPS_rustc_save_analysis := rustc log syntax rustc_front
-DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics rustc_const_eval
+DEPS_rustc_typeck := rustc syntax rustc_front rustc_platform_intrinsics rustc_const_math \
+                     rustc_const_eval
 
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
-                test rustc_lint rustc_front
+                test rustc_lint rustc_front rustc_const_eval
 
 
 TOOL_DEPS_compiletest := test getopts log

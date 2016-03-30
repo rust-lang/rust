@@ -50,7 +50,7 @@ use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::parse::token::InternedString;
 
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 use rustc_front::hir;
 use rustc_front::hir::{ItemImpl, ItemTrait, PatKind};
