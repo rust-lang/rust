@@ -41,15 +41,25 @@ impl LintPass for NonExpressiveNames {
     }
 }
 
+struct ExistingName {
+    interned: InternedString,
+    span: Span,
+    len: usize,
+    whitelist: &'static[&'static str],
+}
+
 struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
-    names: Vec<(InternedString, Span, usize)>,
+    names: Vec<ExistingName>,
     cx: &'a EarlyContext<'b>,
     lint: &'a NonExpressiveNames,
     single_char_names: Vec<char>,
 }
 
-const WHITELIST: &'static [&'static str] = &[
-    "lhs", "rhs",
+// this list contains lists of names that are allowed to be similar
+// the assumption is that no name is ever contained in multiple lists.
+const WHITELIST: &'static [&'static [&'static str]] = &[
+    &["parsed", "parser"],
+    &["lhs", "rhs"],
 ];
 
 struct SimilarNamesNameVisitor<'a, 'b: 'a, 'c: 'b>(&'a mut SimilarNamesLocalVisitor<'b, 'c>);
@@ -63,21 +73,27 @@ impl<'v, 'a, 'b, 'c> visit::Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> 
     }
 }
 
-fn whitelisted(interned_name: &str) -> bool {
+fn get_whitelist(interned_name: &str) -> Option<&'static[&'static str]> {
     for &allow in WHITELIST {
-        if interned_name == allow {
-            return true;
+        if whitelisted(interned_name, allow) {
+            return Some(allow);
         }
-        if interned_name.len() <= allow.len() {
-            continue;
-        }
-        // allow_*
-        let allow_start = allow.chars().chain(Some('_'));
+    }
+    None
+}
+
+fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
+    if list.iter().any(|&name| interned_name == name) {
+        return true;
+    }
+    for name in list {
+        // name_*
+        let allow_start = name.chars().chain(Some('_'));
         if interned_name.chars().zip(allow_start).all(|(l, r)| l == r) {
             return true;
         }
-        // *_allow
-        let allow_end = Some('_').into_iter().chain(allow.chars());
+        // *_name
+        let allow_end = Some('_').into_iter().chain(name.chars());
         if interned_name.chars().rev().zip(allow_end.rev()).all(|(l, r)| l == r) {
             return true;
         }
@@ -110,29 +126,28 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
         }
         let count = interned_name.chars().count();
         if count < 3 {
-            if count != 1 {
-                return;
+            if count == 1 {
+                let c = interned_name.chars().next().expect("already checked");
+                self.check_short_name(c, span);
             }
-            let c = interned_name.chars().next().expect("already checked");
-            self.check_short_name(c, span);
             return;
         }
-        if whitelisted(&interned_name) {
-            return;
-        }
-        for &(ref existing_name, sp, existing_len) in &self.0.names {
+        for existing_name in &self.0.names {
+            if whitelisted(&interned_name, existing_name.whitelist) {
+                continue;
+            }
             let mut split_at = None;
-            if existing_len > count {
-                if existing_len - count != 1 || levenstein_not_1(&interned_name, &existing_name) {
+            if existing_name.len > count {
+                if existing_name.len - count != 1 || levenstein_not_1(&interned_name, &existing_name.interned) {
                     continue;
                 }
-            } else if existing_len < count {
-                if count - existing_len != 1 || levenstein_not_1(&existing_name, &interned_name) {
+            } else if existing_name.len < count {
+                if count - existing_name.len != 1 || levenstein_not_1(&existing_name.interned, &interned_name) {
                     continue;
                 }
             } else {
                 let mut interned_chars = interned_name.chars();
-                let mut existing_chars = existing_name.chars();
+                let mut existing_chars = existing_name.interned.chars();
                 let first_i = interned_chars.next().expect("we know we have at least one char");
                 let first_e = existing_chars.next().expect("we know we have at least one char");
                 let eq_or_numeric = |a: char, b: char| a == b || a.is_numeric() && b.is_numeric();
@@ -170,7 +185,7 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                                span,
                                "binding's name is too similar to existing binding",
                                |diag| {
-                                   diag.span_note(sp, "existing binding defined here");
+                                   diag.span_note(existing_name.span, "existing binding defined here");
                                    if let Some(split) = split_at {
                                        diag.span_help(span, &format!("separate the discriminating character \
                                                                       by an underscore like: `{}_{}`",
@@ -180,7 +195,12 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                                });
             return;
         }
-        self.0.names.push((interned_name, span, count));
+        self.0.names.push(ExistingName {
+            whitelist: get_whitelist(&interned_name).unwrap_or(&[]),
+            interned: interned_name,
+            span: span,
+            len: count,
+        });
     }
 }
 

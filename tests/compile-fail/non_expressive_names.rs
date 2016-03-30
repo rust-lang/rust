@@ -11,6 +11,7 @@
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
 #![allow(unused)]
 
 fn main() {
@@ -76,6 +77,12 @@ fn main() {
     let xyz2abc: i32;
     let xyzeabc: i32; //~ ERROR: name is too similar
     //~| HELP: for further information visit
+
+    let parser: i32; //~ NOTE: existing binding defined here
+    let parsed: i32;
+    let parsee: i32; //~ ERROR: name is too similar
+    //~| HELP: for further information visit
+    //~| HELP: separate the discriminating character by an underscore like: `parse_e`
 }
 
 #[derive(Clone, Debug)]
