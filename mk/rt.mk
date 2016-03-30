@@ -236,11 +236,11 @@ COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
 ifeq ($$(findstring msvc,$(1)),msvc)
-$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
+$$(COMPRT_LIB_$(1)): $$(COMPRT_DEPS) $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@$$(call E, cmake: compiler-rt)
 	$$(Q)cd "$$(COMPRT_BUILD_DIR_$(1))"; $$(CFG_CMAKE) "$(S)src/compiler-rt" \
 		-DCMAKE_BUILD_TYPE=$$(LLVM_BUILD_CONFIG_MODE) \
-		-DLLVM_CONFIG_PATH=$$(LLVM_CONFIG_$(1)) \
+		-DLLVM_CONFIG_PATH=$$(LLVM_CONFIG_$$(CFG_BUILD)) \
 		-G"$$(CFG_CMAKE_GENERATOR)"
 	$$(Q)$$(CFG_CMAKE) --build "$$(COMPRT_BUILD_DIR_$(1))" \
 		--target lib/builtins/builtins \

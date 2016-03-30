@@ -1252,7 +1252,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
                     bits=x86_64
                     msvc_part=amd64
                     ;;
-                i686-*)
+                i*86-*)
                     bits=i386
                     msvc_part=
                     ;;
