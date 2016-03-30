@@ -13,7 +13,8 @@ use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::const_qualif::ConstQualif;
-use middle::const_eval::{self, ConstEvalErr};
+use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, lookup_const_by_id, ErrKind};
+use rustc_const_eval::eval_repeat_count;
 use middle::def::Def;
 use middle::def_id::DefId;
 use rustc::front::map as hir_map;
@@ -38,7 +39,7 @@ use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
-use rustc_const_eval::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
+use rustc_const_math::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
 
 use rustc_front::hir;
 
@@ -197,7 +198,7 @@ fn const_fn_call<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                            arg_vals: &[ValueRef],
                            param_substs: &'tcx Substs<'tcx>,
                            trueconst: TrueConst) -> Result<ValueRef, ConstEvalFailure> {
-    let fn_like = const_eval::lookup_const_fn_by_id(ccx.tcx(), def_id);
+    let fn_like = lookup_const_fn_by_id(ccx.tcx(), def_id);
     let fn_like = fn_like.expect("lookup_const_fn_by_id failed in const_fn_call");
 
     let body = match fn_like.body().expr {
@@ -228,7 +229,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let substs = monomorphize::apply_param_substs(ccx.tcx(),
                                                   param_substs,
                                                   &substs.erase_regions());
-    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(substs)) {
+    match lookup_const_by_id(ccx.tcx(), def_id, Some(substs)) {
         Some((ref expr, _ty)) => expr,
         None => {
             ccx.sess().span_bug(ref_expr.span, "constant item not found")
@@ -534,12 +535,12 @@ fn const_err(cx: &CrateContext,
             Ok(())
         },
         (Err(err), TrueConst::Yes) => {
-            let err = ConstEvalErr{ span: e.span, kind: const_eval::ErrKind::Math(err) };
+            let err = ConstEvalErr{ span: e.span, kind: ErrKind::Math(err) };
             cx.tcx().sess.span_err(e.span, &err.description());
             Err(Compiletime(err))
         },
         (Err(err), TrueConst::No) => {
-            let err = ConstEvalErr{ span: e.span, kind: const_eval::ErrKind::Math(err) };
+            let err = ConstEvalErr{ span: e.span, kind: ErrKind::Math(err) };
             cx.tcx().sess.span_warn(e.span, &err.description());
             Err(Runtime(err))
         },
@@ -883,7 +884,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         hir::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ety.sequence_element_type(cx.tcx());
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = cx.tcx().eval_repeat_count(count);
+            let n = eval_repeat_count(cx.tcx(), count);
             let unit_val = const_expr(cx, &elem, param_substs, fn_args, trueconst)?.0;
             let vs = vec![unit_val; n];
             if val_ty(unit_val) != llunitty {

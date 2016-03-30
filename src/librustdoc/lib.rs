@@ -35,6 +35,7 @@ extern crate arena;
 extern crate getopts;
 extern crate libc;
 extern crate rustc;
+extern crate rustc_const_eval;
 extern crate rustc_trans;
 extern crate rustc_driver;
 extern crate rustc_resolve;

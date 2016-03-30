@@ -189,9 +189,8 @@ use self::Opt::*;
 use self::FailureHandler::*;
 
 use llvm::{ValueRef, BasicBlockRef};
-use middle::check_match::StaticInliner;
-use middle::check_match;
-use middle::const_eval;
+use rustc_const_eval::check_match::{self, StaticInliner};
+use rustc_const_eval::{compare_lit_exprs, eval_const_expr};
 use middle::def::{Def, DefMap};
 use middle::def_id::DefId;
 use middle::expr_use_visitor as euv;
@@ -241,7 +240,7 @@ struct ConstantExpr<'a>(&'a hir::Expr);
 
 impl<'a> ConstantExpr<'a> {
     fn eq(self, other: ConstantExpr<'a>, tcx: &TyCtxt) -> bool {
-        match const_eval::compare_lit_exprs(tcx, self.0, other.0) {
+        match compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
             None => panic!("compare_list_exprs: type mismatch"),
         }
@@ -611,11 +610,11 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 
     let ctor = match opt {
         &ConstantValue(ConstantExpr(expr), _) => check_match::ConstantValue(
-            const_eval::eval_const_expr(bcx.tcx(), &expr)
+            eval_const_expr(bcx.tcx(), &expr)
         ),
         &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => check_match::ConstantRange(
-            const_eval::eval_const_expr(bcx.tcx(), &lo),
-            const_eval::eval_const_expr(bcx.tcx(), &hi)
+            eval_const_expr(bcx.tcx(), &lo),
+            eval_const_expr(bcx.tcx(), &hi)
         ),
         &SliceLengthEqual(n, _) =>
             check_match::Slice(n),

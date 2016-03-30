@@ -11,8 +11,6 @@
 //! misc. type-system utilities too small to deserve their own file
 
 use back::svh::Svh;
-use middle::const_eval::{self, ConstVal, ErrKind};
-use middle::const_eval::EvalHint::UncheckedExprHint;
 use middle::def_id::DefId;
 use ty::subst;
 use infer;
@@ -22,7 +20,7 @@ use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
 use ty::TypeVariants::*;
 
-use rustc_const_eval::{ConstInt, ConstIsize, ConstUsize};
+use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 
 use std::cmp;
 use std::hash::{Hash, SipHasher, Hasher};
@@ -267,41 +265,6 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
         (a, b)
-    }
-
-    /// Returns the repeat count for a repeating vector expression.
-    pub fn eval_repeat_count(&self, count_expr: &hir::Expr) -> usize {
-        let hint = UncheckedExprHint(self.types.usize);
-        match const_eval::eval_const_expr_partial(self, count_expr, hint, None) {
-            Ok(ConstVal::Integral(ConstInt::Usize(count))) => {
-                let val = count.as_u64(self.sess.target.uint_type);
-                assert_eq!(val as usize as u64, val);
-                val as usize
-            },
-            Ok(const_val) => {
-                span_err!(self.sess, count_expr.span, E0306,
-                          "expected positive integer for repeat count, found {}",
-                          const_val.description());
-                0
-            }
-            Err(err) => {
-                let err_msg = match count_expr.node {
-                    hir::ExprPath(None, hir::Path {
-                        global: false,
-                        ref segments,
-                        ..
-                    }) if segments.len() == 1 =>
-                        format!("found variable"),
-                    _ => match err.kind {
-                        ErrKind::MiscCatchAll => format!("but found {}", err.description()),
-                        _ => format!("but {}", err.description())
-                    }
-                };
-                span_err!(self.sess, count_expr.span, E0307,
-                    "expected constant integer for repeat count, {}", err_msg);
-                0
-            }
-        }
     }
 
     /// Given a set of predicates that apply to an object type, returns

@@ -11,7 +11,7 @@
 use hair::*;
 use hair::cx::Cx;
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc::middle::const_eval;
+use rustc_const_eval as const_eval;
 use rustc::middle::def::Def;
 use rustc::middle::pat_util::{pat_is_resolved_const, pat_is_binding};
 use rustc::ty::{self, Ty};
