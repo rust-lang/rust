@@ -24,7 +24,7 @@ use super::VtableImplData;
 use super::util;
 
 use middle::def_id::DefId;
-use infer::{self, TypeOrigin};
+use infer::{self, InferOk, TypeOrigin};
 use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
@@ -232,7 +232,11 @@ fn project_and_unify_type<'cx,'tcx>(
     let infcx = selcx.infcx();
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infer::mk_eqty(infcx, true, origin, normalized_ty, obligation.predicate.ty) {
-        Ok(()) => Ok(Some(obligations)),
+        Ok(InferOk { obligations: inferred_obligations, .. }) => {
+            // FIXME(#????) propagate obligations
+            assert!(inferred_obligations.is_empty());
+            Ok(Some(obligations))
+        },
         Err(err) => Err(MismatchedProjectionTypes { err: err }),
     }
 }
@@ -278,7 +282,10 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
             let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
             let obligation_ty = obligation.predicate.ty;
             match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
-                Ok(()) => { }
+                Ok(InferOk { obligations, .. }) => {
+                    // FIXME(#????) propagate obligations
+                    assert!(obligations.is_empty());
+                }
                 Err(_) => { /* ignore errors */ }
             }
         }
@@ -829,7 +836,10 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
                     infcx.sub_poly_trait_refs(false,
                                               origin,
                                               data_poly_trait_ref,
-                                              obligation_poly_trait_ref).is_ok()
+                                              obligation_poly_trait_ref)
+                        // FIXME(#????) propagate obligations
+                        .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
+                        .is_ok()
                 });
 
                 debug!("assemble_candidates_from_predicates: candidate={:?} \
@@ -1082,7 +1092,10 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                               origin,
                               obligation.predicate.trait_ref.clone(),
                               projection.projection_ty.trait_ref.clone()) {
-        Ok(()) => { }
+        Ok(InferOk { obligations, .. }) => {
+            // FIXME(#????) propagate obligations
+            assert!(obligations.is_empty());
+        }
         Err(e) => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,

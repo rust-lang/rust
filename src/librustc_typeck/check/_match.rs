@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::def::{self, Def};
-use rustc::infer::{self, TypeOrigin};
+use rustc::infer::{self, InferOk, TypeOrigin};
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
 use middle::pat_util::pat_is_resolved_const;
 use rustc::ty::subst::Substs;
@@ -532,7 +532,12 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         let result = if is_if_let_fallback {
-            fcx.infcx().eq_types(true, origin, arm_ty, result_ty).map(|_| arm_ty)
+            fcx.infcx().eq_types(true, origin, arm_ty, result_ty)
+                .map(|InferOk { obligations, .. }| {
+                    // FIXME(#????) propagate obligations
+                    assert!(obligations.is_empty());
+                    arm_ty
+                })
         } else if i == 0 {
             // Special-case the first arm, as it has no "previous expressions".
             coercion::try(fcx, &arm.body, coerce_first)

@@ -16,6 +16,7 @@ use super::type_variable::{EqTo};
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
+use traits::PredicateObligations;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
 pub struct Equate<'a, 'tcx: 'a> {
@@ -25,6 +26,10 @@ pub struct Equate<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Equate<'a, 'tcx> {
     pub fn new(fields: CombineFields<'a, 'tcx>) -> Equate<'a, 'tcx> {
         Equate { fields: fields }
+    }
+
+    pub fn obligations(self) -> PredicateObligations<'tcx> {
+        self.fields.obligations
     }
 }
 

@@ -92,7 +92,7 @@ use middle::region::{self, CodeExtent};
 use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, TypeFoldable};
-use rustc::infer::{self, GenericKind, InferCtxt, SubregionOrigin, TypeOrigin, VerifyBound};
+use rustc::infer::{self, GenericKind, InferCtxt, InferOk, SubregionOrigin, TypeOrigin, VerifyBound};
 use middle::pat_util;
 use rustc::ty::adjustment;
 use rustc::ty::wf::ImpliedBound;
@@ -1846,7 +1846,11 @@ fn declared_projection_bounds_from_trait<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
 
                 // check whether this predicate applies to our current projection
                 match infer::mk_eqty(infcx, false, TypeOrigin::Misc(span), ty, outlives.0) {
-                    Ok(()) => { Ok(outlives.1) }
+                    Ok(InferOk { obligations, .. }) => {
+                        // FIXME(#????) propagate obligations
+                        assert!(obligations.is_empty());
+                        Ok(outlives.1)
+                    }
                     Err(_) => { Err(()) }
                 }
             });

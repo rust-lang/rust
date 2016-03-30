@@ -24,8 +24,8 @@ use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::relate::{TypeRelation, RelateResult};
-use rustc::infer::{self, TypeOrigin};
+use rustc::ty::relate::TypeRelation;
+use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
 use rustc::front::map as hir_map;
 use rustc::session::{self, config};
@@ -355,17 +355,17 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
 
-    pub fn sub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    pub fn sub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
         self.infcx.sub(true, trace, t1, t2)
     }
 
-    pub fn lub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    pub fn lub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
         self.infcx.lub(true, trace, t1, t2)
     }
 
-    pub fn glb(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    pub fn glb(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
         self.infcx.glb(true, trace, t1, t2)
     }
@@ -374,7 +374,10 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub(&t1, &t2) {
-            Ok(_) => {}
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME once obligations are being propagated, assert the right thing.
+                assert!(obligations.is_empty());
+            }
             Err(ref e) => {
                 panic!("unexpected error computing sub({:?},{:?}): {}", t1, t2, e);
             }
@@ -395,7 +398,10 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `LUB(t1,t2) == t_lub`
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
         match self.lub(&t1, &t2) {
-            Ok(t) => {
+            Ok(InferOk { obligations, value: t }) => {
+                // FIXME once obligations are being propagated, assert the right thing.
+                assert!(obligations.is_empty());
+
                 self.assert_eq(t, t_lub);
             }
             Err(ref e) => {
@@ -411,7 +417,10 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             Err(e) => {
                 panic!("unexpected error computing LUB: {:?}", e)
             }
-            Ok(t) => {
+            Ok(InferOk { obligations, value: t }) => {
+                // FIXME once obligations are being propagated, assert the right thing.
+                assert!(obligations.is_empty());
+
                 self.assert_eq(t, t_glb);
 
                 // sanity check for good measure:

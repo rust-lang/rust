@@ -37,7 +37,7 @@ use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
-use super::{InferCtxt};
+use super::InferCtxt;
 use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
@@ -46,6 +46,7 @@ use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
 use ty::fold::{TypeFolder, TypeFoldable};
 use ty::relate::{Relate, RelateResult, TypeRelation};
+use traits::PredicateObligations;
 
 use syntax::ast;
 use syntax::codemap::Span;
@@ -56,6 +57,7 @@ pub struct CombineFields<'a, 'tcx: 'a> {
     pub a_is_expected: bool,
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
+    pub obligations: PredicateObligations<'tcx>,
 }
 
 pub fn super_combine_tys<'a,'tcx:'a,R>(infcx: &InferCtxt<'a, 'tcx>,
