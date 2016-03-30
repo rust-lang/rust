@@ -12,6 +12,7 @@ use std::collections::HashSet;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs;
+use std::path::PathBuf;
 use std::process::Command;
 
 use build_helper::output;
@@ -76,6 +77,24 @@ pub fn check(build: &mut Build) {
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {
             panic!("the iOS target is only supported on OSX");
+        }
+
+        if cfg!(windows) {
+            if let Some(config) = build.config.target_config.get(target) {
+                if let Some(ref llvm_config) = config.llvm_config {
+                    let llvm_mode = output(Command::new(&llvm_config).arg("--shared-mode"));
+                    if llvm_mode == "shared" {
+                        let bin = output(Command::new(&llvm_config).arg("--bindir"));
+                        let bin_canonical = PathBuf::from(bin.trim()).canonicalize().unwrap();
+                        let bin_in_path = env::split_paths(&path).find(|p| {
+                            p.canonicalize().ok().map_or(false, |c| c.eq(&bin_canonical))
+                        });
+                        if bin_in_path.is_none() {
+                            panic!("Unable to find LLVM's binary folder {:?} in PATH", bin);
+                        }
+                    }
+                }
+            }
         }
 
         // Make sure musl-root is valid if specified

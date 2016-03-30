@@ -21,8 +21,8 @@ fn main() {
     println!("cargo:rustc-cfg=cargobuild");
 
     let target = env::var("TARGET").unwrap();
-    let llvm_config = env::var_os("LLVM_CONFIG").map(PathBuf::from)
-                           .unwrap_or_else(|| {
+    let mut llvm_config = env::var_os("LLVM_CONFIG").map(PathBuf::from)
+                               .unwrap_or_else(|| {
         match env::var_os("CARGO_TARGET_DIR").map(PathBuf::from) {
             Some(dir) => {
                 let to_test = dir.parent().unwrap().parent().unwrap()
@@ -35,7 +35,7 @@ fn main() {
         }
         PathBuf::from("llvm-config")
     });
-
+    llvm_config.set_extension(env::consts::EXE_EXTENSION);
     println!("cargo:rerun-if-changed={}", llvm_config.display());
 
     // Test whether we're cross-compiling LLVM. This is a pretty rare case
@@ -111,6 +111,7 @@ fn main() {
     // Link in all LLVM libraries, if we're uwring the "wrong" llvm-config then
     // we don't pick up system libs because unfortunately they're for the host
     // of llvm-config, not the target that we're attempting to link.
+    let llvm_static = output(Command::new(&llvm_config).arg("--shared-mode")) == "static";
     let mut cmd = Command::new(&llvm_config);
     cmd.arg("--libs");
     if !is_crossed {
@@ -136,7 +137,7 @@ fn main() {
             continue
         }
 
-        let kind = if name.starts_with("LLVM") {"static"} else {"dylib"};
+        let kind = if name.starts_with("LLVM") && llvm_static {"static"} else {"dylib"};
         println!("cargo:rustc-link-lib={}={}", kind, name);
     }
 
@@ -159,6 +160,13 @@ fn main() {
         } else if lib.starts_with("-L") {
             println!("cargo:rustc-link-search=native={}", &lib[2..]);
         }
+    }
+
+    if !llvm_static && cfg!(windows) {
+        // Use --bindir as the search path. DLLs will be placed here.
+        // llvm-config is bugged and doesn't doesn't indicate this on Windows
+        let bin = output(Command::new(&llvm_config).arg("--bindir"));
+        println!("cargo:rustc-link-search=native={}", bin.trim());
     }
 
     // C++ runtime library

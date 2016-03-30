@@ -15,6 +15,7 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process;
 
+use build::util::build_path;
 use num_cpus;
 use rustc_serialize::Decodable;
 use toml::{Parser, Decoder, Value};
@@ -305,7 +306,7 @@ impl Config {
                                        .collect();
                 }
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
-                    self.musl_root = Some(PathBuf::from(value));
+                    self.musl_root = Some(build_path(value));
                 }
                 "CFG_DEFAULT_AR" if value.len() > 0 => {
                     self.rustc_default_ar = Some(value.to_string());
@@ -322,31 +323,31 @@ impl Config {
                 "CFG_LLVM_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
-                    let root = PathBuf::from(value);
+                    let root = build_path(value);
                     target.llvm_config = Some(root.join("bin/llvm-config"));
                 }
                 "CFG_JEMALLOC_ROOT" if value.len() > 0 => {
                     let target = self.target_config.entry(self.build.clone())
                                      .or_insert(Target::default());
-                    target.jemalloc = Some(PathBuf::from(value));
+                    target.jemalloc = Some(build_path(value));
                 }
                 "CFG_ARM_LINUX_ANDROIDEABI_NDK" if value.len() > 0 => {
                     let target = "arm-linux-androideabi".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(build_path(value));
                 }
                 "CFG_I686_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "i686-linux-androideabi".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(build_path(value));
                 }
                 "CFG_AARCH64_LINUX_ANDROID_NDK" if value.len() > 0 => {
                     let target = "aarch64-linux-androideabi".to_string();
                     let target = self.target_config.entry(target)
                                      .or_insert(Target::default());
-                    target.ndk = Some(PathBuf::from(value));
+                    target.ndk = Some(build_path(value));
                 }
                 _ => {}
             }
