@@ -38,6 +38,7 @@ use rustc_plugin as plugin;
 use rustc_front::hir;
 use rustc_front::lowering::{lower_crate, LoweringContext};
 use rustc_passes::{no_asm, loops, consts, const_fn, rvalues, static_recursion};
+use rustc_const_eval::check_match;
 use super::Compilation;
 
 use serialize::json;
@@ -851,7 +852,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         time(time_passes,
              "match checking",
-             || middle::check_match::check_crate(tcx));
+             || check_match::check_crate(tcx));
 
         // this must run before MIR dump, because
         // "not all control paths return a value" is reported here.

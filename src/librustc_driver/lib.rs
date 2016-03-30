@@ -40,6 +40,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
+extern crate rustc_const_eval;
 extern crate rustc_passes;
 extern crate rustc_front;
 extern crate rustc_lint;
@@ -1090,6 +1091,7 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     all_errors.extend_from_slice(&rustc_resolve::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_privacy::DIAGNOSTICS);
     all_errors.extend_from_slice(&rustc_trans::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_const_eval::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }
