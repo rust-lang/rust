@@ -157,7 +157,7 @@ form of literals to be allowed. Unfortunately, this idea was [scrapped due to re
 never revisited. Even [the reference] alludes to allowing all literals as values in k/v pairs.
 
   [scrapped due to release pressure]: https://github.com/rust-lang/rust/issues/623
-  [the manual]: https://doc.rust-lang.org/reference.html#attributes
+  [the reference]: https://doc.rust-lang.org/reference.html#attributes
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
