@@ -7,10 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
-use rustc::mir::mir_map::MirMap;
+use rustc::mir::transform::{MirPass, Pass};
+use syntax::ast::NodeId;
 
 use traversal;
+
+pub struct BreakCriticalEdges;
 
 /**
  * Breaks critical edges in the MIR.
@@ -34,13 +39,16 @@ use traversal;
  * NOTE: Simplify CFG will happily undo most of the work this pass does.
  *
  */
-pub fn break_critical_edges<'tcx>(mir_map: &mut MirMap<'tcx>) {
-    for (_, mir) in &mut mir_map.map {
-        break_critical_edges_fn(mir);
+
+impl<'tcx> MirPass<'tcx> for BreakCriticalEdges {
+    fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+        break_critical_edges(mir);
     }
 }
 
-fn break_critical_edges_fn(mir: &mut Mir) {
+impl Pass for BreakCriticalEdges {}
+
+fn break_critical_edges(mir: &mut Mir) {
     let mut pred_count = vec![0u32; mir.basic_blocks.len()];
 
     // Build the precedecessor map for the MIR
@@ -63,13 +71,19 @@ fn break_critical_edges_fn(mir: &mut Mir) {
 
         if let Some(ref mut term) = data.terminator {
             let is_invoke = term_is_invoke(term);
+            let term_span = term.span;
+            let term_scope = term.scope;
             let succs = term.successors_mut();
             if succs.len() > 1 || (succs.len() > 0 && is_invoke) {
                 for tgt in succs {
                     let num_preds = pred_count[tgt.index()];
                     if num_preds > 1 {
                         // It's a critical edge, break it
-                        let goto = Terminator::Goto { target: *tgt };
+                        let goto = Terminator {
+                            span: term_span,
+                            scope: term_scope,
+                            kind: TerminatorKind::Goto { target: *tgt }
+                        };
                         let data = BasicBlockData::new(Some(goto));
                         // Get the index it will be when inserted into the MIR
                         let idx = cur_len + new_blocks.len();
@@ -88,9 +102,9 @@ fn break_critical_edges_fn(mir: &mut Mir) {
 
 // Returns true if the terminator would use an invoke in LLVM.
 fn term_is_invoke(term: &Terminator) -> bool {
-    match *term {
-        Terminator::Call { cleanup: Some(_), .. } |
-        Terminator::Drop { unwind: Some(_), .. } => true,
+    match term.kind {
+        TerminatorKind::Call { cleanup: Some(_), .. } |
+        TerminatorKind::Drop { unwind: Some(_), .. } => true,
         _ => false
     }
 }
