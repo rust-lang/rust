@@ -1,4 +1,4 @@
-// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,23 +10,24 @@
 
 //#![allow(non_camel_case_types)]
 
-use self::ConstVal::*;
+use rustc::middle::const_val::ConstVal::*;
+use rustc::middle::const_val::ConstVal;
 use self::ErrKind::*;
 use self::EvalHint::*;
 
-use front::map as ast_map;
-use front::map::blocks::FnLikeNode;
-use lint;
-use middle::cstore::{self, CrateStore, InlinedItem};
-use {infer, traits};
-use middle::def::Def;
-use middle::def_id::DefId;
-use middle::pat_util::def_to_path;
-use ty::{self, subst, Ty, TyCtxt};
-use ty::util::IntTypeExt;
-use traits::ProjectionMode;
-use middle::astconv_util::ast_ty_to_prim_ty;
-use util::nodemap::NodeMap;
+use rustc::front::map as ast_map;
+use rustc::front::map::blocks::FnLikeNode;
+use rustc::middle::cstore::{self, CrateStore, InlinedItem};
+use rustc::{infer, traits};
+use rustc::middle::def::Def;
+use rustc::middle::def_id::DefId;
+use rustc::middle::pat_util::def_to_path;
+use rustc::ty::{self, Ty, TyCtxt, subst};
+use rustc::ty::util::IntTypeExt;
+use rustc::traits::ProjectionMode;
+use rustc::middle::astconv_util::ast_ty_to_prim_ty;
+use rustc::util::nodemap::NodeMap;
+use rustc::lint;
 
 use graphviz::IntoCow;
 use syntax::ast;
@@ -34,7 +35,6 @@ use rustc_front::hir::{Expr, PatKind};
 use rustc_front::hir;
 use rustc_front::intravisit::FnKind;
 use syntax::codemap::Span;
-use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::codemap;
 use syntax::attr::IntType;
@@ -42,11 +42,8 @@ use syntax::attr::IntType;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
-use std::hash;
-use std::mem::transmute;
-use std::rc::Rc;
 
-use rustc_const_eval::*;
+use rustc_const_math::*;
 
 macro_rules! math {
     ($e:expr, $op:expr) => {
@@ -241,89 +238,6 @@ pub fn lookup_const_fn_by_id<'tcx>(tcx: &TyCtxt<'tcx>, def_id: DefId)
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub enum ConstVal {
-    Float(f64),
-    Integral(ConstInt),
-    Str(InternedString),
-    ByteStr(Rc<Vec<u8>>),
-    Bool(bool),
-    Struct(ast::NodeId),
-    Tuple(ast::NodeId),
-    Function(DefId),
-    Array(ast::NodeId, u64),
-    Repeat(ast::NodeId, u64),
-    Char(char),
-    /// A value that only occurs in case `eval_const_expr` reported an error. You should never
-    /// handle this case. Its sole purpose is to allow more errors to be reported instead of
-    /// causing a fatal error.
-    Dummy,
-}
-
-impl hash::Hash for ConstVal {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        match *self {
-            Float(a) => unsafe { transmute::<_,u64>(a) }.hash(state),
-            Integral(a) => a.hash(state),
-            Str(ref a) => a.hash(state),
-            ByteStr(ref a) => a.hash(state),
-            Bool(a) => a.hash(state),
-            Struct(a) => a.hash(state),
-            Tuple(a) => a.hash(state),
-            Function(a) => a.hash(state),
-            Array(a, n) => { a.hash(state); n.hash(state) },
-            Repeat(a, n) => { a.hash(state); n.hash(state) },
-            Char(c) => c.hash(state),
-            Dummy => ().hash(state),
-        }
-    }
-}
-
-/// Note that equality for `ConstVal` means that the it is the same
-/// constant, not that the rust values are equal. In particular, `NaN
-/// == NaN` (at least if it's the same NaN; distinct encodings for NaN
-/// are considering unequal).
-impl PartialEq for ConstVal {
-    fn eq(&self, other: &ConstVal) -> bool {
-        match (self, other) {
-            (&Float(a), &Float(b)) => unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)},
-            (&Integral(a), &Integral(b)) => a == b,
-            (&Str(ref a), &Str(ref b)) => a == b,
-            (&ByteStr(ref a), &ByteStr(ref b)) => a == b,
-            (&Bool(a), &Bool(b)) => a == b,
-            (&Struct(a), &Struct(b)) => a == b,
-            (&Tuple(a), &Tuple(b)) => a == b,
-            (&Function(a), &Function(b)) => a == b,
-            (&Array(a, an), &Array(b, bn)) => (a == b) && (an == bn),
-            (&Repeat(a, an), &Repeat(b, bn)) => (a == b) && (an == bn),
-            (&Char(a), &Char(b)) => a == b,
-            (&Dummy, &Dummy) => true, // FIXME: should this be false?
-            _ => false,
-        }
-    }
-}
-
-impl Eq for ConstVal { }
-
-impl ConstVal {
-    pub fn description(&self) -> &'static str {
-        match *self {
-            Float(_) => "float",
-            Integral(i) => i.description(),
-            Str(_) => "string literal",
-            ByteStr(_) => "byte string literal",
-            Bool(_) => "boolean",
-            Struct(_) => "struct",
-            Tuple(_) => "tuple",
-            Function(_) => "function definition",
-            Array(..) => "array",
-            Repeat(..) => "repeat",
-            Char(..) => "char",
-            Dummy => "dummy value",
-        }
-    }
-}
-
 pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, pat_id: ast::NodeId, span: Span)
                          -> Result<P<hir::Pat>, DefId> {
     let pat_ty = tcx.expr_ty(expr);
@@ -352,7 +266,6 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, pat_id: ast::NodeId, spa
         }
         _ => { }
     }
-
     let pat = match expr.node {
         hir::ExprTup(ref exprs) =>
             PatKind::Tup(try!(exprs.iter()
@@ -1274,4 +1187,40 @@ pub fn compare_lit_exprs<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     };
     compare_const_vals(&a, &b)
+}
+
+
+/// Returns the repeat count for a repeating vector expression.
+pub fn eval_repeat_count(tcx: &TyCtxt, count_expr: &hir::Expr) -> usize {
+    let hint = UncheckedExprHint(tcx.types.usize);
+    match eval_const_expr_partial(tcx, count_expr, hint, None) {
+        Ok(Integral(Usize(count))) => {
+            let val = count.as_u64(tcx.sess.target.uint_type);
+            assert_eq!(val as usize as u64, val);
+            val as usize
+        },
+        Ok(const_val) => {
+            span_err!(tcx.sess, count_expr.span, E0306,
+                      "expected positive integer for repeat count, found {}",
+                      const_val.description());
+            0
+        }
+        Err(err) => {
+            let err_msg = match count_expr.node {
+                hir::ExprPath(None, hir::Path {
+                    global: false,
+                    ref segments,
+                    ..
+                }) if segments.len() == 1 =>
+                    format!("found variable"),
+                _ => match err.kind {
+                    MiscCatchAll => format!("but found {}", err.description()),
+                    _ => format!("but {}", err.description())
+                }
+            };
+            span_err!(tcx.sess, count_expr.span, E0307,
+                "expected constant integer for repeat count, {}", err_msg);
+            0
+        }
+    }
 }

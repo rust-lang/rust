@@ -10,13 +10,14 @@
 
 use hair::*;
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::front::map;
 use rustc::middle::def::Def;
-use rustc::middle::const_eval::{self, ConstVal};
+use rustc::middle::const_val::ConstVal;
+use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
 use rustc::middle::pat_util;
 use rustc::ty::{self, VariantDef, Ty};

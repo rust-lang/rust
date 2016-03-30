@@ -37,7 +37,7 @@ extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_front;
 extern crate rustc_llvm;
-extern crate rustc_const_eval;
+extern crate rustc_const_math;
 
 pub use rustc::middle;
 

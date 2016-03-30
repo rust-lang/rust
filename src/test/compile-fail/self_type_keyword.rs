@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z continue-parse-after-error
+
 struct Self;
 //~^ ERROR expected identifier, found keyword `Self`
 

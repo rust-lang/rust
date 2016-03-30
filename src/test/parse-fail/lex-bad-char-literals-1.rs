@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: -Z parse-only -Z continue-parse-after-error
 static c3: char =
     '\x1' //~ ERROR: numeric character escape is too short
 ;

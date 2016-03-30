@@ -15,7 +15,7 @@
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc::middle::const_eval::ConstVal;
+use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
 use rustc::mir::repr::*;
 use hair::*;
