@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use syntax::ast;
+use syntax::{ast, visit};
 use syntax::codemap::{self, CodeMap, Span, BytePos};
 use syntax::parse::ParseSess;
-use syntax::visit;
 
 use strings::string_buffer::StringBuffer;
 
@@ -56,7 +55,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::StmtKind::Mac(ref mac, _macro_style, _) => {
                 self.format_missing_with_indent(stmt.span.lo);
-                self.visit_mac(mac);
+                self.visit_mac(mac, None);
             }
         }
     }
@@ -254,7 +253,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.visit_mac(mac);
+                self.visit_mac(mac, Some(item.ident));
             }
             ast::ItemKind::ForeignMod(ref foreign_mod) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -380,15 +379,15 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.format_missing_with_indent(ii.span.lo);
-                self.visit_mac(mac);
+                self.visit_mac(mac, Some(ii.ident));
             }
         }
     }
 
-    fn visit_mac(&mut self, mac: &ast::Mac) {
+    fn visit_mac(&mut self, mac: &ast::Mac, ident: Option<ast::Ident>) {
         // 1 = ;
         let width = self.config.max_width - self.block_indent.width() - 1;
-        let rewrite = rewrite_macro(mac, &self.get_context(), width, self.block_indent);
+        let rewrite = rewrite_macro(mac, ident, &self.get_context(), width, self.block_indent);
 
         if let Some(res) = rewrite {
             self.buffer.push_str(&res);

@@ -154,7 +154,7 @@ impl Rewrite for ast::Expr {
             ast::ExprKind::Mac(ref mac) => {
                 // Failure to rewrite a marco should not imply failure to
                 // rewrite the expression.
-                rewrite_macro(mac, context, width, offset).or_else(|| {
+                rewrite_macro(mac, None, context, width, offset).or_else(|| {
                     wrap_str(context.snippet(self.span),
                              context.config.max_width,
                              width,
