@@ -130,6 +130,7 @@ use rustc_front::hir;
 use rustc_front::hir::{Visibility, PatKind};
 use rustc_front::print::pprust;
 use rustc_back::slice;
+use rustc_const_eval::eval_repeat_count;
 
 mod assoc;
 pub mod dropck;
@@ -3592,7 +3593,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       }
       hir::ExprRepeat(ref element, ref count_expr) => {
         check_expr_has_type(fcx, &count_expr, tcx.types.usize);
-        let count = fcx.tcx().eval_repeat_count(&count_expr);
+        let count = eval_repeat_count(fcx.tcx(), &count_expr);
 
         let uty = match expected {
             ExpectHasType(uty) => {

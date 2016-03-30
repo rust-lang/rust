@@ -326,7 +326,7 @@ macro_rules! impl_binop {
         impl ::std::ops::$op for ConstInt {
             type Output = Result<Self, ConstMathErr>;
             fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
-                match try!(self.infer(rhs)) {
+                match self.infer(rhs)? {
                     (I8(a), I8(b)) => a.$checked_func(b).map(I8),
                     (I16(a), I16(b)) => a.$checked_func(b).map(I16),
                     (I32(a), I32(b)) => a.$checked_func(b).map(I32),
@@ -353,7 +353,7 @@ macro_rules! derive_binop {
         impl ::std::ops::$op for ConstInt {
             type Output = Result<Self, ConstMathErr>;
             fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
-                match try!(self.infer(rhs)) {
+                match self.infer(rhs)? {
                     (I8(a), I8(b)) => Ok(I8(a.$func(b))),
                     (I16(a), I16(b)) => Ok(I16(a.$func(b))),
                     (I32(a), I32(b)) => Ok(I32(a.$func(b))),
