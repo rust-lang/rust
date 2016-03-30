@@ -9,7 +9,7 @@
 This RFC proposes accepting literals in attributes by defining the grammar of attributes as:
 
 ```ebnf
-attr : '#' '[' meta_item ']' ;
+attr : '#' '!'? '[' meta_item ']' ;
 
 meta_item : IDENT ( '=' LIT | '(' meta_item_inner? ')' )? ;
 
@@ -21,10 +21,12 @@ attributes, among others, would be accepted by this grammar:
 
 ```rust
 #[attr]
-#[attr()]
+#[attr(true)]
 #[attr(ident)]
-#[attr(ident, ident = 100, ident = "hello", ident(100))]
+#[attr(ident, 100, true, "true", ident = 100, ident = "hello", ident(100))]
 #[attr(100)]
+#[attr(enabled = true)]
+#[enabled(true)]
 #[attr("hello")]
 #[repr(C, align = 4)]
 #[repr(C, align(4))]
@@ -40,10 +42,11 @@ only _string_ literals are accepted. This means that literals can only appear in
 This forces non-string literal values to be awkwardly stringified. For example, while it is clear
 that something like alignment should be an integer value, the following are disallowed:
 `#[align(4)]`, `#[align = 4]`. Instead, we must use something akin to `#[align = "4"]`. Even
-`#[align("4")]` and `#[name("name")]` are disallowed, forcing identifiers or key-values to be used
-instead: `#[align(size = "4")]` or `#[name(name)]`.
+`#[align("4")]` and `#[name("name")]` are disallowed, forcing key-value pairs or identifiers to be
+used instead: `#[align(size = "4")]` or `#[name(name)]`.
 
-In short, the current design forces users to use values of the wrong type in attributes.
+In short, the current design forces users to use values of a single type, and thus occasionally the
+_wrong_ type, in attributes.
 
 ### Cleaner Attributes
 
@@ -67,6 +70,23 @@ positions becomes more important.
 # Detailed design
 [design]: #detailed-design
 
+To clarify, _literals_ are:
+
+  * **Strings:** `"foo"`, `r##"foo"##`
+  * **Byte Strings:** `b"foo"`
+  * **Byte Characters:** `b'f'`
+  * **Characters:** `'a'`
+  * **Integers:** `1`, `1{i,u}{8,16,32,64,size}`
+  * **Floats:** `1.0`, `1.0f{32,64}`
+  * **Booleans:** `true`, `false`
+
+They are defined in the [manual] and by implementation in the [AST].
+
+  [manual]: https://doc.rust-lang.org/reference.html#literals
+  [AST]: http://manishearth.github.io/rust-internals-docs/syntax/ast/enum.LitKind.html
+
+Implementation of this RFC requires the following changes:
+
 1.  The `MetaItemKind` structure would need to allow literals as top-level entities:
 
      ```rust
@@ -74,7 +94,7 @@ positions becomes more important.
          Word(InternedString),
          List(InternedString, Vec<P<MetaItem>>),
          NameValue(InternedString, Lit),
-         Lit,
+         Literal(Lit),
      }
      ```
 
@@ -92,12 +112,12 @@ the wild.
 # Alternatives
 [alternatives]: #alternatives
 
-### Token Trees
+### Token trees
 
 An alternative is to allow any tokens inside of an attribute. That is, the grammar could be:
 
 ```ebnf
-attr : '#' '[' TOKEN+ ']' ;
+attr : '#' '!'? '[' TOKEN+ ']' ;
 ```
 
 where `TOKEN` is any valid Rust token. The drawback to this approach is that attributes lose any
@@ -108,7 +128,21 @@ attribute parsing code to change.
 The advantage, of course, is that it allows any syntax and is rather future proof. It is also more
 inline with `macro!`s.
 
-### Only Allow Literals as Values in K/V Pairs
+### Allow only unsuffixed literals
+
+This RFC proposes allowing _any_ valid Rust literals in attributes. Instead, the use of literals
+could be restricted to only those that are unsuffixed. That is, only the following literals could be
+allowed:
+
+  * **Strings:** `"foo"`
+  * **Characters:** `'a'`
+  * **Integers:** `1`
+  * **Floats:** `1.0`
+  * **Booleans:** `true`, `false`
+
+This cleans up the appearance of attributes will still increasing flexibility.
+
+### Allow literals only as values in k/v pairs
 
 Instead of allowing literals in top-level positions, i.e. `#[attr(4)]`, only allow them as values in
 key value pairs: `#[attr = 4]` or `#[attr(ident = 4)]`. This has the nice advantage that it was the
@@ -116,13 +150,14 @@ initial idea for attributes, and so the AST types already reflect this. As such,
 have to be made to existing code. The drawback, of course, is the lack of flexibility. `#[repr(C,
 align(4))]` would no longer be valid.
 
-### Do Nothing
+### Do nothing
 
 Of course, the current design could be kept. Although it seems that the initial intention was for a
 form of literals to be allowed. Unfortunately, this idea was [scrapped due to release pressure] and
-never revisited. Even the manual alludes to allowing all literals.
+never revisited. Even [the reference] alludes to allowing all literals as values in k/v pairs.
 
   [scrapped due to release pressure]: https://github.com/rust-lang/rust/issues/623
+  [the manual]: https://doc.rust-lang.org/reference.html#attributes
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
