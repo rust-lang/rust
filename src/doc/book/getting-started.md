@@ -169,7 +169,7 @@ If not, there are a number of places where we can get help. The easiest is
 (a silly nickname we call ourselves) who can help us out. Other great resources
 include [the user’s forum][users], and [Stack Overflow][stackoverflow].
 
-[irc]: irc://irc.mozilla.org/#rust-begginers
+[irc]: irc://irc.mozilla.org/#rust-beginners
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-beginners
 [users]: https://users.rust-lang.org/
 [stackoverflow]: http://stackoverflow.com/questions/tagged/rust
