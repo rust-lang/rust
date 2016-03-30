@@ -22,6 +22,14 @@ fn main() {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }
 
+    // See #815
+    let e = Some(1u8).map(|a| divergent(a));
+    let e = Some(1u8).map(|a| generic(a));
+    //~^ ERROR redundant closure found
+    //~| HELP remove closure as shown
+    //~| SUGGESTION map(generic);
+    let e = Some(1u8).map(generic);
+
     // See #515
     let a: Option<Box<::std::ops::Deref<Target = [i32]>>> =
         Some(vec![1i32, 2]).map(|v| -> Box<::std::ops::Deref<Target = [i32]>> { Box::new(v) });
@@ -47,3 +55,11 @@ where F: Fn(&X, &X) -> bool {
 fn below(x: &u8, y: &u8) -> bool { x < y }
 
 unsafe fn unsafe_fn(_: u8) { }
+
+fn divergent(_: u8) -> ! {
+    unimplemented!()
+}
+
+fn generic<T>(_: T) -> u8 {
+    0
+}
