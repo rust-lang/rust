@@ -81,7 +81,6 @@ dependencies = [
  "rustc_const_eval 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_front 0.0.0",
- "rustc_llvm 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -92,7 +91,6 @@ version = "0.0.0"
 dependencies = [
  "log 0.0.0",
  "rustc_front 0.0.0",
- "rustc_llvm 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -151,6 +149,7 @@ dependencies = [
  "rustc_plugin 0.0.0",
  "rustc_privacy 0.0.0",
  "rustc_resolve 0.0.0",
+ "rustc_save_analysis 0.0.0",
  "rustc_trans 0.0.0",
  "rustc_typeck 0.0.0",
  "serialize 0.0.0",
@@ -232,10 +231,6 @@ dependencies = [
 [[package]]
 name = "rustc_platform_intrinsics"
 version = "0.0.0"
-dependencies = [
- "rustc 0.0.0",
- "rustc_llvm 0.0.0",
-]
 
 [[package]]
 name = "rustc_plugin"
@@ -269,6 +264,16 @@ dependencies = [
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_bitflags 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
+name = "rustc_save_analysis"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
  "rustc_front 0.0.0",
  "syntax 0.0.0",
 ]
@@ -353,6 +358,7 @@ name = "syntax_ext"
 version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
+ "log 0.0.0",
  "syntax 0.0.0",
 ]
 
