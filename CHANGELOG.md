@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.71 — TBD
+* New lint: [`useless_let_if_seq`]
+
 ## 0.0.70 — 2016-05-28
 * Rustup to *rustc 1.10.0-nightly (7bddce693 2016-05-27)*
 * [`invalid_regex`] and [`trivial_regex`] can now warn on `RegexSet::new`,
@@ -240,6 +243,7 @@ All notable changes to this project will be documented in this file.
 [`use_debug`]: https://github.com/Manishearth/rust-clippy/wiki#use_debug
 [`used_underscore_binding`]: https://github.com/Manishearth/rust-clippy/wiki#used_underscore_binding
 [`useless_format`]: https://github.com/Manishearth/rust-clippy/wiki#useless_format
+[`useless_let_if_seq`]: https://github.com/Manishearth/rust-clippy/wiki#useless_let_if_seq
 [`useless_transmute`]: https://github.com/Manishearth/rust-clippy/wiki#useless_transmute
 [`useless_vec`]: https://github.com/Manishearth/rust-clippy/wiki#useless_vec
 [`while_let_loop`]: https://github.com/Manishearth/rust-clippy/wiki#while_let_loop
