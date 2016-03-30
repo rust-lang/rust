@@ -370,6 +370,7 @@ pub struct Handler {
     emit: RefCell<Box<Emitter>>,
     pub can_emit_warnings: bool,
     treat_err_as_bug: bool,
+    continue_after_error: Cell<bool>,
     delayed_span_bug: RefCell<Option<(MultiSpan, String)>>,
 }
 
@@ -392,8 +393,13 @@ impl Handler {
             emit: RefCell::new(e),
             can_emit_warnings: can_emit_warnings,
             treat_err_as_bug: treat_err_as_bug,
+            continue_after_error: Cell::new(true),
             delayed_span_bug: RefCell::new(None),
         }
+    }
+
+    pub fn set_continue_after_error(&self, continue_after_error: bool) {
+        self.continue_after_error.set(continue_after_error);
     }
 
     pub fn struct_dummy<'a>(&'a self) -> DiagnosticBuilder<'a> {
@@ -612,6 +618,7 @@ impl Handler {
                 lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().emit(msp, msg, None, lvl);
+        if !self.continue_after_error.get() { self.abort_if_errors(); }
     }
     pub fn emit_with_code(&self,
                           msp: Option<&MultiSpan>,
@@ -620,10 +627,12 @@ impl Handler {
                           lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().emit(msp, msg, Some(code), lvl);
+        if !self.continue_after_error.get() { self.abort_if_errors(); }
     }
     pub fn custom_emit(&self, rsp: RenderSpan, msg: &str, lvl: Level) {
         if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().custom_emit(&rsp, msg, lvl);
+        if !self.continue_after_error.get() { self.abort_if_errors(); }
     }
 }
 
