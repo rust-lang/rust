@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// compile-flags: -Z parse-only -Z continue-parse-after-error
 
 fn main() {
     0o1.0; //~ ERROR: octal float literal is not supported
