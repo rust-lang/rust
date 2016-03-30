@@ -16,7 +16,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::DUMMY_SP;
+use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
 use memory::{self, FieldRepr, Memory, Pointer, Repr};
@@ -122,6 +122,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
+    fn maybe_report<T>(&self, span: codemap::Span, r: EvalResult<T>) -> EvalResult<T> {
+        if let Err(ref e) = r {
+            let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+            err.emit();
+        }
+        r
+    }
+
     fn run(&mut self) -> EvalResult<()> {
         use std::fmt::Debug;
         fn print_trace<T: Debug>(t: &T, suffix: &'static str, indent: usize) {
@@ -141,13 +149,15 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 for stmt in &block_data.statements {
                     print_trace(stmt, "", self.stack.len() + 1);
                     let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                    try!(self.eval_assignment(lvalue, rvalue));
+                    let result = self.eval_assignment(lvalue, rvalue);
+                    try!(self.maybe_report(stmt.span, result));
                 }
 
                 let terminator = block_data.terminator();
                 print_trace(terminator, "", self.stack.len() + 1);
 
-                match try!(self.eval_terminator(terminator)) {
+                let result = self.eval_terminator(terminator);
+                match try!(self.maybe_report(terminator.span, result)) {
                     TerminatorTarget::Block(block) => current_block = block,
                     TerminatorTarget::Return => {
                         self.pop_stack_frame();
@@ -1146,7 +1156,11 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     ty::FnDiverging => None,
                 };
                 miri.push_stack_frame(CachedMir::Ref(mir), return_ptr);
-                miri.run().unwrap();
+                if let Err(_e) = miri.run() {
+                    // // TODO(tsion): report error
+                    // let err = tcx.struct_err()
+                }
+                tcx.sess.abort_if_errors();
 
                 if let Some(ret) = return_ptr {
                     println!("Result:");
