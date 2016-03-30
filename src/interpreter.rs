@@ -161,7 +161,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     TerminatorTarget::Block(block) => current_block = block,
                     TerminatorTarget::Return => {
                         self.pop_stack_frame();
-                        self.substs_stack.pop();
                         continue 'outer;
                     }
                     TerminatorTarget::Call => continue 'outer,
@@ -172,7 +171,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(())
     }
 
-    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, return_ptr: Option<Pointer>) {
+    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, substs: &'tcx Substs<'tcx>,
+        return_ptr: Option<Pointer>)
+    {
+        self.substs_stack.push(substs);
+
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
@@ -198,6 +201,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn pop_stack_frame(&mut self) {
         let _frame = self.stack.pop().expect("tried to pop a stack frame, but there were none");
         // TODO(tsion): Deallocate local variables.
+        self.substs_stack.pop();
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>)
@@ -315,8 +319,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 }
 
                                 let mir = self.load_mir(def_id);
-                                self.substs_stack.push(substs);
-                                self.push_stack_frame(mir, return_ptr);
+                                self.push_stack_frame(mir, substs, return_ptr);
 
                                 for (i, (src, size)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
@@ -1155,10 +1158,10 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     }
                     ty::FnDiverging => None,
                 };
-                miri.push_stack_frame(CachedMir::Ref(mir), return_ptr);
-                if let Err(_e) = miri.run() {
-                    // // TODO(tsion): report error
-                    // let err = tcx.struct_err()
+                let substs = miri.tcx.mk_substs(Substs::empty());
+                miri.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
+                if let Err(e) = miri.run() {
+                    tcx.sess.err(&e.to_string());
                 }
                 tcx.sess.abort_if_errors();
 
