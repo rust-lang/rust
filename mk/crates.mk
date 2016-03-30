@@ -97,7 +97,7 @@ DEPS_rustc_const_eval := rustc_const_math rustc syntax log serialize \
 					     rustc_back graphviz
 
 DEPS_rustc := syntax fmt_macros flate arena serialize getopts rbml \
-              log graphviz rustc_back rustc_data_structures\
+              log graphviz rustc_llvm rustc_back rustc_data_structures\
 		  	  rustc_const_math
 DEPS_rustc_back := std syntax flate log libc
 DEPS_rustc_borrowck := rustc rustc_mir log graphviz syntax
