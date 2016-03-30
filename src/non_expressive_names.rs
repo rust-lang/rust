@@ -123,17 +123,11 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
         for &(ref existing_name, sp, existing_len) in &self.0.names {
             let mut split_at = None;
             if existing_len > count {
-                if existing_len - count != 1 {
-                    continue;
-                }
-                if levenstein_not_1(&interned_name, &existing_name) {
+                if existing_len - count != 1 || levenstein_not_1(&interned_name, &existing_name) {
                     continue;
                 }
             } else if existing_len < count {
-                if count - existing_len != 1 {
-                    continue;
-                }
-                if levenstein_not_1(&existing_name, &interned_name) {
+                if count - existing_len != 1 || levenstein_not_1(&existing_name, &interned_name) {
                     continue;
                 }
             } else {
