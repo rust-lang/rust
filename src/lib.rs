@@ -4,6 +4,8 @@
 #![feature(iter_arith)]
 #![feature(custom_attribute)]
 #![feature(slice_patterns)]
+#![feature(question_mark)]
+#![feature(stmt_expr_attributes)]
 #![allow(indexing_slicing, shadow_reuse, unknown_lints)]
 
 // this only exists to allow the "dogfood" integration test to work
@@ -35,6 +37,9 @@ extern crate semver;
 // for regex checking
 extern crate regex_syntax;
 
+// for finding minimal boolean expressions
+extern crate quine_mc_cluskey;
+
 extern crate rustc_plugin;
 extern crate rustc_const_eval;
 use rustc_plugin::Registry;
@@ -50,6 +55,7 @@ pub mod attrs;
 pub mod bit_mask;
 pub mod blacklisted_name;
 pub mod block_in_if_condition;
+pub mod booleans;
 pub mod collapsible_if;
 pub mod copies;
 pub mod cyclomatic_complexity;
@@ -149,6 +155,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box types::TypePass);
+    reg.register_late_lint_pass(box booleans::NonminimalBool);
     reg.register_late_lint_pass(box misc::TopLevelRefPass);
     reg.register_late_lint_pass(box misc::CmpNan);
     reg.register_late_lint_pass(box eq_op::EqOp);
@@ -228,6 +235,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
+        booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
         matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,
@@ -260,6 +268,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         blacklisted_name::BLACKLISTED_NAME,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
+        booleans::LOGIC_BUG,
         collapsible_if::COLLAPSIBLE_IF,
         copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,

@@ -75,7 +75,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             }
             (&ExprBlock(ref l), &ExprBlock(ref r)) => self.eq_block(l, r),
             (&ExprBinary(l_op, ref ll, ref lr), &ExprBinary(r_op, ref rl, ref rr)) => {
-                l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr) ||
+                swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr))
             }
             (&ExprBreak(li), &ExprBreak(ri)) => both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str()),
             (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
@@ -194,6 +195,23 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&TyInfer, &TyInfer) => true,
             _ => false,
         }
+    }
+}
+
+fn swap_binop<'a>(binop: BinOp_, lhs: &'a Expr, rhs: &'a Expr) -> Option<(BinOp_, &'a Expr, &'a Expr)> {
+    match binop {
+        BiAdd |
+        BiMul |
+        BiBitXor |
+        BiBitAnd |
+        BiEq |
+        BiNe |
+        BiBitOr => Some((binop, rhs, lhs)),
+        BiLt => Some((BiGt, rhs, lhs)),
+        BiLe => Some((BiGe, rhs, lhs)),
+        BiGe => Some((BiLe, rhs, lhs)),
+        BiGt => Some((BiLt, rhs, lhs)),
+        BiShl | BiShr | BiRem | BiSub | BiDiv | BiAnd | BiOr => None,
     }
 }
 
