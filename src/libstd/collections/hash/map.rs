@@ -837,8 +837,6 @@ impl<K, V, S> HashMap<K, V, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((&'a K,&'a V)) -> &'a K = first; // coerce to fn ptr
-
         Keys { inner: self.iter().map(first) }
     }
 
@@ -862,8 +860,6 @@ impl<K, V, S> HashMap<K, V, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
-        let second: fn((&'a K,&'a V)) -> &'a V = second; // coerce to fn ptr
-
         Values { inner: self.iter().map(second) }
     }
 
@@ -997,8 +993,6 @@ impl<K, V, S> HashMap<K, V, S>
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
-        let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two; // coerce to fn pointer
-
         Drain {
             inner: self.table.drain().map(last_two),
         }
@@ -1404,8 +1398,6 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S>
     /// ```
     fn into_iter(self) -> IntoIter<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
-        let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two;
-
         IntoIter {
             inner: self.table.into_iter().map(last_two)
         }
