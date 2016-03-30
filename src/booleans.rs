@@ -9,11 +9,11 @@ use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};
 ///
 /// **Why is this bad?** Readability of boolean expressions suffers from unnecesessary duplication
 ///
-/// **Known problems:** Ignores short circuting behavior, bitwise and/or and xor. Ends up suggesting things like !(a == b)
+/// **Known problems:** Ignores short circuting behavior of `||` and `&&`. Ignores `|`, `&` and `^`.
 ///
-/// **Example:** `if a && true` should be `if a`
+/// **Example:** `if a && true` should be `if a` and `!(a == b)` should be `a != b`
 declare_lint! {
-    pub NONMINIMAL_BOOL, Warn,
+    pub NONMINIMAL_BOOL, Allow,
     "checks for boolean expressions that can be written more concisely"
 }
 

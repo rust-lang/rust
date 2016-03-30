@@ -235,6 +235,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
+        booleans::NONMINIMAL_BOOL,
         enum_glob_use::ENUM_GLOB_USE,
         matches::SINGLE_MATCH_ELSE,
         methods::OPTION_UNWRAP_USED,
@@ -268,7 +269,6 @@ pub fn plugin_registrar(reg: &mut Registry) {
         block_in_if_condition::BLOCK_IN_IF_CONDITION_EXPR,
         block_in_if_condition::BLOCK_IN_IF_CONDITION_STMT,
         booleans::LOGIC_BUG,
-        booleans::NONMINIMAL_BOOL,
         collapsible_if::COLLAPSIBLE_IF,
         copies::IF_SAME_THEN_ELSE,
         copies::IFS_SAME_COND,

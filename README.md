@@ -98,7 +98,7 @@ name                                                                            
 [new_without_default](https://github.com/Manishearth/rust-clippy/wiki#new_without_default)                           | warn    | `fn new() -> Self` method without `Default` implementation
 [no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                               | warn    | statements with no effect
 [non_ascii_literal](https://github.com/Manishearth/rust-clippy/wiki#non_ascii_literal)                               | allow   | using any literal non-ASCII chars in a string literal; suggests using the \\u escape instead
-[nonminimal_bool](https://github.com/Manishearth/rust-clippy/wiki#nonminimal_bool)                                   | warn    | checks for boolean expressions that can be written more concisely
+[nonminimal_bool](https://github.com/Manishearth/rust-clippy/wiki#nonminimal_bool)                                   | allow   | checks for boolean expressions that can be written more concisely
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)                 | warn    | nonsensical combination of options for opening a file
 [ok_expect](https://github.com/Manishearth/rust-clippy/wiki#ok_expect)                                               | warn    | using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result
 [option_map_unwrap_or](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or)                         | warn    | using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`
