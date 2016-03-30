@@ -10,6 +10,8 @@
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
+//~| NOTE: lint level defined here
 #![allow(unused)]
 
 fn main() {
@@ -67,6 +69,20 @@ fn main() {
         (cheese2, 2) => panic!(),
         _ => println!(""),
     }
+    let ipv4: i32;
+    let ipv6: i32;
+    let abcd1: i32;
+    let abdc2: i32;
+    let xyz1abc: i32; //~ NOTE: existing binding defined here
+    let xyz2abc: i32;
+    let xyzeabc: i32; //~ ERROR: name is too similar
+    //~| HELP: for further information visit
+
+    let parser: i32; //~ NOTE: existing binding defined here
+    let parsed: i32;
+    let parsee: i32; //~ ERROR: name is too similar
+    //~| HELP: for further information visit
+    //~| HELP: separate the discriminating character by an underscore like: `parse_e`
 }
 
 #[derive(Clone, Debug)]
