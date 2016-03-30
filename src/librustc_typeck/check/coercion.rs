@@ -62,7 +62,7 @@
 
 use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 
-use rustc::infer::{Coercion, TypeOrigin, TypeTrace};
+use rustc::infer::{Coercion, InferOk, TypeOrigin, TypeTrace};
 use rustc::traits::{self, ObligationCause};
 use rustc::traits::{predicate_for_trait_def, report_selection_error};
 use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
@@ -118,8 +118,18 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let trace = TypeTrace::types(self.origin, false, a, b);
             if self.use_lub {
                 infcx.lub(false, trace, &a, &b)
+                    .map(|InferOk { value, obligations }| {
+                        // FIXME(#????) propagate obligations
+                        assert!(obligations.is_empty());
+                        value
+                    })
             } else {
                 infcx.sub(false, trace, &a, &b)
+                    .map(|InferOk { value, obligations }| {
+                        // FIXME(#????) propagate obligations
+                        assert!(obligations.is_empty());
+                        value
+                    })
             }
         })
     }
@@ -656,12 +666,22 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         (&ty::TyFnDef(a_def_id, a_substs, a_fty),
          &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
             // The signature must always match.
-            let fty = fcx.infcx().lub(true, trace.clone(), a_fty, b_fty)?;
+            let fty = fcx.infcx().lub(true, trace.clone(), a_fty, b_fty)
+                .map(|InferOk { value, obligations }| {
+                    // FIXME(#????) propagate obligations
+                    assert!(obligations.is_empty());
+                    value
+                })?;
 
             if a_def_id == b_def_id {
                 // Same function, maybe the parameters match.
                 let substs = fcx.infcx().commit_if_ok(|_| {
                     fcx.infcx().lub(true, trace.clone(), a_substs, b_substs)
+                        .map(|InferOk { value, obligations }| {
+                            // FIXME(#????) propagate obligations
+                            assert!(obligations.is_empty());
+                            value
+                        })
                 }).map(|s| fcx.tcx().mk_substs(s));
 
                 if let Ok(substs) = substs {
@@ -725,6 +745,11 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
         if !noop {
             return fcx.infcx().commit_if_ok(|_| {
                 fcx.infcx().lub(true, trace.clone(), &prev_ty, &new_ty)
+                    .map(|InferOk { value, obligations }| {
+                        // FIXME(#????) propagate obligations
+                        assert!(obligations.is_empty());
+                        value
+                    })
             });
         }
     }
@@ -737,6 +762,11 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
             } else {
                 fcx.infcx().commit_if_ok(|_| {
                     fcx.infcx().lub(true, trace, &prev_ty, &new_ty)
+                        .map(|InferOk { value, obligations }| {
+                            // FIXME(#????) propagate obligations
+                            assert!(obligations.is_empty());
+                            value
+                        })
                 })
             }
         }
