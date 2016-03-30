@@ -162,9 +162,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(())
     }
 
-    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, return_ptr: Option<Pointer>)
-        -> EvalResult<()>
-    {
+    fn push_stack_frame(&mut self, mir: CachedMir<'a, 'tcx>, return_ptr: Option<Pointer>) {
         let arg_tys = mir.arg_decls.iter().map(|a| a.ty);
         let var_tys = mir.var_decls.iter().map(|v| v.ty);
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
@@ -185,8 +183,6 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             var_offset: num_args,
             temp_offset: num_args + num_vars,
         });
-
-        Ok(())
     }
 
     fn pop_stack_frame(&mut self) {
@@ -310,7 +306,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                                 let mir = self.load_mir(def_id);
                                 self.substs_stack.push(substs);
-                                try!(self.push_stack_frame(mir, return_ptr));
+                                self.push_stack_frame(mir, return_ptr);
 
                                 for (i, (src, size)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
@@ -1149,7 +1145,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                     }
                     ty::FnDiverging => None,
                 };
-                miri.push_stack_frame(CachedMir::Ref(mir), return_ptr).unwrap();
+                miri.push_stack_frame(CachedMir::Ref(mir), return_ptr);
                 miri.run().unwrap();
 
                 if let Some(ret) = return_ptr {
