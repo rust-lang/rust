@@ -30,7 +30,7 @@ use syntax::codemap::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::mem::replace;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -194,8 +194,8 @@ impl<'a> NameResolution<'a> {
                     None => return Some(Indeterminate),
                 };
                 let name = match directive.subclass {
-                    SingleImport { source, target, .. } if source == target => target,
-                    _ => return Some(Indeterminate),
+                    SingleImport { source, .. } => source,
+                    GlobImport => unreachable!(),
                 };
                 match target_module.resolve_name(name, ns, false) {
                     Failed(_) => {}
@@ -227,14 +227,19 @@ impl<'a> NameResolution<'a> {
 }
 
 impl<'a> ::ModuleS<'a> {
+    fn resolution(&self, name: Name, ns: Namespace) -> &'a RefCell<NameResolution<'a>> {
+        *self.resolutions.borrow_mut().entry((name, ns))
+             .or_insert_with(|| self.arenas.alloc_name_resolution())
+    }
+
     pub fn resolve_name(&self, name: Name, ns: Namespace, allow_private_imports: bool)
                         -> ResolveResult<&'a NameBinding<'a>> {
-        let resolutions = match self.resolutions.borrow_state() {
-            ::std::cell::BorrowState::Unused => self.resolutions.borrow(),
-            _ => return Failed(None), // This happens when there is a cycle of glob imports
+        let resolution = self.resolution(name, ns);
+        let resolution = match resolution.borrow_state() {
+            ::std::cell::BorrowState::Unused => resolution.borrow_mut(),
+            _ => return Failed(None), // This happens when there is a cycle of imports
         };
 
-        let resolution = resolutions.get(&(name, ns)).cloned().unwrap_or_default();
         if let Some(result) = resolution.try_result(ns, allow_private_imports) {
             // If the resolution doesn't depend on glob definability, check privacy and return.
             return result.and_then(|binding| {
@@ -261,7 +266,7 @@ impl<'a> ::ModuleS<'a> {
     // Invariant: this may not be called until import resolution is complete.
     pub fn resolve_name_in_lexical_scope(&self, name: Name, ns: Namespace)
                                          -> Option<&'a NameBinding<'a>> {
-        self.resolutions.borrow().get(&(name, ns)).and_then(|resolution| resolution.binding)
+        self.resolution(name, ns).borrow().binding
             .or_else(|| self.prelude.borrow().and_then(|prelude| {
                 prelude.resolve_name(name, ns, false).success()
             }))
@@ -296,10 +301,9 @@ impl<'a> ::ModuleS<'a> {
         self.unresolved_imports.borrow_mut().push(directive);
         match directive.subclass {
             SingleImport { target, .. } => {
-                let mut resolutions = self.resolutions.borrow_mut();
                 for &ns in &[ValueNS, TypeNS] {
-                    resolutions.entry((target, ns)).or_insert_with(Default::default)
-                               .single_imports.add_directive(directive);
+                    self.resolution(target, ns).borrow_mut().single_imports
+                                                            .add_directive(directive);
                 }
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
@@ -314,8 +318,7 @@ impl<'a> ::ModuleS<'a> {
     fn update_resolution<T, F>(&self, name: Name, ns: Namespace, update: F) -> T
         where F: FnOnce(&mut NameResolution<'a>) -> T
     {
-        let mut resolutions = self.resolutions.borrow_mut();
-        let resolution = resolutions.entry((name, ns)).or_insert_with(Default::default);
+        let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
         let was_known = resolution.binding().is_some();
 
         let t = update(resolution);
@@ -638,7 +641,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         target_module.glob_importers.borrow_mut().push((module_, directive));
 
         for (&(name, ns), resolution) in target_module.resolutions.borrow().iter() {
-            if let Some(binding) = resolution.binding() {
+            if let Some(binding) = resolution.borrow().binding() {
                 if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
                     let _ = module_.try_define_child(name, ns, directive.import(binding, None));
                 }
@@ -666,6 +669,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         let mut reexports = Vec::new();
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
+            let resolution = resolution.borrow();
             resolution.report_conflicts(|b1, b2| {
                 self.resolver.report_conflict(module, name, ns, b1, b2)
             });
