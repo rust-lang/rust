@@ -176,48 +176,48 @@ impl Rewrite for ast::Expr {
             ast::ExprKind::Cast(ref expr, ref ty) => {
                 rewrite_pair(&**expr, &**ty, "", " as ", "", context, width, offset)
             }
-            // TODO(#848): Handle type ascription; rust tracking issue
-            //   https://github.com/rust-lang/rust/issues/23416
-            ast::ExprKind::Type(_, _) => unimplemented!(),
             ast::ExprKind::Index(ref expr, ref index) => {
                 rewrite_pair(&**expr, &**index, "", "[", "]", context, width, offset)
             }
             ast::ExprKind::Repeat(ref expr, ref repeats) => {
                 rewrite_pair(&**expr, &**repeats, "[", "; ", "]", context, width, offset)
             }
-            // TODO(#890): Handle closed ranges; rust tracking issue
-            //   https://github.com/rust-lang/rust/issues/28237
-            ast::ExprKind::Range(Some(ref lhs), Some(ref rhs), _range_limits) => {
-                rewrite_pair(&**lhs, &**rhs, "", "..", "", context, width, offset)
-            }
-            ast::ExprKind::Range(None, Some(ref rhs), _range_limits) => {
-                rewrite_unary_prefix(context, "..", &**rhs, width, offset)
-            }
-            ast::ExprKind::Range(Some(ref lhs), None, _range_limits) => {
-                Some(format!("{}..",
-                             try_opt!(lhs.rewrite(context,
-                                                  try_opt!(width.checked_sub(2)),
-                                                  offset))))
-            }
-            ast::ExprKind::Range(None, None, _range_limits) => {
-                if width >= 2 {
-                    Some("..".into())
-                } else {
-                    None
+            ast::ExprKind::Range(ref lhs, ref rhs, limits) => {
+                let delim = match limits {
+                    ast::RangeLimits::HalfOpen => "..",
+                    ast::RangeLimits::Closed => "...",
+                };
+
+                match (lhs.as_ref().map(|x| &**x), rhs.as_ref().map(|x| &**x)) {
+                    (Some(ref lhs), Some(ref rhs)) => {
+                        rewrite_pair(&**lhs, &**rhs, "", delim, "", context, width, offset)
+                    }
+                    (None, Some(ref rhs)) => {
+                        rewrite_unary_prefix(context, delim, &**rhs, width, offset)
+                    }
+                    (Some(ref lhs), None) => {
+                        Some(format!("{}{}",
+                                     try_opt!(lhs.rewrite(context,
+                                                          try_opt!(width.checked_sub(delim.len())),
+                                                          offset)),
+                                     delim))
+                    }
+                    (None, None) => wrap_str(delim.into(), context.config.max_width, width, offset),
                 }
             }
             // We do not format these expressions yet, but they should still
             // satisfy our width restrictions.
             ast::ExprKind::InPlace(..) |
-            ast::ExprKind::InlineAsm(..) => {
+            ast::ExprKind::InlineAsm(..) |
+            // TODO(#848): Handle type ascription
+            ast::ExprKind::Type(_, _) |
+            // TODO(#867): Handle try shorthand
+            ast::ExprKind::Try(_) => {
                 wrap_str(context.snippet(self.span),
                          context.config.max_width,
                          width,
                          offset)
             }
-            // TODO(#867): Handle type ascription; rust tracking issue
-            //   https://github.com/rust-lang/rust/issues/31436
-            ast::ExprKind::Try(_) => unimplemented!(),
         };
         result.and_then(|res| recover_comment_removed(res, self.span, context, width, offset))
     }

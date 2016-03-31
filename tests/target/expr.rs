@@ -267,3 +267,16 @@ fn issue767() {
     } else if let false = false {
     }
 }
+
+fn ranges() {
+    let x = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa..bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let y =
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb;
+    let z = ...x;
+    let infi_range_2 = ...;
+
+    a...b
+
+    // the expr below won't compile for some reason...
+    // let a = 0 ... ;
+}
