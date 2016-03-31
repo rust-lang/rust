@@ -56,8 +56,8 @@ To fix this, we have to make sure that step four never happens after step
 three. The ownership system in Rust does this through a concept called
 lifetimes, which describe the scope that a reference is valid for.
 
-When we have a function that takes a reference by argument, we can be implicit
-or explicit about the lifetime of the reference:
+When we have a function that takes an argument by reference, we can be
+implicit or explicit about the lifetime of the reference:
 
 ```rust
 // implicit
