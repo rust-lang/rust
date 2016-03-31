@@ -29,7 +29,7 @@ fn bar<T:NotImplemented>() { }
 
 fn test() {
     bar::<Option<i32>>();
-    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<i32>`
+    //~^ ERROR the trait `NotImplemented` is not implemented for the type `std::option::Option<i32>`
 }
 
 fn main() {

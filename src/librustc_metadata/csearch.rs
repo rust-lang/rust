@@ -13,17 +13,17 @@ use decoder;
 use encoder;
 use loader;
 
-use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst};
+use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst, DefLike};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
 use middle::def;
 use middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt, VariantKind};
-use middle::def_id::{DefId, DefIndex};
+use middle::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 
 use rustc::front::map as hir_map;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
-use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -543,5 +543,61 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn metadata_encoding_version(&self) -> &[u8]
     {
         encoder::metadata_encoding_version
+    }
+
+    /// Returns a map from a sufficiently visible external item (i.e. an external item that is
+    /// visible from at least one local module) to a sufficiently visible parent (considering
+    /// modules that re-export the external item to be parents).
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
+        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
+        if !visible_parent_map.is_empty() { return visible_parent_map; }
+
+        use rustc_front::hir;
+        use rustc::middle::cstore::{CrateStore, ChildItem};
+        use std::collections::vec_deque::VecDeque;
+        use std::collections::hash_map::Entry;
+        for cnum in 1 .. self.next_crate_num() {
+            let cdata = self.get_crate_data(cnum);
+
+            match cdata.extern_crate.get() {
+                // Ignore crates without a corresponding local `extern crate` item.
+                Some(extern_crate) if !extern_crate.direct => continue,
+                _ => {},
+            }
+
+            let mut bfs_queue = &mut VecDeque::new();
+            let mut add_child = |bfs_queue: &mut VecDeque<_>, child: ChildItem, parent: DefId| {
+                let child = match child.def {
+                    DefLike::DlDef(def) if child.vis == hir::Public => def.def_id(),
+                    _ => return,
+                };
+
+                match visible_parent_map.entry(child) {
+                    Entry::Occupied(mut entry) => {
+                        // If `child` is defined in crate `cnum`, ensure
+                        // that it is mapped to a parent in `cnum`.
+                        if child.krate == cnum && entry.get().krate != cnum {
+                            entry.insert(parent);
+                        }
+                    }
+                    Entry::Vacant(entry) => {
+                        entry.insert(parent);
+                        bfs_queue.push_back(child);
+                    }
+                }
+            };
+
+            let croot = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+            for child in self.crate_top_level_items(cnum) {
+                add_child(bfs_queue, child, croot);
+            }
+            while let Some(def) = bfs_queue.pop_front() {
+                for child in self.item_children(def) {
+                    add_child(bfs_queue, child, def);
+                }
+            }
+        }
+
+        visible_parent_map
     }
 }

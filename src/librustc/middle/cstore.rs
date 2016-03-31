@@ -32,7 +32,7 @@ use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
 use session::search_paths::PathKind;
-use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
+use util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
 use std::any::Any;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -169,6 +169,7 @@ pub trait CrateStore<'tcx> : Any {
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx>;
     fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
     fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn item_name(&self, def: DefId) -> ast::Name;
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
@@ -347,6 +348,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx> { unimplemented!() }
     fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
+        unimplemented!()
+    }
     fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { unimplemented!() }
     fn item_name(&self, def: DefId) -> ast::Name { unimplemented!() }
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)

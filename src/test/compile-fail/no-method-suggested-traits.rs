@@ -65,7 +65,7 @@ fn main() {
     //~^^ HELP following traits define an item `method`, perhaps you need to implement one of them
     //~^^^ HELP `foo::Bar`
     //~^^^^ HELP `no_method_suggested_traits::foo::PubPub`
-    //~^^^^^ HELP `no_method_suggested_traits::reexport::Reexported`
+    //~^^^^^ HELP `no_method_suggested_traits::Reexported`
     //~^^^^^^ HELP `no_method_suggested_traits::bar::PubPriv`
     //~^^^^^^^ HELP `no_method_suggested_traits::qux::PrivPub`
     //~^^^^^^^^ HELP `no_method_suggested_traits::quz::PrivPriv`
@@ -74,7 +74,7 @@ fn main() {
     //~^^ HELP following traits define an item `method`, perhaps you need to implement one of them
     //~^^^ HELP `foo::Bar`
     //~^^^^ HELP `no_method_suggested_traits::foo::PubPub`
-    //~^^^^^ HELP `no_method_suggested_traits::reexport::Reexported`
+    //~^^^^^ HELP `no_method_suggested_traits::Reexported`
     //~^^^^^^ HELP `no_method_suggested_traits::bar::PubPriv`
     //~^^^^^^^ HELP `no_method_suggested_traits::qux::PrivPub`
     //~^^^^^^^^ HELP `no_method_suggested_traits::quz::PrivPriv`

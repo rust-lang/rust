@@ -16,22 +16,22 @@ impl Foo for [u8] {}
 
 fn test1<T: ?Sized + Foo>(t: &T) {
     let u: &Foo = t;
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `T`
+    //~^ ERROR `std::marker::Sized` is not implemented for the type `T`
 }
 
 fn test2<T: ?Sized + Foo>(t: &T) {
     let v: &Foo = t as &Foo;
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `T`
+    //~^ ERROR `std::marker::Sized` is not implemented for the type `T`
 }
 
 fn test3() {
     let _: &[&Foo] = &["hi"];
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `str`
+    //~^ ERROR `std::marker::Sized` is not implemented for the type `str`
 }
 
 fn test4(x: &[u8]) {
     let _: &Foo = x as &Foo;
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `[u8]`
+    //~^ ERROR `std::marker::Sized` is not implemented for the type `[u8]`
 }
 
 fn main() { }

@@ -16,14 +16,14 @@ fn test<T: Sync>() {}
 
 fn main() {
     test::<Cell<i32>>();
-    //~^ ERROR marker::Sync` is not implemented for the type `core::cell::Cell<i32>`
+    //~^ ERROR marker::Sync` is not implemented for the type `std::cell::Cell<i32>`
     test::<RefCell<i32>>();
-    //~^ ERROR marker::Sync` is not implemented for the type `core::cell::RefCell<i32>`
+    //~^ ERROR marker::Sync` is not implemented for the type `std::cell::RefCell<i32>`
 
     test::<Rc<i32>>();
-    //~^ ERROR marker::Sync` is not implemented for the type `alloc::rc::Rc<i32>`
+    //~^ ERROR marker::Sync` is not implemented for the type `std::rc::Rc<i32>`
     test::<Weak<i32>>();
-    //~^ ERROR marker::Sync` is not implemented for the type `alloc::rc::Weak<i32>`
+    //~^ ERROR marker::Sync` is not implemented for the type `std::rc::Weak<i32>`
 
     test::<Receiver<i32>>();
     //~^ ERROR marker::Sync` is not implemented for the type `std::sync::mpsc::Receiver<i32>`

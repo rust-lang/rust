@@ -15,11 +15,11 @@ fn main() {
 
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let _bar = Box::new(1_usize) as std::fmt::Debug;
-    //~^ ERROR cast to unsized type: `Box<usize>` as `core::fmt::Debug`
+    //~^ ERROR cast to unsized type: `Box<usize>` as `std::fmt::Debug`
     //~^^ HELP try casting to a `Box` instead
 
     let _baz = 1_usize as std::fmt::Debug;
-    //~^ ERROR cast to unsized type: `usize` as `core::fmt::Debug`
+    //~^ ERROR cast to unsized type: `usize` as `std::fmt::Debug`
     //~^^ HELP consider using a box or reference as appropriate
 
     let _quux = [1_usize, 2] as [usize];

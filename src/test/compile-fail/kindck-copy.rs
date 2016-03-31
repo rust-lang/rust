@@ -34,14 +34,14 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<&'a [isize]>();
 
     // ...unless they are mutable
-    assert_copy::<&'static mut isize>(); //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<&'a mut isize>();  //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<&'static mut isize>(); //~ ERROR `std::marker::Copy` is not implemented
+    assert_copy::<&'a mut isize>();  //~ ERROR `std::marker::Copy` is not implemented
 
     // boxes are not ok
-    assert_copy::<Box<isize>>();   //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<String>();   //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<Vec<isize> >(); //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<Box<&'a mut isize>>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Box<isize>>();   //~ ERROR `std::marker::Copy` is not implemented
+    assert_copy::<String>();   //~ ERROR `std::marker::Copy` is not implemented
+    assert_copy::<Vec<isize> >(); //~ ERROR `std::marker::Copy` is not implemented
+    assert_copy::<Box<&'a mut isize>>(); //~ ERROR `std::marker::Copy` is not implemented
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
@@ -49,11 +49,11 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<&'static (Dummy+Copy)>();
 
     // owned object types are not ok
-    assert_copy::<Box<Dummy>>(); //~ ERROR `core::marker::Copy` is not implemented
-    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Box<Dummy>>(); //~ ERROR `std::marker::Copy` is not implemented
+    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR `std::marker::Copy` is not implemented
 
     // mutable object types are not ok
-    assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR `std::marker::Copy` is not implemented
 
     // unsafe ptrs are ok
     assert_copy::<*const isize>();
@@ -71,10 +71,10 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
     assert_copy::<MyStruct>();
 
     // structs containing non-POD are not ok
-    assert_copy::<MyNoncopyStruct>(); //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<MyNoncopyStruct>(); //~ ERROR `std::marker::Copy` is not implemented
 
     // ref counted types are not ok
-    assert_copy::<Rc<isize>>();   //~ ERROR `core::marker::Copy` is not implemented
+    assert_copy::<Rc<isize>>();   //~ ERROR `std::marker::Copy` is not implemented
 }
 
 pub fn main() {
