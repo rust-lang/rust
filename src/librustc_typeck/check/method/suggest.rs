@@ -91,7 +91,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
                                            unsatisfied_predicates,
                                            out_of_scope_traits,
-                                           mode }) => {
+                                           mode, .. }) => {
             let cx = fcx.tcx();
 
             let mut err = fcx.type_error_struct(
@@ -207,6 +207,11 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 msg
             };
             fcx.sess().span_err(span, &msg);
+        }
+
+        MethodError::PrivateMatch(def) => {
+            let msg = format!("{} `{}` is private", def.kind_name(), item_name);
+            fcx.tcx().sess.span_err(span, &msg);
         }
     }
 

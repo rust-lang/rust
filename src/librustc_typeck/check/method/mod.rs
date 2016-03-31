@@ -43,6 +43,9 @@ pub enum MethodError<'tcx> {
 
     // Using a `Fn`/`FnMut`/etc method on a raw closure type before we have inferred its kind.
     ClosureAmbiguity(/* DefId of fn trait */ DefId),
+
+    // Found an applicable method, but it is not visible.
+    PrivateMatch(Def),
 }
 
 // Contains a list of static methods that may apply, a list of unsatisfied trait predicates which
@@ -90,6 +93,7 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Err(NoMatch(..)) => false,
         Err(Ambiguity(..)) => true,
         Err(ClosureAmbiguity(..)) => true,
+        Err(PrivateMatch(..)) => true,
     }
 }
 

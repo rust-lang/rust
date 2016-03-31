@@ -2939,9 +2939,8 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             base: &'tcx hir::Expr,
                             field: &Spanned<ast::Name>) {
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
-        let expr_t = structurally_resolved_type(fcx, expr.span,
-                                                fcx.expr_ty(base));
-        // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
+        let expr_t = structurally_resolved_type(fcx, expr.span, fcx.expr_ty(base));
+        let mut private_candidate = None;
         let (_, autoderefs, field_ty) = autoderef(fcx,
                                                   expr.span,
                                                   expr_t,
@@ -2949,15 +2948,17 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   UnresolvedTypeAction::Error,
                                                   lvalue_pref,
                                                   |base_t, _| {
-                match base_t.sty {
-                    ty::TyStruct(base_def, substs) => {
-                        debug!("struct named {:?}",  base_t);
-                        base_def.struct_variant()
-                                .find_field_named(field.node)
-                                .map(|f| fcx.field_ty(expr.span, f, substs))
+                if let ty::TyStruct(base_def, substs) = base_t.sty {
+                    debug!("struct named {:?}",  base_t);
+                    if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
+                        let field_ty = fcx.field_ty(expr.span, field, substs);
+                        if field.vis == hir::Public || fcx.private_item_is_visible(base_def.did) {
+                            return Some(field_ty);
+                        }
+                        private_candidate = Some((base_def.did, field_ty));
                     }
-                    _ => None
                 }
+                None
             });
         match field_ty {
             Some(field_ty) => {
@@ -2968,12 +2969,14 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             None => {}
         }
 
-        if field.node == special_idents::invalid.name {
+        if let Some((did, field_ty)) = private_candidate {
+            let struct_path = fcx.tcx().item_path_str(did);
+            let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
+            fcx.tcx().sess.span_err(expr.span, &msg);
+            fcx.write_ty(expr.id, field_ty);
+        } else if field.node == special_idents::invalid.name {
             fcx.write_error(expr.id);
-            return;
-        }
-
-        if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
+        } else if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
             fcx.type_error_struct(field.span,
                                   |actual| {
                                        format!("attempted to take value of method `{}` on type \
@@ -2984,6 +2987,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                "maybe a `()` to call it is missing? \
                                If not, try an anonymous function")
                 .emit();
+            fcx.write_error(expr.id);
         } else {
             let mut err = fcx.type_error_struct(
                 expr.span,
@@ -2999,9 +3003,8 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 suggest_field_names(&mut err, def.struct_variant(), field, vec![]);
             }
             err.emit();
+            fcx.write_error(expr.id);
         }
-
-        fcx.write_error(expr.id);
     }
 
     // displays hints about the closest matches in field names
@@ -3036,10 +3039,9 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 base: &'tcx hir::Expr,
                                 idx: codemap::Spanned<usize>) {
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
-        let expr_t = structurally_resolved_type(fcx, expr.span,
-                                                fcx.expr_ty(base));
+        let expr_t = structurally_resolved_type(fcx, expr.span, fcx.expr_ty(base));
+        let mut private_candidate = None;
         let mut tuple_like = false;
-        // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
         let (_, autoderefs, field_ty) = autoderef(fcx,
                                                   expr.span,
                                                   expr_t,
@@ -3047,25 +3049,27 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   UnresolvedTypeAction::Error,
                                                   lvalue_pref,
                                                   |base_t, _| {
-                match base_t.sty {
-                    ty::TyStruct(base_def, substs) => {
-                        tuple_like = base_def.struct_variant().is_tuple_struct();
-                        if tuple_like {
-                            debug!("tuple struct named {:?}",  base_t);
-                            base_def.struct_variant()
-                                    .fields
-                                    .get(idx.node)
-                                    .map(|f| fcx.field_ty(expr.span, f, substs))
-                        } else {
-                            None
-                        }
-                    }
+                let (base_def, substs) = match base_t.sty {
+                    ty::TyStruct(base_def, substs) => (base_def, substs),
                     ty::TyTuple(ref v) => {
                         tuple_like = true;
-                        if idx.node < v.len() { Some(v[idx.node]) } else { None }
+                        return if idx.node < v.len() { Some(v[idx.node]) } else { None }
                     }
-                    _ => None
+                    _ => return None,
+                };
+
+                tuple_like = base_def.struct_variant().is_tuple_struct();
+                if !tuple_like { return None }
+
+                debug!("tuple struct named {:?}",  base_t);
+                if let Some(field) = base_def.struct_variant().fields.get(idx.node) {
+                    let field_ty = fcx.field_ty(expr.span, field, substs);
+                    if field.vis == hir::Public || fcx.private_item_is_visible(base_def.did) {
+                        return Some(field_ty);
+                    }
+                    private_candidate = Some((base_def.did, field_ty));
                 }
+                None
             });
         match field_ty {
             Some(field_ty) => {
@@ -3075,6 +3079,15 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
             None => {}
         }
+
+        if let Some((did, field_ty)) = private_candidate {
+            let struct_path = fcx.tcx().item_path_str(did);
+            let msg = format!("field `{}` of struct `{}` is private", idx.node, struct_path);
+            fcx.tcx().sess.span_err(expr.span, &msg);
+            fcx.write_ty(expr.id, field_ty);
+            return;
+        }
+
         fcx.type_error_message(
             expr.span,
             |actual| {
@@ -3745,23 +3758,30 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                                                      &ty_segments[base_ty_end..]);
         let item_segment = path.segments.last().unwrap();
         let item_name = item_segment.identifier.name;
-        match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
-            Ok(def) => {
-                // Write back the new resolution.
-                fcx.ccx.tcx.def_map.borrow_mut()
-                       .insert(node_id, def::PathResolution {
-                   base_def: def,
-                   depth: 0
-                });
-                Some((Some(ty), slice::ref_slice(item_segment), def))
-            }
+        let def = match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
+            Ok(def) => Some(def),
             Err(error) => {
+                let def = match error {
+                    method::MethodError::PrivateMatch(def) => Some(def),
+                    _ => None,
+                };
                 if item_name != special_idents::invalid.name {
                     method::report_error(fcx, span, ty, item_name, None, error);
                 }
-                fcx.write_error(node_id);
-                None
+                def
             }
+        };
+
+        if let Some(def) = def {
+            // Write back the new resolution.
+            fcx.ccx.tcx.def_map.borrow_mut().insert(node_id, def::PathResolution {
+                base_def: def,
+                depth: 0,
+            });
+            Some((Some(ty), slice::ref_slice(item_segment), def))
+        } else {
+            fcx.write_error(node_id);
+            None
         }
     }
 }
