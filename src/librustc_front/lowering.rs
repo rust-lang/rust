@@ -1706,10 +1706,11 @@ pub fn lower_capture_clause(_lctx: &LoweringContext, c: CaptureBy) -> hir::Captu
     }
 }
 
-pub fn lower_visibility(_lctx: &LoweringContext, v: &Visibility) -> hir::Visibility {
+pub fn lower_visibility(lctx: &LoweringContext, v: &Visibility) -> hir::Visibility {
     match *v {
         Visibility::Public => hir::Public,
         Visibility::Inherited => hir::Inherited,
+        _ => panic!(lctx.diagnostic().fatal("pub(restricted) is not implemented yet!"))
     }
 }
 

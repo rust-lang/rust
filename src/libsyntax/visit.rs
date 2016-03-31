@@ -129,6 +129,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_macro_def(&mut self, macro_def: &'v MacroDef) {
         walk_macro_def(self, macro_def)
     }
+    fn visit_vis(&mut self, vis: &'v Visibility) {
+        walk_vis(self, vis)
+    }
 }
 
 #[macro_export]
@@ -806,4 +809,11 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
     walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
+}
+
+pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
+    match *vis {
+        Visibility::Restricted { ref path, id } => visitor.visit_path(path, id),
+        _ => {}
+    }
 }

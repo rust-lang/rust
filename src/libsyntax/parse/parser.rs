@@ -3842,7 +3842,7 @@ impl<'a> Parser<'a> {
                          attrs: Vec<Attribute> ) -> PResult<'a, StructField> {
         let lo = match pr {
             Visibility::Inherited => self.span.lo,
-            Visibility::Public => self.last_span.lo,
+            _ => self.last_span.lo,
         };
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
@@ -4970,7 +4970,8 @@ impl<'a> Parser<'a> {
 
     fn complain_if_pub_macro(&mut self, visa: &Visibility, span: Span) {
         match *visa {
-            Visibility::Public => {
+            Visibility::Inherited => (),
+            _ => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid, _) => sid.name == intern("macro_rules"),
                     _ => false,
@@ -4988,7 +4989,6 @@ impl<'a> Parser<'a> {
                                      .emit();
                 }
             }
-            Visibility::Inherited => (),
         }
     }
 
@@ -6096,7 +6096,7 @@ impl<'a> Parser<'a> {
         // FAILURE TO PARSE ITEM
         match visibility {
             Visibility::Inherited => {}
-            Visibility::Public => {
+            _ => {
                 let last_span = self.last_span;
                 return Err(self.span_fatal(last_span, "unmatched visibility `pub`"));
             }
