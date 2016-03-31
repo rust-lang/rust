@@ -7,7 +7,7 @@
 [summary]: #summary
 
 [RFC 505] introduced certain conventions around documenting Rust projects. This RFC supersedes
-that one, thought it has the same aims: to describe how the Rust project should be documented,
+that one, though it has the same aims: to describe how the Rust project should be documented,
 and provide guidance for other Rust projects as well.
 
 This RFC will contain some similar text as RFC 505, so that we can have one RFC with the full
