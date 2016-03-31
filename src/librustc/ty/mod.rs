@@ -290,6 +290,26 @@ impl Visibility {
             hir::Inherited => Visibility::Restricted(tcx.map.get_module_parent(id)),
         }
     }
+
+    /// Returns true if an item with this visibility is accessible from the given block.
+    pub fn is_accessible_from(self, block: NodeId, map: &ast_map::Map) -> bool {
+        let restriction = match self {
+            // Public items are visible everywhere.
+            Visibility::Public => return true,
+            // Private items from other crates are visible nowhere.
+            Visibility::PrivateExternal => return false,
+            // Restricted items are visible in an arbitrary local module.
+            Visibility::Restricted(module) => module,
+        };
+
+        let mut block_ancestor = map.get_module_parent(block);
+        loop {
+            if block_ancestor == restriction { return true }
+            let block_ancestor_parent = map.get_module_parent(block_ancestor);
+            if block_ancestor_parent == block_ancestor { return false }
+            block_ancestor = block_ancestor_parent;
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

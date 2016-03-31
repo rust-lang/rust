@@ -20,7 +20,7 @@ use hir::def::Def;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits;
-use rustc::ty::{self, NoPreference, Ty, TyCtxt, ToPolyTraitRef, TraitRef, TypeFoldable, Visibility};
+use rustc::ty::{self, NoPreference, Ty, TyCtxt, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -412,7 +412,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return self.record_static_candidate(ImplSource(impl_def_id));
         }
 
-        if item.vis() != Visibility::Public && !self.fcx.private_item_is_visible(item.def_id()) {
+        if !item.vis().is_accessible_from(self.fcx.body_id, &self.tcx().map) {
             self.private_candidate = Some(item.def());
             return
         }

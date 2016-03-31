@@ -382,26 +382,18 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
-    fn item_is_visible(&self, did: DefId) -> bool {
-        let is_public = match self.tcx.map.as_local_node_id(did) {
-            Some(node_id) => self.tcx.map.expect_item(node_id).vis == hir::Public,
-            None => self.tcx.sess.cstore.visibility(did) == ty::Visibility::Public,
-        };
-        is_public || self.private_accessible(did)
-    }
-
-    /// True if `did` is private-accessible
-    fn private_accessible(&self, did: DefId) -> bool {
+    fn item_is_accessible(&self, did: DefId) -> bool {
         match self.tcx.map.as_local_node_id(did) {
-            Some(node_id) => self.tcx.map.private_item_is_visible_from(node_id, self.curitem),
-            None => false,
-        }
+            Some(node_id) =>
+                ty::Visibility::from_hir(&self.tcx.map.expect_item(node_id).vis, node_id, self.tcx),
+            None => self.tcx.sess.cstore.visibility(did),
+        }.is_accessible_from(self.curitem, &self.tcx.map)
     }
 
     // Checks that a field is in scope.
     fn check_field(&mut self, span: Span, def: ty::AdtDef<'tcx>, field: ty::FieldDef<'tcx>) {
         if def.adt_kind() == ty::AdtKind::Struct &&
-                field.vis != ty::Visibility::Public && !self.private_accessible(def.did) {
+           !field.vis.is_accessible_from(self.curitem, &self.tcx.map) {
             span_err!(self.tcx.sess, span, E0451, "field `{}` of struct `{}` is private",
                       field.name, self.tcx.item_path_str(def.did));
         }
@@ -412,7 +404,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         match self.tcx.impl_or_trait_item(method_def_id).container() {
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
-            ty::TraitContainer(trait_def_id) if !self.item_is_visible(trait_def_id) => {
+            ty::TraitContainer(trait_def_id) if !self.item_is_accessible(trait_def_id) => {
                 let msg = format!("source trait `{}` is private",
                                   self.tcx.item_path_str(trait_def_id));
                 self.tcx.sess.span_err(span, &msg);
@@ -464,7 +456,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         _ => expr_ty
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
-                        f.vis != ty::Visibility::Public && !self.private_accessible(def.did)
+                        !f.vis.is_accessible_from(self.curitem, &self.tcx.map)
                     });
                     if any_priv {
                         span_err!(self.tcx.sess, expr.span, E0450,
