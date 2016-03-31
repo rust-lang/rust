@@ -16,6 +16,7 @@ use super::suggest;
 use check;
 use check::{FnCtxt, UnresolvedTypeAction};
 use middle::def_id::DefId;
+use middle::def::Def;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits;
@@ -46,6 +47,9 @@ struct ProbeContext<'a, 'tcx:'a> {
     /// Collects near misses when the candidate functions are missing a `self` keyword and is only
     /// used for error reporting
     static_candidates: Vec<CandidateSource>,
+
+    /// Some(candidate) if there is a private candidate
+    private_candidate: Option<Def>,
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
@@ -247,6 +251,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             steps: Rc::new(steps),
             opt_simplified_steps: opt_simplified_steps,
             static_candidates: Vec::new(),
+            private_candidate: None,
             unsatisfied_predicates: Vec::new(),
         }
     }
@@ -256,6 +261,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.extension_candidates.clear();
         self.impl_dups.clear();
         self.static_candidates.clear();
+        self.private_candidate = None;
     }
 
     fn tcx(&self) -> &'a TyCtxt<'tcx> {
@@ -405,6 +411,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         if !self.has_applicable_self(&item) {
             // No receiver declared. Not a candidate.
             return self.record_static_candidate(ImplSource(impl_def_id));
+        }
+
+        if item.vis() != hir::Public && !self.fcx.private_item_is_visible(item.def_id()) {
+            self.private_candidate = Some(item.def());
+            return
         }
 
         let (impl_ty, impl_substs) = self.impl_ty_and_substs(impl_def_id);
@@ -846,6 +857,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
+        let private_candidate = mem::replace(&mut self.private_candidate, None);
         let unsatisfied_predicates = mem::replace(&mut self.unsatisfied_predicates, vec![]);
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
@@ -879,8 +891,12 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 // this error only occurs when assembling candidates
                 tcx.sess.span_bug(span, "encountered ClosureAmbiguity from pick_core");
             }
-            None => vec![],
+            _ => vec![],
         };
+
+        if let Some(def) = private_candidate {
+            return Err(MethodError::PrivateMatch(def));
+        }
 
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates, unsatisfied_predicates,
                                                   out_of_scope_traits, self.mode)))
