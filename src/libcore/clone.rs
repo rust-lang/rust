@@ -105,7 +105,9 @@ clone_impl! { u16 }
 clone_impl! { u32 }
 clone_impl! { u64 }
 
+#[cfg(any(stage0, target_has_floating_point))]
 clone_impl! { f32 }
+#[cfg(any(stage0, target_has_floating_point))]
 clone_impl! { f64 }
 
 clone_impl! { () }

@@ -78,6 +78,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(question_mark)]
+#![cfg_attr(not(stage0), feature(cfg_target_has_floating_point))]
 
 #[macro_use]
 mod macros;
@@ -106,7 +107,9 @@ mod uint_macros;
 #[path = "num/u32.rs"]  pub mod u32;
 #[path = "num/u64.rs"]  pub mod u64;
 
+#[cfg(any(stage0, target_has_floating_point))]
 #[path = "num/f32.rs"]   pub mod f32;
+#[cfg(any(stage0, target_has_floating_point))]
 #[path = "num/f64.rs"]   pub mod f64;
 
 #[macro_use]
