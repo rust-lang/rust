@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,8 +10,12 @@
 
 // compile-flags: -Z parse-only
 
-// http://phpsadness.com/sad/1
-
 fn main() {
-    ::; //~ ERROR expected identifier, found `;`
+    let a = 0;
+    let _b = 0;
+    let _ = 0;
+    let mut b = 0;
+    let mut _b = 0;
+    let mut _ = 0; //~ ERROR expected identifier, found `_`
+    //~^ NOTE `_` is a wildcard pattern, not an identifier
 }
