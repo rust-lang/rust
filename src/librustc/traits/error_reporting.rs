@@ -361,7 +361,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             let trait_ref = trait_predicate.to_poly_trait_ref();
                             let mut err = struct_span_err!(
                                 infcx.tcx.sess, obligation.cause.span, E0277,
-                                "the predicate `{}` is not satisfied",
+                                "the trait bound `{}` is not satisfied",
                                 trait_ref.to_predicate());
 
                             // Try to report a good error message.

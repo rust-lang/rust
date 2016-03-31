@@ -15,5 +15,5 @@ struct Struct;
 
 fn main() {
     drop(equal(&Struct, &Struct))
-    //~^ ERROR the predicate `Struct : std::cmp::Eq` is not satisfied
+    //~^ ERROR the trait bound `Struct : std::cmp::Eq` is not satisfied
 }
