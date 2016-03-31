@@ -537,8 +537,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         match (&value_result, &type_result) {
             (&Indeterminate, _) | (_, &Indeterminate) => return Indeterminate,
             (&Failed(_), &Failed(_)) => {
-                let children = target_module.resolutions.borrow();
-                let names = children.keys().map(|&(ref name, _)| name);
+                let resolutions = target_module.resolutions.borrow();
+                let names = resolutions.iter().filter_map(|(&(ref name, _), resolution)| {
+                    match *resolution.borrow() {
+                        NameResolution { binding: Some(_), .. } => Some(name),
+                        NameResolution { single_imports: SingleImports::None, .. } => None,
+                        _ => Some(name),
+                    }
+                });
                 let lev_suggestion = match find_best_match_for_name(names, &source.as_str(), None) {
                     Some(name) => format!(". Did you mean to use `{}`?", name),
                     None => "".to_owned(),
