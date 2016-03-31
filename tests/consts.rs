@@ -2,22 +2,19 @@
 #![feature(rustc_private)]
 
 extern crate clippy;
-extern crate syntax;
 extern crate rustc;
-extern crate rustc_front;
 extern crate rustc_const_eval;
-
-use rustc_front::hir::*;
-use rustc_const_eval::ConstInt;
-use syntax::parse::token::InternedString;
-use syntax::ptr::P;
-use syntax::codemap::{Spanned, COMMAND_LINE_SP};
-
-use syntax::ast::LitKind;
-use syntax::ast::LitIntType;
-use syntax::ast::StrStyle;
+extern crate rustc_const_math;
+extern crate rustc_front;
+extern crate syntax;
 
 use clippy::consts::{constant_simple, Constant, FloatWidth};
+use rustc_const_math::ConstInt;
+use rustc_front::hir::*;
+use syntax::ast::{LitIntType, LitKind, StrStyle};
+use syntax::codemap::{Spanned, COMMAND_LINE_SP};
+use syntax::parse::token::InternedString;
+use syntax::ptr::P;
 
 fn spanned<T>(t: T) -> Spanned<T> {
     Spanned{ node: t, span: COMMAND_LINE_SP }

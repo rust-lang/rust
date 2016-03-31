@@ -42,6 +42,7 @@ extern crate quine_mc_cluskey;
 
 extern crate rustc_plugin;
 extern crate rustc_const_eval;
+extern crate rustc_const_math;
 use rustc_plugin::Registry;
 
 pub mod consts;

@@ -1,7 +1,8 @@
 use regex_syntax;
 use rustc::lint::*;
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-use rustc::middle::const_eval::{eval_const_expr_partial, ConstVal};
+use rustc::middle::const_val::ConstVal;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval_const_expr_partial;
 use rustc_front::hir::*;
 use std::collections::HashSet;
 use std::error::Error;

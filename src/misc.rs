@@ -1,9 +1,9 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::middle::const_eval::ConstVal::Float;
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-use rustc::middle::const_eval::eval_const_expr_partial;
+use rustc::middle::const_val::ConstVal;
 use rustc::ty;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval_const_expr_partial;
 use rustc_front::hir::*;
 use rustc_front::intravisit::FnKind;
 use rustc_front::util::{is_comparison_binop, binop_to_string};
@@ -180,7 +180,7 @@ impl LateLintPass for FloatCmp {
 
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
     let res = eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None);
-    if let Ok(Float(val)) = res {
+    if let Ok(ConstVal::Float(val)) = res {
         val == 0.0 || val == ::std::f64::INFINITY || val == ::std::f64::NEG_INFINITY
     } else {
         false

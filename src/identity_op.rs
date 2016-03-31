@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc_front::hir::*;
 use syntax::codemap::Span;
 use utils::{span_lint, snippet, in_macro};
-use rustc_const_eval::ConstInt;
+use rustc_const_math::ConstInt;
 
 /// **What it does:** This lint checks for identity operations, e.g. `x + 0`.
 ///

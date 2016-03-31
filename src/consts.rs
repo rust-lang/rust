@@ -1,10 +1,10 @@
 #![allow(cast_possible_truncation)]
 
 use rustc::lint::LateContext;
-use rustc::middle::const_eval::lookup_const_by_id;
 use rustc::middle::def::{Def, PathResolution};
+use rustc_const_eval::lookup_const_by_id;
+use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
 use rustc_front::hir::*;
-use rustc_const_eval::{ConstInt, ConstUsize, ConstIsize};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
