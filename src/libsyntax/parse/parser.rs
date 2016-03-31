@@ -574,9 +574,12 @@ impl<'a> Parser<'a> {
                 self.bug("ident interpolation not converted to real token");
             }
             _ => {
-                let token_str = self.this_token_to_string();
-                Err(self.fatal(&format!("expected ident, found `{}`",
-                                    token_str)))
+                let mut err = self.fatal(&format!("expected identifier, found `{}`",
+                                                  self.this_token_to_string()));
+                if self.token == token::Underscore {
+                    err.fileline_note(self.span, "`_` is a wildcard pattern, not an identifier");
+                }
+                Err(err)
             }
         }
     }
@@ -3782,12 +3785,6 @@ impl<'a> Parser<'a> {
     fn parse_pat_ident(&mut self,
                        binding_mode: ast::BindingMode)
                        -> PResult<'a, PatKind> {
-        if !self.token.is_plain_ident() {
-            let span = self.span;
-            let tok_str = self.this_token_to_string();
-            return Err(self.span_fatal(span,
-                            &format!("expected identifier, found `{}`", tok_str)))
-        }
         let ident = self.parse_ident()?;
         let last_span = self.last_span;
         let name = codemap::Spanned{span: last_span, node: ident};
@@ -3847,9 +3844,6 @@ impl<'a> Parser<'a> {
             Visibility::Inherited => self.span.lo,
             Visibility::Public => self.last_span.lo,
         };
-        if !self.token.is_plain_ident() {
-            return Err(self.fatal("expected ident"));
-        }
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty_sum()?;
