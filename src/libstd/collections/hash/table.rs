@@ -75,8 +75,10 @@ unsafe impl<K: Sync, V: Sync> Sync for RawTable<K, V> {}
 
 struct RawBucket<K, V> {
     hash: *mut u64,
-    key:  *mut K,
-    val:  *mut V,
+
+    // We use *const to ensure covariance with respect to K and V
+    key:  *const K,
+    val:  *const V,
     _marker: marker::PhantomData<(K,V)>,
 }
 
@@ -354,8 +356,8 @@ impl<K, V, M> EmptyBucket<K, V, M> where M: Put<K, V> {
                -> FullBucket<K, V, M> {
         unsafe {
             *self.raw.hash = hash.inspect();
-            ptr::write(self.raw.key, key);
-            ptr::write(self.raw.val, value);
+            ptr::write(self.raw.key as *mut K, key);
+            ptr::write(self.raw.val as *mut V, value);
 
             self.table.borrow_table_mut().size += 1;
         }
@@ -453,8 +455,8 @@ impl<K, V, M> FullBucket<K, V, M> where M: Put<K, V> {
     pub fn replace(&mut self, h: SafeHash, k: K, v: V) -> (SafeHash, K, V) {
         unsafe {
             let old_hash = ptr::replace(self.raw.hash as *mut SafeHash, h);
-            let old_key  = ptr::replace(self.raw.key,  k);
-            let old_val  = ptr::replace(self.raw.val,  v);
+            let old_key  = ptr::replace(self.raw.key as *mut K,  k);
+            let old_val  = ptr::replace(self.raw.val as *mut V,  v);
 
             (old_hash, old_key, old_val)
         }
@@ -465,8 +467,8 @@ impl<K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + DerefM
     /// Gets mutable references to the key and value at a given index.
     pub fn read_mut(&mut self) -> (&mut K, &mut V) {
         unsafe {
-            (&mut *self.raw.key,
-             &mut *self.raw.val)
+            (&mut *(self.raw.key as *mut K),
+             &mut *(self.raw.val as *mut V))
         }
     }
 }
@@ -490,8 +492,8 @@ impl<'t, K, V, M> FullBucket<K, V, M> where M: Deref<Target=RawTable<K, V>> + De
     /// for mutable references into the table.
     pub fn into_mut_refs(self) -> (&'t mut K, &'t mut V) {
         unsafe {
-            (&mut *self.raw.key,
-             &mut *self.raw.val)
+            (&mut *(self.raw.key as *mut K),
+             &mut *(self.raw.val as *mut V))
         }
     }
 }
@@ -505,8 +507,8 @@ impl<K, V, M> GapThenFull<K, V, M> where M: Deref<Target=RawTable<K, V>> {
     pub fn shift(mut self) -> Option<GapThenFull<K, V, M>> {
         unsafe {
             *self.gap.raw.hash = mem::replace(&mut *self.full.raw.hash, EMPTY_BUCKET);
-            ptr::copy_nonoverlapping(self.full.raw.key, self.gap.raw.key, 1);
-            ptr::copy_nonoverlapping(self.full.raw.val, self.gap.raw.val, 1);
+            ptr::copy_nonoverlapping(self.full.raw.key, self.gap.raw.key as *mut K, 1);
+            ptr::copy_nonoverlapping(self.full.raw.val, self.gap.raw.val as *mut V, 1);
         }
 
         let FullBucket { raw: prev_raw, idx: prev_idx, .. } = self.full;
@@ -649,7 +651,7 @@ impl<K, V> RawTable<K, V> {
         let hashes_size = self.capacity * size_of::<u64>();
         let keys_size = self.capacity * size_of::<K>();
 
-        let buffer = *self.hashes as *mut u8;
+        let buffer = *self.hashes as *const u8;
         let (keys_offset, vals_offset, oflo) =
             calculate_offsets(hashes_size,
                               keys_size, align_of::<K>(),
@@ -658,8 +660,8 @@ impl<K, V> RawTable<K, V> {
         unsafe {
             RawBucket {
                 hash: *self.hashes,
-                key:  buffer.offset(keys_offset as isize) as *mut K,
-                val:  buffer.offset(vals_offset as isize) as *mut V,
+                key:  buffer.offset(keys_offset as isize) as *const K,
+                val:  buffer.offset(vals_offset as isize) as *const V,
                 _marker: marker::PhantomData,
             }
         }
@@ -707,6 +709,7 @@ impl<K, V> RawTable<K, V> {
         IterMut {
             iter: self.raw_buckets(),
             elems_left: self.size(),
+            _marker: marker::PhantomData,
         }
     }
 
@@ -858,6 +861,8 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
 pub struct IterMut<'a, K: 'a, V: 'a> {
     iter: RawBuckets<'a, K, V>,
     elems_left: usize,
+    // To ensure invariance with respect to V
+    _marker: marker::PhantomData<&'a mut V>,
 }
 
 unsafe impl<'a, K: Sync, V: Sync> Sync for IterMut<'a, K, V> {}
@@ -912,7 +917,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
             self.elems_left -= 1;
             unsafe {
                 (&*bucket.key,
-                 &mut *bucket.val)
+                 &mut *(bucket.val as *mut V))
             }
         })
     }
@@ -1003,8 +1008,8 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
                                 (full.hash(), k.clone(), v.clone())
                             };
                             *new_buckets.raw.hash = h.inspect();
-                            ptr::write(new_buckets.raw.key, k);
-                            ptr::write(new_buckets.raw.val, v);
+                            ptr::write(new_buckets.raw.key as *mut K, k);
+                            ptr::write(new_buckets.raw.val as *mut V, v);
                         }
                         Empty(..) => {
                             *new_buckets.raw.hash = EMPTY_BUCKET;
