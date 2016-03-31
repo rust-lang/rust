@@ -50,6 +50,12 @@ struct Interpreter<'a, 'tcx: 'a, 'arena> {
     /// exists separately from `stack` because it must contain the `Substs` for a function while
     /// *creating* the `Frame` for that same function.
     substs_stack: Vec<&'tcx Substs<'tcx>>,
+
+    // TODO(tsion): Merge with `substs_stack`. Also try restructuring `Frame` to accomodate.
+    /// A stack of the things necessary to print good strack traces:
+    ///   * Function DefIds and Substs to print proper substituted function names.
+    ///   * Spans pointing to specific function calls in the source.
+    name_stack: Vec<(DefId, &'tcx Substs<'tcx>, codemap::Span)>,
 }
 
 /// A stack frame.
@@ -119,12 +125,26 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             memory: Memory::new(),
             stack: Vec::new(),
             substs_stack: Vec::new(),
+            name_stack: Vec::new(),
         }
     }
 
     fn maybe_report<T>(&self, span: codemap::Span, r: EvalResult<T>) -> EvalResult<T> {
         if let Err(ref e) = r {
             let mut err = self.tcx.sess.struct_span_err(span, &e.to_string());
+            for &(def_id, substs, span) in self.name_stack.iter().rev() {
+                // FIXME(tsion): Find a way to do this without this Display impl hack.
+                use rustc::util::ppaux;
+                use std::fmt;
+                struct Instance<'tcx>(DefId, &'tcx Substs<'tcx>);
+                impl<'tcx> fmt::Display for Instance<'tcx> {
+                    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                        ppaux::parameterized(f, self.1, self.0, ppaux::Ns::Value, &[],
+                            |tcx| tcx.lookup_item_type(self.0).generics)
+                    }
+                }
+                err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
+            }
             err.emit();
         }
         r
@@ -161,6 +181,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                     TerminatorTarget::Block(block) => current_block = block,
                     TerminatorTarget::Return => {
                         self.pop_stack_frame();
+                        self.name_stack.pop();
                         continue 'outer;
                     }
                     TerminatorTarget::Call => continue 'outer,
@@ -288,7 +309,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 // FnMut closure via FnOnce::call_once.
 
                                 // Only trait methods can have a Self parameter.
-                                let (def_id, substs) = if substs.self_ty().is_some() {
+                                let (resolved_def_id, resolved_substs) = if substs.self_ty().is_some() {
                                     self.trait_method(def_id, substs)
                                 } else {
                                     (def_id, substs)
@@ -318,8 +339,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                     }
                                 }
 
-                                let mir = self.load_mir(def_id);
-                                self.push_stack_frame(mir, substs, return_ptr);
+                                let mir = self.load_mir(resolved_def_id);
+                                self.name_stack.push((def_id, substs, terminator.span));
+                                self.push_stack_frame(mir, resolved_substs, return_ptr);
 
                                 for (i, (src, size)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
