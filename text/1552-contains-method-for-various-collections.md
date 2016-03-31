@@ -1,7 +1,7 @@
-- Feature Name: contains_method_for_various_collections
+- Feature Name: `contains_method_for_various_collections`
 - Start Date: 2016-03-16
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1552](https://github.com/rust-lang/rfcs/pull/1552)
+- Rust Issue: [rust-lang/rust#32630](https://github.com/rust-lang/rust/issues/32630)
 
 # Summary
 [summary]: #summary
