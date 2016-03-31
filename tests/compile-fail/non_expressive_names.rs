@@ -11,7 +11,6 @@
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
 #![allow(unused)]
 
 fn main() {
@@ -45,9 +44,8 @@ fn main() {
     let bla_rhs: i32;
     let bla_lhs: i32;
 
-    let blubrhs: i32; //~ NOTE: existing binding defined here
-    let blublhs: i32; //~ ERROR: name is too similar
-    //~| HELP: for further information visit
+    let blubrhs: i32;
+    let blublhs: i32;
 
     let blubx: i32; //~ NOTE: existing binding defined here
     let bluby: i32; //~ ERROR: name is too similar
@@ -83,6 +81,13 @@ fn main() {
     let parsee: i32; //~ ERROR: name is too similar
     //~| HELP: for further information visit
     //~| HELP: separate the discriminating character by an underscore like: `parse_e`
+
+    let setter: i32;
+    let getter: i32;
+    let tx1: i32;
+    let rx1: i32;
+    let tx_cake: i32;
+    let rx_cake: i32;
 }
 
 #[derive(Clone, Debug)]
