@@ -1,6 +1,6 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::middle::{const_eval, def};
+use rustc::middle::def;
 use rustc::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
@@ -683,10 +683,11 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
 }
 
 fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeExpr<'a>> {
-    use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-    use types::ExtremeType::*;
-    use rustc::middle::const_eval::ConstVal::*;
+    use rustc::middle::const_val::ConstVal::*;
+    use rustc_const_math::*;
+    use rustc_const_eval::EvalHint::ExprTypeChecked;
     use rustc_const_eval::*;
+    use types::ExtremeType::*;
 
     let ty = &cx.tcx.expr_ty(expr).sty;
 
@@ -695,7 +696,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         _ => return None,
     };
 
-    let cv = match const_eval::eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
+    let cv = match eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
         Ok(val) => val,
         Err(_) => return None,
     };

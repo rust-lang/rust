@@ -1,11 +1,12 @@
 use reexport::*;
 use rustc::front::map::Node::NodeBlock;
 use rustc::lint::*;
-use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-use rustc::middle::const_eval::{ConstVal, eval_const_expr_partial};
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::def::Def;
 use rustc::middle::region::CodeExtent;
 use rustc::ty;
+use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::eval_const_expr_partial;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{Visitor, walk_expr, walk_block, walk_decl};
 use std::borrow::Cow;
