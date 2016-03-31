@@ -26,15 +26,15 @@ fn main() {
     match &Some(42) {
         Some(x) => (),
         //~^ ERROR mismatched types
-        //~| expected `&core::option::Option<_>`
-        //~| found `core::option::Option<_>`
+        //~| expected `&std::option::Option<_>`
+        //~| found `std::option::Option<_>`
         //~| expected &-ptr
-        //~| found enum `core::option::Option`
+        //~| found enum `std::option::Option`
         None => ()
         //~^ ERROR mismatched types
-        //~| expected `&core::option::Option<_>`
-        //~| found `core::option::Option<_>`
+        //~| expected `&std::option::Option<_>`
+        //~| found `std::option::Option<_>`
         //~| expected &-ptr
-        //~| found enum `core::option::Option`
+        //~| found enum `std::option::Option`
     }
 }

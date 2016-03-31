@@ -34,7 +34,7 @@ trait Foo {
 impl Foo for isize {
     // invalid bound for T, was defined as Eq in trait
     fn test_error1_fn<T: Ord>(&self) {}
-    //~^ ERROR the requirement `T : core::cmp::Ord` appears on the impl
+    //~^ ERROR the requirement `T : std::cmp::Ord` appears on the impl
 
     // invalid bound for T, was defined as Eq + Ord in trait
     fn test_error2_fn<T: Eq + B>(&self) {}
@@ -58,7 +58,7 @@ impl Foo for isize {
     fn test6_fn<T: A>(&self) {}
 
     fn test_error7_fn<T: A + Eq>(&self) {}
-    //~^ ERROR the requirement `T : core::cmp::Eq` appears on the impl
+    //~^ ERROR the requirement `T : std::cmp::Eq` appears on the impl
 
     fn test_error8_fn<T: C>(&self) {}
     //~^ ERROR the requirement `T : C` appears on the impl

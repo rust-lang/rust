@@ -16,5 +16,5 @@ fn test_send<S: Send>() {}
 
 pub fn main() {
     test_send::<rand::ThreadRng>();
-    //~^ ERROR `core::marker::Send` is not implemented
+    //~^ ERROR `std::marker::Send` is not implemented
 }

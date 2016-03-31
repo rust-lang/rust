@@ -10,7 +10,7 @@
 
 use front::map::DefPathData;
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::DefId;
+use middle::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 
@@ -75,9 +75,51 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// If possible, this pushes a global path resolving to `external_def_id` that is visible
+    /// from at least one local module and returns true. If the crate defining `external_def_id` is
+    /// declared with an `extern crate`, the path is guarenteed to use the `extern crate`.
+    pub fn try_push_visible_item_path<T>(&self, buffer: &mut T, external_def_id: DefId) -> bool
+        where T: ItemPathBuffer
+    {
+        let visible_parent_map = self.sess.cstore.visible_parent_map();
+
+        let (mut cur_def, mut cur_path) = (external_def_id, Vec::<ast::Name>::new());
+        loop {
+            // If `cur_def` is a direct or injected extern crate, push the path to the crate
+            // followed by the path to the item within the crate and return.
+            if cur_def.index == CRATE_DEF_INDEX {
+                match self.sess.cstore.extern_crate(cur_def.krate) {
+                    Some(extern_crate) if extern_crate.direct => {
+                        self.push_item_path(buffer, extern_crate.def_id);
+                        cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
+                        return true;
+                    }
+                    None => {
+                        buffer.push(&self.crate_name(cur_def.krate));
+                        cur_path.iter().rev().map(|segment| buffer.push(&segment.as_str())).count();
+                        return true;
+                    }
+                    _ => {},
+                }
+            }
+
+            cur_path.push(self.sess.cstore.item_name(cur_def));
+            match visible_parent_map.get(&cur_def) {
+                Some(&def) => cur_def = def,
+                None => return false,
+            };
+        }
+    }
+
     pub fn push_item_path<T>(&self, buffer: &mut T, def_id: DefId)
         where T: ItemPathBuffer
     {
+        match *buffer.root_mode() {
+            RootMode::Local if !def_id.is_local() =>
+                if self.try_push_visible_item_path(buffer, def_id) { return },
+            _ => {}
+        }
+
         let key = self.def_key(def_id);
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {

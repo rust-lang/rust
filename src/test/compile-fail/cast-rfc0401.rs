@@ -91,7 +91,7 @@ fn main()
     let _ = 42usize as *const [u8]; //~ ERROR casting
     let _ = v as *const [u8]; //~ ERROR cannot cast
     let _ = fat_v as *const Foo;
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `[u8]`
+    //~^ ERROR `std::marker::Sized` is not implemented for the type `[u8]`
     //~^^ HELP run `rustc --explain E0277` to see a detailed explanation
     //~^^^ NOTE `[u8]` does not have a constant size known at compile-time
     //~^^^^ NOTE required for the cast to the object type `Foo`
@@ -106,7 +106,7 @@ fn main()
 
     let a : *const str = "hello";
     let _ = a as *const Foo;
-    //~^ ERROR `core::marker::Sized` is not implemented for the type `str`
+    //~^ ERROR `std::marker::Sized` is not implemented for the type `str`
     //~^^ HELP run `rustc --explain E0277` to see a detailed explanation
     //~^^^ NOTE `str` does not have a constant size known at compile-time
     //~^^^^ NOTE required for the cast to the object type `Foo`

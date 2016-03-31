@@ -38,13 +38,13 @@ fn main() {
     // Including cases where the default is using previous type params.
     let _: HashMap<String, isize> = ();
     //~^ ERROR mismatched types
-    //~| expected `HashMap<collections::string::String, isize>`
+    //~| expected `HashMap<std::string::String, isize>`
     //~| found `()`
     //~| expected struct `HashMap`
     //~| found ()
     let _: HashMap<String, isize, Hash<String>> = ();
     //~^ ERROR mismatched types
-    //~| expected `HashMap<collections::string::String, isize>`
+    //~| expected `HashMap<std::string::String, isize>`
     //~| found `()`
     //~| expected struct `HashMap`
     //~| found ()

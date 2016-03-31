@@ -20,7 +20,7 @@ fn main() {
   let x: isize = noexporttypelib::foo();
     //~^ ERROR mismatched types
     //~| expected `isize`
-    //~| found `core::option::Option<isize>`
+    //~| found `std::option::Option<isize>`
     //~| expected isize
-    //~| found enum `core::option::Option`
+    //~| found enum `std::option::Option`
 }
