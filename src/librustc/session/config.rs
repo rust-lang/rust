@@ -710,6 +710,9 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     if sess.target.target.options.has_elf_tls {
         ret.push(attr::mk_word_item(InternedString::new("target_thread_local")));
     }
+    if sess.target.target.options.has_floating_point {
+        ret.push(attr::mk_word_item(InternedString::new("target_has_floating_point")));
+    }
     if sess.opts.debug_assertions {
         ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
     }

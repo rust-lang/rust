@@ -256,6 +256,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // impl specialization (RFC 1210)
     ("specialization", "1.7.0", Some(31844), Active),
+
+    // Allows cfg(target_has_floating_point)
+    ("cfg_target_has_floating_point", "1.9.0", None, Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -460,6 +463,8 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_vendor", "cfg_target_vendor", cfg_fn!(|x| x.cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local",
      cfg_fn!(|x| x.cfg_target_thread_local)),
+    ("target_has_floating_point", "cfg_target_has_floating_point",
+     cfg_fn!(|x| x.cfg_target_has_floating_point)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]
@@ -595,6 +600,7 @@ pub struct Features {
     pub cfg_target_feature: bool,
     pub cfg_target_vendor: bool,
     pub cfg_target_thread_local: bool,
+    pub cfg_target_has_floating_point: bool,
     pub staged_api: bool,
     pub stmt_expr_attributes: bool,
     pub deprecated: bool,
@@ -631,6 +637,7 @@ impl Features {
             cfg_target_feature: false,
             cfg_target_vendor: false,
             cfg_target_thread_local: false,
+            cfg_target_has_floating_point: true,
             staged_api: false,
             stmt_expr_attributes: false,
             deprecated: false,
@@ -1243,6 +1250,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         cfg_target_feature: cx.has_feature("cfg_target_feature"),
         cfg_target_vendor: cx.has_feature("cfg_target_vendor"),
         cfg_target_thread_local: cx.has_feature("cfg_target_thread_local"),
+        cfg_target_has_floating_point: cx.has_feature("cfg_target_has_floating_point"),
         staged_api: cx.has_feature("staged_api"),
         stmt_expr_attributes: cx.has_feature("stmt_expr_attributes"),
         deprecated: cx.has_feature("deprecated"),
