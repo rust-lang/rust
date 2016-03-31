@@ -1871,6 +1871,8 @@ pub struct PolyTraitRef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
+    Crate,
+    Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }
 

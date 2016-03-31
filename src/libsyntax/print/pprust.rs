@@ -435,6 +435,8 @@ pub fn mac_to_string(arg: &ast::Mac) -> String {
 pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
     match *vis {
         ast::Visibility::Public => format!("pub {}", s),
+        ast::Visibility::Crate => format!("pub(crate) {}", s),
+        ast::Visibility::Restricted { ref path, .. } => format!("pub({}) {}", path, s),
         ast::Visibility::Inherited => s.to_string()
     }
 }
@@ -1384,6 +1386,9 @@ impl<'a> State<'a> {
     pub fn print_visibility(&mut self, vis: &ast::Visibility) -> io::Result<()> {
         match *vis {
             ast::Visibility::Public => self.word_nbsp("pub"),
+            ast::Visibility::Crate => self.word_nbsp("pub(crate)"),
+            ast::Visibility::Restricted { ref path, .. } =>
+                self.word_nbsp(&format!("pub({})", path)),
             ast::Visibility::Inherited => Ok(())
         }
     }
