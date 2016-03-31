@@ -10,12 +10,19 @@
 
 //! See docs in build/expr/mod.rs
 
+use std;
+
 use rustc_data_structures::fnv::FnvHashMap;
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use hair::*;
+use rustc_const_math::{ConstInt, ConstIsize};
+use rustc::middle::const_val::ConstVal;
+use rustc::ty;
 use rustc::mir::repr::*;
+use syntax::ast;
+use syntax::codemap::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding an rvalue.
@@ -66,10 +73,34 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(block = this.as_operand(block, lhs));
                 let rhs = unpack!(block = this.as_operand(block, rhs));
-                block.and(Rvalue::BinaryOp(op, lhs, rhs))
+                this.build_binary_op(block, op, expr_span, expr.ty,
+                                     lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
                 let arg = unpack!(block = this.as_operand(block, arg));
+                // Check for -MIN on signed integers
+                if op == UnOp::Neg && this.check_overflow() && expr.ty.is_signed() {
+                    let bool_ty = this.hir.bool_ty();
+
+                    let minval = this.minval_literal(expr_span, expr.ty);
+                    let is_min = this.temp(bool_ty);
+
+                    this.cfg.push_assign(block, scope_id, expr_span, &is_min,
+                                         Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
+
+                    let of_block = this.cfg.start_new_block();
+                    let ok_block = this.cfg.start_new_block();
+
+                    this.cfg.terminate(block, scope_id, expr_span,
+                                       TerminatorKind::If {
+                                           cond: Operand::Consume(is_min),
+                                           targets: (of_block, ok_block)
+                                       });
+
+                    this.panic(of_block, "attempted to negate with overflow", expr_span);
+
+                    block = ok_block;
+                }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
             ExprKind::Box { value, value_extents } => {
@@ -217,5 +248,167 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Use(operand))
             }
         }
+    }
+
+    pub fn build_binary_op(&mut self, mut block: BasicBlock, op: BinOp, span: Span, ty: ty::Ty<'tcx>,
+                           lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
+        let scope_id = self.innermost_scope_id();
+        let bool_ty = self.hir.bool_ty();
+        if self.check_overflow() && op.is_checkable() && ty.is_integral() {
+            let result_tup = self.hir.tcx().mk_tup(vec![ty, bool_ty]);
+            let result_value = self.temp(result_tup);
+
+            self.cfg.push_assign(block, scope_id, span,
+                                 &result_value, Rvalue::CheckedBinaryOp(op,
+                                                                        lhs,
+                                                                        rhs));
+            let val_fld = Field::new(0);
+            let of_fld = Field::new(1);
+
+            let val = result_value.clone().field(val_fld, ty);
+            let of = result_value.field(of_fld, bool_ty);
+
+            let success = self.cfg.start_new_block();
+            let failure = self.cfg.start_new_block();
+
+            self.cfg.terminate(block, scope_id, span,
+                               TerminatorKind::If {
+                                   cond: Operand::Consume(of),
+                                   targets: (failure, success)
+                               });
+            let msg = if op == BinOp::Shl || op == BinOp::Shr {
+                "shift operation overflowed"
+            } else {
+                "arithmetic operation overflowed"
+            };
+            self.panic(failure, msg, span);
+            success.and(Rvalue::Use(Operand::Consume(val)))
+        } else {
+            if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
+                // Checking division and remainder is more complex, since we 1. always check
+                // and 2. there are two possible failure cases, divide-by-zero and overflow.
+
+                let (zero_msg, overflow_msg) = if op == BinOp::Div {
+                    ("attempted to divide by zero",
+                     "attempted to divide with overflow")
+                } else {
+                    ("attempted remainder with a divisor of zero",
+                     "attempted remainder with overflow")
+                };
+
+                // Check for / 0
+                let is_zero = self.temp(bool_ty);
+                let zero = self.zero_literal(span, ty);
+                self.cfg.push_assign(block, scope_id, span, &is_zero,
+                                     Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
+
+                let zero_block = self.cfg.start_new_block();
+                let ok_block   = self.cfg.start_new_block();
+
+                self.cfg.terminate(block, scope_id, span,
+                                   TerminatorKind::If {
+                                       cond: Operand::Consume(is_zero),
+                                       targets: (zero_block, ok_block)
+                                   });
+
+                self.panic(zero_block, zero_msg, span);
+                block = ok_block;
+
+                // We only need to check for the overflow in one case:
+                // MIN / -1, and only for signed values.
+                if ty.is_signed() {
+                    let neg_1 = self.neg_1_literal(span, ty);
+                    let min = self.minval_literal(span, ty);
+
+                    let is_neg_1 = self.temp(bool_ty);
+                    let is_min   = self.temp(bool_ty);
+                    let of       = self.temp(bool_ty);
+
+                    // this does (rhs == -1) & (lhs == MIN). It could short-circuit instead
+
+                    self.cfg.push_assign(block, scope_id, span, &is_neg_1,
+                                         Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), neg_1));
+                    self.cfg.push_assign(block, scope_id, span, &is_min,
+                                         Rvalue::BinaryOp(BinOp::Eq, lhs.clone(), min));
+
+                    let is_neg_1 = Operand::Consume(is_neg_1);
+                    let is_min = Operand::Consume(is_min);
+                    self.cfg.push_assign(block, scope_id, span, &of,
+                                         Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
+
+                    let of_block = self.cfg.start_new_block();
+                    let ok_block = self.cfg.start_new_block();
+
+                    self.cfg.terminate(block, scope_id, span,
+                                       TerminatorKind::If {
+                                           cond: Operand::Consume(of),
+                                           targets: (of_block, ok_block)
+                                       });
+
+                    self.panic(of_block, overflow_msg, span);
+
+                    block = ok_block;
+                }
+            }
+
+            block.and(Rvalue::BinaryOp(op, lhs, rhs))
+        }
+    }
+
+    // Helper to get a `-1` value of the appropriate type
+    fn neg_1_literal(&mut self, span: Span, ty: ty::Ty<'tcx>) -> Operand<'tcx> {
+        let literal = match ty.sty {
+            ty::TyInt(ity) => {
+                let val = match ity {
+                    ast::IntTy::I8  => ConstInt::I8(-1),
+                    ast::IntTy::I16 => ConstInt::I16(-1),
+                    ast::IntTy::I32 => ConstInt::I32(-1),
+                    ast::IntTy::I64 => ConstInt::I64(-1),
+                    ast::IntTy::Is => {
+                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let val = ConstIsize::new(-1, int_ty).unwrap();
+                        ConstInt::Isize(val)
+                    }
+                };
+
+                Literal::Value { value: ConstVal::Integral(val) }
+            }
+            _ => {
+                span_bug!(span, "Invalid type for neg_1_literal: `{:?}`", ty)
+            }
+        };
+
+        self.literal_operand(span, ty, literal)
+    }
+
+    // Helper to get the minimum value of the appropriate type
+    fn minval_literal(&mut self, span: Span, ty: ty::Ty<'tcx>) -> Operand<'tcx> {
+        let literal = match ty.sty {
+            ty::TyInt(ity) => {
+                let val = match ity {
+                    ast::IntTy::I8  => ConstInt::I8(std::i8::MIN),
+                    ast::IntTy::I16 => ConstInt::I16(std::i16::MIN),
+                    ast::IntTy::I32 => ConstInt::I32(std::i32::MIN),
+                    ast::IntTy::I64 => ConstInt::I64(std::i64::MIN),
+                    ast::IntTy::Is => {
+                        let int_ty = self.hir.tcx().sess.target.int_type;
+                        let min = match int_ty {
+                            ast::IntTy::I32 => std::i32::MIN as i64,
+                            ast::IntTy::I64 => std::i64::MIN,
+                            _ => unreachable!()
+                        };
+                        let val = ConstIsize::new(min, int_ty).unwrap();
+                        ConstInt::Isize(val)
+                    }
+                };
+
+                Literal::Value { value: ConstVal::Integral(val) }
+            }
+            _ => {
+                span_bug!(span, "Invalid type for minval_literal: `{:?}`", ty)
+            }
+        };
+
+        self.literal_operand(span, ty, literal)
     }
 }
