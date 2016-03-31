@@ -245,8 +245,7 @@ pub struct Cache {
     parent_stack: Vec<DefId>,
     parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
-    privmod: bool,
-    remove_priv: bool,
+    stripped_mod: bool,
     access_levels: AccessLevels<DefId>,
     deref_trait_did: Option<DefId>,
 
@@ -492,8 +491,7 @@ pub fn run(mut krate: clean::Crate,
         parent_is_trait_impl: false,
         extern_locations: HashMap::new(),
         primitive_locations: HashMap::new(),
-        remove_priv: cx.passes.contains("strip-private"),
-        privmod: false,
+        stripped_mod: false,
         access_levels: access_levels,
         orphan_methods: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, HashMap::new()),
@@ -874,7 +872,6 @@ impl<'a> DocFolder for SourceCollector<'a> {
                 }
             };
         }
-
         self.fold_item_recur(item)
     }
 }
@@ -938,14 +935,15 @@ impl<'a> SourceCollector<'a> {
 
 impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
-        // If this is a private module, we don't want it in the search index.
-        let orig_privmod = match item.inner {
-            clean::ModuleItem(..) => {
-                let prev = self.privmod;
-                self.privmod = prev || (self.remove_priv && item.visibility != Some(hir::Public));
+        // If this is a stripped module,
+        // we don't want it or its children in the search index.
+        let orig_stripped_mod = match item.inner {
+            clean::StrippedItem(box clean::ModuleItem(..)) => {
+                let prev = self.stripped_mod;
+                self.stripped_mod = true;
                 prev
             }
-            _ => self.privmod,
+            _ => self.stripped_mod,
         };
 
         // Register any generics to their corresponding string. This is used
@@ -983,6 +981,7 @@ impl DocFolder for Cache {
         // Index this method for searching later on
         if let Some(ref s) = item.name {
             let (parent, is_method) = match item.inner {
+                clean::StrippedItem(..) => ((None, None), false),
                 clean::AssociatedConstItem(..) |
                 clean::TypedefItem(_, true) if self.parent_is_trait_impl => {
                     // skip associated items in trait impls
@@ -1027,7 +1026,7 @@ impl DocFolder for Cache {
             };
 
             match parent {
-                (parent, Some(path)) if is_method || (!self.privmod && !hidden_field) => {
+                (parent, Some(path)) if is_method || (!self.stripped_mod && !hidden_field) => {
                     // Needed to determine `self` type.
                     let parent_basename = self.parent_stack.first().and_then(|parent| {
                         match self.paths.get(parent) {
@@ -1035,6 +1034,7 @@ impl DocFolder for Cache {
                             _ => None
                         }
                     });
+                    debug_assert!(!item.is_stripped());
 
                     // A crate has a module at its root, containing all items,
                     // which should not be indexed. The crate-item itself is
@@ -1051,7 +1051,7 @@ impl DocFolder for Cache {
                         });
                     }
                 }
-                (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
+                (Some(parent), None) if is_method || (!self.stripped_mod && !hidden_field)=> {
                     if parent.is_local() {
                         // We have a parent, but we don't know where they're
                         // defined yet. Wait for later to index this item.
@@ -1075,7 +1075,7 @@ impl DocFolder for Cache {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) if !self.privmod => {
+            clean::ForeignFunctionItem(..) if !self.stripped_mod => {
                 // Reexported items mean that the same id can show up twice
                 // in the rustdoc ast that we're looking at. We know,
                 // however, that a reexported item doesn't show up in the
@@ -1093,7 +1093,7 @@ impl DocFolder for Cache {
             }
             // link variants to their parent enum because pages aren't emitted
             // for each variant
-            clean::VariantItem(..) if !self.privmod => {
+            clean::VariantItem(..) if !self.stripped_mod => {
                 let mut stack = self.stack.clone();
                 stack.pop();
                 self.paths.insert(item.def_id, (stack, ItemType::Enum));
@@ -1176,7 +1176,7 @@ impl DocFolder for Cache {
 
         if pushed { self.stack.pop().unwrap(); }
         if parent_pushed { self.parent_stack.pop().unwrap(); }
-        self.privmod = orig_privmod;
+        self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
         return ret;
     }
@@ -1233,15 +1233,12 @@ impl Context {
 
         // render the crate documentation
         let mut work = vec!((self, item));
-        loop {
-            match work.pop() {
-                Some((mut cx, item)) => cx.item(item, |cx, item| {
-                    work.push((cx.clone(), item));
-                })?,
-                None => break,
-            }
-        }
 
+        while let Some((mut cx, item)) = work.pop() {
+            cx.item(item, |cx, item| {
+                work.push((cx.clone(), item))
+            })?
+        }
         Ok(())
     }
 
@@ -1296,79 +1293,72 @@ impl Context {
                 layout::render(&mut writer, &cx.layout, &page,
                                &Sidebar{ cx: cx, item: it },
                                &Item{ cx: cx, item: it })?;
+
             } else {
                 let mut url = repeat("../").take(cx.current.len())
                                            .collect::<String>();
-                match cache().paths.get(&it.def_id) {
-                    Some(&(ref names, _)) => {
-                        for name in &names[..names.len() - 1] {
-                            url.push_str(name);
-                            url.push_str("/");
-                        }
-                        url.push_str(&item_path(it));
-                        layout::redirect(&mut writer, &url)?;
+                if let Some(&(ref names, _)) = cache().paths.get(&it.def_id) {
+                    for name in &names[..names.len() - 1] {
+                        url.push_str(name);
+                        url.push_str("/");
                     }
-                    None => {}
+                    url.push_str(&item_path(it));
+                    layout::redirect(&mut writer, &url)?;
                 }
             }
             writer.flush()
         }
 
-        // Private modules may survive the strip-private pass if they
-        // contain impls for public types. These modules can also
+        // Stripped modules survive the rustdoc passes (i.e. `strip-private`)
+        // if they contain impls for public types. These modules can also
         // contain items such as publicly reexported structures.
         //
         // External crates will provide links to these structures, so
-        // these modules are recursed into, but not rendered normally (a
-        // flag on the context).
+        // these modules are recursed into, but not rendered normally
+        // (a flag on the context).
         if !self.render_redirect_pages {
-            self.render_redirect_pages = self.ignore_private_item(&item);
+            self.render_redirect_pages = self.maybe_ignore_item(&item);
         }
 
-        match item.inner {
+        if item.is_mod() {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
-            clean::ModuleItem(..) => {
-                let name = item.name.as_ref().unwrap().to_string();
-                let mut item = Some(item);
-                self.recurse(name, |this| {
-                    let item = item.take().unwrap();
-                    let joint_dst = this.dst.join("index.html");
-                    let dst = try_err!(File::create(&joint_dst), &joint_dst);
-                    try_err!(render(dst, this, &item, false), &joint_dst);
-
-                    let m = match item.inner {
-                        clean::ModuleItem(m) => m,
-                        _ => unreachable!()
-                    };
-
-                    // render sidebar-items.js used throughout this module
-                    {
-                        let items = this.build_sidebar_items(&m);
-                        let js_dst = this.dst.join("sidebar-items.js");
-                        let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
-                        try_err!(write!(&mut js_out, "initSidebarItems({});",
-                                    as_json(&items)), &js_dst);
-                    }
-
-                    for item in m.items {
-                        f(this,item);
-                    }
-                    Ok(())
-                })
-            }
-
-            // Things which don't have names (like impls) don't get special
-            // pages dedicated to them.
-            _ if item.name.is_some() => {
-                let joint_dst = self.dst.join(&item_path(&item));
-
+            let name = item.name.as_ref().unwrap().to_string();
+            let mut item = Some(item);
+            self.recurse(name, |this| {
+                let item = item.take().unwrap();
+                let joint_dst = this.dst.join("index.html");
                 let dst = try_err!(File::create(&joint_dst), &joint_dst);
-                try_err!(render(dst, self, &item, true), &joint_dst);
-                Ok(())
-            }
+                try_err!(render(dst, this, &item, false), &joint_dst);
 
-            _ => Ok(())
+                let m = match item.inner {
+                    clean::StrippedItem(box clean::ModuleItem(m)) |
+                    clean::ModuleItem(m) => m,
+                    _ => unreachable!()
+                };
+
+                // render sidebar-items.js used throughout this module
+                {
+                    let items = this.build_sidebar_items(&m);
+                    let js_dst = this.dst.join("sidebar-items.js");
+                    let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
+                    try_err!(write!(&mut js_out, "initSidebarItems({});",
+                                    as_json(&items)), &js_dst);
+                }
+
+                for item in m.items {
+                    f(this,item);
+                }
+                Ok(())
+            })
+        } else if item.name.is_some() {
+            let joint_dst = self.dst.join(&item_path(&item));
+
+            let dst = try_err!(File::create(&joint_dst), &joint_dst);
+            try_err!(render(dst, self, &item, true), &joint_dst);
+            Ok(())
+        } else {
+            Ok(())
         }
     }
 
@@ -1376,7 +1366,7 @@ impl Context {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map = BTreeMap::new();
         for item in &m.items {
-            if self.ignore_private_item(item) { continue }
+            if self.maybe_ignore_item(item) { continue }
 
             let short = shortty(item).to_static_str();
             let myname = match item.name {
@@ -1394,27 +1384,18 @@ impl Context {
         return map;
     }
 
-    fn ignore_private_item(&self, it: &clean::Item) -> bool {
+    fn maybe_ignore_item(&self, it: &clean::Item) -> bool {
         match it.inner {
+            clean::StrippedItem(..) => true,
             clean::ModuleItem(ref m) => {
-                (m.items.is_empty() &&
-                 it.doc_value().is_none() &&
-                 it.visibility != Some(hir::Public)) ||
-                (self.passes.contains("strip-private") && it.visibility != Some(hir::Public))
-            }
-            clean::PrimitiveItem(..) => it.visibility != Some(hir::Public),
+                it.doc_value().is_none() && m.items.is_empty() && it.visibility != Some(hir::Public)
+            },
             _ => false,
         }
     }
 }
 
 impl<'a> Item<'a> {
-    fn ismodule(&self) -> bool {
-        match self.item.inner {
-            clean::ModuleItem(..) => true, _ => false
-        }
-    }
-
     /// Generate a url appropriate for an `href` attribute back to the source of
     /// this item.
     ///
@@ -1495,6 +1476,7 @@ impl<'a> Item<'a> {
 
 impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        debug_assert!(!self.item.is_stripped());
         // Write the breadcrumb trail header for the top
         write!(fmt, "\n<h1 class='fqn'><span class='in-band'>")?;
         match self.item.inner {
@@ -1516,7 +1498,7 @@ impl<'a> fmt::Display for Item<'a> {
         };
         if !is_primitive {
             let cur = &self.cx.current;
-            let amt = if self.ismodule() { cur.len() - 1 } else { cur.len() };
+            let amt = if self.item.is_mod() { cur.len() - 1 } else { cur.len() };
             for (i, component) in cur.iter().enumerate().take(amt) {
                 write!(fmt, "<a href='{}index.html'>{}</a>::<wbr>",
                        repeat("../").take(cur.len() - i - 1)
@@ -1575,15 +1557,12 @@ impl<'a> fmt::Display for Item<'a> {
 }
 
 fn item_path(item: &clean::Item) -> String {
-    match item.inner {
-        clean::ModuleItem(..) => {
-            format!("{}/index.html", item.name.as_ref().unwrap())
-        }
-        _ => {
-            format!("{}.{}.html",
-                    shortty(item).to_static_str(),
-                    *item.name.as_ref().unwrap())
-        }
+    if item.is_mod() {
+        format!("{}/index.html", item.name.as_ref().unwrap())
+    } else {
+        format!("{}.{}.html",
+                shortty(item).to_static_str(),
+                *item.name.as_ref().unwrap())
     }
 }
 
@@ -1626,7 +1605,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     document(w, cx, item)?;
 
     let mut indices = (0..items.len()).filter(|i| {
-        !cx.ignore_private_item(&items[*i])
+        !cx.maybe_ignore_item(&items[*i])
     }).collect::<Vec<usize>>();
 
     // the order of item types in the listing
@@ -1670,6 +1649,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     let mut curty = None;
     for &idx in &indices {
         let myitem = &items[idx];
+        if myitem.is_stripped() {
+            continue;
+        }
 
         let myty = Some(shortty(myitem));
         if curty == Some(ItemType::ExternCrate) && myty == Some(ItemType::Import) {
@@ -2146,6 +2128,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                where_clause = WhereClause(g))
     }
     match item.inner {
+        clean::StrippedItem(..) => Ok(()),
         clean::TyMethodItem(ref m) => {
             method(w, item, m.unsafety, hir::Constness::NotConst,
                    m.abi, &m.generics, &m.self_, &m.decl, link)
@@ -2540,6 +2523,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 assoc_type(w, item, bounds, default.as_ref(), link)?;
                 write!(w, "</code></h4>\n")?;
             }
+            clean::StrippedItem(..) => return Ok(()),
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 

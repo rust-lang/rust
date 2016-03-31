@@ -53,6 +53,7 @@ use std::env::current_dir;
 use core::DocContext;
 use doctree;
 use visit_ast;
+use html::item_type::ItemType;
 
 /// A stable identifier to the particular version of JSON output.
 /// Increment this when the `Crate` and related structures change.
@@ -273,36 +274,40 @@ impl Item {
     }
     pub fn is_crate(&self) -> bool {
         match self.inner {
-            ModuleItem(Module { items: _, is_crate: true }) => true,
-            _ => false
+            StrippedItem(box ModuleItem(Module { is_crate: true, ..})) |
+            ModuleItem(Module { is_crate: true, ..}) => true,
+            _ => false,
         }
     }
     pub fn is_mod(&self) -> bool {
-        match self.inner { ModuleItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Module
     }
     pub fn is_trait(&self) -> bool {
-        match self.inner { TraitItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Trait
     }
     pub fn is_struct(&self) -> bool {
-        match self.inner { StructItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Struct
     }
     pub fn is_enum(&self) -> bool {
-        match self.inner { EnumItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Module
     }
     pub fn is_fn(&self) -> bool {
-        match self.inner { FunctionItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Function
     }
     pub fn is_associated_type(&self) -> bool {
-        match self.inner { AssociatedTypeItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::AssociatedType
     }
     pub fn is_associated_const(&self) -> bool {
-        match self.inner { AssociatedConstItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::AssociatedConst
     }
     pub fn is_method(&self) -> bool {
-        match self.inner { MethodItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::Method
     }
     pub fn is_ty_method(&self) -> bool {
-        match self.inner { TyMethodItem(..) => true, _ => false }
+        ItemType::from_item(self) == ItemType::TyMethod
+    }
+    pub fn is_stripped(&self) -> bool {
+        match self.inner { StrippedItem(..) => true, _ => false }
     }
 
     pub fn stability_class(&self) -> String {
@@ -352,6 +357,8 @@ pub enum ItemEnum {
     AssociatedConstItem(Type, Option<String>),
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
     DefaultImplItem(DefaultImpl),
+    /// An item that has been stripped by a rustdoc pass
+    StrippedItem(Box<ItemEnum>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
