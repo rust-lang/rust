@@ -25,12 +25,12 @@ trait Get {
 
 trait Other {
     fn uhoh<U:Get>(&self, foo: U, bar: <Self as Get>::Value) {}
-    //~^ ERROR the predicate `Self : Get` is not satisfied
+    //~^ ERROR the trait bound `Self : Get` is not satisfied
 }
 
 impl<T:Get> Other for T {
     fn uhoh<U:Get>(&self, foo: U, bar: <(T, U) as Get>::Value) {}
-    //~^ ERROR the predicate `(T, U) : Get` is not satisfied
+    //~^ ERROR the trait bound `(T, U) : Get` is not satisfied
 }
 
 fn main() { }
