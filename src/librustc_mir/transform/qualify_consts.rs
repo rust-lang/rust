@@ -630,6 +630,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Use(_) |
             Rvalue::Repeat(..) |
             Rvalue::UnaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) |
             Rvalue::Cast(CastKind::ReifyFnPointer, _, _) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
             Rvalue::Cast(CastKind::Unsize, _, _) => {}

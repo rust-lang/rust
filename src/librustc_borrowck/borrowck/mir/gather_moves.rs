@@ -595,7 +595,8 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                             bb_ctxt.on_operand(SK::Repeat, operand, source),
                         Rvalue::Cast(ref _kind, ref operand, ref _ty) =>
                             bb_ctxt.on_operand(SK::Cast, operand, source),
-                        Rvalue::BinaryOp(ref _binop, ref operand1, ref operand2) => {
+                        Rvalue::BinaryOp(ref _binop, ref operand1, ref operand2) |
+                        Rvalue::CheckedBinaryOp(ref _binop, ref operand1, ref operand2) => {
                             bb_ctxt.on_operand(SK::BinaryOp, operand1, source);
                             bb_ctxt.on_operand(SK::BinaryOp, operand2, source);
                         }

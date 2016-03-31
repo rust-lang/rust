@@ -787,6 +787,7 @@ pub enum Rvalue<'tcx> {
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
     BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
+    CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
 
     UnaryOp(UnOp, Operand<'tcx>),
 
@@ -880,6 +881,16 @@ pub enum BinOp {
     Gt,
 }
 
+impl BinOp {
+    pub fn is_checkable(self) -> bool {
+        use self::BinOp::*;
+        match self {
+            Add | Sub | Mul | Shl | Shr => true,
+            _ => false
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum UnOp {
     /// The `!` operator for logical inversion
@@ -898,6 +909,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref lv, ref ty) => write!(fmt, "{:?} as {:?} ({:?})", lv, ty, kind),
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
+            CheckedBinaryOp(ref op, ref a, ref b) => {
+                write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
+            }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Box(ref t) => write!(fmt, "Box({:?})", t),
             InlineAsm { ref asm, ref outputs, ref inputs } => {

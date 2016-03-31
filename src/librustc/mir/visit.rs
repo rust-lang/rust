@@ -462,6 +462,9 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::BinaryOp(_bin_op,
                                      ref $($mutability)* lhs,
+                                     ref $($mutability)* rhs) |
+                    Rvalue::CheckedBinaryOp(_bin_op,
+                                     ref $($mutability)* lhs,
                                      ref $($mutability)* rhs) => {
                         self.visit_operand(lhs);
                         self.visit_operand(rhs);

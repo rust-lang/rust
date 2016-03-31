@@ -378,6 +378,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
     }
+
+    pub fn check_overflow(&self) -> bool {
+        self.hir.tcx().sess.opts.debugging_opts.force_overflow_checks.unwrap_or(
+            self.hir.tcx().sess.opts.debug_assertions)
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
