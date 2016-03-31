@@ -111,22 +111,28 @@ const BUG_REPORT_URL: &'static str = "https://github.com/rust-lang/rust/blob/mas
                                       md#bug-reports";
 
 #[inline]
-fn abort_msg(err_count: usize) -> String {
+fn abort_msg(err_count: usize) -> Option<String> {
     match err_count {
-        0 => "aborting with no errors (maybe a bug?)".to_owned(),
-        1 => "aborting due to previous error".to_owned(),
-        e => format!("aborting due to {} previous errors", e),
+        0 => Some("aborting with no errors (maybe a bug?)".to_owned()),
+        1 => None,
+        e => Some(format!("aborting due to {} previous errors", e)),
     }
 }
 
 pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
     match result {
         Err(err_count) => {
-            sess.fatal(&abort_msg(err_count));
+            if let Some(msg) = abort_msg(err_count) {
+                sess.fatal(&msg);
+            } else {
+                sess.fatal_panic_only();
+            }
         }
         Ok(x) => x,
     }
 }
+
+
 
 pub fn run(args: Vec<String>) -> isize {
     monitor(move || {
@@ -134,11 +140,19 @@ pub fn run(args: Vec<String>) -> isize {
         if let Err(err_count) = result {
             if err_count > 0 {
                 match session {
-                    Some(sess) => sess.fatal(&abort_msg(err_count)),
+                    Some(sess) => {
+                        if let Some(msg) = abort_msg(err_count) {
+                            sess.fatal(&msg);
+                        } else {
+                            sess.fatal_panic_only();
+                        }
+                    }
                     None => {
-                        let mut emitter =
-                            errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
-                        emitter.emit(None, &abort_msg(err_count), None, errors::Level::Fatal);
+                        if let Some(msg) = abort_msg(err_count) {
+                            let mut emitter =
+                                errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
+                            emitter.emit(None, &msg, None, errors::Level::Fatal);
+                        }
                         exit_on_err();
                     }
                 }

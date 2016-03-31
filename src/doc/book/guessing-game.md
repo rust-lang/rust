@@ -629,7 +629,6 @@ src/main.rs:28:21: 28:35 error: mismatched types:
     found integral variable) [E0308]
 src/main.rs:28     match guess.cmp(&secret_number) {
                                    ^~~~~~~~~~~~~~
-error: aborting due to previous error
 Could not compile `guessing_game`.
 ```
 

@@ -155,7 +155,6 @@ note: in expansion of format_args!
 <std macros>:2:23: 2:77 note: expansion site
 <std macros>:1:1: 3:2 note: in expansion of println!
 src/main.rs:4:5: 4:42 note: expansion site
-error: aborting due to previous error
 Could not compile `hello_world`.
 ```
 
@@ -215,7 +214,6 @@ note: in expansion of format_args!
 <std macros>:1:1: 3:58 note: in expansion of println!
 main.rs:7:5: 7:65 note: expansion site
 main.rs:7:62: 7:63 help: run `rustc --explain E0425` to see a detailed explanation
-error: aborting due to previous error
 Could not compile `hello`.
 
 To learn more, run the command again with --verbose.

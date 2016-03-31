@@ -603,14 +603,18 @@ impl Handler {
 
                 return;
             }
-            1 => s = "aborting due to previous error".to_string(),
+            1 => s = None,
             _  => {
-                s = format!("aborting due to {} previous errors",
-                            self.err_count.get());
+                s = Some(format!("aborting due to {} previous errors",
+                                 self.err_count.get()));
             }
         }
 
-        panic!(self.fatal(&s));
+        if let Some(s) = s {
+            panic!(self.fatal(&s));
+        } else {
+            panic!(FatalError);
+        }
     }
     pub fn emit(&self,
                 msp: Option<&MultiSpan>,

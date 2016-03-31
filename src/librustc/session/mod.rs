@@ -158,6 +158,9 @@ impl Session {
     pub fn fatal(&self, msg: &str) -> ! {
         panic!(self.diagnostic().fatal(msg))
     }
+    pub fn fatal_panic_only(&self) -> ! {
+        panic!(errors::FatalError)
+    }
     pub fn span_err_or_warn<S: Into<MultiSpan>>(&self, is_warning: bool, sp: S, msg: &str) {
         if is_warning {
             self.span_warn(sp, msg);
