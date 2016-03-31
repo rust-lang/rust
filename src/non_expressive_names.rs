@@ -60,6 +60,8 @@ struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
 const WHITELIST: &'static [&'static [&'static str]] = &[
     &["parsed", "parser"],
     &["lhs", "rhs"],
+    &["tx", "rx"],
+    &["set", "get"],
 ];
 
 struct SimilarNamesNameVisitor<'a, 'b: 'a, 'c: 'b>(&'a mut SimilarNamesLocalVisitor<'b, 'c>);
@@ -88,13 +90,11 @@ fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
     }
     for name in list {
         // name_*
-        let allow_start = name.chars().chain(Some('_'));
-        if interned_name.chars().zip(allow_start).all(|(l, r)| l == r) {
+        if interned_name.chars().zip(name.chars()).all(|(l, r)| l == r) {
             return true;
         }
         // *_name
-        let allow_end = Some('_').into_iter().chain(name.chars());
-        if interned_name.chars().rev().zip(allow_end.rev()).all(|(l, r)| l == r) {
+        if interned_name.chars().rev().zip(name.chars().rev()).all(|(l, r)| l == r) {
             return true;
         }
     }
