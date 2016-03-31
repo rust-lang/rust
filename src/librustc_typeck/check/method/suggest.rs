@@ -41,7 +41,6 @@ use super::probe::Mode;
 
 fn is_fn_ty<'a, 'tcx>(ty: &Ty<'tcx>, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> bool {
     let cx = fcx.tcx();
-    println!("{:?}", ty);
     match ty.sty {
         // Not all of these (e.g. unsafe fns) implement FnOnce
         // so we look for these beforehand
