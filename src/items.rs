@@ -1339,6 +1339,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     result.push_str(&arg_str);
     if context.config.fn_args_layout == StructLitStyle::Block {
         result.push('\n');
+        result.push_str(&indent.to_string(context.config));
     }
     result.push(')');
 
