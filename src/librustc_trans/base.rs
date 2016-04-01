@@ -99,7 +99,7 @@ use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
-use std::str;
+use std::{str, ptr};
 use std::{i8, i16, i32, i64};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::parse::token::InternedString;
@@ -2409,7 +2409,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                 (start_fn, args)
             } else {
                 debug!("using user-defined start fn");
-                let args = vec![get_param(llfn, 0 as c_uint), get_param(llfn, 1 as c_uint)];
+                let args = vec![get_param(llfn, 0), get_param(llfn, 1)];
 
                 (rust_main, args)
             };
@@ -2418,7 +2418,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                                                  start_fn,
                                                  args.as_ptr(),
                                                  args.len() as c_uint,
-                                                 0 as *mut _,
+                                                 ptr::null_mut(),
                                                  noname());
 
             llvm::LLVMBuildRet(bld, result);

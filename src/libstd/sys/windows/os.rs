@@ -38,7 +38,7 @@ pub fn errno() -> i32 {
 pub fn error_string(errnum: i32) -> String {
     // This value is calculated from the macro
     // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)
-    let langId = 0x0800 as c::DWORD;
+    let langId: c::DWORD = 0x0800;
 
     let mut buf = [0 as c::WCHAR; 2048];
 

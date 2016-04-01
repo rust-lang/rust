@@ -276,7 +276,7 @@ mod dl {
             None => {
                 let mut handle = ptr::null_mut();
                 let succeeded = unsafe {
-                    GetModuleHandleExW(0 as DWORD, ptr::null(), &mut handle)
+                    GetModuleHandleExW(0, ptr::null(), &mut handle)
                 };
                 if succeeded == 0 {
                     Err(io::Error::last_os_error().to_string())

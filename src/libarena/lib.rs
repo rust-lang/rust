@@ -106,7 +106,7 @@ impl<T> TypedArenaChunk<T> {
         unsafe {
             if mem::size_of::<T>() == 0 {
                 // A pointer as large as possible for zero-sized elements.
-                !0 as *mut T
+                (!0usize) as *mut T
             } else {
                 self.start().offset(self.storage.cap() as isize)
             }

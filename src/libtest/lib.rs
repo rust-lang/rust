@@ -971,9 +971,9 @@ fn get_concurrency() -> usize {
             unsafe {
                 libc::sysctl(mib.as_mut_ptr(),
                              2,
-                             &mut cpus as *mut _ as *mut _,
-                             &mut cpus_size as *mut _ as *mut _,
-                             0 as *mut _,
+                             &mut cpus as *mut _,
+                             &mut cpus_size as *mut _,
+                             ptr::null_mut(),
                              0);
             }
             if cpus < 1 {
@@ -992,9 +992,9 @@ fn get_concurrency() -> usize {
         unsafe {
             libc::sysctl(mib.as_mut_ptr(),
                          2,
-                         &mut cpus as *mut _ as *mut _,
-                         &mut cpus_size as *mut _ as *mut _,
-                         0 as *mut _,
+                         &mut cpus as *mut _,
+                         &mut cpus_size as *mut _,
+                         ptr::null_mut(),
                          0);
         }
         if cpus < 1 {

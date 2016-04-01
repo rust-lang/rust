@@ -11,6 +11,7 @@
 
 use io;
 use mem;
+use ptr;
 use rand::Rng;
 use sys::c;
 
@@ -23,7 +24,7 @@ impl OsRng {
     pub fn new() -> io::Result<OsRng> {
         let mut hcp = 0;
         let ret = unsafe {
-            c::CryptAcquireContextA(&mut hcp, 0 as c::LPCSTR, 0 as c::LPCSTR,
+            c::CryptAcquireContextA(&mut hcp, ptr::null(), ptr::null(),
                                     c::PROV_RSA_FULL,
                                     c::CRYPT_VERIFYCONTEXT | c::CRYPT_SILENT)
         };
