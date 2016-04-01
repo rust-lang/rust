@@ -34,3 +34,9 @@ fn foo(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb) -> String where T: UUUUUUUUUUU {
 fn bar(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb, c: Cccccccccccccccccc, d: Dddddddddddddddd, e: Eeeeeeeeeeeeeee) -> String where T: UUUUUUUUUUU {
     bar();
 }
+
+trait Test {
+    fn foo(a: u8) {}
+
+    fn bar(a: u8) -> String {}
+}

@@ -30,3 +30,17 @@ fn foo(
 {
     bar()
 }
+
+trait Test {
+    fn foo(
+        a: u8
+    )
+    {
+    }
+
+    fn bar(
+        a: u8
+    ) -> String
+    {
+    }
+}

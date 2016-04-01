@@ -17,3 +17,9 @@ fn foo(a: u8 /* Comment 1 */, b: u8 /* Comment 2 */) -> u8 {
 fn foo(/* Comment 1 */ a: u8, /* Comment 2 */ b: u8) -> u8 {
     bar()
 }
+
+trait Test {
+    fn foo(a: u8) {}
+
+    fn bar(a: u8) -> String {}
+}
