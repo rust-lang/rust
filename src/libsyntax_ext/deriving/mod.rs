@@ -96,6 +96,10 @@ fn expand_derive(cx: &mut ExtCtxt,
             let mut found_partial_eq = false;
             let mut found_eq = false;
 
+            // See below for how this is used with #[structural_match].
+            let unstable_span = Span { expn_id: cx.backtrace(), .. span };
+            assert!(cx.parse_sess.codemap().span_allows_unstable(unstable_span));
+
             for titem in traits.iter().rev() {
                 let tname = match titem.node {
                     MetaItemKind::Word(ref tname) => tname,
@@ -120,8 +124,18 @@ fn expand_derive(cx: &mut ExtCtxt,
                     found_partial_eq = true;
                 }
 
+                // Mark the attributes we generate as allowing unstable code,
+                // to bypass the feature-gating of #[derive_*] attributes.
+                let mut tspan = titem.span;
+                tspan.expn_id = unstable_span.expn_id;
+                if !cx.parse_sess.codemap().span_allows_unstable(tspan) {
+                    // If we can't use the trait span, use the full #[...] span.
+                    // See below for how this works with #[structural_match].
+                    tspan = unstable_span;
+                }
+
                 // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
-                item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,
+                item.attrs.push(cx.attribute(tspan, cx.meta_word(tspan,
                     intern_and_get_ident(&format!("derive_{}", tname)))));
             }
 
@@ -155,12 +169,10 @@ fn expand_derive(cx: &mut ExtCtxt,
                 //
                 // See tests src/run-pass/rfc1445 for
                 // examples. --nmatsakis
-                let span = Span { expn_id: cx.backtrace(), .. span };
-                assert!(cx.parse_sess.codemap().span_allows_unstable(span));
-                debug!("inserting structural_match with span {:?}", span);
+                debug!("inserting structural_match with span {:?}", unstable_span);
                 let structural_match = intern_and_get_ident("structural_match");
-                item.attrs.push(cx.attribute(span,
-                                             cx.meta_word(span,
+                item.attrs.push(cx.attribute(unstable_span,
+                                             cx.meta_word(unstable_span,
                                                           structural_match)));
             }
 
@@ -188,7 +200,7 @@ macro_rules! derive_traits {
                               mitem: &MetaItem,
                               annotatable: &Annotatable,
                               push: &mut FnMut(Annotatable)) {
-                        warn_if_deprecated(ecx, sp, $name);
+                        check_builtin_derive(ecx, sp, $name);
                         $func(ecx, sp, mitem, annotatable, push);
                     }
                 }
@@ -238,7 +250,15 @@ derive_traits! {
 }
 
 #[inline] // because `name` is a compile-time constant
-fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
+fn check_builtin_derive(ecx: &mut ExtCtxt, sp: Span, name: &str) {
+    let allows_unstable = ecx.parse_sess.codemap().span_allows_unstable(sp);
+    if !(allows_unstable || ecx.ecfg.enable_custom_derive()) {
+        feature_gate::emit_feature_err(&ecx.parse_sess.span_diagnostic,
+                                       "custom_derive",
+                                        sp,
+                                       feature_gate::GateIssue::Language,
+                                       feature_gate::EXPLAIN_DERIVE_UNDERSCORE);
+    }
     if let Some(replacement) = match name {
         "Encodable" => Some("RustcEncodable"),
         "Decodable" => Some("RustcDecodable"),
