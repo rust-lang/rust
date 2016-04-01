@@ -1162,6 +1162,12 @@ few motivating examples that *are* clearly feasible and useful.
    over the underlying system allocator, while the convenience methods would truly
    be convenient.)
 
+ * Should `oom` be a free-function rather than a method on `Allocator`?
+   (The reason I want it on `Allocator` is so that it can provide feedback
+   about the allocator's state at the time of the OOM. Zoxc has argued
+   on the RFC thread that some forms of static analysis, to prove `oom` is
+   never invoked, would prefer it to be a free function.)
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
