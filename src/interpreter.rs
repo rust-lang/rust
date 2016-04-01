@@ -1,6 +1,6 @@
 use arena::TypedArena;
 use rustc::infer;
-use rustc::middle::const_eval;
+use rustc::middle::const_val;
 use rustc::middle::def_id::DefId;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
@@ -786,8 +786,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     // TODO(tsion): Try making const_to_primval instead.
-    fn const_to_ptr(&mut self, const_val: &const_eval::ConstVal) -> EvalResult<Pointer> {
-        use rustc::middle::const_eval::ConstVal::*;
+    fn const_to_ptr(&mut self, const_val: &const_val::ConstVal) -> EvalResult<Pointer> {
+        use rustc::middle::const_val::ConstVal::*;
         match *const_val {
             Float(_f) => unimplemented!(),
             Integral(int) => {
