@@ -123,6 +123,38 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
     }
 }
 
+/// Build libtest.
+///
+/// This will build libtest and supporting libraries for a particular stage of
+/// the build using the `compiler` targeting the `target` architecture. The
+/// artifacts created will also be linked into the sysroot directory.
+pub fn test<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
+    println!("Building stage{} test artifacts ({} -> {})", compiler.stage,
+             compiler.host, target);
+    let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
+    build.clear_if_dirty(&out_dir, &libstd_shim(build, compiler, target));
+    let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
+    cargo.arg("--manifest-path")
+         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+    build.run(&mut cargo);
+    test_link(build, target, compiler, compiler.host);
+}
+
+/// Link all libtest rlibs/dylibs into the sysroot location.
+///
+/// Links those artifacts generated in the given `stage` for `target` produced
+/// by `compiler` into `host`'s sysroot.
+pub fn test_link(build: &Build,
+                 target: &str,
+                 compiler: &Compiler,
+                 host: &str) {
+    let target_compiler = Compiler::new(compiler.stage, host);
+    let libdir = build.sysroot_libdir(&target_compiler, target);
+    let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
+    add_to_sysroot(&out_dir, &libdir);
+}
+
+
 /// Build the compiler.
 ///
 /// This will build the compiler for a particular stage of the build using
@@ -133,7 +165,7 @@ pub fn rustc<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
              compiler.stage, compiler.host, target);
 
     let out_dir = build.cargo_out(compiler, Mode::Librustc, target);
-    build.clear_if_dirty(&out_dir, &libstd_shim(build, compiler, target));
+    build.clear_if_dirty(&out_dir, &libtest_shim(build, compiler, target));
 
     let mut cargo = build.cargo(compiler, Mode::Librustc, target, "build");
     cargo.arg("--features").arg(build.rustc_features())
@@ -200,6 +232,12 @@ pub fn rustc_link(build: &Build,
 /// by a particular compiler for the specified target.
 fn libstd_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Libstd, target).join("libstd_shim.rlib")
+}
+
+/// Cargo's output path for libtest in a given stage, compiled by a particular
+/// compiler for the specified target.
+fn libtest_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
+    build.cargo_out(compiler, Mode::Libtest, target).join("libtest_shim.rlib")
 }
 
 fn compiler_file(compiler: &Path, file: &str) -> String {
