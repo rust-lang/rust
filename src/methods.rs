@@ -302,7 +302,8 @@ impl LintPass for MethodsPass {
                     CLONE_ON_COPY,
                     CLONE_DOUBLE_REF,
                     NEW_RET_NO_SELF,
-                    SINGLE_CHAR_PATTERN)
+                    SINGLE_CHAR_PATTERN,
+                    SEARCH_IS_SOME)
     }
 }
 
