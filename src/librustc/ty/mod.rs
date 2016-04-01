@@ -302,13 +302,24 @@ impl Visibility {
             Visibility::Restricted(module) => module,
         };
 
-        let mut block_ancestor = map.get_module_parent(block);
+        let mut block_ancestor = block;
         loop {
             if block_ancestor == restriction { return true }
             let block_ancestor_parent = map.get_module_parent(block_ancestor);
             if block_ancestor_parent == block_ancestor { return false }
             block_ancestor = block_ancestor_parent;
         }
+    }
+
+    /// Returns true if this visibility is at least as accessible as the given visibility
+    pub fn is_at_least(self, vis: Visibility, map: &ast_map::Map) -> bool {
+        let vis_restriction = match vis {
+            Visibility::Public => return self == Visibility::Public,
+            Visibility::PrivateExternal => return true,
+            Visibility::Restricted(module) => module,
+        };
+
+        self.is_accessible_from(vis_restriction, map)
     }
 }
 
