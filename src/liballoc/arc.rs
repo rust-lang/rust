@@ -223,7 +223,7 @@ impl<T> Arc<T> {
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn try_unwrap(this: Self) -> Result<T, Self> {
         // See `drop` for why all these atomics are like this
-        if this.inner().strong.compare_and_swap(1, 0, Release) != 1 {
+        if this.inner().strong.compare_exchange(1, 0, Release, Relaxed).is_err() {
             return Err(this);
         }
 
@@ -256,11 +256,11 @@ impl<T: ?Sized> Arc<T> {
     /// ```
     #[stable(feature = "arc_weak", since = "1.4.0")]
     pub fn downgrade(this: &Self) -> Weak<T> {
-        loop {
-            // This Relaxed is OK because we're checking the value in the CAS
-            // below.
-            let cur = this.inner().weak.load(Relaxed);
+        // This Relaxed is OK because we're checking the value in the CAS
+        // below.
+        let mut cur = this.inner().weak.load(Relaxed);
 
+        loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
                 continue;
@@ -273,8 +273,9 @@ impl<T: ?Sized> Arc<T> {
             // Unlike with Clone(), we need this to be an Acquire read to
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
-            if this.inner().weak.compare_and_swap(cur, cur + 1, Acquire) == cur {
-                return Weak { _ptr: this._ptr };
+            match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
+                Ok(_) => return Weak { _ptr: this._ptr },
+                Err(old) => cur = old,
             }
         }
     }
@@ -416,7 +417,7 @@ impl<T: Clone> Arc<T> {
         // before release writes (i.e., decrements) to `strong`. Since we hold a
         // weak count, there's no chance the ArcInner itself could be
         // deallocated.
-        if this.inner().strong.compare_and_swap(1, 0, Acquire) != 1 {
+        if this.inner().strong.compare_exchange(1, 0, Acquire, Relaxed).is_err() {
             // Another strong pointer exists; clone
             *this = Arc::new((**this).clone());
         } else if this.inner().weak.load(Relaxed) != 1 {
@@ -506,7 +507,7 @@ impl<T: ?Sized> Arc<T> {
         // The acquire label here ensures a happens-before relationship with any
         // writes to `strong` prior to decrements of the `weak` count (via drop,
         // which uses Release).
-        if self.inner().weak.compare_and_swap(1, usize::MAX, Acquire) == 1 {
+        if self.inner().weak.compare_exchange(1, usize::MAX, Acquire, Relaxed).is_ok() {
             // Due to the previous acquire read, this will observe any writes to
             // `strong` that were due to upgrading weak pointers; only strong
             // clones remain, which require that the strong count is > 1 anyway.
@@ -618,12 +619,14 @@ impl<T: ?Sized> Weak<T> {
         // We use a CAS loop to increment the strong count instead of a
         // fetch_add because once the count hits 0 it must never be above 0.
         let inner = self.inner();
+
+        // Relaxed load because any write of 0 that we can observe
+        // leaves the field in a permanently zero state (so a
+        // "stale" read of 0 is fine), and any other value is
+        // confirmed via the CAS below.
+        let mut n = inner.strong.load(Relaxed);
+
         loop {
-            // Relaxed load because any write of 0 that we can observe
-            // leaves the field in a permanently zero state (so a
-            // "stale" read of 0 is fine), and any other value is
-            // confirmed via the CAS below.
-            let n = inner.strong.load(Relaxed);
             if n == 0 {
                 return None;
             }
@@ -634,9 +637,9 @@ impl<T: ?Sized> Weak<T> {
             }
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
-            let old = inner.strong.compare_and_swap(n, n + 1, Relaxed);
-            if old == n {
-                return Some(Arc { _ptr: self._ptr });
+            match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
+                Ok(_) => return Some(Arc { _ptr: self._ptr }),
+                Err(old) => n = old,
             }
         }
     }
