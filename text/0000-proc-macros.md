@@ -1,0 +1,417 @@
+- Feature Name: procedural_macros
+- Start Date: 2016-02-15
+- RFC PR: (leave this empty)
+- Rust Issue: (leave this empty)
+
+# Summary
+[summary]: #summary
+
+This RFC proposes an evolution of Rust's procedural macro system (aka syntax
+extensions, aka compiler plugins). This RFC specifies syntax for the definition
+of procedural macros, a high-level view of their implementation in the compiler,
+and outlines how they interact with the compilation process.
+
+This RFC specifies the architecture of the procedural macro system. It relies on
+[RFC 1561](https://github.com/rust-lang/rfcs/pull/1561) which specifies the
+naming and modularisation of macros. It leaves many of the details for further
+RFCs, in particular the details of the APIs available to macro authors
+(tentatively called `libmacro`). See this [blog post](http://ncameron.org/blog/libmacro/)
+for some ideas of how that might look.
+
+At the highest level, macros are defined by implementing functions marked with
+a `#[macro]` attribute. Macros operate on a list of tokens provided by the
+compiler and return a list of tokens that the macro use is replaced by. We
+provide low-level facilities for operating on these tokens. Higher level
+facilities (e.g., for parsing tokens to an AST) should exist as library crates.
+
+
+# Motivation
+[motivation]: #motivation
+
+Procedural macros have long been a part of Rust and have been used for diverse
+and interesting purposes, for example [compile-time regexes](https://github.com/rust-lang-nursery/regex),
+[serialisation](https://github.com/serde-rs/serde), and
+[design by contract](https://github.com/nrc/libhoare). They allow the ultimate
+flexibility in syntactic abstraction, and offer possibilities for efficiently
+using Rust in novel ways.
+
+Procedural macros are currently unstable and are awkward to define. We would
+like to remedy this by implementing a new, simpler system for procedural macros,
+and for this new system to be on the usual path to stabilisation.
+
+One major problem with the current system is that since it is based on ASTs, if
+we change the Rust language (even in a backwards compatible way) we can easily
+break procedural macros. Therefore, offering the usual backwards compatibility
+guarantees to procedural macros, would inhibit our ability to evolve the
+language. By switching to a token-based (rather than AST- based) system, we hope
+to avoid this problem.
+
+# Detailed design
+[design]: #detailed-design
+
+There are two kinds of procedural macro: function-like and macro-like. These two
+kinds exist today, and other than naming (see
+[RFC 1561](https://github.com/rust-lang/rfcs/pull/1561)) the syntax for using
+these macros remains unchanged. If the macro is called `foo`, then a function-
+like macro is used with syntax `foo!(...)`, and an attribute-like macro with
+`#[foo(...)] ...`. Macros may be used in the same places as `macro_rules` macros
+and this remains unchanged.
+
+To define a procedural macro, the programmer must write a function with a
+specific signature and attribute. Where `foo` is the name of a function-like
+macro:
+
+```
+#[macro]
+pub fn foo(TokenStream, &mut MacroContext) -> TokenStream;
+```
+
+The first argument is the tokens between the delimiters in the macro use.
+For example in `foo!(a, b, c)`, the first argument would be `[Ident(a), Comma,
+Ident(b), Comma, Ident(c)]`.
+
+The value returned replaces the macro use.
+
+Attribute-like:
+
+```
+#[macro_attribute]
+pub fn foo(Option<TokenStream>, TokenStream, &mut MacroContext) -> TokenStream;
+```
+
+The first argument is a list of the tokens between the delimiters in the macro
+use. Examples:
+
+* `#[foo]` => `None`
+* `#[foo()]` => `Some([])`
+* `#[foo(a, b, c)]` => `Some([Ident(a), Comma, Ident(b), Comma, Ident(c)])`
+
+The second argument is the tokens for the AST node the attribute is placed on.
+Note that in order to compute the tokens to pass here, the compiler must be able
+to parse the code the attribute is applied to. However, the AST for the node
+passed to the macro is discarded, it is not passed to the macro nor used by the
+compiler (in practice, this might not be 100% true due to optimisiations). If
+the macro wants an AST, it must parse the tokens itself.
+
+The attribute and the AST node it is applied to are both replaced by the
+returned tokens. In most cases, the tokens returned by a procedural macro will
+be parsed by the compiler. It is the procedural macro's responsibility to ensure
+that the tokens parse without error. In some cases, the tokens will be consumed
+by another macro without parsing, in which case they do not need to parse. The
+distinction is not statically enforced. It could be, but I don't think the
+overhead would be justified.
+
+We also introduce a special configuration option: `#[cfg(macro)]`. Items with
+this configuration are not macros themselves but are compiled only for macro
+uses.
+
+Initially, it will only be legal to apply `#[cfg(macro)]` to a whole crate and
+the `#[macro]` and `#[macro_attribute]` attributes may only appear within a
+`#[cfg(macro)]` crate. This has the effect of partitioning crates into macro-
+defining and non-macro defining crates. Macros may not be used in the crate in
+which they are defined, although they may be called as regular functions. In the
+future, I hope we can relax these restrictions so that macro and non-macro code
+can live in the same crate.
+
+Importing macros for use means using `extern crate` to make the crate available
+and then using `use` imports or paths to name macros, just like other items.
+Again, see [RFC 1561](https://github.com/rust-lang/rfcs/pull/1561) for more
+details.
+
+When a `#[cfg(macro)]` crate is `extern crate`ed, it's items (even public ones)
+are not available to the importing crate; only macros declared in that crate.
+The crate is dynamically linked with the compiler at compile-time, rather
+than with the importing crate at runtime.
+
+
+## Writing procedural macros
+
+Procedural macro authors should not use the compiler crates (libsyntax, etc.).
+Using these will remain unstable. We will make available a new crate, libmacro,
+which will follow the usual path to stabilisation, will be part of the Rust
+distribution, and will be required to be used by procedural macros (because, at
+the least, it defines the types used in the required signatures).
+
+The details of libmacro will be specified in a future RFC. In the meantime, this
+[blog post](http://ncameron.org/blog/libmacro/) gives an idea of what it might
+contain.
+
+The philosophy here is that libmacro will contain low-level tools for
+constructing macros, dealing with tokens, hygiene, pattern matching, quasi-
+quoting, interactions with the compiler, etc. For higher level abstractions
+(such as parsing and an AST), macros should use external libraries (there are no
+restrictions on `#[cfg(macro)]` crates using other crates).
+
+The `MacroContext` is an object passed to all procedural macro definitions. It
+is the main entry point to the libmacro API and for interaction with the
+compiler. Via the `MacroContext`, a procedural macro can access information
+about the context in which it is used and defined, and perform operations which
+rely on the state of the compiler. It will be more fully defined in the upcoming
+RFC proposing libmacro.
+
+Rust macros are hygienic by default. Hygiene is a large and complex subject, but
+to summarise: effectively, naming takes place in the context of the macro
+definition, not the expanded macro.
+
+Procedural macros often want to bend the rules around macro hygiene, for example
+to make items or variables more widely nameable than they would be by default.
+Procedural macros will be able to take part in the application of the hygiene
+algorithm via libmacro. Again, full details must wait for the libmacro RFC and a
+sketch is available in this [blog post](http://ncameron.org/blog/libmacro/).
+
+
+## Tokens
+
+Procedural macros will primarily operate on tokens. There are two main benefits
+to this principal: flexibility and future proofing. By operating on tokens, code
+passed to procedural macros does not need to satisfy the Rust parser, only the
+lexer. Stabilising an interface based on tokens means we need only commit to
+not changing the rules around those tokens, not the whole grammar. I.e., it
+allows us to change the Rust grammar without breaking procedural macros.
+
+In order to make the token-based interface even more flexible and future-proof,
+I propose a simpler token abstraction than is currently used in the compiler.
+The proposed system may be used directly in the compiler or may be an interface
+wrapper over a more efficient representation.
+
+Since macro expansion will not operate purely on tokens, we must keep hygiene
+information on tokens, rather than on `Ident` AST nodes (we might be able to
+optimise by not keeping such info for all tokens, but that is an implementation
+detail). We will also keep span information for each token, since that is where
+a record of macro expansion is maintained (and it will make life easier for
+tools. Again, we might optimise internally).
+
+A token is a single lexical element, for example, a numeric literal, a word
+(which could be an identifier or keyword), a string literal, or a comment.
+
+A token stream is a sequence of tokens, e.g., `a b c;` is a stream of four
+tokens - `['a', 'b', 'c', ';'']`.
+
+A token tree is a tree structure where each leaf node is a token and each
+interior node is a token stream. I.e., a token stream which can contain nested
+token streams. A token tree can be delimited, e.g., `a (b c);` will give
+`TT(None, ['a', TT(Some('()'), ['b', 'c'], ';'']))`. An undelimited token tree
+is useful for grouping tokens due to expansion, without representation in the
+source code. That could be used for unsafety hygiene, or to affect precedence
+and parsing without affecting scoping. They also replace the interpolated AST
+tokens currently in the compiler.
+
+In code:
+
+```
+// We might optimise this representation
+pub struct TokenStream(Vec<TokenTree>);
+
+// A borrowed TokenStream
+pub struct TokenSlice<'a>(&'a [TokenTree]);
+
+// A token or token tree.
+pub struct TokenTree {
+    pub kind: TokenKind,
+    pub span: Span,
+    pub hygiene: HygieneObject,
+}
+
+pub enum TokenKind {
+    Sequence(Delimiter, Vec<TokenTree>),
+
+    // The content of the comment can be found from the span.
+    Comment(CommentKind),
+    // The Span is the span of the string itself, without delimiters.
+    String(Span, StringKind),
+
+    // These tokens are treated specially since they are used for macro
+    // expansion or delimiting items.
+    Exclamation,  // `!`
+    Dollar,       // `$`
+    // Not actually sure if we need this or if semicolons can be treated like
+    // other punctuation.
+    Semicolon,    // `;`
+    Eof,
+
+    // Word is defined by Unicode Standard Annex 31 -
+    // [Unicode Identifier and Pattern Syntax](http://unicode.org/reports/tr31/)
+    Word(InternedString),
+    Punctuation(char),
+}
+
+pub enum Delimiter {
+    None,
+    // { }
+    Brace,
+    // ( )
+    Parenthesis,
+    // [ ]
+    Bracket,
+}
+
+pub enum CommentKind {
+    Regular,
+    InnerDoc,
+    OuterDoc,
+}
+
+pub enum StringKind {
+    Regular,
+    // usize is for the count of `#`s.
+    Raw(usize),
+    Byte,
+    RawByte(usize),
+}
+```
+
+
+## Staging
+
+1. Implement [RFC 1561](https://github.com/rust-lang/rfcs/pull/1561).
+2. Implement `#[macro]` and `#[cfg(macro)]` and the function approach to
+   defining macros. However, pass the existing data structures to the macros,
+   rather than tokens and `MacroContext`.
+3. Implement libmacro and make this available to macros. At this stage both old
+   and new macros are available (functions with different signatures). This will
+   require an RFC and considerable refactoring of the compiler.
+4. Implement some high-level macro facilities in external crates on top of
+   libmacro. It is hoped that much of this work will be community-led.
+5. After some time to allow conversion, deprecate the old-style macros. Later,
+   remove old macros completely.
+
+
+# Drawbacks
+[drawbacks]: #drawbacks
+
+Procedural macros are a somewhat unpleasant corner of Rust at the moment. It is
+hard to argue that some kind of reform is unnecessary. One could find fault with
+this proposed reform in particular (see below for some alternatives). Some
+drawbacks that come to mind:
+
+* providing such a low-level API risks never seeing good high-level libraries;
+* the design is complex and thus will take some time to implement and stabilise,
+  meanwhile unstable procedural macros are a major pain point in current Rust;
+* dealing with tokens and hygiene may discourage macro authors due to complexity,
+  hopefully that is addressed by library crates.
+
+The actual concept of procedural macros also have drawbacks: executing arbitrary
+code in the compiler makes it vulnerable to crashes and possibly security issues,
+macros can introduce hard to debug errors, macros can make a program hard to
+comprehend, it risks creating de facto dialects of Rust and thus fragmentation
+of the ecosystem, etc.
+
+# Alternatives
+[alternatives]: #alternatives
+
+We could keep the existing system or remove procedural macros from Rust.
+
+We could have an AST-based (rather than token-based) system. This has major
+backwards compatibility issues.
+
+We could allow pluging in at later stages of compilation, giving macros access
+to type information, etc. This would allow some really interesting tools.
+However, it has some large downsides - it complicates the whole compilation
+process (not just the macro system), it pollutes the whole compiler with macro
+knowledge, rather than containing it in the frontend, it complicates the design
+of the interface between the compiler and macro, and (I believe) the use cases
+are better addressed by compiler plug-ins or tools based on the compiler (the
+latter can be written today, the former require more work on an interface to the
+compiler to be practical).
+
+We could have a dedicated syntax for procedural macros, similar to the
+`macro_rules` syntax for macros by example. Since a procedural macro is really
+just a Rust function, I believe using a function is better. I have also not been
+able to come up with (or seen suggestions for) a good alternative syntax. It
+seems reasonable to expect to write Rust macros in Rust (although there is
+nothing stopping a macro author from using FFI and some other language to write
+part or all of a macro).
+
+For attribute-like macros on items, it would be nice if we could skip parsing
+the annotated item until after macro expansion. That would allow for more
+flexible macros, since the input would not be constrained to Rust syntax. However,
+this would require identifying items from tokens, rather than from the AST, which
+would require additional rules on token trees and may not be possible.
+
+
+# Unresolved questions
+[unresolved]: #unresolved-questions
+
+### macros with an extra identifier
+
+We currently allow procedural macros to take an extra ident after the macro name
+and before the arguments, e.g., `foo! bar(...)` where `foo` is the macro name
+and `bar` is the extra identifier. This is used for `macro_rules` and is useful
+for macros which define classes of items, rather than instances of items. E.g.,
+a `struct!` macro might be used similarly to the `struct` keyword.
+
+My feeling is that this macro form is not used enough to justify its existence.
+From a design perspective, it encourages uses of macros for language extension,
+rather than syntactic abstraction. I feel that such macros are at higher risk of
+making programs incomprehensible and of fragmenting the ecosystem).
+
+Therefore, I would like to remove them from the language. Alternatively, they
+could be incorporated into the new design by having another kind of macro
+function:
+
+```
+#[macro_with_ident]
+pub fn foo(&Token, TokenStream, &mut MacroContext) -> TokenStream;
+```
+
+where the first argument is the extra identifier.
+
+
+### Linking model
+
+Currently, procedural macros are dynamically linked with the compiler. This
+prevents the compiler being statically linked, which is sometimes desirable. An
+alternative architecture would have procedural macros compiled as independent
+programs and have them communicate with the compiler via IPC.
+
+This would have the advantage of allowing static linking for the compiler and
+would prevent procedural macros from crashing the main compiler process.
+However, designing a good IPC interface is complicated because there is a lot of
+data that might be exchanged between the compiler and the macro.
+
+I think we could first design the syntax, interfaces, etc. and later evolve into
+a process-separated model (if desired). However, if this is considered an
+essential feature of macro reform, then we might want to consider the interfaces
+more thoroughly with this in mind.
+
+
+### Interactions with constant evaluation
+
+Both procedural macros and constant evaluation are mechanisms for running Rust
+code at compile time. Currently, and under the proposed design, they are
+considered completely separate features. There might be some benefit in letting
+them interact.
+
+
+### Inline procedural macros
+
+It would nice to allow procedural macros to be defined in the crate in which
+they are used, as well as in separate crates (mentioned above). This complicates
+things since it breaks the invariant that a crate is designed to be used at
+either compile-time or runtime. I leave it for the future.
+
+
+### Specification of the macro definition function signatures
+
+As proposed, the signatures of functions used as macro definitions are hard-
+wired into the compiler. It would be more flexible to allow them to be specified
+by a lang-item. I'm not sure how beneficial this would be, since a change to the
+signature would require changing much of the procedural macro system. I propose
+leaving them hard-wired, unless there is a good use case for the more flexible
+approach.
+
+
+### Specifying delimiters
+
+Under this RFC, a function-like macro use may use either parentheses, braces, or
+square brackets. The choice of delimiter does not affect the semantics of the
+macro (the rules requiring braces or a semi-colon for macro uses in item position
+still apply).
+
+Which delimiter was used should be available to the macro implementation via the
+`MacroContext`. I believe this is maximally flexible - the macro implementation
+can throw an error if it doesn't like the delimiters used.
+
+We might want to allow the compiler to restrict the delimiters. Alternatively,
+we might want to hide the information about the delimiter from the macro author,
+so as not to allow errors regarding delimiter choice to affect the user.
