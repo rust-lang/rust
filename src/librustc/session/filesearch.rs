@@ -48,7 +48,7 @@ impl<'a> FileSearch<'a> {
             visited_dirs.insert(path.to_path_buf());
         }
 
-        debug!("filesearch: searching lib path");
+        info!("filesearch: searching lib path");
         let tlib_path = make_target_lib_path(self.sysroot,
                                              self.triple);
         if !visited_dirs.contains(&tlib_path) {
@@ -65,8 +65,12 @@ impl<'a> FileSearch<'a> {
     pub fn search<F>(&self, mut pick: F)
         where F: FnMut(&Path, PathKind) -> FileMatch
     {
+        info!("starting filesearch for target {} with sysroot {:?}", self.triple, self.sysroot);
+        self.for_each_lib_search_path(|lib_search_path, _| {
+            info!("going to search dir {}", lib_search_path.display());
+        });
         self.for_each_lib_search_path(|lib_search_path, kind| {
-            debug!("searching {}", lib_search_path.display());
+            info!("searching {}", lib_search_path.display());
             match fs::read_dir(lib_search_path) {
                 Ok(files) => {
                     let files = files.filter_map(|p| p.ok().map(|s| s.path()))
@@ -81,14 +85,14 @@ impl<'a> FileSearch<'a> {
                     let files1 = files.iter().filter(|p| is_rlib(p));
                     let files2 = files.iter().filter(|p| !is_rlib(p));
                     for path in files1.chain(files2) {
-                        debug!("testing {}", path.display());
+                        info!("testing {}", path.display());
                         let maybe_picked = pick(path, kind);
                         match maybe_picked {
                             FileMatches => {
-                                debug!("picked {}", path.display());
+                                info!("picked {}", path.display());
                             }
                             FileDoesntMatch => {
-                                debug!("rejected {}", path.display());
+                                info!("rejected {}", path.display());
                             }
                         }
                     }
@@ -102,7 +106,7 @@ impl<'a> FileSearch<'a> {
                triple: &'a str,
                search_paths: &'a SearchPaths,
                kind: PathKind) -> FileSearch<'a> {
-        debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
+        info!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch {
             sysroot: sysroot,
             search_paths: search_paths,
