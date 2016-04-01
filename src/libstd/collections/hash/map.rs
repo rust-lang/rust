@@ -15,7 +15,7 @@ use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
 use hash::{Hash, SipHasher, BuildHasher};
-use iter::{self, Map, FromIterator};
+use iter::FromIterator;
 use mem::{self, replace};
 use ops::{Deref, Index};
 use rand::{self, Rng};
@@ -836,8 +836,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
-        fn first<A, B>((a, _): (A, B)) -> A { a }
-        Keys { inner: self.iter().map(first) }
+        Keys { inner: self.iter() }
     }
 
     /// An iterator visiting all values in arbitrary order.
@@ -859,8 +858,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
-        fn second<A, B>((_, b): (A, B)) -> B { b }
-        Values { inner: self.iter().map(second) }
+        Values { inner: self.iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -992,9 +990,8 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<K, V> {
-        fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
         Drain {
-            inner: self.table.drain().map(last_two),
+            inner: self.table.drain(),
         }
     }
 
@@ -1224,13 +1221,13 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 /// HashMap move iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
-    inner: iter::Map<table::IntoIter<K, V>, fn((SafeHash, K, V)) -> (K, V)>
+    inner: table::IntoIter<K, V>
 }
 
 /// HashMap keys iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
-    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+    inner: Iter<'a, K, V>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -1246,7 +1243,7 @@ impl<'a, K, V> Clone for Keys<'a, K, V> {
 /// HashMap values iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
-    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+    inner: Iter<'a, K, V>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -1262,7 +1259,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 /// HashMap drain iterator.
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
-    inner: iter::Map<table::Drain<'a, K, V>, fn((SafeHash, K, V)) -> (K, V)>
+    inner: table::Drain<'a, K, V>
 }
 
 enum InternalEntry<K, V, M> {
@@ -1397,9 +1394,8 @@ impl<K, V, S> IntoIterator for HashMap<K, V, S>
     /// let vec: Vec<(&str, isize)> = map.into_iter().collect();
     /// ```
     fn into_iter(self) -> IntoIter<K, V> {
-        fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
         IntoIter {
-            inner: self.table.into_iter().map(last_two)
+            inner: self.table.into_iter()
         }
     }
 }
@@ -1432,7 +1428,7 @@ impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
 impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
-    #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
+    #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next().map(|(_, k, v)| (k, v)) }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1444,7 +1440,7 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
-    #[inline] fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
+    #[inline] fn next(&mut self) -> Option<(&'a K)> { self.inner.next().map(|(k, _)| k) }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1456,7 +1452,7 @@ impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
-    #[inline] fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
+    #[inline] fn next(&mut self) -> Option<(&'a V)> { self.inner.next().map(|(_, v)| v) }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1468,7 +1464,7 @@ impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
 impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (K, V);
 
-    #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
+    #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next().map(|(_, k, v)| (k, v)) }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1672,6 +1668,20 @@ impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
             }
         }
     }
+}
+
+#[allow(dead_code)]
+fn assert_covariance() {
+    fn map_key<'new>(v: HashMap<&'static str, u8>) -> HashMap<&'new str, u8> { v }
+    fn map_val<'new>(v: HashMap<u8, &'static str>) -> HashMap<u8, &'new str> { v }
+    fn iter_key<'a, 'new>(v: Iter<'a, &'static str, u8>) -> Iter<'a, &'new str, u8> { v }
+    fn iter_val<'a, 'new>(v: Iter<'a, u8, &'static str>) -> Iter<'a, u8, &'new str> { v }
+    fn into_iter_key<'new>(v: IntoIter<&'static str, u8>) -> IntoIter<&'new str, u8> { v }
+    fn into_iter_val<'new>(v: IntoIter<u8, &'static str>) -> IntoIter<u8, &'new str> { v }
+    fn keys_key<'a, 'new>(v: Keys<'a, &'static str, u8>) -> Keys<'a, &'new str, u8> { v }
+    fn keys_val<'a, 'new>(v: Keys<'a, u8, &'static str>) -> Keys<'a, u8, &'new str> { v }
+    fn values_key<'a, 'new>(v: Values<'a, &'static str, u8>) -> Values<'a, &'new str, u8> { v }
+    fn values_val<'a, 'new>(v: Values<'a, u8, &'static str>) -> Values<'a, u8, &'new str> { v }
 }
 
 #[cfg(test)]
