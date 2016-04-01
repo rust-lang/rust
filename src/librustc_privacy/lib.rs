@@ -936,27 +936,41 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> 
 
 struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
-    // Do not report an error when a private type is found
-    is_quiet: bool,
-    // Is private component found?
-    is_public: bool,
+    /// The visitor checks that each component type is at least this visible
+    required_visibility: ty::Visibility,
+    /// The visibility of the least visible component that has been visited
+    min_visibility: ty::Visibility,
     old_error_set: &'a NodeSet,
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
-    // Check if the type alias contain private types when substituted
-    fn is_public_type_alias(&self, item: &hir::Item, path: &hir::Path) -> bool {
+    fn new(tcx: &'a TyCtxt<'tcx>, old_error_set: &'a NodeSet) -> Self {
+        SearchInterfaceForPrivateItemsVisitor {
+            tcx: tcx,
+            min_visibility: ty::Visibility::Public,
+            required_visibility: ty::Visibility::PrivateExternal,
+            old_error_set: old_error_set,
+        }
+    }
+}
+
+impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
+    // Return the visibility of the type alias's least visible component type when substituted
+    fn substituted_alias_visibility(&self, item: &hir::Item, path: &hir::Path)
+                                    -> Option<ty::Visibility> {
         // We substitute type aliases only when determining impl publicity
         // FIXME: This will probably change and all type aliases will be substituted,
         // requires an amendment to RFC 136.
-        if !self.is_quiet {
-            return false
+        if self.required_visibility != ty::Visibility::PrivateExternal {
+            return None;
         }
         // Type alias is considered public if the aliased type is
         // public, even if the type alias itself is private. So, something
         // like `type A = u8; pub fn f() -> A {...}` doesn't cause an error.
         if let hir::ItemTy(ref ty, ref generics) = item.node {
-            let mut check = SearchInterfaceForPrivateItemsVisitor { is_public: true, ..*self };
+            let mut check = SearchInterfaceForPrivateItemsVisitor {
+                min_visibility: ty::Visibility::Public, ..*self
+            };
             check.visit_ty(ty);
             // If a private type alias with default type parameters is used in public
             // interface we must ensure, that the defaults are public if they are actually used.
@@ -970,26 +984,23 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
                     check.visit_ty(default_ty);
                 }
             }
-            check.is_public
+            Some(check.min_visibility)
         } else {
-            false
+            None
         }
     }
 }
 
 impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &hir::Ty) {
-        if self.is_quiet && !self.is_public {
-            // We are in quiet mode and a private type is already found, no need to proceed
-            return
-        }
         if let hir::TyPath(_, ref path) = ty.node {
             let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
             match def {
                 Def::PrimTy(..) | Def::SelfTy(..) | Def::TyParam(..) => {
                     // Public
                 }
-                Def::AssociatedTy(..) if self.is_quiet => {
+                Def::AssociatedTy(..)
+                    if self.required_visibility == ty::Visibility::PrivateExternal => {
                     // Conservatively approximate the whole type alias as public without
                     // recursing into its components when determining impl publicity.
                     // For example, `impl <Type as Trait>::Alias {...}` may be a public impl
@@ -1003,21 +1014,24 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                     // Non-local means public (private items can't leave their crate, modulo bugs)
                     if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
                         let item = self.tcx.map.expect_item(node_id);
-                        if item.vis != hir::Public && !self.is_public_type_alias(item, path) {
-                            if !self.is_quiet {
-                                if self.old_error_set.contains(&ty.id) {
-                                    span_err!(self.tcx.sess, ty.span, E0446,
-                                              "private type in public interface");
-                                } else {
-                                    self.tcx.sess.add_lint (
-                                        lint::builtin::PRIVATE_IN_PUBLIC,
-                                        node_id,
-                                        ty.span,
-                                        format!("private type in public interface"),
-                                    );
-                                }
+                        let vis = match self.substituted_alias_visibility(item, path) {
+                            Some(vis) => vis,
+                            None => ty::Visibility::from_hir(&item.vis, node_id, &self.tcx),
+                        };
+
+                        if !vis.is_at_least(self.min_visibility, &self.tcx.map) {
+                            self.min_visibility = vis;
+                        }
+                        if !vis.is_at_least(self.required_visibility, &self.tcx.map) {
+                            if self.old_error_set.contains(&ty.id) {
+                                span_err!(self.tcx.sess, ty.span, E0446,
+                                          "private type in public interface");
+                            } else {
+                                self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                                       node_id,
+                                                       ty.span,
+                                                       format!("private type in public interface"));
                             }
-                            self.is_public = false;
                         }
                     }
                 }
@@ -1029,28 +1043,26 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &hir::TraitRef) {
-        if self.is_quiet && !self.is_public {
-            // We are in quiet mode and a private type is already found, no need to proceed
-            return
-        }
         // Non-local means public (private items can't leave their crate, modulo bugs)
         let def_id = self.tcx.trait_ref_to_def_id(trait_ref);
         if let Some(node_id) = self.tcx.map.as_local_node_id(def_id) {
             let item = self.tcx.map.expect_item(node_id);
-            if item.vis != hir::Public {
-                if !self.is_quiet {
-                    if self.old_error_set.contains(&trait_ref.ref_id) {
-                        span_err!(self.tcx.sess, trait_ref.path.span, E0445,
-                                  "private trait in public interface");
-                    } else {
-                        self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
-                                               node_id,
-                                               trait_ref.path.span,
-                                               "private trait in public interface (error E0445)"
-                                                    .to_string());
-                    }
+            let vis = ty::Visibility::from_hir(&item.vis, node_id, &self.tcx);
+
+            if !vis.is_at_least(self.min_visibility, &self.tcx.map) {
+                self.min_visibility = vis;
+            }
+            if !vis.is_at_least(self.required_visibility, &self.tcx.map) {
+                if self.old_error_set.contains(&trait_ref.ref_id) {
+                    span_err!(self.tcx.sess, trait_ref.path.span, E0445,
+                              "private trait in public interface");
+                } else {
+                    self.tcx.sess.add_lint(lint::builtin::PRIVATE_IN_PUBLIC,
+                                           node_id,
+                                           trait_ref.path.span,
+                                           "private trait in public interface (error E0445)"
+                                                .to_string());
                 }
-                self.is_public = false;
             }
         }
 
@@ -1072,29 +1084,29 @@ struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     // A type is considered public if it doesn't contain any private components
-    fn is_public_ty(&self, ty: &hir::Ty) -> bool {
-        let mut check = SearchInterfaceForPrivateItemsVisitor {
-            tcx: self.tcx, is_quiet: true, is_public: true, old_error_set: self.old_error_set
-        };
+    fn ty_visibility(&self, ty: &hir::Ty) -> ty::Visibility {
+        let mut check = SearchInterfaceForPrivateItemsVisitor::new(self.tcx, self.old_error_set);
         check.visit_ty(ty);
-        check.is_public
+        check.min_visibility
     }
 
     // A trait reference is considered public if it doesn't contain any private components
-    fn is_public_trait_ref(&self, trait_ref: &hir::TraitRef) -> bool {
-        let mut check = SearchInterfaceForPrivateItemsVisitor {
-            tcx: self.tcx, is_quiet: true, is_public: true, old_error_set: self.old_error_set
-        };
+    fn trait_ref_visibility(&self, trait_ref: &hir::TraitRef) -> ty::Visibility {
+        let mut check = SearchInterfaceForPrivateItemsVisitor::new(self.tcx, self.old_error_set);
         check.visit_trait_ref(trait_ref);
-        check.is_public
+        check.min_visibility
     }
 }
 
 impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
-        let mut check = SearchInterfaceForPrivateItemsVisitor {
-            tcx: self.tcx, is_quiet: false, is_public: true, old_error_set: self.old_error_set
+        let min = |vis1: ty::Visibility, vis2| {
+            if vis1.is_at_least(vis2, &self.tcx.map) { vis2 } else { vis1 }
         };
+
+        let mut check = SearchInterfaceForPrivateItemsVisitor::new(self.tcx, self.old_error_set);
+        let item_visibility = ty::Visibility::from_hir(&item.vis, item.id, &self.tcx);
+
         match item.node {
             // Crates are always public
             hir::ItemExternCrate(..) => {}
@@ -1105,27 +1117,26 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemEnum(..) | hir::ItemTrait(..) | hir::ItemTy(..) => {
-                if item.vis == hir::Public {
-                    check.visit_item(item);
-                }
+                check.required_visibility = item_visibility;
+                check.visit_item(item);
             }
             // Subitems of foreign modules have their own publicity
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
-                    if foreign_item.vis == hir::Public {
-                        check.visit_foreign_item(foreign_item);
-                    }
+                    check.required_visibility =
+                        ty::Visibility::from_hir(&foreign_item.vis, item.id, &self.tcx);
+                    check.visit_foreign_item(foreign_item);
                 }
             }
             // Subitems of structs have their own publicity
             hir::ItemStruct(ref struct_def, ref generics) => {
-                if item.vis == hir::Public {
-                    check.visit_generics(generics);
-                    for field in struct_def.fields() {
-                        if field.vis == hir::Public {
-                            check.visit_struct_field(field);
-                        }
-                    }
+                check.required_visibility = item_visibility;
+                check.visit_generics(generics);
+
+                for field in struct_def.fields() {
+                    let field_visibility = ty::Visibility::from_hir(&field.vis, item.id, &self.tcx);
+                    check.required_visibility = min(item_visibility, field_visibility);
+                    check.visit_struct_field(field);
                 }
             }
             // The interface is empty
@@ -1133,23 +1144,25 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivateItemsInPublicInterfacesVisitor<'a, 'tc
             // An inherent impl is public when its type is public
             // Subitems of inherent impls have their own publicity
             hir::ItemImpl(_, _, ref generics, None, ref ty, ref impl_items) => {
-                if self.is_public_ty(ty) {
-                    check.visit_generics(generics);
-                    for impl_item in impl_items {
-                        if impl_item.vis == hir::Public {
-                            check.visit_impl_item(impl_item);
-                        }
-                    }
+                let ty_vis = self.ty_visibility(ty);
+                check.required_visibility = ty_vis;
+                check.visit_generics(generics);
+
+                for impl_item in impl_items {
+                    let impl_item_vis =
+                        ty::Visibility::from_hir(&impl_item.vis, item.id, &self.tcx);
+                    check.required_visibility = min(impl_item_vis, ty_vis);
+                    check.visit_impl_item(impl_item);
                 }
             }
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity
             hir::ItemImpl(_, _, ref generics, Some(ref trait_ref), ref ty, ref impl_items) => {
-                if self.is_public_ty(ty) && self.is_public_trait_ref(trait_ref) {
-                    check.visit_generics(generics);
-                    for impl_item in impl_items {
-                        check.visit_impl_item(impl_item);
-                    }
+                let vis = min(self.ty_visibility(ty), self.trait_ref_visibility(trait_ref));
+                check.required_visibility = vis;
+                check.visit_generics(generics);
+                for impl_item in impl_items {
+                    check.visit_impl_item(impl_item);
                 }
             }
         }
