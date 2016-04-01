@@ -227,7 +227,8 @@ much we have allocated from the backing storage.
 sharing this demo allocator across scoped threads.)
 
 ```rust
-struct DumbBumpPool {
+#[derive(Debug)]
+pub struct DumbBumpPool {
     name: &'static str,
     ptr: *mut u8,
     end: *mut u8,
@@ -283,48 +284,7 @@ impl Drop for DumbBumpPool {
 }
 ```
 
-Now, before we get into the trait implementation itself, here is an
-interesting simple design choice:
-
- * To show-off the error abstraction in the API, we make a special
-   error type that covers a third case that is not part of the
-   standard `enum AllocErr`.
-
-Specifically, our bump allocator has *three* error conditions that we
-will expose:
-
- 1. the inputs could be invalid,
-
- 2. the memory could be exhausted, or,
-
- 3. there could be *interference* between two threads.
-    This latter scenario means that this allocator failed
-    on this memory request, but the client might
-    quite reasonably just *retry* the request. This is
-    an error condition specific to this allocator, so we
-    will identify it via a separate `fn is_transient` inherent
-    method.
-
-```rust
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum BumpAllocError {
-    Invalid(&'static str),
-    MemoryExhausted(alloc::Layout),
-    Interference
-}
-
-impl BumpAllocError {
-    pub fn is_transient(&self) -> bool { *self == BumpAllocError::Interference }
-}
-
-impl alloc::AllocError for BumpAllocError {
-    fn invalid_input(details: &'static str) -> Self { BumpAllocError::Invalid(details) }
-    fn is_memory_exhausted(&self) -> bool { if let BumpAllocError::MemoryExhausted(_) = *self { true } else { false }  }
-    fn is_request_unsupported(&self) -> bool { false }
-}
-```
-
-With that out of the way, here are some other design choices of note:
+Here are some other design choices of note:
 
  * Our Bump Allocator is going to use a most simple-minded deallocation
    policy: calls to `fn dealloc` are no-ops. Instead, every request takes
@@ -352,29 +312,31 @@ unsafe impl Sync for DumbBumpPool { }
 Here is the demo implementation of `Allocator` for the type.
 
 ```rust
-impl<'a> Allocator for &'a DumbBumpPool {
-    type Error = BumpAllocError;
-
-    unsafe fn alloc(&mut self, layout: alloc::Layout) -> Result<Address, Self::Error> {
-        let curr = self.avail.load(Ordering::Relaxed) as usize;
+unsafe impl<'a> Allocator for &'a DumbBumpPool {
+    unsafe fn alloc(&mut self, layout: alloc::Layout) -> Result<Address, AllocErr> {
         let align = *layout.align();
-        let (sum, oflo) = curr.overflowing_add(align - 1);
-        let curr_aligned = sum & !(align - 1);
         let size = *layout.size();
-        let remaining = (self.end as usize) - curr_aligned;
-        if oflo || remaining < size {
-            return Err(BumpAllocError::MemoryExhausted(layout.clone()));
-        }
 
-        let curr = curr as *mut u8;
-        let curr_aligned = curr_aligned as *mut u8;
-        let new_curr = curr_aligned.offset(size as isize);
+        loop {
+            let curr = self.avail.load(Ordering::Relaxed) as usize;
+            let (sum, oflo) = curr.overflowing_add(align - 1);
+            let curr_aligned = sum & !(align - 1);
+            let remaining = (self.end as usize) - curr_aligned;
+            if oflo || remaining < size {
+                return Err(AllocErr::Exhausted { request: layout.clone() });
+            }
 
-        if curr != self.avail.compare_and_swap(curr, new_curr, Ordering::Relaxed) {
-            return Err(BumpAllocError::Interference);
-        } else {
-            println!("alloc finis ok: 0x{:x} size: {}", curr_aligned as usize, size);
-            return Ok(NonZero::new(curr_aligned));
+            let curr = curr as *mut u8;
+            let curr_aligned = curr_aligned as *mut u8;
+            let new_curr = curr_aligned.offset(size as isize);
+
+            // If the allocation attempt hits interference ...
+            if curr != self.avail.compare_and_swap(curr, new_curr, Ordering::Relaxed) {
+                continue; // .. then try again
+            } else {
+                // println!("alloc finis ok: 0x{:x} size: {}", curr_aligned as usize, size);
+                return Ok(NonZero::new(curr_aligned));
+            }
         }
     }
 
@@ -382,8 +344,10 @@ impl<'a> Allocator for &'a DumbBumpPool {
         // this bump-allocator just no-op's on dealloc
     }
 
-    fn oom(&mut self, err: Self::Error) -> ! {
-        panic!("exhausted memory in {} on request {:?}", self.name, err);
+    fn oom(&mut self, err: AllocErr) -> ! {
+        let remaining = self.end as usize - self.avail.load(Ordering::Relaxed) as usize;
+        panic!("exhausted memory in {} on request {:?} with avail: {}; self: {:?}",
+               self.name, err, remaining, self);
     }
 
 }
@@ -795,40 +759,18 @@ of the preconditions hold.
 
 Finally, we get to object-oriented programming.
 
-Since the `Allocator` trait has an associated error type, one
-cannot just encode virtually-dispatched allocator objects with
-`Box<Allocator>` or `&Allocator`; trait objects need to have
-their associated types specified as part of the object trait.
-
 In general, we expect allocator-parametric code to opt *not* to use
 trait objects to generalize over allocators, but instead to use
 generic types and instantiate those types with specific concrete
 allocators.
 
-Nonetheless, it *is* an option to write `Box<Allocator<Error=MemoryExhausted>>`, or
-`&Allocator<Error=BumpAllocError>`, when working with allocators that
-use each corresponding error type.
+Nonetheless, it *is* an option to write `Box<Allocator>` or `&Allocator`.
 
  * (The allocator methods that are not object-safe, like
    `fn alloc_one<T>(&mut self)`, have a clause `where Self: Sized` to
    ensure that their presence does not cause the `Allocator` trait as
    a whole to become non-object-safe.)
 
-To encourage client code that chooses to use trait objects for their
-allocators to try to standardize on one choice of associated `Error`
-type, we provide a convenience `type` definition for
-[allocator objects][], `AllocatorObj`, which makes an opinionated
-decision about which one of the "standard error types" is the "right
-one" for such general purpose objects: namely, `AllocErr`, since it is
-both cheap to construct but also can provide some amount of
-context-sensitive information about the original cause of an
-allocation error.
-
-However, the main point remains that we expect this object-oriented
-usage of allocators to be rare. If this assumption turns out to be
-incorrect, we should revisit these decisions before stabilizing the
-allocator API (that would be the time to e.g. remove the associated
-error type).
 
 ## Why this API
 [Why this API]: #why-this-api
@@ -883,21 +825,12 @@ My hypothesis is that the standard allocator API should embrace
 `Result` as the standard way for describing local error conditions in
 Rust.
 
-In principle, we can use `Result` without adding *any* additional
-overhead (at least in terms of the size of the values being returned
-from the allocation calls), because the error type for the `Result`
-can be zero-sized if so desired. That is why the error is an
-associated type of the `Allocator`: allocators that want to ensure the
-results have minimum size can use the zero-sized `MemoryExhausted` type
-as their associated `Self::Error`.
-
- * `MemoryExhausted` is a specific error type meant for allocators
-   that could in principle handle *any* sane input request, if there
-   were sufficient memory available. (By "sane" we mean for example
-   that the input arguments do not cause an arithmetic overflow during
-   computation of the size of the memory block -- if they do, then it
-   is reasonable for an allocator with this error type to respond that
-   insufficent memory was available, rather than e.g. panicking.)
+ * A previous version of this RFC attempted to ensure that the use of
+   the `Result` type could avoid any additional overhead over a raw
+   pointer return value, by using a `NonZero` address type and a
+   zero-sized error type attached to the trait via an associated
+   `Error` type. But during the RFC process we decided that this
+   was not necessary.
 
 ### Why return `Result` rather than directly `oom` on failure
 
@@ -1247,13 +1180,6 @@ few motivating examples that *are* clearly feasible and useful.
    `Address` an abuse of the `NonZero` type? (Or do we just need some
    constructor for `NonZero` that asserts that the input is non-zero)?
 
- * Should we get rid of the `AllocError` bound entirely? Is the given set
-   of methods actually worth providing to all generic clients?
-
-   (Keeping it seems very low cost to me; implementors can always opt
-   to use the `MemoryExhausted` error type, which is cheap. But my
-   intuition may be wrong.)
-
  * Do we need `Allocator::max_size` and `Allocator::max_align` ?
  
  * Should default impl of `Allocator::max_align` return `None`, or is
@@ -1286,6 +1212,14 @@ few motivating examples that *are* clearly feasible and useful.
 
 * Revised `fn oom` method to take the `Self::Error` as an input (so that the
   allocator can, indirectly, feed itself information about what went wrong).
+
+* Removed associated `Error` type from `Allocator` trait; all methods now use `AllocErr`
+  for error type. Removed `AllocError` trait and `MemoryExhausted` error.
+
+* Removed `fn max_size` and `fn max_align` methods; we can put them back later if
+  someone demonstrates a need for them.
+
+* Added `fn realloc_in_place`.
 
 # Appendices
 
@@ -1457,7 +1391,6 @@ sub-divided roughly accordingly to functionality.
             issue = "27700")]
 
 use core::cmp;
-use core::fmt;
 use core::mem;
 use core::nonzero::NonZero;
 use core::ptr::{self, Unique};
@@ -1762,87 +1695,14 @@ impl Layout {
 
 ```
 
-### AllocError API
-[error api]: #allocerror-api
+### AllocErr API
+[error api]: #allocerr-api
 
 ```rust
-/// `AllocError` instances provide feedback about the cause of an allocation failure.
-pub trait AllocError: fmt::Debug {
-    /// Construct an error that indicates operation failure due to
-    /// invalid input values for the request.
-    ///
-    /// This can be used, for example, to signal that allocation of
-    /// a zero-sized type was requested.
-    ///
-    /// As another example, it might be used to signal that an overflow
-    /// occurred during arithmetic computation with the input. (However,
-    /// since overflows can also occur during large allocation requests
-    /// that would exhaust memory if arbitrary-precision arithmetic were
-    /// used, clients are alternatively allowed to constuct an error
-    /// representing memory exhaustion in this scenario.)
-    fn invalid_input(details: &'static str) -> Self where Self: Sized;
-
-    /// Returns true if the error is due to hitting some resource
-    /// limit, or otherwise running out of memory. This condition
-    /// serves as a hint that some series of deallocations *might*
-    /// allow a subsequent reissuing of the original allocation
-    /// request to succeed.
-    ///
-    /// Exhaustion is a common interpretation of an allocation failure;
-    /// e.g. usually when `malloc` returns `null`, it is because of
-    /// hitting a user resource limit or system memory exhaustion.
-    ///
-    /// Note that the resource exhaustion could be internal to the
-    /// original allocator (i.e. the only way to free up memory is by
-    /// deallocating memory attached to that allocator), or it could
-    /// be associated with some other state external to the original
-    /// allocator (e.g. freeing up memory or reducing fragmentation
-    /// globally might allow a call to the system `malloc` to succeed).
-    /// The `AllocError` trait does not distinguish between the two
-    /// scenarios (but instances of the associated `Allocator::Error`
-    /// type might provide ways to distinguish them).
-    ///
-    /// Finally, error responses to allocation input requests that are
-    /// *always* illegal for *any* allocator (e.g. zero-sized or
-    /// arithmetic-overflowing requests) are allowed to respond `true`
-    /// here. (This is to allow `MemoryExhausted` as a valid
-    /// zero-sized error type for an allocator that can handle all
-    /// "sane" requests.)
-    fn is_memory_exhausted(&self) -> bool;
-
-    /// Returns true if the allocator is fundamentally incapable of
-    /// satisfying the original request. This condition implies that
-    /// such an allocation request would never succeed on *this*
-    /// allocator, regardless of environment, memory pressure, or
-    /// other contextual condtions.
-    ///
-    /// An example where this might arise: A block allocator that only
-    /// supports satisfying memory requests where each allocated block
-    /// is at most `K` bytes in size.
-    fn is_request_unsupported(&self) -> bool;
-}
-
-/// The `MemoryExhausted` error represents a blanket condition
-/// that the given request was not satisifed for some reason beyond
-/// any particular limitations of a given allocator.
-///
-/// It roughly corresponds to getting `null` back from a call to `malloc`:
-/// you've probably exhausted memory (though there might be some other
-/// explanation; see discussion with `AllocError::is_memory_exhausted`).
-///
-/// Allocators that can in principle allocate any kind of legal input
-/// might choose this as their associated error type.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct MemoryExhausted;
-
 /// The `AllocErr` error specifies whether an allocation failure is
 /// specifically due to resource exhaustion or if it is due to
 /// something wrong when combining the given input arguments with this
 /// allocator.
-
-/// Allocators that only support certain classes of inputs might choose this
-/// as their associated error type, so that clients can respond appropriately
-/// to specific error failure scenarios.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum AllocErr {
     /// Error due to hitting some resource limit or otherwise running
@@ -1859,23 +1719,22 @@ pub enum AllocErr {
     Unsupported { details: &'static str },
 }
 
-impl AllocError for MemoryExhausted {
-    fn invalid_input(_details: &'static str) -> Self { MemoryExhausted }
-    fn is_memory_exhausted(&self) -> bool { true }
-    fn is_request_unsupported(&self) -> bool { false }
-}
-
-impl AllocError for AllocErr {
-    fn invalid_input(details: &'static str) -> Self {
+impl AllocErr {
+    pub fn invalid_input(details: &'static str) -> Self {
         AllocErr::Unsupported { details: details }
     }
-    fn is_memory_exhausted(&self) -> bool {
+    pub fn is_memory_exhausted(&self) -> bool {
         if let AllocErr::Exhausted { .. } = *self { true } else { false }
     }
-    fn is_request_unsupported(&self) -> bool {
+    pub fn is_request_unsupported(&self) -> bool {
         if let AllocErr::Unsupported { .. } = *self { true } else { false }
     }
 }
+
+/// The `CannotReallocInPlace` error is used when `fn realloc_in_place`
+/// was unable to reuse the given memory block for a requested layout.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct CannotReallocInPlace;
 
 ```
 
@@ -1909,12 +1768,6 @@ impl AllocError for AllocErr {
 ///    `usable_size`.
 ///
 pub unsafe trait Allocator {
-    /// When allocation requests cannot be satisified, an instance of
-    /// this error is returned.
-    ///
-    /// Many allocators will want to use the zero-sized
-    /// `MemoryExhausted` type for this.
-    type Error: AllocError;
 
 ```
 
@@ -1937,7 +1790,7 @@ pub unsafe trait Allocator {
     /// not a strict requirement. (Specifically: it is *legal* to use
     /// this trait to wrap an underlying native allocation library
     /// that aborts on memory exhaustion.)
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<Address, Self::Error>;
+    unsafe fn alloc(&mut self, layout: Layout) -> Result<Address, AllocErr>;
 
     /// Deallocate the memory referenced by `ptr`.
     ///
@@ -1959,7 +1812,7 @@ pub unsafe trait Allocator {
     /// instead they should return an appropriate error from the
     /// invoked method, and let the client decide whether to invoke
     /// this `oom` method.
-    fn oom(&mut self, _: Self::Error) -> ! {
+    fn oom(&mut self, _: AllocErr) -> ! {
         unsafe { ::core::intrinsics::abort() }
     }
 ```
@@ -1969,24 +1822,7 @@ pub unsafe trait Allocator {
 
 ```rust
     // == ALLOCATOR-SPECIFIC QUANTITIES AND LIMITS ==
-    // max_size, max_align, usable_size
-
-    /// The maximum requestable size in bytes for memory blocks
-    /// managed by this allocator.
-    ///
-    /// Returns `None` if this allocator has no explicit maximum size.
-    /// (Note that such allocators may well still have an *implicit*
-    /// maximum size; i.e. allocation requests can always fail.)
-    fn max_size(&self) -> Option<Size> { None }
-
-    /// The maximum requestable alignment in bytes for memory blocks
-    /// managed by this allocator.
-    ///
-    /// Returns `None` if this allocator has no assigned maximum
-    /// alignment.  (Note that such allocators may well still have an
-    /// *implicit* maximum alignment; i.e. allocation requests can
-    /// always fail.)
-    fn max_align(&self) -> Option<Alignment> { None }
+    // usable_size
 
     /// Returns bounds on the guaranteed usable size of a successful
     /// allocation created with the specified `layout`.
@@ -2037,10 +1873,9 @@ pub unsafe trait Allocator {
     ///
     /// Behavior undefined if either of latter two constraints are unmet.
     ///
-    /// In addition, `new_layout` should not impose a stronger alignment
+    /// In addition, `new_layout` should not impose a different alignment
     /// constraint than `layout`. (In other words, `new_layout.align()`
-    /// must evenly divide `layout.align()`; note this implies the
-    /// alignment of `new_layout` must not exceed that of `layout`.)
+    /// should equal `layout.align()`.)
     /// However, behavior is well-defined (though underspecified) when
     /// this constraint is violated; further discussion below.
     ///
@@ -2056,8 +1891,9 @@ pub unsafe trait Allocator {
     /// alignment of `layout`, or if reallocation otherwise fails. (Note
     /// that did not say "if and only if" -- in particular, an
     /// implementation of this method *can* return `Ok` if
-    /// `new_layout.align() > old_layout.align()`; or it can return `Err`
-    /// in that scenario.)
+    /// `new_layout.align() != old_layout.align()`; or it can return `Err`
+    /// in that scenario, depending on whether this allocator
+    /// can dynamically adjust the alignment constraint for the block.)
     ///
     /// If this method returns `Err`, then ownership of the memory
     /// block has not been transferred to this allocator, and the
@@ -2065,7 +1901,7 @@ pub unsafe trait Allocator {
     unsafe fn realloc(&mut self,
                       ptr: Address,
                       layout: Layout,
-                      new_layout: Layout) -> Result<Address, Self::Error> {
+                      new_layout: Layout) -> Result<Address, AllocErr> {
         let (min, max) = self.usable_size(&layout);
         let s = new_layout.size();
         // All Layout alignments are powers of two, so a comparison
@@ -2087,7 +1923,7 @@ pub unsafe trait Allocator {
     /// Behaves like `fn alloc`, but also returns the whole size of
     /// the returned block. For some `layout` inputs, like arrays, this
     /// may include extra storage usable for additional data.
-    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, Self::Error> {
+    unsafe fn alloc_excess(&mut self, layout: Layout) -> Result<Excess, AllocErr> {
         let usable_size = self.usable_size(&layout);
         self.alloc(layout).map(|p| Excess(p, usable_size.1))
     }
@@ -2098,12 +1934,40 @@ pub unsafe trait Allocator {
     unsafe fn realloc_excess(&mut self,
                              ptr: Address,
                              layout: Layout,
-                             new_layout: Layout) -> Result<Excess, Self::Error> {
+                             new_layout: Layout) -> Result<Excess, AllocErr> {
         let usable_size = self.usable_size(&new_layout);
         self.realloc(ptr, layout, new_layout)
             .map(|p| Excess(p, usable_size.1))
     }
 
+    /// Attempts to extend the allocation referenced by `ptr` to fit `new_layout`.
+    ///
+    /// * `ptr` must have previously been provided via this allocator.
+    ///
+    /// * `layout` must *fit* the `ptr` (see above). (The `new_layout`
+    ///   argument need not fit it.)
+    ///
+    /// Behavior undefined if either of latter two constraints are unmet.
+    ///
+    /// If this returns `Ok`, then the allocator has asserted that the
+    /// memory block referenced by `ptr` now fits `new_layout`, and thus can
+    /// be used to carry data of that layout. (The allocator is allowed to
+    /// expend effort to accomplish this, such as extending the memory block to
+    /// include successor blocks, or virtual memory tricks.)
+    ///
+    /// If this returns `Err`, then the allocator has made no assertion
+    /// about whether the memory block referenced by `ptr` can or cannot
+    /// fit `new_layout`.
+    ///
+    /// In either case, ownership of the memory block referenced by `ptr`
+    /// has not been transferred, and the contents of the memory block
+    /// are unaltered.
+    unsafe fn realloc_in_place(&mut self,
+                               ptr: Address,
+                               layout: Layout,
+                               new_layout: Layout) -> Result<(), CannotReallocInPlace> {
+        Err(CannotReallocInPlace)
+    }
 ```
 
 ### Allocator convenience methods for common usage patterns
@@ -2121,14 +1985,14 @@ pub unsafe trait Allocator {
     /// `alloc`/`realloc` methods of this allocator.
     ///
     /// Returns `Err` for zero-sized `T`.
-    unsafe fn alloc_one<T>(&mut self) -> Result<Unique<T>, Self::Error>
+    unsafe fn alloc_one<T>(&mut self) -> Result<Unique<T>, AllocErr>
         where Self: Sized {
         if let Some(k) = Layout::new::<T>() {
             self.alloc(k).map(|p|Unique::new(*p as *mut T))
         } else {
             // (only occurs for zero-sized T)
             debug_assert!(mem::size_of::<T>() == 0);
-            Err(Self::Error::invalid_input("zero-sized type invalid for alloc_one"))
+            Err(AllocErr::invalid_input("zero-sized type invalid for alloc_one"))
         }
     }
 
@@ -2154,11 +2018,11 @@ pub unsafe trait Allocator {
     /// `alloc`/`realloc` methods of this allocator.
     ///
     /// Returns `Err` for zero-sized `T` or `n == 0`.
-    unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, Self::Error>
+    unsafe fn alloc_array<T>(&mut self, n: usize) -> Result<Unique<T>, AllocErr>
         where Self: Sized {
         match Layout::array::<T>(n) {
             Some(layout) => self.alloc(layout).map(|p|Unique::new(*p as *mut T)),
-            None => Err(Self::Error::invalid_input("invalid layout for alloc_array")),
+            None => Err(AllocErr::invalid_input("invalid layout for alloc_array")),
         }
     }
 
@@ -2173,28 +2037,28 @@ pub unsafe trait Allocator {
     unsafe fn realloc_array<T>(&mut self,
                                ptr: Unique<T>,
                                n_old: usize,
-                               n_new: usize) -> Result<Unique<T>, Self::Error>
+                               n_new: usize) -> Result<Unique<T>, AllocErr>
         where Self: Sized {
         let old_new_ptr = (Layout::array::<T>(n_old), Layout::array::<T>(n_new), *ptr);
         if let (Some(k_old), Some(k_new), ptr) = old_new_ptr {
             self.realloc(NonZero::new(ptr as *mut u8), k_old, k_new)
                 .map(|p|Unique::new(*p as *mut T))
         } else {
-            Err(Self::Error::invalid_input("invalid layout for realloc_array"))
+            Err(AllocErr::invalid_input("invalid layout for realloc_array"))
         }
     }
 
     /// Deallocates a block suitable for holding `n` instances of `T`.
     ///
     /// Captures a common usage pattern for allocators.
-    unsafe fn dealloc_array<T>(&mut self, ptr: Unique<T>, n: usize) -> Result<(), Self::Error>
+    unsafe fn dealloc_array<T>(&mut self, ptr: Unique<T>, n: usize) -> Result<(), AllocErr>
         where Self: Sized {
         let raw_ptr = NonZero::new(*ptr as *mut u8);
         if let Some(k) = Layout::array::<T>(n) {
             self.dealloc(raw_ptr, k);
             Ok(())
         } else {
-            Err(Self::Error::invalid_input("invalid layout for dealloc_array"))
+            Err(AllocErr::invalid_input("invalid layout for dealloc_array"))
         }
     }
 
@@ -2319,21 +2183,4 @@ pub unsafe trait Allocator {
         self.dealloc(NonZero::new(*ptr as *mut u8), layout);
     }
 }
-```
-
-### Allocator trait objects
-[allocator objects]: #allocator-trait-objects
-
-```rust
-/// `AllocatorObj` is a convenience for making allocator trait objects
-/// such as `Box<AllocatorObj>` or `&AllocatorObj`. (One cannot just
-/// write `Box<Allocator>` because the one must specify the associated
-/// error type as part of the trait object.
-///
-/// Since one is pays the cost of virtual function dispatch when
-/// calling methods on trait objects, this definition uses `AllocErr`
-/// to encode more information when signalling errors in these
-/// objects, rather than using the content-impoverished
-/// `MemoryExhausted` error type for the associated error type.
-pub type AllocatorObj = Allocator<Error = AllocErr>;
 ```
