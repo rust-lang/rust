@@ -216,10 +216,6 @@ impl<T:Copy> Cell<T> {
 
     /// Returns a reference to the underlying `UnsafeCell`.
     ///
-    /// # Safety
-    ///
-    /// This function is `unsafe` because `UnsafeCell`'s field is public.
-    ///
     /// # Examples
     ///
     /// ```
@@ -229,11 +225,11 @@ impl<T:Copy> Cell<T> {
     ///
     /// let c = Cell::new(5);
     ///
-    /// let uc = unsafe { c.as_unsafe_cell() };
+    /// let uc = c.as_unsafe_cell();
     /// ```
     #[inline]
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
-    pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
+    pub fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
     }
 }
