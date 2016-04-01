@@ -28,7 +28,6 @@ use context::CrateContext;
 use type_::Type;
 
 use std::ffi::CString;
-use libc::c_uint;
 
 
 /// Declare a global value.
@@ -159,14 +158,12 @@ pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
         debug!("get_defined_value: {:?} value is null", name);
         None
     } else {
-        let (declaration, aext_link) = unsafe {
-            let linkage = llvm::LLVMGetLinkage(val);
-            (llvm::LLVMIsDeclaration(val) != 0,
-             linkage == llvm::AvailableExternallyLinkage as c_uint)
+        let declaration = unsafe {
+            llvm::LLVMIsDeclaration(val) != 0
         };
-        debug!("get_defined_value: found {:?} value (declaration: {}, \
-                aext_link: {})", name, declaration, aext_link);
-        if !declaration || aext_link {
+        debug!("get_defined_value: found {:?} value (declaration: {})",
+                name, declaration);
+        if !declaration {
             Some(val)
         } else {
             None
