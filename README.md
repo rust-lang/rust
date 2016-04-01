@@ -177,10 +177,11 @@ To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
 Rust has an [IRC] culture and most real-time collaboration happens in a
 variety of channels on Mozilla's IRC network, irc.mozilla.org. The
 most popular channel is [#rust], a venue for general discussion about
-Rust, and a good place to ask for help.
+Rust. And a good place to ask for help would be [#rust-beginners].
 
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
 [#rust]: irc://irc.mozilla.org/rust
+[#rust-beginners]: irc://irc.mozilla.org/rust-beginners
 
 ## License
 
