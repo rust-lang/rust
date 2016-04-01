@@ -1,5 +1,8 @@
 // rustfmt-fn_args_layout: Block
 
+fn foo() {
+    foo();
+}
 
 fn foo(
     a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb

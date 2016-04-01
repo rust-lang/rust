@@ -1293,6 +1293,10 @@ fn rewrite_fn_base(context: &RewriteContext,
     let (mut one_line_budget, multi_line_budget, mut arg_indent) =
         compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace);
 
+    if context.config.fn_args_layout == StructLitStyle::Block {
+        arg_indent = indent.block_indent(context.config);
+    }
+
     debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
            one_line_budget,
            multi_line_budget,
@@ -1309,10 +1313,6 @@ fn rewrite_fn_base(context: &RewriteContext,
             result.push_str("(\n");
             result.push_str(&arg_indent.to_string(context.config));
         }
-    } else if context.config.fn_args_layout == StructLitStyle::Block {
-        arg_indent = indent.block_indent(context.config);
-        result.push_str("(\n");
-        result.push_str(&arg_indent.to_string(context.config));
     } else {
         result.push('(');
     }
@@ -1336,12 +1336,25 @@ fn rewrite_fn_base(context: &RewriteContext,
                                         arg_indent,
                                         args_span,
                                         fd.variadic));
-    result.push_str(&arg_str);
-    if context.config.fn_args_layout == StructLitStyle::Block {
+
+    let multi_line_arg_str = arg_str.contains('\n');
+
+    let should_put_args_in_block = context.config.fn_args_layout == StructLitStyle::Block &&
+                                   (multi_line_arg_str || !context.config.fn_arg_one_line) &&
+                                   fd.inputs.len() > 0;
+
+    if should_put_args_in_block {
+        arg_indent = indent.block_indent(context.config);
+        result.push('\n');
+        result.push_str(&arg_indent.to_string(context.config));
+        result.push_str(&arg_str);
         result.push('\n');
         result.push_str(&indent.to_string(context.config));
+        result.push(')');
+    } else {
+        result.push_str(&arg_str);
+        result.push(')');
     }
-    result.push(')');
 
     // Return type.
     if !ret_str.is_empty() {
