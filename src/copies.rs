@@ -38,7 +38,9 @@ declare_lint! {
 
 /// **What it does:** This lint checks for `match` with identical arm bodies.
 ///
-/// **Why is this bad?** This is probably a copy & paste error.
+/// **Why is this bad?** This is probably a copy & paste error. If arm bodies are the same on
+/// purpose, you can factor them
+/// [using `|`](https://doc.rust-lang.org/book/patterns.html#multiple-patterns).
 ///
 /// **Known problems:** Hopefully none.
 ///
