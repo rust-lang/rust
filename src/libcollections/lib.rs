@@ -48,6 +48,7 @@
 #![feature(placement_new_protocol)]
 #![feature(shared)]
 #![feature(slice_patterns)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(str_char)]
