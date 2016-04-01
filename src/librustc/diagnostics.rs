@@ -1033,6 +1033,47 @@ fn main() {
     some_func(5i32); // ok!
 }
 ```
+
+Or in a generic context, an erroneous code example would look like:
+```compile_fail
+fn some_func<T>(foo: T) {
+    println!("{:?}", foo); // error: the trait `core::fmt::Debug` is not
+                           //        implemented for the type `T`
+}
+
+fn main() {
+    // We now call the method with the i32 type,
+    // which *does* implement the Debug trait.
+    some_func(5i32);
+}
+```
+
+Note that the error here is in the definition of the generic function: Although
+we only call it with a parameter that does implement `Debug`, the compiler
+still rejects the function: It must work with all possible input types. In
+order to make this example compile, we need to restrict the generic type we're
+accepting:
+```
+use std::fmt;
+
+// Restrict the input type to types that implement Debug.
+fn some_func<T: fmt::Debug>(foo: T) {
+    println!("{:?}", foo);
+}
+
+fn main() {
+    // Calling the method is still fine, as i32 implements Debug.
+    some_func(5i32);
+
+    // This would fail to compile now:
+    // struct WithoutDebug;
+    // some_func(WithoutDebug);
+}
+
+Rust only looks at the signature of the called function, as such it must
+already specify all requirements that will be used for every type parameter.
+```
+
 "##,
 
 E0281: r##"
