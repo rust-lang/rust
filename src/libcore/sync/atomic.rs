@@ -695,7 +695,7 @@ impl AtomicIsize {
         unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
     }
 
-    /// Stores a value into the `isize if the current value is the same as the `current` value.
+    /// Stores a value into the `isize` if the current value is the same as the `current` value.
     ///
     /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
