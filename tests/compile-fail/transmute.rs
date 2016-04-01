@@ -62,19 +62,19 @@ unsafe fn _ptr_to_ref<T, U>(p: *const T, m: *mut T, o: *const U, om: *mut U) {
 fn useless() {
     unsafe {
         let _: Vec<i32> = core::intrinsics::transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to itself
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to itself
 
         let _: Vec<i32> = core::mem::transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to itself
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to itself
 
         let _: Vec<i32> = std::intrinsics::transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to itself
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to itself
 
         let _: Vec<i32> = std::mem::transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to itself
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to itself
 
         let _: Vec<i32> = my_transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to itself
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to itself
 
         let _: Vec<u32> = core::intrinsics::transmute(my_vec());
         let _: Vec<u32> = core::mem::transmute(my_vec());
@@ -92,16 +92,16 @@ fn crosspointer() {
 
     unsafe {
         let _: Vec<i32> = core::intrinsics::transmute(vec_const_ptr);
-        //~^ ERROR transmute from a type (`*const collections::vec::Vec<i32>`) to the type that it points to (`collections::vec::Vec<i32>`)
+        //~^ ERROR transmute from a type (`*const std::vec::Vec<i32>`) to the type that it points to (`std::vec::Vec<i32>`)
 
         let _: Vec<i32> = core::intrinsics::transmute(vec_mut_ptr);
-        //~^ ERROR transmute from a type (`*mut collections::vec::Vec<i32>`) to the type that it points to (`collections::vec::Vec<i32>`)
+        //~^ ERROR transmute from a type (`*mut std::vec::Vec<i32>`) to the type that it points to (`std::vec::Vec<i32>`)
 
         let _: *const Vec<i32> = core::intrinsics::transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to a pointer to that type (`*const collections::vec::Vec<i32>`)
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to a pointer to that type (`*const std::vec::Vec<i32>`)
 
         let _: *mut Vec<i32> = core::intrinsics::transmute(my_vec());
-        //~^ ERROR transmute from a type (`collections::vec::Vec<i32>`) to a pointer to that type (`*mut collections::vec::Vec<i32>`)
+        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to a pointer to that type (`*mut std::vec::Vec<i32>`)
     }
 }
 
