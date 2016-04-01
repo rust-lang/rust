@@ -29,6 +29,11 @@ fn multiline_ticks() {
 fn test_emphasis() {
 }
 
+/// This test has [a link with underscores][chunked-example] inside it. See #823.
+/// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues).
+///
+/// [chunked-example]: http://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
+
 /// The `main` function is the entry point of the program. Here it only calls the `foo_bar` and
 /// `multiline_ticks` functions.
 fn main() {

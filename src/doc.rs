@@ -69,7 +69,7 @@ fn collect_doc(attrs: &[ast::Attribute]) -> (Cow<str>, Option<Span>) {
             let (doc, span) = doc_attrs.next().unwrap_or_else(|| unreachable!());
             (doc.into(), Some(span))
         }
-        _ => (doc_attrs.map(|s| s.0).collect::<String>().into(), None),
+        _ => (doc_attrs.map(|s| format!("{}\n", s.0)).collect::<String>().into(), None),
     }
 }
 
@@ -124,9 +124,14 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
         s != "_" && !s.contains("\\_") && s.contains('_')
     }
 
+    // Something with a `/` might be a link, don’t warn (see #823):
+    if word.contains('/') {
+        return;
+    }
+
     // Trim punctuation as in `some comment (see foo::bar).`
     //                                                   ^^
-    // Or even as `_foo bar_` which is emphasized.
+    // Or even as in `_foo bar_` which is emphasized.
     let word = word.trim_matches(|c: char| !c.is_alphanumeric());
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
