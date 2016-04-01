@@ -1755,12 +1755,20 @@ pub trait ToString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
-    fn to_string(&self) -> String {
+    default fn to_string(&self) -> String {
         use core::fmt::Write;
         let mut buf = String::new();
         let _ = buf.write_fmt(format_args!("{}", self));
         buf.shrink_to_fit();
         buf
+    }
+}
+
+#[stable(feature = "str_to_string_specialization", since = "1.9.0")]
+impl ToString for str {
+    #[inline]
+    fn to_string(&self) -> String {
+        String::from(self)
     }
 }
 
