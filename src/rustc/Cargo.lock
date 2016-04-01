@@ -46,10 +46,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "getopts"
-version = "0.0.0"
-
-[[package]]
 name = "graphviz"
 version = "0.0.0"
 
@@ -72,7 +68,6 @@ dependencies = [
  "arena 0.0.0",
  "flate 0.0.0",
  "fmt_macros 0.0.0",
- "getopts 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
  "rbml 0.0.0",
@@ -136,7 +131,6 @@ version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "flate 0.0.0",
- "getopts 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
  "rustc 0.0.0",
@@ -151,6 +145,7 @@ dependencies = [
  "rustc_plugin 0.0.0",
  "rustc_privacy 0.0.0",
  "rustc_resolve 0.0.0",
+ "rustc_save_analysis 0.0.0",
  "rustc_trans 0.0.0",
  "rustc_typeck 0.0.0",
  "serialize 0.0.0",
@@ -274,12 +269,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_save_analysis"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+ "rustc 0.0.0",
+ "rustc_front 0.0.0",
+ "syntax 0.0.0",
+]
+
+[[package]]
 name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "flate 0.0.0",
- "getopts 0.0.0",
  "graphviz 0.0.0",
  "log 0.0.0",
  "rustc 0.0.0",
@@ -316,7 +320,6 @@ dependencies = [
  "arena 0.0.0",
  "build_helper 0.1.0",
  "gcc 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
- "getopts 0.0.0",
  "log 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
@@ -328,7 +331,6 @@ dependencies = [
  "rustc_trans 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
- "test 0.0.0",
 ]
 
 [[package]]
@@ -345,7 +347,6 @@ dependencies = [
  "log 0.0.0",
  "rustc_bitflags 0.0.0",
  "serialize 0.0.0",
- "term 0.0.0",
 ]
 
 [[package]]
@@ -353,19 +354,8 @@ name = "syntax_ext"
 version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
+ "log 0.0.0",
  "syntax 0.0.0",
-]
-
-[[package]]
-name = "term"
-version = "0.0.0"
-
-[[package]]
-name = "test"
-version = "0.0.0"
-dependencies = [
- "getopts 0.0.0",
- "term 0.0.0",
 ]
 
 [[package]]

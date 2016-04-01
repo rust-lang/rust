@@ -25,16 +25,19 @@ macro_rules! targets {
             // compiler executable itself, not any of the support libraries
             (rustc, Rustc { stage: u32 }),
 
-            // Steps for the two main cargo builds, one for the standard library
-            // and one for the compiler itself. These are parameterized over the
-            // stage output they're going to be placed in along with the
-            // compiler which is producing the copy of libstd or librustc
+            // Steps for the two main cargo builds. These are parameterized over
+            // the compiler which is producing the artifact.
             (libstd, Libstd { compiler: Compiler<'a> }),
+            (libtest, Libtest { compiler: Compiler<'a> }),
             (librustc, Librustc { compiler: Compiler<'a> }),
 
-            // Links the standard library/librustc produced by the compiler
-            // provided into the host's directory also provided.
+            // Links the target produced by the compiler provided into the
+            // host's directory also provided.
             (libstd_link, LibstdLink {
+                compiler: Compiler<'a>,
+                host: &'a str
+            }),
+            (libtest_link, LibtestLink {
                 compiler: Compiler<'a>,
                 host: &'a str
             }),
@@ -67,6 +70,7 @@ macro_rules! targets {
             (doc_style, DocStyle { stage: u32 }),
             (doc_standalone, DocStandalone { stage: u32 }),
             (doc_std, DocStd { stage: u32 }),
+            (doc_test, DocTest { stage: u32 }),
             (doc_rustc, DocRustc { stage: u32 }),
             (doc_error_index, DocErrorIndex { stage: u32 }),
 
@@ -162,10 +166,10 @@ fn top_level(build: &Build) -> Vec<Step> {
 
                 if host.target == build.config.build {
                     targets.push(host.target(target)
-                                     .libstd(host.compiler(stage)));
+                                     .libtest(host.compiler(stage)));
                 } else {
                     targets.push(host.target(target)
-                                     .libstd_link(t.compiler(stage), host.target));
+                                     .libtest_link(t.compiler(stage), host.target));
                 }
             }
         }
@@ -246,7 +250,10 @@ impl<'a> Step<'a> {
                 vec![self.librustc(compiler)]
             }
             Source::Librustc { compiler } => {
-                vec![self.libstd(compiler), self.llvm(())]
+                vec![self.libtest(compiler), self.llvm(())]
+            }
+            Source::Libtest { compiler } => {
+                vec![self.libstd(compiler)]
             }
             Source::Libstd { compiler } => {
                 vec![self.compiler_rt(()),
@@ -254,7 +261,10 @@ impl<'a> Step<'a> {
             }
             Source::LibrustcLink { compiler, host } => {
                 vec![self.librustc(compiler),
-                     self.libstd_link(compiler, host)]
+                     self.libtest_link(compiler, host)]
+            }
+            Source::LibtestLink { compiler, host } => {
+                vec![self.libtest(compiler), self.libstd_link(compiler, host)]
             }
             Source::LibstdLink { compiler, host } => {
                 vec![self.libstd(compiler),
@@ -266,6 +276,9 @@ impl<'a> Step<'a> {
             Source::Llvm { _dummy } => Vec::new(),
             Source::DocStd { stage } => {
                 vec![self.libstd(self.compiler(stage))]
+            }
+            Source::DocTest { stage } => {
+                vec![self.libtest(self.compiler(stage))]
             }
             Source::DocBook { stage } |
             Source::DocNomicon { stage } |
@@ -279,7 +292,7 @@ impl<'a> Step<'a> {
                 vec![self.rustc(stage)]
             }
             Source::DocRustc { stage } => {
-                vec![self.doc_std(stage)]
+                vec![self.doc_test(stage)]
             }
             Source::Doc { stage } => {
                 vec![self.doc_book(stage), self.doc_nomicon(stage),
@@ -315,7 +328,7 @@ impl<'a> Step<'a> {
                 vec![self.rustc(stage)]
             }
             Source::DistStd { compiler } => {
-                vec![self.libstd(compiler)]
+                vec![self.libtest(compiler)]
             }
 
             Source::Dist { stage } => {

@@ -88,6 +88,7 @@ pub struct Build {
 
 pub enum Mode {
     Libstd,
+    Libtest,
     Librustc,
     Tool,
 }
@@ -141,9 +142,13 @@ impl Build {
             return clean::clean(self);
         }
 
+        self.verbose("finding compilers");
         cc::find(self);
+        self.verbose("running sanity check");
         sanity::check(self);
+        self.verbose("collecting channel variables");
         channel::collect(self);
+        self.verbose("updating submodules");
         self.update_submodules();
 
         for target in step::all(self) {
@@ -158,11 +163,17 @@ impl Build {
                 Libstd { compiler } => {
                     compile::std(self, target.target, &compiler);
                 }
+                Libtest { compiler } => {
+                    compile::test(self, target.target, &compiler);
+                }
                 Librustc { compiler } => {
                     compile::rustc(self, target.target, &compiler);
                 }
                 LibstdLink { compiler, host } => {
                     compile::std_link(self, target.target, &compiler, host);
+                }
+                LibtestLink { compiler, host } => {
+                    compile::test_link(self, target.target, &compiler, host);
                 }
                 LibrustcLink { compiler, host } => {
                     compile::rustc_link(self, target.target, &compiler, host);
@@ -202,6 +213,9 @@ impl Build {
                 }
                 DocStd { stage } => {
                     doc::std(self, stage, target.target, &doc_out);
+                }
+                DocTest { stage } => {
+                    doc::test(self, stage, target.target, &doc_out);
                 }
                 DocRustc { stage } => {
                     doc::rustc(self, stage, target.target, &doc_out);
@@ -360,6 +374,7 @@ impl Build {
         let host = compiler.host;
         let paths = vec![
             self.cargo_out(compiler, Mode::Libstd, host).join("deps"),
+            self.cargo_out(compiler, Mode::Libtest, host).join("deps"),
             self.cargo_out(compiler, Mode::Librustc, host).join("deps"),
         ];
         add_lib_path(paths, &mut cmd);
@@ -414,7 +429,8 @@ impl Build {
     fn stage_out(&self, compiler: &Compiler, mode: Mode) -> PathBuf {
         let suffix = match mode {
             Mode::Libstd => "-std",
-            _ => "-rustc",
+            Mode::Libtest => "-test",
+            Mode::Tool | Mode::Librustc => "-rustc",
         };
         self.out.join(compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
