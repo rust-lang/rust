@@ -246,6 +246,17 @@ lint, for code that intentionally stores a type with Drop in a union.  The
 compiler must never implicitly generate a Drop implementation for the union
 itself, though Rust code may explicitly implement Drop for a union type.
 
+## Generic unions
+
+A union may have a generic type, with one or more type parameters or lifetime
+parameters.  As with a generic enum, the types within the union must make use
+of all the parameters; however, not all fields within the union must use all
+parameters.
+
+Type inference works on generic union types.  In some cases, the compiler may
+not have enough information to infer the parameters of a generic type, and may
+require explicitly specifying them.
+
 ## Unions and undefined behavior
 
 Rust code must not use unions to invoke [undefined
