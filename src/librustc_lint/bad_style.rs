@@ -179,6 +179,9 @@ impl NonSnakeCase {
 
     fn check_snake_case(&self, cx: &LateContext, sort: &str, name: &str, span: Option<Span>) {
         fn is_snake_case(ident: &str) -> bool {
+            if ident.starts_with("__") {
+                return true;
+            }
             if ident.is_empty() {
                 return true;
             }
