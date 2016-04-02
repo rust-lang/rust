@@ -36,6 +36,7 @@ const TMPBUF_SZ: usize = 128;
 static ENV_LOCK: StaticMutex = StaticMutex::new();
 
 /// Returns the platform-specific value of errno
+#[cfg(not(target_os = "dragonfly"))]
 pub fn errno() -> i32 {
     extern {
         #[cfg_attr(any(target_os = "linux", target_os = "emscripten"),
@@ -47,7 +48,6 @@ pub fn errno() -> i32 {
                        target_env = "newlib"),
                    link_name = "__errno")]
         #[cfg_attr(target_os = "solaris", link_name = "___errno")]
-        #[cfg_attr(target_os = "dragonfly", link_name = "__dfly_error")]
         #[cfg_attr(any(target_os = "macos",
                        target_os = "ios",
                        target_os = "freebsd"),
@@ -58,6 +58,16 @@ pub fn errno() -> i32 {
     unsafe {
         (*errno_location()) as i32
     }
+}
+
+#[cfg(target_os = "dragonfly")]
+pub fn errno() -> i32 {
+    extern {
+        #[thread_local]
+        static errno: c_int;
+    }
+
+    errno as i32
 }
 
 /// Gets a detailed string description for the given error number.
