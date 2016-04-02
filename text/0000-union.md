@@ -54,7 +54,8 @@ union MyUnion {
 }
 ```
 
-`union` implies `#[repr(C)]` as the default representation.
+By default, a union uses an unspecified binary layout.  A union declared with
+the `#[repr(C)]` attribute will have the same layout as an equivalent C union.
 
 ## Contextual keyword
 
@@ -139,6 +140,7 @@ allows matching on the tag and the corresponding field simultaneously:
 #[repr(u32)]
 enum Tag { I, F }
 
+#[repr(C)]
 union U {
     i: i32,
     f: f32,
@@ -253,12 +255,14 @@ invalid value.
 
 ## Union size and alignment
 
-A union must have the same size and alignment as an equivalent C union
-declaration for the target platform.  Typically, a union would have the maximum
-size of any of its fields, and the maximum alignment of any of its fields.
-Note that those maximums may come from different fields; for instance:
+A union declared with `#[repr(C)]` must have the same size and alignment as an
+equivalent C union declaration for the target platform.  Typically, a union
+would have the maximum size of any of its fields, and the maximum alignment of
+any of its fields.  Note that those maximums may come from different fields;
+for instance:
 
 ```rust
+#[repr(C)]
 union U {
     f1: u16,
     f2: [u8; 4],
