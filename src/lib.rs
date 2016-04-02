@@ -403,7 +403,7 @@ pub fn format_string(input: String, config: &Config) -> FileMap {
     file_map
 }
 
-pub fn format(file: &Path, config: &Config) -> FileMap {
+fn format(file: &Path, config: &Config) -> FileMap {
     let codemap = Rc::new(CodeMap::new());
 
     let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
@@ -428,7 +428,7 @@ pub fn format(file: &Path, config: &Config) -> FileMap {
     file_map
 }
 
-fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
+pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
     let mut file_map = match input {
         Input::File(ref file) => format(file, config),
         Input::Text(text) => format_string(text, config),
