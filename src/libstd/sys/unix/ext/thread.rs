@@ -30,7 +30,7 @@ pub trait JoinHandleExt {
     ///
     /// This function **transfers ownership** of the underlying pthread_t to
     /// the caller. Callers are then the unique owners of the pthread_t and
-    /// must either detech or join the pthread_t once it's no longer needed.
+    /// must either detach or join the pthread_t once it's no longer needed.
     fn into_pthread_t(self) -> RawPthread;
 }
 
