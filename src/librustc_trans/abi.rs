@@ -218,7 +218,7 @@ impl FnType {
             Rust | RustCall => llvm::CCallConv,
 
             // It's the ABI's job to select this, not us.
-            System => ccx.sess().bug("system abi should be selected elsewhere"),
+            System => bug!("system abi should be selected elsewhere"),
 
             Stdcall => llvm::X86StdcallCallConv,
             Fastcall => llvm::X86FastcallCallConv,
@@ -241,8 +241,8 @@ impl FnType {
                     &tupled_arguments[..]
                 }
                 _ => {
-                    unreachable!("argument to function with \"rust-call\" ABI \
-                                  is not a tuple");
+                    bug!("argument to function with \"rust-call\" ABI \
+                          is not a tuple");
                 }
             }
         } else {

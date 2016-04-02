@@ -32,7 +32,7 @@ pub fn terminate(cx: Block, _: &str) {
 
 pub fn check_not_terminated(cx: Block) {
     if cx.terminated.get() {
-        panic!("already terminated!");
+        bug!("already terminated!");
     }
 }
 

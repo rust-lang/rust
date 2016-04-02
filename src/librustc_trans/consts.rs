@@ -75,10 +75,10 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
                 ty::TyUint(t) => {
                     C_integral(Type::uint_from_ty(cx, t), i as u64, false)
                 }
-                _ => cx.sess().span_bug(lit.span,
-                        &format!("integer literal has type {:?} (expected int \
-                                 or usize)",
-                                lit_int_ty))
+                _ => span_bug!(lit.span,
+                        "integer literal has type {:?} (expected int \
+                         or usize)",
+                        lit_int_ty)
             }
         }
         LitKind::Float(ref fs, t) => {
@@ -91,7 +91,7 @@ pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
                     C_floating(&fs, Type::float_from_ty(cx, t))
                 }
                 _ => {
-                    cx.sess().span_bug(lit.span,
+                    span_bug!(lit.span,
                         "floating point literal doesn't have the right type");
                 }
             }
@@ -121,7 +121,7 @@ fn addr_of_mut(ccx: &CrateContext,
         let gsym = token::gensym("_");
         let name = format!("{}{}", kind, gsym.0);
         let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
-            ccx.sess().bug(&format!("symbol `{}` is already defined", name));
+            bug!("symbol `{}` is already defined", name);
         });
         llvm::LLVMSetInitializer(gv, cv);
         llvm::LLVMSetAlignment(gv, align);
@@ -186,8 +186,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         }
         None => {
-            cx.sess().bug(&format!("unexpected dereferenceable type {:?}",
-                                   ty))
+            bug!("unexpected dereferenceable type {:?}", ty)
         }
     }
 }
@@ -232,7 +231,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match lookup_const_by_id(ccx.tcx(), def_id, Some(substs)) {
         Some((ref expr, _ty)) => expr,
         None => {
-            ccx.sess().span_bug(ref_expr.span, "constant item not found")
+            span_bug!(ref_expr.span, "constant item not found")
         }
     }
 }
@@ -357,7 +356,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     llconst = Callee::def(cx, def_id, substs).reify(cx).val;
                 }
                 _ => {
-                    unreachable!("{} cannot be reified to a fn ptr", ety)
+                    bug!("{} cannot be reified to a fn ptr", ety)
                 }
             }
         }
@@ -441,9 +440,9 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             llvm::LLVMDumpValue(llconst);
             llvm::LLVMDumpValue(C_undef(llty));
         }
-        cx.sess().bug(&format!("const {:?} of type {:?} has size {} instead of {}",
-                         e, ety_adjusted,
-                         csize, tsize));
+        bug!("const {:?} of type {:?} has size {} instead of {}",
+             e, ety_adjusted,
+             csize, tsize);
     }
     Ok((llconst, ety_adjusted))
 }
@@ -550,7 +549,7 @@ fn const_err(cx: &CrateContext,
 fn check_binary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
                               te1: ValueRef, te2: ValueRef,
                               trueconst: TrueConst) -> Result<(), ConstEvalFailure> {
-    let b = if let hir::ExprBinary(b, _, _) = e.node { b } else { unreachable!() };
+    let b = if let hir::ExprBinary(b, _, _) = e.node { b } else { bug!() };
     let (lhs, rhs) = match (to_const_int(te1, t, cx.tcx()), to_const_int(te2, t, cx.tcx())) {
         (Some(v1), Some(v2)) => (v1, v2),
         _ => return Ok(()),
@@ -642,10 +641,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 },
                 hir::BiEq | hir::BiNe | hir::BiLt | hir::BiLe | hir::BiGt | hir::BiGe => {
                     if is_float {
-                        let cmp = base::bin_op_to_fcmp_predicate(cx, b.node);
+                        let cmp = base::bin_op_to_fcmp_predicate(b.node);
                         ConstFCmp(cmp, te1, te2)
                     } else {
-                        let cmp = base::bin_op_to_icmp_predicate(cx, b.node, signed);
+                        let cmp = base::bin_op_to_icmp_predicate(b.node, signed);
                         ConstICmp(cmp, te1, te2)
                     }
                 },
@@ -669,13 +668,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
             let ix = vinfo.field_index(field.node);
-            adt::const_get_field(cx, &brepr, bv, vinfo.discr, ix)
+            adt::const_get_field(&brepr, bv, vinfo.discr, ix)
         },
         hir::ExprTupField(ref base, idx) => {
             let (bv, bt) = const_expr(cx, &base, param_substs, fn_args, trueconst)?;
             let brepr = adt::represent_type(cx, bt);
             let vinfo = VariantInfo::from_ty(cx.tcx(), bt, None);
-            adt::const_get_field(cx, &brepr, bv, vinfo.discr, idx.node)
+            adt::const_get_field(&brepr, bv, vinfo.discr, idx.node)
         },
         hir::ExprIndex(ref base, ref index) => {
             let (bv, bt) = const_expr(cx, &base, param_substs, fn_args, trueconst)?;
@@ -683,7 +682,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let iv = if let Some(iv) = const_to_opt_uint(iv) {
                 iv
             } else {
-                cx.sess().span_bug(index.span, "index is not an integer-constant expression");
+                span_bug!(index.span, "index is not an integer-constant expression");
             };
             let (arr, len) = match bt.sty {
                 ty::TyArray(_, u) => (bv, C_uint(cx, u)),
@@ -695,15 +694,15 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     ty::TyArray(_, u) => {
                         (load_const(cx, bv, mt.ty), C_uint(cx, u))
                     },
-                    _ => cx.sess().span_bug(base.span,
-                                            &format!("index-expr base must be a vector \
-                                                      or string type, found {:?}",
-                                                     bt)),
+                    _ => span_bug!(base.span,
+                                   "index-expr base must be a vector \
+                                    or string type, found {:?}",
+                                   bt),
                 },
-                _ => cx.sess().span_bug(base.span,
-                                        &format!("index-expr base must be a vector \
-                                                  or string type, found {:?}",
-                                                 bt)),
+                _ => span_bug!(base.span,
+                               "index-expr base must be a vector \
+                                or string type, found {:?}",
+                               bt),
             };
 
             let len = unsafe { llvm::LLVMConstIntGetZExtValue(len) as u64 };
@@ -784,8 +783,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                   llvm::LLVMConstPtrToInt(v, llty.to_ref())
                 },
                 _ => {
-                  cx.sess().impossible_case(e.span,
-                                            "bad combination of types for cast")
+                  span_bug!(e.span, "bad combination of types for cast")
                 },
             } } // unsafe { match ( ... ) {
         },
@@ -845,8 +843,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (Some(ref f), _) => {
                         const_expr(cx, &f.expr, param_substs, fn_args, trueconst).map(|(l, _)| l)
                     },
-                    (_, Some((bv, _))) => Ok(adt::const_get_field(cx, &repr, bv, discr, ix)),
-                    (_, None) => cx.sess().span_bug(e.span, "missing struct field"),
+                    (_, Some((bv, _))) => Ok(adt::const_get_field(&repr, bv, discr, ix)),
+                    (_, None) => span_bug!(e.span, "missing struct field"),
                 }
             })
             .collect::<Vec<Result<_, ConstEvalFailure>>>()
@@ -900,7 +898,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     if let Some(val) = fn_args.and_then(|args| args.get(&id).cloned()) {
                         val
                     } else {
-                        cx.sess().span_bug(e.span, "const fn argument not found")
+                        span_bug!(e.span, "const fn argument not found")
                     }
                 }
                 Def::Fn(..) | Def::Method(..) => C_nil(cx),
@@ -917,15 +915,15 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         }
                         ty::VariantKind::Tuple => C_nil(cx),
                         ty::VariantKind::Struct => {
-                            cx.sess().span_bug(e.span, "path-expr refers to a dict variant!")
+                            span_bug!(e.span, "path-expr refers to a dict variant!")
                         }
                     }
                 }
                 // Unit struct or ctor.
                 Def::Struct(..) => C_null(type_of::type_of(cx, ety)),
                 _ => {
-                    cx.sess().span_bug(e.span, "expected a const, fn, struct, \
-                                                or variant def")
+                    span_bug!(e.span, "expected a const, fn, struct, \
+                                       or variant def")
                 }
             }
         },
@@ -969,7 +967,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      Disr::from(vinfo.disr_val),
                                      &arg_vals[..])
                 }
-                _ => cx.sess().span_bug(e.span, "expected a struct, variant, or const fn def"),
+                _ => span_bug!(e.span, "expected a struct, variant, or const fn def"),
             }
         },
         hir::ExprMethodCall(_, _, ref args) => {
@@ -1003,14 +1001,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                 substs);
                 }
                 _ =>
-                    cx.sess().span_bug(
+                    span_bug!(
                         e.span,
-                        &format!("bad type for closure expr: {:?}", ety))
+                        "bad type for closure expr: {:?}", ety)
             }
             C_null(type_of::type_of(cx, ety))
         },
-        _ => cx.sess().span_bug(e.span,
-                                "bad constant expression type in consts::const_expr"),
+        _ => span_bug!(e.span,
+                       "bad constant expression type in consts::const_expr"),
     })
 }
 
@@ -1105,7 +1103,7 @@ pub fn get_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId)
                 g
             }
 
-            item => unreachable!("get_static: expected static, found {:?}", item)
+            item => bug!("get_static: expected static, found {:?}", item)
         }
     } else {
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?

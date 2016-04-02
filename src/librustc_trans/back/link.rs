@@ -187,8 +187,8 @@ pub fn link_binary(sess: &Session,
     let mut out_filenames = Vec::new();
     for &crate_type in sess.crate_types.borrow().iter() {
         if invalid_output_for_target(sess, crate_type) {
-            sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
-                             crate_type, sess.opts.target_triple));
+           bug!("invalid output type `{:?}` for target os `{}`",
+                crate_type, sess.opts.target_triple);
         }
         let out_file = link_binary_output(sess, trans, crate_type, outputs,
                                           crate_name);
@@ -282,7 +282,7 @@ pub fn each_linked_rlib(sess: &Session,
     let fmts = fmts.get(&config::CrateTypeExecutable).or_else(|| {
         fmts.get(&config::CrateTypeStaticlib)
     }).unwrap_or_else(|| {
-        sess.bug("could not find formats for rlibs")
+        bug!("could not find formats for rlibs")
     });
     for (cnum, path) in crates {
         match fmts[cnum as usize - 1] {
@@ -895,7 +895,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         match kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(l),
             NativeLibraryKind::NativeFramework => cmd.link_framework(l),
-            NativeLibraryKind::NativeStatic => unreachable!(),
+            NativeLibraryKind::NativeStatic => bug!(),
         }
     }
 }
@@ -1081,7 +1081,7 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
                 NativeLibraryKind::NativeUnknown => cmd.link_dylib(lib),
                 NativeLibraryKind::NativeFramework => cmd.link_framework(lib),
                 NativeLibraryKind::NativeStatic => {
-                    sess.bug("statics shouldn't be propagated");
+                    bug!("statics shouldn't be propagated");
                 }
             }
         }

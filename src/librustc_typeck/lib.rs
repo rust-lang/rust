@@ -88,7 +88,7 @@ This API is completely unstable and subject to change.
 
 extern crate arena;
 extern crate fmt_macros;
-extern crate rustc;
+#[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_front;
 extern crate rustc_back;
@@ -258,9 +258,9 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 });
         }
         _ => {
-            tcx.sess.span_bug(main_span,
-                              &format!("main has a non-function type: found `{}`",
-                                       main_t));
+            span_bug!(main_span,
+                      "main has a non-function type: found `{}`",
+                      main_t);
         }
     }
 }
@@ -310,9 +310,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
         }
         _ => {
-            tcx.sess.span_bug(start_span,
-                              &format!("start has a non-function type: found `{}`",
-                                       start_t));
+            span_bug!(start_span,
+                      "start has a non-function type: found `{}`",
+                      start_t);
         }
     }
 }
@@ -325,7 +325,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
             Some(config::EntryMain) => check_main_fn_ty(ccx, id, sp),
             Some(config::EntryStart) => check_start_fn_ty(ccx, id, sp),
             Some(config::EntryNone) => {}
-            None => tcx.sess.bug("entry function without a type")
+            None => bug!("entry function without a type")
         },
         None => {}
     }

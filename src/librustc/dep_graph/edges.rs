@@ -122,7 +122,7 @@ impl DepGraphEdges {
     {
         match self.current_node() {
             Some(open_node) => self.add_edge_from_open_node(open_node, op),
-            None => panic!("no current node, cannot add edge into dependency graph")
+            None => bug!("no current node, cannot add edge into dependency graph")
         }
     }
 

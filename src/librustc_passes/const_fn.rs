@@ -44,13 +44,13 @@ impl<'a, 'v> Visitor<'v> for CheckBlock<'a> {
             visit::walk_expr(self, e);
         }
     }
-    fn visit_item(&mut self, _i: &'v ast::Item) { panic!("should be handled in CheckConstFn") }
+    fn visit_item(&mut self, _i: &'v ast::Item) { bug!("should be handled in CheckConstFn") }
     fn visit_fn(&mut self,
                 _fk: FnKind<'v>,
                 _fd: &'v ast::FnDecl,
                 _b: &'v ast::Block,
                 _s: Span,
-                _fn_id: ast::NodeId) { panic!("should be handled in CheckConstFn") }
+                _fn_id: ast::NodeId) { bug!("should be handled in CheckConstFn") }
 }
 
 fn check_block(sess: &Session, b: &ast::Block, kind: &'static str) {
@@ -67,7 +67,7 @@ fn check_block(sess: &Session, b: &ast::Block, kind: &'static str) {
             }
             ast::StmtKind::Expr(ref expr, _) => expr.span,
             ast::StmtKind::Semi(ref semi, _) => semi.span,
-            ast::StmtKind::Mac(..) => unreachable!(),
+            ast::StmtKind::Mac(..) => bug!(),
         };
         span_err!(sess, span, E0016,
                   "blocks in {}s are limited to items and tail expressions", kind);

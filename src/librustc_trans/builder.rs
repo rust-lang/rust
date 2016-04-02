@@ -871,12 +871,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .zip(args.iter().map(|&v| val_ty(v)));
         for (i, (expected_ty, actual_ty)) in iter.enumerate() {
             if expected_ty != actual_ty {
-                self.ccx.sess().bug(
-                    &format!(
-                        "Type mismatch in function call of {:?}. \
-                         Expected {:?} for param {}, got {:?}",
-                        Value(llfn),
-                        expected_ty, i, actual_ty));
+                bug!("Type mismatch in function call of {:?}. \
+                      Expected {:?} for param {}, got {:?}",
+                     Value(llfn),
+                     expected_ty, i, actual_ty);
 
             }
         }

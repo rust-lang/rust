@@ -70,7 +70,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let operand = self.trans_operand(&bcx, source);
                 bcx.with_block(|bcx| {
                     match operand.val {
-                        OperandValue::FatPtr(..) => unreachable!(),
+                        OperandValue::FatPtr(..) => bug!(),
                         OperandValue::Immediate(llval) => {
                             // unsize from an immediate structure. We don't
                             // really need a temporary alloca here, but
@@ -185,7 +185,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     ty::TySlice(_) | ty::TyStr => {
                         (bcx.gepi(input.llval, &[from_start]), input.llextra)
                     }
-                    _ => unreachable!("cannot slice {}", ty)
+                    _ => bug!("cannot slice {}", ty)
                 };
                 let adj = C_uint(ccx, from_start + from_end);
                 let lllen1 = bcx.sub(lllen, adj);
@@ -246,7 +246,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                         .reify(bcx.ccx()).val)
                             }
                             _ => {
-                                unreachable!("{} cannot be reified to a fn ptr", operand.ty)
+                                bug!("{} cannot be reified to a fn ptr", operand.ty)
                             }
                         }
                     }
@@ -279,9 +279,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 OperandValue::FatPtr(lldata, llextra)
                             }
                             OperandValue::Ref(_) => {
-                                bcx.sess().bug(
-                                    &format!("by-ref operand {:?} in trans_rvalue_operand",
-                                             operand));
+                                bug!("by-ref operand {:?} in trans_rvalue_operand",
+                                     operand);
                             }
                         }
                     }
@@ -341,9 +340,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 bcx.fptosi(llval, ll_t_out),
                             (CastTy::Float, CastTy::Int(_)) =>
                                 bcx.fptoui(llval, ll_t_out),
-                            _ => bcx.ccx().sess().bug(
-                                &format!("unsupported cast: {:?} to {:?}", operand.ty, cast_ty)
-                            )
+                            _ => bug!("unsupported cast: {:?} to {:?}", operand.ty, cast_ty)
                         };
                         OperandValue::Immediate(newval)
                     }
@@ -364,7 +361,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 OperandValue::Immediate(llval)
                             }
                         } else {
-                            panic!("Unexpected non-FatPtr operand")
+                            bug!("Unexpected non-FatPtr operand")
                         }
                     }
                 };
@@ -425,7 +422,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                        DebugLoc::None)
                             })
                         }
-                        _ => unreachable!()
+                        _ => bug!()
                     }
 
                 } else {
@@ -489,7 +486,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Aggregate(..) |
             mir::Rvalue::Slice { .. } |
             mir::Rvalue::InlineAsm { .. } => {
-                bcx.tcx().sess.bug(&format!("cannot generate operand from rvalue {:?}", rvalue));
+                bug!("cannot generate operand from rvalue {:?}", rvalue);
+
             }
         }
     }

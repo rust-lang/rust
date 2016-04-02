@@ -149,13 +149,13 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     Disr::from(inlined_variant_def(ccx, fn_node_id).disr_val)
                 }
                 hir_map::NodeStructCtor(_) => Disr(0),
-                _ => unreachable!()
+                _ => bug!()
             };
             attributes::inline(lldecl, attributes::InlineAttr::Hint);
             base::trans_ctor_shim(ccx, fn_node_id, disr, psubsts, lldecl);
         }
 
-        _ => unreachable!("can't monomorphize a {:?}", map_node)
+        _ => bug!("can't monomorphize a {:?}", map_node)
     };
 
     ccx.monomorphizing().borrow_mut().insert(fn_id, depth);

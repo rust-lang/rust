@@ -221,7 +221,7 @@ fn dump_graph(tcx: &TyCtxt) {
             // Expect one of: "-> target", "source -> target", or "source ->".
             let parts: Vec<_> = string.split("->").collect();
             if parts.len() > 2 {
-                panic!("Invalid RUST_DEP_GRAPH_FILTER: expected '[source] -> [target]'");
+                bug!("Invalid RUST_DEP_GRAPH_FILTER: expected '[source] -> [target]'");
             }
             let sources = node_set(&query, &parts[0]);
             let targets = node_set(&query, &parts[1]);

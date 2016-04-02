@@ -67,10 +67,10 @@ fn method_might_be_inlined(tcx: &TyCtxt, sig: &hir::MethodSig,
             Some(ast_map::NodeItem(item)) =>
                 item_might_be_inlined(&item),
             Some(..) | None =>
-                tcx.sess.span_bug(impl_item.span, "impl did is not an item")
+                span_bug!(impl_item.span, "impl did is not an item")
         }
     } else {
-        tcx.sess.span_bug(impl_item.span, "found a foreign impl as a parent of a local method")
+        span_bug!(impl_item.span, "found a foreign impl as a parent of a local method")
     }
 }
 
@@ -94,8 +94,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
                 let def = match self.tcx.def_map.borrow().get(&expr.id) {
                     Some(d) => d.full_def(),
                     None => {
-                        self.tcx.sess.span_bug(expr.span,
-                                               "def ID not in def map?!")
+                        span_bug!(expr.span, "def ID not in def map?!")
                     }
                 };
 
@@ -312,12 +311,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             ast_map::NodeVariant(_) |
             ast_map::NodeStructCtor(_) => {}
             _ => {
-                self.tcx
-                    .sess
-                    .bug(&format!("found unexpected thingy in worklist: {}",
-                                 self.tcx
-                                     .map
-                                     .node_to_string(search_item)))
+                bug!("found unexpected thingy in worklist: {}",
+                     self.tcx.map.node_to_string(search_item))
             }
         }
     }

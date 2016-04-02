@@ -343,7 +343,7 @@ impl RegionMaps {
     pub fn lookup_code_extent(&self, e: CodeExtentData) -> CodeExtent {
         match self.code_extent_interner.borrow().get(&e) {
             Some(&d) => d,
-            None => panic!("unknown code extent {:?}", e)
+            None => bug!("unknown code extent {:?}", e)
         }
     }
     pub fn node_extent(&self, n: ast::NodeId) -> CodeExtent {
@@ -385,8 +385,8 @@ impl RegionMaps {
             }
             Entry::Vacant(v) => {
                 if self.code_extents.borrow().len() > 0xffffffffusize {
-                    unreachable!() // should pass a sess,
-                                   // but this isn't the only place
+                    bug!() // should pass a sess,
+                           // but this isn't the only place
                 }
                 let idx = CodeExtent(self.code_extents.borrow().len() as u32);
                 info!("CodeExtent({}) = {:?} [parent={}]", idx.0, e, parent.0);
@@ -470,7 +470,7 @@ impl RegionMaps {
     pub fn var_scope(&self, var_id: ast::NodeId) -> CodeExtent {
         match self.var_map.borrow().get(&var_id) {
             Some(&r) => r,
-            None => { panic!("no enclosing scope for id {:?}", var_id); }
+            None => { bug!("no enclosing scope for id {:?}", var_id); }
         }
     }
 
@@ -601,12 +601,12 @@ impl RegionMaps {
                         scope_a
                     } else {
                         // neither fn encloses the other
-                        unreachable!()
+                        bug!()
                     }
                 }
                 _ => {
                     // root ids are always Misc right now
-                    unreachable!()
+                    bug!()
                 }
             };
         }

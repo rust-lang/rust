@@ -183,8 +183,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     }
                 }
                 _ => {
-                    bcx.tcx().sess.span_bug(content_expr.span,
-                                            "unexpected evec content");
+                    span_bug!(content_expr.span, "unexpected evec content");
                 }
             }
         }
@@ -236,8 +235,7 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         _ => {
-            bcx.tcx().sess.span_bug(content_expr.span,
-                                    "unexpected vec content");
+            span_bug!(content_expr.span, "unexpected vec content");
         }
     }
 }
@@ -264,8 +262,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
             match lit.node {
                 ast::LitKind::Str(ref s, _) => s.len(),
                 _ => {
-                    bcx.tcx().sess.span_bug(content_expr.span,
-                                            "unexpected evec content")
+                    span_bug!(content_expr.span, "unexpected evec content")
                 }
             }
         },
@@ -273,8 +270,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
         hir::ExprRepeat(_, ref count_expr) => {
             eval_repeat_count(bcx.tcx(), &count_expr)
         }
-        _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     "unexpected vec content")
+        _ => span_bug!(content_expr.span, "unexpected vec content")
     }
 }
 
@@ -298,8 +294,6 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     llval: ValueRef,
                                     vec_ty: Ty<'tcx>)
                                     -> (ValueRef, ValueRef) {
-    let ccx = bcx.ccx();
-
     match vec_ty.sty {
         ty::TyArray(_, n) => get_fixed_base_and_len(bcx, llval, n),
         ty::TySlice(_) | ty::TyStr => {
@@ -317,7 +311,7 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             get_base_and_len(bcx, inner, ty)
         },
-        _ => ccx.sess().bug("unexpected type in get_base_and_len"),
+        _ => bug!("unexpected type in get_base_and_len"),
     }
 }
 

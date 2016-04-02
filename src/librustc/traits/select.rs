@@ -1088,7 +1088,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_def_id = match obligation.predicate.0.trait_ref.self_ty().sty {
             ty::TyProjection(ref data) => data.trait_ref.def_id,
             ty::TyInfer(ty::TyVar(_)) => {
-                self.tcx().sess.span_bug(obligation.cause.span,
+                span_bug!(obligation.cause.span,
                     "Self=_ should have been handled by assemble_candidates");
             }
             _ => { return; }
@@ -1125,11 +1125,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let projection_trait_ref = match skol_trait_predicate.trait_ref.self_ty().sty {
             ty::TyProjection(ref data) => &data.trait_ref,
             _ => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     obligation.cause.span,
-                    &format!("match_projection_obligation_against_bounds_from_trait() called \
-                              but self-ty not a projection: {:?}",
-                             skol_trait_predicate.trait_ref.self_ty()));
+                    "match_projection_obligation_against_bounds_from_trait() called \
+                     but self-ty not a projection: {:?}",
+                    skol_trait_predicate.trait_ref.self_ty());
             }
         };
         debug!("match_projection_obligation_against_bounds_from_trait: \
@@ -1601,7 +1601,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ObjectCandidate |
             ParamCandidate(_) | ProjectionCandidate => match victim.candidate {
                 DefaultImplCandidate(..) => {
-                    self.tcx().sess.bug(
+                    bug!(
                         "default implementations shouldn't be recorded \
                          when there are other valid candidates");
                 }
@@ -1703,7 +1703,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundSized => ok_if(Vec::new()),
 
                     ty::BoundSync | ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
+                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1713,7 +1713,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundCopy | ty::BoundSized => ok_if(Vec::new()),
 
                     ty::BoundSync | ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
+                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1741,7 +1741,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                     ty::BoundSync | ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
+                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1762,7 +1762,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundSized => ok_if(Vec::new()),
 
                     ty::BoundSync | ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
+                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1773,7 +1773,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundCopy => ok_if(vec![element_ty]),
                     ty::BoundSized => ok_if(Vec::new()),
                     ty::BoundSync | ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
+                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1781,7 +1781,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyStr | ty::TySlice(_) => {
                 match bound {
                     ty::BoundSync | ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
+                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
 
                     ty::BoundCopy | ty::BoundSized => Err(Unimplemented),
@@ -1847,10 +1847,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyInfer(ty::FreshTy(_))
             | ty::TyInfer(ty::FreshIntTy(_))
             | ty::TyInfer(ty::FreshFloatTy(_)) => {
-                self.tcx().sess.bug(
-                    &format!(
-                        "asked to assemble builtin bounds of unexpected type: {:?}",
-                        self_ty));
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}",
+                     self_ty);
             }
         };
 
@@ -1872,7 +1870,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::BoundSized => ok_if(types),
 
                 // Shouldn't be coming through here.
-                ty::BoundSend | ty::BoundSync => unreachable!(),
+                ty::BoundSend | ty::BoundSync => bug!(),
             }
         }
     }
@@ -1911,10 +1909,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyInfer(ty::FreshTy(_)) |
             ty::TyInfer(ty::FreshIntTy(_)) |
             ty::TyInfer(ty::FreshFloatTy(_)) => {
-                self.tcx().sess.bug(
-                    &format!(
-                        "asked to assemble constituent types of unexpected type: {:?}",
-                        t));
+                bug!("asked to assemble constituent types of unexpected type: {:?}",
+                     t);
             }
 
             ty::TyBox(referent_ty) => {  // Box<T>
@@ -2135,10 +2131,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.match_where_clause_trait_ref(obligation, param.clone()) {
             Ok(obligations) => obligations,
             Err(()) => {
-                self.tcx().sess.bug(
-                    &format!("Where clause `{:?}` was applicable to `{:?}` but now is not",
-                             param,
-                             obligation));
+                bug!("Where clause `{:?}` was applicable to `{:?}` but now is not",
+                     param,
+                     obligation);
             }
         }
     }
@@ -2155,10 +2150,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.builtin_bound(bound, obligation)? {
             If(nested) => Ok(self.vtable_builtin_data(obligation, bound, nested)),
             AmbiguousBuiltin | ParameterBuiltin => {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     obligation.cause.span,
-                    &format!("builtin bound for {:?} was ambig",
-                            obligation));
+                    "builtin bound for {:?} was ambig",
+                    obligation);
             }
         }
     }
@@ -2175,7 +2170,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_def = match self.tcx().lang_items.from_builtin_kind(bound) {
             Ok(def_id) => def_id,
             Err(_) => {
-                self.tcx().sess.bug("builtin trait definition not found");
+                bug!("builtin trait definition not found");
             }
         };
 
@@ -2238,10 +2233,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.vtable_default_impl(obligation, trait_def_id, all_types)
             }
             _ => {
-                self.tcx().sess.bug(
-                    &format!(
-                        "asked to confirm default object implementation for non-object type: {:?}",
-                        self_ty));
+                bug!("asked to confirm default object implementation for non-object type: {:?}",
+                     self_ty);
             }
         }
     }
@@ -2360,8 +2353,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 data.principal_trait_ref_with_self_ty(self.tcx(), self_ty)
             }
             _ => {
-                self.tcx().sess.span_bug(obligation.cause.span,
-                                         "object candidate with non-object");
+                span_bug!(obligation.cause.span,
+                          "object candidate with non-object");
             }
         };
 
@@ -2667,7 +2660,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     vec![inner_target]));
             }
 
-            _ => unreachable!()
+            _ => bug!()
         };
 
         Ok(VtableBuiltinData { nested: nested })
@@ -2692,10 +2685,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.match_impl(impl_def_id, obligation, snapshot) {
             Ok((substs, skol_map)) => (substs, skol_map),
             Err(()) => {
-                self.tcx().sess.bug(
-                    &format!("Impl {:?} was matchable against {:?} but now is not",
-                            impl_def_id,
-                            obligation));
+                bug!("Impl {:?} was matchable against {:?} but now is not",
+                     impl_def_id,
+                     obligation);
             }
         }
     }

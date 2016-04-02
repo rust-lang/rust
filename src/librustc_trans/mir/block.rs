@@ -166,7 +166,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                             ty: callee.ty
                         }, f.abi, &f.sig)
                     }
-                    _ => unreachable!("{} is not callable", callee.ty)
+                    _ => bug!("{} is not callable", callee.ty)
                 };
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
@@ -295,7 +295,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         return;
                     }
                     Fn(f) => f,
-                    Virtual(_) => unreachable!("Virtual fn ptr not extracted")
+                    Virtual(_) => bug!("Virtual fn ptr not extracted")
                 };
 
                 // Many different ways to call a function handled here
@@ -417,7 +417,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
             Immediate(llval) => (llval, false),
             Ref(llval) => (llval, true),
-            FatPtr(_, _) => unreachable!("fat pointers handled above")
+            FatPtr(_, _) => bug!("fat pointers handled above")
         };
 
         if by_ref && !arg.is_indirect() {
@@ -470,9 +470,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let lv_ty = lv.ty.to_ty(bcx.tcx());
         let result_types = match lv_ty.sty {
             ty::TyTuple(ref tys) => tys,
-            _ => bcx.tcx().sess.span_bug(
+            _ => span_bug!(
                 self.mir.span,
-                &format!("bad final argument to \"rust-call\" fn {:?}", lv_ty))
+                "bad final argument to \"rust-call\" fn {:?}", lv_ty)
         };
 
         let base_repr = adt::represent_type(bcx.ccx(), lv_ty);

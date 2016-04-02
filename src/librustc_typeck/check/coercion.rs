@@ -372,8 +372,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
         let r_borrow = match ty.sty {
             ty::TyRef(r_borrow, _) => r_borrow,
-            _ => self.tcx().sess.span_bug(span,
-                                          &format!("expected a ref type, got {:?}", ty))
+            _ => span_bug!(span, "expected a ref type, got {:?}", ty)
         };
         let autoref = Some(AutoPtr(r_borrow, mt_b.mutbl));
         debug!("coerce_borrowed_pointer: succeeded ty={:?} autoderefs={:?} autoref={:?}",

@@ -596,7 +596,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         }
         match declare_intrinsic(self, key) {
             Some(v) => return v,
-            None => panic!("unknown intrinsic '{}'", key)
+            None => bug!("unknown intrinsic '{}'", key)
         }
     }
 
@@ -785,7 +785,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         match &self.sess().target.target.target_pointer_width[..] {
             "32" => 1 << 31,
             "64" => 1 << 47,
-            _ => unreachable!() // error handled by config::build_target_config
+            _ => bug!() // error handled by config::build_target_config
         }
     }
 

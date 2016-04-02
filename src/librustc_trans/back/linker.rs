@@ -271,10 +271,10 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn framework_path(&mut self, _path: &Path) {
-        panic!("frameworks are not supported on windows")
+        bug!("frameworks are not supported on windows")
     }
     fn link_framework(&mut self, _framework: &str) {
-        panic!("frameworks are not supported on windows")
+        bug!("frameworks are not supported on windows")
     }
 
     fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {

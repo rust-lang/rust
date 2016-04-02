@@ -135,9 +135,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         match self.terms_cx.inferred_map.get(&param_id) {
             Some(&index) => index,
             None => {
-                self.tcx().sess.bug(&format!(
-                        "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id)));
+                bug!("no inferred index entry for {}",
+                     self.tcx().map.node_to_string(param_id));
             }
         }
     }
@@ -148,7 +147,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         match tcx.named_region_map.get(&param_id) {
             Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
                 => lifetime_decl_id,
-            Some(_) => panic!("should not encounter non early-bound cases"),
+            Some(_) => bug!("should not encounter non early-bound cases"),
 
             // The lookup should only fail when `param_id` is
             // itself a lifetime binding: use it as the decl_id.
@@ -173,13 +172,13 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             assert!(is_lifetime(&tcx.map, param_id));
             let parent_id = tcx.map.get_parent(decl_id);
             let parent = tcx.map.find(parent_id).unwrap_or_else(
-                || panic!("tcx.map missing entry for id: {}", parent_id));
+                || bug!("tcx.map missing entry for id: {}", parent_id));
 
             let is_inferred;
             macro_rules! cannot_happen { () => { {
-                panic!("invalid parent: {} for {}",
-                      tcx.map.node_to_string(parent_id),
-                      tcx.map.node_to_string(param_id));
+                bug!("invalid parent: {} for {}",
+                     tcx.map.node_to_string(parent_id),
+                     tcx.map.node_to_string(param_id));
             } } }
 
             match parent {
@@ -328,7 +327,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyClosure(..) => {
-                self.tcx().sess.bug("Unexpected closure type in variance computation");
+                bug!("Unexpected closure type in variance computation");
             }
 
             ty::TyRef(region, ref mt) => {
@@ -440,9 +439,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyInfer(..) => {
-                self.tcx().sess.bug(
-                    &format!("unexpected type encountered in \
-                              variance inference: {}", ty));
+                bug!("unexpected type encountered in \
+                      variance inference: {}", ty);
             }
         }
     }
@@ -525,11 +523,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::ReSkolemized(..) | ty::ReEmpty => {
                 // We don't expect to see anything but 'static or bound
                 // regions when visiting member types or method types.
-                self.tcx()
-                    .sess
-                    .bug(&format!("unexpected region encountered in variance \
-                                  inference: {:?}",
-                                 region));
+                bug!("unexpected region encountered in variance \
+                      inference: {:?}",
+                     region);
             }
         }
     }

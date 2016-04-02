@@ -270,8 +270,9 @@ fn name_and_trait_def_id(fcx: &FnCtxt,
             hir::BiShr => ("shr_assign", lang.shr_assign_trait()),
             hir::BiLt | hir::BiLe | hir::BiGe | hir::BiGt | hir::BiEq | hir::BiNe | hir::BiAnd |
             hir::BiOr => {
-                fcx.tcx().sess.span_bug(op.span, &format!("impossible assignment operation: {}=",
-                                        hir_util::binop_to_string(op.node)))
+                span_bug!(op.span,
+                          "impossible assignment operation: {}=",
+                          hir_util::binop_to_string(op.node))
             }
         }
     } else {
@@ -293,7 +294,7 @@ fn name_and_trait_def_id(fcx: &FnCtxt,
             hir::BiEq => ("eq", lang.eq_trait()),
             hir::BiNe => ("ne", lang.eq_trait()),
             hir::BiAnd | hir::BiOr => {
-                fcx.tcx().sess.span_bug(op.span, "&& and || are not overloadable")
+                span_bug!(op.span, "&& and || are not overloadable")
             }
         }
     }

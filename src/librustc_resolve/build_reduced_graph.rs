@@ -507,7 +507,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
             Def::Label(..) |
             Def::SelfTy(..) |
             Def::Err => {
-                panic!("didn't expect `{:?}`", def);
+                bug!("didn't expect `{:?}`", def);
             }
         }
     }

@@ -12,6 +12,7 @@ use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
+use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
 
@@ -35,6 +36,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::rc::Rc;
+use std::fmt;
 
 pub mod config;
 pub mod filesearch;
@@ -216,21 +218,9 @@ impl Session {
             None => self.warn(msg),
         }
     }
-    pub fn opt_span_bug<S: Into<MultiSpan>>(&self, opt_sp: Option<S>, msg: &str) -> ! {
-        match opt_sp {
-            Some(sp) => self.span_bug(sp, msg),
-            None => self.bug(msg),
-        }
-    }
     /// Delay a span_bug() call until abort_if_errors()
     pub fn delay_span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) {
         self.diagnostic().delay_span_bug(sp, msg)
-    }
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.diagnostic().span_bug(sp, msg)
-    }
-    pub fn bug(&self, msg: &str) -> ! {
-        self.diagnostic().bug(msg)
     }
     pub fn note_without_error(&self, msg: &str) {
         self.diagnostic().note_without_error(msg)
@@ -268,7 +258,7 @@ impl Session {
 
         match id.checked_add(count) {
             Some(next) => self.next_node_id.set(next),
-            None => self.bug("Input too large, ran out of node ids!")
+            None => bug!("Input too large, ran out of node ids!")
         }
 
         id
@@ -278,11 +268,6 @@ impl Session {
     }
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         self.parse_sess.codemap()
-    }
-    // This exists to help with refactoring to eliminate impossible
-    // cases later on
-    pub fn impossible_case<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.span_bug(sp, &format!("impossible case reached: {}", msg));
     }
     pub fn verbose(&self) -> bool { self.opts.debugging_opts.verbose }
     pub fn time_passes(&self) -> bool { self.opts.debugging_opts.time_passes }
@@ -540,4 +525,36 @@ pub fn compile_result_from_err_count(err_count: usize) -> CompileResult {
     } else {
         Err(err_count)
     }
+}
+
+#[cold]
+#[inline(never)]
+pub fn bug_fmt(file: &'static str, line: u32, args: fmt::Arguments) -> ! {
+    // this wrapper mostly exists so I don't have to write a fully
+    // qualified path of None::<Span> inside the bug!() macro defintion
+    opt_span_bug_fmt(file, line, None::<Span>, args);
+}
+
+#[cold]
+#[inline(never)]
+pub fn span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
+                                        line: u32,
+                                        span: S,
+                                        args: fmt::Arguments) -> ! {
+    opt_span_bug_fmt(file, line, Some(span), args);
+}
+
+fn opt_span_bug_fmt<S: Into<MultiSpan>>(file: &'static str,
+                                          line: u32,
+                                          span: Option<S>,
+                                          args: fmt::Arguments) -> ! {
+    tls::with_opt(move |tcx| {
+        let msg = format!("{}:{}: {}", file, line, args);
+        match (tcx, span) {
+            (Some(tcx), Some(span)) => tcx.sess.diagnostic().span_bug(span, &msg),
+            (Some(tcx), None) => tcx.sess.diagnostic().bug(&msg),
+            (None, _) => panic!(msg)
+        }
+    });
+    unreachable!();
 }

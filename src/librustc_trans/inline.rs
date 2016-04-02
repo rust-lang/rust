@@ -102,16 +102,16 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
                 }
                 hir::ItemStruct(ref struct_def, _) => {
                     if struct_def.is_struct() {
-                        ccx.sess().bug("instantiate_inline: called on a \
-                                                                 non-tuple struct")
+                        bug!("instantiate_inline: called on a \
+                              non-tuple struct")
                     } else {
                         ccx.external().borrow_mut().insert(fn_id, Some(struct_def.id()));
                         ccx.external_srcs().borrow_mut().insert(struct_def.id(), fn_id);
                         my_id = struct_def.id();
                     }
                 }
-                _ => ccx.sess().bug("instantiate_inline: item has a \
-                                 non-enum, non-struct parent")
+                _ => bug!("instantiate_inline: item has a \
+                           non-enum, non-struct parent")
             }
             my_id
         }

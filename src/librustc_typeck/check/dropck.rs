@@ -62,9 +62,9 @@ pub fn check_drop_impl(tcx: &TyCtxt, drop_impl_did: DefId) -> Result<(), ()> {
             // Destructors only work on nominal types.  This was
             // already checked by coherence, so we can panic here.
             let span = tcx.map.def_id_span(drop_impl_did, codemap::DUMMY_SP);
-            tcx.sess.span_bug(
-                span, &format!("should have been rejected by coherence check: {}",
-                               dtor_self_type));
+            span_bug!(span,
+                      "should have been rejected by coherence check: {}",
+                      dtor_self_type);
         }
     }
 }
@@ -276,8 +276,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
            typ, scope);
 
     let parent_scope = rcx.tcx().region_maps.opt_encl_scope(scope).unwrap_or_else(|| {
-        rcx.tcx().sess.span_bug(
-            span, &format!("no enclosing scope found for scope: {:?}", scope))
+        span_bug!(span, "no enclosing scope found for scope: {:?}", scope)
     });
 
     let result = iterate_over_potentially_unsafe_regions_in_type(
@@ -493,7 +492,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
         }
 
         // these are always dtorck
-        ty::TyTrait(..) | ty::TyProjection(_) => unreachable!(),
+        ty::TyTrait(..) | ty::TyProjection(_) => bug!(),
     }
 }
 

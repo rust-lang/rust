@@ -56,7 +56,7 @@ fn general_ty_align(ty: Type) -> usize {
             let elt = ty.element_type();
             general_ty_align(elt) * len
         }
-        _ => panic!("ty_align: unhandled type")
+        _ => bug!("ty_align: unhandled type")
     }
 }
 
@@ -90,7 +90,7 @@ fn ios_ty_align(ty: Type) -> usize {
             let elt = ty.element_type();
             ios_ty_align(elt) * len
         }
-        _ => panic!("ty_align: unhandled type")
+        _ => bug!("ty_align: unhandled type")
     }
 }
 
@@ -125,7 +125,7 @@ fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
             let eltsz = ty_size(elt, align_fn);
             len * eltsz
         }
-        _ => panic!("ty_size: unhandled type")
+        _ => bug!("ty_size: unhandled type")
     }
 }
 

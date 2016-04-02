@@ -22,7 +22,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
-extern crate rustc;
+#[macro_use] extern crate rustc;
 extern crate rustc_front;
 
 #[macro_use] extern crate log;
@@ -47,7 +47,6 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
 mod csv_dumper;
-#[macro_use]
 mod data;
 mod dump;
 mod dump_visitor;
@@ -240,7 +239,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             _ => {
                 // FIXME
-                unimplemented!();
+                bug!();
             }
         }
     }
@@ -292,21 +291,19 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             result
                         }
                         _ => {
-                            self.tcx.sess.span_bug(span,
-                                                   &format!("Container {:?} for method {} not \
-                                                             an impl?",
-                                                            impl_id,
-                                                            id));
+                            span_bug!(span,
+                                      "Container {:?} for method {} not an impl?",
+                                      impl_id,
+                                      id);
                         }
                     }
                 }
                 r => {
-                    self.tcx.sess.span_bug(span,
-                                           &format!("Container {:?} for method {} is not a node \
-                                                     item {:?}",
-                                                    impl_id,
-                                                    id,
-                                                    r));
+                    span_bug!(span,
+                              "Container {:?} for method {} is not a node item {:?}",
+                              impl_id,
+                              id,
+                              r);
                 }
             },
             None => match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
@@ -316,18 +313,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             format!("::{}", self.tcx.item_path_str(def_id))
                         }
                         r => {
-                            self.tcx.sess.span_bug(span,
-                                                   &format!("Could not find container {:?} for \
-                                                             method {}, got {:?}",
-                                                            def_id,
-                                                            id,
-                                                            r));
+                            span_bug!(span,
+                                      "Could not find container {:?} for \
+                                       method {}, got {:?}",
+                                      def_id,
+                                      id,
+                                      r);
                         }
                     }
                 }
                 None => {
-                    self.tcx.sess.span_bug(span,
-                                           &format!("Could not find container for method {}", id));
+                    span_bug!(span, "Could not find container for method {}", id);
                 }
             },
         };
@@ -443,7 +439,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             _ => {
                 // FIXME
-                unimplemented!();
+                bug!();
             }
         }
     }
@@ -451,8 +447,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Data> {
         let def_map = self.tcx.def_map.borrow();
         if !def_map.contains_key(&id) {
-            self.tcx.sess.span_bug(path.span,
-                                   &format!("def_map has no key for {} in visit_expr", id));
+            span_bug!(path.span, "def_map has no key for {} in visit_expr", id);
         }
         let def = def_map.get(&id).unwrap().full_def();
         let sub_span = self.span_utils.span_for_last_ident(path.span);
@@ -618,13 +613,12 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_data_for_id(&self, _id: &NodeId) -> Data {
         // FIXME
-        unimplemented!();
+        bug!();
     }
 
     fn lookup_ref_id(&self, ref_id: NodeId) -> Option<DefId> {
         if !self.tcx.def_map.borrow().contains_key(&ref_id) {
-            self.tcx.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
-                                       ref_id));
+            bug!("def_map has no key for {} in lookup_type_ref", ref_id);
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {

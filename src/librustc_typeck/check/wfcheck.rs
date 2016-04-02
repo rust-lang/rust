@@ -257,7 +257,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let bare_fn_ty = match item_ty.sty {
                 ty::TyFnDef(_, _, ref bare_fn_ty) => bare_fn_ty,
                 _ => {
-                    this.tcx().sess.span_bug(item.span, "Fn item without fn type");
+                    span_bug!(item.span, "Fn item without fn type");
                 }
             };
 
@@ -473,7 +473,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let name = match space {
             TypeSpace => ast_generics.ty_params[index].name,
             SelfSpace => special_idents::type_self.name,
-            FnSpace => self.tcx().sess.bug("Fn space occupied?"),
+            FnSpace => bug!("Fn space occupied?"),
         };
 
         ty::ParamTy { space: space, idx: index as u32, name: name }
@@ -489,7 +489,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         match space {
             TypeSpace => ast_generics.ty_params[index].span,
             SelfSpace => item.span,
-            FnSpace => self.tcx().sess.span_bug(item.span, "Fn space occupied?"),
+            FnSpace => span_bug!(item.span, "Fn space occupied?"),
         }
     }
 

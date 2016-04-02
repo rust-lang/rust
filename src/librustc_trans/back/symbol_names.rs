@@ -224,8 +224,8 @@ fn exported_name_with_opt_suffix<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 // to be a value or type-def or something in there
                 // *somewhere*
                 ty_def_id.index = key.parent.unwrap_or_else(|| {
-                    panic!("finding type for {:?}, encountered def-id {:?} with no \
-                            parent", def_id, ty_def_id);
+                    bug!("finding type for {:?}, encountered def-id {:?} with no \
+                         parent", def_id, ty_def_id);
                 });
             }
         }

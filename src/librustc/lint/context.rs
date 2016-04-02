@@ -183,7 +183,7 @@ impl LintStore {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
                     (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
-                    (Some(sess), false) => sess.bug(&msg[..]),
+                    (Some(_), false) => bug!("{}", msg),
 
                     // A duplicate name from a plugin is a user error.
                     (Some(sess), true)  => sess.err(&msg[..]),
@@ -221,7 +221,7 @@ impl LintStore {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
                 (None, _) => early_error(config::ErrorOutputType::default(), &msg[..]),
-                (Some(sess), false) => sess.bug(&msg[..]),
+                (Some(_), false) => bug!("{}", msg),
 
                 // A duplicate name from a plugin is a user error.
                 (Some(sess), true)  => sess.err(&msg[..]),
@@ -232,7 +232,7 @@ impl LintStore {
     pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
             Some(&Id(lint_id)) => lint_id.clone(),
-            _ => panic!("invalid lint renaming of {} to {}", old_name, new_name)
+            _ => bug!("invalid lint renaming of {} to {}", old_name, new_name)
         };
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
     }
@@ -430,7 +430,7 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
             format!("{} [-{} {}]", msg,
                     match level {
                         Warn => 'W', Deny => 'D', Forbid => 'F',
-                        Allow => panic!()
+                        Allow => bug!()
                     }, name.replace("_", "-"))
         },
         Node(src) => {
@@ -447,7 +447,7 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
         (Warn, None)     => sess.struct_warn(&msg[..]),
         (Deny, Some(sp)) => sess.struct_span_err(sp, &msg[..]),
         (Deny, None)     => sess.struct_err(&msg[..]),
-        _ => sess.bug("impossible level in raw_emit_lint"),
+        _ => bug!("impossible level in raw_emit_lint"),
     };
 
     // Check for future incompatibility lints and issue a stronger warning.
@@ -1275,9 +1275,9 @@ pub fn check_crate(tcx: &TyCtxt, access_levels: &AccessLevels) {
     // in the iteration code.
     for (id, v) in tcx.sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v {
-            tcx.sess.span_bug(span,
-                              &format!("unprocessed lint {} at {}: {}",
-                                       lint.as_str(), tcx.map.node_to_string(*id), *msg))
+            span_bug!(span,
+                      "unprocessed lint {} at {}: {}",
+                      lint.as_str(), tcx.map.node_to_string(*id), *msg)
         }
     }
 
@@ -1314,9 +1314,7 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
     // in the iteration code.
     for (_, v) in sess.lints.borrow().iter() {
         for &(lint, span, ref msg) in v {
-            sess.span_bug(span,
-                          &format!("unprocessed lint {}: {}",
-                                   lint.as_str(), *msg))
+            span_bug!(span, "unprocessed lint {}: {}", lint.as_str(), *msg)
         }
     }
 }

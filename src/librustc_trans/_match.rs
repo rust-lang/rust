@@ -242,7 +242,7 @@ impl<'a> ConstantExpr<'a> {
     fn eq(self, other: ConstantExpr<'a>, tcx: &TyCtxt) -> bool {
         match compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
-            None => panic!("compare_list_exprs: type mismatch"),
+            None => bug!("compare_list_exprs: type mismatch"),
         }
     }
 }
@@ -828,7 +828,7 @@ impl FailureHandler {
     fn handle_fail(&self, bcx: Block) {
         match *self {
             Infallible =>
-                panic!("attempted to panic in a non-panicking panic handler!"),
+                bug!("attempted to panic in a non-panicking panic handler!"),
             JumpToBasicBlock(basic_block) =>
                 Br(bcx, basic_block, DebugLoc::None),
             Unreachable =>
@@ -939,11 +939,11 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
                     compare_str(cx, lhs_data, lhs_len, rhs_data, rhs_len, rhs_t, debug_loc)
                 },
-                _ => cx.sess().bug("only byte strings supported in compare_values"),
+                _ => bug!("only byte strings supported in compare_values"),
             },
-            _ => cx.sess().bug("only string and byte strings supported in compare_values"),
+            _ => bug!("only string and byte strings supported in compare_values"),
         },
-        _ => cx.sess().bug("only scalars, byte strings, and strings supported in compare_values"),
+        _ => bug!("only scalars, byte strings, and strings supported in compare_values"),
     }
 }
 
@@ -986,7 +986,7 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         Lvalue::new_with_hint("_match::insert_lllocals (match_input)",
                                               bcx, binding_info.id, hint_kind)
                     }
-                    _ => unreachable!(),
+                    _ => bug!(),
                 };
                 let datum = Datum::new(llval, binding_info.ty, lvalue);
                 call_lifetime_start(bcx, llbinding);
@@ -1317,7 +1317,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             bcx = r.bcx;
                         }
                         _ => {
-                            bcx.sess().bug(
+                            bug!(
                                 "in compile_submatch, expected \
                                  opt.trans() to return a SingleResult")
                         }

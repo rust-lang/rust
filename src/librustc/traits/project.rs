@@ -719,8 +719,8 @@ fn project_type<'cx,'tcx>(
                     // The essential problem here is that the projection fails,
                     // leaving two unnormalized types, which appear not to unify
                     // -- so the overlap check succeeds, when it should fail.
-                    selcx.tcx().sess.bug("Tried to project an inherited associated type during \
-                                          coherence checking, which is currently not supported.");
+                    bug!("Tried to project an inherited associated type during \
+                          coherence checking, which is currently not supported.");
                 }
             }
         }
@@ -858,10 +858,10 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
     let data = match object_ty.sty {
         ty::TyTrait(ref data) => data,
         _ => {
-            selcx.tcx().sess.span_bug(
+            span_bug!(
                 obligation.cause.span,
-                &format!("assemble_candidates_from_object_type called with non-object: {:?}",
-                         object_ty));
+                "assemble_candidates_from_object_type called with non-object: {:?}",
+                object_ty);
         }
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
@@ -951,10 +951,10 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
         super::VtableDefaultImpl(..) |
         super::VtableBuiltin(..) => {
             // These traits have no associated types.
-            selcx.tcx().sess.span_bug(
+            span_bug!(
                 obligation.cause.span,
-                &format!("Cannot project an associated type from `{:?}`",
-                         vtable));
+                "Cannot project an associated type from `{:?}`",
+                vtable);
         }
     }
 
@@ -1084,12 +1084,12 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                               projection.projection_ty.trait_ref.clone()) {
         Ok(()) => { }
         Err(e) => {
-            selcx.tcx().sess.span_bug(
+            span_bug!(
                 obligation.cause.span,
-                &format!("Failed to unify `{:?}` and `{:?}` in projection: {}",
-                         obligation,
-                         projection,
-                         e));
+                "Failed to unify `{:?}` and `{:?}` in projection: {}",
+                obligation,
+                projection,
+                e);
         }
     }
 
@@ -1124,8 +1124,9 @@ fn confirm_impl_candidate<'cx,'tcx>(
             (ty.subst(tcx, substs), nested)
         }
         None => {
-            tcx.sess.span_bug(obligation.cause.span,
-                              &format!("No associated type for {:?}", trait_ref));
+            span_bug!(obligation.cause.span,
+                      "No associated type for {:?}",
+                      trait_ref);
         }
     }
 }

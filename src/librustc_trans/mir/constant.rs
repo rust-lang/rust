@@ -89,10 +89,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
             ConstVal::Array(..) | ConstVal::Repeat(..) |
             ConstVal::Function(_) => {
-                unreachable!("MIR must not use {:?} (which refers to a local ID)", cv)
+                bug!("MIR must not use {:?} (which refers to a local ID)", cv)
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
-            ConstVal::Dummy => unreachable!(),
+            ConstVal::Dummy => bug!(),
         }
     }
 

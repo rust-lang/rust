@@ -453,7 +453,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
         (_, &ty::TyInfer(_)) =>
         {
             // The caller should handle these cases!
-            tcx.sess.bug("var types encountered in super_relate_tys")
+            bug!("var types encountered in super_relate_tys")
         }
 
         (&ty::TyError, _) | (_, &ty::TyError) =>
