@@ -1059,7 +1059,10 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
             for note in &xs {
                 emitter.emit(None, &note[..], None, errors::Level::Note)
             }
-            if let None = env::var_os("RUST_BACKTRACE") {
+            if match env::var_os("RUST_BACKTRACE") {
+                Some(val) => &val != "0",
+                None => false,
+            } {
                 emitter.emit(None,
                              "run with `RUST_BACKTRACE=1` for a backtrace",
                              None,
