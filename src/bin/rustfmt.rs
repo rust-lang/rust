@@ -17,7 +17,7 @@ extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{run, run_from_stdin};
+use rustfmt::{run, Input};
 use rustfmt::config::{Config, WriteMode};
 
 use std::env;
@@ -197,7 +197,7 @@ fn execute() -> i32 {
             // write_mode is always Plain for Stdin.
             config.write_mode = WriteMode::Plain;
 
-            run_from_stdin(input, &config);
+            run(Input::Text(input), &config);
             0
         }
         Operation::Format { files, config_path } => {
@@ -233,7 +233,7 @@ fn execute() -> i32 {
                     print_usage(&opts, &e);
                     return 1;
                 }
-                run(&file, &config);
+                run(Input::File(file), &config);
             }
             0
         }

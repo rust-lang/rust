@@ -33,7 +33,7 @@ use syntax::parse::{self, ParseSess};
 
 use std::io::stdout;
 use std::ops::{Add, Sub};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::fmt;
@@ -41,7 +41,7 @@ use std::fmt;
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
 use visitor::FmtVisitor;
-use config::Config;
+use config::{Config, WriteMode};
 
 #[macro_use]
 mod utils;
@@ -428,27 +428,35 @@ pub fn format(file: &Path, config: &Config) -> FileMap {
     file_map
 }
 
-pub fn run(file: &Path, config: &Config) {
-    let mut result = format(file, config);
+fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
+    let mut file_map = match input {
+        Input::File(ref file) => format(file, config),
+        Input::Text(text) => format_string(text, config),
+    };
 
-    print!("{}", fmt_lines(&mut result, config));
-    let mut out = stdout();
-    let write_result = filemap::write_all_files(&result, &mut out, config);
-
-    if let Err(msg) = write_result {
-        println!("Error writing files: {}", msg);
-    }
+    let report = fmt_lines(&mut file_map, config);
+    (file_map, report)
 }
 
-// Similar to run, but takes an input String instead of a file to format
-pub fn run_from_stdin(input: String, config: &Config) {
-    let mut result = format_string(input, config);
-    fmt_lines(&mut result, config);
+pub enum Input {
+    File(PathBuf),
+    Text(String),
+}
+
+pub fn run(input: Input, config: &Config) {
+    let (file_map, report) = format_input(input, config);
+
+    let ignore_errors = config.write_mode == WriteMode::Plain;
+    if !ignore_errors {
+        print!("{}", report);
+    }
 
     let mut out = stdout();
-    let write_result = filemap::write_file(&result["stdin"], "stdin", &mut out, config);
+    let write_result = filemap::write_all_files(&file_map, &mut out, config);
 
     if let Err(msg) = write_result {
-        panic!("Error writing to stdout: {}", msg);
+        if !ignore_errors {
+            println!("Error writing files: {}", msg);
+        }
     }
 }
