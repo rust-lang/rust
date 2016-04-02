@@ -1020,13 +1020,9 @@ impl DocFolder for Cache {
                 }
                 _ => ((None, Some(&*self.stack)), false)
             };
-            let hidden_field = match item.inner {
-                clean::StructFieldItem(clean::HiddenStructField) => true,
-                _ => false
-            };
 
             match parent {
-                (parent, Some(path)) if is_method || (!self.stripped_mod && !hidden_field) => {
+                (parent, Some(path)) if is_method || (!self.stripped_mod) => {
                     // Needed to determine `self` type.
                     let parent_basename = self.parent_stack.first().and_then(|parent| {
                         match self.paths.get(parent) {
@@ -1051,7 +1047,7 @@ impl DocFolder for Cache {
                         });
                     }
                 }
-                (Some(parent), None) if is_method || (!self.stripped_mod && !hidden_field)=> {
+                (Some(parent), None) if is_method || (!self.stripped_mod)=> {
                     if parent.is_local() {
                         // We have a parent, but we don't know where they're
                         // defined yet. Wait for later to index this item.
@@ -2165,8 +2161,7 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     document(w, cx, it)?;
     let mut fields = s.fields.iter().filter(|f| {
         match f.inner {
-            clean::StructFieldItem(clean::HiddenStructField) => false,
-            clean::StructFieldItem(clean::TypedStructField(..)) => true,
+            clean::StructFieldItem(..) => true,
             _ => false,
         }
     }).peekable();
@@ -2256,7 +2251,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             if let clean::VariantItem( Variant { kind: StructVariant(ref s) } ) = variant.inner {
                 let fields = s.fields.iter().filter(|f| {
                     match f.inner {
-                        clean::StructFieldItem(clean::TypedStructField(..)) => true,
+                        clean::StructFieldItem(..) => true,
                         _ => false,
                     }
                 });
@@ -2315,24 +2310,17 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
     match ty {
         doctree::Plain => {
             write!(w, " {{\n{}", tab)?;
-            let mut fields_stripped = false;
             for field in fields {
-                match field.inner {
-                    clean::StructFieldItem(clean::HiddenStructField) => {
-                        fields_stripped = true;
-                    }
-                    clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
-                        write!(w, "    {}{}: {},\n{}",
-                               VisSpace(field.visibility),
-                               field.name.as_ref().unwrap(),
-                               *ty,
-                               tab)?;
-                    }
-                    _ => unreachable!(),
-                };
+                if let clean::StructFieldItem(ref ty) = field.inner {
+                    write!(w, "    {}{}: {},\n{}",
+                           VisSpace(field.visibility),
+                           field.name.as_ref().unwrap(),
+                           *ty,
+                           tab)?;
+                }
             }
 
-            if fields_stripped {
+            if it.has_stripped_fields().unwrap() {
                 write!(w, "    // some fields omitted\n{}", tab)?;
             }
             write!(w, "}}")?;
@@ -2344,10 +2332,10 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
                     write!(w, ", ")?;
                 }
                 match field.inner {
-                    clean::StructFieldItem(clean::HiddenStructField) => {
+                    clean::StrippedItem(box clean::StructFieldItem(..)) => {
                         write!(w, "_")?
                     }
-                    clean::StructFieldItem(clean::TypedStructField(ref ty)) => {
+                    clean::StructFieldItem(ref ty) => {
                         write!(w, "{}{}", VisSpace(field.visibility), *ty)?
                     }
                     _ => unreachable!()

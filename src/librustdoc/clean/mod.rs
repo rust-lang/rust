@@ -14,7 +14,6 @@
 pub use self::Type::*;
 pub use self::PrimitiveType::*;
 pub use self::TypeKind::*;
-pub use self::StructField::*;
 pub use self::VariantKind::*;
 pub use self::Mutability::*;
 pub use self::Import::*;
@@ -309,6 +308,15 @@ impl Item {
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
     }
+    pub fn has_stripped_fields(&self) -> Option<bool> {
+        match self.inner {
+            StructItem(ref _struct) => Some(_struct.fields_stripped),
+            VariantItem(Variant { kind: StructVariant(ref vstruct)} ) => {
+                Some(vstruct.fields_stripped)
+            },
+            _ => None,
+        }
+    }
 
     pub fn stability_class(&self) -> String {
         self.stability.as_ref().map(|ref s| {
@@ -346,7 +354,7 @@ pub enum ItemEnum {
     TyMethodItem(TyMethod),
     /// A method with a body.
     MethodItem(Method),
-    StructFieldItem(StructField),
+    StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
     ForeignFunctionItem(Function),
@@ -1740,12 +1748,6 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum StructField {
-    HiddenStructField, // inserted later by strip passes
-    TypedStructField(Type),
-}
-
 impl Clean<Item> for hir::StructField {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
@@ -1756,7 +1758,7 @@ impl Clean<Item> for hir::StructField {
             stability: get_stability(cx, cx.map.local_def_id(self.id)),
             deprecation: get_deprecation(cx, cx.map.local_def_id(self.id)),
             def_id: cx.map.local_def_id(self.id),
-            inner: StructFieldItem(TypedStructField(self.ty.clean(cx))),
+            inner: StructFieldItem(self.ty.clean(cx)),
         }
     }
 }
@@ -1773,7 +1775,7 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
             def_id: self.did,
-            inner: StructFieldItem(TypedStructField(self.unsubst_ty().clean(cx))),
+            inner: StructFieldItem(self.unsubst_ty().clean(cx)),
         }
     }
 }
@@ -1904,9 +1906,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
                             def_id: field.did,
                             stability: get_stability(cx, field.did),
                             deprecation: get_deprecation(cx, field.did),
-                            inner: StructFieldItem(
-                                TypedStructField(field.unsubst_ty().clean(cx))
-                            )
+                            inner: StructFieldItem(field.unsubst_ty().clean(cx))
                         }
                     }).collect()
                 })

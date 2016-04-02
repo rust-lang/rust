@@ -40,13 +40,9 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
-                        clean::StructFieldItem(..) => {
-                            return Some(clean::Item {
-                                inner: clean::StructFieldItem(clean::HiddenStructField),
-                                ..i
-                            });
+                        clean::StructFieldItem(..) | clean::ModuleItem(..) => {
+                            return Strip(i).fold()
                         }
-                        clean::ModuleItem(..) => return Strip(i).fold(),
                         _ => return None,
                     }
                 }
@@ -130,7 +126,8 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
+            clean::ConstantItem(..) => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -138,18 +135,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ConstantItem(..) => {
-                if i.def_id.is_local() && !self.access_levels.is_exported(i.def_id) {
-                    return None;
-                }
-            }
-
             clean::StructFieldItem(..) => {
                 if i.visibility != Some(hir::Public) {
-                    return Some(clean::Item {
-                        inner: clean::StructFieldItem(clean::HiddenStructField),
-                        ..i
-                    })
+                    return Strip(i).fold();
                 }
             }
 
