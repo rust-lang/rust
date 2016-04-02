@@ -203,6 +203,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_macro_def(&mut self, macro_def: &'v MacroDef) {
         walk_macro_def(self, macro_def)
     }
+    fn visit_vis(&mut self, vis: &'v Visibility) {
+        walk_vis(self, vis)
+    }
 }
 
 pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
@@ -288,6 +291,7 @@ pub fn walk_trait_ref<'v, V>(visitor: &mut V, trait_ref: &'v TraitRef)
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
+    visitor.visit_vis(&item.vis);
     visitor.visit_name(item.span, item.name);
     match item.node {
         ItemExternCrate(opt_name) => {
@@ -529,6 +533,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
 }
 
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem) {
+    visitor.visit_vis(&foreign_item.vis);
     visitor.visit_name(foreign_item.span, foreign_item.name);
 
     match foreign_item.node {
@@ -662,6 +667,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
+    visitor.visit_vis(&impl_item.vis);
     visitor.visit_name(impl_item.span, impl_item.name);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
     match impl_item.node {
@@ -690,6 +696,7 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &
 }
 
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v StructField) {
+    visitor.visit_vis(&struct_field.vis);
     visitor.visit_name(struct_field.span, struct_field.name);
     visitor.visit_ty(&struct_field.ty);
     walk_list!(visitor, visit_attribute, &struct_field.attrs);
@@ -837,6 +844,12 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
     walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
+}
+
+pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
+    if let Visibility::Restricted { ref path, id } = *vis {
+        visitor.visit_path(path, id)
+    }
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]

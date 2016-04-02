@@ -287,6 +287,15 @@ impl Visibility {
     pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: &TyCtxt) -> Self {
         match *visibility {
             hir::Public => Visibility::Public,
+            hir::Visibility::Crate => Visibility::Restricted(ast::CRATE_NODE_ID),
+            hir::Visibility::Restricted { id, .. } => match tcx.def_map.borrow().get(&id) {
+                Some(resolution) => Visibility::Restricted({
+                    tcx.map.as_local_node_id(resolution.base_def.def_id()).unwrap()
+                }),
+                // If there is no resolution, `resolve` will have already reported an error, so
+                // assume that the visibility is public to avoid reporting more privacy errors.
+                None => Visibility::Public,
+            },
             hir::Inherited => Visibility::Restricted(tcx.map.get_module_parent(id)),
         }
     }

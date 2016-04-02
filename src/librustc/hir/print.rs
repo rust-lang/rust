@@ -325,6 +325,8 @@ pub fn arg_to_string(arg: &hir::Arg) -> String {
 pub fn visibility_qualified(vis: &hir::Visibility, s: &str) -> String {
     match *vis {
         hir::Public => format!("pub {}", s),
+        hir::Visibility::Crate => format!("pub(crate) {}", s),
+        hir::Visibility::Restricted { ref path, .. } => format!("pub({}) {}", path, s),
         hir::Inherited => s.to_string(),
     }
 }
@@ -898,6 +900,9 @@ impl<'a> State<'a> {
     pub fn print_visibility(&mut self, vis: &hir::Visibility) -> io::Result<()> {
         match *vis {
             hir::Public => self.word_nbsp("pub"),
+            hir::Visibility::Crate => self.word_nbsp("pub(crate)"),
+            hir::Visibility::Restricted { ref path, .. } =>
+                self.word_nbsp(&format!("pub({})", path)),
             hir::Inherited => Ok(()),
         }
     }
