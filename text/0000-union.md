@@ -57,6 +57,9 @@ union MyUnion {
 By default, a union uses an unspecified binary layout.  A union declared with
 the `#[repr(C)]` attribute will have the same layout as an equivalent C union.
 
+A union must have at least one field; an empty union declaration produces a
+syntax error.
+
 ## Contextual keyword
 
 Rust normally prevents the use of a keyword as an identifier; for instance, a
