@@ -91,12 +91,20 @@ pub struct Context {
     /// String representation of how to get back to the root path of the 'doc/'
     /// folder in terms of a relative URL.
     pub root_path: String,
-    /// The path to the crate root source minus the file name.
-    /// Used for simplifying paths to the highlighted source code files.
-    pub src_root: PathBuf,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
     pub dst: PathBuf,
+    /// A flag, which when `true`, will render pages which redirect to the
+    /// real location of an item. This is used to allow external links to
+    /// publicly reused items to redirect to the right location.
+    pub render_redirect_pages: bool,
+    pub shared: Arc<SharedContext>,
+}
+
+pub struct SharedContext {
+    /// The path to the crate root source minus the file name.
+    /// Used for simplifying paths to the highlighted source code files.
+    pub src_root: PathBuf,
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon and added html).
     pub layout: layout::Layout,
@@ -106,10 +114,6 @@ pub struct Context {
     pub include_sources: bool,
     /// The local file sources we've emitted and their respective url-paths.
     pub local_sources: HashMap<PathBuf, String>,
-    /// A flag, which when turned off, will render pages which redirect to the
-    /// real location of an item. This is used to allow external links to
-    /// publicly reused items to redirect to the right location.
-    pub render_redirect_pages: bool,
     /// All the passes that were run on this crate.
     pub passes: HashSet<String>,
     /// The base-URL of the issue tracker for when an item has been tagged with
@@ -259,7 +263,7 @@ pub struct Cache {
 
 /// Helper struct to render all source code to HTML pages
 struct SourceCollector<'a> {
-    cx: &'a mut Context,
+    scx: &'a mut SharedContext,
 
     /// Root destination to place all HTML output into
     dst: PathBuf,
@@ -412,12 +416,12 @@ pub fn run(mut krate: clean::Crate,
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
     };
-    let mut cx = Context {
-        dst: dst,
+    let mut scx = SharedContext {
         src_root: src_root,
         passes: passes,
-        current: Vec::new(),
-        root_path: String::new(),
+        include_sources: true,
+        local_sources: HashMap::new(),
+        issue_tracker_base_url: None,
         layout: layout::Layout {
             logo: "".to_string(),
             favicon: "".to_string(),
@@ -425,13 +429,7 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
             playground_url: "".to_string(),
         },
-        include_sources: true,
-        local_sources: HashMap::new(),
-        render_redirect_pages: false,
-        issue_tracker_base_url: None,
     };
-
-    try_err!(mkdir(&cx.dst), &cx.dst);
 
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
@@ -440,15 +438,15 @@ pub fn run(mut krate: clean::Crate,
             match *attr {
                 clean::NameValue(ref x, ref s)
                         if "html_favicon_url" == *x => {
-                    cx.layout.favicon = s.to_string();
+                    scx.layout.favicon = s.to_string();
                 }
                 clean::NameValue(ref x, ref s)
                         if "html_logo_url" == *x => {
-                    cx.layout.logo = s.to_string();
+                    scx.layout.logo = s.to_string();
                 }
                 clean::NameValue(ref x, ref s)
                         if "html_playground_url" == *x => {
-                    cx.layout.playground_url = s.to_string();
+                    scx.layout.playground_url = s.to_string();
                     markdown::PLAYGROUND_KRATE.with(|slot| {
                         if slot.borrow().is_none() {
                             let name = krate.name.clone();
@@ -458,16 +456,25 @@ pub fn run(mut krate: clean::Crate,
                 }
                 clean::NameValue(ref x, ref s)
                         if "issue_tracker_base_url" == *x => {
-                    cx.issue_tracker_base_url = Some(s.to_string());
+                    scx.issue_tracker_base_url = Some(s.to_string());
                 }
                 clean::Word(ref x)
                         if "html_no_source" == *x => {
-                    cx.include_sources = false;
+                    scx.include_sources = false;
                 }
                 _ => {}
             }
         }
     }
+    try_err!(mkdir(&dst), &dst);
+    krate = render_sources(&dst, &mut scx, krate)?;
+    let cx = Context {
+        current: Vec::new(),
+        root_path: String::new(),
+        dst: dst,
+        render_redirect_pages: false,
+        shared: Arc::new(scx),
+    };
 
     // Crawl the crate to build various caches used for the output
     let analysis = ::ANALYSISKEY.with(|a| a.clone());
@@ -538,7 +545,6 @@ pub fn run(mut krate: clean::Crate,
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
     write_shared(&cx, &krate, &*cache, index)?;
-    let krate = render_sources(&mut cx, krate)?;
 
     // And finally render the whole crate's documentation
     cx.krate(krate)
@@ -760,16 +766,16 @@ fn write_shared(cx: &Context,
     Ok(())
 }
 
-fn render_sources(cx: &mut Context,
+fn render_sources(dst: &Path, scx: &mut SharedContext,
                   krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = cx.dst.join("src");
+    let dst = dst.join("src");
     try_err!(mkdir(&dst), &dst);
     let dst = dst.join(&krate.name);
     try_err!(mkdir(&dst), &dst);
     let mut folder = SourceCollector {
         dst: dst,
-        cx: cx,
+        scx: scx,
     };
     Ok(folder.fold_crate(krate))
 }
@@ -847,7 +853,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem
-        if self.cx.include_sources
+        if self.scx.include_sources
             // skip all invalid spans
             && item.source.filename != ""
             // macros from other libraries get special filenames which we can
@@ -860,7 +866,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
             // something like that), so just don't include sources for the
             // entire crate. The other option is maintaining this mapping on a
             // per-file basis, but that's probably not worth it...
-            self.cx
+            self.scx
                 .include_sources = match self.emit_source(&item.source.filename) {
                 Ok(()) => true,
                 Err(e) => {
@@ -880,7 +886,7 @@ impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> io::Result<()> {
         let p = PathBuf::from(filename);
-        if self.cx.local_sources.contains_key(&p) {
+        if self.scx.local_sources.contains_key(&p) {
             // We've already emitted this source
             return Ok(());
         }
@@ -901,7 +907,7 @@ impl<'a> SourceCollector<'a> {
         let mut cur = self.dst.clone();
         let mut root_path = String::from("../../");
         let mut href = String::new();
-        clean_srcpath(&self.cx.src_root, &p, false, |component| {
+        clean_srcpath(&self.scx.src_root, &p, false, |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
             root_path.push_str("../");
@@ -925,10 +931,10 @@ impl<'a> SourceCollector<'a> {
             description: &desc,
             keywords: BASIC_KEYWORDS,
         };
-        layout::render(&mut w, &self.cx.layout,
+        layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents))?;
         w.flush()?;
-        self.cx.local_sources.insert(p, href);
+        self.scx.local_sources.insert(p, href);
         Ok(())
     }
 }
@@ -1265,10 +1271,10 @@ impl Context {
             let tyname = shortty(it).to_static_str();
             let desc = if it.is_crate() {
                 format!("API documentation for the Rust `{}` crate.",
-                        cx.layout.krate)
+                        cx.shared.layout.krate)
             } else {
                 format!("API documentation for the Rust `{}` {} in crate `{}`.",
-                        it.name.as_ref().unwrap(), tyname, cx.layout.krate)
+                        it.name.as_ref().unwrap(), tyname, cx.shared.layout.krate)
             };
             let keywords = make_item_keywords(it);
             let page = layout::Page {
@@ -1286,7 +1292,7 @@ impl Context {
             // write syscall all the time.
             let mut writer = BufWriter::new(w);
             if !cx.render_redirect_pages {
-                layout::render(&mut writer, &cx.layout, &page,
+                layout::render(&mut writer, &cx.shared.layout, &page,
                                &Sidebar{ cx: cx, item: it },
                                &Item{ cx: cx, item: it })?;
 
@@ -1434,10 +1440,11 @@ impl<'a> Item<'a> {
         // know the span, so we plow forward and generate a proper url. The url
         // has anchors for the line numbers that we're linking to.
         } else if self.item.def_id.is_local() {
-            self.cx.local_sources.get(&PathBuf::from(&self.item.source.filename)).map(|path| {
+            let path = PathBuf::from(&self.item.source.filename);
+            self.cx.shared.local_sources.get(&path).map(|path| {
                 format!("{root}src/{krate}/{path}#{href}",
                         root = self.cx.root_path,
-                        krate = self.cx.layout.krate,
+                        krate = self.cx.shared.layout.krate,
                         path = path,
                         href = href)
             })
@@ -1520,7 +1527,7 @@ impl<'a> fmt::Display for Item<'a> {
         // [src] link in the downstream documentation will actually come back to
         // this page, and this link will be auto-clicked. The `id` attribute is
         // used to find the link to auto-click.
-        if self.cx.include_sources && !is_primitive {
+        if self.cx.shared.include_sources && !is_primitive {
             if let Some(l) = self.href() {
                 write!(fmt, "<a id='src-{}' class='srclink' \
                               href='{}' title='{}'>[src]</a>",
@@ -1752,7 +1759,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Optio
             format!("Deprecated{}{}", since, Markdown(&reason))
         } else if stab.level == stability::Unstable {
             let unstable_extra = if show_reason {
-                match (!stab.feature.is_empty(), &cx.issue_tracker_base_url, stab.issue) {
+                match (!stab.feature.is_empty(), &cx.shared.issue_tracker_base_url, stab.issue) {
                     (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
                         format!(" (<code>{}</code> <a href=\"{}{}\">#{}</a>)",
                                 Escape(&stab.feature), tracker_url, issue_no, issue_no),
