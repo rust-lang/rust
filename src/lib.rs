@@ -432,8 +432,8 @@ pub fn run(file: &Path, config: &Config) {
     let mut result = format(file, config);
 
     print!("{}", fmt_lines(&mut result, config));
-    let out = stdout();
-    let write_result = filemap::write_all_files(&result, out, config);
+    let mut out = stdout();
+    let write_result = filemap::write_all_files(&result, &mut out, config);
 
     if let Err(msg) = write_result {
         println!("Error writing files: {}", msg);
