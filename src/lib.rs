@@ -287,7 +287,7 @@ fn fmt_ast(krate: &ast::Crate,
 // Formatting done on a char by char or line by line basis.
 // TODO(#209) warn on bad license
 // TODO(#20) other stuff for parity with make tidy
-pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
+fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
 
@@ -367,7 +367,7 @@ pub fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-pub fn format_string(input: String, config: &Config) -> FileMap {
+fn format_string(input: String, config: &Config) -> FileMap {
     let path = "stdin";
     let codemap = Rc::new(CodeMap::new());
 
