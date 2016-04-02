@@ -77,10 +77,10 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
         TyInfer(..) | TyClosure(..) => {
             // `ty` comes from a user declaration so we should only expect types
             // that the user can type
-            inference_context.tcx.sess.span_bug(
+            span_bug!(
                 span,
-                &format!("coherence encountered unexpected type searching for base type: {}",
-                         ty));
+                "coherence encountered unexpected type searching for base type: {}",
+                ty);
         }
     }
 }
@@ -219,9 +219,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 }).collect()
             }
             _ => {
-                self.crate_context.tcx.sess.span_bug(item.span,
-                                                     "can't convert a non-impl \
-                                                      to an impl");
+                span_bug!(item.span, "can't convert a non-impl to an impl");
             }
         }
     }
@@ -263,13 +261,12 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                           "the Drop trait may only be implemented on structures");
                             }
                             _ => {
-                                tcx.sess.bug("didn't find impl in ast \
-                                              map");
+                                bug!("didn't find impl in ast map");
                             }
                         }
                     } else {
-                        tcx.sess.bug("found external impl of Drop trait on \
-                                      something other than a struct");
+                        bug!("found external impl of Drop trait on \
+                              :omething other than a struct");
                     }
                 }
             }

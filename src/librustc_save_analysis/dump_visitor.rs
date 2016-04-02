@@ -51,11 +51,11 @@ use super::span_utils::SpanUtils;
 use super::recorder;
 
 macro_rules! down_cast_data {
-    ($id:ident, $kind:ident, $this:ident, $sp:expr) => {
+    ($id:ident, $kind:ident, $sp:expr) => {
         let $id = if let super::Data::$kind(data) = $id {
             data
         } else {
-            $this.sess.span_bug($sp, &format!("unexpected data kind: {:?}", $id));
+            span_bug!($sp, "unexpected data kind: {:?}", $id);
         }
     };
 }
@@ -271,8 +271,7 @@ where D: Dump
     // looks up anything, not just a type
     fn lookup_type_ref(&self, ref_id: NodeId) -> Option<DefId> {
         if !self.tcx.def_map.borrow().contains_key(&ref_id) {
-            self.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
-                                   ref_id));
+            bug!("def_map has no key for {} in lookup_type_ref", ref_id);
         }
         let def = self.tcx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
@@ -294,9 +293,9 @@ where D: Dump
 
         let def_map = self.tcx.def_map.borrow();
         if !def_map.contains_key(&ref_id) {
-            self.sess.span_bug(span,
-                               &format!("def_map has no key for {} in lookup_def_kind",
-                                        ref_id));
+            span_bug!(span,
+                      "def_map has no key for {} in lookup_def_kind",
+                      ref_id);
         }
         let def = def_map.get(&ref_id).unwrap().full_def();
         match def {
@@ -347,8 +346,9 @@ where D: Dump
             Def::Method(..) |
             Def::PrimTy(_) |
             Def::Err => {
-                self.sess.span_bug(span,
-                                   &format!("process_def_kind for unexpected item: {:?}", def));
+               span_bug!(span,
+                         "process_def_kind for unexpected item: {:?}",
+                         def);
             }
         }
     }
@@ -480,7 +480,7 @@ where D: Dump
                   ty_params: &ast::Generics,
                   body: &ast::Block) {
         if let Some(fn_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(fn_data, FunctionData, self, item.span);
+            down_cast_data!(fn_data, FunctionData, item.span);
             if !self.span.filter_generated(Some(fn_data.span), item.span) {
                 self.dumper.function(item.span, fn_data.clone().normalize(&self.tcx));
             }
@@ -502,7 +502,7 @@ where D: Dump
 
     fn process_static_or_const_item(&mut self, item: &ast::Item, typ: &ast::Ty, expr: &ast::Expr) {
         if let Some(var_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(var_data, VariableData, self, item.span);
+            down_cast_data!(var_data, VariableData, item.span);
             if !self.span.filter_generated(Some(var_data.span), item.span) {
                 let mut var_data = var_data;
                 var_data.scope = normalize_node_id(&self.tcx, var_data.scope) as u32;
@@ -578,7 +578,7 @@ where D: Dump
             None => return,
             Some(data) => data,
         };
-        down_cast_data!(enum_data, EnumData, self, item.span);
+        down_cast_data!(enum_data, EnumData, item.span);
         let normalized = enum_data.clone().normalize(&self.tcx);
         if !self.span.filter_generated(Some(normalized.span), item.span) {
             self.dumper.enum_data(item.span, normalized);
@@ -638,7 +638,7 @@ where D: Dump
                     impl_items: &[ast::ImplItem]) {
         let mut has_self_ref = false;
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(impl_data, ImplData, self, item.span);
+            down_cast_data!(impl_data, ImplData, item.span);
             if let Some(ref self_ref) = impl_data.self_ref {
                 has_self_ref = true;
                 if !self.span.filter_generated(Some(self_ref.span), item.span) {
@@ -734,7 +734,7 @@ where D: Dump
     // `item` is the module in question, represented as an item.
     fn process_mod(&mut self, item: &ast::Item) {
         if let Some(mod_data) = self.save_ctxt.get_item_data(item) {
-            down_cast_data!(mod_data, ModData, self, item.span);
+            down_cast_data!(mod_data, ModData, item.span);
             if !self.span.filter_generated(Some(mod_data.span), item.span) {
                 self.dumper.mod_data(mod_data.normalize(&self.tcx));
             }
@@ -750,10 +750,9 @@ where D: Dump
         let path_data = match path_data {
             Some(pd) => pd,
             None => {
-                self.tcx.sess.span_bug(path.span,
-                                       &format!("Unexpected def kind while looking up path in \
-                                                 `{}`",
-                                                self.span.snippet(path.span)))
+                span_bug!(path.span,
+                          "Unexpected def kind while looking up path in `{}`",
+                          self.span.snippet(path.span))
             }
         };
 
@@ -807,8 +806,7 @@ where D: Dump
                 }
             }
             _ => {
-                self.sess.span_bug(path.span,
-                                   &format!("Unexpected data: {:?}", path_data));
+               span_bug!(path.span, "Unexpected data: {:?}", path_data);
             }
         }
 
@@ -844,7 +842,7 @@ where D: Dump
         self.write_sub_paths_truncated(path, false);
 
         if let Some(struct_lit_data) = self.save_ctxt.get_expr_data(ex) {
-            down_cast_data!(struct_lit_data, TypeRefData, self, ex.span);
+            down_cast_data!(struct_lit_data, TypeRefData, ex.span);
             if !self.span.filter_generated(Some(struct_lit_data.span), ex.span) {
                 self.dumper.type_ref(ex.span, struct_lit_data.normalize(&self.tcx));
             }
@@ -869,7 +867,7 @@ where D: Dump
 
     fn process_method_call(&mut self, ex: &ast::Expr, args: &Vec<P<ast::Expr>>) {
         if let Some(mcd) = self.save_ctxt.get_expr_data(ex) {
-            down_cast_data!(mcd, MethodCallData, self, ex.span);
+            down_cast_data!(mcd, MethodCallData, ex.span);
             if !self.span.filter_generated(Some(mcd.span), ex.span) {
                 self.dumper.method_call(ex.span, mcd.normalize(&self.tcx));
             }
@@ -1234,7 +1232,7 @@ impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
                 self.visit_expr(&sub_ex);
 
                 if let Some(field_data) = self.save_ctxt.get_expr_data(ex) {
-                    down_cast_data!(field_data, VariableRefData, self, ex.span);
+                    down_cast_data!(field_data, VariableRefData, ex.span);
                     if !self.span.filter_generated(Some(field_data.span), ex.span) {
                         self.dumper.variable_ref(ex.span, field_data.normalize(&self.tcx));
                     }
@@ -1258,9 +1256,9 @@ impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
                         }
                     }
                     ty::TyTuple(_) => {}
-                    _ => self.sess.span_bug(ex.span,
-                                            &format!("Expected struct or tuple type, found {:?}",
-                                                     ty)),
+                    _ => span_bug!(ex.span,
+                                   "Expected struct or tuple type, found {:?}",
+                                   ty),
                 }
             }
             ast::ExprKind::Closure(_, ref decl, ref body) => {
@@ -1302,7 +1300,7 @@ impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
 
     fn visit_mac(&mut self, mac: &ast::Mac) {
         // These shouldn't exist in the AST at this point, log a span bug.
-        self.sess.span_bug(mac.span, "macro invocation should have been expanded out of AST");
+        span_bug!(mac.span, "macro invocation should have been expanded out of AST");
     }
 
     fn visit_pat(&mut self, p: &ast::Pat) {
@@ -1325,8 +1323,7 @@ impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
         for &(id, ref p, immut, ref_kind) in &collector.collected_paths {
             let def_map = self.tcx.def_map.borrow();
             if !def_map.contains_key(&id) {
-                self.sess.span_bug(p.span,
-                                   &format!("def_map has no key for {} in visit_arm", id));
+                span_bug!(p.span, "def_map has no key for {} in visit_arm", id);
             }
             let def = def_map.get(&id).unwrap().full_def();
             match def {

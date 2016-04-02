@@ -134,8 +134,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                   a non-copy fixed-size array",
                                  b.ty)
             } else {
-                bccx.span_bug(move_from.span, "this path should not cause illegal move");
-                unreachable!();
+                span_bug!(move_from.span, "this path should not cause illegal move");
             }
         }
 
@@ -150,14 +149,12 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                      b.ty)
                 },
                 _ => {
-                    bccx.span_bug(move_from.span, "this path should not cause illegal move");
-                    unreachable!();
+                    span_bug!(move_from.span, "this path should not cause illegal move");
                 }
             }
         }
         _ => {
-            bccx.span_bug(move_from.span, "this path should not cause illegal move");
-            unreachable!();
+            span_bug!(move_from.span, "this path should not cause illegal move");
         }
     }
 }

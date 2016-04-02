@@ -218,9 +218,9 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
             // borrow fall out of scope, so that we can reborrow farther down.
             maybe_expr = (*get_expr).clone();
         } else {
-            self.sess.span_bug(variant.span,
-                               "`check_static_recursion` attempted to visit \
-                                variant with unknown discriminant")
+            span_bug!(variant.span,
+                      "`check_static_recursion` attempted to visit \
+                      variant with unknown discriminant")
         }
         // If `maybe_expr` is `None`, that's because no discriminant is
         // specified that affects this variant. Thus, no risk of recursion.
@@ -254,10 +254,10 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                                     self.visit_impl_item(item),
                                 ast_map::NodeForeignItem(_) => {},
                                 _ => {
-                                    self.sess.span_bug(
+                                    span_bug!(
                                         e.span,
-                                        &format!("expected item, found {}",
-                                                 self.ast_map.node_to_string(node_id)));
+                                        "expected item, found {}",
+                                        self.ast_map.node_to_string(node_id));
                                 }
                             }
                         }
@@ -277,9 +277,9 @@ impl<'a, 'ast: 'a> Visitor<'ast> for CheckItemRecursionVisitor<'a, 'ast> {
                                 let variant = self.ast_map.expect_variant(variant_id);
                                 self.visit_variant(variant, generics, enum_id);
                             } else {
-                                self.sess.span_bug(e.span,
-                                                   "`check_static_recursion` found \
-                                                    non-enum in Def::Variant");
+                                span_bug!(e.span,
+                                          "`check_static_recursion` found \
+                                           non-enum in Def::Variant");
                             }
                         }
                     }

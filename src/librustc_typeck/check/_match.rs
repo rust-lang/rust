@@ -413,8 +413,7 @@ fn check_assoc_item_is_const(pcx: &pat_ctxt, def: Def, span: Span) -> bool {
             false
         }
         _ => {
-            pcx.fcx.ccx.tcx.sess.span_bug(span, "non-associated item in
-                                                 check_assoc_item_is_const");
+            span_bug!(span, "non-associated item in check_assoc_item_is_const");
         }
     }
 }
@@ -588,7 +587,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx hir::Pat,
     let pat_ty = pcx.fcx.instantiate_type(def.def_id(), path);
     let item_substs = match pat_ty.sty {
         ty::TyStruct(_, substs) | ty::TyEnum(_, substs) => substs,
-        _ => tcx.sess.span_bug(pat.span, "struct variant is not an ADT")
+        _ => span_bug!(pat.span, "struct variant is not an ADT")
     };
     demand::eqtype(fcx, pat.span, expected, pat_ty);
     check_struct_pat_fields(pcx, pat.span, fields, variant, &item_substs, etc);

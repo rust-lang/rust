@@ -259,7 +259,7 @@ impl<'tcx> Decodable for &'tcx ClosureSubsts<'tcx> {
                                                               Box::new(closure_substs));
             match ty.sty {
                 TyClosure(_, ref closure_substs) => Ok(&**closure_substs),
-                _ => unreachable!()
+                _ => bug!()
             }
         })
     }
@@ -467,7 +467,7 @@ impl<'tcx> FnOutput<'tcx> {
     pub fn unwrap(self) -> Ty<'tcx> {
         match self {
             ty::FnConverging(t) => t,
-            ty::FnDiverging => unreachable!()
+            ty::FnDiverging => bug!()
         }
     }
 
@@ -978,8 +978,7 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
             TyStr => cx.mk_mach_uint(ast::UintTy::U8),
-            _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                      self)),
+            _ => bug!("sequence_element_type called on non-sequence value: {}", self),
         }
     }
 
@@ -988,14 +987,14 @@ impl<'tcx> TyS<'tcx> {
             TyStruct(def, substs) => {
                 def.struct_variant().fields[0].ty(cx, substs)
             }
-            _ => panic!("simd_type called on invalid type")
+            _ => bug!("simd_type called on invalid type")
         }
     }
 
     pub fn simd_size(&self, _cx: &TyCtxt) -> usize {
         match self.sty {
             TyStruct(def, _) => def.struct_variant().fields.len(),
-            _ => panic!("simd_size called on invalid type")
+            _ => bug!("simd_size called on invalid type")
         }
     }
 
@@ -1148,7 +1147,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
         match self.sty {
             TyFnDef(_, _, ref f) | TyFnPtr(ref f) => &f.sig,
-            _ => panic!("Ty::fn_sig() called on non-fn type: {:?}", self)
+            _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
 
@@ -1156,7 +1155,7 @@ impl<'tcx> TyS<'tcx> {
     pub fn fn_abi(&self) -> abi::Abi {
         match self.sty {
             TyFnDef(_, _, ref f) | TyFnPtr(ref f) => f.abi,
-            _ => panic!("Ty::fn_abi() called on non-fn type"),
+            _ => bug!("Ty::fn_abi() called on non-fn type"),
         }
     }
 

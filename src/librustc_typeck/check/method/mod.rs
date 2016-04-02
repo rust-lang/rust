@@ -302,21 +302,19 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         }
 
                         _ => {
-                            fcx.tcx().sess.span_bug(
+                            span_bug!(
                                 span,
-                                &format!(
-                                    "trait method is &self but first arg is: {}",
-                                    transformed_self_ty));
+                                "trait method is &self but first arg is: {}",
+                                transformed_self_ty);
                         }
                     }
                 }
 
                 _ => {
-                    fcx.tcx().sess.span_bug(
+                    span_bug!(
                         span,
-                        &format!(
-                            "unexpected explicit self type in operator method: {:?}",
-                            method_ty.explicit_self));
+                        "unexpected explicit self type in operator method: {:?}",
+                        method_ty.explicit_self);
                 }
             }
         }

@@ -78,8 +78,8 @@ pub fn gather_match_variant<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 LpDowncast(ref base_lp, _) =>
                     move_data.add_variant_match(
                         tcx, lp.clone(), move_pat.id, base_lp.clone(), mode),
-                _ => panic!("should only call gather_match_variant \
-                             for cat_downcast cmt"),
+                _ => bug!("should only call gather_match_variant \
+                           for cat_downcast cmt"),
             }
         }
         None => {

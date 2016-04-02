@@ -90,7 +90,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
         };
 
         if output_template.is_empty() {
-            tcx.sess.bug("empty string provided as RUST_REGION_GRAPH");
+            bug!("empty string provided as RUST_REGION_GRAPH");
         }
 
         if output_template.contains('%') {
@@ -182,13 +182,13 @@ impl<'a, 'tcx> dot::Labeller<'a> for ConstraintGraph<'a, 'tcx> {
     fn node_id(&self, n: &Node) -> dot::Id {
         let node_id = match self.node_ids.get(n) {
             Some(node_id) => node_id,
-            None => panic!("no node_id found for node: {:?}", n),
+            None => bug!("no node_id found for node: {:?}", n),
         };
         let name = || format!("node_{}", node_id);
         match dot::Id::new(name()) {
             Ok(id) => id,
             Err(_) => {
-                panic!("failed to create graphviz node identified by {}", name());
+                bug!("failed to create graphviz node identified by {}", name());
             }
         }
     }

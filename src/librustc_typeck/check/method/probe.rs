@@ -877,8 +877,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                         match tcx.trait_id_of_impl(impl_id) {
                             Some(id) => id,
                             None =>
-                                tcx.sess.span_bug(span,
-                                                  "found inherent method when looking at traits")
+                                span_bug!(span,
+                                          "found inherent method when looking at traits")
                         }
                     }
                 }
@@ -889,7 +889,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             }
             Some(Err(MethodError::ClosureAmbiguity(..))) => {
                 // this error only occurs when assembling candidates
-                tcx.sess.span_bug(span, "encountered ClosureAmbiguity from pick_core");
+                span_bug!(span, "encountered ClosureAmbiguity from pick_core");
             }
             _ => vec![],
         };

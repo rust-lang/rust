@@ -162,10 +162,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         unpack!(block = self.simplify_candidate(block, &mut candidate));
 
         if !candidate.match_pairs.is_empty() {
-            self.hir.span_bug(candidate.match_pairs[0].pattern.span,
-                              &format!("match pairs {:?} remaining after simplifying \
-                                        irrefutable pattern",
-                                       candidate.match_pairs));
+            span_bug!(candidate.match_pairs[0].pattern.span,
+                      "match pairs {:?} remaining after simplifying \
+                       irrefutable pattern",
+                      candidate.match_pairs);
         }
 
         // now apply the bindings, which will also declare the variables

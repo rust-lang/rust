@@ -404,7 +404,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     bound_failures.push((origin.clone(), kind.clone(), region));
                 }
                 ProcessedErrors(..) => {
-                    panic!("should not encounter a `ProcessedErrors` yet: {:?}", error)
+                    bug!("should not encounter a `ProcessedErrors` yet: {:?}", error)
                 }
             }
         }

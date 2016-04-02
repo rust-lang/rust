@@ -309,7 +309,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         while undo_log.len() > snapshot.length + 1 {
             match undo_log.pop().unwrap() {
                 OpenSnapshot => {
-                    panic!("Failure to observe stack discipline");
+                    bug!("Failure to observe stack discipline");
                 }
                 CommitedSnapshot => {}
                 AddVar(vid) => {
@@ -413,7 +413,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.bound_count.set(sc + 1);
 
         if sc >= self.bound_count.get() {
-            self.tcx.sess.bug("rollover in RegionInference new_bound()");
+            bug!("rollover in RegionInference new_bound()");
         }
 
         ReLateBound(debruijn, BrFresh(sc))
@@ -497,10 +497,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (ReLateBound(..), _) |
             (_, ReEarlyBound(..)) |
             (_, ReLateBound(..)) => {
-                self.tcx.sess.span_bug(origin.span(),
-                                       &format!("cannot relate bound region: {:?} <= {:?}",
-                                                sub,
-                                                sup));
+                span_bug!(origin.span(),
+                          "cannot relate bound region: {:?} <= {:?}",
+                          sub,
+                          sup);
             }
             (_, ReStatic) => {
                 // all regions are subregions of static, so we can ignore this
@@ -570,9 +570,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     pub fn resolve_var(&self, rid: RegionVid) -> ty::Region {
         match *self.values.borrow() {
             None => {
-                self.tcx.sess.span_bug((*self.var_origins.borrow())[rid.index as usize].span(),
-                                       "attempt to resolve region variable before values have \
-                                        been computed!")
+                span_bug!((*self.var_origins.borrow())[rid.index as usize].span(),
+                          "attempt to resolve region variable before values have \
+                           been computed!")
             }
             Some(ref values) => {
                 let r = lookup(values, rid);
@@ -733,7 +733,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             (_, ReLateBound(..)) |
             (ReEarlyBound(..), _) |
             (_, ReEarlyBound(..)) => {
-                self.tcx.sess.bug(&format!("cannot relate bound region: LUB({:?}, {:?})", a, b));
+                bug!("cannot relate bound region: LUB({:?}, {:?})", a, b);
             }
 
             (ReStatic, _) | (_, ReStatic) => {
@@ -745,11 +745,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
 
             (ReVar(v_id), _) | (_, ReVar(v_id)) => {
-                self.tcx.sess.span_bug((*self.var_origins.borrow())[v_id.index as usize].span(),
-                                       &format!("lub_concrete_regions invoked with non-concrete \
-                                                 regions: {:?}, {:?}",
-                                                a,
-                                                b));
+                span_bug!((*self.var_origins.borrow())[v_id.index as usize].span(),
+                          "lub_concrete_regions invoked with non-concrete \
+                           regions: {:?}, {:?}",
+                          a,
+                          b);
             }
 
             (ReFree(ref fr), ReScope(s_id)) |
@@ -1193,13 +1193,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.span_bug((*self.var_origins.borrow())[node_idx.index as usize].span(),
-                               &format!("collect_error_for_expanding_node() could not find \
-                                         error for var {:?}, lower_bounds={:?}, \
-                                         upper_bounds={:?}",
-                                        node_idx,
-                                        lower_bounds,
-                                        upper_bounds));
+        span_bug!((*self.var_origins.borrow())[node_idx.index as usize].span(),
+                  "collect_error_for_expanding_node() could not find \
+                   error for var {:?}, lower_bounds={:?}, \
+                   upper_bounds={:?}",
+                  node_idx,
+                  lower_bounds,
+                  upper_bounds);
     }
 
     fn collect_concrete_regions(&self,

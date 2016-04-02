@@ -306,7 +306,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
         let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent)
                                                       .unwrap_or_else(||{
-            self.hir.span_bug(span, &format!("extent {:?} does not enclose", extent))
+            span_bug!(span, "extent {:?} does not enclose", extent)
         });
 
         let tmp = self.get_unit_temp();
@@ -345,7 +345,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            span: Span,
                            label: Option<CodeExtent>)
                            -> &mut LoopScope {
-        let Builder { ref mut loop_scopes, ref mut hir, .. } = *self;
+        let loop_scopes = &mut self.loop_scopes;
         match label {
             None => {
                 // no label? return the innermost loop scope
@@ -358,7 +358,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                            .filter(|loop_scope| loop_scope.extent == label)
                            .next()
             }
-        }.unwrap_or_else(|| hir.span_bug(span, "no enclosing loop scope found?"))
+        }.unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
     }
 
     pub fn innermost_scope_id(&self) -> ScopeId {
@@ -410,8 +410,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 scope.invalidate_cache()
             }
         }
-        self.hir.span_bug(span,
-                          &format!("extent {:?} not in scope to drop {:?}", extent, lvalue));
+        span_bug!(span, "extent {:?} not in scope to drop {:?}", extent, lvalue);
     }
 
     /// Schedule dropping of a not-yet-fully-initialised box.
@@ -444,8 +443,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 scope.invalidate_cache();
             }
         }
-        self.hir.span_bug(span,
-                          &format!("extent {:?} not in scope to free {:?}", extent, value));
+        span_bug!(span, "extent {:?} not in scope to free {:?}", extent, value);
     }
 
     // Other
@@ -531,7 +529,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let tup_ty = if let ty::TyRef(_, tyandmut) = ref_ty.sty {
             tyandmut.ty
         } else {
-            self.hir.span_bug(span, &format!("unexpected panic_bound_check type: {:?}", func.ty));
+            span_bug!(span, "unexpected panic_bound_check type: {:?}", func.ty);
         };
 
         let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));
@@ -566,7 +564,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         let tup_ty = if let ty::TyRef(_, tyandmut) = ref_ty.sty {
             tyandmut.ty
         } else {
-            self.hir.span_bug(span, &format!("unexpected panic type: {:?}", func.ty));
+            span_bug!(span, "unexpected panic type: {:?}", func.ty);
         };
 
         let (tuple, tuple_ref) = (self.temp(tup_ty), self.temp(ref_ty));

@@ -584,10 +584,10 @@ impl<'tcx> Datum<'tcx, Expr> {
 
     /// Asserts that this datum *is* an lvalue and returns it.
     #[allow(dead_code)] // potentially useful
-    pub fn assert_lvalue(self, bcx: Block) -> Datum<'tcx, Lvalue> {
+    pub fn assert_lvalue(self) -> Datum<'tcx, Lvalue> {
         self.match_kind(
             |d| d,
-            |_| bcx.sess().bug("assert_lvalue given rvalue"))
+            |_| bug!("assert_lvalue given rvalue"))
     }
 
     pub fn store_to_dest<'blk>(self,

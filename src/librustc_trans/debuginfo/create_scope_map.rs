@@ -98,7 +98,7 @@ fn with_new_scope<F>(cx: &CrateContext,
     }
 
     if scope_stack.last().unwrap().scope_metadata != scope_metadata {
-        cx.sess().span_bug(scope_span, "debuginfo: Inconsistency in scope management.");
+        span_bug!(scope_span, "debuginfo: Inconsistency in scope management.");
     }
 
     scope_stack.pop();

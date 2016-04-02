@@ -71,7 +71,7 @@ impl PathResolution {
     /// Get the definition, if fully resolved, otherwise panic.
     pub fn full_def(&self) -> Def {
         if self.depth != 0 {
-            panic!("path not fully resolved: {:?}", self);
+            bug!("path not fully resolved: {:?}", self);
         }
         self.base_def
     }
@@ -116,7 +116,7 @@ impl Def {
             Def::TyParam(..) | Def::Struct(..) | Def::Trait(..) |
             Def::Method(..) | Def::Const(..) | Def::AssociatedConst(..) |
             Def::PrimTy(..) | Def::Label(..) | Def::SelfTy(..) | Def::Err => {
-                panic!("attempted .var_id() on invalid {:?}", self)
+                bug!("attempted .var_id() on invalid {:?}", self)
             }
         }
     }
@@ -135,7 +135,7 @@ impl Def {
             Def::PrimTy(..) |
             Def::SelfTy(..) |
             Def::Err => {
-                panic!("attempted .def_id() on invalid def: {:?}", self)
+                bug!("attempted .def_id() on invalid def: {:?}", self)
             }
         }
     }

@@ -183,11 +183,10 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                 }
             }
 
-            infcx.tcx.sess.span_bug(
+            span_bug!(
                 span,
-                &format!("region {:?} is not associated with \
-                         any bound region from A!",
-                        r0))
+                "region {:?} is not associated with any bound region from A!",
+                r0)
         }
     }
 
@@ -297,7 +296,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
 
             if a_r.is_some() && b_r.is_some() && only_new_vars {
                 // Related to exactly one bound variable from each fn:
-                return rev_lookup(infcx, span, a_map, a_r.unwrap());
+                return rev_lookup(span, a_map, a_r.unwrap());
             } else if a_r.is_none() && b_r.is_none() {
                 // Not related to bound variables from either fn:
                 assert!(!r0.is_bound());
@@ -308,8 +307,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             }
         }
 
-        fn rev_lookup(infcx: &InferCtxt,
-                      span: Span,
+        fn rev_lookup(span: Span,
                       a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
                       r: ty::Region) -> ty::Region
         {
@@ -318,9 +316,10 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                     return ty::ReLateBound(ty::DebruijnIndex::new(1), *a_br);
                 }
             }
-            infcx.tcx.sess.span_bug(
+            span_bug!(
                 span,
-                &format!("could not find original bound region for {:?}", r));
+                "could not find original bound region for {:?}",
+                r);
         }
 
         fn fresh_bound_variable(infcx: &InferCtxt, debruijn: ty::DebruijnIndex) -> ty::Region {
@@ -336,9 +335,10 @@ fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx>,
        .map(|(_, r)| match *r {
            ty::ReVar(r) => { r }
            r => {
-               fields.tcx().sess.span_bug(
+               span_bug!(
                    fields.trace.origin.span(),
-                   &format!("found non-region-vid: {:?}", r));
+                   "found non-region-vid: {:?}",
+                   r);
            }
        })
        .collect()

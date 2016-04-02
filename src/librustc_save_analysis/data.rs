@@ -20,17 +20,6 @@ use rustc::ty;
 use syntax::ast::{CrateNum, NodeId};
 use syntax::codemap::Span;
 
-#[macro_export]
-macro_rules! down_cast_data {
-    ($id:ident, $kind:ident, $this:ident, $sp:expr) => {
-        let $id = if let super::Data::$kind(data) = $id {
-            data
-        } else {
-            $this.sess.span_bug($sp, &format!("unexpected data kind: {:?}", $id));
-        }
-    };
-}
-
 pub struct CrateData {
     pub name: String,
     pub number: u32,

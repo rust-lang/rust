@@ -227,8 +227,7 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 
-pub fn bin_op_to_icmp_predicate(ccx: &CrateContext,
-                                op: hir::BinOp_,
+pub fn bin_op_to_icmp_predicate(op: hir::BinOp_,
                                 signed: bool)
                                 -> llvm::IntPredicate {
     match op {
@@ -239,15 +238,14 @@ pub fn bin_op_to_icmp_predicate(ccx: &CrateContext,
         hir::BiGt => if signed { llvm::IntSGT } else { llvm::IntUGT },
         hir::BiGe => if signed { llvm::IntSGE } else { llvm::IntUGE },
         op => {
-            ccx.sess()
-               .bug(&format!("comparison_op_to_icmp_predicate: expected comparison operator, \
-                              found {:?}",
-                             op));
+            bug!("comparison_op_to_icmp_predicate: expected comparison operator, \
+                  found {:?}",
+                 op)
         }
     }
 }
 
-pub fn bin_op_to_fcmp_predicate(ccx: &CrateContext, op: hir::BinOp_) -> llvm::RealPredicate {
+pub fn bin_op_to_fcmp_predicate(op: hir::BinOp_) -> llvm::RealPredicate {
     match op {
         hir::BiEq => llvm::RealOEQ,
         hir::BiNe => llvm::RealUNE,
@@ -256,10 +254,9 @@ pub fn bin_op_to_fcmp_predicate(ccx: &CrateContext, op: hir::BinOp_) -> llvm::Re
         hir::BiGt => llvm::RealOGT,
         hir::BiGe => llvm::RealOGE,
         op => {
-            ccx.sess()
-               .bug(&format!("comparison_op_to_fcmp_predicate: expected comparison operator, \
-                              found {:?}",
-                             op));
+            bug!("comparison_op_to_fcmp_predicate: expected comparison operator, \
+                  found {:?}",
+                 op);
         }
     }
 }
@@ -291,7 +288,7 @@ pub fn compare_fat_ptrs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 hir::BiLe => (llvm::IntULE, llvm::IntULT),
                 hir::BiGt => (llvm::IntUGT, llvm::IntUGT),
                 hir::BiGe => (llvm::IntUGE, llvm::IntUGT),
-                _ => unreachable!(),
+                _ => bug!(),
             };
 
             let addr_eq = ICmp(bcx, llvm::IntEQ, lhs_addr, rhs_addr, debug_loc);
@@ -302,7 +299,7 @@ pub fn compare_fat_ptrs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Or(bcx, addr_strict, addr_eq_extra_op, debug_loc)
         }
         _ => {
-            bcx.tcx().sess.bug("unexpected fat ptr binop");
+            bug!("unexpected fat ptr binop");
         }
     }
 }
@@ -322,19 +319,19 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 hir::BiEq | hir::BiLe | hir::BiGe => return C_bool(bcx.ccx(), true),
                 hir::BiNe | hir::BiLt | hir::BiGt => return C_bool(bcx.ccx(), false),
                 // refinements would be nice
-                _ => bcx.sess().bug("compare_scalar_types: must be a comparison operator"),
+                _ => bug!("compare_scalar_types: must be a comparison operator"),
             }
         }
         ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyBool | ty::TyUint(_) | ty::TyChar => {
             ICmp(bcx,
-                 bin_op_to_icmp_predicate(bcx.ccx(), op, false),
+                 bin_op_to_icmp_predicate(op, false),
                  lhs,
                  rhs,
                  debug_loc)
         }
         ty::TyRawPtr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {
             ICmp(bcx,
-                 bin_op_to_icmp_predicate(bcx.ccx(), op, false),
+                 bin_op_to_icmp_predicate(op, false),
                  lhs,
                  rhs,
                  debug_loc)
@@ -356,20 +353,20 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         ty::TyInt(_) => {
             ICmp(bcx,
-                 bin_op_to_icmp_predicate(bcx.ccx(), op, true),
+                 bin_op_to_icmp_predicate(op, true),
                  lhs,
                  rhs,
                  debug_loc)
         }
         ty::TyFloat(_) => {
             FCmp(bcx,
-                 bin_op_to_fcmp_predicate(bcx.ccx(), op),
+                 bin_op_to_fcmp_predicate(op),
                  lhs,
                  rhs,
                  debug_loc)
         }
         // Should never get here, because t is scalar.
-        _ => bcx.sess().bug("non-scalar type passed to compare_scalar_types"),
+        _ => bug!("non-scalar type passed to compare_scalar_types"),
     }
 }
 
@@ -383,15 +380,15 @@ pub fn compare_simd_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                       -> ValueRef {
     let signed = match t.sty {
         ty::TyFloat(_) => {
-            let cmp = bin_op_to_fcmp_predicate(bcx.ccx(), op);
+            let cmp = bin_op_to_fcmp_predicate(op);
             return SExt(bcx, FCmp(bcx, cmp, lhs, rhs, debug_loc), ret_ty);
         },
         ty::TyUint(_) => false,
         ty::TyInt(_) => true,
-        _ => bcx.sess().bug("compare_simd_types: invalid SIMD type"),
+        _ => bug!("compare_simd_types: invalid SIMD type"),
     };
 
-    let cmp = bin_op_to_icmp_predicate(bcx.ccx(), op, signed);
+    let cmp = bin_op_to_icmp_predicate(op, signed);
     // LLVM outputs an `< size x i1 >`, so we need to perform a sign extension
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
@@ -578,9 +575,9 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             consts::ptrcast(meth::get_vtable(ccx, trait_ref),
                             Type::vtable_ptr(ccx))
         }
-        _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {:?} -> {:?}",
+        _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                                      source,
-                                     target)),
+                                     target),
     }
 }
 
@@ -604,7 +601,7 @@ pub fn unsize_thin_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             (PointerCast(bcx, src, ptr_ty),
              unsized_info(bcx.ccx(), a, b, None))
         }
-        _ => bcx.sess().bug("unsize_thin_ptr: called on bad types"),
+        _ => bug!("unsize_thin_ptr: called on bad types"),
     }
 }
 
@@ -638,12 +635,12 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let src_repr = adt::represent_type(bcx.ccx(), src_ty);
             let src_fields = match &*src_repr {
                 &adt::Repr::Univariant(ref s, _) => &s.fields,
-                _ => bcx.sess().bug("struct has non-univariant repr"),
+                _ => bug!("struct has non-univariant repr"),
             };
             let dst_repr = adt::represent_type(bcx.ccx(), dst_ty);
             let dst_fields = match &*dst_repr {
                 &adt::Repr::Univariant(ref s, _) => &s.fields,
-                _ => bcx.sess().bug("struct has non-univariant repr"),
+                _ => bug!("struct has non-univariant repr"),
             };
 
             let src = adt::MaybeSizedValue::sized(src);
@@ -664,9 +661,9 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        _ => bcx.sess().bug(&format!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
-                                     src_ty,
-                                     dst_ty)),
+        _ => bug!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
+                  src_ty,
+                  dst_ty),
     }
 }
 
@@ -689,8 +686,7 @@ pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             ccx.tcx().custom_coerce_unsized_kind(impl_def_id)
         }
         vtable => {
-            ccx.sess().bug(&format!("invalid CoerceUnsized vtable: {:?}",
-                                    vtable));
+            bug!("invalid CoerceUnsized vtable: {:?}", vtable);
         }
     }
 }
@@ -758,7 +754,7 @@ pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             };
             (llty, min)
         }
-        _ => unreachable!(),
+        _ => bug!(),
     }
 }
 
@@ -798,7 +794,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             (res, false)
         }
         _ => {
-            cx.sess().bug(&format!("fail-if-zero on unexpected type: {}", rhs_t));
+            bug!("fail-if-zero on unexpected type: {}", rhs_t);
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
@@ -1323,15 +1319,15 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
                 hir::ItemFn(_, _, _, _, _, ref blk) => {
                     blk
                 }
-                _ => tcx.sess.bug("unexpected item variant in has_nested_returns"),
+                _ => bug!("unexpected item variant in has_nested_returns"),
             }
         }
         Some(hir_map::NodeTraitItem(trait_item)) => {
             match trait_item.node {
                 hir::MethodTraitItem(_, Some(ref body)) => body,
                 _ => {
-                    tcx.sess.bug("unexpected variant: trait item other than a provided method in \
-                                  has_nested_returns")
+                    bug!("unexpected variant: trait item other than a provided method in \
+                          has_nested_returns")
                 }
             }
         }
@@ -1339,14 +1335,14 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
             match impl_item.node {
                 hir::ImplItemKind::Method(_, ref body) => body,
                 _ => {
-                    tcx.sess.bug("unexpected variant: non-method impl item in has_nested_returns")
+                    bug!("unexpected variant: non-method impl item in has_nested_returns")
                 }
             }
         }
         Some(hir_map::NodeExpr(e)) => {
             match e.node {
                 hir::ExprClosure(_, _, ref blk) => blk,
-                _ => tcx.sess.bug("unexpected expr variant in has_nested_returns"),
+                _ => bug!("unexpected expr variant in has_nested_returns"),
             }
         }
         Some(hir_map::NodeVariant(..)) |
@@ -1355,8 +1351,8 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
         // glue, shims, etc
         None if id == ast::DUMMY_NODE_ID => return (ast::DUMMY_NODE_ID, None),
 
-        _ => tcx.sess.bug(&format!("unexpected variant in has_nested_returns: {}",
-                                   tcx.map.path_to_string(id))),
+        _ => bug!("unexpected variant in has_nested_returns: {}",
+                  tcx.map.path_to_string(id)),
     };
 
     (blk.id, Some(cfg::CFG::new(tcx, blk)))
@@ -1675,7 +1671,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
                 // FIXME(pcwalton): Reduce the amount of code bloat this is responsible for.
                 let tupled_arg_tys = match arg_ty.sty {
                     ty::TyTuple(ref tys) => tys,
-                    _ => unreachable!("last argument of `rust-call` fn isn't a tuple?!")
+                    _ => bug!("last argument of `rust-call` fn isn't a tuple?!")
                 };
 
                 unpack_datum!(bcx, datum::lvalue_scratch_datum(bcx,
@@ -1978,7 +1974,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                       expr::SaveIn(llresult),
                                       debug_loc);
             }
-            _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor"),
+            _ => bug!("expected expr as arguments for variant/struct tuple constructor"),
         }
     } else {
         // Just eval all the expressions (if any). Since expressions in Rust can have arbitrary
@@ -2381,7 +2377,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext, sp: Span, main_llfn: ValueRef) {
                       .help("did you use #[no_mangle] on `fn main`? Use #[start] instead")
                       .emit();
             ccx.sess().abort_if_errors();
-            panic!();
+            bug!();
         }
         let llfn = declare::declare_cfn(ccx, "main", llfty);
 
@@ -2734,7 +2730,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         });
 
         if POISONED {
-            tcx.sess.bug("couldn't enable multi-threaded LLVM");
+            bug!("couldn't enable multi-threaded LLVM");
         }
     }
 

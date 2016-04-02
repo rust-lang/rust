@@ -67,8 +67,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &TyCtxt<'tcx>, ast_ty: &ast::Ty)
     if let ast::TyPath(None, ref path) = ast_ty.node {
         let def = match tcx.def_map.borrow().get(&ast_ty.id) {
             None => {
-                tcx.sess.span_bug(ast_ty.span,
-                                  &format!("unbound path {:?}", path))
+                span_bug!(ast_ty.span, "unbound path {:?}", path)
             }
             Some(d) => d.full_def()
         };

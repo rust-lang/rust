@@ -97,21 +97,23 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                                     Ok(pat) =>
                                         return self.to_pattern(&pat),
                                     Err(_) =>
-                                        self.cx.tcx.sess.span_bug(
+                                        span_bug!(
                                             pat.span, "illegal constant"),
                                 }
                             }
                             None => {
-                                self.cx.tcx.sess.span_bug(
+                                span_bug!(
                                     pat.span,
-                                    &format!("cannot eval constant: {:?}", def_id))
+                                    "cannot eval constant: {:?}",
+                                    def_id)
                             }
                         }
                     }
                     _ =>
-                        self.cx.tcx.sess.span_bug(
+                        span_bug!(
                             pat.span,
-                            &format!("def not a constant: {:?}", def)),
+                            "def not a constant: {:?}",
+                            def),
                 }
             }
 
@@ -138,9 +140,10 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                         self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix),
 
                     ref sty =>
-                        self.cx.tcx.sess.span_bug(
+                        span_bug!(
                             pat.span,
-                            &format!("unexpanded type for vector pattern: {:?}", sty)),
+                            "unexpanded type for vector pattern: {:?}",
+                            sty),
                 }
             }
 
@@ -186,7 +189,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                     if let ty::TyRef(_, mt) = ty.sty {
                         ty = mt.ty;
                     } else {
-                        unreachable!("`ref {}` has wrong type {}", ident.node, ty);
+                        bug!("`ref {}` has wrong type {}", ident.node, ty);
                     }
                 }
 
@@ -222,7 +225,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                 let adt_def = match pat_ty.sty {
                     ty::TyStruct(adt_def, _) | ty::TyEnum(adt_def, _) => adt_def,
                     _ => {
-                        self.cx.tcx.sess.span_bug(
+                        span_bug!(
                             pat.span,
                             "struct pattern not applied to struct or enum");
                     }
@@ -236,9 +239,10 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
                           .map(|field| {
                               let index = variant_def.index_of_field_named(field.node.name);
                               let index = index.unwrap_or_else(|| {
-                                  self.cx.tcx.sess.span_bug(
+                                  span_bug!(
                                       pat.span,
-                                      &format!("no field with name {:?}", field.node.name));
+                                      "no field with name {:?}",
+                                      field.node.name);
                               });
                               FieldPattern {
                                   field: Field::new(index),
@@ -251,7 +255,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             }
 
             PatKind::QPath(..) => {
-                self.cx.tcx.sess.span_bug(pat.span, "unexpanded macro or bad constant etc");
+                span_bug!(pat.span, "unexpanded macro or bad constant etc");
             }
         };
 
@@ -298,7 +302,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             }
 
             _ => {
-                self.cx.tcx.sess.span_bug(span, "unexpanded macro or bad constant etc");
+                span_bug!(span, "unexpanded macro or bad constant etc");
             }
         }
     }
@@ -327,8 +331,7 @@ impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
             }
 
             _ => {
-                self.cx.tcx.sess.span_bug(pat.span,
-                                          &format!("inappropriate def for pattern: {:?}", def));
+                span_bug!(pat.span, "inappropriate def for pattern: {:?}", def);
             }
         }
     }

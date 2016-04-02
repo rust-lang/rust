@@ -339,7 +339,7 @@ fn check_arms(cx: &MatchCheckCtxt,
                             // `Some(<head>)` and `None`. It's impossible to have an unreachable
                             // pattern
                             // (see libsyntax/ext/expand.rs for the full expansion of a for loop)
-                            cx.tcx.sess.span_bug(pat.span, "unreachable for-loop pattern")
+                            span_bug!(pat.span, "unreachable for-loop pattern")
                         },
 
                         hir::MatchSource::Normal => {
@@ -347,12 +347,12 @@ fn check_arms(cx: &MatchCheckCtxt,
                         },
 
                         hir::MatchSource::TryDesugar => {
-                            cx.tcx.sess.span_bug(pat.span, "unreachable try pattern")
+                            span_bug!(pat.span, "unreachable try pattern")
                         },
                     }
                 }
                 Useful => (),
-                UsefulWithWitness(_) => unreachable!()
+                UsefulWithWitness(_) => bug!()
             }
             if guard.is_none() {
                 let Matrix(mut rows) = seen;
@@ -384,9 +384,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                     let witness = match witnesses[0].node {
                         PatKind::TupleStruct(_, Some(ref pats)) => match &pats[..] {
                             [ref pat] => &**pat,
-                            _ => unreachable!(),
+                            _ => bug!(),
                         },
-                        _ => unreachable!(),
+                        _ => bug!(),
                     };
                     span_err!(cx.tcx.sess, sp, E0297,
                         "refutable pattern in `for` loop binding: \
@@ -399,7 +399,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
                     }).collect();
                     const LIMIT: usize = 3;
                     let joined_patterns = match pattern_strings.len() {
-                        0 => unreachable!(),
+                        0 => bug!(),
                         1 => format!("`{}`", pattern_strings[0]),
                         2...LIMIT => {
                             let (tail, head) = pattern_strings.split_last().unwrap();
@@ -420,14 +420,14 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
         NotUseful => {
             // This is good, wildcard pattern isn't reachable
         },
-        _ => unreachable!()
+        _ => bug!()
     }
 }
 
 fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
     let node = match value {
         &ConstVal::Bool(b) => ast::LitKind::Bool(b),
-        _ => unreachable!()
+        _ => bug!()
     };
     P(hir::Expr {
         id: 0,
@@ -579,14 +579,14 @@ fn construct_witness<'a,'tcx>(cx: &MatchCheckCtxt<'a,'tcx>, ctor: &Constructor,
                         assert_eq!(pats_len, n);
                         PatKind::Vec(pats.collect(), None, hir::HirVec::new())
                     },
-                    _ => unreachable!()
+                    _ => bug!()
                 },
                 ty::TySlice(_) => match ctor {
                     &Slice(n) => {
                         assert_eq!(pats_len, n);
                         PatKind::Vec(pats.collect(), None, hir::HirVec::new())
                     },
-                    _ => unreachable!()
+                    _ => bug!()
                 },
                 ty::TyStr => PatKind::Wild,
 
@@ -791,17 +791,16 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
         PatKind::Struct(..) | PatKind::TupleStruct(..) | PatKind::Path(..) | PatKind::Ident(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).unwrap().full_def() {
                 Def::Const(..) | Def::AssociatedConst(..) =>
-                    cx.tcx.sess.span_bug(pat.span, "const pattern should've \
-                                                    been rewritten"),
+                    span_bug!(pat.span, "const pattern should've \
+                                         been rewritten"),
                 Def::Struct(..) | Def::TyAlias(..) => vec![Single],
                 Def::Variant(_, id) => vec![Variant(id)],
                 Def::Local(..) => vec![],
-                def => cx.tcx.sess.span_bug(pat.span, &format!("pat_constructors: unexpected \
-                                                                definition {:?}", def)),
+                def => span_bug!(pat.span, "pat_constructors: unexpected \
+                                            definition {:?}", def),
             },
         PatKind::QPath(..) =>
-            cx.tcx.sess.span_bug(pat.span, "const pattern should've \
-                                            been rewritten"),
+            span_bug!(pat.span, "const pattern should've been rewritten"),
         PatKind::Lit(ref expr) =>
             vec!(ConstantValue(eval_const_expr(cx.tcx, &expr))),
         PatKind::Range(ref lo, ref hi) =>
@@ -837,7 +836,7 @@ pub fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> us
             ty::TySlice(_) => match *ctor {
                 Slice(length) => length,
                 ConstantValue(_) => 0,
-                _ => unreachable!()
+                _ => bug!()
             },
             ty::TyStr => 0,
             _ => 1
@@ -856,7 +855,7 @@ fn range_covered_by_constructor(ctor: &Constructor,
         ConstantValue(ref value)        => (value, value),
         ConstantRange(ref from, ref to) => (from, to),
         Single                          => return Some(true),
-        _                               => unreachable!()
+        _                               => bug!()
     };
     let cmp_from = compare_const_vals(c_from, from);
     let cmp_to = compare_const_vals(c_to, to);
@@ -889,13 +888,13 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
                 Def::Const(..) | Def::AssociatedConst(..) =>
-                    cx.tcx.sess.span_bug(pat_span, "const pattern should've \
-                                                    been rewritten"),
+                    span_bug!(pat_span, "const pattern should've \
+                                         been rewritten"),
                 Def::Variant(_, id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => Some(Vec::new()),
                 Def::Local(..) => Some(vec![DUMMY_WILD_PAT; arity]),
-                _ => cx.tcx.sess.span_bug(pat_span, &format!("specialize: unexpected \
-                                                              definition {:?}", def)),
+                _ => span_bug!(pat_span, "specialize: unexpected \
+                                          definition {:?}", def),
             }
         }
 
@@ -903,8 +902,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
                 Def::Const(..) | Def::AssociatedConst(..) =>
-                    cx.tcx.sess.span_bug(pat_span, "const pattern should've \
-                                                    been rewritten"),
+                    span_bug!(pat_span, "const pattern should've \
+                                         been rewritten"),
                 Def::Variant(_, id) if *constructor != Variant(id) => None,
                 Def::Variant(..) | Def::Struct(..) => {
                     Some(match args {
@@ -917,8 +916,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         PatKind::QPath(_, _) => {
-            cx.tcx.sess.span_bug(pat_span, "const pattern should've \
-                                            been rewritten")
+            span_bug!(pat_span, "const pattern should've been rewritten")
         }
 
         PatKind::Struct(_, ref pattern_fields, _) => {
@@ -1062,7 +1060,7 @@ fn is_refutable<A, F>(cx: &MatchCheckCtxt, pat: &Pat, refutable: F) -> Option<A>
     match is_useful(cx, &pats, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => Some(refutable(&pats[0])),
         NotUseful => None,
-        Useful => unreachable!()
+        Useful => bug!()
     }
 }
 
@@ -1119,12 +1117,11 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     PatKind::Ident(hir::BindByRef(_), _, _) => {
                     }
                     _ => {
-                        cx.tcx.sess.span_bug(
+                        span_bug!(
                             p.span,
-                            &format!("binding pattern {} is not an \
-                                     identifier: {:?}",
-                                    p.id,
-                                    p.node));
+                            "binding pattern {} is not an identifier: {:?}",
+                            p.id,
+                            p.node);
                     }
                 }
             }

@@ -184,8 +184,8 @@ impl<'tcx> Callee<'tcx> {
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {
                     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-                    _ => unreachable!("expected fn item type, found {}",
-                                      method_ty)
+                    _ => bug!("expected fn item type, found {}",
+                              method_ty)
                 };
                 Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
@@ -196,8 +196,8 @@ impl<'tcx> Callee<'tcx> {
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {
                     ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
-                    _ => unreachable!("expected fn item type, found {}",
-                                      method_ty)
+                    _ => bug!("expected fn item type, found {}",
+                              method_ty)
                 };
                 Callee::ptr(immediate_rvalue(llfn, fn_ptr_ty))
             }
@@ -209,7 +209,7 @@ impl<'tcx> Callee<'tcx> {
                 }
             }
             vtable => {
-                unreachable!("resolved vtable bad vtable {:?} in trans", vtable);
+                bug!("resolved vtable bad vtable {:?} in trans", vtable);
             }
         }
     }
@@ -269,9 +269,9 @@ impl<'tcx> Callee<'tcx> {
                 ty::TyFnDef(def_id, substs, _) => {
                     return get_fn(ccx, def_id, substs);
                 }
-                _ => unreachable!("expected fn item type, found {}", self.ty)
+                _ => bug!("expected fn item type, found {}", self.ty)
             },
-            Intrinsic => unreachable!("intrinsic {} getting reified", self.ty)
+            Intrinsic => bug!("intrinsic {} getting reified", self.ty)
         }
     }
 }
@@ -356,8 +356,8 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                     ref sig }) => sig,
 
         _ => {
-            tcx.sess.bug(&format!("trans_fn_pointer_shim invoked on invalid type: {}",
-                                    bare_fn_ty));
+            bug!("trans_fn_pointer_shim invoked on invalid type: {}",
+                 bare_fn_ty);
         }
     };
     let sig = tcx.erase_late_bound_regions(sig);
@@ -481,7 +481,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 // Create a fn pointer with the substituted signature.
                 tcx.mk_ty(ty::TyFnPtr(fty))
             }
-            _ => unreachable!("expected fn item type, found {}", fn_ty)
+            _ => bug!("expected fn item type, found {}", fn_ty)
         };
         assert_eq!(type_of::type_of(ccx, fn_ptr_ty), common::val_ty(val));
         return immediate_rvalue(val, fn_ptr_ty);
@@ -494,7 +494,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // Create a fn pointer with the normalized signature.
             tcx.mk_fn_ptr(infer::normalize_associated_type(tcx, fty))
         }
-        _ => unreachable!("expected fn item type, found {}", ty)
+        _ => bug!("expected fn item type, found {}", ty)
     };
 
     let instance = Instance::mono(ccx.tcx(), def_id);
@@ -537,7 +537,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         ref variant => {
-            ccx.sess().bug(&format!("get_fn: unexpected variant: {:?}", variant))
+            bug!("get_fn: unexpected variant: {:?}", variant)
         }
     };
 
@@ -689,7 +689,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let llfn = match callee {
         Fn(f) => f,
-        _ => unreachable!("expected fn pointer callee, found {:?}", callee)
+        _ => bug!("expected fn pointer callee, found {:?}", callee)
     };
 
     let (llret, mut bcx) = base::invoke(bcx, llfn, &llargs, debug_loc);
@@ -830,8 +830,8 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
             }
         }
         _ => {
-            bcx.sess().span_bug(tuple_expr.span,
-                                "argument to `.call()` wasn't a tuple?!")
+            span_bug!(tuple_expr.span,
+                      "argument to `.call()` wasn't a tuple?!")
         }
     };
 

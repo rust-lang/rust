@@ -186,15 +186,13 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 // this would imply that the Self type being erased is
                 // an object type; this cannot happen because we
                 // cannot cast an unsized type into a trait object
-                tcx.sess.bug(
-                    &format!("cannot get vtable for an object type: {:?}",
-                            data));
+                bug!("cannot get vtable for an object type: {:?}",
+                     data);
             }
             traits::VtableParam(..) => {
-                tcx.sess.bug(
-                    &format!("resolved vtable for {:?} to bad vtable {:?} in trans",
-                            trait_ref,
-                            vtable));
+                bug!("resolved vtable for {:?} to bad vtable {:?} in trans",
+                     trait_ref,
+                     vtable);
             }
         }
     });
@@ -229,8 +227,8 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let trt_id = match tcx.impl_trait_ref(impl_id) {
         Some(t_id) => t_id.def_id,
-        None       => ccx.sess().bug("make_impl_vtable: don't know how to \
-                                      make a vtable for a type impl!")
+        None       => bug!("make_impl_vtable: don't know how to \
+                            make a vtable for a type impl!")
     };
 
     tcx.populate_implementations_for_trait_if_necessary(trt_id);
@@ -256,7 +254,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
             let trait_method_type = match tcx.impl_or_trait_item(trait_method_def_id) {
                 ty::MethodTraitItem(m) => m,
-                _ => ccx.sess().bug("should be a method, not other assoc item"),
+                _ => bug!("should be a method, not other assoc item"),
             };
             let name = trait_method_type.name;
 
@@ -330,7 +328,7 @@ pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
             }
         }
         None => {
-            tcx.sess.bug(&format!("method {:?} not found in {:?}", name, impl_def_id))
+            bug!("method {:?} not found in {:?}", name, impl_def_id)
         }
     }
 }

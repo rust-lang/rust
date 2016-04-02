@@ -388,7 +388,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         .reify(bcx.ccx()).to_expr_datum();
                 }
                 _ => {
-                    unreachable!("{} cannot be reified to a fn ptr", datum.ty)
+                    bug!("{} cannot be reified to a fn ptr", datum.ty)
                 }
             }
         }
@@ -516,16 +516,16 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let repr_source = adt::represent_type(bcx.ccx(), source.ty);
             let src_fields = match &*repr_source {
                 &adt::Repr::Univariant(ref s, _) => &s.fields,
-                _ => bcx.sess().span_bug(span,
-                                         &format!("Non univariant struct? (repr_source: {:?})",
-                                                  repr_source)),
+                _ => span_bug!(span,
+                               "Non univariant struct? (repr_source: {:?})",
+                               repr_source),
             };
             let repr_target = adt::represent_type(bcx.ccx(), target.ty);
             let target_fields = match &*repr_target {
                 &adt::Repr::Univariant(ref s, _) => &s.fields,
-                _ => bcx.sess().span_bug(span,
-                                         &format!("Non univariant struct? (repr_target: {:?})",
-                                                  repr_target)),
+                _ => span_bug!(span,
+                               "Non univariant struct? (repr_target: {:?})",
+                               repr_target),
             };
 
             let coerce_index = match kind {
@@ -555,9 +555,9 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             }
         }
-        _ => bcx.sess().bug(&format!("coerce_unsized: invalid coercion {:?} -> {:?}",
-                                     source.ty,
-                                     target.ty))
+        _ => bug!("coerce_unsized: invalid coercion {:?} -> {:?}",
+                  source.ty,
+                  target.ty)
     }
     bcx
 }
@@ -671,8 +671,8 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 ty::TyBox(..) => {
                     trans_uniq_expr(bcx, expr, box_ty, &contents, contents_ty)
                 }
-                _ => bcx.sess().span_bug(expr.span,
-                                         "expected unique box")
+                _ => span_bug!(expr.span,
+                               "expected unique box")
             }
 
         }
@@ -708,11 +708,11 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_imm_cast(bcx, &val, expr.id)
         }
         _ => {
-            bcx.tcx().sess.span_bug(
+            span_bug!(
                 expr.span,
-                &format!("trans_rvalue_datum_unadjusted reached \
-                         fall-through case: {:?}",
-                        expr.node));
+                "trans_rvalue_datum_unadjusted reached \
+                 fall-through case: {:?}",
+                expr.node);
         }
     }
 }
@@ -798,9 +798,9 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx.tcx().no_late_bound_regions(&method_ty.fn_ret()).unwrap().unwrap();
             let elt_ty = match ref_ty.builtin_deref(true, ty::NoPreference) {
                 None => {
-                    bcx.tcx().sess.span_bug(index_expr.span,
-                                            "index method didn't return a \
-                                             dereferenceable type?!")
+                    span_bug!(index_expr.span,
+                              "index method didn't return a \
+                              dereferenceable type?!")
                 }
                 Some(elt_tm) => elt_tm.ty,
             };
@@ -895,9 +895,7 @@ pub fn trans_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, def: Def)
             match bcx.fcx.llupvars.borrow().get(&nid) {
                 Some(&val) => Datum::new(val, local_ty, lval),
                 None => {
-                    bcx.sess().bug(&format!(
-                        "trans_var: no llval for upvar {} found",
-                        nid));
+                    bug!("trans_var: no llval for upvar {} found", nid);
                 }
             }
         }
@@ -905,16 +903,14 @@ pub fn trans_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, def: Def)
             let datum = match bcx.fcx.lllocals.borrow().get(&nid) {
                 Some(&v) => v,
                 None => {
-                    bcx.sess().bug(&format!(
-                        "trans_var: no datum for local/arg {} found",
-                        nid));
+                    bug!("trans_var: no datum for local/arg {} found", nid);
                 }
             };
             debug!("take_local(nid={}, v={:?}, ty={})",
                    nid, Value(datum.val), datum.ty);
             datum
         }
-        _ => unreachable!("{:?} should not reach expr::trans_var", def)
+        _ => bug!("{:?} should not reach expr::trans_var", def)
     }
 }
 
@@ -1051,11 +1047,11 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx
         }
         _ => {
-            bcx.tcx().sess.span_bug(
+            span_bug!(
                 expr.span,
-                &format!("trans_rvalue_stmt_unadjusted reached \
-                         fall-through case: {:?}",
-                        expr.node));
+                "trans_rvalue_stmt_unadjusted reached \
+                 fall-through case: {:?}",
+                expr.node);
         }
     }
 }
@@ -1114,11 +1110,9 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
-                    bcx.tcx()
-                       .sess
-                       .span_bug(expr.span,
-                                 "trans_rvalue_dps_unadjusted shouldn't be \
-                                  translating this type of literal")
+                    span_bug!(expr.span,
+                              "trans_rvalue_dps_unadjusted shouldn't be \
+                              translating this type of literal")
                 }
             }
         }
@@ -1141,9 +1135,9 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let (def_id, substs) = match expr_ty(bcx, expr).sty {
                 ty::TyClosure(def_id, ref substs) => (def_id, substs),
                 ref t =>
-                    bcx.tcx().sess.span_bug(
+                    span_bug!(
                         expr.span,
-                        &format!("closure expr without closure type: {:?}", t)),
+                        "closure expr without closure type: {:?}", t),
             };
 
             closure::trans_closure_expr(dest,
@@ -1172,8 +1166,8 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         Callee::ptr(f)
                     }
                     _ => {
-                        bcx.tcx().sess.span_bug(expr.span,
-                            &format!("type of callee is not a fn: {}", f.ty));
+                        span_bug!(expr.span,
+                            "type of callee is not a fn: {}", f.ty);
                     }
                 }, ArgExprs(&args))
             };
@@ -1205,20 +1199,20 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         hir::ExprCast(..) => {
             // Trait casts used to come this way, now they should be coercions.
-            bcx.tcx().sess.span_bug(expr.span, "DPS expr_cast (residual trait cast?)")
+            span_bug!(expr.span, "DPS expr_cast (residual trait cast?)")
         }
         hir::ExprAssignOp(op, _, _) => {
-            bcx.tcx().sess.span_bug(
+            span_bug!(
                 expr.span,
-                &format!("augmented assignment `{}=` should always be a rvalue_stmt",
-                         rustc_front::util::binop_to_string(op.node)))
+                "augmented assignment `{}=` should always be a rvalue_stmt",
+                rustc_front::util::binop_to_string(op.node))
         }
         _ => {
-            bcx.tcx().sess.span_bug(
+            span_bug!(
                 expr.span,
-                &format!("trans_rvalue_dps_unadjusted reached fall-through \
-                         case: {:?}",
-                        expr.node));
+                "trans_rvalue_dps_unadjusted reached fall-through \
+                 case: {:?}",
+                expr.node);
         }
     }
 }
@@ -1261,9 +1255,9 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             bcx
         }
         _ => {
-            bcx.tcx().sess.span_bug(ref_expr.span, &format!(
-                "Non-DPS def {:?} referened by {}",
-                def, bcx.node_id_to_string(ref_expr.id)));
+            span_bug!(ref_expr.span,
+                      "Non-DPS def {:?} referened by {}",
+                      def, bcx.node_id_to_string(ref_expr.id));
         }
     }
 }
@@ -1301,7 +1295,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
         None => {
             if need_base.iter().any(|b| *b) {
-                tcx.sess.span_bug(expr_span, "missing fields and no base expr")
+                span_bug!(expr_span, "missing fields and no base expr")
             }
             None
         }
@@ -1415,7 +1409,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 bcx = trans_into(bcx, &base.expr, SaveIn(addr.value));
             },
             ExprKind::RvalueStmt => {
-                bcx.tcx().sess.bug("unexpected expr kind for struct base expr")
+                bug!("unexpected expr kind for struct base expr")
             }
             _ => {
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &base.expr, "base"));
@@ -1728,7 +1722,7 @@ fn trans_scalar_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
           base::compare_scalar_types(bcx, lhs, rhs, lhs_t, op.node, binop_debug_loc)
       }
       _ => {
-        bcx.tcx().sess.span_bug(binop_expr.span, "unexpected binop");
+        span_bug!(binop_expr.span, "unexpected binop");
       }
     };
 
@@ -1968,12 +1962,11 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         (Float, Int(I)) => FPToSI(bcx, llexpr, ll_t_out),
         (Float, Int(_)) => FPToUI(bcx, llexpr, ll_t_out),
 
-        _ => ccx.sess().span_bug(expr.span,
-                                  &format!("translating unsupported cast: \
-                                            {:?} -> {:?}",
-                                           t_in,
-                                           t_out)
-                                 )
+        _ => span_bug!(expr.span,
+                       "translating unsupported cast: \
+                        {:?} -> {:?}",
+                       t_in,
+                       t_out)
     };
     return immediate_rvalue_bcx(bcx, newval, t_out).to_expr_datumblock();
 }
@@ -2140,10 +2133,10 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         _ => {
-            bcx.tcx().sess.span_bug(
+            span_bug!(
                 expr.span,
-                &format!("deref invoked on expr of invalid type {:?}",
-                        datum.ty));
+                "deref invoked on expr of invalid type {:?}",
+                datum.ty);
         }
     };
 
@@ -2200,16 +2193,16 @@ impl OverflowOpViaIntrinsic {
             TyInt(Is) => match &tcx.sess.target.target.target_pointer_width[..] {
                 "32" => TyInt(I32),
                 "64" => TyInt(I64),
-                _ => panic!("unsupported target word size")
+                _ => bug!("unsupported target word size")
             },
             TyUint(Us) => match &tcx.sess.target.target.target_pointer_width[..] {
                 "32" => TyUint(U32),
                 "64" => TyUint(U64),
-                _ => panic!("unsupported target word size")
+                _ => bug!("unsupported target word size")
             },
             ref t @ TyUint(_) | ref t @ TyInt(_) => t.clone(),
-            _ => panic!("tried to get overflow intrinsic for {:?} applied to non-int type",
-                        *self)
+            _ => bug!("tried to get overflow intrinsic for {:?} applied to non-int type",
+                      *self)
         };
 
         match *self {
@@ -2224,7 +2217,7 @@ impl OverflowOpViaIntrinsic {
                 TyUint(U32) => "llvm.uadd.with.overflow.i32",
                 TyUint(U64) => "llvm.uadd.with.overflow.i64",
 
-                _ => unreachable!(),
+                _ => bug!(),
             },
             OverflowOpViaIntrinsic::Sub => match new_sty {
                 TyInt(I8) => "llvm.ssub.with.overflow.i8",
@@ -2237,7 +2230,7 @@ impl OverflowOpViaIntrinsic {
                 TyUint(U32) => "llvm.usub.with.overflow.i32",
                 TyUint(U64) => "llvm.usub.with.overflow.i64",
 
-                _ => unreachable!(),
+                _ => bug!(),
             },
             OverflowOpViaIntrinsic::Mul => match new_sty {
                 TyInt(I8) => "llvm.smul.with.overflow.i8",
@@ -2250,7 +2243,7 @@ impl OverflowOpViaIntrinsic {
                 TyUint(U32) => "llvm.umul.with.overflow.i32",
                 TyUint(U64) => "llvm.umul.with.overflow.i64",
 
-                _ => unreachable!(),
+                _ => bug!(),
             },
         }
     }
@@ -2337,7 +2330,7 @@ fn build_nonzero_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let int_value = BitCast(bcx, value, Type::ix(bcx.ccx(), width));
             build_nonzero_check(bcx, int_value, binop_debug_loc)
         },
-        _ => panic!("build_nonzero_check: expected Integer or Vector, found {:?}", kind),
+        _ => bug!("build_nonzero_check: expected Integer or Vector, found {:?}", kind),
     }
 }
 
@@ -2423,11 +2416,11 @@ fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
                 Def::AssociatedConst(..) => ExprKind::RvalueDatum,
 
                 def => {
-                    tcx.sess.span_bug(
+                    span_bug!(
                         expr.span,
-                        &format!("uncategorized def for expr {}: {:?}",
-                                expr.id,
-                                def));
+                        "uncategorized def for expr {}: {:?}",
+                        expr.id,
+                        def);
                 }
             }
         }

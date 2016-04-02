@@ -24,7 +24,6 @@ use rustc::middle::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
-use syntax::codemap::Span;
 use syntax::parse::token;
 use rustc_front::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
@@ -57,7 +56,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
     pub fn usize_literal(&mut self, value: u64) -> Literal<'tcx> {
         match ConstUsize::new(value, self.tcx.sess.target.uint_type) {
             Ok(val) => Literal::Value { value: ConstVal::Integral(ConstInt::Usize(val))},
-            Err(_) => panic!("usize literal out of range for target"),
+            Err(_) => bug!("usize literal out of range for target"),
         }
     }
 
@@ -124,7 +123,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.bug(&format!("found no method `{}` in `{:?}`", method_name, trait_def_id));
+        bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
     pub fn num_variants(&mut self, adt_def: ty::AdtDef<'tcx>) -> usize {
@@ -139,10 +138,6 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
 
     pub fn needs_drop(&mut self, ty: Ty<'tcx>) -> bool {
         self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
-    }
-
-    pub fn span_bug(&mut self, span: Span, message: &str) -> ! {
-        self.tcx.sess.span_bug(span, message)
     }
 
     pub fn tcx(&self) -> &'a TyCtxt<'tcx> {

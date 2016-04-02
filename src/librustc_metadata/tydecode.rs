@@ -167,7 +167,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 ty::BrFresh(id)
             }
             'e' => ty::BrEnv,
-            _ => panic!("parse_bound_region: bad input")
+            _ => bug!("parse_bound_region: bad input")
         }
     }
 
@@ -214,7 +214,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             'e' => {
                 ty::ReStatic
             }
-            _ => panic!("parse_region: bad input")
+            _ => bug!("parse_region: bad input")
         }
     }
 
@@ -266,7 +266,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 };
                 region::CodeExtentData::Remainder(block_remainder)
             }
-            _ => panic!("parse_scope: bad input")
+            _ => bug!("parse_scope: bad input")
         })
     }
 
@@ -276,7 +276,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         match self.next() {
             'n' => None,
             's' => Some(f(self)),
-            _ => panic!("parse_opt: bad input")
+            _ => bug!("parse_opt: bad input")
         }
     }
 
@@ -315,7 +315,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                     'D' => return tcx.types.i64,
                     'f' => return tcx.types.f32,
                     'F' => return tcx.types.f64,
-                    _ => panic!("parse_ty: bad numeric type")
+                    _ => bug!("parse_ty: bad numeric type")
                 }
             }
             'c' => return tcx.types.char,
@@ -441,7 +441,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             'e' => {
                 return tcx.types.err;
             }
-            c => { panic!("unexpected char in type string: {}", c);}
+            c => { bug!("unexpected char in type string: {}", c);}
         }
     }
 
@@ -523,7 +523,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         let variadic = match self.next() {
             'V' => true,
             'N' => false,
-            r => panic!(format!("bad variadic: {}", r)),
+            r => bug!("bad variadic: {}", r),
         };
         let output = match self.peek() {
             'z' => {
@@ -553,7 +553,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '|');
                 ty::Predicate::ObjectSafe(def_id)
             }
-            c => panic!("Encountered invalid character in metadata: {}", c)
+            c => bug!("Encountered invalid character in metadata: {}", c)
         }
     }
 
@@ -602,7 +602,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 'R' => bounds.push(self.parse_region()),
                 '.' => { break; }
                 c => {
-                    panic!("parse_region_param_def: bad bounds ('{}')", c)
+                    bug!("parse_region_param_def: bad bounds ('{}')", c)
                 }
             }
         }
@@ -624,7 +624,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 let region = self.parse_region();
                 ty::ObjectLifetimeDefault::Specific(region)
             }
-            _ => panic!("parse_object_lifetime_default: bad input")
+            _ => bug!("parse_object_lifetime_default: bad input")
         }
     }
 
@@ -640,7 +640,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 }
                 '.' => { break; }
                 c => {
-                    panic!("parse_bounds: bad bounds ('{}')", c)
+                    bug!("parse_bounds: bad bounds ('{}')", c)
                 }
             }
         }
@@ -669,7 +669,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                     return builtin_bounds;
                 }
                 c => {
-                    panic!("parse_bounds: bad builtin bounds ('{}')", c)
+                    bug!("parse_bounds: bad builtin bounds ('{}')", c)
                 }
             }
         }
@@ -683,7 +683,7 @@ fn parse_defid(buf: &[u8]) -> DefId {
     while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1; }
     if colon_idx == len {
         error!("didn't find ':' when parsing def id");
-        panic!();
+        bug!();
     }
 
     let crate_part = &buf[0..colon_idx];
@@ -693,14 +693,14 @@ fn parse_defid(buf: &[u8]) -> DefId {
         s.parse::<usize>().ok()
     }) {
         Some(cn) => cn as ast::CrateNum,
-        None => panic!("internal error: parse_defid: crate number expected, found {:?}",
+        None => bug!("internal error: parse_defid: crate number expected, found {:?}",
                        crate_part)
     };
     let def_num = match str::from_utf8(def_part).ok().and_then(|s| {
         s.parse::<usize>().ok()
     }) {
         Some(dn) => dn,
-        None => panic!("internal error: parse_defid: id expected, found {:?}",
+        None => bug!("internal error: parse_defid: id expected, found {:?}",
                        def_part)
     };
     let index = DefIndex::new(def_num);
@@ -711,6 +711,6 @@ fn parse_unsafety(c: char) -> hir::Unsafety {
     match c {
         'u' => hir::Unsafety::Unsafe,
         'n' => hir::Unsafety::Normal,
-        _ => panic!("parse_unsafety: bad unsafety {}", c)
+        _ => bug!("parse_unsafety: bad unsafety {}", c)
     }
 }

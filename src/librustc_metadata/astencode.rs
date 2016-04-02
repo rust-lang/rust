@@ -991,7 +991,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         region: this.read_enum_variant_arg(1,
                                     |this| Ok(this.read_region(dcx))).unwrap()
                     }),
-                    _ => panic!("bad enum variant for ty::UpvarCapture")
+                    _ => bug!("bad enum variant for ty::UpvarCapture")
                 })
             })
         }).unwrap()
@@ -1013,7 +1013,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
                         adjustment::AdjustDerefRef(auto_deref_ref)
                     }
-                    _ => panic!("bad enum variant for adjustment::AutoAdjustment")
+                    _ => bug!("bad enum variant for adjustment::AutoAdjustment")
                 })
             })
         }).unwrap()
@@ -1072,7 +1072,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
                         adjustment::AutoUnsafe(m)
                     }
-                    _ => panic!("bad enum variant for adjustment::AutoRef")
+                    _ => bug!("bad enum variant for adjustment::AutoRef")
                 })
             })
         }).unwrap()
@@ -1140,9 +1140,7 @@ fn decode_side_tables(dcx: &DecodeContext,
         let decoded_tag: Option<c::astencode_tag> = c::astencode_tag::from_u32(tag);
         match decoded_tag {
             None => {
-                dcx.tcx.sess.bug(
-                    &format!("unknown tag found in side tables: {:x}",
-                            tag));
+                bug!("unknown tag found in side tables: {:x}", tag);
             }
             Some(value) => {
                 let val_dsr = &mut entry_dsr;
@@ -1206,9 +1204,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                         dcx.tcx.const_qualif_map.borrow_mut().insert(id, qualif);
                     }
                     _ => {
-                        dcx.tcx.sess.bug(
-                            &format!("unknown tag found in side tables: {:x}",
-                                    tag));
+                        bug!("unknown tag found in side tables: {:x}", tag);
                     }
                 }
             }
@@ -1404,6 +1400,6 @@ fn test_simplification() {
         assert!(pprust::item_to_string(&item_out) ==
                 pprust::item_to_string(&item_exp));
       }
-      _ => panic!()
+      _ => bug!()
     }
 }

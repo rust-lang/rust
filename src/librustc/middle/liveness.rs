@@ -325,13 +325,10 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
 
     fn variable(&self, node_id: NodeId, span: Span) -> Variable {
         match self.variable_map.get(&node_id) {
-          Some(&var) => var,
-          None => {
-            self.tcx
-                .sess
-                .span_bug(span, &format!("no variable registered for id {}",
-                                        node_id));
-          }
+            Some(&var) => var,
+            None => {
+                span_bug!(span, "no variable registered for id {}", node_id);
+            }
         }
     }
 
@@ -578,10 +575,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // above and the propagation code below; the two sets of
             // code have to agree about which AST nodes are worth
             // creating liveness nodes for.
-            self.ir.tcx.sess.span_bug(
+            span_bug!(
                 span,
-                &format!("no live node registered for node {}",
-                        node_id));
+                "no live node registered for node {}",
+                node_id);
           }
         }
     }
@@ -703,15 +700,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 // to find with one
                 match self.ir.tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
                     Some(Def::Label(loop_id)) => loop_id,
-                    _ => self.ir.tcx.sess.span_bug(sp, "label on break/loop \
-                                                        doesn't refer to a loop")
+                    _ => span_bug!(sp, "label on break/loop \
+                                        doesn't refer to a loop")
                 }
             }
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
                 if self.loop_scope.is_empty() {
-                    self.ir.tcx.sess.span_bug(sp, "break outside loop");
+                    span_bug!(sp, "break outside loop");
                 } else {
                     *self.loop_scope.last().unwrap()
                 }
@@ -967,7 +964,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  let caps = match this.ir.capture_info_map.get(&expr.id) {
                     Some(caps) => caps.clone(),
                     None => {
-                        this.ir.tcx.sess.span_bug(expr.span, "no registered caps");
+                        span_bug!(expr.span, "no registered caps");
                      }
                  };
                  caps.iter().rev().fold(succ, |succ, cap| {
@@ -1061,8 +1058,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
               match self.break_ln.get(&sc) {
                   Some(&b) => b,
-                  None => self.ir.tcx.sess.span_bug(expr.span,
-                                                    "break to unknown label")
+                  None => span_bug!(expr.span, "break to unknown label")
               }
           }
 
@@ -1075,8 +1071,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
               match self.cont_ln.get(&sc) {
                   Some(&b) => b,
-                  None => self.ir.tcx.sess.span_bug(expr.span,
-                                                    "loop to unknown label")
+                  None => span_bug!(expr.span, "loop to unknown label")
               }
           }
 

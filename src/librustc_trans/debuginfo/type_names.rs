@@ -154,8 +154,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyInfer(_) |
         ty::TyProjection(..) |
         ty::TyParam(_) => {
-            cx.sess().bug(&format!("debuginfo: Trying to create type name for \
-                unexpected type: {:?}", t));
+            bug!("debuginfo: Trying to create type name for \
+                unexpected type: {:?}", t);
         }
     }
 
@@ -178,7 +178,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
 
                 if path_element_count == 0 {
-                    cx.sess().bug("debuginfo: Encountered empty item path!");
+                    bug!("debuginfo: Encountered empty item path!");
                 }
 
                 output.pop();

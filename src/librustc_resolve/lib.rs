@@ -32,6 +32,7 @@ extern crate arena;
 #[no_link]
 extern crate rustc_bitflags;
 extern crate rustc_front;
+#[macro_use]
 extern crate rustc;
 
 use self::PatternBindingMode::*;
@@ -2375,11 +2376,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // The below shouldn't happen because all
                         // qualified paths should be in PatKind::QPath.
                         TypecheckRequired =>
-                            self.session.span_bug(path.span,
-                                                  "resolve_possibly_assoc_item claimed that a path \
-                                                   in PatKind::Path or PatKind::TupleStruct \
-                                                   requires typecheck to resolve, but qualified \
-                                                   paths should be PatKind::QPath"),
+                            span_bug!(path.span,
+                                      "resolve_possibly_assoc_item claimed that a path \
+                                       in PatKind::Path or PatKind::TupleStruct \
+                                       requires typecheck to resolve, but qualified \
+                                       paths should be PatKind::QPath"),
                         ResolveAttempt(resolution) => resolution,
                     };
                     if let Some(path_res) = resolution {
@@ -2668,7 +2669,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut def = local_def.def;
         match def {
             Def::Upvar(..) => {
-                self.session.span_bug(span, &format!("unexpected {:?} in bindings", def))
+                span_bug!(span, "unexpected {:?} in bindings", def)
             }
             Def::Local(_, node_id) => {
                 for rib in ribs {
@@ -3189,7 +3190,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         })
                     }
                     Some(_) => {
-                        self.session.span_bug(expr.span, "label wasn't mapped to a label def!")
+                        span_bug!(expr.span, "label wasn't mapped to a label def!")
                     }
                 }
             }
@@ -3346,7 +3347,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             paths.push(segm);
                             paths
                         }
-                        _ => unreachable!(),
+                        _ => bug!(),
                     };
 
                     if !in_module_is_extern || name_binding.is_public() {
@@ -3368,10 +3369,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
         if let Some(prev_res) = self.def_map.borrow_mut().insert(node_id, resolution) {
             let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
-            self.session.span_bug(span,
-                                  &format!("path resolved multiple times ({:?} before, {:?} now)",
-                                           prev_res,
-                                           resolution));
+            span_bug!(span,
+                      "path resolved multiple times ({:?} before, {:?} now)",
+                      prev_res,
+                      resolution);
         }
     }
 

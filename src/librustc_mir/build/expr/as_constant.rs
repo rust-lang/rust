@@ -33,9 +33,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ExprKind::Literal { literal } =>
                 Constant { span: span, ty: ty, literal: literal },
             _ =>
-                this.hir.span_bug(
+                span_bug!(
                     span,
-                    &format!("expression is not a valid constant {:?}", kind)),
+                    "expression is not a valid constant {:?}",
+                    kind),
         }
     }
 }

@@ -32,7 +32,7 @@
 
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;
-extern crate rustc;
+#[macro_use] extern crate rustc;
 extern crate rustc_front;
 extern crate rustc_back;
 extern crate rustc_const_math;

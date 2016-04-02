@@ -597,7 +597,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         let substs = match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
             traits::VtableImpl(data) => data.substs,
-            _ => unreachable!()
+            _ => bug!()
         };
 
         if can_have_local_instance(ccx, destructor_did) {
@@ -665,7 +665,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyParam(_)      |
         ty::TyInfer(_)      |
         ty::TyError         => {
-            ccx.sess().bug("encountered unexpected type");
+            bug!("encountered unexpected type");
         }
     }
 }
@@ -701,7 +701,7 @@ fn do_static_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     }
                 }
             }
-            _ => unreachable!()
+            _ => bug!()
         }
     } else {
         debug!(" => regular function");
@@ -760,7 +760,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             None
         }
         _ => {
-            tcx.sess.bug(&format!("static call to invalid vtable: {:?}", vtbl))
+            bug!("static call to invalid vtable: {:?}", vtbl)
         }
     }
 }
@@ -845,10 +845,9 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                            target_fields[coerce_index].ty(ccx.tcx(),
                                                                           target_substs))
         }
-        _ => ccx.sess()
-                .bug(&format!("find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",
-                               source_ty,
-                               target_ty))
+        _ => bug!("find_vtable_types_for_unsizing: invalid coercion {:?} -> {:?}",
+                  source_ty,
+                  target_ty)
     }
 }
 
@@ -1019,7 +1018,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                         generics.is_type_parameterized()
                     }
                     _ => {
-                        unreachable!()
+                        bug!()
                     }
                 };
 
@@ -1101,7 +1100,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         }
         _ => {
-            unreachable!()
+            bug!()
         }
     }
 }
@@ -1252,8 +1251,8 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyInfer(_) |
         ty::TyProjection(..) |
         ty::TyParam(_) => {
-            cx.sess().bug(&format!("debuginfo: Trying to create type name for \
-                unexpected type: {:?}", t));
+            bug!("debuginfo: Trying to create type name for \
+                  unexpected type: {:?}", t);
         }
     }
 }

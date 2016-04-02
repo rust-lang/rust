@@ -1016,7 +1016,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
         Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
             write!(fmt, "{}", node_to_string(node_id)),
         Char(c) => write!(fmt, "{:?}", c),
-        Dummy => unreachable!(),
+        Dummy => bug!(),
     }
 }
 

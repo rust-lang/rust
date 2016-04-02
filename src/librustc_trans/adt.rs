@@ -302,9 +302,8 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // non-empty body, explicit discriminants should have
             // been rejected by a checker before this point.
             if !cases.iter().enumerate().all(|(i,c)| c.discr == Disr::from(i)) {
-                cx.sess().bug(&format!("non-C-like enum {} with specified \
-                                        discriminants",
-                                       cx.tcx().item_path_str(def.did)));
+                bug!("non-C-like enum {} with specified discriminants",
+                     cx.tcx().item_path_str(def.did));
             }
 
             if cases.len() == 1 {
@@ -430,7 +429,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             General(ity, fields, dtor_to_init_u8(dtor))
         }
-        _ => cx.sess().bug(&format!("adt::represent_type called on non-ADT type: {}", t))
+        _ => bug!("adt::represent_type called on non-ADT type: {}", t)
     }
 }
 
@@ -615,7 +614,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
     match hint {
         attr::ReprInt(span, ity) => {
             if !bounds_usable(cx, ity, bounds) {
-                cx.sess().span_bug(span, "representation hint insufficient for discriminant range")
+                span_bug!(span, "representation hint insufficient for discriminant range")
             }
             return ity;
         }
@@ -632,10 +631,10 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             attempts = choose_shortest;
         },
         attr::ReprPacked => {
-            cx.tcx().sess.bug("range_to_inttype: found ReprPacked on an enum");
+            bug!("range_to_inttype: found ReprPacked on an enum");
         }
         attr::ReprSimd => {
-            cx.tcx().sess.bug("range_to_inttype: found ReprSimd on an enum");
+            bug!("range_to_inttype: found ReprSimd on an enum");
         }
     }
     for &ity in attempts {
@@ -835,7 +834,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  Type::array(&Type::i64(cx), align_units),
                 a if a.count_ones() == 1 => Type::array(&Type::vector(&Type::i32(cx), a / 4),
                                                               align_units),
-                _ => panic!("unsupported enum alignment: {}", align)
+                _ => bug!("unsupported enum alignment: {}", align)
             };
             assert_eq!(machine::llalign_of_min(cx, fill_ty), align);
             assert_eq!(padded_discr_size % discr_size, 0); // Ensure discr_ty can fill pad evenly
@@ -984,7 +983,7 @@ pub fn trans_case<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr, discr: Disr)
             C_integral(ll_inttype(bcx.ccx(), ity), discr.0, true)
         }
         Univariant(..) => {
-            bcx.ccx().sess().bug("no cases for univariants or structs")
+            bug!("no cases for univariants or structs")
         }
         RawNullablePointer { .. } |
         StructWrappedNullablePointer { .. } => {
@@ -1088,7 +1087,7 @@ pub fn trans_field_ptr_builder<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
     // someday), it will need to return a possibly-new bcx as well.
     match *r {
         CEnum(..) => {
-            bcx.ccx().sess().bug("element access in C-like enum")
+            bug!("element access in C-like enum")
         }
         Univariant(ref st, _dtor) => {
             assert_eq!(discr, Disr(0));
@@ -1279,7 +1278,7 @@ pub fn fold_variants<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
             bcx_next
         }
-        _ => unreachable!()
+        _ => bug!()
     }
 }
 
@@ -1319,7 +1318,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             fcx.pop_custom_cleanup_scope(custom_cleanup_scope);
             datum::DatumBlock::new(bcx, expr_datum)
         }
-        _ => bcx.ccx().sess().bug("tried to get drop flag of non-droppable type")
+        _ => bug!("tried to get drop flag of non-droppable type")
     }
 }
 
@@ -1478,7 +1477,7 @@ pub fn const_get_discrim(r: &Repr, val: ValueRef) -> Disr {
         }
         Univariant(..) => Disr(0),
         RawNullablePointer { .. } | StructWrappedNullablePointer { .. } => {
-            unreachable!("const discrim access of non c-like enum")
+            bug!("const discrim access of non c-like enum")
         }
     }
 }
@@ -1488,10 +1487,10 @@ pub fn const_get_discrim(r: &Repr, val: ValueRef) -> Disr {
 ///
 /// (Not to be confused with `common::const_get_elt`, which operates on
 /// raw LLVM-level structs and arrays.)
-pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
-                       _discr: Disr, ix: usize) -> ValueRef {
+pub fn const_get_field(r: &Repr, val: ValueRef, _discr: Disr,
+                       ix: usize) -> ValueRef {
     match *r {
-        CEnum(..) => ccx.sess().bug("element access in C-like enum const"),
+        CEnum(..) => bug!("element access in C-like enum const"),
         Univariant(..) => const_struct_field(val, ix),
         General(..) => const_struct_field(val, ix + 1),
         RawNullablePointer { .. } => {

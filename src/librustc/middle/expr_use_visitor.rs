@@ -224,7 +224,7 @@ impl OverloadedCallType {
             }
         }
 
-        tcx.sess.bug("overloaded call didn't map to known function trait")
+        bug!("overloaded call didn't map to known function trait")
     }
 
     fn from_method_id(tcx: &TyCtxt, method_id: DefId)
@@ -564,9 +564,10 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             OverloadedCallType::from_method_id(self.tcx(), method_id)
                         }
                         None => {
-                            self.tcx().sess.span_bug(
+                            span_bug!(
                                 callee.span,
-                                &format!("unexpected callee type {}", callee_ty))
+                                "unexpected callee type {}",
+                                callee_ty)
                         }
                     };
                 match overloaded_call_type {
@@ -683,7 +684,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             // may not. This will generate an error earlier in typeck,
             // so we can just ignore it.
             if !self.tcx().sess.has_errors() {
-                self.tcx().sess.span_bug(
+                span_bug!(
                     with_expr.span,
                     "with expression doesn't evaluate to a struct");
             }
@@ -750,9 +751,9 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
                     let (m, r) = match self_ty.sty {
                         ty::TyRef(r, ref m) => (m.mutbl, r),
-                        _ => self.tcx().sess.span_bug(expr.span,
-                                &format!("bad overloaded deref type {:?}",
-                                    method_ty))
+                        _ => span_bug!(expr.span,
+                                "bad overloaded deref type {:?}",
+                                method_ty)
                     };
                     let bk = ty::BorrowKind::from_mutbl(m);
                     self.delegate.borrow(expr.id, expr.span, cmt,
@@ -934,7 +935,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         debug!("determine_pat_move_mode cmt_discr={:?} pat={:?}", cmt_discr,
                pat);
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
-            let tcx = self.tcx();
             let def_map = &self.tcx().def_map;
             if pat_util::pat_is_binding(&def_map.borrow(), pat) {
                 match pat.node {
@@ -947,7 +947,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         }
                     }
                     _ => {
-                        tcx.sess.span_bug(
+                        span_bug!(
                             pat.span,
                             "binding pattern not an identifier");
                     }
@@ -972,8 +972,6 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(&def_map.borrow(), pat) {
-                let tcx = typer.tcx;
-
                 debug!("binding cmt_pat={:?} pat={:?} match_mode={:?}",
                        cmt_pat,
                        pat,
@@ -1007,7 +1005,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
                     _ => {
-                        tcx.sess.span_bug(
+                        span_bug!(
                             pat.span,
                             "binding pattern not an identifier");
                     }
@@ -1117,10 +1115,10 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                             // reported.
 
                             if !tcx.sess.has_errors() {
-                                let msg = format!("Pattern has unexpected def: {:?} and type {:?}",
-                                                  def,
-                                                  cmt_pat.ty);
-                                tcx.sess.span_bug(pat.span, &msg[..])
+                                span_bug!(pat.span,
+                                          "Pattern has unexpected def: {:?} and type {:?}",
+                                          def,
+                                          cmt_pat.ty);
                             }
                         }
                     }

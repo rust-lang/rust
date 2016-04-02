@@ -188,7 +188,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             let sig = tcx.erase_late_bound_regions(&fty.sig);
             (def_id, substs, infer::normalize_associated_type(tcx, &sig))
         }
-        _ => unreachable!("expected fn item type, found {}", callee_ty)
+        _ => bug!("expected fn item type, found {}", callee_ty)
     };
     let arg_tys = sig.inputs;
     let ret_ty = sig.output;
@@ -311,7 +311,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
 
             _ => {
-                ccx.sess().bug("expected expr as argument for transmute");
+                bug!("expected expr as argument for transmute");
             }
         }
     }
@@ -323,7 +323,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     if name == "move_val_init" {
         if let callee::ArgExprs(ref exprs) = args {
             let (dest_expr, source_expr) = if exprs.len() != 2 {
-                ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
+                bug!("expected two exprs as arguments for `move_val_init` intrinsic");
             } else {
                 (&exprs[0], &exprs[1])
             };
@@ -350,7 +350,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
             return Result::new(bcx, llresult);
         } else {
-            ccx.sess().bug("expected two exprs as arguments for `move_val_init` intrinsic");
+            bug!("expected two exprs as arguments for `move_val_init` intrinsic");
         }
     }
 
@@ -388,7 +388,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let ret_ty = match ret_ty {
         ty::FnConverging(ret_ty) => ret_ty,
-        ty::FnDiverging => unreachable!()
+        ty::FnDiverging => bug!()
     };
 
     let llret_ty = type_of::type_of(ccx, ret_ty);
@@ -651,7 +651,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             } else {
                                 URem(bcx, llargs[0], llargs[1], call_debug_location)
                             },
-                        _ => unreachable!(),
+                        _ => bug!(),
                     },
                 None => {
                     span_invalid_monomorphization_error(
@@ -674,7 +674,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         "fmul_fast" => FMulFast(bcx, llargs[0], llargs[1], call_debug_location),
                         "fdiv_fast" => FDivFast(bcx, llargs[0], llargs[1], call_debug_location),
                         "frem_fast" => FRemFast(bcx, llargs[0], llargs[1], call_debug_location),
-                        _ => unreachable!(),
+                        _ => bug!(),
                     },
                 None => {
                     span_invalid_monomorphization_error(
@@ -820,7 +820,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, _) => {
             let intr = match Intrinsic::find(&name) {
                 Some(intr) => intr,
-                None => unreachable!("unknown intrinsic '{}'", name),
+                None => bug!("unknown intrinsic '{}'", name),
             };
             fn one<T>(x: Vec<T>) -> T {
                 assert_eq!(x.len(), 1);
@@ -839,7 +839,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         match x {
                             32 => vec![Type::f32(ccx)],
                             64 => vec![Type::f64(ccx)],
-                            _ => unreachable!()
+                            _ => bug!()
                         }
                     }
                     Pointer(ref t, ref llvm_elem, _const) => {
@@ -1242,7 +1242,7 @@ fn trans_gnu_try<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Some(did) => {
                 Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
             }
-            None => ccx.sess().bug("eh_personality_catch not defined"),
+            None => bug!("eh_personality_catch not defined"),
         };
 
         let then = bcx.fcx.new_temp_block("then");
@@ -1357,7 +1357,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
         Some(did) => {
             Callee::def(ccx, did, tcx.mk_substs(Substs::empty())).reify(ccx).val
         }
-        None => ccx.sess().bug("msvc_try_filter not defined"),
+        None => bug!("msvc_try_filter not defined"),
     };
 
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
@@ -1417,7 +1417,7 @@ fn generate_filter_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
             do_trans(bcx, exn, rbp);
         })
     } else {
-        panic!("unknown target to generate a filter function")
+        bug!("unknown target to generate a filter function")
     }
 }
 
@@ -1513,8 +1513,8 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
     if name.starts_with("simd_shuffle") {
         let n: usize = match name["simd_shuffle".len()..].parse() {
             Ok(n) => n,
-            Err(_) => tcx.sess.span_bug(span,
-                                        "bad `simd_shuffle` instruction only caught in trans?")
+            Err(_) => span_bug!(span,
+                                "bad `simd_shuffle` instruction only caught in trans?")
         };
 
         require_simd!(ret_ty, "return");
@@ -1687,7 +1687,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         simd_or: TyUint, TyInt => Or;
         simd_xor: TyUint, TyInt => Xor;
     }
-    bcx.sess().span_bug(span, "unknown SIMD intrinsic");
+    span_bug!(span, "unknown SIMD intrinsic");
 }
 
 // Returns the width of an int TypeVariant, and if it's signed or not
@@ -1701,7 +1701,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "32" => 32,
                     "64" => 64,
-                    tws => panic!("Unsupported target word size for isize: {}", tws),
+                    tws => bug!("Unsupported target word size for isize: {}", tws),
                 }
             },
             ast::IntTy::I8 => 8,
@@ -1714,7 +1714,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
                     "32" => 32,
                     "64" => 64,
-                    tws => panic!("Unsupported target word size for usize: {}", tws),
+                    tws => bug!("Unsupported target word size for usize: {}", tws),
                 }
             },
             ast::UintTy::U8 => 8,

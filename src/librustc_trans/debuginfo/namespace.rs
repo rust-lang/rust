@@ -126,9 +126,9 @@ pub fn namespace_for_item(cx: &CrateContext, def_id: DefId) -> Rc<NamespaceTreeN
         match parent_node {
             Some(node) => node,
             None => {
-                cx.sess().bug(&format!("debuginfo::namespace_for_item(): \
-                                       path too short for {:?}",
-                                      def_id));
+                bug!("debuginfo::namespace_for_item(): \
+                      path too short for {:?}",
+                     def_id);
             }
         }
     })

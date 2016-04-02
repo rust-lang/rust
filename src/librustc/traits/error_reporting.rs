@@ -201,7 +201,7 @@ pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
 
     err.emit();
     infcx.tcx.sess.abort_if_errors();
-    unreachable!();
+    bug!();
 }
 
 /// Reports that a cycle was detected which led to overflow and halts
@@ -268,9 +268,9 @@ pub fn try_report_overflow_error_type_of_infinite_size<'a, 'tcx>(
                      }
                  }
                  _ => {
-                     infcx.tcx.sess.span_bug(obligation.cause.span,
-                                             &format!("Sized cycle involving non-trait-ref: {:?}",
-                                                      obligation.predicate));
+                     span_bug!(obligation.cause.span,
+                               "Sized cycle involving non-trait-ref: {:?}",
+                               obligation.predicate);
                  }
              })
              .collect();
@@ -323,7 +323,7 @@ pub fn try_report_overflow_error_type_of_infinite_size<'a, 'tcx>(
     }
     err.emit();
     infcx.tcx.sess.abort_if_errors();
-    unreachable!();
+    bug!();
 }
 
 pub fn recursive_type_with_infinite_size_error<'tcx>(tcx: &TyCtxt<'tcx>,
@@ -472,9 +472,10 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         // ambiguity; otherwise, they always
                         // degenerate into other obligations
                         // (which may fail).
-                        infcx.tcx.sess.span_bug(
+                        span_bug!(
                             obligation.cause.span,
-                            &format!("WF predicate not satisfied for {:?}", ty));
+                            "WF predicate not satisfied for {:?}",
+                            ty);
                     }
                 }
             }
