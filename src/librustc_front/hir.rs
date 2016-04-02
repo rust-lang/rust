@@ -931,7 +931,6 @@ pub struct TypeBinding {
 }
 
 
-// NB PartialEq method appears below.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub struct Ty {
     pub id: NodeId,
