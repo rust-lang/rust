@@ -1874,15 +1874,6 @@ pub enum Visibility {
     Inherited,
 }
 
-impl Visibility {
-    pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
-        match *self {
-            Visibility::Inherited => parent_visibility,
-            Visibility::Public => *self
-        }
-    }
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructField_ {
     pub kind: StructFieldKind,
