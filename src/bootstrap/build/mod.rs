@@ -326,7 +326,13 @@ impl Build {
         if !target.contains("msvc") {
             cargo.env(format!("CC_{}", target), self.cc(target))
                  .env(format!("AR_{}", target), self.ar(target))
-                 .env(format!("CFLAGS_{}", target), self.cflags(target));
+                 .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
+        }
+
+        // If we're building for OSX, inform the compiler and the linker that
+        // we want to build a compiler runnable on 10.7
+        if target.contains("apple-darwin") {
+            cargo.env("MACOSX_DEPLOYMENT_TARGET", "10.7");
         }
 
         // Environment variables *required* needed throughout the build
@@ -497,11 +503,20 @@ impl Build {
         self.cc[target].0.path()
     }
 
-    fn cflags(&self, target: &str) -> String {
-        self.cc[target].0.args().iter()
-            .map(|s| s.to_string_lossy())
-            .collect::<Vec<_>>()
-            .join(" ")
+    fn cflags(&self, target: &str) -> Vec<String> {
+        let mut base = self.cc[target].0.args().iter()
+                           .map(|s| s.to_string_lossy().into_owned())
+                           .collect::<Vec<_>>();
+
+        // If we're compiling on OSX then we add a few unconditional flags
+        // indicating that we want libc++ (more filled out than libstdc++) and
+        // we want to compile for 10.7. This way we can ensure that
+        // LLVM/jemalloc/etc are all properly compiled.
+        if target.contains("apple-darwin") {
+            base.push("-stdlib=libc++".into());
+            base.push("-mmacosx-version-min=10.7".into());
+        }
+        return base
     }
 
     fn ar(&self, target: &str) -> &Path {
