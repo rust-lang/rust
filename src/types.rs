@@ -2,15 +2,12 @@ use reexport::*;
 use rustc::lint::*;
 use rustc::middle::def;
 use rustc::ty;
-use rustc::middle::const_eval::ConstVal::Integral;
-use rustc_const_eval;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
 use utils::*;
-
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -845,7 +842,7 @@ impl Ord for FullInt {
 
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
-    use rustc::middle::ty::TypeVariants::{TyInt, TyUint};
+    use rustc::ty::TypeVariants::{TyInt, TyUint};
     use syntax::ast::UintTy;
     use syntax::ast::IntTy;
     use std::*;
@@ -874,15 +871,17 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 }
 
 fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
-    use rustc::middle::const_eval::EvalHint::ExprTypeChecked;
-    use rustc_const_eval::*;
+    use rustc::middle::const_val::ConstVal::*;
+    use rustc_const_eval::EvalHint::ExprTypeChecked;
+    use rustc_const_eval::eval_const_expr_partial;
+    use rustc_const_math::ConstInt;
 
-    match const_eval::eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
+    match eval_const_expr_partial(cx.tcx, expr, ExprTypeChecked, None) {
         Ok(val) => {
             if let Integral(const_int) = val {
                 Some(match const_int.erase_type() {
-                    InferSigned(x) => FullInt::S(x as i64),
-                    Infer(x) => FullInt::U(x as u64),
+                    ConstInt::InferSigned(x) => FullInt::S(x as i64),
+                    ConstInt::Infer(x) => FullInt::U(x as u64),
                     _ => unreachable!(),
                 })
             } else {
