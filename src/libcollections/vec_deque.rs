@@ -813,8 +813,8 @@ impl<T> VecDeque<T> {
         // and the head/tail values will be restored correctly.
         //
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = range.start().unwrap_or(0);
+        let end = range.end().unwrap_or(len);
         assert!(start <= end, "drain lower bound was too large");
         assert!(end <= len, "drain upper bound was too large");
 

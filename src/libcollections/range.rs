@@ -23,14 +23,14 @@ pub trait RangeArgument<T> {
     /// Start index (inclusive)
     ///
     /// Return start value if present, else `None`.
-    fn start(&self) -> Option<&T> {
+    fn start(&self) -> Option<T> {
         None
     }
 
     /// End index (exclusive)
     ///
     /// Return end value if present, else `None`.
-    fn end(&self) -> Option<&T> {
+    fn end(&self) -> Option<T> {
         None
     }
 }
@@ -39,23 +39,23 @@ pub trait RangeArgument<T> {
 
 impl<T> RangeArgument<T> for RangeFull {}
 
-impl<T> RangeArgument<T> for RangeFrom<T> {
-    fn start(&self) -> Option<&T> {
-        Some(&self.start)
+impl<T: Copy> RangeArgument<T> for RangeFrom<T> {
+    fn start(&self) -> Option<T> {
+        Some(self.start)
     }
 }
 
-impl<T> RangeArgument<T> for RangeTo<T> {
-    fn end(&self) -> Option<&T> {
-        Some(&self.end)
+impl<T: Copy> RangeArgument<T> for RangeTo<T> {
+    fn end(&self) -> Option<T> {
+        Some(self.end)
     }
 }
 
-impl<T> RangeArgument<T> for Range<T> {
-    fn start(&self) -> Option<&T> {
-        Some(&self.start)
+impl<T: Copy> RangeArgument<T> for Range<T> {
+    fn start(&self) -> Option<T> {
+        Some(self.start)
     }
-    fn end(&self) -> Option<&T> {
-        Some(&self.end)
+    fn end(&self) -> Option<T> {
+        Some(self.end)
     }
 }
