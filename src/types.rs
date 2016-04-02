@@ -5,6 +5,7 @@ use rustc::ty;
 use rustc_front::hir::*;
 use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
 use rustc_front::util::{is_comparison_binop, binop_to_string};
+use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
 use utils::*;
@@ -803,8 +804,6 @@ enum FullInt {
     U(u64),
 }
 
-use std::cmp::Ordering;
-
 impl FullInt {
     #[allow(cast_sign_loss)]
     fn cmp_s_u(s: i64, u: u64) -> Ordering {
@@ -843,8 +842,7 @@ impl Ord for FullInt {
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
     use rustc::ty::TypeVariants::{TyInt, TyUint};
-    use syntax::ast::UintTy;
-    use syntax::ast::IntTy;
+    use syntax::ast::{IntTy, UintTy};
     use std::*;
 
     if let ExprCast(ref cast_exp,_) = expr.node {
@@ -912,21 +910,21 @@ fn upcast_comparison_bounds_err(
         lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr, rhs: &Expr, invert: bool) {
     use utils::comparisons::*;
 
-    if let Some(nlb) = lhs_bounds {
+    if let Some((lb, ub)) = lhs_bounds {
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {
             if rel == Rel::Eq || rel == Rel::Ne {
-                if norm_rhs_val < nlb.0 || norm_rhs_val > nlb.0 {
+                if norm_rhs_val < lb || norm_rhs_val > ub {
                     err_upcast_comparison(cx, &span, lhs, rel == Rel::Ne);
                 }
             } else if match rel {
-                Rel::Lt => if invert { norm_rhs_val < nlb.0 } else { nlb.1 < norm_rhs_val },
-                Rel::Le => if invert { norm_rhs_val <= nlb.0  } else { nlb.1 <= norm_rhs_val },
+                Rel::Lt => if invert { norm_rhs_val < lb } else { ub < norm_rhs_val },
+                Rel::Le => if invert { norm_rhs_val <= lb  } else { ub <= norm_rhs_val },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, &span, lhs, true)
             } else if match rel {
-                Rel::Lt => if invert { norm_rhs_val >= nlb.1 } else { nlb.0 >= norm_rhs_val },
-                Rel::Le => if invert { norm_rhs_val > nlb.1 } else { nlb.0 > norm_rhs_val },
+                Rel::Lt => if invert { norm_rhs_val >= ub } else { lb >= norm_rhs_val },
+                Rel::Le => if invert { norm_rhs_val > ub } else { lb > norm_rhs_val },
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, &span, lhs, false)

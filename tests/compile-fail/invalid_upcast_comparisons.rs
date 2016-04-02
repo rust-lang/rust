@@ -19,7 +19,17 @@ fn main() {
 
     -5 > (zero as i32); //~ERROR because of the numeric bounds on `zero` prior to casting, this expression is always false
     -5 >= (u8_max as i32); //~ERROR because of the numeric bounds on `u8_max` prior to casting, this expression is always false
+    1337 == (u8_max as i32); //~ERROR because of the numeric bounds on `u8_max` prior to casting, this expression is always false
 
     -5 == (zero as i32); //~ERROR because of the numeric bounds on `zero` prior to casting, this expression is always false
     -5 != (u8_max as i32); //~ERROR because of the numeric bounds on `u8_max` prior to casting, this expression is always true
+
+    // Those are Ok:
+    42 == (u8_max as i32);
+    42 != (u8_max as i32);
+    42 > (u8_max as i32);
+    (u8_max as i32) == 42;
+    (u8_max as i32) != 42;
+    (u8_max as i32) > 42;
+    (u8_max as i32) < 42;
 }
