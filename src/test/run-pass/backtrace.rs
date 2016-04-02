@@ -86,6 +86,16 @@ fn runtest(me: &str) {
     assert!(!s.contains("stack backtrace") && !s.contains(&expected("foo")),
             "bad output2: {}", s);
 
+    // Make sure the stack trace is *not* printed
+    // (RUST_BACKTRACE=0 acts as if it were unset from our own environment,
+    // in case developer is running `make check` with it set.)
+    let p = template(me).arg("fail").env("RUST_BACKTRACE","0").spawn().unwrap();
+    let out = p.wait_with_output().unwrap();
+    assert!(!out.status.success());
+    let s = str::from_utf8(&out.stderr).unwrap();
+    assert!(!s.contains("stack backtrace") && !s.contains(" - foo"),
+            "bad output3: {}", s);
+
     // Make sure a stack trace is printed
     let p = template(me).arg("double-fail").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
