@@ -847,15 +847,15 @@ pub fn noop_fold_poly_trait_ref<T: Folder>(p: PolyTraitRef, fld: &mut T) -> Poly
 }
 
 pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructField {
-    let StructField {node: StructField_ {id, kind, ty, attrs}, span} = f;
     Spanned {
         node: StructField_ {
-            id: fld.new_id(id),
-            kind: kind,
-            ty: fld.fold_ty(ty),
-            attrs: fold_attrs(attrs, fld),
+            id: fld.new_id(f.node.id),
+            ident: f.node.ident.map(|ident| fld.fold_ident(ident)),
+            vis: f.node.vis,
+            ty: fld.fold_ty(f.node.ty),
+            attrs: fold_attrs(f.node.attrs, fld),
         },
-        span: fld.new_span(span)
+        span: fld.new_span(f.span)
     }
 }
 

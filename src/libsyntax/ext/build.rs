@@ -1009,7 +1009,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let fields: Vec<_> = tys.into_iter().map(|ty| {
             Spanned { span: ty.span, node: ast::StructField_ {
                 ty: ty,
-                kind: ast::UnnamedField(ast::Visibility::Inherited),
+                ident: None,
+                vis: ast::Visibility::Inherited,
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
             }}
