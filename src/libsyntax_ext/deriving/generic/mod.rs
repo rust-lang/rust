@@ -186,7 +186,6 @@
 
 pub use self::StaticFields::*;
 pub use self::SubstructureFields::*;
-use self::StructType::*;
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -1409,11 +1408,6 @@ impl<'a> MethodDef<'a> {
     }
 }
 
-#[derive(PartialEq)] // dogfooding!
-enum StructType {
-    Unknown, Record, Tuple
-}
-
 // general helper methods.
 impl<'a> TraitDef<'a> {
     fn set_expn_info(&self,
@@ -1441,9 +1435,9 @@ impl<'a> TraitDef<'a> {
         let mut just_spans = Vec::new();
         for field in struct_def.fields(){
             let sp = self.set_expn_info(cx, field.span);
-            match field.node.kind {
-                ast::NamedField(ident, _) => named_idents.push((ident, sp)),
-                ast::UnnamedField(..) => just_spans.push(sp),
+            match field.node.ident {
+                Some(ident) => named_idents.push((ident, sp)),
+                _ => just_spans.push(sp),
             }
         }
 
@@ -1479,53 +1473,26 @@ impl<'a> TraitDef<'a> {
                              -> (P<ast::Pat>, Vec<(Span, Option<Ident>,
                                                    P<Expr>,
                                                    &'a [ast::Attribute])>) {
-        if struct_def.fields().is_empty() {
-            if struct_def.is_struct() {
-                return (cx.pat_struct(self.span, struct_path, vec![]), vec![]);
-            } else {
-                return (cx.pat_enum(self.span, struct_path, vec![]), vec![]);
-            }
-        }
-
         let mut paths = Vec::new();
-        let mut ident_expr = Vec::new();
-        let mut struct_type = Unknown;
-
+        let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
             let sp = self.set_expn_info(cx, struct_field.span);
-            let opt_id = match struct_field.node.kind {
-                ast::NamedField(ident, _) if (struct_type == Unknown ||
-                                              struct_type == Record) => {
-                    struct_type = Record;
-                    Some(ident)
-                }
-                ast::UnnamedField(..) if (struct_type == Unknown ||
-                                          struct_type == Tuple) => {
-                    struct_type = Tuple;
-                    None
-                }
-                _ => {
-                    cx.span_bug(sp, "a struct with named and unnamed fields in `derive`");
-                }
-            };
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)));
             let val = cx.expr(sp, ast::ExprKind::Paren(val));
-            ident_expr.push((sp, opt_id, val, &struct_field.node.attrs[..]));
+            ident_exprs.push((sp, struct_field.node.ident, val, &struct_field.node.attrs[..]));
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);
-
-        // struct_type is definitely not Unknown, since struct_def.fields
-        // must be nonempty to reach here
         let pattern = if struct_def.is_struct() {
-            let field_pats = subpats.into_iter().zip(&ident_expr)
-                                    .map(|(pat, &(_, id, _, _))| {
-                // id is guaranteed to be Some
+            let field_pats = subpats.into_iter().zip(&ident_exprs).map(|(pat, &(sp, ident, _, _))| {
+                if ident.is_none() {
+                    cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
+                }
                 codemap::Spanned {
                     span: pat.span,
-                    node: ast::FieldPat { ident: id.unwrap(), pat: pat, is_shorthand: false },
+                    node: ast::FieldPat { ident: ident.unwrap(), pat: pat, is_shorthand: false },
                 }
             }).collect();
             cx.pat_struct(self.span, struct_path, field_pats)
@@ -1533,7 +1500,7 @@ impl<'a> TraitDef<'a> {
             cx.pat_enum(self.span, struct_path, subpats)
         };
 
-        (pattern, ident_expr)
+        (pattern, ident_exprs)
     }
 
     fn create_enum_variant_pattern(&self,
