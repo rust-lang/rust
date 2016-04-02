@@ -237,7 +237,8 @@ a field, should cause the compiler to treat the entire union as initialized.
 
 ## Unions and traits
 
-A union may have trait implementations, using the same syntax as a struct.
+A union may have trait implementations, using the same `impl` syntax as a
+struct.
 
 The compiler should provide a lint if a union field has a type that implements
 the `Drop` trait.  The compiler may optionally provide a pragma to disable that
