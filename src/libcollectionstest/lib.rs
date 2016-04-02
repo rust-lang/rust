@@ -20,6 +20,7 @@
 #![feature(const_fn)]
 #![feature(fn_traits)]
 #![feature(enumset)]
+#![feature(inclusive_range_syntax)]
 #![feature(iter_arith)]
 #![feature(map_entry_keys)]
 #![feature(pattern)]
