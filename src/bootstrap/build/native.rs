@@ -86,6 +86,9 @@ pub fn llvm(build: &Build, target: &str) {
               .define("CMAKE_CXX_COMPILER", build.cxx(target));
         }
         cfg.build_arg("-j").build_arg(build.jobs().to_string());
+
+        cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
+        cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
     }
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
