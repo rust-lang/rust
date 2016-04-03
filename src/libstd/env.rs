@@ -181,7 +181,7 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// None if the variable isn't set.
+/// `None` if the variable isn't set.
 ///
 /// # Examples
 ///
