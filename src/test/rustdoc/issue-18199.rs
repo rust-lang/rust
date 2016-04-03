@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// skip-json-docs
 // compile-flags:--test
 
 #![doc(test(attr(feature(staged_api))))]

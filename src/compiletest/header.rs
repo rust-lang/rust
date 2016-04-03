@@ -39,6 +39,8 @@ pub struct TestProps {
     pub check_lines: Vec<String> ,
     // Build documentation for all specified aux-builds as well
     pub build_aux_docs: bool,
+    // Skip the check that emitting and building docs from json works correctly
+    pub skip_json_docs: bool,
     // Flag to force a crate to be built with the host architecture
     pub force_host: bool,
     // Check stdout for error-pattern output as well as stderr
@@ -66,6 +68,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let pp_exact = None;
     let check_lines = Vec::new();
     let build_aux_docs = false;
+    let skip_json_docs = false;
     let force_host = false;
     let check_stdout = false;
     let no_prefer_dynamic = false;
@@ -83,6 +86,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         exec_env: exec_env,
         check_lines: check_lines,
         build_aux_docs: build_aux_docs,
+        skip_json_docs: skip_json_docs,
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
@@ -126,6 +130,10 @@ pub fn load_props_into(props: &mut TestProps, testfile: &Path, cfg: Option<&str>
 
         if !props.build_aux_docs {
             props.build_aux_docs = parse_build_aux_docs(ln);
+        }
+
+        if !props.skip_json_docs {
+            props.skip_json_docs = parse_skip_json_docs(ln);
         }
 
         if !props.force_host {
@@ -357,6 +365,10 @@ fn parse_force_host(line: &str) -> bool {
 
 fn parse_build_aux_docs(line: &str) -> bool {
     parse_name_directive(line, "build-aux-docs")
+}
+
+fn parse_skip_json_docs(line: &str) -> bool {
+    parse_name_directive(line, "skip-json-docs")
 }
 
 fn parse_check_stdout(line: &str) -> bool {

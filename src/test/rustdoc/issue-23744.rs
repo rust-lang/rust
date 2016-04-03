@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// skip-json-docs
 // compile-flags:--test
 
 /// Example of rustdoc incorrectly parsing <code>```rust,should_panic</code>.

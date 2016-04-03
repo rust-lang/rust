@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: Documentation generated from json does not show `methods from deref`
+// skip-json-docs
+
 // aux-build:issue-19190-3.rs
 // ignore-cross-compile
 
