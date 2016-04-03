@@ -13,6 +13,8 @@ use rustc::mir::repr::*;
 use rustc::mir::transform::{MirPass, Pass};
 use syntax::ast::NodeId;
 
+use rustc_data_structures::bitvec::BitVector;
+
 use traversal;
 
 pub struct BreakCriticalEdges;
@@ -60,6 +62,9 @@ fn break_critical_edges(mir: &mut Mir) {
         }
     }
 
+    let cleanup_map : BitVector = mir.basic_blocks
+        .iter().map(|bb| bb.is_cleanup).collect();
+
     // We need a place to store the new blocks generated
     let mut new_blocks = Vec::new();
 
@@ -84,7 +89,9 @@ fn break_critical_edges(mir: &mut Mir) {
                             scope: term_scope,
                             kind: TerminatorKind::Goto { target: *tgt }
                         };
-                        let data = BasicBlockData::new(Some(goto));
+                        let mut data = BasicBlockData::new(Some(goto));
+                        data.is_cleanup = cleanup_map.contains(tgt.index());
+
                         // Get the index it will be when inserted into the MIR
                         let idx = cur_len + new_blocks.len();
                         new_blocks.push(data);
