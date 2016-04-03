@@ -298,7 +298,8 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let mut url = if did.is_local() || cache.inlined.contains(&did) {
         repeat("../").take(loc.len()).collect::<String>()
     } else {
-        match cache.extern_locations[&did.krate] {
+        match *cache.extern_locations.get(&did.krate)
+                                     .expect("extern location not found!") {
             (_, render::Remote(ref s)) => s.to_string(),
             (_, render::Local) => repeat("../").take(loc.len()).collect(),
             (_, render::Unknown) => return None,
@@ -384,11 +385,12 @@ fn primitive_link(f: &mut fmt::Formatter,
             needs_termination = true;
         }
         Some(&cnum) => {
-            let path = &m.paths[&DefId {
+            let path = m.paths.get(&DefId {
                 krate: cnum,
                 index: CRATE_DEF_INDEX,
-            }];
-            let loc = match m.extern_locations[&cnum] {
+            }).expect("path not found");
+            let loc = match *m.extern_locations.get(&cnum)
+                                               .expect("extern location not found!") {
                 (_, render::Remote(ref s)) => Some(s.to_string()),
                 (_, render::Local) => {
                     let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
@@ -396,15 +398,12 @@ fn primitive_link(f: &mut fmt::Formatter,
                 }
                 (_, render::Unknown) => None,
             };
-            match loc {
-                Some(root) => {
-                    write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
-                           root,
-                           path.0.first().unwrap(),
-                           prim.to_url_str())?;
-                    needs_termination = true;
-                }
-                None => {}
+            if let Some(root) = loc {
+                write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
+                       root,
+                       path.0.first().unwrap(),
+                       prim.to_url_str())?;
+                needs_termination = true;
             }
         }
         None => {}
