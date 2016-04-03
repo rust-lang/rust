@@ -17,22 +17,36 @@ use html::escape::Escape;
 
 use std::io;
 use std::io::prelude::*;
-use syntax::parse::lexer;
+use syntax::parse::lexer::{self, Reader};
 use syntax::parse::token;
 use syntax::parse;
 
-/// Highlights some source code, returning the HTML output.
-pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
+/// Highlights `src`, returning the HTML output.
+pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
-    doit(&sess,
-         lexer::StringReader::new(&sess.span_diagnostic, fm),
-         class,
-         id,
-         &mut out).unwrap();
+    write_header(class, id, &mut out).unwrap();
+    write_source(&sess,
+                 lexer::StringReader::new(&sess.span_diagnostic, fm),
+                 &mut out).unwrap();
+    write_footer(&mut out).unwrap();
+    String::from_utf8_lossy(&out[..]).into_owned()
+}
+
+/// Highlights `src`, returning the HTML output. Returns only the inner html to
+/// be inserted into an element. C.f., `render_with_highlighting` which includes
+/// an enclosing `<pre>` block.
+pub fn render_inner_with_highlighting(src: &str) -> String {
+    let sess = parse::ParseSess::new();
+    let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
+
+    let mut out = Vec::new();
+    write_source(&sess,
+                 lexer::StringReader::new(&sess.span_diagnostic, fm),
+                 &mut out).unwrap();
     String::from_utf8_lossy(&out[..]).into_owned()
 }
 
@@ -43,17 +57,10 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
 /// it's used. All source code emission is done as slices from the source map,
 /// not from the tokens themselves, in order to stay true to the original
 /// source.
-fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
-        class: Option<&str>, id: Option<&str>,
-        out: &mut Write) -> io::Result<()> {
-    use syntax::parse::lexer::Reader;
-
-    write!(out, "<pre ")?;
-    match id {
-        Some(id) => write!(out, "id='{}' ", id)?,
-        None => {}
-    }
-    write!(out, "class='rust {}'>\n", class.unwrap_or(""))?;
+fn write_source(sess: &parse::ParseSess,
+                mut lexer: lexer::StringReader,
+                out: &mut Write)
+                -> io::Result<()> {
     let mut is_attribute = false;
     let mut is_macro = false;
     let mut is_macro_nonterminal = false;
@@ -184,5 +191,21 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         }
     }
 
+    Ok(())
+}
+
+fn write_header(class: Option<&str>,
+                id: Option<&str>,
+                out: &mut Write)
+                -> io::Result<()> {
+    write!(out, "<pre ")?;
+    match id {
+        Some(id) => write!(out, "id='{}' ", id)?,
+        None => {}
+    }
+    write!(out, "class='rust {}'>\n", class.unwrap_or(""))
+}
+
+fn write_footer(out: &mut Write) -> io::Result<()> {
     write!(out, "</pre>\n")
 }

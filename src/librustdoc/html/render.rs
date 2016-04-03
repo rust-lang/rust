@@ -2661,16 +2661,16 @@ impl<'a> fmt::Display for Source<'a> {
             write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols)?;
         }
         write!(fmt, "</pre>")?;
-        write!(fmt, "{}", highlight::highlight(s, None, None))?;
+        write!(fmt, "{}", highlight::render_with_highlighting(s, None, None))?;
         Ok(())
     }
 }
 
 fn item_macro(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Macro) -> fmt::Result {
-    w.write_str(&highlight::highlight(&t.source,
-                                      Some("macro"),
-                                      None))?;
+    w.write_str(&highlight::render_with_highlighting(&t.source,
+                                                     Some("macro"),
+                                                     None))?;
     render_stability_since_raw(w, it.stable_since(), None)?;
     document(w, cx, it)
 }
