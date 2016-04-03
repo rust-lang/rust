@@ -149,14 +149,14 @@ impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
 }
 
 #[cfg(feature="debugging")]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {
-    cx.sess().span_bug(span,
-                       &format!("Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
-                                 div = {}, shorts = {}. Please file a bug report.",
-                                cc,
-                                narms,
-                                div,
-                                shorts));;
+fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {
+    span_bug!(span,
+              "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
+               div = {}, shorts = {}. Please file a bug report.",
+               cc,
+               narms,
+               div,
+               shorts);
 }
 #[cfg(not(feature="debugging"))]
 fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {

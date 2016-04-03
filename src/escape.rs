@@ -144,7 +144,7 @@ impl<'a, 'tcx: 'a> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
                             self.set.remove(&lid); // Used without autodereffing (i.e. x.clone())
                         }
                     } else {
-                        self.cx.sess().span_bug(cmt.span, "Unknown adjusted AutoRef");
+                        span_bug!(cmt.span, "Unknown adjusted AutoRef");
                     }
                 } else if LoanCause::AddrOf == loan_cause {
                     // &x
