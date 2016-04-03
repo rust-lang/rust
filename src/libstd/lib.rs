@@ -241,6 +241,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(macro_reexport)]
+#![cfg_attr(test, feature(map_values_mut))]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]

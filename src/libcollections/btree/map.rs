@@ -285,6 +285,12 @@ pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
 }
 
+/// A mutable iterator over a BTreeMap's values.
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+pub struct ValuesMut<'a, K: 'a, V: 'a> {
+    inner: IterMut<'a, K, V>,
+}
+
 /// An iterator over a sub-range of BTreeMap's entries.
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -1006,6 +1012,33 @@ impl<'a, K, V> Iterator for Range<'a, K, V> {
     }
 }
 
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
+    type Item = &'a mut V;
+
+    fn next(&mut self) -> Option<&'a mut V> {
+        self.inner.next().map(|(_, v)| v)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+impl<'a, K, V> DoubleEndedIterator for ValuesMut<'a, K, V> {
+    fn next_back(&mut self) -> Option<&'a mut V> {
+        self.inner.next_back().map(|(_, v)| v)
+    }
+}
+
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
+
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
         let handle = self.front;
@@ -1401,6 +1434,33 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         Values { inner: self.iter() }
+    }
+
+    /// Gets a mutable iterator over the values of the map, in order by key.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(map_values_mut)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, String::from("hello"));
+    /// a.insert(2, String::from("goodbye"));
+    ///
+    /// for value in a.values_mut() {
+    ///     value.push_str("!");
+    /// }
+    ///
+    /// let values: Vec<String> = a.values().cloned().collect();
+    /// assert_eq!(values, [String::from("hello!"),
+    ///                     String::from("goodbye!")]);
+    /// ```
+    #[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+    pub fn values_mut<'a>(&'a mut self) -> ValuesMut<'a, K, V> {
+        ValuesMut { inner: self.iter_mut() }
     }
 
     /// Returns the number of elements in the map.
