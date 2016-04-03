@@ -881,10 +881,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(box mir::transform::simplify_cfg::SimplifyCfg);
-            // Late passes
-            passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
             passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
-            passes.push_pass(box mir::transform::erase_regions::EraseRegions);
             // And run everything.
             passes.run_passes(tcx, &mut mir_map);
         });
@@ -937,16 +934,25 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
 pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
-                                       mir_map: MirMap<'tcx>,
-                                       analysis: ty::CrateAnalysis)
-                                       -> trans::CrateTranslation {
+                                       mut mir_map: MirMap<'tcx>,
+                                       analysis: ty::CrateAnalysis) -> trans::CrateTranslation {
     let time_passes = tcx.sess.time_passes();
 
     time(time_passes,
          "resolving dependency formats",
          || dependency_format::calculate(&tcx.sess));
 
-    // Option dance to work around the lack of stack once closures.
+    // Run the passes that transform the MIR into a more suitable for translation
+    // to LLVM code.
+    time(time_passes, "Prepare MIR codegen passes", || {
+        let mut passes = ::rustc::mir::transform::Passes::new();
+        passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
+        passes.push_pass(box mir::transform::remove_dead_blocks::RemoveDeadBlocks);
+        passes.push_pass(box mir::transform::erase_regions::EraseRegions);
+        passes.push_pass(box mir::transform::break_critical_edges::BreakCriticalEdges);
+        passes.run_passes(tcx, &mut mir_map);
+    });
+
     time(time_passes,
          "translation",
          move || trans::trans_crate(tcx, &mir_map, analysis))

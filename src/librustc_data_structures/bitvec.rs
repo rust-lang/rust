@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::iter::FromIterator;
+
 /// A very simple BitVector type.
+#[derive(Clone)]
 pub struct BitVector {
     data: Vec<u64>,
 }
@@ -50,7 +53,9 @@ impl BitVector {
     pub fn grow(&mut self, num_bits: usize) {
         let num_words = u64s(num_bits);
         let extra_words = self.data.len() - num_words;
-        self.data.extend((0..extra_words).map(|_| 0));
+        if extra_words > 0 {
+            self.data.extend((0..extra_words).map(|_| 0));
+        }
     }
 
     /// Iterates over indexes of set bits in a sorted order
@@ -90,6 +95,27 @@ impl<'a> Iterator for BitVectorIter<'a> {
         self.current >>= 1; // shift otherwise overflows for 0b1000_0000_…_0000
         self.idx += offset + 1;
         return Some(self.idx - 1);
+    }
+}
+
+impl FromIterator<bool> for BitVector {
+    fn from_iter<I>(iter: I) -> BitVector where I: IntoIterator<Item=bool> {
+        let iter = iter.into_iter();
+        let (len, _) = iter.size_hint();
+        // Make the minimum length for the bitvector 64 bits since that's
+        // the smallest non-zero size anyway.
+        let len = if len < 64 { 64 } else { len };
+        let mut bv = BitVector::new(len);
+        for (idx, val) in iter.enumerate() {
+            if idx > len {
+                bv.grow(idx);
+            }
+            if val {
+                bv.insert(idx);
+            }
+        }
+
+        bv
     }
 }
 

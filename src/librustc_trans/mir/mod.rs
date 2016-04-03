@@ -19,7 +19,13 @@ use common::{self, Block, BlockAndBuilder, FunctionContext};
 use std::ops::Deref;
 use std::rc::Rc;
 
+use basic_block::BasicBlock;
+
+use rustc_data_structures::bitvec::BitVector;
+
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
+use rustc_mir::traversal;
+
 use self::operand::OperandRef;
 
 #[derive(Clone)]
@@ -95,7 +101,7 @@ enum TempRef<'tcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
+pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let bcx = fcx.init(false, None).build();
     let mir = bcx.mir();
 
@@ -132,8 +138,13 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let block_bcxs: Vec<Block<'blk,'tcx>> =
         mir_blocks.iter()
                   .map(|&bb|{
-                      // FIXME(#30941) this doesn't handle msvc-style exceptions
-                      fcx.new_block(&format!("{:?}", bb), None)
+                      if bb == mir::START_BLOCK {
+                          fcx.new_block("start", None)
+                      } else if bb == mir::END_BLOCK {
+                          fcx.new_block("end", None)
+                      } else {
+                          fcx.new_block(&format!("{:?}", bb), None)
+                      }
                   })
                   .collect();
 
@@ -142,7 +153,7 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     bcx.br(start_bcx.llbb);
 
     let mut mircx = MirContext {
-        mir: mir,
+        mir: mir.clone(),
         fcx: fcx,
         llpersonalityslot: None,
         blocks: block_bcxs,
@@ -152,9 +163,26 @@ pub fn trans_mir<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         args: args,
     };
 
-    // Translate the body of each block
-    for &bb in &mir_blocks {
+    let mut visited = BitVector::new(mir_blocks.len());
+
+    let rpo = traversal::reverse_postorder(&mir);
+    // Translate the body of each block using reverse postorder
+    for (bb, _) in rpo {
+        visited.insert(bb.index());
         mircx.trans_block(bb);
+    }
+
+    // Remove blocks that haven't been visited, or have no
+    // predecessors.
+    for &bb in &mir_blocks {
+        let block = mircx.blocks[bb.index()];
+        let block = BasicBlock(block.llbb);
+        // Unreachable block
+        if !visited.contains(bb.index()) {
+            block.delete();
+        } else if block.pred_iter().count() == 0 {
+            block.delete();
+        }
     }
 
     fcx.cleanup();
