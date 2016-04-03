@@ -561,8 +561,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueK
                     } else {
                         // Give the user a heads up that we are doing something
                         // stupid and dangerous.
-                        bcx.sess().warn(&format!("Ignoring drop flag in destructor for {}\
-                                                 because the struct is unsized. See issue\
+                        bcx.sess().warn(&format!("Ignoring drop flag in destructor for {} \
+                                                 because the struct is unsized. See issue \
                                                  #16758", t));
                         trans_struct_drop(bcx, t, v0)
                     }
