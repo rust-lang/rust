@@ -52,6 +52,7 @@ impl Duration {
     /// If the nanoseconds is greater than 1 billion (the number of nanoseconds
     /// in a second), then it will carry over into the seconds provided.
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn new(secs: u64, nanos: u32) -> Duration {
         let secs = secs + (nanos / NANOS_PER_SEC) as u64;
         let nanos = nanos % NANOS_PER_SEC;
@@ -60,12 +61,14 @@ impl Duration {
 
     /// Creates a new `Duration` from the specified number of seconds.
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn from_secs(secs: u64) -> Duration {
         Duration { secs: secs, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn from_millis(millis: u64) -> Duration {
         let secs = millis / MILLIS_PER_SEC;
         let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
@@ -77,6 +80,7 @@ impl Duration {
     /// The extra precision represented by this duration is ignored (e.g. extra
     /// nanoseconds are not represented in the returned value).
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
 
     /// Returns the nanosecond precision represented by this duration.
@@ -85,6 +89,7 @@ impl Duration {
     /// represented by nanoseconds. The returned number always represents a
     /// fractional portion of a second (e.g. it is less than one billion).
     #[stable(feature = "duration", since = "1.3.0")]
+    #[inline]
     pub fn subsec_nanos(&self) -> u32 { self.nanos }
 }
 
