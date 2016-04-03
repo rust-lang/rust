@@ -14,7 +14,7 @@
 use CrateCtxt;
 
 use astconv::AstConv;
-use check::{self, FnCtxt};
+use check::{self, FnCtxt, UnresolvedTypeAction, autoderef};
 use front::map as hir_map;
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use middle::cstore::{self, CrateStore};
@@ -22,6 +22,7 @@ use middle::def::Def;
 use middle::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
 use rustc::ty::subst::Substs;
+use rustc::ty::LvaluePreference;
 use rustc::traits::{Obligation, SelectionContext};
 use util::nodemap::{FnvHashSet};
 
@@ -50,23 +51,40 @@ fn is_fn_ty<'a, 'tcx>(ty: &Ty<'tcx>, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> bool
             if let Ok(fn_once_trait_did) =
                     cx.lang_items.require(FnOnceTraitLangItem) {
                 let infcx = fcx.infcx();
-                infcx.probe(|_| {
-                    let fn_once_substs =
-                        Substs::new_trait(vec![infcx.next_ty_var()],
-                                          Vec::new(),
-                                          ty);
-                    let trait_ref =
-                      ty::TraitRef::new(fn_once_trait_did,
-                                        cx.mk_substs(fn_once_substs));
-                    let poly_trait_ref = trait_ref.to_poly_trait_ref();
-                    let obligation = Obligation::misc(span,
-                                                      fcx.body_id,
-                                                      poly_trait_ref
-                                                         .to_predicate());
-                    let mut selcx = SelectionContext::new(infcx);
+                let (_, _, opt_is_fn) = autoderef(fcx,
+                                                  span,
+                                                  ty,
+                                                  || None,
+                                                  UnresolvedTypeAction::Ignore,
+                                                  LvaluePreference::NoPreference,
+                                                  |ty, _| {
+                    infcx.probe(|_| {
+                        let fn_once_substs =
+                            Substs::new_trait(vec![infcx.next_ty_var()],
+                                              Vec::new(),
+                                              ty);
+                        let trait_ref =
+                          ty::TraitRef::new(fn_once_trait_did,
+                                            cx.mk_substs(fn_once_substs));
+                        let poly_trait_ref = trait_ref.to_poly_trait_ref();
+                        let obligation = Obligation::misc(span,
+                                                          fcx.body_id,
+                                                          poly_trait_ref
+                                                             .to_predicate());
+                        let mut selcx = SelectionContext::new(infcx);
 
-                    return selcx.evaluate_obligation(&obligation)
-                })
+                        if selcx.evaluate_obligation(&obligation) {
+                            Some(true)
+                        } else {
+                            None
+                        }
+                    })
+                });
+
+                match opt_is_fn {
+                    Some(result) => result,
+                    None => false,
+                }
             } else {
                 false
             }
