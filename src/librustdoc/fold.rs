@@ -73,7 +73,7 @@ pub trait DocFolder : Sized {
         c.module = c.module.and_then(|module| {
             self.fold_item(module)
         });
-        c.external_traits = c.external_traits.into_iter().map(|(k, mut v)| {
+        c.external_traits.map = c.external_traits.map.into_iter().map(|(k, mut v)| {
             v.items = v.items.into_iter().filter_map(|i| self.fold_item(i)).collect();
             (k, v)
         }).collect();

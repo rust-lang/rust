@@ -496,7 +496,7 @@ pub fn run(mut krate: clean::Crate,
         privmod: false,
         access_levels: access_levels,
         orphan_methods: Vec::new(),
-        traits: mem::replace(&mut krate.external_traits, HashMap::new()),
+        traits: mem::replace(&mut krate.external_traits.map, HashMap::new()),
         deref_trait_did: analysis.as_ref().and_then(|a| a.deref_trait_did),
         typarams: analysis.as_ref().map(|a| {
             a.external_typarams.borrow_mut().take().unwrap()
