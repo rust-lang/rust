@@ -45,7 +45,7 @@ configuration_option_enum! { ReturnIndent:
     WithWhereClause,
 }
 
-// How to stle a struct literal.
+// How to style a struct literal.
 configuration_option_enum! { StructLitStyle:
     // First line on the same line as the opening brace, all lines aligned with
     // the first line.
