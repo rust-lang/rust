@@ -861,6 +861,34 @@ impl<K, V, S> HashMap<K, V, S>
         Values { inner: self.iter() }
     }
 
+    /// An iterator visiting all values mutably in arbitrary order.
+    /// Iterator element type is `&'a mut V`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(map_values_mut)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map = HashMap::new();
+    ///
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
+    ///
+    /// for val in map.values_mut() {
+    ///     *val = *val + 10;
+    /// }
+    ///
+    /// for val in map.values() {
+    ///     print!("{}", val);
+    /// }
+    /// ```
+    #[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+    pub fn values_mut<'a>(&'a mut self) -> ValuesMut<'a, K, V> {
+        ValuesMut { inner: self.iter_mut() }
+    }
+
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is `(&'a K, &'a V)`.
     ///
@@ -1262,6 +1290,12 @@ pub struct Drain<'a, K: 'a, V: 'a> {
     inner: table::Drain<'a, K, V>
 }
 
+/// Mutable HashMap values iterator.
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+pub struct ValuesMut<'a, K: 'a, V: 'a> {
+    inner: IterMut<'a, K, V>
+}
+
 enum InternalEntry<K, V, M> {
     Occupied {
         elem: FullBucket<K, V, M>,
@@ -1457,6 +1491,18 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
+    #[inline] fn len(&self) -> usize { self.inner.len() }
+}
+
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+impl<'a, K, V> Iterator for ValuesMut<'a, K, V> {
+    type Item = &'a mut V;
+
+    #[inline] fn next(&mut self) -> Option<(&'a mut V)> { self.inner.next().map(|(_, v)| v) }
+    #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+#[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
+impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
@@ -1907,6 +1953,7 @@ mod test_map {
         assert_eq!(m.drain().next(), None);
         assert_eq!(m.keys().next(), None);
         assert_eq!(m.values().next(), None);
+        assert_eq!(m.values_mut().next(), None);
         assert_eq!(m.iter().next(), None);
         assert_eq!(m.iter_mut().next(), None);
         assert_eq!(m.len(), 0);
@@ -2081,6 +2128,20 @@ mod test_map {
         assert!(values.contains(&'a'));
         assert!(values.contains(&'b'));
         assert!(values.contains(&'c'));
+    }
+
+    #[test]
+    fn test_values_mut() {
+        let vec = vec![(1, 1), (2, 2), (3, 3)];
+        let mut map: HashMap<_, _> = vec.into_iter().collect();
+        for value in map.values_mut() {
+            *value = (*value) * 2
+        }
+        let values: Vec<_> = map.values().cloned().collect();
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&2));
+        assert!(values.contains(&4));
+        assert!(values.contains(&6));
     }
 
     #[test]

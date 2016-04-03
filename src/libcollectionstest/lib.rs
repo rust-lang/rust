@@ -22,6 +22,7 @@
 #![feature(enumset)]
 #![feature(iter_arith)]
 #![feature(map_entry_keys)]
+#![feature(map_values_mut)]
 #![feature(pattern)]
 #![feature(rand)]
 #![feature(set_recovery)]
