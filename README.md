@@ -182,6 +182,11 @@ stakeholders to discuss the issues in greater detail.
 * The sub-team will discuss the RFC PR, as much as possible in the comment
 thread of the PR itself. Offline discussion will be summarized on the PR comment
 thread.
+* RFCs rarely go through this process unchanged, especially as alternatives and
+drawbacks are shown. You can make edits, big and small, to the RFC to
+clarify or change the design, but make changes as new commits to the PR, and
+leave a comment on the PR explaining your changes. Specifically, do not squash
+or rebase commits after they are visible on the PR.
 * Once both proponents and opponents have clarified and defended positions and
 the conversation has settled, the RFC will enter its *final comment period*
 (FCP). This is a final opportunity for the community to comment on the PR and is
