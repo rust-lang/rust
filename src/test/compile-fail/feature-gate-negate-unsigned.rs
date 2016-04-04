@@ -17,7 +17,8 @@ impl std::ops::Neg for S {
 }
 
 const _MAX: usize = -1;
-//~^ ERROR unary negation of unsigned integer
+//~^ WARN unary negation of unsigned integer
+//~| ERROR unary negation of unsigned integer
 //~| HELP use a cast or the `!` operator
 
 fn main() {
