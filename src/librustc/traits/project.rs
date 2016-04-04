@@ -981,14 +981,14 @@ fn confirm_object_candidate<'cx, 'gcx, 'tcx>(
 {
     let self_ty = obligation_trait_ref.self_ty();
     let object_ty = selcx.infcx().shallow_resolve(self_ty);
-    debug!("assemble_candidates_from_object_type(object_ty={:?})",
+    debug!("confirm_object_candidate(object_ty={:?})",
            object_ty);
     let data = match object_ty.sty {
         ty::TyTrait(ref data) => data,
         _ => {
             span_bug!(
                 obligation.cause.span,
-                "assemble_candidates_from_object_type called with non-object: {:?}",
+                "confirm_object_candidate called with non-object: {:?}",
                 object_ty);
         }
     };
