@@ -1,5 +1,5 @@
 /target
 /doc
+/final-presentation/out
 *.dot
 *.mir
-*.png
