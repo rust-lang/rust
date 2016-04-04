@@ -66,7 +66,7 @@ tasks vary along several important dimensions:
   applies to long-running loops or page faults.)
 
   M:N models can deal with blocking in a couple of ways. The approach taken in
-  Java's [fork/join](http://gee.cs.oswego.edu/dl/papers/fj.pdf)) framework, for
+  Java's [fork/join](http://gee.cs.oswego.edu/dl/papers/fj.pdf) framework, for
   example, is to dynamically spin up/down worker threads. Alternatively, special
   task-aware blocking operations (including I/O) can be provided, which are
   mapped under the hood to nonblocking operations, allowing the worker thread to
