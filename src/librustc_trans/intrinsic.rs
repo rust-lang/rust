@@ -752,33 +752,47 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
             match split[1] {
                 "cxchg" | "cxchgweak" => {
-                    let cmp = from_immediate(bcx, llargs[1]);
-                    let src = from_immediate(bcx, llargs[2]);
-                    let ptr = PointerCast(bcx, llargs[0], val_ty(src).ptr_to());
-                    let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
-                    let val = AtomicCmpXchg(bcx, ptr, cmp, src, order, failorder, weak);
-                    let result = ExtractValue(bcx, val, 0);
-                    let success = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
-                    Store(bcx,
-                          result,
-                          PointerCast(bcx, StructGEP(bcx, llresult, 0), val_ty(src).ptr_to()));
-                    Store(bcx, success, StructGEP(bcx, llresult, 1));
+                    let sty = &substs.types.get(FnSpace, 0).sty;
+                    if int_type_width_signed(sty, ccx).is_some() {
+                        let weak = if split[1] == "cxchgweak" { llvm::True } else { llvm::False };
+                        let val = AtomicCmpXchg(bcx, llargs[0], llargs[1], llargs[2],
+                                                order, failorder, weak);
+                        let result = ExtractValue(bcx, val, 0);
+                        let success = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
+                        Store(bcx, result, StructGEP(bcx, llresult, 0));
+                        Store(bcx, success, StructGEP(bcx, llresult, 1));
+                    } else {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `{}` intrinsic: \
+                                      expected basic integer type, found `{}`", name, sty));
+                    }
                     C_nil(ccx)
                 }
 
                 "load" => {
-                    let tp_ty = *substs.types.get(FnSpace, 0);
-                    let mut ptr = llargs[0];
-                    if let Some(ty) = fn_ty.ret.cast {
-                        ptr = PointerCast(bcx, ptr, ty.ptr_to());
+                    let sty = &substs.types.get(FnSpace, 0).sty;
+                    if int_type_width_signed(sty, ccx).is_some() {
+                        AtomicLoad(bcx, llargs[0], order)
+                    } else {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `{}` intrinsic: \
+                                      expected basic integer type, found `{}`", name, sty));
+                        C_nil(ccx)
                     }
-                    to_immediate(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
                 }
 
                 "store" => {
-                    let val = from_immediate(bcx, llargs[1]);
-                    let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
-                    AtomicStore(bcx, val, ptr, order);
+                    let sty = &substs.types.get(FnSpace, 0).sty;
+                    if int_type_width_signed(sty, ccx).is_some() {
+                        AtomicStore(bcx, llargs[1], llargs[0], order);
+                    } else {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `{}` intrinsic: \
+                                      expected basic integer type, found `{}`", name, sty));
+                    }
                     C_nil(ccx)
                 }
 
@@ -809,9 +823,16 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
-                    let val = from_immediate(bcx, llargs[1]);
-                    let ptr = PointerCast(bcx, llargs[0], val_ty(val).ptr_to());
-                    AtomicRMW(bcx, atom_op, ptr, val, order)
+                    let sty = &substs.types.get(FnSpace, 0).sty;
+                    if int_type_width_signed(sty, ccx).is_some() {
+                        AtomicRMW(bcx, atom_op, llargs[0], llargs[1], order)
+                    } else {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `{}` intrinsic: \
+                                      expected basic integer type, found `{}`", name, sty));
+                        C_nil(ccx)
+                    }
                 }
             }
 
