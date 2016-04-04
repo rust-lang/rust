@@ -126,15 +126,16 @@ if they both transitively have edges to one another. A valid workspace then has
 exactly one root crate with a `[workspace]` key.
 
 While the restriction of one-root-per workspace may make sense, the restriction
-of crates transitively having edges to one another may seem a bit odd. The
-intention is to ensure that the set of packages in a workspace is the same
-regardless of which package is selected to start discovering a workspace from.
-
-With the implicit relations defined it's possible for a repository to not have a
-root package yet still have path dependencies. In this situation each dependency
-would not know how to get back to the "root package", so the workspace from the
-point of view of the path dependencies would be different than that of the root
-package. This could in turn lead to `Cargo.lock` getting out of sync.
+of crates transitively having edges to one another may seem a bit odd. If,
+however, this restriction were not in place then the set of crates in a
+workspace may differ depending on which crate it was viewed from. For example if
+crate A has a path dependency on B then it will think B is in A's workspace. If,
+however, A was not in B's filesystem hierarchy, then B would not think that A
+was in its workspace. This would in turn cause the set of crates in each
+workspace to be different, futher causing `Cargo.lock` to get out of sync if it
+were allowed. By ensuring that all crates have edges to each other in a
+workspace Cargo can prevent this situation and guarantee robust builds no matter
+where they're executed in the workspace.
 
 To alleviate misconfiguration, however, if the `workspace.members`
 configuration key contains a crate which is not a member of the constructed
