@@ -48,7 +48,7 @@ pub fn cc2ar(cc: &Path, target: &str) -> PathBuf {
         for suffix in &["gcc", "cc", "clang"] {
             if let Some(idx) = file.rfind(suffix) {
                 let mut file = file[..idx].to_owned();
-                file.push_str(suffix);
+                file.push_str("ar");
                 return parent.join(&file);
             }
         }
