@@ -28,5 +28,5 @@ fn is_magic1<T: Magic1>() { }
 struct NoClone;
 
 fn main() {
-    is_magic1::<NoClone>();
+    is_magic1::<NoClone>(); //~ ERROR E0275
 }
