@@ -31,14 +31,14 @@ pub fn append_newlines(file_map: &mut FileMap) {
     }
 }
 
-pub fn write_all_files<T>(file_map: &FileMap, mut out: T, config: &Config) -> Result<(), io::Error>
+pub fn write_all_files<T>(file_map: &FileMap, out: &mut T, config: &Config) -> Result<(), io::Error>
     where T: Write
 {
-    output_header(&mut out, config.write_mode).ok();
+    output_header(out, config.write_mode).ok();
     for filename in file_map.keys() {
-        try!(write_file(&file_map[filename], filename, &mut out, config));
+        try!(write_file(&file_map[filename], filename, out, config));
     }
-    output_footer(&mut out, config.write_mode).ok();
+    output_footer(out, config.write_mode).ok();
 
     Ok(())
 }
@@ -80,11 +80,11 @@ pub fn write_system_newlines<T>(writer: T,
     }
 }
 
-pub fn write_file<T>(text: &StringBuffer,
-                     filename: &str,
-                     out: &mut T,
-                     config: &Config)
-                     -> Result<Option<String>, io::Error>
+fn write_file<T>(text: &StringBuffer,
+                 filename: &str,
+                 out: &mut T,
+                 config: &Config)
+                 -> Result<Option<String>, io::Error>
     where T: Write
 {
 
