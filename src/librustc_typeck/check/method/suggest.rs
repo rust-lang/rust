@@ -81,10 +81,7 @@ fn is_fn_ty<'a, 'tcx>(ty: &Ty<'tcx>, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> bool
                     })
                 });
 
-                match opt_is_fn {
-                    Some(result) => result,
-                    None => false,
-                }
+                opt_is_fn.unwrap_or(false)
             } else {
                 false
             }
