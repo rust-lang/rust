@@ -164,6 +164,7 @@ impl Drop for Thread {
 }
 
 #[cfg(all(not(all(target_os = "linux", not(target_env = "musl"))),
+          not(target_os = "freebsd"),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
@@ -177,6 +178,7 @@ pub mod guard {
 
 
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")),
+          target_os = "freebsd",
           target_os = "macos",
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
@@ -197,6 +199,22 @@ pub mod guard {
               target_os = "solaris"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         current().map(|s| s as *mut libc::c_void)
+    }
+
+    #[cfg(target_os = "freebsd")]
+    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+        let mut ret = None;
+        let mut attr: libc::pthread_attr_t = ::mem::zeroed();
+        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        if libc::pthread_attr_get_np(libc::pthread_self(), &mut attr) == 0 {
+            let mut stackaddr = ::ptr::null_mut();
+            let mut stacksize = 0;
+            assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
+                                                   &mut stacksize), 0);
+            ret = Some(stackaddr);
+        }
+        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        ret
     }
 
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
@@ -248,7 +266,11 @@ pub mod guard {
             panic!("failed to allocate a guard page");
         }
 
-        let offset = if cfg!(target_os = "linux") {2} else {1};
+        let offset = if cfg!(any(target_os = "linux", target_os = "freebsd")) {
+            2
+        } else {
+            1
+        };
 
         Some(stackaddr as usize + offset * psize)
     }
@@ -280,6 +302,27 @@ pub mod guard {
             // new thread
             current_stack.ss_sp as usize - current_stack.ss_size as usize
         })
+    }
+
+    #[cfg(target_os = "freebsd")]
+    pub unsafe fn current() -> Option<usize> {
+        let mut ret = None;
+        let mut attr: libc::pthread_attr_t = ::mem::zeroed();
+        assert_eq!(libc::pthread_attr_init(&mut attr), 0);
+        if libc::pthread_attr_get_np(libc::pthread_self(), &mut attr) == 0 {
+            let mut guardsize = 0;
+            assert_eq!(libc::pthread_attr_getguardsize(&attr, &mut guardsize), 0);
+            if guardsize == 0 {
+                panic!("there is no guard page");
+            }
+            let mut stackaddr = ::ptr::null_mut();
+            let mut size = 0;
+            assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
+                                                   &mut size), 0);
+            ret = Some(stackaddr as usize - guardsize as usize);
+        }
+        assert_eq!(libc::pthread_attr_destroy(&mut attr), 0);
+        ret
     }
 
     #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
