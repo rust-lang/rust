@@ -527,7 +527,7 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         ty::Predicate::Equate(ref binder) => {
             match selcx.infcx().equality_predicate(obligation.cause.span, binder) {
                 Ok(InferOk { obligations, .. }) => {
-                    // FIXME(#????) propagate obligations
+                    // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
                     Ok(Some(Vec::new()))
                 },

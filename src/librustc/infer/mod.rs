@@ -579,6 +579,12 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     Ok(infcx.tcx.erase_regions(&result))
 }
 
+impl<'tcx, T> InferOk<'tcx, T> {
+    fn unit(self) -> InferOk<'tcx, ()> {
+        InferOk { value: (), obligations: self.obligations }
+    }
+}
+
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn projection_mode(&self) -> ProjectionMode {
         self.projection_mode
@@ -851,8 +857,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_types({:?} <: {:?})", a, b);
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace, &a, &b)
-                .map(|InferOk { obligations, .. }| InferOk { value: (), obligations: obligations })
+            self.sub(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
     }
 
@@ -865,8 +870,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace, &a, &b)
-                .map(|InferOk { obligations, .. }| InferOk { value: (), obligations: obligations })
+            self.equate(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
     }
 
@@ -885,8 +889,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.equate(a_is_expected, trace, &a, &b)
-                .map(|InferOk { obligations, .. }| InferOk { value: (), obligations: obligations })
+            self.equate(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
     }
 
@@ -905,8 +908,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace, &a, &b)
-                .map(|InferOk { obligations, .. }| InferOk { value: (), obligations: obligations })
+            self.sub(a_is_expected, trace, &a, &b).map(|ok| ok.unit())
         })
     }
 
@@ -955,9 +957,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = TypeOrigin::EquatePredicate(span);
-            let InferOk { obligations, .. } = mk_eqty(self, false, origin, a, b)?;
-            self.leak_check(&skol_map, snapshot)
-                .map(|_| InferOk { value: (), obligations: obligations })
+            let eqty_ok = mk_eqty(self, false, origin, a, b)?;
+            self.leak_check(&skol_map, snapshot).map(|_| eqty_ok.unit())
         })
     }
 

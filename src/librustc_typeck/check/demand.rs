@@ -23,7 +23,7 @@ pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
     let origin = TypeOrigin::Misc(sp);
     match fcx.infcx().sub_types(false, origin, actual, expected) {
         Ok(InferOk { obligations, .. }) => {
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             assert!(obligations.is_empty());
         },
         Err(e) => {
@@ -37,7 +37,7 @@ pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
     let origin = TypeOrigin::Misc(sp);
     match fcx.infcx().eq_types(false, origin, actual, expected) {
         Ok(InferOk { obligations, .. }) => {
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             assert!(obligations.is_empty());
         },
         Err(e) => {

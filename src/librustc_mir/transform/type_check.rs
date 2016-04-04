@@ -338,7 +338,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     {
         infer::mk_subty(self.infcx, false, infer::TypeOrigin::Misc(span),
                         sup, sub)
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
@@ -347,7 +347,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     {
         infer::mk_eqty(self.infcx, false, infer::TypeOrigin::Misc(span),
                        a, b)
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
