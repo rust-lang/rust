@@ -287,7 +287,7 @@ fn fmt_ast(krate: &ast::Crate,
 // Formatting done on a char by char or line by line basis.
 // TODO(#209) warn on bad license
 // TODO(#20) other stuff for parity with make tidy
-fn fmt_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
+fn format_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
     let mut report = FormatReport { file_error_map: HashMap::new() };
 
@@ -403,7 +403,7 @@ fn format_string(input: String, config: &Config) -> FileMap {
     file_map
 }
 
-fn format(file: &Path, config: &Config) -> FileMap {
+fn format_file(file: &Path, config: &Config) -> FileMap {
     let codemap = Rc::new(CodeMap::new());
 
     let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
@@ -430,11 +430,11 @@ fn format(file: &Path, config: &Config) -> FileMap {
 
 pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
     let mut file_map = match input {
-        Input::File(ref file) => format(file, config),
+        Input::File(ref file) => format_file(file, config),
         Input::Text(text) => format_string(text, config),
     };
 
-    let report = fmt_lines(&mut file_map, config);
+    let report = format_lines(&mut file_map, config);
     (file_map, report)
 }
 
