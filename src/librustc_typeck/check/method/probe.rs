@@ -1134,7 +1134,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn make_sub_ty(&self, sub: Ty<'tcx>, sup: Ty<'tcx>) -> infer::UnitResult<'tcx> {
         self.infcx().sub_types(false, TypeOrigin::Misc(DUMMY_SP), sub, sup)
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 

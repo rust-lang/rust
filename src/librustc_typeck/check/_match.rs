@@ -534,7 +534,7 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let result = if is_if_let_fallback {
             fcx.infcx().eq_types(true, origin, arm_ty, result_ty)
                 .map(|InferOk { obligations, .. }| {
-                    // FIXME(#????) propagate obligations
+                    // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
                     arm_ty
                 })

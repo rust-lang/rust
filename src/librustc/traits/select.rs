@@ -485,7 +485,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // does this code ever run?
                 match self.infcx.equality_predicate(obligation.cause.span, p) {
                     Ok(InferOk { obligations, .. }) => {
-                        // FIXME(#????) propagate obligations
+                        // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
                         EvaluatedToOk
                     },
@@ -1190,7 +1190,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                              trait_bound.clone(),
                                              ty::Binder(skol_trait_ref.clone())) {
             Ok(InferOk { obligations, .. }) => {
-                // FIXME(#????) propagate obligations
+                // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
             }
             Err(_) => { return false; }
@@ -2505,7 +2505,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                        origin,
                                        expected_trait_ref.clone(),
                                        obligation_trait_ref.clone())
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
             .map_err(|e| OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
     }
@@ -2541,7 +2541,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, new_trait, target)
                     .map_err(|_| Unimplemented)?;
-                // FIXME(#????) propagate obligations
+                // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
 
                 // Register one obligation for 'a: 'b.
@@ -2608,7 +2608,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, a, b)
                     .map_err(|_| Unimplemented)?;
-                // FIXME(#????) propagate obligations
+                // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
             }
 
@@ -2668,7 +2668,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let InferOk { obligations, .. } =
                     self.infcx.sub_types(false, origin, new_struct, target)
                     .map_err(|_| Unimplemented)?;
-                // FIXME(#????) propagate obligations
+                // FIXME(#32730) propagate obligations
                 assert!(obligations.is_empty());
 
                 // Construct the nested Field<T>: Unsize<Field<U>> predicate.
@@ -2764,7 +2764,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!("match_impl: failed eq_trait_refs due to `{}`", e);
                 ()
             })?;
-        // FIXME(#????) propagate obligations
+        // FIXME(#32730) propagate obligations
         assert!(obligations.is_empty());
 
         if let Err(e) = self.infcx.leak_check(&skol_map, snapshot) {
@@ -2832,7 +2832,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                        origin,
                                        poly_trait_ref,
                                        obligation.predicate.to_poly_trait_ref())
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
             .map_err(|_| ())
     }

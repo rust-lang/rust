@@ -233,7 +233,7 @@ fn project_and_unify_type<'cx,'tcx>(
     let origin = TypeOrigin::RelateOutputImplTypes(obligation.cause.span);
     match infer::mk_eqty(infcx, true, origin, normalized_ty, obligation.predicate.ty) {
         Ok(InferOk { obligations: inferred_obligations, .. }) => {
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             assert!(inferred_obligations.is_empty());
             Ok(Some(obligations))
         },
@@ -283,7 +283,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
             let obligation_ty = obligation.predicate.ty;
             match infer::mk_eqty(infcx, true, origin, obligation_ty, ret_type) {
                 Ok(InferOk { obligations, .. }) => {
-                    // FIXME(#????) propagate obligations
+                    // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
                 }
                 Err(_) => { /* ignore errors */ }
@@ -837,7 +837,7 @@ fn assemble_candidates_from_predicates<'cx,'tcx,I>(
                                               origin,
                                               data_poly_trait_ref,
                                               obligation_poly_trait_ref)
-                        // FIXME(#????) propagate obligations
+                        // FIXME(#32730) propagate obligations
                         .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
                         .is_ok()
                 });
@@ -1093,7 +1093,7 @@ fn confirm_param_env_candidate<'cx,'tcx>(
                               obligation.predicate.trait_ref.clone(),
                               projection.projection_ty.trait_ref.clone()) {
         Ok(InferOk { obligations, .. }) => {
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             assert!(obligations.is_empty());
         }
         Err(e) => {

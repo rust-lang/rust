@@ -1628,7 +1628,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     sup: Ty<'tcx>)
                     -> Result<(), TypeError<'tcx>> {
         infer::mk_subty(self.infcx(), a_is_expected, origin, sub, sup)
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
@@ -1639,7 +1639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                    sup: Ty<'tcx>)
                    -> Result<(), TypeError<'tcx>> {
         infer::mk_eqty(self.infcx(), a_is_expected, origin, sub, sup)
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
@@ -1920,7 +1920,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                          TypeOrigin::Misc(default.origin_span),
                                                          ty, default.ty) {
                                         Ok(InferOk { obligations, .. }) => {
-                                            // FIXME(#????) propagate obligations
+                                            // FIXME(#32730) propagate obligations
                                             assert!(obligations.is_empty())
                                         },
                                         Err(_) => {
@@ -2015,7 +2015,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             match infer::mk_eqty(self.infcx(), false,
                                                  TypeOrigin::Misc(default.origin_span),
                                                  ty, default.ty) {
-                                // FIXME(#????) propagate obligations
+                                // FIXME(#32730) propagate obligations
                                 Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
                                 Err(_) => {
                                     result = Some(default);
@@ -2784,7 +2784,7 @@ fn expected_types_for_fn_args<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
-                    // FIXME(#????) propagate obligations
+                    // FIXME(#32730) propagate obligations
                     Ok(InferOk { obligations, .. }) => assert!(obligations.is_empty()),
                     Err(e) => return Err(e),
                 }
@@ -2915,7 +2915,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     let trace = TypeTrace::types(origin, true, then_ty, else_ty);
                     fcx.infcx().lub(true, trace, &then_ty, &else_ty)
                         .map(|InferOk { value, obligations }| {
-                            // FIXME(#????) propagate obligations
+                            // FIXME(#32730) propagate obligations
                             assert!(obligations.is_empty());
                             value
                         })
@@ -2927,7 +2927,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             (origin, unit, then_ty,
              fcx.infcx().eq_types(true, origin, unit, then_ty)
                  .map(|InferOk { obligations, .. }| {
-                     // FIXME(#????) propagate obligations
+                     // FIXME(#32730) propagate obligations
                      assert!(obligations.is_empty());
                      unit
                  }))

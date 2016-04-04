@@ -476,7 +476,7 @@ pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
 
     match err {
         Ok(InferOk { obligations, .. }) => {
-            // FIXME(#????) propagate obligations
+            // FIXME(#32730) propagate obligations
             assert!(obligations.is_empty())
         }
         Err(terr) => {

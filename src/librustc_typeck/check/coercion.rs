@@ -119,14 +119,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             if self.use_lub {
                 infcx.lub(false, trace, &a, &b)
                     .map(|InferOk { value, obligations }| {
-                        // FIXME(#????) propagate obligations
+                        // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
                         value
                     })
             } else {
                 infcx.sub(false, trace, &a, &b)
                     .map(|InferOk { value, obligations }| {
-                        // FIXME(#????) propagate obligations
+                        // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
                         value
                     })
@@ -668,7 +668,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
             // The signature must always match.
             let fty = fcx.infcx().lub(true, trace.clone(), a_fty, b_fty)
                 .map(|InferOk { value, obligations }| {
-                    // FIXME(#????) propagate obligations
+                    // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
                     value
                 })?;
@@ -678,7 +678,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
                 let substs = fcx.infcx().commit_if_ok(|_| {
                     fcx.infcx().lub(true, trace.clone(), a_substs, b_substs)
                         .map(|InferOk { value, obligations }| {
-                            // FIXME(#????) propagate obligations
+                            // FIXME(#32730) propagate obligations
                             assert!(obligations.is_empty());
                             value
                         })
@@ -746,7 +746,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
             return fcx.infcx().commit_if_ok(|_| {
                 fcx.infcx().lub(true, trace.clone(), &prev_ty, &new_ty)
                     .map(|InferOk { value, obligations }| {
-                        // FIXME(#????) propagate obligations
+                        // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
                         value
                     })
@@ -763,7 +763,7 @@ pub fn try_find_lub<'a, 'b, 'tcx, E, I>(fcx: &FnCtxt<'a, 'tcx>,
                 fcx.infcx().commit_if_ok(|_| {
                     fcx.infcx().lub(true, trace, &prev_ty, &new_ty)
                         .map(|InferOk { value, obligations }| {
-                            // FIXME(#????) propagate obligations
+                            // FIXME(#32730) propagate obligations
                             assert!(obligations.is_empty());
                             value
                         })

@@ -1847,7 +1847,7 @@ fn declared_projection_bounds_from_trait<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
                 // check whether this predicate applies to our current projection
                 match infer::mk_eqty(infcx, false, TypeOrigin::Misc(span), ty, outlives.0) {
                     Ok(InferOk { obligations, .. }) => {
-                        // FIXME(#????) propagate obligations
+                        // FIXME(#32730) propagate obligations
                         assert!(obligations.is_empty());
                         Ok(outlives.1)
                     }

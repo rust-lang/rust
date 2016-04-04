@@ -375,7 +375,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub(&t1, &t2) {
             Ok(InferOk { obligations, .. }) => {
-                // FIXME once obligations are being propagated, assert the right thing.
+                // FIXME(#32730) once obligations are being propagated, assert the right thing.
                 assert!(obligations.is_empty());
             }
             Err(ref e) => {
@@ -399,7 +399,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
         match self.lub(&t1, &t2) {
             Ok(InferOk { obligations, value: t }) => {
-                // FIXME once obligations are being propagated, assert the right thing.
+                // FIXME(#32730) once obligations are being propagated, assert the right thing.
                 assert!(obligations.is_empty());
 
                 self.assert_eq(t, t_lub);
@@ -418,7 +418,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 panic!("unexpected error computing LUB: {:?}", e)
             }
             Ok(InferOk { obligations, value: t }) => {
-                // FIXME once obligations are being propagated, assert the right thing.
+                // FIXME(#32730) once obligations are being propagated, assert the right thing.
                 assert!(obligations.is_empty());
 
                 self.assert_eq(t, t_glb);
