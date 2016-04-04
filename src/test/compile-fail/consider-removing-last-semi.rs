@@ -14,4 +14,10 @@ fn f() -> String {  //~ ERROR E0269
     "bla".to_string();  //~ HELP consider removing this semicolon
 }
 
+fn g() -> String {  //~ ERROR E0269
+                    //~^ HELP detailed explanation
+    "this won't work".to_string();
+    "removeme".to_string(); //~ HELP consider removing this semicolon
+}
+
 fn main() {}
