@@ -930,10 +930,10 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
         let br_name = match *br {
             ty::BrNamed(_, name) => name,
             _ => {
-                this.tcx().sess.span_bug(
+                span_bug!(
                     binding.span,
-                    &format!("anonymous bound region {:?} in binding but not trait ref",
-                             br));
+                    "anonymous bound region {:?} in binding but not trait ref",
+                    br);
             }
         };
         this.tcx().sess.add_lint(
@@ -1709,11 +1709,10 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 let br_name = match *br {
                     ty::BrNamed(_, name) => name,
                     _ => {
-                        this.tcx().sess.span_bug(
+                        span_bug!(
                             bf.decl.output.span(),
-                            &format!("anonymous bound region {:?} in \
-                                      return but not args",
-                                     br));
+                            "anonymous bound region {:?} in return but not args",
+                            br);
                     }
                 };
                 this.tcx().sess.add_lint(
