@@ -136,18 +136,18 @@ fn collect_lang_features(path: &Path) -> Vec<Feature> {
 
     let mut features = Vec::new();
     for line in contents.lines().map(|l| l.trim()) {
-        if !STATUSES.iter().any(|s| line.contains(s) && line.starts_with("(")) {
+        if !STATUSES.iter().any(|s| line.starts_with(&format!("({}", s))) {
             continue
         }
         let mut parts = line.split(",");
-        let name = parts.next().unwrap().replace("\"", "").replace("(", "");
-        let since = parts.next().unwrap().trim().replace("\"", "");
-        let status = match parts.skip(1).next().unwrap() {
-            s if s.contains("Active") => "unstable",
-            s if s.contains("Removed") => "unstable",
-            s if s.contains("Accepted") => "stable",
+        let status = match &parts.next().unwrap().trim().replace("(", "")[..] {
+            "active"   => "unstable",
+            "removed"  => "unstable",
+            "accepted" => "stable",
             s => panic!("unknown status: {}", s),
         };
+        let name = parts.next().unwrap().trim().to_owned();
+        let since = parts.next().unwrap().trim().replace("\"", "");
 
         features.push(Feature {
             name: name,
