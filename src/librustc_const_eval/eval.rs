@@ -343,10 +343,15 @@ pub fn eval_const_expr(tcx: &TyCtxt, e: &Expr) -> ConstVal {
     match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
         Ok(r) => r,
         // non-const path still needs to be a fatal error, because enums are funky
-        Err(ref s) if s.kind == NonConstPath => tcx.sess.span_fatal(s.span, &s.description()),
         Err(s) => {
-            tcx.sess.span_err(s.span, &s.description());
-            Dummy
+            match s.kind {
+                NonConstPath |
+                UnimplementedConstVal(_) => tcx.sess.span_fatal(s.span, &s.description()),
+                _ => {
+                    tcx.sess.span_err(s.span, &s.description());
+                    Dummy
+                }
+            }
         },
     }
 }
@@ -607,6 +612,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           const_val => signal!(e, NotOn(const_val)),
         }
       }
+      hir::ExprUnary(hir::UnDeref, _) => signal!(e, UnimplementedConstVal("deref operation")),
       hir::ExprBinary(op, ref a, ref b) => {
         let b_ty = match op.node {
             hir::BiShl | hir::BiShr => ty_hint.erase_hint(),
@@ -745,7 +751,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                   if let Some(const_expr) = lookup_variant_by_id(tcx, enum_def, variant_def) {
                       eval_const_expr_partial(tcx, const_expr, ty_hint, None)?
                   } else {
-                      signal!(e, NonConstPath);
+                      signal!(e, UnimplementedConstVal("enum variants"));
                   }
               }
               Def::Struct(..) => {
@@ -768,6 +774,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           let callee_val = eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)?;
           let did = match callee_val {
               Function(did) => did,
+              Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
           let (decl, result) = if let Some(fn_like) = lookup_const_fn_by_id(tcx, did) {
@@ -798,7 +805,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
-            None => bug!(),
+            None => signal!(e, UnimplementedConstVal("empty block")),
         }
       }
       hir::ExprType(ref e, _) => eval_const_expr_partial(tcx, &e, ty_hint, fn_args)?,
@@ -840,7 +847,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             },
 
             Str(ref s) if idx as usize >= s.len() => signal!(e, IndexOutOfBounds),
-            Str(_) => bug!("unimplemented"), // FIXME: return a const char
+            // FIXME: return a const char
+            Str(_) => signal!(e, UnimplementedConstVal("indexing into str")),
             _ => signal!(e, IndexedNonVec),
         }
       }
@@ -894,6 +902,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             signal!(base, ExpectedConstStruct);
         }
       }
+      hir::ExprAddrOf(..) => signal!(e, UnimplementedConstVal("address operator")),
       _ => signal!(e, MiscCatchAll)
     };
 
@@ -1073,6 +1082,7 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
             Ok(Float(val as f64))
         },
         ty::TyFloat(ast::FloatTy::F32) => Ok(Float(val.to_u64().unwrap() as f32 as f64)),
+        ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
         _ => Err(CannotCast),
     }
 }
@@ -1094,6 +1104,7 @@ fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult
         Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),
         Float(f) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
+        Function(_) => Err(UnimplementedConstVal("casting fn pointers")),
         _ => Err(CannotCast),
     }
 }
