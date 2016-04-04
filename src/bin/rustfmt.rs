@@ -212,7 +212,7 @@ fn execute() -> i32 {
                 path = path_tmp;
             };
             if let Some(path) = path.as_ref() {
-                msg!("Using rustfmt config file {}", path.display());
+                println!("Using rustfmt config file {}", path.display());
             }
             for file in files {
                 // Check the file directory if the config-path could not be read or not provided
@@ -222,9 +222,9 @@ fn execute() -> i32 {
                                                                        for {}",
                                                                       file.display()));
                     if let Some(path) = path_tmp.as_ref() {
-                        msg!("Using rustfmt config file {} for {}",
-                             path.display(),
-                             file.display());
+                        println!("Using rustfmt config file {} for {}",
+                                 path.display(),
+                                 file.display());
                     }
                     config = config_tmp;
                 }
