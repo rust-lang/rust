@@ -182,7 +182,7 @@ lowest precedence) to highest in the language. The most prominent choices are:
 
 3. More than assignment and binop-assignment, but less than any other operator:
 
-    This is what currently this RFC proposes.  This allows for various
+    This is what this RFC currently proposes.  This allows for various
     expressions involving equality symbols and `<-` to be parsed reasonably and
     consistently. For example `x = y <- z += a <- b <- c` would get parsed as `x
     = ((y <- z) += (a <- (b <- c)))`.
