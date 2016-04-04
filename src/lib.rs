@@ -233,7 +233,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
-    reg.register_early_lint_pass(box doc::Doc);
+    reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
