@@ -212,10 +212,6 @@
   \end{itemize}
 \end{frame}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Miri example slides
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \begin{frame}[fragile]
   \frametitle{\texttt{square} example}
   \begin{center}
@@ -346,9 +342,12 @@
         \item non-trivial casts
         \item function pointers
         \item calling destructors and freeing memory
+        \item taking target architecture endianess and alignment information
+          into account when computing data layout
         \item handling all constants properly (but, well, Miri might be
           replacing the old constants system)
       \end{itemize}
+      \pause
 
     \item Miri can't do foreign function calls (e.g. calling functions defined
       in C or C++), but there is a reasonable way it could be done with libffi.
@@ -357,6 +356,7 @@
           want the evaluator to be deterministic and safe, so FFI calls might be
           banned anyway.
       \end{itemize}
+      \pause
 
     \item Without quite some effort, Miri will probably never handle inline
       assembly...
