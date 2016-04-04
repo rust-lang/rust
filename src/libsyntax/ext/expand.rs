@@ -1345,14 +1345,14 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 
     feature_tests! {
-        fn enable_quotes = allow_quote,
-        fn enable_asm = allow_asm,
-        fn enable_log_syntax = allow_log_syntax,
-        fn enable_concat_idents = allow_concat_idents,
-        fn enable_trace_macros = allow_trace_macros,
+        fn enable_quotes = quote,
+        fn enable_asm = asm,
+        fn enable_log_syntax = log_syntax,
+        fn enable_concat_idents = concat_idents,
+        fn enable_trace_macros = trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
-        fn enable_custom_derive = allow_custom_derive,
-        fn enable_pushpop_unsafe = allow_pushpop_unsafe,
+        fn enable_custom_derive = custom_derive,
+        fn enable_pushpop_unsafe = pushpop_unsafe,
     }
 }
 
