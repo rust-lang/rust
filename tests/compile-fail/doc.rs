@@ -29,6 +29,18 @@ fn multiline_ticks() {
 fn test_emphasis() {
 }
 
+/// This tests units. See also #835.
+/// kiB MiB GiB TiB PiB EiB
+/// kib Mib Gib Tib Pib Eib
+/// kB MB GB TB PB EB
+/// kb Mb Gb Tb Pb Eb
+/// 32kiB 32MiB 32GiB 32TiB 32PiB 32EiB
+/// 32kib 32Mib 32Gib 32Tib 32Pib 32Eib
+/// 32kB 32MB 32GB 32TB 32PB 32EB
+/// 32kb 32Mb 32Gb 32Tb 32Pb 32Eb
+fn test_units() {
+}
+
 /// This test has [a link with underscores][chunked-example] inside it. See #823.
 /// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues).
 ///
@@ -40,4 +52,5 @@ fn main() {
     foo_bar();
     multiline_ticks();
     test_emphasis();
+    test_units();
 }

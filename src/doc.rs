@@ -24,8 +24,16 @@ declare_lint! {
     "checks for the presence of `_`, `::` or camel-case outside ticks in documentation"
 }
 
-#[derive(Copy,Clone)]
-pub struct Doc;
+#[derive(Clone)]
+pub struct Doc {
+    valid_idents: Vec<String>,
+}
+
+impl Doc {
+    pub fn new(valid_idents: Vec<String>) -> Self {
+        Doc { valid_idents: valid_idents }
+    }
+}
 
 impl LintPass for Doc {
     fn get_lints(&self) -> LintArray {
@@ -35,11 +43,11 @@ impl LintPass for Doc {
 
 impl EarlyLintPass for Doc {
     fn check_crate(&mut self, cx: &EarlyContext, krate: &ast::Crate) {
-        check_attrs(cx, &krate.attrs, krate.span);
+        check_attrs(cx, &self.valid_idents, &krate.attrs, krate.span);
     }
 
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        check_attrs(cx, &item.attrs, item.span);
+        check_attrs(cx, &self.valid_idents, &item.attrs, item.span);
     }
 }
 
@@ -73,7 +81,7 @@ fn collect_doc(attrs: &[ast::Attribute]) -> (Cow<str>, Option<Span>) {
     }
 }
 
-pub fn check_attrs<'a>(cx: &EarlyContext, attrs: &'a [ast::Attribute], default_span: Span) {
+pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [ast::Attribute], default_span: Span) {
     let (doc, span) = collect_doc(attrs);
     let span = span.unwrap_or(default_span);
 
@@ -100,15 +108,19 @@ pub fn check_attrs<'a>(cx: &EarlyContext, attrs: &'a [ast::Attribute], default_s
         }
 
         if !in_ticks {
-            check_word(cx, word, span);
+            check_word(cx, valid_idents, word, span);
         }
     }
 }
 
-fn check_word(cx: &EarlyContext, word: &str, span: Span) {
+fn check_word(cx: &EarlyContext, valid_idents: &[String], word: &str, span: Span) {
     /// Checks if a string a camel-case, ie. contains at least two uppercase letter (`Clippy` is
     /// ok) and one lower-case letter (`NASA` is ok). Plural are also excluded (`IDs` is ok).
     fn is_camel_case(s: &str) -> bool {
+        if s.starts_with(|c: char| c.is_digit(10)) {
+            return false;
+        }
+
         let s = if s.ends_with('s') {
             &s[..s.len()-1]
         } else {
@@ -133,6 +145,10 @@ fn check_word(cx: &EarlyContext, word: &str, span: Span) {
     //                                                   ^^
     // Or even as in `_foo bar_` which is emphasized.
     let word = word.trim_matches(|c: char| !c.is_alphanumeric());
+
+    if valid_idents.iter().any(|i| i == word) {
+        return;
+    }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
         span_lint(cx, DOC_MARKDOWN, span, &format!("you should put `{}` between ticks in the documentation", word));

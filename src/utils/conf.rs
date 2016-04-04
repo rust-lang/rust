@@ -149,6 +149,8 @@ define_Conf! {
     ("blacklisted-names", blacklisted_names, ["foo", "bar", "baz"] => Vec<String>),
     /// Lint: CYCLOMATIC_COMPLEXITY. The maximum cyclomatic complexity a function can have
     ("cyclomatic-complexity-threshold", cyclomatic_complexity_threshold, 25 => u64),
+    /// Lint: DOC_MARKDOWN. The list of words this lint should not consider as identifiers needing ticks
+    ("doc-valid-idents", doc_valid_idents, ["MiB", "GiB", "TiB", "PiB", "EiB"] => Vec<String>),
     /// Lint: TOO_MANY_ARGUMENTS. The maximum number of argument a function or method can have
     ("too-many-arguments-threshold", too_many_arguments_threshold, 7 => u64),
     /// Lint: TYPE_COMPLEXITY. The maximum complexity a type can have
