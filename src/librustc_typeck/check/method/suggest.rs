@@ -74,14 +74,14 @@ fn is_fn_ty<'a, 'tcx>(ty: &Ty<'tcx>, fcx: &FnCtxt<'a, 'tcx>, span: Span) -> bool
                         let mut selcx = SelectionContext::new(infcx);
 
                         if selcx.evaluate_obligation(&obligation) {
-                            Some(true)
+                            Some(())
                         } else {
                             None
                         }
                     })
                 });
 
-                opt_is_fn.unwrap_or(false)
+                opt_is_fn.is_some()
             } else {
                 false
             }
