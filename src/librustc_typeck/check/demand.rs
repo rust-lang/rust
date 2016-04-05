@@ -11,7 +11,7 @@
 
 use check::{coercion, FnCtxt};
 use rustc::ty::Ty;
-use rustc::infer::TypeOrigin;
+use rustc::infer::{InferOk, TypeOrigin};
 
 use syntax::codemap::Span;
 use rustc_front::hir;
@@ -21,16 +21,28 @@ use rustc_front::hir;
 pub fn suptype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                          expected: Ty<'tcx>, actual: Ty<'tcx>) {
     let origin = TypeOrigin::Misc(sp);
-    if let Err(e) = fcx.infcx().sub_types(false, origin, actual, expected) {
-        fcx.infcx().report_mismatched_types(origin, expected, actual, e);
+    match fcx.infcx().sub_types(false, origin, actual, expected) {
+        Ok(InferOk { obligations, .. }) => {
+            // FIXME(#32730) propagate obligations
+            assert!(obligations.is_empty());
+        },
+        Err(e) => {
+            fcx.infcx().report_mismatched_types(origin, expected, actual, e);
+        }
     }
 }
 
 pub fn eqtype<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
                         expected: Ty<'tcx>, actual: Ty<'tcx>) {
     let origin = TypeOrigin::Misc(sp);
-    if let Err(e) = fcx.infcx().eq_types(false, origin, actual, expected) {
-        fcx.infcx().report_mismatched_types(origin, expected, actual, e);
+    match fcx.infcx().eq_types(false, origin, actual, expected) {
+        Ok(InferOk { obligations, .. }) => {
+            // FIXME(#32730) propagate obligations
+            assert!(obligations.is_empty());
+        },
+        Err(e) => {
+            fcx.infcx().report_mismatched_types(origin, expected, actual, e);
+        }
     }
 }
 

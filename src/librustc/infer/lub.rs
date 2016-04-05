@@ -16,6 +16,7 @@ use super::Subtype;
 
 use ty::{self, Ty, TyCtxt};
 use ty::relate::{Relate, RelateResult, TypeRelation};
+use traits::PredicateObligations;
 
 /// "Least upper bound" (common supertype)
 pub struct Lub<'a, 'tcx: 'a> {
@@ -25,6 +26,10 @@ pub struct Lub<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Lub<'a, 'tcx> {
     pub fn new(fields: CombineFields<'a, 'tcx>) -> Lub<'a, 'tcx> {
         Lub { fields: fields }
+    }
+
+    pub fn obligations(self) -> PredicateObligations<'tcx> {
+        self.fields.obligations
     }
 }
 
