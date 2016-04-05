@@ -431,7 +431,7 @@ impl Collector {
                 // compiler failures are test failures
                 should_panic: testing::ShouldPanic::No,
             },
-            testfn: testing::DynTestFn(Box::new(move|| {
+            testfn: testing::DynTestFn(box move|| {
                 runtest(&test,
                         &cratename,
                         cfgs,
@@ -442,7 +442,7 @@ impl Collector {
                         as_test_harness,
                         compile_fail,
                         &opts);
-            }))
+            })
         });
     }
 
