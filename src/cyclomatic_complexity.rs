@@ -1,12 +1,12 @@
 //! calculate cyclomatic complexity and warn about overly complex functions
 
-use rustc::lint::*;
 use rustc::cfg::CFG;
+use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_expr};
 use syntax::ast::Attribute;
-use syntax::attr::*;
+use syntax::attr;
 use syntax::codemap::Span;
 
 use utils::{in_macro, LimitStack, span_help_and_lint};
@@ -44,6 +44,7 @@ impl CyclomaticComplexity {
         if in_macro(cx, span) {
             return;
         }
+
         let cfg = CFG::new(cx.tcx, block);
         let n = cfg.graph.len_nodes() as u64;
         let e = cfg.graph.len_edges() as u64;
@@ -84,7 +85,9 @@ impl CyclomaticComplexity {
 impl LateLintPass for CyclomaticComplexity {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemFn(_, _, _, _, _, ref block) = item.node {
-            self.check(cx, block, item.span);
+            if !attr::contains_name(&item.attrs, "test") {
+                self.check(cx, block, item.span);
+            }
         }
     }
 
