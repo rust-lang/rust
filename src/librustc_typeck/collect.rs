@@ -545,7 +545,8 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let (fty, explicit_self_category) =
         astconv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
-                              sig, untransformed_rcvr_ty);
+                              sig,
+                              untransformed_rcvr_ty);
 
     let def_id = ccx.tcx.map.local_def_id(id);
     let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
@@ -1457,7 +1458,10 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
-            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
+            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics),
+                                              unsafety,
+                                              abi,
+                                              &decl);
             let def_id = ccx.tcx.map.local_def_id(it.id);
             let substs = tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
             let ty = tcx.mk_fn_def(def_id, substs, tofd);

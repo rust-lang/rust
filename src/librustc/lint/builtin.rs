@@ -168,6 +168,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub HR_LIFETIME_IN_ASSOC_TYPE,
+    Warn,
+    "binding for associated type references higher-ranked lifetime \
+     that does not appear in the trait input types"
+}
+
+declare_lint! {
     pub OVERLAPPING_INHERENT_IMPLS,
     Warn,
     "two overlapping inherent impls define an item with the same name were erroneously allowed"
@@ -213,7 +220,8 @@ impl LintPass for HardwiredLints {
             RAW_POINTER_DERIVE,
             TRANSMUTE_FROM_FN_ITEM_TYPES,
             OVERLAPPING_INHERENT_IMPLS,
-            RENAMED_AND_REMOVED_LINTS
+            RENAMED_AND_REMOVED_LINTS,
+            HR_LIFETIME_IN_ASSOC_TYPE
         )
     }
 }

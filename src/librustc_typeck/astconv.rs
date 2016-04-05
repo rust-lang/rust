@@ -63,20 +63,18 @@ use require_c_abi_if_variadic;
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope,
              ElisionFailureInfo, ElidedLifetime};
-use util::common::{ErrorReported, FN_OUTPUT_NAME};
-use util::nodemap::FnvHashSet;
-
+use rustc::lint;
+use rustc_back::slice;
 use rustc_const_math::ConstInt;
-
+use rustc_front::print::pprust;
+use rustc_front::hir;
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
 use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token;
-
-use rustc_front::print::pprust;
-use rustc_front::hir;
-use rustc_back::slice;
+use util::common::{ErrorReported, FN_OUTPUT_NAME};
+use util::nodemap::FnvHashSet;
 
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
@@ -690,6 +688,7 @@ pub fn instantiate_poly_trait_ref<'tcx>(
                                PathParamMode::Explicit,
                                trait_def_id,
                                self_ty,
+                               trait_ref.ref_id,
                                trait_ref.path.segments.last().unwrap(),
                                poly_projections)
 }
@@ -737,6 +736,7 @@ fn object_path_to_poly_trait_ref<'a,'tcx>(
     span: Span,
     param_mode: PathParamMode,
     trait_def_id: DefId,
+    trait_path_ref_id: ast::NodeId,
     trait_segment: &hir::PathSegment,
     mut projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
     -> ty::PolyTraitRef<'tcx>
@@ -747,6 +747,7 @@ fn object_path_to_poly_trait_ref<'a,'tcx>(
                                param_mode,
                                trait_def_id,
                                None,
+                               trait_path_ref_id,
                                trait_segment,
                                projections)
 }
@@ -758,6 +759,7 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
     param_mode: PathParamMode,
     trait_def_id: DefId,
     self_ty: Option<Ty<'tcx>>,
+    path_id: ast::NodeId,
     trait_segment: &hir::PathSegment,
     poly_projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
     -> ty::PolyTraitRef<'tcx>
@@ -788,6 +790,7 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
                 // specify type to assert that error was already reported in Err case:
                 let predicate: Result<_, ErrorReported> =
                     ast_type_binding_to_poly_projection_predicate(this,
+                                                                  path_id,
                                                                   poly_trait_ref.clone(),
                                                                   self_ty,
                                                                   binding);
@@ -884,12 +887,17 @@ fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
 
 fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     this: &AstConv<'tcx>,
+    path_id: ast::NodeId,
     mut trait_ref: ty::PolyTraitRef<'tcx>,
     self_ty: Option<Ty<'tcx>>,
     binding: &ConvertedBinding<'tcx>)
     -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
 {
     let tcx = this.tcx();
+
+    debug!("ast_type_binding_to_poly_projection_predicate()");
+    debug!("trait_ref = {:?}", trait_ref);
+    debug!("self_ty = {:?}", self_ty);
 
     // Given something like `U : SomeTrait<T=X>`, we want to produce a
     // predicate like `<U as SomeTrait>::T = X`. This is somewhat
@@ -906,6 +914,36 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     // ```
     //
     // We want to produce `<B as SuperTrait<int>>::T == foo`.
+
+    // Find any late-bound regions declared in `ty` that are not
+    // declared in the trait-ref. These are not wellformed.
+    //
+    // Example:
+    //
+    //     for<'a> <T as Iterator>::Item = &'a str // <-- 'a is bad
+    //     for<'a> <T as FnMut<(&'a u32,)>>::Output = &'a str // <-- 'a is ok
+    let late_bound_in_trait_ref = tcx.collect_constrained_late_bound_regions(&trait_ref);
+    let late_bound_in_ty = tcx.collect_referenced_late_bound_regions(&ty::Binder(binding.ty));
+    debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
+    debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
+    for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
+        let br_name = match *br {
+            ty::BrNamed(_, name) => name,
+            _ => {
+                span_bug!(
+                    binding.span,
+                    "anonymous bound region {:?} in binding but not trait ref",
+                    br);
+            }
+        };
+        this.tcx().sess.add_lint(
+            lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
+            path_id,
+            binding.span,
+            format!("binding for associated type `{}` references lifetime `{}`, \
+                     which does not appear in the trait input types",
+                    binding.item_name, br_name));
+    }
 
     // Simple case: X is defined in the current trait.
     if this.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
@@ -1037,6 +1075,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                                                                   path.span,
                                                                   PathParamMode::Explicit,
                                                                   trait_def_id,
+                                                                  ty.id,
                                                                   path.segments.last().unwrap(),
                                                                   &mut projection_bounds);
                     Ok((trait_ref, projection_bounds))
@@ -1447,6 +1486,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                         param_mode: PathParamMode,
                         def: &Def,
                         opt_self_ty: Option<Ty<'tcx>>,
+                        base_path_ref_id: ast::NodeId,
                         base_segments: &[hir::PathSegment])
                         -> Ty<'tcx> {
     let tcx = this.tcx();
@@ -1462,6 +1502,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                           span,
                                                           param_mode,
                                                           trait_def_id,
+                                                          base_path_ref_id,
                                                           base_segments.last().unwrap(),
                                                           &mut projection_bounds);
 
@@ -1551,6 +1592,7 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                         param_mode: PathParamMode,
                                         def: &Def,
                                         opt_self_ty: Option<Ty<'tcx>>,
+                                        base_path_ref_id: ast::NodeId,
                                         base_segments: &[hir::PathSegment],
                                         assoc_segments: &[hir::PathSegment])
                                         -> Ty<'tcx> {
@@ -1560,6 +1602,7 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                 param_mode,
                                 def,
                                 opt_self_ty,
+                                base_path_ref_id,
                                 base_segments);
     let mut def = *def;
     // If any associated type segments remain, attempt to resolve them.
@@ -1639,7 +1682,49 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         hir::TyBareFn(ref bf) => {
             require_c_abi_if_variadic(tcx, &bf.decl, bf.abi, ast_ty.span);
-            tcx.mk_fn_ptr(ty_of_bare_fn(this, bf.unsafety, bf.abi, &bf.decl))
+            let bare_fn_ty = ty_of_bare_fn(this,
+                                           bf.unsafety,
+                                           bf.abi,
+                                           &bf.decl);
+
+            // Find any late-bound regions declared in return type that do
+            // not appear in the arguments. These are not wellformed.
+            //
+            // Example:
+            //
+            //     for<'a> fn() -> &'a str <-- 'a is bad
+            //     for<'a> fn(&'a String) -> &'a str <-- 'a is ok
+            //
+            // Note that we do this check **here** and not in
+            // `ty_of_bare_fn` because the latter is also used to make
+            // the types for fn items, and we do not want to issue a
+            // warning then. (Once we fix #32330, the regions we are
+            // checking for here would be considered early bound
+            // anyway.)
+            let inputs = bare_fn_ty.sig.inputs();
+            let late_bound_in_args = this.tcx().collect_constrained_late_bound_regions(&inputs);
+            let output = bare_fn_ty.sig.output();
+            let late_bound_in_ret = this.tcx().collect_referenced_late_bound_regions(&output);
+            for br in late_bound_in_ret.difference(&late_bound_in_args) {
+                let br_name = match *br {
+                    ty::BrNamed(_, name) => name,
+                    _ => {
+                        span_bug!(
+                            bf.decl.output.span(),
+                            "anonymous bound region {:?} in return but not args",
+                            br);
+                    }
+                };
+                this.tcx().sess.add_lint(
+                    lint::builtin::HR_LIFETIME_IN_ASSOC_TYPE,
+                    ast_ty.id,
+                    bf.decl.output.span(),
+                    format!("return type references lifetime `{}`, \
+                             which does not appear in the argument types",
+                            br_name));
+            }
+
+            tcx.mk_fn_ptr(bare_fn_ty)
         }
         hir::TyPolyTraitRef(ref bounds) => {
             conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds)
@@ -1667,6 +1752,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                 PathParamMode::Explicit,
                                                 &def,
                                                 opt_self_ty,
+                                                ast_ty.id,
                                                 &path.segments[..base_ty_end],
                                                 &path.segments[base_ty_end..]);
 
@@ -1759,8 +1845,11 @@ pub fn ty_of_method<'tcx>(this: &AstConv<'tcx>,
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
-pub fn ty_of_bare_fn<'tcx>(this: &AstConv<'tcx>, unsafety: hir::Unsafety, abi: abi::Abi,
-                                              decl: &hir::FnDecl) -> ty::BareFnTy<'tcx> {
+pub fn ty_of_bare_fn<'tcx>(this: &AstConv<'tcx>,
+                           unsafety: hir::Unsafety,
+                           abi: abi::Abi,
+                           decl: &hir::FnDecl)
+                           -> ty::BareFnTy<'tcx> {
     let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, unsafety, abi, None, decl);
     bare_fn_ty
 }
