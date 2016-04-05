@@ -541,14 +541,6 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    let llfn = declare::declare_fn(ccx, &sym, ty);
-    attributes::from_fn_attrs(ccx, attrs, llfn);
-    if let Some(id) = local_item {
-        // FIXME(eddyb) Doubt all extern fn should allow unwinding.
-        attributes::unwind(llfn, true);
-        ccx.item_symbols().borrow_mut().insert(id, sym);
-    }
-
     // This is subtle and surprising, but sometimes we have to bitcast
     // the resulting fn pointer.  The reason has to do with external
     // functions.  If you have two crates that both bind the same C
@@ -572,12 +564,32 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // This can occur on either a crate-local or crate-external
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
+
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
-    let llfn = if common::val_ty(llfn) != llptrty {
-        debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
-        consts::ptrcast(llfn, llptrty)
+    let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {
+        if common::val_ty(llfn) != llptrty {
+            if local_item.is_some() {
+                bug!("symbol `{}` previously declared as {:?}, now wanted as {:?}",
+                     sym, Value(llfn), llptrty);
+            }
+            debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
+            consts::ptrcast(llfn, llptrty)
+        } else {
+            debug!("get_fn: not casting pointer!");
+            llfn
+        }
     } else {
+        let llfn = declare::declare_fn(ccx, &sym, ty);
+        assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
+
+        attributes::from_fn_attrs(ccx, attrs, llfn);
+        if let Some(id) = local_item {
+            // FIXME(eddyb) Doubt all extern fn should allow unwinding.
+            attributes::unwind(llfn, true);
+            ccx.item_symbols().borrow_mut().insert(id, sym);
+        }
+
         llfn
     };
 
