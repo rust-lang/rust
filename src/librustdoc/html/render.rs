@@ -433,7 +433,7 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
             playground_url: "".to_string(),
         },
-        css_file_extension: css_file_extension,
+        css_file_extension: css_file_extension.clone(),
     };
 
     // Crawl the crate attributes looking for attributes which control how we're
@@ -653,7 +653,7 @@ fn write_shared(cx: &Context,
           include_bytes!("static/rustdoc.css"))?;
     write(cx.dst.join("main.css"),
           include_bytes!("static/styles/main.css"))?;
-    if let Some(ref css) = cx.css_file_extension {
+    if let Some(ref css) = cx.shared.css_file_extension {
         let mut content = String::new();
         let css = css.as_path();
         let mut f = try_err!(File::open(css), css);
@@ -948,9 +948,9 @@ impl<'a> SourceCollector<'a> {
             description: &desc,
             keywords: BASIC_KEYWORDS,
         };
-        layout::render(&mut w, &self.cx.layout,
+        layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
-                       self.cx.css_file_extension.is_some())?;
+                       self.scx.css_file_extension.is_some())?;
         w.flush()?;
         self.scx.local_sources.insert(p, href);
         Ok(())
@@ -1313,7 +1313,7 @@ impl Context {
                 layout::render(&mut writer, &cx.shared.layout, &page,
                                &Sidebar{ cx: cx, item: it },
                                &Item{ cx: cx, item: it },
-                               cx.css_file_extension.is_some())?;
+                               cx.shared.css_file_extension.is_some())?;
             } else {
                 let mut url = repeat("../").take(cx.current.len())
                                            .collect::<String>();
