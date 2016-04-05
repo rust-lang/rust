@@ -7,47 +7,9 @@ use std::ptr;
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct AllocId(u64);
-
-#[derive(Debug)]
-pub struct Allocation {
-    pub bytes: Box<[u8]>,
-    pub relocations: BTreeMap<usize, AllocId>,
-
-    /// Stores a list of indices `[a_0, a_1, ..., a_n]`. Bytes in the range `0..a_0` are considered
-    /// defined, `a_0..a_1` are undefined, `a_1..a_2` are defined and so on until
-    /// `a_n..bytes.len()`. These ranges are all end-exclusive.
-    ///
-    /// In general a byte's definedness can be found by binary searching this list of indices,
-    /// finding where the byte would fall, and taking the position of nearest index mod 2. This
-    /// yields 0 for defined and 1 for undefined.
-    ///
-    /// Some noteworthy cases:
-    ///   * `[]` represents a fully-defined allocation.
-    ///   * `[0]` represents a fully-undefined allocation. (The empty `0..0` is defined and
-    ///     `0..bytes.len()` is undefined.)
-    ///   * However, to avoid allocation, fully-undefined allocations can be represented as `None`.
-    pub undef_mask: Option<Vec<usize>>,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct Pointer {
-    pub alloc_id: AllocId,
-    pub offset: usize,
-}
-
-impl Pointer {
-    pub fn offset(self, i: isize) -> Self {
-        Pointer { offset: (self.offset as isize + i) as usize, ..self }
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct FieldRepr {
-    pub offset: usize,
-    pub size: usize,
-}
+////////////////////////////////////////////////////////////////////////////////
+// Value representations
+////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Repr {
@@ -77,6 +39,12 @@ pub enum Repr {
     },
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct FieldRepr {
+    pub offset: usize,
+    pub size: usize,
+}
+
 impl Repr {
     pub fn size(&self) -> usize {
         match *self {
@@ -86,6 +54,36 @@ impl Repr {
         }
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Allocations and pointers
+////////////////////////////////////////////////////////////////////////////////
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct AllocId(u64);
+
+#[derive(Debug)]
+pub struct Allocation {
+    pub bytes: Box<[u8]>,
+    pub relocations: BTreeMap<usize, AllocId>,
+    pub undef_mask: Option<Vec<usize>>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct Pointer {
+    pub alloc_id: AllocId,
+    pub offset: usize,
+}
+
+impl Pointer {
+    pub fn offset(self, i: isize) -> Self {
+        Pointer { offset: (self.offset as isize + i) as usize, ..self }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Top-level interpreter memory
+////////////////////////////////////////////////////////////////////////////////
 
 pub struct Memory {
     alloc_map: HashMap<u64, Allocation>,
