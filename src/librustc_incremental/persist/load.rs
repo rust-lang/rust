@@ -10,7 +10,6 @@
 
 //! Code to save/load the dep-graph from files.
 
-
 use calculate_svh::SvhCalculate;
 use rbml::{self, Doc};
 use rbml::reader::{self, DecodeResult, Decoder};
@@ -32,6 +31,12 @@ type DirtyNodes = FnvHashSet<DepNode<DefId>>;
 
 type CleanEdges = Vec<(DepNode<DefId>, DepNode<DefId>)>;
 
+/// If we are in incremental mode, and a previous dep-graph exists,
+/// then load up those nodes/edges that are still valid into the
+/// dep-graph for this session. (This is assumed to be running very
+/// early in compilation, before we've really done any work, but
+/// actually it doesn't matter all that much.) See `README.md` for
+/// more general overview.
 pub fn load_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
