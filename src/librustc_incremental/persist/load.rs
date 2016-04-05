@@ -151,6 +151,7 @@ fn initial_dirty_nodes<'tcx>(tcx: &ty::TyCtxt<'tcx>,
     for hashed_item in hashed_items {
         match retraced.def_id(hashed_item.index) {
             Some(def_id) => {
+                // FIXME(#32753) -- should we use a distinct hash here
                 let current_hash = tcx.calculate_item_hash(def_id);
                 debug!("initial_dirty_nodes: hash of {:?} is {:?}, was {:?}",
                        def_id, current_hash, hashed_item.hash);
