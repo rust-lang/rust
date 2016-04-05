@@ -274,22 +274,28 @@ impl<'a> Step<'a> {
                 vec![self.llvm(()).target(&build.config.build)]
             }
             Source::Llvm { _dummy } => Vec::new(),
+
+            // Note that all doc targets depend on artifacts from the build
+            // architecture, not the target (which is where we're generating
+            // docs into).
             Source::DocStd { stage } => {
-                vec![self.libstd(self.compiler(stage))]
+                let compiler = self.target(&build.config.build).compiler(stage);
+                vec![self.libstd(compiler)]
             }
             Source::DocTest { stage } => {
-                vec![self.libtest(self.compiler(stage))]
+                let compiler = self.target(&build.config.build).compiler(stage);
+                vec![self.libtest(compiler)]
             }
             Source::DocBook { stage } |
             Source::DocNomicon { stage } |
             Source::DocStyle { stage } => {
-                vec![self.tool_rustbook(stage)]
+                vec![self.target(&build.config.build).tool_rustbook(stage)]
             }
             Source::DocErrorIndex { stage } => {
-                vec![self.tool_error_index(stage)]
+                vec![self.target(&build.config.build).tool_error_index(stage)]
             }
             Source::DocStandalone { stage } => {
-                vec![self.rustc(stage)]
+                vec![self.target(&build.config.build).rustc(stage)]
             }
             Source::DocRustc { stage } => {
                 vec![self.doc_test(stage)]
@@ -333,7 +339,6 @@ impl<'a> Step<'a> {
 
             Source::Dist { stage } => {
                 let mut base = Vec::new();
-                base.push(self.dist_docs(stage));
 
                 for host in build.config.host.iter() {
                     let host = self.target(host);
@@ -344,7 +349,9 @@ impl<'a> Step<'a> {
 
                     let compiler = self.compiler(stage);
                     for target in build.config.target.iter() {
-                        base.push(self.target(target).dist_std(compiler));
+                        let target = self.target(target);
+                        base.push(target.dist_docs(stage));
+                        base.push(target.dist_std(compiler));
                     }
                 }
                 return base
