@@ -44,11 +44,14 @@ use rustc::middle::stability;
 
 use rustc_front::hir;
 
+use serialize::{Encoder, Decoder, Encodable, Decodable};
+
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::u32;
 use std::env::current_dir;
+use std::str::FromStr;
 
 use core::DocContext;
 use doctree;
@@ -56,7 +59,7 @@ use visit_ast;
 
 /// A stable identifier to the particular version of JSON output.
 /// Increment this when the `Crate` and related structures change.
-pub const SCHEMA_VERSION: &'static str = "0.8.3";
+pub const SCHEMA_VERSION: &'static str = "0.8.4";
 
 mod inline;
 mod simplify;
@@ -116,6 +119,46 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct ExternalTraits {
+    pub map: HashMap<DefId, Trait>,
+}
+
+impl Encodable for ExternalTraits {
+    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+        e.emit_map(self.map.len(), |e| {
+            for (i, (did, val)) in self.map.iter().enumerate() {
+                let key = format!("{:?}@{:?}", did.krate, did.index.as_u32());
+                e.emit_map_elt_key(i, |e| key.encode(e))?;
+                e.emit_map_elt_val(i, |e| val.encode(e))?;
+            }
+            Ok(())
+        })
+    }
+}
+
+impl Decodable for ExternalTraits {
+    fn decode<D: Decoder>(d: &mut D) -> Result<ExternalTraits, D::Error> {
+        d.read_map(|d, len| {
+            let state = Default::default();
+            let mut map = HashMap::with_capacity_and_hasher(len, state);
+            for i in 0..len {
+                let key: String = d.read_map_elt_key(i, |d| Decodable::decode(d))?;
+                let val = d.read_map_elt_val(i, |d| Decodable::decode(d))?;
+
+                let mut fragments = key.split('@').map(|f| u32::from_str(f).unwrap());
+                let krate = fragments.next().unwrap();
+                let index = DefIndex::from_u32(fragments.next().unwrap());
+                assert!(fragments.next().is_none());
+
+                let did = DefId { krate: krate, index: index };
+                map.insert(did, val);
+            }
+            Ok(ExternalTraits { map: map })
+        })
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub name: String,
@@ -123,7 +166,7 @@ pub struct Crate {
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
-    pub external_traits: HashMap<DefId, Trait>,
+    pub external_traits: ExternalTraits,
 }
 
 struct CrateNum(ast::CrateNum);
@@ -214,8 +257,10 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             module: Some(module),
             externs: externs,
             primitives: primitives,
-            external_traits: cx.external_traits.borrow_mut().take()
-                               .unwrap_or(HashMap::new()),
+            external_traits: ExternalTraits {
+                map: cx.external_traits.borrow_mut().take()
+                       .unwrap_or(HashMap::new()),
+            }
         }
     }
 }

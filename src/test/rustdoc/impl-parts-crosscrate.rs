@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// skip-json-docs
+
 // aux-build:rustdoc-impl-parts-crosscrate.rs
 // ignore-cross-compile
 

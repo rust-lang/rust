@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: Documentation generated from json does not show `methods from deref`
+// skip-json-docs
+
 use std::ops::Deref;
 
 pub struct Foo;

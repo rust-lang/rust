@@ -1274,13 +1274,21 @@ fn compile_test(config: &Config, props: &TestProps,
 fn document(config: &Config,
             props: &TestProps,
             testpaths: &TestPaths,
-            out_dir: &Path)
-            -> ProcRes {
+            out_dir: &Path,
+            json_trip: bool) -> ProcRes {
+    let run_rustdoc = |args: Vec<String>| -> ProcRes {
+        let args = ProcArgs {
+            prog: config.rustdoc_path.to_str().unwrap().to_owned(),
+            args: args.iter().map(|s|s.to_owned()).collect(),
+        };
+        compose_and_run_compiler(config, props, testpaths, args, None)
+    };
+
     if props.build_aux_docs {
         for rel_ab in &props.aux_builds {
             let aux_testpaths = compute_aux_test_paths(config, testpaths, rel_ab);
             let aux_props = header::load_props(&aux_testpaths.file);
-            let auxres = document(config, &aux_props, &aux_testpaths, out_dir);
+            let auxres = document(config, &aux_props, &aux_testpaths, out_dir, json_trip);
             if !auxres.status.success() {
                 return auxres;
             }
@@ -1290,15 +1298,31 @@ fn document(config: &Config,
     let aux_dir = aux_output_dir_name(config, testpaths);
     let mut args = vec!["-L".to_owned(),
                         aux_dir.to_str().unwrap().to_owned(),
-                        "-o".to_owned(),
-                        out_dir.to_str().unwrap().to_owned(),
                         testpaths.file.to_str().unwrap().to_owned()];
+    let mut out = PathBuf::from(out_dir);
+    if json_trip {
+        args.push("-w".to_owned());
+        args.push("json".to_owned());
+        out = out.join("doc.json");
+    }
+    args.push("-o".to_owned());
+    args.push(out.to_str().unwrap().to_owned());
     args.extend(props.compile_flags.iter().cloned());
-    let args = ProcArgs {
-        prog: config.rustdoc_path.to_str().unwrap().to_owned(),
-        args: args,
-    };
-    compose_and_run_compiler(config, props, testpaths, args, None)
+
+    let res = run_rustdoc(args);
+
+    if json_trip {
+        if !res.status.success() {
+            return res
+        }
+        run_rustdoc(vec!["-r".to_owned(),
+                         "json".to_owned(),
+                         "-o".to_owned(),
+                         out_dir.to_str().unwrap().to_owned(),
+                         out.to_str().unwrap().to_owned()])
+    } else {
+        res
+    }
 }
 
 fn exec_compiled_test(config: &Config, props: &TestProps,
@@ -1902,26 +1926,38 @@ fn charset() -> &'static str {
 
 fn run_rustdoc_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
     assert!(props.revisions.is_empty(), "revisions not relevant here");
-
     let out_dir = output_base_name(config, testpaths);
-    let _ = fs::remove_dir_all(&out_dir);
-    ensure_dir(&out_dir);
-
-    let proc_res = document(config, props, testpaths, &out_dir);
-    if !proc_res.status.success() {
-        fatal_proc_rec(None, "rustdoc failed!", &proc_res);
-    }
     let root = find_rust_src_root(config).unwrap();
 
-    let res = cmd2procres(config,
-                          testpaths,
-                          Command::new(&config.python)
-                                  .arg(root.join("src/etc/htmldocck.py"))
-                                  .arg(out_dir)
-                                  .arg(&testpaths.file));
-    if !res.status.success() {
-        fatal_proc_rec(None, "htmldocck failed!", &res);
+    let check = |json_trip: bool| {
+        let _ = fs::remove_dir_all(&out_dir);
+        ensure_dir(&out_dir);
+
+        let proc_res = document(config, props, testpaths, &out_dir, json_trip);
+        if !proc_res.status.success() {
+            fatal_proc_rec(None, "rustdoc failed!", &proc_res);
+        }
+
+        let res = cmd2procres(config,
+                              testpaths,
+                              Command::new(&config.python)
+                                      .arg(root.join("src/etc/htmldocck.py"))
+                                      .arg(out_dir.clone())
+                                      .arg(&testpaths.file));
+        if !res.status.success() {
+            let msg = if json_trip {
+                "htmldocck failed! (documentation generated from json)"
+            } else {
+                "htmldocck failed!"
+            };
+            fatal_proc_rec(None, msg, &res);
+        }
+    };
+
+    if !props.skip_json_docs {
+        check(true);
     }
+    check(false);
 }
 
 fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {

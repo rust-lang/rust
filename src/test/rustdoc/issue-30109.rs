@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// skip-json-docs
+
 // build-aux-docs
 // aux-build:issue-30109-1.rs
 // ignore-cross-compile

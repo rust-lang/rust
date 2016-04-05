@@ -496,7 +496,7 @@ pub fn run(mut krate: clean::Crate,
         privmod: false,
         access_levels: access_levels,
         orphan_methods: Vec::new(),
-        traits: mem::replace(&mut krate.external_traits, HashMap::new()),
+        traits: mem::replace(&mut krate.external_traits.map, HashMap::new()),
         deref_trait_did: analysis.as_ref().and_then(|a| a.deref_trait_did),
         typarams: analysis.as_ref().map(|a| {
             a.external_typarams.borrow_mut().take().unwrap()
@@ -1477,17 +1477,19 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache();
-            let path = &cache.external_paths[&self.item.def_id];
-            let root = match cache.extern_locations[&self.item.def_id.krate] {
+            let root = match *cache.extern_locations.get(&self.item.def_id.krate)
+                                                    .expect("extern location not found!") {
                 (_, Remote(ref s)) => s.to_string(),
                 (_, Local) => self.cx.root_path.clone(),
                 (_, Unknown) => return None,
             };
-            Some(format!("{root}{path}/{file}?gotosrc={goto}",
-                         root = root,
-                         path = path[..path.len() - 1].join("/"),
-                         file = item_path(self.item),
-                         goto = self.item.def_id.index.as_usize()))
+            cache.external_paths.get(&self.item.def_id).map(|path| {
+                format!("{root}{path}/{file}?gotosrc={goto}",
+                        root = root,
+                        path = path[..path.len() - 1].join("/"),
+                        file = item_path(self.item),
+                        goto = self.item.def_id.index.as_usize())
+            })
         }
     }
 }
@@ -2012,18 +2014,23 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         None => {}
     }
     write!(w, "</ul>")?;
-    write!(w, r#"<script type="text/javascript" async
-                         src="{root_path}/implementors/{path}/{ty}.{name}.js">
-                 </script>"#,
-           root_path = vec![".."; cx.current.len()].join("/"),
-           path = if it.def_id.is_local() {
-               cx.current.join("/")
-           } else {
-               let path = &cache.external_paths[&it.def_id];
-               path[..path.len() - 1].join("/")
-           },
-           ty = shortty(it).to_static_str(),
-           name = *it.name.as_ref().unwrap())?;
+
+    let path_opt = if it.def_id.is_local() {
+       Some(cx.current.join("/"))
+    } else {
+        cache.external_paths.get(&it.def_id).map(|path| {
+            path[..path.len() - 1].join("/")
+        })
+    };
+    if let Some(path) = path_opt {
+        write!(w, r#"<script type="text/javascript" async
+                             src="{root_path}/implementors/{path}/{ty}.{name}.js">
+                     </script>"#,
+               root_path = vec![".."; cx.current.len()].join("/"),
+               path = path,
+               ty = shortty(it).to_static_str(),
+               name = *it.name.as_ref().unwrap())?;
+    }
     Ok(())
 }
 

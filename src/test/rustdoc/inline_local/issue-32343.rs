@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: Documentation generated from json does not strip private modules
+// skip-json-docs
+
 // @!has issue_32343/struct.Foo.html
 // @has issue_32343/index.html
 // @has - '//code' 'pub use foo::Foo'
