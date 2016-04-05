@@ -25,7 +25,7 @@ pub trait Foo {
 
 impl<T> Foo for T {
     type Bar = MySet<T>;
-    //~^ ERROR the trait bound `T : MyHash` is not satisfied
+    //~^ ERROR the trait bound `T: MyHash` is not satisfied
 }
 
 #[rustc_error]

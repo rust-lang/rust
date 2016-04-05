@@ -13,5 +13,5 @@
 
 fn main() {
     () <- 0;
-    //~^ ERROR: `() : std::ops::Placer<_>` is not satisfied
+    //~^ ERROR: `(): std::ops::Placer<_>` is not satisfied
 }

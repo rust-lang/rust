@@ -18,7 +18,7 @@ struct E {
 #[derive(Clone)]
 struct C {
     x: NoCloneOrEq
-    //~^ ERROR `NoCloneOrEq : std::clone::Clone` is not satisfied
+    //~^ ERROR `NoCloneOrEq: std::clone::Clone` is not satisfied
 }
 
 

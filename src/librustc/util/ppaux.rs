@@ -19,6 +19,7 @@ use ty::TyClosure;
 use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
+use std::cell::Cell;
 use std::fmt;
 use syntax::abi::Abi;
 use syntax::parse::token;
@@ -67,6 +68,45 @@ pub enum Ns {
     Value
 }
 
+fn number_of_supplied_defaults<'tcx, GG>(tcx: &ty::TyCtxt<'tcx>,
+                                         substs: &subst::Substs,
+                                         space: subst::ParamSpace,
+                                         get_generics: GG)
+                                         -> usize
+    where GG: FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
+{
+    let generics = get_generics(tcx);
+
+    let has_self = substs.self_ty().is_some();
+    let ty_params = generics.types.get_slice(space);
+    let tps = substs.types.get_slice(space);
+    if ty_params.last().map_or(false, |def| def.default.is_some()) {
+        let substs = tcx.lift(&substs);
+        ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
+            match def.default {
+                Some(default) => {
+                    if !has_self && default.has_self_ty() {
+                        // In an object type, there is no `Self`, and
+                        // thus if the default value references Self,
+                        // the user will be required to give an
+                        // explicit value. We can't even do the
+                        // substitution below to check without causing
+                        // an ICE. (#18956).
+                        false
+                    } else {
+                        let default = tcx.lift(&default);
+                        substs.and_then(|substs| default.subst(tcx, substs))
+                            == Some(actual)
+                    }
+                }
+                None => false
+            }
+        }).count()
+    } else {
+        0
+    }
+}
+
 pub fn parameterized<GG>(f: &mut fmt::Formatter,
                          substs: &subst::Substs,
                          did: DefId,
@@ -80,8 +120,8 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
         write!(f, "<{} as ", self_ty)?;
     }
 
-    let (fn_trait_kind, verbose, last_name) = ty::tls::with(|tcx| {
-        let (did, last_name) = if ns == Ns::Value {
+    let (fn_trait_kind, verbose, item_name) = ty::tls::with(|tcx| {
+        let (did, item_name) = if ns == Ns::Value {
             // Try to get the impl/trait parent, if this is an
             // associated value item (method or constant).
             tcx.trait_of_item(did).or_else(|| tcx.impl_of_method(did))
@@ -90,97 +130,64 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
             (did, None)
         };
         write!(f, "{}", tcx.item_path_str(did))?;
-        Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose(), last_name))
+        Ok((tcx.lang_items.fn_trait_kind(did), tcx.sess.verbose(), item_name))
     })?;
 
-    let mut empty = true;
-    let mut start_or_continue = |f: &mut fmt::Formatter, start: &str, cont: &str| {
-        if empty {
-            empty = false;
-            write!(f, "{}", start)
-        } else {
-            write!(f, "{}", cont)
-        }
-    };
-
-    if verbose {
-        for region in &substs.regions {
-            start_or_continue(f, "<", ", ")?;
-            write!(f, "{:?}", region)?;
-        }
-        for &ty in &substs.types {
-            start_or_continue(f, "<", ", ")?;
-            write!(f, "{}", ty)?;
-        }
-        for projection in projections {
-            start_or_continue(f, "<", ", ")?;
-            write!(f, "{}={}",
-                   projection.projection_ty.item_name,
-                   projection.ty)?;
-        }
-        return start_or_continue(f, "", ">");
-    }
-
-    if fn_trait_kind.is_some() && projections.len() == 1 {
+    if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
         let projection_ty = projections[0].ty;
         if let TyTuple(ref args) = substs.types.get_slice(subst::TypeSpace)[0].sty {
             return fn_sig(f, args, false, ty::FnConverging(projection_ty));
         }
     }
 
-    for &r in &substs.regions {
-        start_or_continue(f, "<", ", ")?;
-        let s = r.to_string();
-        if s.is_empty() {
-            // This happens when the value of the region
-            // parameter is not easily serialized. This may be
-            // because the user omitted it in the first place,
-            // or because it refers to some block in the code,
-            // etc. I'm not sure how best to serialize this.
-            write!(f, "'_")?;
+    let empty = Cell::new(true);
+    let start_or_continue = |f: &mut fmt::Formatter, start: &str, cont: &str| {
+        if empty.get() {
+            empty.set(false);
+            write!(f, "{}", start)
         } else {
-            write!(f, "{}", s)?;
+            write!(f, "{}", cont)
         }
+    };
+    let print_region = |f: &mut fmt::Formatter, region: &ty::Region| -> _ {
+        if verbose {
+            write!(f, "{:?}", region)
+        } else {
+            let s = region.to_string();
+            if s.is_empty() {
+                // This happens when the value of the region
+                // parameter is not easily serialized. This may be
+                // because the user omitted it in the first place,
+                // or because it refers to some block in the code,
+                // etc. I'm not sure how best to serialize this.
+                write!(f, "'_")
+            } else {
+                write!(f, "{}", s)
+            }
+        }
+    };
+
+    for region in substs.regions.get_slice(subst::TypeSpace) {
+        start_or_continue(f, "<", ", ")?;
+        print_region(f, region)?;
     }
 
-    // It is important to execute this conditionally, only if -Z
-    // verbose is false. Otherwise, debug logs can sometimes cause
-    // ICEs trying to fetch the generics early in the pipeline. This
-    // is kind of a hacky workaround in that -Z verbose is required to
-    // avoid those ICEs.
+    let num_supplied_defaults = if verbose {
+        0
+    } else {
+        // It is important to execute this conditionally, only if -Z
+        // verbose is false. Otherwise, debug logs can sometimes cause
+        // ICEs trying to fetch the generics early in the pipeline. This
+        // is kind of a hacky workaround in that -Z verbose is required to
+        // avoid those ICEs.
+        ty::tls::with(|tcx| {
+            number_of_supplied_defaults(tcx, substs, subst::TypeSpace, get_generics)
+        })
+    };
+
     let tps = substs.types.get_slice(subst::TypeSpace);
-    let num_defaults = ty::tls::with(|tcx| {
-        let generics = get_generics(tcx);
 
-        let has_self = substs.self_ty().is_some();
-        let ty_params = generics.types.get_slice(subst::TypeSpace);
-        if ty_params.last().map_or(false, |def| def.default.is_some()) {
-            let substs = tcx.lift(&substs);
-            ty_params.iter().zip(tps).rev().take_while(|&(def, &actual)| {
-                match def.default {
-                    Some(default) => {
-                        if !has_self && default.has_self_ty() {
-                            // In an object type, there is no `Self`, and
-                            // thus if the default value references Self,
-                            // the user will be required to give an
-                            // explicit value. We can't even do the
-                            // substitution below to check without causing
-                            // an ICE. (#18956).
-                            false
-                        } else {
-                            let default = tcx.lift(&default);
-                            substs.and_then(|substs| default.subst(tcx, substs)) == Some(actual)
-                        }
-                    }
-                    None => false
-                }
-            }).count()
-        } else {
-            0
-        }
-    });
-
-    for &ty in &tps[..tps.len() - num_defaults] {
+    for &ty in &tps[..tps.len() - num_supplied_defaults] {
         start_or_continue(f, "<", ", ")?;
         write!(f, "{}", ty)?;
     }
@@ -196,21 +203,28 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
 
     // For values, also print their name and type parameters.
     if ns == Ns::Value {
+        empty.set(true);
+
         if substs.self_ty().is_some() {
             write!(f, ">")?;
         }
 
-        if let Some(name) = last_name {
-            write!(f, "::{}", name)?;
+        if let Some(item_name) = item_name {
+            write!(f, "::{}", item_name)?;
         }
-        let tps = substs.types.get_slice(subst::FnSpace);
-        if !tps.is_empty() {
-            write!(f, "::<{}", tps[0])?;
-            for ty in &tps[1..] {
-                write!(f, ", {}", ty)?;
-            }
-            write!(f, ">")?;
+
+        for region in substs.regions.get_slice(subst::FnSpace) {
+            start_or_continue(f, "::<", ", ")?;
+            print_region(f, region)?;
         }
+
+        // FIXME: consider being smart with defaults here too
+        for ty in substs.types.get_slice(subst::FnSpace) {
+            start_or_continue(f, "::<", ", ")?;
+            write!(f, "{}", ty)?;
+        }
+
+        start_or_continue(f, "", ">")?;
     }
 
     Ok(())
@@ -997,9 +1011,7 @@ impl<'tcx> fmt::Debug for ty::TraitPredicate<'tcx> {
 
 impl<'tcx> fmt::Display for ty::TraitPredicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} : {}",
-               self.trait_ref.self_ty(),
-               self.trait_ref)
+        write!(f, "{}: {}", self.trait_ref.self_ty(), self.trait_ref)
     }
 }
 

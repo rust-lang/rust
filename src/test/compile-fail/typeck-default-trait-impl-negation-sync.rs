@@ -43,11 +43,11 @@ fn is_sync<T: Sync>() {}
 fn main() {
     is_sync::<MySync>();
     is_sync::<MyNotSync>();
-    //~^ ERROR `MyNotSync : std::marker::Sync` is not satisfied
+    //~^ ERROR `MyNotSync: std::marker::Sync` is not satisfied
 
     is_sync::<MyTypeWUnsafe>();
-    //~^ ERROR `std::cell::UnsafeCell<u8> : std::marker::Sync` is not satisfied
+    //~^ ERROR `std::cell::UnsafeCell<u8>: std::marker::Sync` is not satisfied
 
     is_sync::<MyTypeManaged>();
-    //~^ ERROR `Managed : std::marker::Sync` is not satisfied
+    //~^ ERROR `Managed: std::marker::Sync` is not satisfied
 }

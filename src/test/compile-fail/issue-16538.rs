@@ -19,7 +19,7 @@ mod Y {
 }
 
 static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
-//~^ ERROR `*const usize : std::marker::Sync` is not satisfied
+//~^ ERROR `*const usize: std::marker::Sync` is not satisfied
 //~| ERROR cannot refer to other statics by value, use the address-of operator or a constant instead
 //~| ERROR E0015
 

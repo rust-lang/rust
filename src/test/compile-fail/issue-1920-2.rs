@@ -16,5 +16,5 @@ fn assert_clone<T>() where T : Clone { }
 
 fn main() {
     assert_clone::<bar::sync::atomic::AtomicBool>();
-    //~^ ERROR `bar::sync::atomic::AtomicBool : bar::clone::Clone` is not satisfied
+    //~^ ERROR `bar::sync::atomic::AtomicBool: bar::clone::Clone` is not satisfied
 }

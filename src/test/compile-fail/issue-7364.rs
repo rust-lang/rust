@@ -16,6 +16,6 @@ use std::cell::RefCell;
 // Regression test for issue 7364
 static boxed: Box<RefCell<isize>> = box RefCell::new(0);
 //~^ ERROR allocations are not allowed in statics
-//~| ERROR `std::cell::RefCell<isize> : std::marker::Sync` is not satisfied
+//~| ERROR `std::cell::RefCell<isize>: std::marker::Sync` is not satisfied
 
 fn main() { }

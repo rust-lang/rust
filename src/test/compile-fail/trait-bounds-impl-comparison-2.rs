@@ -21,7 +21,7 @@ trait IteratorUtil<A>: Sized
 
 impl<A, T: Iterator<A>> IteratorUtil<A> for T {
     fn zip<B, U: Iterator<B>>(self, other: U) -> ZipIterator<T, U> {
-    //~^ ERROR the requirement `U : Iterator<B>` appears on the impl method
+    //~^ ERROR the requirement `U: Iterator<B>` appears on the impl method
         ZipIterator{a: self, b: other}
     }
 }

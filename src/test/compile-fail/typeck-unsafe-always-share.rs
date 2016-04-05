@@ -27,16 +27,16 @@ fn test<T: Sync>(s: T) {}
 fn main() {
     let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0)});
     test(us);
-    //~^ ERROR `std::cell::UnsafeCell<MySync<_>> : std::marker::Sync` is not satisfied
+    //~^ ERROR `std::cell::UnsafeCell<MySync<_>>: std::marker::Sync` is not satisfied
 
     let uns = UnsafeCell::new(NoSync);
     test(uns);
-    //~^ ERROR `std::cell::UnsafeCell<NoSync> : std::marker::Sync` is not satisfied
+    //~^ ERROR `std::cell::UnsafeCell<NoSync>: std::marker::Sync` is not satisfied
 
     let ms = MySync{u: uns};
     test(ms);
-    //~^ ERROR `std::cell::UnsafeCell<NoSync> : std::marker::Sync` is not satisfied
+    //~^ ERROR `std::cell::UnsafeCell<NoSync>: std::marker::Sync` is not satisfied
 
     test(NoSync);
-    //~^ ERROR `NoSync : std::marker::Sync` is not satisfied
+    //~^ ERROR `NoSync: std::marker::Sync` is not satisfied
 }

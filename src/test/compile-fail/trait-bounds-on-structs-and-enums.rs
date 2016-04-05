@@ -21,7 +21,7 @@ enum Bar<T:Trait> {
 }
 
 impl<T> Foo<T> {
-//~^ ERROR `T : Trait` is not satisfied
+//~^ ERROR `T: Trait` is not satisfied
     fn uhoh() {}
 }
 
