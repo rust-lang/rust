@@ -81,7 +81,6 @@ pub mod lint;
 pub mod middle {
     pub mod astconv_util;
     pub mod expr_use_visitor; // STAGE0: increase glitch immunity
-    pub mod const_val;
     pub mod const_qualif;
     pub mod cstore;
     pub mod dataflow;

@@ -22,7 +22,7 @@ use rustc::mir::transform::{self, MirPass};
 use rustc::mir::repr::{Mir, Literal};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty;
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use rustc_const_math::ConstInt;
 use rustc_plugin::Registry;
 

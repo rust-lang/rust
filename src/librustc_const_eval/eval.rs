@@ -10,8 +10,7 @@
 
 //#![allow(non_camel_case_types)]
 
-use rustc::middle::const_val::ConstVal::*;
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal::*;
 use self::ErrKind::*;
 use self::EvalHint::*;
 
@@ -20,7 +19,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::cstore::{self, CrateStore, InlinedItem};
 use rustc::{infer, traits};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt, subst};
 use rustc::ty::util::IntTypeExt;
@@ -413,6 +412,7 @@ pub enum ErrKind {
     IntermediateUnsignedNegative,
     /// Expected, Got
     TypeMismatch(String, ConstInt),
+    FloatTypeMismatch,
     BadType(ConstVal),
 }
 
@@ -480,6 +480,8 @@ impl ConstEvalErr {
                         expected, got.description()).into_cow()
             },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
+            FloatTypeMismatch => "tried to apply a binary operation to values of \
+                                  different float types".into_cow(),
         }
     }
 }
@@ -600,7 +602,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             }
         }
         match eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)? {
-          Float(f) => Float(-f),
+          Float(f, ft) => Float(-f, ft),
           Integral(i) => Integral(math!(e, -i)),
           const_val => signal!(e, NegateOn(const_val)),
         }
@@ -624,13 +626,15 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
         // not inferred
         match (eval_const_expr_partial(tcx, &a, ty_hint, fn_args)?,
                eval_const_expr_partial(tcx, &b, b_ty, fn_args)?) {
-          (Float(a), Float(b)) => {
+          (Float(_, Some(at)), Float(_, Some(bt))) if at != bt => signal!(e, FloatTypeMismatch),
+          (Float(a, at), Float(b, bt)) => {
+            let ft = at.or(bt);
             match op.node {
-              hir::BiAdd => Float(a + b),
-              hir::BiSub => Float(a - b),
-              hir::BiMul => Float(a * b),
-              hir::BiDiv => Float(a / b),
-              hir::BiRem => Float(a % b),
+              hir::BiAdd => Float(a + b, ft),
+              hir::BiSub => Float(a - b, ft),
+              hir::BiMul => Float(a * b, ft),
+              hir::BiDiv => Float(a / b, ft),
+              hir::BiRem => Float(a % b, ft),
               hir::BiEq => Bool(a == b),
               hir::BiLt => Bool(a < b),
               hir::BiLe => Bool(a <= b),
@@ -765,7 +769,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Method(id) | Def::Fn(id) => Function(id),
+              Def::Method(id) |
+              Def::Fn(id) => Function { krate: id.krate, index: id.index.as_u32() },
               _ => signal!(e, NonConstPath),
           }
       }
@@ -773,7 +778,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           let sub_ty_hint = ty_hint.erase_hint();
           let callee_val = eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)?;
           let did = match callee_val {
-              Function(did) => did,
+              Function { krate, index } => DefId { krate: krate, index: DefIndex::from_u32(index) },
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
@@ -1066,22 +1071,24 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
                 Err(_) => Ok(Integral(Usize(ConstUsize::Us32(v as u32)))),
             }
         },
-        ty::TyFloat(ast::FloatTy::F64) if val.is_negative() => {
+        ty::TyFloat(ft @ ast::FloatTy::F64) if val.is_negative() => {
             // FIXME: this could probably be prettier
             // there's no easy way to turn an `Infer` into a f64
             let val = (-val).map_err(Math)?;
             let val = val.to_u64().unwrap() as f64;
             let val = -val;
-            Ok(Float(val))
+            Ok(Float(val, Some(ft)))
         },
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64)),
-        ty::TyFloat(ast::FloatTy::F32) if val.is_negative() => {
+        ty::TyFloat(ft @ ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64, Some(ft))),
+        ty::TyFloat(ft @ ast::FloatTy::F32) if val.is_negative() => {
             let val = (-val).map_err(Math)?;
             let val = val.to_u64().unwrap() as f32;
             let val = -val;
-            Ok(Float(val as f64))
+            Ok(Float(val as f64, Some(ft)))
         },
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(val.to_u64().unwrap() as f32 as f64)),
+        ty::TyFloat(ft @ ast::FloatTy::F32) => {
+            Ok(Float(val.to_u64().unwrap() as f32 as f64, Some(ft)))
+        },
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
         _ => Err(CannotCast),
     }
@@ -1092,8 +1099,8 @@ fn cast_const_float<'tcx>(tcx: &TyCtxt<'tcx>, f: f64, ty: ty::Ty) -> CastResult 
         ty::TyInt(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
         ty::TyInt(_) => cast_const_int(tcx, InferSigned(f as i64), ty),
         ty::TyUint(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(f)),
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(f as f32 as f64)),
+        ty::TyFloat(ft @ ast::FloatTy::F64) => Ok(Float(f, Some(ft))),
+        ty::TyFloat(ft @ ast::FloatTy::F32) => Ok(Float(f as f32 as f64, Some(ft))),
         _ => Err(CannotCast),
     }
 }
@@ -1102,9 +1109,9 @@ fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult
     match val {
         Integral(i) => cast_const_int(tcx, i, ty),
         Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),
-        Float(f) => cast_const_float(tcx, f, ty),
+        Float(f, _) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
-        Function(_) => Err(UnimplementedConstVal("casting fn pointers")),
+        Function { .. } => Err(UnimplementedConstVal("casting fn pointers")),
         _ => Err(CannotCast),
     }
 }
@@ -1145,10 +1152,17 @@ fn lit_to_const<'tcx>(lit: &ast::LitKind,
             infer(Infer(n), tcx, &ty::TyUint(ity), span).map(Integral)
         },
 
-        LitKind::Float(ref n, _) |
+        LitKind::Float(ref n, fty) => {
+            if let Ok(x) = n.parse::<f64>() {
+                Ok(Float(x, Some(fty)))
+            } else {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                span_bug!(span, "could not evaluate float literal (see issue #31407)");
+            }
+        }
         LitKind::FloatUnsuffixed(ref n) => {
             if let Ok(x) = n.parse::<f64>() {
-                Ok(Float(x))
+                Ok(Float(x, None))
             } else {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
                 span_bug!(span, "could not evaluate float literal (see issue #31407)");
@@ -1162,7 +1176,10 @@ fn lit_to_const<'tcx>(lit: &ast::LitKind,
 pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
     match (a, b) {
         (&Integral(a), &Integral(b)) => a.try_cmp(b).ok(),
-        (&Float(a), &Float(b)) => {
+        (&Float(a, at), &Float(b, bt)) => {
+            if at != bt {
+                return None;
+            }
             // This is pretty bad but it is the existing behavior.
             Some(if a == b {
                 Ordering::Equal

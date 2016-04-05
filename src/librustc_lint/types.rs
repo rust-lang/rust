@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::{FnvHashSet};

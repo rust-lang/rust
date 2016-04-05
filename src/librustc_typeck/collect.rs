@@ -66,7 +66,6 @@ use constrained_type_params as ctp;
 use coherence;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
-use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
@@ -82,7 +81,7 @@ use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
 
-use rustc_const_math::ConstInt;
+use rustc_const_math::{ConstInt, ConstVal};
 
 use std::cell::RefCell;
 use std::collections::HashSet;

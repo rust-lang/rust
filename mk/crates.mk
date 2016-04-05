@@ -106,7 +106,7 @@ DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_bo
                      rustc_typeck rustc_mir rustc_resolve log syntax serialize rustc_llvm \
 	             rustc_trans rustc_privacy rustc_lint rustc_plugin \
                      rustc_metadata syntax_ext rustc_passes rustc_save_analysis rustc_const_eval
-DEPS_rustc_lint := rustc log syntax rustc_const_eval
+DEPS_rustc_lint := rustc log syntax rustc_const_eval rustc_const_math
 DEPS_rustc_llvm := native:rustllvm libc std rustc_bitflags
 DEPS_rustc_metadata := rustc syntax rbml rustc_const_math
 DEPS_rustc_passes := syntax rustc core rustc_const_eval

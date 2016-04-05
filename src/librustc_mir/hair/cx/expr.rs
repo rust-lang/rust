@@ -16,7 +16,7 @@ use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use rustc::hir::map;
 use rustc::hir::def::Def;
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
 use rustc::hir::pat_util;

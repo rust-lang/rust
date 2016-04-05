@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty::{Ty, TypeFoldable};
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use rustc_const_math::ConstInt::*;
 use rustc_const_eval::lookup_const_by_id;
 use rustc::mir::repr as mir;
@@ -64,7 +64,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let ccx = bcx.ccx();
         let llty = type_of::type_of(ccx, ty);
         match *cv {
-            ConstVal::Float(v) => C_floating_f64(v, llty),
+            ConstVal::Float(v, _) => C_floating_f64(v, llty),
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(I8(v)) => C_integral(Type::i8(ccx), v as u64, true),
             ConstVal::Integral(I16(v)) => C_integral(Type::i16(ccx), v as u64, true),
@@ -88,7 +88,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
             ConstVal::Array(..) | ConstVal::Repeat(..) |
-            ConstVal::Function(_) => {
+            ConstVal::Function { .. } => {
                 bug!("MIR must not use {:?} (which refers to a local ID)", cv)
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),

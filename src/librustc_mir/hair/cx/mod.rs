@@ -18,7 +18,7 @@
 use hair::*;
 use rustc::mir::repr::*;
 
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -91,7 +91,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
                 // All of these contain local IDs, unsuitable for storing in MIR.
                 ConstVal::Struct(_) | ConstVal::Tuple(_) |
                 ConstVal::Array(..) | ConstVal::Repeat(..) |
-                ConstVal::Function(_) => None,
+                ConstVal::Function { .. } => None,
 
                 _ => Some(Literal::Value { value: v })
             }

@@ -11,22 +11,24 @@
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use std::rc::Rc;
-use hir::def_id::DefId;
 use std::hash;
 use std::mem::transmute;
-use rustc_const_math::*;
 use self::ConstVal::*;
+use ConstInt;
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum ConstVal {
-    Float(f64),
+    Float(f64, Option<ast::FloatTy>),
     Integral(ConstInt),
     Str(InternedString),
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
     Struct(ast::NodeId),
     Tuple(ast::NodeId),
-    Function(DefId),
+    Function {
+        krate: ast::CrateNum,
+        index: u32,
+    },
     Array(ast::NodeId, u64),
     Repeat(ast::NodeId, u64),
     Char(char),
@@ -39,14 +41,14 @@ pub enum ConstVal {
 impl hash::Hash for ConstVal {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         match *self {
-            Float(a) => unsafe { transmute::<_,u64>(a) }.hash(state),
+            Float(a, _) => unsafe { transmute::<_,u64>(a) }.hash(state),
             Integral(a) => a.hash(state),
             Str(ref a) => a.hash(state),
             ByteStr(ref a) => a.hash(state),
             Bool(a) => a.hash(state),
             Struct(a) => a.hash(state),
             Tuple(a) => a.hash(state),
-            Function(a) => a.hash(state),
+            Function { krate, index } => { krate.hash(state); index.hash(state) },
             Array(a, n) => { a.hash(state); n.hash(state) },
             Repeat(a, n) => { a.hash(state); n.hash(state) },
             Char(c) => c.hash(state),
@@ -62,14 +64,16 @@ impl hash::Hash for ConstVal {
 impl PartialEq for ConstVal {
     fn eq(&self, other: &ConstVal) -> bool {
         match (self, other) {
-            (&Float(a), &Float(b)) => unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)},
+            (&Float(a, _), &Float(b, _)) => unsafe{transmute::<_,u64>(a) == transmute::<_,u64>(b)},
             (&Integral(a), &Integral(b)) => a == b,
             (&Str(ref a), &Str(ref b)) => a == b,
             (&ByteStr(ref a), &ByteStr(ref b)) => a == b,
             (&Bool(a), &Bool(b)) => a == b,
             (&Struct(a), &Struct(b)) => a == b,
             (&Tuple(a), &Tuple(b)) => a == b,
-            (&Function(a), &Function(b)) => a == b,
+            (&Function { krate, index }, &Function{ krate: bk, index: bi }) => {
+                (krate == bk) && (index == bi)
+            },
             (&Array(a, an), &Array(b, bn)) => (a == b) && (an == bn),
             (&Repeat(a, an), &Repeat(b, bn)) => (a == b) && (an == bn),
             (&Char(a), &Char(b)) => a == b,
@@ -84,14 +88,14 @@ impl Eq for ConstVal { }
 impl ConstVal {
     pub fn description(&self) -> &'static str {
         match *self {
-            Float(_) => "float",
+            Float(_, _) => "float",
             Integral(i) => i.description(),
             Str(_) => "string literal",
             ByteStr(_) => "byte string literal",
             Bool(_) => "boolean",
             Struct(_) => "struct",
             Tuple(_) => "tuple",
-            Function(_) => "function definition",
+            Function {..} => "function definition",
             Array(..) => "array",
             Repeat(..) => "repeat",
             Char(..) => "char",

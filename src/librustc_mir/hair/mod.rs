@@ -16,7 +16,7 @@
 
 use rustc::mir::repr::{BinOp, BorrowKind, Field, Literal, Mutability, UnOp,
     TypedConstVal};
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::Substs;

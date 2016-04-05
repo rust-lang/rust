@@ -36,8 +36,10 @@ mod int;
 mod us;
 mod is;
 mod err;
+mod val;
 
 pub use int::*;
 pub use us::*;
 pub use is::*;
 pub use err::ConstMathErr;
+pub use val::*;
