@@ -41,6 +41,7 @@ pub fn load_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if let Some(dep_graph) = dep_graph_path(tcx) {
+        // FIXME(#32754) lock file?
         load_dep_graph_if_exists(tcx, &dep_graph);
         dirty_clean::check_dirty_clean_annotations(tcx);
     }

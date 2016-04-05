@@ -24,6 +24,8 @@ pub fn save_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if let Some(dep_graph) = dep_graph_path(tcx) {
+        // FIXME(#32754) lock file?
+
         // delete the old dep-graph, if any
         if dep_graph.exists() {
             match fs::remove_file(&dep_graph) {
