@@ -618,7 +618,7 @@ pub mod consts {
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
-    /// The family of the operating system. In this case, `unix`.
+    /// The family of the operating system. Example value is `unix`.
     ///
     /// Some possible values:
     ///
@@ -627,8 +627,8 @@ pub mod consts {
     #[stable(feature = "env", since = "1.0.0")]
     pub const FAMILY: &'static str = super::os::FAMILY;
 
-    /// A string describing the specific operating system in use: in this
-    /// case, `linux`.
+    /// A string describing the specific operating system in use.
+    /// Example value is `linux`.
     ///
     /// Some possible values:
     ///
@@ -647,7 +647,7 @@ pub mod consts {
     pub const OS: &'static str = super::os::OS;
 
     /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
+    /// platform. Example value is `lib`.
     ///
     /// Some possible values:
     ///
@@ -657,7 +657,7 @@ pub mod consts {
     pub const DLL_PREFIX: &'static str = super::os::DLL_PREFIX;
 
     /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
+    /// platform. Example value is `.so`.
     ///
     /// Some possible values:
     ///
@@ -668,7 +668,7 @@ pub mod consts {
     pub const DLL_SUFFIX: &'static str = super::os::DLL_SUFFIX;
 
     /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
+    /// platform that goes after the dot. Example value is `so`.
     ///
     /// Some possible values:
     ///
@@ -679,7 +679,7 @@ pub mod consts {
     pub const DLL_EXTENSION: &'static str = super::os::DLL_EXTENSION;
 
     /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
+    /// platform. Example value is `.exe`.
     ///
     /// Some possible values:
     ///
@@ -691,7 +691,7 @@ pub mod consts {
     pub const EXE_SUFFIX: &'static str = super::os::EXE_SUFFIX;
 
     /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
+    /// on this platform. Example value is `exe`.
     ///
     /// Some possible values:
     ///
