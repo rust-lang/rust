@@ -323,8 +323,7 @@ impl<'a> Step<'a> {
             }
 
             Source::ToolLinkchecker { stage } |
-            Source::ToolTidy { stage } |
-            Source::ToolCargoTest { stage } => {
+            Source::ToolTidy { stage } => {
                 vec![self.libstd(self.compiler(stage))]
             }
             Source::ToolErrorIndex { stage } |
