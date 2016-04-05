@@ -119,4 +119,16 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             }
         }
     }
+
+    for host in build.flags.host.iter() {
+        if !build.config.host.contains(host) {
+            panic!("specified host `{}` is not in the ./configure list", host);
+        }
+    }
+    for target in build.flags.target.iter() {
+        if !build.config.target.contains(target) {
+            panic!("specified target `{}` is not in the ./configure list",
+                   target);
+        }
+    }
 }
