@@ -22,6 +22,6 @@ struct X<T>(T);
 impl <T:Sync> RequiresShare for X<T> { }
 
 impl <T:Sync+'static> RequiresRequiresShareAndSend for X<T> { }
-//~^ ERROR `T : std::marker::Send` is not satisfied
+//~^ ERROR `T: std::marker::Send` is not satisfied
 
 fn main() { }

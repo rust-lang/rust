@@ -15,27 +15,27 @@ trait T {}
 fn f1<X: ?Sized>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.
     let _: (isize, (X, isize)); // same
-    let y: X; //~ERROR `X : std::marker::Sized` is not satisfied
-    let y: (isize, (X, isize)); //~ERROR `X : std::marker::Sized` is not satisfied
+    let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
+    let y: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfied
 }
 fn f2<X: ?Sized + T>(x: &X) {
-    let y: X; //~ERROR `X : std::marker::Sized` is not satisfied
-    let y: (isize, (X, isize)); //~ERROR `X : std::marker::Sized` is not satisfied
+    let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
+    let y: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfied
 }
 
 fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-    let y: X = *x1; //~ERROR `X : std::marker::Sized` is not satisfied
-    let y = *x2; //~ERROR `X : std::marker::Sized` is not satisfied
-    let (y, z) = (*x3, 4); //~ERROR `X : std::marker::Sized` is not satisfied
+    let y: X = *x1; //~ERROR `X: std::marker::Sized` is not satisfied
+    let y = *x2; //~ERROR `X: std::marker::Sized` is not satisfied
+    let (y, z) = (*x3, 4); //~ERROR `X: std::marker::Sized` is not satisfied
 }
 fn f4<X: ?Sized + T>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
-    let y: X = *x1;         //~ERROR `X : std::marker::Sized` is not satisfied
-    let y = *x2;            //~ERROR `X : std::marker::Sized` is not satisfied
-    let (y, z) = (*x3, 4); //~ERROR `X : std::marker::Sized` is not satisfied
+    let y: X = *x1;         //~ERROR `X: std::marker::Sized` is not satisfied
+    let y = *x2;            //~ERROR `X: std::marker::Sized` is not satisfied
+    let (y, z) = (*x3, 4); //~ERROR `X: std::marker::Sized` is not satisfied
 }
 
-fn g1<X: ?Sized>(x: X) {} //~ERROR `X : std::marker::Sized` is not satisfied
-fn g2<X: ?Sized + T>(x: X) {} //~ERROR `X : std::marker::Sized` is not satisfied
+fn g1<X: ?Sized>(x: X) {} //~ERROR `X: std::marker::Sized` is not satisfied
+fn g2<X: ?Sized + T>(x: X) {} //~ERROR `X: std::marker::Sized` is not satisfied
 
 pub fn main() {
 }

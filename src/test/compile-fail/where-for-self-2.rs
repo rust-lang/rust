@@ -29,5 +29,5 @@ fn foo<T>(x: &T)
 
 fn main() {
     foo(&X);
-    //~^ error: `for<'a> &'a _ : Bar` is not satisfied
+    //~^ error: `for<'a> &'a _: Bar` is not satisfied
 }

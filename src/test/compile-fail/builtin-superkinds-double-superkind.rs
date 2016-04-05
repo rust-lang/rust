@@ -13,9 +13,9 @@
 
 trait Foo : Send+Sync { }
 
-impl <T: Sync+'static> Foo for (T,) { } //~ ERROR `T : std::marker::Send` is not satisfied
+impl <T: Sync+'static> Foo for (T,) { } //~ ERROR `T: std::marker::Send` is not satisfied
 
-impl <T: Send> Foo for (T,T) { } //~ ERROR `T : std::marker::Sync` is not satisfied
+impl <T: Send> Foo for (T,T) { } //~ ERROR `T: std::marker::Sync` is not satisfied
 
 impl <T: Send+Sync> Foo for (T,T,T) { } // (ok)
 

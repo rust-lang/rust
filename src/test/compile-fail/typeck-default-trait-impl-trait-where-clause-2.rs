@@ -29,7 +29,7 @@ fn bar<T:NotImplemented>() { }
 
 fn test() {
     bar::<Option<i32>>();
-    //~^ ERROR `std::option::Option<i32> : NotImplemented` is not satisfied
+    //~^ ERROR `std::option::Option<i32>: NotImplemented` is not satisfied
 }
 
 fn main() {

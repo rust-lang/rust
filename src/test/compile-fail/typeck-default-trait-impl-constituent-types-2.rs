@@ -26,5 +26,5 @@ fn main() {
     is_mytrait::<MyS>();
 
     is_mytrait::<(MyS2, MyS)>();
-    //~^ ERROR `MyS2 : MyTrait` is not satisfied
+    //~^ ERROR `MyS2: MyTrait` is not satisfied
 }

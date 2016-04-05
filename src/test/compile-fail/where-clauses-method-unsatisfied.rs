@@ -26,5 +26,5 @@ impl<T> Foo<T> {
 fn main() {
     let x = Foo { value: Bar };
     x.equals(&x);
-    //~^ ERROR `Bar : std::cmp::Eq` is not satisfied
+    //~^ ERROR `Bar: std::cmp::Eq` is not satisfied
 }

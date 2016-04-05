@@ -25,6 +25,6 @@ impl Trait<&'static str> for Struct {
 fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let s: Box<Trait<isize>> = Box::new(Struct { person: "Fred" });
-    //~^ ERROR `Struct : Trait<isize>` is not satisfied
+    //~^ ERROR `Struct: Trait<isize>` is not satisfied
     s.f(1);
 }

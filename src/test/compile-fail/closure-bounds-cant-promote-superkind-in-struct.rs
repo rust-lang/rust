@@ -13,7 +13,7 @@ struct X<F> where F: FnOnce() + 'static + Send {
 }
 
 fn foo<F>(blk: F) -> X<F> where F: FnOnce() + 'static {
-    //~^ ERROR `F : std::marker::Send` is not satisfied
+    //~^ ERROR `F: std::marker::Send` is not satisfied
     return X { field: blk };
 }
 

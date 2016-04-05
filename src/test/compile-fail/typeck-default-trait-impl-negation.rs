@@ -33,10 +33,10 @@ fn is_my_unsafe_trait<T: MyUnsafeTrait>() {}
 fn main() {
     is_my_trait::<ThisImplsTrait>();
     is_my_trait::<ThisImplsUnsafeTrait>();
-    //~^ ERROR `ThisImplsUnsafeTrait : MyTrait` is not satisfied
+    //~^ ERROR `ThisImplsUnsafeTrait: MyTrait` is not satisfied
 
     is_my_unsafe_trait::<ThisImplsTrait>();
-    //~^ ERROR `ThisImplsTrait : MyUnsafeTrait` is not satisfied
+    //~^ ERROR `ThisImplsTrait: MyUnsafeTrait` is not satisfied
 
     is_my_unsafe_trait::<ThisImplsUnsafeTrait>();
 }

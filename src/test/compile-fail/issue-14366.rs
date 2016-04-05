@@ -10,5 +10,5 @@
 
 fn main() {
     let _x = "test" as &::std::any::Any;
-//~^ ERROR `str : std::marker::Sized` is not satisfied
+//~^ ERROR `str: std::marker::Sized` is not satisfied
 }

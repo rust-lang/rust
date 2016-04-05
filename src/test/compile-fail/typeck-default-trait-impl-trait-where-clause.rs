@@ -26,7 +26,7 @@ impl NotImplemented for i32 {}
 impl MyTrait for .. {}
 
 fn foo<T:MyTrait>() {
-    //~^ ERROR `std::option::Option<T> : NotImplemented` is not satisfied
+    //~^ ERROR `std::option::Option<T>: NotImplemented` is not satisfied
     // This should probably typecheck. This is #20671.
 }
 

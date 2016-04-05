@@ -17,7 +17,7 @@ struct Error;
 
 #[derive(Default)]
 struct Struct {
-    x: Error //~ ERROR `Error : std::default::Default` is not satisfied
+    x: Error //~ ERROR `Error: std::default::Default` is not satisfied
 }
 
 fn main() {}

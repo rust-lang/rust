@@ -47,7 +47,7 @@ impl              Drop for P<i8>          { fn drop(&mut self) { } } // REJECT
 //~^ ERROR Implementations of Drop cannot be specialized
 
 impl<Adds_bnd:Bound> Drop for Q<Adds_bnd> { fn drop(&mut self) { } } // REJECT
-//~^ ERROR The requirement `Adds_bnd : Bound` is added only by the Drop impl.
+//~^ ERROR The requirement `Adds_bnd: Bound` is added only by the Drop impl.
 
 impl<'rbnd,Adds_rbnd:'rbnd> Drop for R<Adds_rbnd> { fn drop(&mut self) { } } // REJECT
 //~^ ERROR The requirement `Adds_rbnd : 'rbnd` is added only by the Drop impl.

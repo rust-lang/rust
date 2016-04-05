@@ -24,5 +24,5 @@ fn bar<T: Sync>(_: T) {}
 
 fn main() {
     let x = Foo::A(NoSync);
-    bar(&x); //~ ERROR `NoSync : std::marker::Sync` is not satisfied
+    bar(&x); //~ ERROR `NoSync: std::marker::Sync` is not satisfied
 }
