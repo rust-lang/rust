@@ -26,6 +26,7 @@ use abi::{Abi, FnType};
 use attributes;
 use context::CrateContext;
 use type_::Type;
+use value::Value;
 
 use std::ffi::CString;
 
@@ -146,27 +147,33 @@ pub fn define_internal_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 
-/// Get defined or externally defined (AvailableExternally linkage) value by
-/// name.
-pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
-    debug!("get_defined_value(name={:?})", name);
+/// Get declared value by name.
+pub fn get_declared_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+    debug!("get_declared_value(name={:?})", name);
     let namebuf = CString::new(name).unwrap_or_else(|_|{
         bug!("name {:?} contains an interior null byte", name)
     });
     let val = unsafe { llvm::LLVMGetNamedValue(ccx.llmod(), namebuf.as_ptr()) };
     if val.is_null() {
-        debug!("get_defined_value: {:?} value is null", name);
+        debug!("get_declared_value: {:?} value is null", name);
         None
     } else {
+        debug!("get_declared_value: {:?} => {:?}", name, Value(val));
+        Some(val)
+    }
+}
+
+/// Get defined or externally defined (AvailableExternally linkage) value by
+/// name.
+pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
+    get_declared_value(ccx, name).and_then(|val|{
         let declaration = unsafe {
             llvm::LLVMIsDeclaration(val) != 0
         };
-        debug!("get_defined_value: found {:?} value (declaration: {})",
-                name, declaration);
         if !declaration {
             Some(val)
         } else {
             None
         }
-    }
+    })
 }
