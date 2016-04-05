@@ -49,8 +49,8 @@ to avoid this problem.
 # Detailed design
 [design]: #detailed-design
 
-There are two kinds of procedural macro: function-like and macro-like. These two
-kinds exist today, and other than naming (see
+There are two kinds of procedural macro: function-like and attribute-like. These
+two kinds exist today, and other than naming (see
 [RFC 1561](https://github.com/rust-lang/rfcs/pull/1561)) the syntax for using
 these macros remains unchanged. If the macro is called `foo`, then a function-
 like macro is used with syntax `foo!(...)`, and an attribute-like macro with
@@ -120,8 +120,9 @@ details.
 
 When a `#[cfg(macro)]` crate is `extern crate`ed, it's items (even public ones)
 are not available to the importing crate; only macros declared in that crate.
-The crate is dynamically linked with the compiler at compile-time, rather
-than with the importing crate at runtime.
+There should be a lint to warn about public items which will not be visible due
+to `#[cfg(macro)]`. The crate is dynamically linked with the compiler at
+compile-time, rather than with the importing crate at runtime.
 
 
 ## Writing procedural macros
@@ -163,7 +164,7 @@ sketch is available in this [blog post](http://ncameron.org/blog/libmacro/).
 ## Tokens
 
 Procedural macros will primarily operate on tokens. There are two main benefits
-to this principal: flexibility and future proofing. By operating on tokens, code
+to this principle: flexibility and future proofing. By operating on tokens, code
 passed to procedural macros does not need to satisfy the Rust parser, only the
 lexer. Stabilising an interface based on tokens means we need only commit to
 not changing the rules around those tokens, not the whole grammar. I.e., it
@@ -213,12 +214,20 @@ pub struct TokenTree {
 }
 
 pub enum TokenKind {
-    Sequence(Delimiter, Vec<TokenTree>),
+    Sequence(Delimiter, TokenStream),
 
     // The content of the comment can be found from the span.
     Comment(CommentKind),
-    // The Span is the span of the string itself, without delimiters.
-    String(Span, StringKind),
+
+    // Symbol is the string contents, not including delimiters. It would be nice
+    // to avoid an allocation in the common case that the string is in the
+    // source code. We might be able to use `&'Codemap str` or something.
+    // `Option<usize> is for the count of `#`s if the string is a raw string. If
+    // the string is not raw, then it will be `None`.
+    String(Symbol, Option<usize>, StringKind),
+
+    // char literal, span includes the `'` delimiters.
+    Char(char),
 
     // These tokens are treated specially since they are used for macro
     // expansion or delimiting items.
@@ -227,11 +236,11 @@ pub enum TokenKind {
     // Not actually sure if we need this or if semicolons can be treated like
     // other punctuation.
     Semicolon,    // `;`
-    Eof,
+    Eof,          // Do we need this?
 
     // Word is defined by Unicode Standard Annex 31 -
     // [Unicode Identifier and Pattern Syntax](http://unicode.org/reports/tr31/)
-    Word(InternedString),
+    Word(Symbol),
     Punctuation(char),
 }
 
@@ -253,13 +262,34 @@ pub enum CommentKind {
 
 pub enum StringKind {
     Regular,
-    // usize is for the count of `#`s.
-    Raw(usize),
     Byte,
-    RawByte(usize),
 }
+
+// A Symbol is a possibly-interned string.
+pub struct Symbol { ... }
 ```
 
+### Open question: `Punctuation(char)` and multi-char operators.
+
+Rust has many compound operators, e.g., `<<`. It's not clear how best to deal
+with them. If the source code contains "`+ =`", it would be nice to distinguish
+this in the token stream from "`+=`". On the other hand, if we represent `<<` as
+a single token, then the macro may need to split them into `<`, `<` in generic
+position.
+
+I had hoped to represent each character as a separate token. However, to make
+pattern matching backwards compatible, we would need to combine some tokens. In
+fact, if we want to be completely backwards compatible, we probably need to keep
+the same set of compound operators as are defined at the moment.
+
+Some solutions:
+
+* `Punctuation(char)` with special rules for pattern matching tokens,
+* `Punctuation([char])` with a facility for macros to split tokens. Tokenising
+  could match the maximum number of punctuation characters, or use the rules for
+  the current token set. The former would have issues with pattern matching. The
+  latter is a bit hacky, there would be backwards compatibility issues if we
+  wanted to add new compound operators in the future.
 
 ## Staging
 
@@ -313,6 +343,9 @@ of the interface between the compiler and macro, and (I believe) the use cases
 are better addressed by compiler plug-ins or tools based on the compiler (the
 latter can be written today, the former require more work on an interface to the
 compiler to be practical).
+
+We could use the `macro` keyword rather than the `fn` keyword to declare a
+macro. We would then not require a `#[macro]` attribute.
 
 We could have a dedicated syntax for procedural macros, similar to the
 `macro_rules` syntax for macros by example. Since a procedural macro is really
@@ -374,6 +407,8 @@ a process-separated model (if desired). However, if this is considered an
 essential feature of macro reform, then we might want to consider the interfaces
 more thoroughly with this in mind.
 
+A step in this direction might be to run the macro in its own thread, but in the
+compiler's process.
 
 ### Interactions with constant evaluation
 
