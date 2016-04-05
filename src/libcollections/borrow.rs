@@ -49,6 +49,18 @@ pub trait ToOwned {
     type Owned: Borrow<Self>;
 
     /// Creates owned data from borrowed data, usually by cloning.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s = "a"; // &str
+    /// let ss = s.to_owned(); // String
+    ///
+    /// let v = &[1, 2]; // slice
+    /// let vv = v.to_owned(); // Vec
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_owned(&self) -> Self::Owned;
 }
