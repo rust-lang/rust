@@ -184,7 +184,10 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  Markdown file or generated documentation",
                  "FILES"),
         optopt("", "markdown-playground-url",
-               "URL to send code snippets to", "URL"),
+               "URL to send code snippets to. \
+                In effect only when <input> file has .md or .markdown extension! \
+                For .rs files(eg. via `cargo doc`) use an inner attribute: \
+                #![doc(html_playground_url = \"https://play.rust-lang.org/\")]", "URL"),
         optflag("", "markdown-no-toc", "don't include table of contents")
     )
 }
