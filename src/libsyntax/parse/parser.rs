@@ -6124,7 +6124,7 @@ impl<'a> Parser<'a> {
 
         // Allow a leading :: because the paths are absolute either way.
         // This occurs with "use $crate::..." in macros.
-        self.eat(&token::ModSep);
+        let is_global = self.eat(&token::ModSep);
 
         if self.check(&token::OpenDelim(token::Brace)) {
             // use {foo,bar}
@@ -6135,7 +6135,7 @@ impl<'a> Parser<'a> {
                 |p| p.parse_path_list_item())?;
             let path = ast::Path {
                 span: mk_sp(lo, self.span.hi),
-                global: false,
+                global: is_global,
                 segments: Vec::new()
             };
             return Ok(P(spanned(lo, self.span.hi, ViewPathList(path, idents))));
@@ -6164,7 +6164,7 @@ impl<'a> Parser<'a> {
                     )?;
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
-                        global: false,
+                        global: is_global,
                         segments: path.into_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
@@ -6180,7 +6180,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     let path = ast::Path {
                         span: mk_sp(lo, self.span.hi),
-                        global: false,
+                        global: is_global,
                         segments: path.into_iter().map(|identifier| {
                             ast::PathSegment {
                                 identifier: identifier,
@@ -6203,7 +6203,7 @@ impl<'a> Parser<'a> {
         let mut rename_to = path[path.len() - 1];
         let path = ast::Path {
             span: mk_sp(lo, self.last_span.hi),
-            global: false,
+            global: is_global,
             segments: path.into_iter().map(|identifier| {
                 ast::PathSegment {
                     identifier: identifier,

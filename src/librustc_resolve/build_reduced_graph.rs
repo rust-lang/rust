@@ -23,13 +23,14 @@ use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::{CrateStore, ChildItem, DlDef};
+use rustc::lint;
 use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::VariantKind;
 
 use syntax::ast::Name;
 use syntax::attr::AttrMetaMethods;
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{special_idents, SELF_KEYWORD_NAME, SUPER_KEYWORD_NAME};
 use syntax::codemap::{Span, DUMMY_SP};
 
 use rustc_front::hir;
@@ -116,8 +117,10 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-                let module_path = match view_path.node {
+                let is_global;
+                let module_path: Vec<Name> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
+                        is_global = full_path.global;
                         full_path.segments
                                  .split_last()
                                  .unwrap()
@@ -129,12 +132,25 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
 
                     ViewPathGlob(ref module_ident_path) |
                     ViewPathList(ref module_ident_path, _) => {
+                        is_global = module_ident_path.global;
                         module_ident_path.segments
                                          .iter()
                                          .map(|seg| seg.identifier.name)
                                          .collect()
                     }
                 };
+
+                // Checking for special identifiers in path
+                // prevent `self` or `super` at beginning of global path
+                if is_global && (module_path.first() == Some(&SELF_KEYWORD_NAME) ||
+                                 module_path.first() == Some(&SUPER_KEYWORD_NAME)) {
+                    self.session.add_lint(
+                        lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH,
+                        item.id,
+                        item.span,
+                        format!("expected identifier, found keyword `{}`",
+                                module_path.first().unwrap().as_str()));
+                }
 
                 // Build up the import directives.
                 let is_prelude = item.attrs.iter().any(|attr| {
