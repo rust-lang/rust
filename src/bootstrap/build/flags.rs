@@ -62,11 +62,6 @@ impl Flags {
             usage(0);
         }
 
-        if m.free.len() > 0 {
-            println!("free arguments are not currently accepted");
-            usage(1);
-        }
-
         let cfg_file = m.opt_str("config").map(PathBuf::from).or_else(|| {
             if fs::metadata("config.toml").is_ok() {
                 Some(PathBuf::from("config.toml"))

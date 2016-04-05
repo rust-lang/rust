@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "bin"]
+#![crate_name = "compiletest"]
 
 #![feature(box_syntax)]
-#![feature(libc)]
 #![feature(rustc_private)]
 #![feature(test)]
 #![feature(question_mark)]
+#![feature(libc)]
 
 #![deny(warnings)]
 
@@ -24,6 +24,9 @@ extern crate getopts;
 
 #[macro_use]
 extern crate log;
+
+#[cfg(cargobuild)]
+extern crate env_logger;
 
 use std::env;
 use std::fs;
@@ -43,7 +46,13 @@ pub mod common;
 pub mod errors;
 mod raise_fd_limit;
 
-pub fn main() {
+fn main() {
+    #[cfg(cargobuild)]
+    fn log_init() { env_logger::init().unwrap(); }
+    #[cfg(not(cargobuild))]
+    fn log_init() {}
+    log_init();
+
     let config = parse_config(env::args().collect());
 
     if config.valgrind_path.is_none() && config.force_valgrind {
@@ -64,7 +73,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "python", "path to python to use for doc tests", "PATH"),
           optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
           optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
-          optopt("", "llvm-bin-path", "path to directory holding llvm binaries", "DIR"),
+          optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR"),
           reqopt("", "src-base", "directory to scan for test files", "PATH"),
           reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
           reqopt("", "aux-base", "directory to find auxiliary test files", "PATH"),
@@ -134,7 +143,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         python: matches.opt_str("python").unwrap(),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
-        llvm_bin_path: matches.opt_str("llvm-bin-path").map(|s| PathBuf::from(&s)),
+        llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),

@@ -50,7 +50,6 @@ PKG_FILES := \
     $(addprefix $(S)src/,                      \
       bootstrap                                \
       build_helper                             \
-      compiletest                              \
       doc                                      \
       driver                                   \
       etc                                      \
