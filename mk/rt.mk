@@ -157,6 +157,8 @@ else ifeq ($(findstring android, $(OSTYPE_$(1))), android)
   # If the test suite passes, however, without symbol prefixes then we should be
   # good to go!
   JEMALLOC_ARGS_$(1) := --disable-tls --with-jemalloc-prefix=je_
+else ifeq ($(findstring dragonfly, $(OSTYPE_$(1))), dragonfly)
+  JEMALLOC_ARGS_$(1) := --with-jemalloc-prefix=je_
 endif
 
 ifdef CFG_ENABLE_DEBUG_JEMALLOC
