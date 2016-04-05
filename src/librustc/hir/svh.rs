@@ -48,7 +48,7 @@
 
 use std::fmt;
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, Eq, Hash, PartialEq, Debug)]
 pub struct Svh {
     hash: String,
 }

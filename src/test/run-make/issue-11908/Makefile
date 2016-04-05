@@ -9,15 +9,13 @@
 
 all:
 	mkdir $(TMPDIR)/other
-	$(RUSTC) foo.rs --crate-type=dylib
+	$(RUSTC) foo.rs --crate-type=dylib -C prefer-dynamic
 	mv $(call DYLIB,foo) $(TMPDIR)/other
-	$(RUSTC) foo.rs --crate-type=dylib
-	$(RUSTC) bar.rs -L $(TMPDIR)/other 2>&1 | \
-		grep "multiple dylib candidates"
+	$(RUSTC) foo.rs --crate-type=dylib -C prefer-dynamic
+	$(RUSTC) bar.rs -L $(TMPDIR)/other
 	rm -rf $(TMPDIR)
 	mkdir -p $(TMPDIR)/other
 	$(RUSTC) foo.rs --crate-type=rlib
 	mv $(TMPDIR)/libfoo.rlib $(TMPDIR)/other
 	$(RUSTC) foo.rs --crate-type=rlib
-	$(RUSTC) bar.rs -L $(TMPDIR)/other 2>&1 | \
-		grep "multiple rlib candidates"
+	$(RUSTC) bar.rs -L $(TMPDIR)/other
