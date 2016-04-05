@@ -174,7 +174,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
 
                 let terminator = block_data.terminator();
-                print_trace(terminator, "", self.stack.len() + 1);
+                print_trace(&terminator.kind, "", self.stack.len() + 1);
 
                 let result = self.eval_terminator(terminator);
                 match try!(self.maybe_report(terminator.span, result)) {
