@@ -51,8 +51,12 @@ work:
 ```
 foo!();
 
-macro_rules! foo { ... }
+macro! foo { ... }
 ```
+
+(Note, I'm using a hypothetical `macro!` defintion which I will define in a future
+RFC. The reader can assume it works much like `macro_rules!`, but with the new
+naming scheme).
 
 Macro expansion order is also not defined by source order. E.g., in `foo!(); bar!();`,
 `bar` may be expanded before `foo`. Ordering is only guaranteed as far as it is
@@ -148,7 +152,7 @@ of Rust, see below.
 I would like that macros follow the same rules for privacy as other Rust items,
 i.e., they are private by default and may be marked as `pub` to make them
 public. This is not as straightforward as it sounds as it requires parsing `pub
-macro_rules! foo` as a macro definition, etc. I leave this for a separate RFC.
+macro! foo` as a macro definition, etc. I leave this for a separate RFC.
 
 ## Scoped attributes
 
