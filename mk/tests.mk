@@ -954,7 +954,7 @@ TEST_GROUPS = \
 	debuginfo-lldb \
 	codegen \
 	codegen-units \
-    incremental \
+	incremental \
 	doc \
 	$(foreach docname,$(DOC_NAMES),doc-$(docname)) \
 	pretty \

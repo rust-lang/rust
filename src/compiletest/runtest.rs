@@ -1972,9 +1972,10 @@ fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPa
 fn run_incremental_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
     // Basic plan for a test incremental/foo/bar.rs:
     // - load list of revisions pass1, fail2, pass3
-    //   - each should begin with `pass` or `fail`
-    //   - if `pass`, expect compile to succeed
-    //   - if `fail`, expect errors from file
+    //   - each should begin with `rpass`, `rfail`, or `cfail`
+    //   - if `rpass`, expect compile and execution to succeed
+    //   - if `cfail`, expect compilation to fail
+    //   - if `rfail`, expect execution to fail
     // - create a directory build/foo/bar.incremental
     // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C pass1
     //   - because name of revision starts with "pass", expect success
