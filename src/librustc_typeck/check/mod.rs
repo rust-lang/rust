@@ -4800,9 +4800,11 @@ fn structurally_resolve_type_or_else<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // If not, error.
         if alternative.is_ty_var() || alternative.references_error() {
-            fcx.type_error_message(sp, |_actual| {
-                "the type of this value must be known in this context".to_string()
-            }, ty, None);
+            if !fcx.infcx().is_tainted_by_errors() {
+                fcx.type_error_message(sp, |_actual| {
+                    "the type of this value must be known in this context".to_string()
+                }, ty, None);
+            }
             demand::suptype(fcx, sp, fcx.tcx().types.err, ty);
             ty = fcx.tcx().types.err;
         } else {
