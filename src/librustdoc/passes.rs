@@ -21,6 +21,7 @@ use clean::Item;
 use plugins;
 use fold;
 use fold::DocFolder;
+use fold::FoldItem::Strip;
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
@@ -39,18 +40,12 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
-                        clean::StructFieldItem(..) => {
-                            return Some(clean::Item {
-                                inner: clean::StructFieldItem(clean::HiddenStructField),
-                                ..i
-                            });
+                        clean::StructFieldItem(..) | clean::ModuleItem(..) => {
+                            return Strip(i).fold()
                         }
-                        _ => {
-                            return None;
-                        }
+                        _ => return None,
                     }
                 }
-
                 self.fold_item_recur(i)
             }
         }
@@ -125,12 +120,14 @@ struct Stripper<'a> {
 impl<'a> fold::DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
+            clean::StrippedItem(..) => return Some(i),
             // These items can all get re-exported
             clean::TypedefItem(..) | clean::StaticItem(..) |
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TraitItem(..) | clean::FunctionItem(..) |
             clean::VariantItem(..) | clean::MethodItem(..) |
-            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) => {
+            clean::ForeignFunctionItem(..) | clean::ForeignStaticItem(..) |
+            clean::ConstantItem(..) => {
                 if i.def_id.is_local() {
                     if !self.access_levels.is_exported(i.def_id) {
                         return None;
@@ -138,23 +135,17 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ConstantItem(..) => {
-                if i.def_id.is_local() && !self.access_levels.is_exported(i.def_id) {
-                    return None;
-                }
-            }
-
             clean::StructFieldItem(..) => {
                 if i.visibility != Some(hir::Public) {
-                    return Some(clean::Item {
-                        inner: clean::StructFieldItem(clean::HiddenStructField),
-                        ..i
-                    })
+                    return Strip(i).fold();
                 }
             }
 
-            // handled below
-            clean::ModuleItem(..) => {}
+            clean::ModuleItem(..) => {
+                if i.def_id.is_local() && i.visibility != Some(hir::Public) {
+                    return Strip(self.fold_item_recur(i).unwrap()).fold()
+                }
+            }
 
             // trait impls for private items should be stripped
             clean::ImplItem(clean::Impl{
@@ -165,7 +156,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
             // handled in the `strip-priv-imports` pass
-            clean::ExternCrateItem(..) | clean::ImportItem(_) => {}
+            clean::ExternCrateItem(..) | clean::ImportItem(..) => {}
 
             clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
 
@@ -187,7 +178,6 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
-
             // Struct variant fields have inherited visibility
             clean::VariantItem(clean::Variant {
                 kind: clean::StructVariant(..)
@@ -202,19 +192,17 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        i.and_then(|i| {
-            match i.inner {
-                // emptied modules/impls have no need to exist
-                clean::ModuleItem(ref m)
-                    if m.items.is_empty() &&
-                       i.doc_value().is_none() => None,
-                clean::ImplItem(ref i) if i.items.is_empty() => None,
-                _ => {
-                    self.retained.insert(i.def_id);
-                    Some(i)
-                }
+        i.and_then(|i| { match i.inner {
+            // emptied modules/impls have no need to exist
+            clean::ModuleItem(ref m)
+                if m.items.is_empty() &&
+                   i.doc_value().is_none() => None,
+            clean::ImplItem(ref i) if i.items.is_empty() => None,
+            _ => {
+                self.retained.insert(i.def_id);
+                Some(i)
             }
-        })
+        }})
     }
 }
 
