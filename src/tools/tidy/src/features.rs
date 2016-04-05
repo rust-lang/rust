@@ -100,6 +100,10 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     });
 
+    if *bad {
+        return
+    }
+
     let mut lines = Vec::new();
     for feature in features {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",

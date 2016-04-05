@@ -71,8 +71,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     });
 
     let mut max = 0;
-    println!("* {} error codes", map.len());
-    for (code, entries) in map {
+    for (&code, entries) in map.iter() {
         if code > max {
             max = code;
         }
@@ -81,10 +80,14 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
 
         println!("duplicate error code: {}", code);
-        for (file, line_num, line) in entries {
+        for &(ref file, line_num, ref line) in entries.iter() {
             println!("{}:{}: {}", file.display(), line_num, line);
         }
         *bad = true;
     }
-    println!("* highest error code: E{:04}", max);
+
+    if !*bad {
+        println!("* {} error codes", map.len());
+        println!("* highest error code: E{:04}", max);
+    }
 }

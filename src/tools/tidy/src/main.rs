@@ -29,6 +29,7 @@ mod bins;
 mod style;
 mod errors;
 mod features;
+mod cargo;
 
 fn main() {
     let path = env::args_os().skip(1).next().expect("need an argument");
@@ -38,6 +39,7 @@ fn main() {
     bins::check(&path, &mut bad);
     style::check(&path, &mut bad);
     errors::check(&path, &mut bad);
+    cargo::check(&path, &mut bad);
     features::check(&path, &mut bad);
 
     if bad {
