@@ -9,15 +9,20 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
-#![allow(unused_imports)]
 
-pub type Type = i32;
+pub type T = ();
+mod foo { pub use super::T; }
+mod bar { pub use super::T; }
 
-mod one { use super::Type; }
-pub use self::one::*;
+pub use foo::*;
+pub use bar::*;
 
-mod two { use super::Type; }
-pub use self::two::*;
+mod baz {
+    pub type T = ();
+    mod foo { pub use super::T as S; }
+    mod bar { pub use super::foo::S as T; }
+    pub use self::bar::*;
+}
 
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful

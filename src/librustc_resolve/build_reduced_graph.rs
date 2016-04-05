@@ -14,8 +14,7 @@
 //! any imports resolved.
 
 use DefModifiers;
-use resolve_imports::ImportDirective;
-use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
+use resolve_imports::ImportDirectiveSubclass::{self, GlobImport};
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind};
@@ -28,7 +27,7 @@ use rustc::middle::def::*;
 use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::VariantKind;
 
-use syntax::ast::{Name, NodeId};
+use syntax::ast::Name;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::special_idents;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -152,8 +151,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                         }
 
                         let subclass = ImportDirectiveSubclass::single(binding, source_name);
-                        self.build_import_directive(parent,
-                                                    module_path,
+                        self.unresolved_imports += 1;
+                        parent.add_import_directive(module_path,
                                                     subclass,
                                                     view_path.span,
                                                     item.id,
@@ -203,8 +202,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                                 }
                             };
                             let subclass = ImportDirectiveSubclass::single(rename, name);
-                            self.build_import_directive(parent,
-                                                        module_path,
+                            self.unresolved_imports += 1;
+                            parent.add_import_directive(module_path,
                                                         subclass,
                                                         source_item.span,
                                                         source_item.node.id(),
@@ -213,8 +212,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                         }
                     }
                     ViewPathGlob(_) => {
-                        self.build_import_directive(parent,
-                                                    module_path,
+                        self.unresolved_imports += 1;
+                        parent.add_import_directive(module_path,
                                                     GlobImport,
                                                     view_path.span,
                                                     item.id,
@@ -519,39 +518,6 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
         for child in self.session.cstore.crate_top_level_items(root_cnum) {
             self.build_reduced_graph_for_external_crate_def(root, child);
         }
-    }
-
-    /// Creates and adds an import directive to the given module.
-    fn build_import_directive(&mut self,
-                              module_: Module<'b>,
-                              module_path: Vec<Name>,
-                              subclass: ImportDirectiveSubclass,
-                              span: Span,
-                              id: NodeId,
-                              is_public: bool,
-                              is_prelude: bool) {
-        // Bump the reference count on the name. Or, if this is a glob, set
-        // the appropriate flag.
-
-        match subclass {
-            SingleImport { target, .. } => {
-                module_.increment_outstanding_references_for(target, ValueNS, is_public);
-                module_.increment_outstanding_references_for(target, TypeNS, is_public);
-            }
-            GlobImport if !is_prelude => {
-                // Set the glob flag. This tells us that we don't know the
-                // module's exports ahead of time.
-                module_.inc_glob_count(is_public)
-            }
-            // Prelude imports are not included in the glob counts since they do not get added to
-            // `resolved_globs` -- they are handled separately in `resolve_imports`.
-            GlobImport => {}
-        }
-
-        let directive =
-            ImportDirective::new(module_path, subclass, span, id, is_public, is_prelude);
-        module_.add_import_directive(directive);
-        self.unresolved_imports += 1;
     }
 
     /// Ensures that the reduced graph rooted at the given external module
