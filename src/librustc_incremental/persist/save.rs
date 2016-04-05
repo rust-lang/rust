@@ -93,6 +93,7 @@ pub fn encode_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>,
                      assert!(def_id.is_local());
                      builder.add(def_id)
                             .map(|index| {
+                                // FIXME(#32753) -- should we use a distinct hash here
                                 let hash = tcx.calculate_item_hash(def_id);
                                 SerializedHash { index: index, hash: hash }
                             })

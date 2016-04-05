@@ -44,8 +44,10 @@ impl<'tcx> SvhCalculate for ty::TyCtxt<'tcx> {
         let mut state = SipHasher::new();
         debug!("state: {:?}", state);
 
+        // FIXME(#32753) -- at (*) we `to_le` for endianness, but is
+        // this enough, and does it matter anyway?
         "crate_disambiguator".hash(&mut state);
-        crate_disambiguator.as_str().len().hash(&mut state);
+        crate_disambiguator.as_str().len().to_le().hash(&mut state); // (*)
         crate_disambiguator.as_str().hash(&mut state);
 
         debug!("crate_disambiguator: {:?}", crate_disambiguator.as_str());
