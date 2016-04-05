@@ -174,6 +174,53 @@ fn on_unimplemented_note<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     report
 }
 
+fn find_similar_impl_candidates<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>)
+    -> Vec<ty::TraitRef<'tcx>>
+{
+    let simp = fast_reject::simplify_type(infcx.tcx,
+                                          trait_ref.skip_binder().self_ty(),
+                                          true);
+    let mut impl_candidates = Vec::new();
+    let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
+
+    match simp {
+        Some(simp) => trait_def.for_each_impl(infcx.tcx, |def_id| {
+            let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
+            let imp_simp = fast_reject::simplify_type(infcx.tcx,
+                                                      imp.self_ty(),
+                                                      true);
+            if let Some(imp_simp) = imp_simp {
+                if simp != imp_simp {
+                    return;
+                }
+            }
+            impl_candidates.push(imp);
+        }),
+        None => trait_def.for_each_impl(infcx.tcx, |def_id| {
+            impl_candidates.push(
+                infcx.tcx.impl_trait_ref(def_id).unwrap());
+        })
+    };
+    impl_candidates
+}
+
+fn report_similar_impl_candidates(span: Span,
+                                  err: &mut DiagnosticBuilder,
+                                  impl_candidates: &[ty::TraitRef])
+{
+    err.fileline_help(span, &format!("the following implementations were found:"));
+
+    let end = cmp::min(4, impl_candidates.len());
+    for candidate in &impl_candidates[0..end] {
+        err.fileline_help(span, &format!("  {:?}", candidate));
+    }
+    if impl_candidates.len() > 4 {
+        err.fileline_help(span, &format!("and {} others", impl_candidates.len()-4));
+    }
+}
+
 /// Reports that an overflow has occurred and halts compilation. We
 /// halt compilation unconditionally because it is important that
 /// overflows never be masked -- they basically represent computations
@@ -364,59 +411,35 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 "the trait bound `{}` is not satisfied",
                                 trait_ref.to_predicate());
 
-                            // Try to report a good error message.
+                            // Try to report a help message
 
                             if !trait_ref.has_infer_types() &&
                                 predicate_can_apply(infcx, trait_ref)
                             {
+                                // If a where-clause may be useful, remind the
+                                // user that they can add it.
+                                //
+                                // don't display an on-unimplemented note, as
+                                // these notes will often be of the form
+                                //     "the type `T` can't be frobnicated"
+                                // which is somewhat confusing.
                                 err.fileline_help(obligation.cause.span, &format!(
                                     "consider adding a `where {}` bound",
                                     trait_ref.to_predicate()
                                     ));
                             } else if let Some(s) = on_unimplemented_note(infcx, trait_ref,
                                                                           obligation.cause.span) {
+                                // Otherwise, if there is an on-unimplemented note,
+                                // display it.
                                 err.fileline_note(obligation.cause.span, &s);
                             } else {
-                                let simp = fast_reject::simplify_type(infcx.tcx,
-                                                                      trait_ref.self_ty(),
-                                                                      true);
-                                let mut impl_candidates = Vec::new();
-                                let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
+                                // If we can't show anything useful, try to find
+                                // similar impls.
 
-                                match simp {
-                                    Some(simp) => trait_def.for_each_impl(infcx.tcx, |def_id| {
-                                        let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
-                                        let imp_simp = fast_reject::simplify_type(infcx.tcx,
-                                                                                  imp.self_ty(),
-                                                                                  true);
-                                        if let Some(imp_simp) = imp_simp {
-                                            if simp != imp_simp {
-                                                return;
-                                            }
-                                        }
-                                        impl_candidates.push(imp);
-                                    }),
-                                    None => trait_def.for_each_impl(infcx.tcx, |def_id| {
-                                        impl_candidates.push(
-                                            infcx.tcx.impl_trait_ref(def_id).unwrap());
-                                    })
-                                };
-
+                                let impl_candidates = find_similar_impl_candidates(infcx, trait_ref);
                                 if impl_candidates.len() > 0 {
-                                    err.fileline_help(
-                                        obligation.cause.span,
-                                        &format!("the following implementations were found:"));
-
-                                    let end = cmp::min(4, impl_candidates.len());
-                                    for candidate in &impl_candidates[0..end] {
-                                        err.fileline_help(obligation.cause.span,
-                                                          &format!("  {:?}", candidate));
-                                    }
-                                    if impl_candidates.len() > 4 {
-                                        err.fileline_help(obligation.cause.span,
-                                                          &format!("and {} others",
-                                                                   impl_candidates.len()-4));
-                                    }
+                                    report_similar_impl_candidates(obligation.cause.span,
+                                                                   &mut err, &impl_candidates);
                                 }
                             }
                             note_obligation_cause(infcx, &mut err, obligation);
