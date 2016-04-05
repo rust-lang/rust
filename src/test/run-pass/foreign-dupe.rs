@@ -31,9 +31,20 @@ mod rustrt2 {
     }
 }
 
+mod rustrt3 {
+    // Different type, but same ABI (on all supported platforms).
+    // Ensures that we don't ICE or trigger LLVM asserts when
+    // importing the same symbol under different types.
+    // See https://github.com/rust-lang/rust/issues/32740.
+    extern {
+        pub fn rust_get_test_int() -> *const u8;
+    }
+}
+
 pub fn main() {
     unsafe {
-        rustrt1::rust_get_test_int();
-        rustrt2::rust_get_test_int();
+        let x = rustrt1::rust_get_test_int();
+        assert_eq!(x, rustrt2::rust_get_test_int());
+        assert_eq!(x as *const _, rustrt3::rust_get_test_int());
     }
 }
