@@ -11,8 +11,8 @@
 //! Code to save/load the dep-graph from files.
 
 use calculate_svh::SvhCalculate;
-use rbml::{self, Doc};
-use rbml::reader::{self, DecodeResult, Decoder};
+use rbml::Error;
+use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
 use rustc::middle::def_id::DefId;
 use rustc::ty;
@@ -66,7 +66,7 @@ pub fn load_dep_graph_if_exists<'tcx>(tcx: &ty::TyCtxt<'tcx>, path: &Path) {
         }
     }
 
-    match decode_dep_graph(tcx, Doc::new(&data)) {
+    match decode_dep_graph(tcx, &data) {
         Ok(dirty) => dirty,
         Err(err) => {
             bug!("decoding error in dep-graph from `{}`: {}", path.display(), err);
@@ -74,33 +74,21 @@ pub fn load_dep_graph_if_exists<'tcx>(tcx: &ty::TyCtxt<'tcx>, path: &Path) {
     }
 }
 
-pub fn decode_dep_graph<'tcx, 'doc>(tcx: &ty::TyCtxt<'tcx>, doc: rbml::Doc<'doc>)
-                                    -> DecodeResult<()>
+pub fn decode_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>, data: &[u8])
+                              -> Result<(), Error>
 {
-    // First load the directory, which maps the def-ids found
-    // elsewhere into `DefPath`. We can then refresh the `DefPath` to
-    // obtain updated def-ids.
-    let directory = {
-        let directory_doc = reader::get_doc(doc, DIRECTORY_TAG);
-        let mut decoder = Decoder::new(directory_doc);
-        try!(DefIdDirectory::decode(&mut decoder))
-    };
+    // Deserialize the directory and dep-graph.
+    let mut decoder = Decoder::new(data, 0);
+    let directory = try!(DefIdDirectory::decode(&mut decoder));
+    let serialized_dep_graph = try!(SerializedDepGraph::decode(&mut decoder));
 
     debug!("decode_dep_graph: directory = {:#?}", directory);
+    debug!("decode_dep_graph: serialized_dep_graph = {:#?}", serialized_dep_graph);
 
-    // Retrace those paths to find their current location (if any).
+    // Retrace the paths in the directory to find their current location (if any).
     let retraced = directory.retrace(tcx);
 
     debug!("decode_dep_graph: retraced = {:#?}", retraced);
-
-    // Deserialize the dep-graph (which will include DefPathIndex entries)
-    let serialized_dep_graph = {
-        let dep_graph_doc = reader::get_doc(doc, DEP_GRAPH_TAG);
-        let mut decoder = Decoder::new(dep_graph_doc);
-        try!(SerializedDepGraph::decode(&mut decoder))
-    };
-
-    debug!("decode_dep_graph: serialized_dep_graph = {:#?}", serialized_dep_graph);
 
     // Compute the set of Hir nodes whose data has changed.
     let mut dirty_nodes =
