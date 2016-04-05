@@ -25,8 +25,8 @@ pub fn clean(build: &Build) {
             rm_rf(build, &out.join(format!("stage{}", stage)));
             rm_rf(build, &out.join(format!("stage{}-std", stage)));
             rm_rf(build, &out.join(format!("stage{}-rustc", stage)));
-            rm_rf(build, &out.join(format!("stage{}-test", stage)));
             rm_rf(build, &out.join(format!("stage{}-tools", stage)));
+            rm_rf(build, &out.join(format!("stage{}-test", stage)));
         }
     }
 }

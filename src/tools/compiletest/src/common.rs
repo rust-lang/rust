@@ -86,8 +86,8 @@ pub struct Config {
     // The python executable
     pub python: String,
 
-    // The llvm binaries path
-    pub llvm_bin_path: Option<PathBuf>,
+    // The llvm FileCheck binary path
+    pub llvm_filecheck: Option<PathBuf>,
 
     // The valgrind path
     pub valgrind_path: Option<String>,
