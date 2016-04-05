@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use calculate_svh::SvhCalculate;
-use rbml::writer::{EncodeResult, Encoder};
+use rbml::opaque::Encoder;
 use rustc::dep_graph::DepNode;
 use rustc::ty;
 use rustc_serialize::{Encodable as RustcEncodable};
-use std::io::{Cursor, Write};
+use std::io::{self, Cursor, Write};
 use std::fs::{self, File};
 
 use super::data::*;
@@ -70,7 +70,7 @@ pub fn save_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>) {
 
 pub fn encode_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>,
                               encoder: &mut Encoder)
-                              -> EncodeResult
+                              -> io::Result<()>
 {
     // Here we take advantage of how RBML allows us to skip around
     // and encode the depgraph as a two-part structure:
@@ -126,19 +126,10 @@ pub fn encode_dep_graph<'tcx>(tcx: &ty::TyCtxt<'tcx>,
 
     debug!("graph = {:#?}", graph);
 
-    // Encode the graph data into RBML.
-    try!(encoder.start_tag(DEP_GRAPH_TAG));
-    try!(graph.encode(encoder));
-    try!(encoder.end_tag());
-
-    // Now encode the directory.
+    // Encode the directory and then the graph data.
     let directory = builder.into_directory();
-
-    debug!("directory = {:#?}", directory);
-
-    try!(encoder.start_tag(DIRECTORY_TAG));
     try!(directory.encode(encoder));
-    try!(encoder.end_tag());
+    try!(graph.encode(encoder));
 
     Ok(())
 }

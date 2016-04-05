@@ -12,10 +12,6 @@ use rustc::ty;
 use std::fs;
 use std::path::PathBuf;
 
-pub const DEP_GRAPH_TAG: usize = 0x100;
-
-pub const DIRECTORY_TAG: usize = DEP_GRAPH_TAG + 1;
-
 pub fn dep_graph_path<'tcx>(tcx: &ty::TyCtxt<'tcx>) -> Option<PathBuf> {
     // For now, just save/load dep-graph from
     // directory/dep_graph.rbml
