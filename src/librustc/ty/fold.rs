@@ -116,21 +116,9 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 pub trait TypeFolder<'tcx> : Sized {
     fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
 
-    /// Invoked by the `super_*` routines when we enter a region
-    /// binding level (for example, when entering a function
-    /// signature). This is used by clients that want to track the
-    /// Debruijn index nesting level.
-    fn enter_region_binder(&mut self) { }
-
-    /// Invoked by the `super_*` routines when we exit a region
-    /// binding level. This is used by clients that want to
-    /// track the Debruijn index nesting level.
-    fn exit_region_binder(&mut self) { }
-
     fn fold_binder<T>(&mut self, t: &Binder<T>) -> Binder<T>
         where T : TypeFoldable<'tcx>
     {
-        // FIXME(#20526) this should replace `enter_region_binder`/`exit_region_binder`.
         t.super_fold_with(self)
     }
 
@@ -197,8 +185,9 @@ pub trait TypeFolder<'tcx> : Sized {
 }
 
 pub trait TypeVisitor<'tcx> : Sized {
-    fn enter_region_binder(&mut self) { }
-    fn exit_region_binder(&mut self) { }
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
+        t.super_visit_with(self)
+    }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         t.super_visit_with(self)
@@ -296,12 +285,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 {
     fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
 
-    fn enter_region_binder(&mut self) {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_depth += 1;
-    }
-
-    fn exit_region_binder(&mut self) {
+        let t = t.super_fold_with(self);
         self.current_depth -= 1;
+        t
     }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
@@ -438,12 +426,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
 {
     fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
 
-    fn enter_region_binder(&mut self) {
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_depth += 1;
-    }
-
-    fn exit_region_binder(&mut self) {
+        let t = t.super_fold_with(self);
         self.current_depth -= 1;
+        t
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
@@ -596,12 +583,11 @@ struct HasEscapingRegionsVisitor {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for HasEscapingRegionsVisitor {
-    fn enter_region_binder(&mut self) {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
         self.depth += 1;
-    }
-
-    fn exit_region_binder(&mut self) {
+        let result = t.super_visit_with(self);
         self.depth -= 1;
+        result
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
