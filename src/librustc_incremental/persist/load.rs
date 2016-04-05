@@ -69,9 +69,7 @@ pub fn load_dep_graph_if_exists<'tcx>(tcx: &ty::TyCtxt<'tcx>, path: &Path) {
     match decode_dep_graph(tcx, Doc::new(&data)) {
         Ok(dirty) => dirty,
         Err(err) => {
-            tcx.sess.bug(
-                &format!("decoding error in dep-graph from `{}`: {}",
-                         path.display(), err));
+            bug!("decoding error in dep-graph from `{}`: {}", path.display(), err);
         }
     }
 }
