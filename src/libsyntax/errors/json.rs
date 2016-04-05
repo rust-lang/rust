@@ -20,7 +20,7 @@
 // FIXME spec the JSON output properly.
 
 
-use codemap::{Span, MultiSpan, CodeMap};
+use codemap::{self, Span, MultiSpan, CodeMap};
 use diagnostics::registry::Registry;
 use errors::{Level, DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion};
 use errors::emitter::Emitter;
@@ -197,8 +197,8 @@ impl DiagnosticSpan {
 
     fn from_render_span(rsp: &RenderSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
         match *rsp {
-            // FIXME(#30701) handle Suggestion properly
             RenderSpan::FullSpan(ref msp) |
+            // FIXME(#30701) handle Suggestion properly
             RenderSpan::Suggestion(CodeSuggestion { ref msp, .. }) => {
                 DiagnosticSpan::from_multispan(msp, je)
             }
@@ -207,13 +207,13 @@ impl DiagnosticSpan {
                     let end = je.cm.lookup_char_pos(span.hi);
                     DiagnosticSpan {
                         file_name: end.file.name.clone(),
-                        byte_start: span.lo.0,
+                        byte_start: span.hi.0,
                         byte_end: span.hi.0,
-                        line_start: 0,
+                        line_start: end.line,
                         line_end: end.line,
-                        column_start: 0,
+                        column_start: end.col.0 + 1,
                         column_end: end.col.0 + 1,
-                        text: DiagnosticSpanLine::from_span(span, je),
+                        text: DiagnosticSpanLine::from_span_end(span, je),
                     }
                 }).collect()
             }
@@ -237,25 +237,70 @@ impl DiagnosticSpan {
     }
 }
 
-impl DiagnosticSpanLine {
-    fn from_span(span: &Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
-        let lines = match je.cm.span_to_lines(*span) {
+macro_rules! get_lines_for_span {
+    ($span: ident, $je: ident) => {
+        match $je.cm.span_to_lines(*$span) {
             Ok(lines) => lines,
             Err(_) => {
                 debug!("unprintable span");
                 return Vec::new();
             }
-        };
+        }
+    }
+}
+
+impl DiagnosticSpanLine {
+    fn line_from_filemap(fm: &codemap::FileMap,
+                         index: usize,
+                         h_start: usize,
+                         h_end: usize)
+                         -> DiagnosticSpanLine {
+        DiagnosticSpanLine {
+            text: fm.get_line(index).unwrap().to_owned(),
+            highlight_start: h_start,
+            highlight_end: h_end,
+        }
+    }
+
+    /// Create a list of DiagnosticSpanLines from span - each line with any part
+    /// of `span` gets a DiagnosticSpanLine, with the highlight indicating the
+    /// `span` within the line.
+    fn from_span(span: &Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
+        let lines = get_lines_for_span!(span, je);
 
         let mut result = Vec::new();
         let fm = &*lines.file;
 
         for line in &lines.lines {
-            result.push(DiagnosticSpanLine {
-                text: fm.get_line(line.line_index).unwrap().to_owned(),
-                highlight_start: line.start_col.0 + 1,
-                highlight_end: line.end_col.0 + 1,
-            });
+            result.push(DiagnosticSpanLine::line_from_filemap(fm,
+                                                              line.line_index,
+                                                              line.start_col.0 + 1,
+                                                              line.end_col.0 + 1));
+        }
+
+        result
+    }
+
+    /// Create a list of DiagnosticSpanLines from span - the result covers all
+    /// of `span`, but the highlight is zero-length and at the end of `span`.
+    fn from_span_end(span: &Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
+        let lines = get_lines_for_span!(span, je);
+
+        let mut result = Vec::new();
+        let fm = &*lines.file;
+
+        for (i, line) in lines.lines.iter().enumerate() {
+            // Invariant - CodeMap::span_to_lines will not return extra context
+            // lines - the last line returned is the last line of `span`.
+            let highlight = if i == lines.lines.len() - 1 {
+                (line.end_col.0 + 1, line.end_col.0 + 1)
+            } else {
+                (0, 0)
+            };
+            result.push(DiagnosticSpanLine::line_from_filemap(fm,
+                                                              line.line_index,
+                                                              highlight.0,
+                                                              highlight.1));
         }
 
         result

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepGraph;
-use infer::InferCtxt;
+use infer::{InferCtxt, InferOk};
 use ty::{self, Ty, TyCtxt, TypeFoldable, ToPolyTraitRef};
 use rustc_data_structures::obligation_forest::{Backtrace, ObligationForest, Error};
 use std::iter;
@@ -580,7 +580,11 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 
         ty::Predicate::Equate(ref binder) => {
             match selcx.infcx().equality_predicate(obligation.cause.span, binder) {
-                Ok(()) => Ok(Some(Vec::new())),
+                Ok(InferOk { obligations, .. }) => {
+                    // FIXME(#32730) propagate obligations
+                    assert!(obligations.is_empty());
+                    Ok(Some(Vec::new()))
+                },
                 Err(_) => Err(CodeSelectionError(Unimplemented)),
             }
         }

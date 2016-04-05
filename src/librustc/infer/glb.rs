@@ -16,6 +16,7 @@ use super::Subtype;
 
 use ty::{self, Ty, TyCtxt};
 use ty::relate::{Relate, RelateResult, TypeRelation};
+use traits::PredicateObligations;
 
 /// "Greatest lower bound" (common subtype)
 pub struct Glb<'a, 'tcx: 'a> {
@@ -25,6 +26,10 @@ pub struct Glb<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Glb<'a, 'tcx> {
     pub fn new(fields: CombineFields<'a, 'tcx>) -> Glb<'a, 'tcx> {
         Glb { fields: fields }
+    }
+
+    pub fn obligations(self) -> PredicateObligations<'tcx> {
+        self.fields.obligations
     }
 }
 

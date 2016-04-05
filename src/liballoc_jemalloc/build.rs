@@ -86,6 +86,8 @@ fn main() {
         // should be good to go!
         cmd.arg("--with-jemalloc-prefix=je_");
         cmd.arg("--disable-tls");
+    } else if target.contains("dragonfly") {
+        cmd.arg("--with-jemalloc-prefix=je_");
     }
 
     if cfg!(feature = "debug-jemalloc") {
