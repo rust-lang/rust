@@ -111,6 +111,11 @@ pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
+pub extern fn __rust_unsized_deallocate(ptr: *mut u8, _align: usize) {
+    unsafe { libc::free(ptr as *mut libc::c_void) }
+}
+
+#[no_mangle]
 pub extern fn __rust_deallocate(ptr: *mut u8, _old_size: usize, _align: usize) {
     unsafe { libc::free(ptr as *mut libc::c_void) }
 }

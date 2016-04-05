@@ -43,6 +43,11 @@ pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
+pub extern "C" fn __rust_unsized_deallocate(ptr: *mut u8, align: usize) {
+    unsafe { imp::deallocate(ptr, 0, align) }
+}
+
+#[no_mangle]
 pub extern "C" fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     unsafe { imp::deallocate(ptr, old_size, align) }
 }

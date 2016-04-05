@@ -55,6 +55,9 @@ extern {
                link_name = "je_xallocx")]
     fn xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
     #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
+               link_name = "je_dallocx")]
+    fn dallocx(ptr: *mut c_void, flags: c_int);
+    #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
                link_name = "je_sdallocx")]
     fn sdallocx(ptr: *mut c_void, size: size_t, flags: c_int);
     #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios"),
@@ -112,6 +115,12 @@ pub extern "C" fn __rust_reallocate_inplace(ptr: *mut u8,
                                             -> usize {
     let flags = align_to_flags(align);
     unsafe { xallocx(ptr as *mut c_void, size as size_t, 0, flags) as usize }
+}
+
+#[no_mangle]
+pub extern "C" fn __rust_unsized_deallocate(ptr: *mut u8, align: usize) {
+    let flags = align_to_flags(align);
+    unsafe { dallocx(ptr as *mut c_void, flags) }
 }
 
 #[no_mangle]
