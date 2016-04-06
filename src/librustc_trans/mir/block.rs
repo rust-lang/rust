@@ -211,70 +211,13 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let mut llargs = Vec::with_capacity(arg_count);
 
                 // Prepare the return value destination
-                let ret_dest = if let Some((ref d, _)) = *destination {
-                    match *d {
-                        // Handle temporary lvalues, specifically Operand ones, as
-                        // they don't have allocas
-                        mir::Lvalue::Temp(idx) => {
-                            let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), d);
-                            let ret_ty = lvalue_ty.to_ty(bcx.tcx());
-                            match self.temps[idx as usize] {
-                                TempRef::Lvalue(dest) => {
-                                    if fn_ty.ret.is_indirect() {
-                                        llargs.push(dest.llval);
-                                        ReturnDest::Nothing
-                                    } else if fn_ty.ret.is_ignore() {
-                                        ReturnDest::Nothing
-                                    } else {
-                                        ReturnDest::Store(dest.llval)
-                                    }
-                                }
-                                TempRef::Operand(None) => {
-                                    let is_intrinsic = if let Intrinsic = callee.data {
-                                        true
-                                    } else {
-                                        false
-                                    };
-
-                                    if fn_ty.ret.is_indirect() {
-                                        // Odd, but possible, case, we have an operand temporary,
-                                        // but the calling convention has an indirect return.
-                                        let tmp = bcx.with_block(|bcx| {
-                                            base::alloc_ty(bcx, ret_ty, "tmp_ret")
-                                        });
-                                        llargs.push(tmp);
-                                        ReturnDest::IndirectOperand(tmp, idx)
-                                    } else if is_intrinsic {
-                                        // Currently, intrinsics always need a location to store
-                                        // the result. so we create a temporary alloca for the
-                                        // result
-                                        let tmp = bcx.with_block(|bcx| {
-                                            base::alloc_ty(bcx, ret_ty, "tmp_ret")
-                                        });
-                                        ReturnDest::IndirectOperand(tmp, idx)
-                                    } else if fn_ty.ret.is_ignore() {
-                                        ReturnDest::Nothing
-                                    } else {
-                                        ReturnDest::DirectOperand(idx)
-                                    }
-                                }
-                                TempRef::Operand(Some(_)) => {
-                                    bug!("lvalue temp already assigned to");
-                                }
-                            }
-                        }
-                        _ => {
-                            let dest = self.trans_lvalue(&bcx, d);
-                            if fn_ty.ret.is_indirect() {
-                                llargs.push(dest.llval);
-                                ReturnDest::Nothing
-                            } else if fn_ty.ret.is_ignore() {
-                                ReturnDest::Nothing
-                            } else {
-                                ReturnDest::Store(dest.llval)
-                            }
-                        }
-                    }
+                let ret_dest = if let Some((ref dest, _)) = *destination {
+                    let is_intrinsic = if let Intrinsic = callee.data {
+                        true
+                    } else {
+                        false
+                    };
+                    self.make_return_dest(&bcx, dest, &fn_ty.ret, &mut llargs, is_intrinsic)
                 } else {
                     ReturnDest::Nothing
                 };
@@ -599,6 +542,57 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     pub fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
         self.blocks[bb.index()].llbb
+    }
+
+    fn make_return_dest(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                        dest: &mir::Lvalue<'tcx>, fn_ret_ty: &ArgType,
+                        llargs: &mut Vec<ValueRef>, is_intrinsic: bool) -> ReturnDest {
+        // If the return is ignored, we can just return a do-nothing ReturnDest
+        if fn_ret_ty.is_ignore() {
+            return ReturnDest::Nothing;
+        }
+        let dest = match *dest {
+            mir::Lvalue::Temp(idx) => {
+                let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), dest);
+                let ret_ty = lvalue_ty.to_ty(bcx.tcx());
+                match self.temps[idx as usize] {
+                    TempRef::Lvalue(dest) => dest,
+                    TempRef::Operand(None) => {
+                        // Handle temporary lvalues, specifically Operand ones, as
+                        // they don't have allocas
+                        return if fn_ret_ty.is_indirect() {
+                            // Odd, but possible, case, we have an operand temporary,
+                            // but the calling convention has an indirect return.
+                            let tmp = bcx.with_block(|bcx| {
+                                base::alloc_ty(bcx, ret_ty, "tmp_ret")
+                            });
+                            llargs.push(tmp);
+                            ReturnDest::IndirectOperand(tmp, idx)
+                        } else if is_intrinsic {
+                            // Currently, intrinsics always need a location to store
+                            // the result. so we create a temporary alloca for the
+                            // result
+                            let tmp = bcx.with_block(|bcx| {
+                                base::alloc_ty(bcx, ret_ty, "tmp_ret")
+                            });
+                            ReturnDest::IndirectOperand(tmp, idx)
+                        } else {
+                            ReturnDest::DirectOperand(idx)
+                        };
+                    }
+                    TempRef::Operand(Some(_)) => {
+                        bug!("lvalue temp already assigned to");
+                    }
+                }
+            }
+            _ => self.trans_lvalue(bcx, dest)
+        };
+        if fn_ret_ty.is_indirect() {
+            llargs.push(dest.llval);
+            ReturnDest::Nothing
+        } else {
+            ReturnDest::Store(dest.llval)
+        }
     }
 
     fn trans_transmute(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
