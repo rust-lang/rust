@@ -272,10 +272,9 @@ fn get_drop_glue_core<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let _s = StatRecorder::new(ccx, format!("drop {:?}", t));
 
-    let empty_substs = ccx.tcx().mk_substs(Substs::empty());
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &arena);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &arena);
 
     let bcx = fcx.init(false, None);
 

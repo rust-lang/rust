@@ -1400,20 +1400,23 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn new(ccx: &'blk CrateContext<'blk, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
-               def_id: Option<DefId>,
-               param_substs: &'tcx Substs<'tcx>,
+               instance: Option<Instance<'tcx>>,
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
-        common::validate_substs(param_substs);
+        let (param_substs, def_id) = match instance {
+            Some(instance) => {
+                common::validate_substs(instance.substs);
+                (instance.substs, Some(instance.def))
+            }
+            None => (ccx.tcx().mk_substs(Substs::empty()), None)
+        };
 
         let inlined_did = def_id.and_then(|def_id| inline::get_local_instance(ccx, def_id));
         let inlined_id = inlined_did.and_then(|id| ccx.tcx().map.as_local_node_id(id));
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
 
-        debug!("FunctionContext::new(path={}, def_id={:?}, param_substs={:?})",
-            inlined_id.map_or(String::new(), |id| ccx.tcx().node_path_str(id)),
-            def_id,
-            param_substs);
+        debug!("FunctionContext::new({})",
+               instance.map_or(String::new(), |i| i.to_string()));
 
         let debug_context = debuginfo::create_function_debug_context(ccx,
             inlined_id.unwrap_or(ast::DUMMY_NODE_ID), param_substs, llfndecl);
@@ -1810,8 +1813,7 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                decl: &hir::FnDecl,
                                body: &hir::Block,
                                llfndecl: ValueRef,
-                               param_substs: &'tcx Substs<'tcx>,
-                               def_id: DefId,
+                               instance: Instance<'tcx>,
                                inlined_id: ast::NodeId,
                                fn_ty: FnType,
                                abi: Abi,
@@ -1819,18 +1821,17 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
     if collector::collecting_debug_information(ccx) {
-        ccx.record_translation_item_as_generated(
-            TransItem::Fn(Instance::new(def_id, param_substs)));
+        ccx.record_translation_item_as_generated(TransItem::Fn(instance));
     }
 
     let _icx = push_ctxt("trans_closure");
     attributes::emit_uwtable(llfndecl, true);
 
-    debug!("trans_closure(..., param_substs={:?})", param_substs);
+    debug!("trans_closure(..., {})", instance);
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, Some(def_id), param_substs, &arena);
+    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, Some(instance), &arena);
 
     if fcx.mir.is_some() {
         return mir::trans_mir(&fcx);
@@ -1921,8 +1922,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   decl,
                   body,
                   llfndecl,
-                  param_substs,
-                  def_id,
+                  Instance::new(def_id, param_substs),
                   id,
                   fn_ty,
                   abi,
@@ -2015,9 +2015,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty,
-                               Some(ccx.tcx().map.local_def_id(ctor_id)),
-                               param_substs, &arena);
+    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, None, &arena);
     let bcx = fcx.init(false, None);
 
     assert!(!fcx.needs_ret_allocas);

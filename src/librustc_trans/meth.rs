@@ -93,10 +93,9 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
         symbol_names::internal_name_from_type_and_suffix(ccx, method_ty, "object_shim");
     let llfn = declare::define_internal_fn(ccx, &function_name, method_ty);
 
-    let empty_substs = tcx.mk_substs(Substs::empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, empty_substs, &block_arena);
+    fcx = FunctionContext::new(ccx, llfn, fn_ty, None, &block_arena);
     let mut bcx = fcx.init(false, None);
     assert!(!fcx.needs_ret_allocas);
 
