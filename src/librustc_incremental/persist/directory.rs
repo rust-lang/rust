@@ -14,8 +14,8 @@
 //! item might even be removed in the meantime).
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map::DefPath;
-use rustc::middle::def_id::DefId;
+use rustc::hir::map::DefPath;
+use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::util::nodemap::DefIdMap;
 use rustc_serialize::{Decoder as RustcDecoder,
