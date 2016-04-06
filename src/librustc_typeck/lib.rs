@@ -90,28 +90,26 @@ extern crate arena;
 extern crate fmt_macros;
 #[macro_use] extern crate rustc;
 extern crate rustc_platform_intrinsics as intrinsics;
-extern crate rustc_front;
 extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_const_eval;
 
 pub use rustc::dep_graph;
-pub use rustc::front;
+pub use rustc::hir;
 pub use rustc::lint;
 pub use rustc::middle;
 pub use rustc::session;
 pub use rustc::util;
 
 use dep_graph::DepNode;
-use front::map as hir_map;
-use middle::def::Def;
+use hir::map as hir_map;
+use hir::def::Def;
 use rustc::infer::{self, TypeOrigin};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::traits::ProjectionMode;
 use session::{config, CompileResult};
 use util::common::time;
-use rustc_front::hir;
 
 use syntax::codemap::Span;
 use syntax::ast;
@@ -138,7 +136,7 @@ pub struct TypeAndSubsts<'tcx> {
 
 pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
-    pub trait_map: ty::TraitMap,
+    pub trait_map: hir::TraitMap,
     /// A vector of every trait accessible in the whole crate
     /// (i.e. including those from subcrates). This is used only for
     /// error reporting, and so is lazily initialised and generally
@@ -331,7 +329,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt, trait_map: ty::TraitMap) -> CompileResult {
+pub fn check_crate(tcx: &TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,

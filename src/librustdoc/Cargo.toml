@@ -15,7 +15,6 @@ rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_eval = { path = "../librustc_const_eval" }
 rustc_driver = { path = "../librustc_driver" }
-rustc_front = { path = "../librustc_front" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_resolve = { path = "../librustc_resolve" }

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use dep_graph::DepNode;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use ty::subst::{Subst, Substs, EnumeratedItems};
 use ty::{TransmuteRestriction, TyCtxt};
 use ty::{self, Ty, TypeFoldable};
@@ -20,8 +20,8 @@ use std::fmt;
 use syntax::abi::Abi::RustIntrinsic;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::hir;
+use hir::intravisit::{self, Visitor, FnKind};
+use hir;
 
 pub fn check_crate(tcx: &TyCtxt) {
     let mut visitor = IntrinsicCheckingVisitor {

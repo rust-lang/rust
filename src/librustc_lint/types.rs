@@ -10,7 +10,7 @@
 
 #![allow(non_snake_case)]
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -29,8 +29,7 @@ use syntax::abi::Abi;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 
-use rustc_front::hir;
-use rustc_front::util::is_shift_binop;
+use rustc::hir;
 
 register_long_diagnostics! {
 E0519: r##"
@@ -130,7 +129,7 @@ impl LateLintPass for TypeLimits {
                                  "comparison is useless due to type limits");
                 }
 
-                if is_shift_binop(binop.node) {
+                if binop.node.is_shift() {
                     let opt_ty_bits = match cx.tcx.node_id_to_type(l.id).sty {
                         ty::TyInt(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::TyUint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),

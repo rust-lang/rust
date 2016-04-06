@@ -12,16 +12,16 @@
 // recursively.
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map as ast_map;
+use rustc::hir::map as ast_map;
 use rustc::session::{Session, CompileResult};
-use rustc::middle::def::{Def, DefMap};
+use rustc::hir::def::{Def, DefMap};
 use rustc::util::nodemap::NodeMap;
 
 use syntax::{ast};
 use syntax::codemap::Span;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir;
 
 use std::cell::RefCell;
 

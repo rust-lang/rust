@@ -17,13 +17,13 @@ use cstore::{self, CStore, CrateSource, MetadataBlob};
 use decoder;
 use loader::{self, CratePaths};
 
-use rustc::back::svh::Svh;
+use rustc::hir::svh::Svh;
 use rustc::dep_graph::DepNode;
 use rustc::session::{config, Session};
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
 use rustc::util::nodemap::FnvHashMap;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 
 use std::cell::{RefCell, Cell};
 use std::path::PathBuf;
@@ -37,8 +37,8 @@ use syntax::parse;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
-use rustc_front::intravisit::Visitor;
-use rustc_front::hir;
+use rustc::hir::intravisit::Visitor;
+use rustc::hir;
 use log;
 
 pub struct LocalCrateReader<'a, 'b:'a> {

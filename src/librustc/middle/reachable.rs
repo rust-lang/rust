@@ -16,9 +16,9 @@
 // reachable as well.
 
 use dep_graph::DepNode;
-use front::map as ast_map;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::map as ast_map;
+use hir::def::Def;
+use hir::def_id::DefId;
 use ty::{self, TyCtxt};
 use middle::privacy;
 use session::config;
@@ -28,9 +28,9 @@ use std::collections::HashSet;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
-use rustc_front::intravisit;
+use hir;
+use hir::intravisit::Visitor;
+use hir::intravisit;
 
 // Returns true if the given set of generics implies that the item it's
 // associated with must be inlined.

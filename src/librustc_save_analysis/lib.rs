@@ -23,15 +23,14 @@
 #![feature(staged_api)]
 
 #[macro_use] extern crate rustc;
-extern crate rustc_front;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
 
-use rustc_front::{hir, lowering};
-use rustc::front::map::NodeItem;
-use rustc::middle::def::Def;
-use rustc::middle::def_id::DefId;
+use rustc::hir::{self, lowering};
+use rustc::hir::map::NodeItem;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
 use rustc::ty::{self, TyCtxt};
 
@@ -40,7 +39,6 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, NodeId, PatKind};
-use syntax::ast_util;
 use syntax::codemap::*;
 use syntax::parse::token::{self, keywords};
 use syntax::visit::{self, Visitor};
@@ -118,7 +116,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemKind::Fn(..) => {
-                let name = self.tcx.map.path_to_string(item.id);
+                let name = self.tcx.node_path_str(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -132,7 +130,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
                 // If the variable is immutable, save the initialising expression.
                 let (value, keyword) = match mt {
@@ -155,7 +153,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
                 filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::VariableData(VariableData {
@@ -169,7 +167,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
                 let cm = self.tcx.sess.codemap();
                 let filename = cm.span_to_filename(m.inner);
@@ -186,7 +184,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Enum(..) => {
-                let enum_name = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let enum_name = format!("::{}", self.tcx.node_path_str(item.id));
                 let val = self.span_utils.snippet(item.span);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -246,23 +244,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_field_data(&self, field: &ast::StructField,
                           scope: NodeId) -> Option<VariableData> {
-        match field.node.kind {
-            ast::NamedField(ident, _) => {
-                let qualname = format!("::{}::{}", self.tcx.map.path_to_string(scope), ident);
-                let typ = self.tcx.node_types().get(&field.node.id).unwrap().to_string();
-                let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
-                filter!(self.span_utils, sub_span, field.span, None);
-                Some(VariableData {
-                    id: field.node.id,
-                    name: ident.to_string(),
-                    qualname: qualname,
-                    span: sub_span.unwrap(),
-                    scope: scope,
-                    value: "".to_owned(),
-                    type_value: typ,
-                })
-            }
-            _ => None,
+        if let Some(ident) = field.ident {
+            let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
+            let typ = self.tcx.node_types().get(&field.id).unwrap().to_string();
+            let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
+            filter!(self.span_utils, sub_span, field.span, None);
+            Some(VariableData {
+                id: field.id,
+                name: ident.to_string(),
+                qualname: qualname,
+                span: sub_span.unwrap(),
+                scope: scope,
+                value: "".to_owned(),
+                type_value: typ,
+            })
+        } else {
+            None
         }
     }
 
@@ -278,7 +275,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     match item.node {
                         hir::ItemImpl(_, _, _, _, ref ty, _) => {
                             let mut result = String::from("<");
-                            result.push_str(&rustc_front::print::pprust::ty_to_string(&ty));
+                            result.push_str(&rustc::hir::print::ty_to_string(&ty));
 
                             match self.tcx.trait_of_item(self.tcx.map.local_def_id(id)) {
                                 Some(def_id) => {
@@ -671,7 +668,7 @@ impl<'v> Visitor<'v> for PathCollector {
                     ast::BindingMode::ByValue(mt) => mt,
                 };
                 // collect path for either visit_local or visit_arm
-                let path = ast_util::ident_to_path(path1.span, path1.node);
+                let path = ast::Path::from_ident(path1.span, path1.node);
                 self.collected_paths.push((p.id, path, immut, recorder::VarRef));
             }
             _ => {}

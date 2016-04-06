@@ -69,7 +69,6 @@
 
 extern crate rustc;
 extern crate rustc_back;
-extern crate rustc_front;
 extern crate rustc_metadata;
 extern crate rustc_mir;
 

@@ -71,16 +71,16 @@ pub use self::deref_kind::*;
 
 use self::Aliasability::*;
 
-use middle::def_id::DefId;
-use front::map as ast_map;
+use hir::def_id::DefId;
+use hir::map as ast_map;
 use infer;
 use middle::const_qualif::ConstQualif;
-use middle::def::Def;
+use hir::def::Def;
 use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
 
-use rustc_front::hir::{MutImmutable, MutMutable, PatKind};
-use rustc_front::hir;
+use hir::{MutImmutable, MutMutable, PatKind};
+use hir;
 use syntax::ast;
 use syntax::codemap::Span;
 

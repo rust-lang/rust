@@ -22,15 +22,15 @@ use index;
 use tls_context;
 use tydecode::TyDecoder;
 
-use rustc::back::svh::Svh;
-use rustc::front::map as hir_map;
+use rustc::hir::svh::Svh;
+use rustc::hir::map as hir_map;
 use rustc::util::nodemap::FnvHashMap;
-use rustc_front::hir;
+use rustc::hir;
 
 use middle::cstore::{LOCAL_CRATE, FoundAst, InlinedItem, LinkagePreference};
 use middle::cstore::{DefLike, DlDef, DlField, DlImpl, tls};
-use middle::def::Def;
-use middle::def_id::{DefId, DefIndex};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{DefId, DefIndex};
 use middle::lang_items;
 use rustc::ty::subst;
 use rustc::ty::{ImplContainer, TraitContainer};
@@ -253,22 +253,6 @@ fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &TyCtxt<'tcx>, cdata: Cmd)
                         -> ty::TraitRef<'tcx> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
-}
-
-fn item_path(item_doc: rbml::Doc) -> Vec<hir_map::PathElem> {
-    let path_doc = reader::get_doc(item_doc, tag_path);
-    reader::docs(path_doc).filter_map(|(tag, elt_doc)| {
-        if tag == tag_path_elem_mod {
-            let s = elt_doc.as_str_slice();
-            Some(hir_map::PathMod(token::intern(s)))
-        } else if tag == tag_path_elem_name {
-            let s = elt_doc.as_str_slice();
-            Some(hir_map::PathName(token::intern(s)))
-        } else {
-            // ignore tag_path_len element
-            None
-        }
-    }).collect()
 }
 
 fn item_name(intr: &IdentInterner, item: rbml::Doc) -> ast::Name {
@@ -786,10 +770,6 @@ pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
                                 callback)
 }
 
-pub fn get_item_path(cdata: Cmd, id: DefIndex) -> Vec<hir_map::PathElem> {
-    item_path(cdata.lookup_item(id))
-}
-
 pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex) -> ast::Name {
     item_name(intr, cdata.lookup_item(id))
 }
@@ -803,14 +783,11 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
         krate: cdata.cnum,
         index: def_key(cdata, id).parent.unwrap()
     };
-    let mut parent_path = item_path(item_doc);
-    parent_path.pop();
     let mut parent_def_path = def_path(cdata, id);
     parent_def_path.data.pop();
     if let Some(ast_doc) = reader::maybe_get_doc(item_doc, tag_ast as usize) {
         let ii = decode_inlined_item(cdata,
                                      tcx,
-                                     parent_path,
                                      parent_def_path,
                                      parent_def_id,
                                      ast_doc,
@@ -823,15 +800,12 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &TyCtxt<'tcx>, id: DefIndex)
             krate: cdata.cnum,
             index: def_key(cdata, parent_def_id.index).parent.unwrap()
         };
-        let mut grandparent_path = parent_path;
-        grandparent_path.pop();
         let mut grandparent_def_path = parent_def_path;
         grandparent_def_path.data.pop();
         let parent_doc = cdata.lookup_item(parent_did.index);
         if let Some(ast_doc) = reader::maybe_get_doc(parent_doc, tag_ast as usize) {
             let ii = decode_inlined_item(cdata,
                                          tcx,
-                                         grandparent_path,
                                          grandparent_def_path,
                                          grandparent_def_id,
                                          ast_doc,

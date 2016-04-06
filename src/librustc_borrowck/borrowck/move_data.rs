@@ -28,9 +28,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::usize;
 use syntax::ast;
-use syntax::ast_util;
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
+use rustc::hir::intravisit::IdRange;
 
 #[path="fragments.rs"]
 pub mod fragments;
@@ -602,7 +602,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
     pub fn new(move_data: MoveData<'tcx>,
                tcx: &'a TyCtxt<'tcx>,
                cfg: &cfg::CFG,
-               id_range: ast_util::IdRange,
+               id_range: IdRange,
                decl: &hir::FnDecl,
                body: &hir::Block)
                -> FlowedMoveData<'a, 'tcx> {

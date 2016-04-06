@@ -21,14 +21,14 @@ pub use self::MovedValueUseKind::*;
 use self::InteriorKind::*;
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
-use rustc::front::map::blocks::FnParts;
+use rustc::hir::map as hir_map;
+use rustc::hir::map::blocks::FnParts;
 use rustc::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
@@ -44,11 +44,10 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
-use rustc_front::hir;
-use rustc_front::hir::{FnDecl, Block};
-use rustc_front::intravisit;
-use rustc_front::intravisit::{Visitor, FnKind};
-use rustc_front::util as hir_util;
+use rustc::hir;
+use rustc::hir::{FnDecl, Block};
+use rustc::hir::intravisit;
+use rustc::hir::intravisit::{Visitor, FnKind};
 
 use rustc::mir::mir_map::MirMap;
 
@@ -210,7 +209,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 {
     // Check the body of fn items.
     let tcx = this.tcx;
-    let id_range = hir_util::compute_id_range_for_fn_body(fk, decl, body, sp, id);
+    let id_range = intravisit::compute_id_range_for_fn_body(fk, decl, body, sp, id);
     let (all_loans, move_data) =
         gather_loans::gather_loans_in_fn(this, id, decl, body);
 

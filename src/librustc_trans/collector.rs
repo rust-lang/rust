@@ -188,11 +188,11 @@
 //! this is not implemented however: a translation item will be produced
 //! regardless of whether it is actually needed or not.
 
-use rustc_front::hir;
-use rustc_front::intravisit as hir_visit;
+use rustc::hir;
+use rustc::hir::intravisit as hir_visit;
 
-use rustc::front::map as hir_map;
-use rustc::middle::def_id::DefId;
+use rustc::hir::map as hir_map;
+use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::{self, Substs, Subst};

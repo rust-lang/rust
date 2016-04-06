@@ -43,7 +43,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::attr::AttrMetaMethods;
 
-use rustc_front::hir;
+use rustc::hir;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1

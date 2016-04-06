@@ -12,12 +12,13 @@
 // FIXME: remove this after snapshot, and Results are handled
 #![allow(unused_must_use)]
 
-use rustc::front::map as ast_map;
+use rustc::hir::map as ast_map;
 use rustc::session::Session;
 
-use rustc_front::hir;
-use rustc_front::fold;
-use rustc_front::fold::Folder;
+use rustc::hir;
+use rustc::hir::fold;
+use rustc::hir::fold::Folder;
+use rustc::hir::intravisit::{IdRange, IdRangeComputingVisitor, IdVisitingOperation};
 
 use common as c;
 use cstore;
@@ -30,13 +31,13 @@ use middle::cstore::{InlinedItem, InlinedItemRef};
 use rustc::ty::adjustment;
 use rustc::ty::cast;
 use middle::const_qualif::ConstQualif;
-use middle::def::{self, Def};
-use middle::def_id::DefId;
+use rustc::hir::def::{self, Def};
+use rustc::hir::def_id::DefId;
 use middle::region;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty, TyCtxt};
 
-use syntax::{ast, ast_util, codemap};
+use syntax::{ast, codemap};
 use syntax::ast::NodeIdAssigner;
 use syntax::ptr::P;
 
@@ -55,14 +56,14 @@ use serialize::EncoderHelpers;
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::ast::NodeId;
-#[cfg(test)] use rustc_front::print::pprust;
-#[cfg(test)] use rustc_front::lowering::{lower_item, LoweringContext};
+#[cfg(test)] use rustc::hir::print as pprust;
+#[cfg(test)] use rustc::hir::lowering::{lower_item, LoweringContext};
 
 struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a TyCtxt<'tcx>,
     cdata: &'b cstore::crate_metadata,
-    from_id_range: ast_util::IdRange,
-    to_id_range: ast_util::IdRange,
+    from_id_range: IdRange,
+    to_id_range: IdRange,
     // Cache the last used filemap for translating spans as an optimization.
     last_filemap_index: Cell<usize>,
 }
@@ -84,7 +85,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         InlinedItemRef::ImplItem(_, ii) => ii.id,
     };
     debug!("> Encoding inlined item: {} ({:?})",
-           ecx.tcx.map.path_to_string(id),
+           ecx.tcx.node_path_str(id),
            rbml_w.writer.seek(SeekFrom::Current(0)));
 
     // Folding could be avoided with a smarter encoder.
@@ -98,7 +99,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     rbml_w.end_tag();
 
     debug!("< Encoded inlined fn: {} ({:?})",
-           ecx.tcx.map.path_to_string(id),
+           ecx.tcx.node_path_str(id),
            rbml_w.writer.seek(SeekFrom::Current(0)));
 }
 
@@ -123,20 +124,12 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
 /// ast-map.
 pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &TyCtxt<'tcx>,
-                                 parent_path: Vec<ast_map::PathElem>,
                                  parent_def_path: ast_map::DefPath,
                                  parent_did: DefId,
                                  ast_doc: rbml::Doc,
                                  orig_did: DefId)
                                  -> &'tcx InlinedItem {
-    let mut path_as_str = None;
-    debug!("> Decoding inlined fn: {:?}::?",
-    {
-        // Do an Option dance to use the path after it is moved below.
-        let s = ast_map::path_to_string(parent_path.iter().cloned());
-        path_as_str = Some(s);
-        path_as_str.as_ref().map(|x| &x[..])
-    });
+    debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
     let mut ast_dsr = reader::Decoder::new(ast_doc);
     let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
     let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
@@ -148,7 +141,6 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         last_filemap_index: Cell::new(0)
     };
     let ii = ast_map::map_decoded_item(&dcx.tcx.map,
-                                       parent_path,
                                        parent_def_path,
                                        parent_did,
                                        decode_ast(ast_doc),
@@ -161,14 +153,14 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
     };
     debug!("Fn named: {}", name);
     debug!("< Decoded inlined fn: {}::{}",
-            path_as_str.unwrap(),
+            tcx.item_path_str(parent_did),
             name);
     region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
     decode_side_tables(dcx, ast_doc);
     copy_item_types(dcx, ii, orig_did);
     if let InlinedItem::Item(ref i) = *ii {
         debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
-               ::rustc_front::print::pprust::item_to_string(&i));
+               ::rustc::hir::print::item_to_string(&i));
     }
 
     ii
@@ -178,13 +170,13 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
 // Enumerating the IDs which appear in an AST
 
 fn reserve_id_range(sess: &Session,
-                    from_id_range: ast_util::IdRange) -> ast_util::IdRange {
+                    from_id_range: IdRange) -> IdRange {
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.reserve_node_ids(cnt);
     let to_id_max = to_id_min + cnt;
-    ast_util::IdRange { min: to_id_min, max: to_id_max }
+    IdRange { min: to_id_min, max: to_id_max }
 }
 
 impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
@@ -409,20 +401,20 @@ impl tr for Def {
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 
-fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &ty::Freevar) {
+fn encode_freevar_entry(rbml_w: &mut Encoder, fv: &hir::Freevar) {
     (*fv).encode(rbml_w).unwrap();
 }
 
 trait rbml_decoder_helper {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> ty::Freevar;
+                          -> hir::Freevar;
     fn read_capture_mode(&mut self) -> hir::CaptureClause;
 }
 
 impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     fn read_freevar_entry(&mut self, dcx: &DecodeContext)
-                          -> ty::Freevar {
-        let fv: ty::Freevar = Decodable::decode(self).unwrap();
+                          -> hir::Freevar {
+        let fv: hir::Freevar = Decodable::decode(self).unwrap();
         fv.tr(dcx)
     }
 
@@ -432,9 +424,9 @@ impl<'a> rbml_decoder_helper for reader::Decoder<'a> {
     }
 }
 
-impl tr for ty::Freevar {
-    fn tr(&self, dcx: &DecodeContext) -> ty::Freevar {
-        ty::Freevar {
+impl tr for hir::Freevar {
+    fn tr(&self, dcx: &DecodeContext) -> hir::Freevar {
+        hir::Freevar {
             def: self.def.tr(dcx),
             span: self.span.tr(dcx),
         }
@@ -705,7 +697,7 @@ struct SideTableEncodingIdVisitor<'a, 'b:'a, 'c:'a, 'tcx:'c> {
     rbml_w: &'a mut Encoder<'b>,
 }
 
-impl<'a, 'b, 'c, 'tcx> ast_util::IdVisitingOperation for
+impl<'a, 'b, 'c, 'tcx> IdVisitingOperation for
         SideTableEncodingIdVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_id(&mut self, id: ast::NodeId) {
         encode_side_tables_for_id(self.ecx, self.rbml_w, id)
@@ -1261,8 +1253,8 @@ fn copy_item_types(dcx: &DecodeContext, ii: &InlinedItem, orig_did: DefId) {
     }
 }
 
-fn inlined_item_id_range(v: &InlinedItem) -> ast_util::IdRange {
-    let mut visitor = ast_util::IdRangeComputingVisitor::new();
+fn inlined_item_id_range(v: &InlinedItem) -> IdRange {
+    let mut visitor = IdRangeComputingVisitor::new();
     v.visit_ids(&mut visitor);
     visitor.result()
 }

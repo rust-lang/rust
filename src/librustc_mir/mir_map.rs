@@ -17,7 +17,6 @@
 //! - `#[rustc_mir(pretty="file.mir")]`
 
 extern crate syntax;
-extern crate rustc_front;
 
 use build;
 use rustc::dep_graph::DepNode;
@@ -31,8 +30,8 @@ use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
-use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor};
+use rustc::hir;
+use rustc::hir::intravisit::{self, Visitor};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;

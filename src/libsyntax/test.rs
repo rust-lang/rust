@@ -18,7 +18,6 @@ use std::iter;
 use std::slice;
 use std::mem;
 use std::vec;
-use ast_util::*;
 use attr::AttrMetaMethods;
 use attr;
 use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
@@ -35,7 +34,7 @@ use fold;
 use parse::token::{intern, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
-use {ast, ast_util};
+use ast;
 use ptr::P;
 use util::small_vector::SmallVector;
 
@@ -120,8 +119,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         if ident.name != token::special_idents::invalid.name {
             self.cx.path.push(ident);
         }
-        debug!("current path: {}",
-               ast_util::path_name_i(&self.cx.path));
+        debug!("current path: {}", path_name_i(&self.cx.path));
 
         let i = if is_test_fn(&self.cx, &i) || is_bench_fn(&self.cx, &i) {
             match i.node {
@@ -349,7 +347,6 @@ enum HasTestSignature {
     NotEvenAFunction,
 }
 
-
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
     let has_test_attr = attr::contains_name(&i.attrs, "test");
 
@@ -576,6 +573,11 @@ fn path_node(ids: Vec<ast::Ident> ) -> ast::Path {
     }
 }
 
+fn path_name_i(idents: &[ast::Ident]) -> String {
+    // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
+    idents.iter().map(|i| i.to_string()).collect::<Vec<String>>().join("::")
+}
+
 fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
@@ -645,10 +647,10 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // creates $name: $expr
     let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
-    debug!("encoding {}", ast_util::path_name_i(&path[..]));
+    debug!("encoding {}", path_name_i(&path[..]));
 
     // path to the #[test] function: "foo::bar::baz"
-    let path_string = ast_util::path_name_i(&path[..]);
+    let path_string = path_name_i(&path[..]);
     let name_expr = ecx.expr_str(span, token::intern_and_get_ident(&path_string[..]));
 
     // self::test::StaticTestName($name_expr)

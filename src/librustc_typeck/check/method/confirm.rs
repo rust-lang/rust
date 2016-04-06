@@ -12,7 +12,7 @@ use super::probe;
 
 use check::{self, FnCtxt, callee, demand};
 use check::UnresolvedTypeAction;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::ty::subst::{self};
 use rustc::traits;
 use rustc::ty::{self, NoPreference, PreferMutLvalue, Ty, TyCtxt};
@@ -21,7 +21,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::infer;
 use rustc::infer::{InferCtxt, TypeOrigin};
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
 
 struct ConfirmContext<'a, 'tcx:'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,

@@ -19,9 +19,9 @@ pub use self::DefRegion::*;
 use self::ScopeChain::*;
 
 use dep_graph::DepNode;
-use front::map::Map;
+use hir::map::Map;
 use session::Session;
-use middle::def::{Def, DefMap};
+use hir::def::{Def, DefMap};
 use middle::region;
 use ty::subst;
 use ty;
@@ -32,9 +32,9 @@ use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use util::nodemap::NodeMap;
 
-use rustc_front::hir;
-use rustc_front::print::pprust::lifetime_to_string;
-use rustc_front::intravisit::{self, Visitor, FnKind};
+use hir;
+use hir::print::lifetime_to_string;
+use hir::intravisit::{self, Visitor, FnKind};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {

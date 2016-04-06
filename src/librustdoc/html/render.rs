@@ -56,11 +56,11 @@ use serialize::json::{ToJson, Json, as_json};
 use syntax::{abi, ast};
 use syntax::feature_gate::UnstableFeatures;
 use rustc::middle::cstore::LOCAL_CRATE;
-use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::session::config::get_unstable_features_setting;
-use rustc_front::hir;
+use rustc::hir;
 
 use clean::{self, SelfTy, Attributes, GetDefId};
 use doctree;

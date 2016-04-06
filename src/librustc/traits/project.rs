@@ -23,7 +23,7 @@ use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use infer::{self, InferOk, TypeOrigin};
 use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};

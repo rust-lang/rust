@@ -13,7 +13,7 @@ use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::ty::{FnOutput, Ty};
 use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc_front::hir;
+use rustc::hir;
 use std::ops::{Index, IndexMut};
 use syntax::ast;
 use syntax::codemap::Span;

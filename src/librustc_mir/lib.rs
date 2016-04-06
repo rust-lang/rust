@@ -30,7 +30,6 @@ extern crate graphviz as dot;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_front;
 extern crate rustc_back;
 extern crate syntax;
 extern crate rustc_const_math;

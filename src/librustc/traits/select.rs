@@ -36,7 +36,7 @@ use super::{VtableImplData, VtableObjectData, VtableBuiltinData,
 use super::object_safety;
 use super::util;
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use infer;
 use infer::{InferCtxt, InferOk, TypeFreshener, TypeOrigin};
 use ty::subst::{Subst, Substs, TypeSpace};
@@ -49,7 +49,7 @@ use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use syntax::abi::Abi;
-use rustc_front::hir;
+use hir;
 use util::common::ErrorReported;
 use util::nodemap::FnvHashMap;
 

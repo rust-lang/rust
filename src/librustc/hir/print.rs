@@ -950,7 +950,7 @@ impl<'a> State<'a> {
 
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
         self.head("")?;
-        let generics = ::util::empty_generics();
+        let generics = hir::Generics::empty();
         self.print_struct(&v.node.data, &generics, v.node.name, v.span, false)?;
         match v.node.disr_expr {
             Some(ref d) => {
@@ -1285,12 +1285,12 @@ impl<'a> State<'a> {
                          -> io::Result<()> {
         self.print_expr(lhs)?;
         space(&mut self.s)?;
-        self.word_space(::util::binop_to_string(op.node))?;
+        self.word_space(op.node.as_str())?;
         self.print_expr(rhs)
     }
 
     fn print_expr_unary(&mut self, op: hir::UnOp, expr: &hir::Expr) -> io::Result<()> {
-        word(&mut self.s, ::util::unop_to_string(op))?;
+        word(&mut self.s, op.as_str())?;
         self.print_expr_maybe_paren(expr)
     }
 
@@ -1434,7 +1434,7 @@ impl<'a> State<'a> {
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 self.print_expr(&lhs)?;
                 space(&mut self.s)?;
-                word(&mut self.s, ::util::binop_to_string(op.node))?;
+                word(&mut self.s, op.node.as_str())?;
                 self.word_space("=")?;
                 self.print_expr(&rhs)?;
             }

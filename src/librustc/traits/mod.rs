@@ -15,7 +15,7 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst;
 use ty::{self, Ty, TypeFoldable};

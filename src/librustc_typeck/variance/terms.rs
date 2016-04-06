@@ -27,8 +27,8 @@ use rustc::ty::maps::ItemVariances;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::intravisit::Visitor;
 use util::nodemap::NodeMap;
 
 use self::VarianceTerm::*;

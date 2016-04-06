@@ -22,12 +22,12 @@
 // are *mostly* used as a part of that interface, but these should
 // probably get a better home if someone can find one.
 
-use back::svh::Svh;
-use front::map as hir_map;
-use middle::def::{self, Def};
+use hir::svh::Svh;
+use hir::map as hir_map;
+use hir::def::{self, Def};
 use middle::lang_items;
 use ty::{self, Ty, TyCtxt, VariantKind};
-use middle::def_id::{DefId, DefIndex};
+use hir::def_id::{DefId, DefIndex};
 use mir::repr::Mir;
 use mir::mir_map::MirMap;
 use session::Session;
@@ -38,15 +38,13 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax::ast_util::{IdVisitingOperation};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use syntax::parse::token::InternedString;
 use rustc_back::target::Target;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
-use rustc_front::util::IdVisitor;
+use hir;
+use hir::intravisit::{IdVisitor, IdVisitingOperation, Visitor};
 
 pub use self::DefLike::{DlDef, DlField, DlImpl};
 pub use self::NativeLibraryKind::{NativeStatic, NativeFramework, NativeUnknown};
@@ -168,9 +166,7 @@ pub trait CrateStore<'tcx> : Any {
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx>;
-    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
-    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn item_name(&self, def: DefId) -> ast::Name;
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx>;
@@ -347,12 +343,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx> { bug!("item_type") }
-    fn relative_item_path(&self, def: DefId)
-                          -> Vec<hir_map::PathElem> { bug!("relative_item_path") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
-    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { bug!("extern_item_path") }
     fn item_name(&self, def: DefId) -> ast::Name { bug!("item_name") }
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }
@@ -506,7 +499,7 @@ pub mod tls {
     use std::mem;
     use ty::{self, Ty, TyCtxt};
     use ty::subst::Substs;
-    use middle::def_id::DefId;
+    use hir::def_id::DefId;
 
     pub trait EncodingContext<'tcx> {
         fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;

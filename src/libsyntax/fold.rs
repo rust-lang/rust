@@ -21,7 +21,6 @@
 use ast::*;
 use ast;
 use attr::{ThinAttributes, ThinAttributesExt};
-use ast_util;
 use codemap::{respan, Span, Spanned};
 use parse::token;
 use ptr::P;
@@ -847,15 +846,13 @@ pub fn noop_fold_poly_trait_ref<T: Folder>(p: PolyTraitRef, fld: &mut T) -> Poly
 }
 
 pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructField {
-    let StructField {node: StructField_ {id, kind, ty, attrs}, span} = f;
-    Spanned {
-        node: StructField_ {
-            id: fld.new_id(id),
-            kind: kind,
-            ty: fld.fold_ty(ty),
-            attrs: fold_attrs(attrs, fld),
-        },
-        span: fld.new_span(span)
+    StructField {
+        span: fld.new_span(f.span),
+        id: fld.new_id(f.id),
+        ident: f.ident.map(|ident| fld.fold_ident(ident)),
+        vis: f.vis,
+        ty: fld.fold_ty(f.ty),
+        attrs: fold_attrs(f.attrs, fld),
     }
 }
 
@@ -1073,13 +1070,6 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
                                         folder: &mut T) -> Item {
     let id = folder.new_id(id);
     let node = folder.fold_item_kind(node);
-    let ident = match node {
-        // The node may have changed, recompute the "pretty" impl name.
-        ItemKind::Impl(_, _, _, ref maybe_trait, ref ty, _) => {
-            ast_util::impl_pretty_name(maybe_trait, Some(&ty))
-        }
-        _ => ident
-    };
 
     Item {
         id: id,
