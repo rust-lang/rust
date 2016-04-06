@@ -619,9 +619,9 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
                                              struct_field: &'v StructField) {
-    walk_opt_ident(visitor, struct_field.span, struct_field.node.ident);
-    visitor.visit_ty(&struct_field.node.ty);
-    walk_list!(visitor, visit_attribute, &struct_field.node.attrs);
+    walk_opt_ident(visitor, struct_field.span, struct_field.ident);
+    visitor.visit_ty(&struct_field.ty);
+    walk_list!(visitor, visit_attribute, &struct_field.attrs);
 }
 
 pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {

@@ -1876,15 +1876,14 @@ pub enum Visibility {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct StructField_ {
+pub struct StructField {
+    pub span: Span,
     pub ident: Option<Ident>,
     pub vis: Visibility,
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: Vec<Attribute>,
 }
-
-pub type StructField = Spanned<StructField_>;
 
 /// Fields and Ids of enum variants and structs
 ///

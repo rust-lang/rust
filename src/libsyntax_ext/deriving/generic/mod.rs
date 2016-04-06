@@ -653,7 +653,7 @@ impl<'a> TraitDef<'a> {
                          type_ident: Ident,
                          generics: &Generics) -> P<ast::Item> {
         let field_tys: Vec<P<ast::Ty>> = struct_def.fields().iter()
-            .map(|field| field.node.ty.clone())
+            .map(|field| field.ty.clone())
             .collect();
 
         let methods = self.methods.iter().map(|method_def| {
@@ -701,7 +701,7 @@ impl<'a> TraitDef<'a> {
 
         for variant in &enum_def.variants {
             field_tys.extend(variant.node.data.fields().iter()
-                .map(|field| field.node.ty.clone()));
+                .map(|field| field.ty.clone()));
         }
 
         let methods = self.methods.iter().map(|method_def| {
@@ -1435,7 +1435,7 @@ impl<'a> TraitDef<'a> {
         let mut just_spans = Vec::new();
         for field in struct_def.fields(){
             let sp = self.set_expn_info(cx, field.span);
-            match field.node.ident {
+            match field.ident {
                 Some(ident) => named_idents.push((ident, sp)),
                 _ => just_spans.push(sp),
             }
@@ -1481,7 +1481,7 @@ impl<'a> TraitDef<'a> {
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)));
             let val = cx.expr(sp, ast::ExprKind::Paren(val));
-            ident_exprs.push((sp, struct_field.node.ident, val, &struct_field.node.attrs[..]));
+            ident_exprs.push((sp, struct_field.ident, val, &struct_field.attrs[..]));
         }
 
         let subpats = self.create_subpatterns(cx, paths, mutbl);

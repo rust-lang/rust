@@ -180,12 +180,12 @@ fn fold_struct<F>(cx: &mut Context<F>, vdata: ast::VariantData) -> ast::VariantD
     match vdata {
         ast::VariantData::Struct(fields, id) => {
             ast::VariantData::Struct(fields.into_iter().filter(|m| {
-                (cx.in_cfg)(&m.node.attrs)
+                (cx.in_cfg)(&m.attrs)
             }).collect(), id)
         }
         ast::VariantData::Tuple(fields, id) => {
             ast::VariantData::Tuple(fields.into_iter().filter(|m| {
-                (cx.in_cfg)(&m.node.attrs)
+                (cx.in_cfg)(&m.attrs)
             }).collect(), id)
         }
         ast::VariantData::Unit(id) => ast::VariantData::Unit(id)
@@ -434,7 +434,7 @@ impl<'v, 'a, 'b> visit::Visitor<'v> for StmtExprAttrFeatureVisitor<'a, 'b> {
     }
 
     fn visit_struct_field(&mut self, s: &'v ast::StructField) {
-        if node_survives_cfg(&s.node.attrs, self.config) {
+        if node_survives_cfg(&s.attrs, self.config) {
             visit::walk_struct_field(self, s);
         }
     }
