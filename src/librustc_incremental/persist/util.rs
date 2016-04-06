@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use calculate_svh::SvhCalculate;
+use rustc::dep_graph::DepNode;
+use rustc::hir::def_id::DefId;
 use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::ty::TyCtxt;
 
@@ -16,6 +19,14 @@ use std::io;
 use std::path::{PathBuf, Path};
 
 pub fn dep_graph_path(tcx: TyCtxt) -> Option<PathBuf> {
+    path(tcx, "local")
+}
+
+pub fn metadata_hash_path(tcx: TyCtxt) -> Option<PathBuf> {
+    path(tcx, "metadata")
+}
+
+fn path(tcx: TyCtxt, suffix: &str) -> Option<PathBuf> {
     // For now, just save/load dep-graph from
     // directory/dep_graph.rbml
     tcx.sess.opts.incremental.as_ref().and_then(|incr_dir| {
@@ -31,9 +42,10 @@ pub fn dep_graph_path(tcx: TyCtxt) -> Option<PathBuf> {
 
         let crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_disambiguator = tcx.crate_disambiguator(LOCAL_CRATE);
-        let file_name = format!("dep-graph-{}-{}.bin",
+        let file_name = format!("{}-{}.{}.bin",
                                 crate_name,
-                                crate_disambiguator);
+                                crate_disambiguator,
+                                suffix);
         Some(incr_dir.join(file_name))
     })
 }
@@ -56,5 +68,24 @@ fn create_dir_racy(path: &Path) -> io::Result<()> {
         Ok(()) => Ok(()),
         Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
         Err(e) => Err(e),
+    }
+}
+
+pub trait DepNodeHash {
+    /// Hash this dep-node, if it is of the kind that we know how to
+    /// hash.
+    fn hash<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<u64>;
+}
+
+impl DepNodeHash for DepNode<DefId> {
+    fn hash<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<u64> {
+        match *self {
+            DepNode::Hir(def_id) => {
+                // FIXME(#32753) -- should we use a distinct hash here
+                assert!(def_id.is_local());
+                Some(tcx.calculate_item_hash(def_id))
+            }
+            _ => None
+        }
     }
 }

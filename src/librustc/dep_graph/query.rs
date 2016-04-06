@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc_data_structures::fnv::FnvHashMap;
-use rustc_data_structures::graph::{Graph, NodeIndex};
+use rustc_data_structures::graph::{Direction, INCOMING, Graph, NodeIndex, OUTGOING};
 use std::fmt::Debug;
 use std::hash::Hash;
 
@@ -63,11 +63,9 @@ impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
                   .collect()
     }
 
-    /// All nodes reachable from `node`. In other words, things that
-    /// will have to be recomputed if `node` changes.
-    pub fn transitive_dependents(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+    fn reachable_nodes(&self, node: DepNode<D>, direction: Direction) -> Vec<DepNode<D>> {
         if let Some(&index) = self.indices.get(&node) {
-            self.graph.depth_traverse(index)
+            self.graph.depth_traverse(index, direction)
                       .map(|s| self.graph.node_data(s).clone())
                       .collect()
         } else {
@@ -75,8 +73,19 @@ impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
         }
     }
 
+    /// All nodes reachable from `node`. In other words, things that
+    /// will have to be recomputed if `node` changes.
+    pub fn transitive_successors(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+        self.reachable_nodes(node, OUTGOING)
+    }
+
+    /// All nodes that can reach `node`.
+    pub fn transitive_predecessors(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+        self.reachable_nodes(node, INCOMING)
+    }
+
     /// Just the outgoing edges from `node`.
-    pub fn immediate_dependents(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+    pub fn immediate_successors(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
         if let Some(&index) = self.indices.get(&node) {
             self.graph.successor_nodes(index)
                       .map(|s| self.graph.node_data(s).clone())
