@@ -220,7 +220,7 @@ impl<T: ?Sized> *const T {
     /// ```
     /// let s: &str = "Follow the rabbit";
     /// let ptr: *const u8 = s.as_ptr();
-    /// assert!(ptr.is_null() == false);
+    /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -306,7 +306,7 @@ impl<T: ?Sized> *mut T {
     /// ```
     /// let mut s = [1, 2, 3];
     /// let ptr: *mut u32 = s.as_mut_ptr();
-    /// assert!(ptr.is_null() == false);
+    /// assert!(!ptr.is_null());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
