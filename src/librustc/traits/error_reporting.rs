@@ -436,7 +436,8 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 // If we can't show anything useful, try to find
                                 // similar impls.
 
-                                let impl_candidates = find_similar_impl_candidates(infcx, trait_ref);
+                                let impl_candidates =
+                                    find_similar_impl_candidates(infcx, trait_ref);
                                 if impl_candidates.len() > 0 {
                                     report_similar_impl_candidates(obligation.cause.span,
                                                                    &mut err, &impl_candidates);
