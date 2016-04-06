@@ -26,12 +26,12 @@ impl Foo for LocalOverride {
 }
 
 fn test_foo() {
-    assert!(0i8.foo() == false);
-    assert!(0i32.foo() == false);
-    assert!(0i64.foo() == true);
+    assert!(!0i8.foo());
+    assert!(!0i32.foo());
+    assert!(0i64.foo());
 
-    assert!(LocalDefault.foo() == false);
-    assert!(LocalOverride.foo() == true);
+    assert!(!LocalDefault.foo());
+    assert!(LocalOverride.foo());
 }
 
 fn test_bar() {
