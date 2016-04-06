@@ -144,7 +144,7 @@ declare_lint! {
 
 declare_lint! {
     pub ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN,
-    Deny,
+    Warn,
     "constants of struct or enum type can only be used in a pattern if \
      the struct or enum has `#[derive(PartialEq, Eq)]`"
 }
