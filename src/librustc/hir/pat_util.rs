@@ -210,14 +210,8 @@ pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
 }
 
 pub fn def_to_path(tcx: &TyCtxt, id: DefId) -> hir::Path {
-    tcx.with_path(id, |path| hir::Path {
-        global: false,
-        segments: path.last().map(|elem| hir::PathSegment {
-            identifier: hir::Ident::from_name(elem.name()),
-            parameters: hir::PathParameters::none(),
-        }).into_iter().collect(),
-        span: DUMMY_SP,
-    })
+    let name = tcx.item_name(id);
+    hir::Path::from_ident(DUMMY_SP, hir::Ident::from_name(name))
 }
 
 /// Return variants that are necessary to exist for the pattern to match.

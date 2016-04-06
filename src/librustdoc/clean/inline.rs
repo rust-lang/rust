@@ -11,6 +11,7 @@
 //! Support for inlining external documentation into the current AST.
 
 use std::collections::HashSet;
+use std::iter::once;
 
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
@@ -140,8 +141,11 @@ pub fn load_attrs(cx: &DocContext, tcx: &TyCtxt,
 /// source links back to the original item.
 pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
     if let Some(tcx) = cx.tcx_opt() {
-        let fqn = tcx.sess.cstore.extern_item_path(did);
-        let fqn = fqn.into_iter().map(|i| i.to_string()).collect();
+        let crate_name = tcx.sess.cstore.crate_name(did.krate).to_string();
+        let relative = tcx.def_path(did).data.into_iter().map(|elem| {
+            elem.data.to_string()
+        });
+        let fqn = once(crate_name).chain(relative).collect();
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
     }
 }

@@ -116,7 +116,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemKind::Fn(..) => {
-                let name = self.tcx.map.path_to_string(item.id);
+                let name = self.tcx.node_path_str(item.id);
                 let qualname = format!("::{}", name);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -130,7 +130,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
                 // If the variable is immutable, save the initialising expression.
                 let (value, keyword) = match mt {
@@ -153,7 +153,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Const);
                 filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::VariableData(VariableData {
@@ -167,7 +167,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
                 let cm = self.tcx.sess.codemap();
                 let filename = cm.span_to_filename(m.inner);
@@ -184,7 +184,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }))
             }
             ast::ItemKind::Enum(..) => {
-                let enum_name = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let enum_name = format!("::{}", self.tcx.node_path_str(item.id));
                 let val = self.span_utils.snippet(item.span);
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Enum);
                 filter!(self.span_utils, sub_span, item.span, None);
@@ -246,7 +246,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                           scope: NodeId) -> Option<VariableData> {
         match field.node.kind {
             ast::NamedField(ident, _) => {
-                let qualname = format!("::{}::{}", self.tcx.map.path_to_string(scope), ident);
+                let qualname = format!("::{}::{}", self.tcx.node_path_str(scope), ident);
                 let typ = self.tcx.node_types().get(&field.node.id).unwrap().to_string();
                 let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
                 filter!(self.span_utils, sub_span, field.span, None);

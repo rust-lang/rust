@@ -20,7 +20,6 @@ pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
 use hir::map as ast_map;
-use hir::map::LinkedPath;
 use middle;
 use middle::cstore::{self, CrateStore, LOCAL_CRATE};
 use hir::def::{self, Def, ExportMap};
@@ -2231,39 +2230,9 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn with_path<T, F>(&self, id: DefId, f: F) -> T where
-        F: FnOnce(ast_map::PathElems) -> T,
-    {
-        if let Some(id) = self.map.as_local_node_id(id) {
-            self.map.with_path(id, f)
-        } else {
-            let mut path: Vec<_>;
-            if let Some(extern_crate) = self.sess.cstore.extern_crate(id.krate) {
-                if !extern_crate.direct {
-                    // this comes from some crate that we don't have a direct
-                    // path to; we'll settle for just prepending the name of
-                    // the crate.
-                    path = self.sess.cstore.extern_item_path(id)
-                } else {
-                    // start with the path to the extern crate, then
-                    // add the relative path to the actual item
-                    fn collector(elems: ast_map::PathElems) -> Vec<ast_map::PathElem> {
-                        elems.collect()
-                    }
-                    path = self.with_path(extern_crate.def_id, collector);
-                    path.extend(self.sess.cstore.relative_item_path(id));
-                }
-            } else {
-                // if this was injected, just make a path with name of crate
-                path = self.sess.cstore.extern_item_path(id);
-            }
-            f(path.iter().cloned().chain(LinkedPath::empty()))
-        }
-    }
-
     pub fn item_name(&self, id: DefId) -> ast::Name {
         if let Some(id) = self.map.as_local_node_id(id) {
-            self.map.get_path_elem(id).name()
+            self.map.name(id)
         } else {
             self.sess.cstore.item_name(id)
         }

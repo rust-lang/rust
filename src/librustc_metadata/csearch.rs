@@ -128,22 +128,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::get_method_arg_names(&cdata, did.index)
     }
 
-    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_item_path(&cdata, def.index)
-    }
-
-    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
-        let cdata = self.get_crate_data(def.krate);
-        let path = decoder::get_item_path(&cdata, def.index);
-
-        let mut r = Vec::with_capacity(path.len() + 1);
-        let crate_name = hir_map::PathMod(token::intern(&cdata.name));
-        r.push(crate_name);
-        r.extend_from_slice(&path);
-        r
-    }
-
     fn item_name(&self, def: DefId) -> ast::Name {
         let cdata = self.get_crate_data(def.krate);
         decoder::get_item_name(&self.intr, &cdata, def.index)
