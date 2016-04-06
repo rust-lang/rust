@@ -388,7 +388,7 @@ pub fn fun_to_string(decl: &ast::FnDecl,
     to_string(|s| {
         s.head("")?;
         s.print_fn(decl, unsafety, constness, Abi::Rust, Some(name),
-                   generics, opt_explicit_self, ast::Visibility::Inherited)?;
+                   generics, opt_explicit_self, &ast::Visibility::Inherited)?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -432,9 +432,11 @@ pub fn mac_to_string(arg: &ast::Mac) -> String {
     to_string(|s| s.print_mac(arg, ::parse::token::Paren))
 }
 
-pub fn visibility_qualified(vis: ast::Visibility, s: &str) -> String {
-    match vis {
+pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
+    match *vis {
         ast::Visibility::Public => format!("pub {}", s),
+        ast::Visibility::Crate => format!("pub(crate) {}", s),
+        ast::Visibility::Restricted { ref path, .. } => format!("pub({}) {}", path, s),
         ast::Visibility::Inherited => s.to_string()
     }
 }
@@ -1052,13 +1054,13 @@ impl<'a> State<'a> {
                 self.print_fn(decl, ast::Unsafety::Normal,
                               ast::Constness::NotConst,
                               Abi::Rust, Some(item.ident),
-                              generics, None, item.vis)?;
+                              generics, None, &item.vis)?;
                 self.end()?; // end head-ibox
                 word(&mut self.s, ";")?;
                 self.end() // end the outer fn box
             }
             ast::ForeignItemKind::Static(ref t, m) => {
-                self.head(&visibility_qualified(item.vis, "static"))?;
+                self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m {
                     self.word_space("mut")?;
                 }
@@ -1076,7 +1078,7 @@ impl<'a> State<'a> {
                               ident: ast::Ident,
                               ty: &ast::Ty,
                               default: Option<&ast::Expr>,
-                              vis: ast::Visibility)
+                              vis: &ast::Visibility)
                               -> io::Result<()>
     {
         word(&mut self.s, &visibility_qualified(vis, ""))?;
@@ -1118,7 +1120,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
             ast::ItemKind::ExternCrate(ref optional_path) => {
-                self.head(&visibility_qualified(item.vis, "extern crate"))?;
+                self.head(&visibility_qualified(&item.vis, "extern crate"))?;
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
                     if val.contains("-") {
@@ -1136,14 +1138,14 @@ impl<'a> State<'a> {
                 self.end()?; // end outer head-block
             }
             ast::ItemKind::Use(ref vp) => {
-                self.head(&visibility_qualified(item.vis, "use"))?;
+                self.head(&visibility_qualified(&item.vis, "use"))?;
                 self.print_view_path(&vp)?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
             ast::ItemKind::Static(ref ty, m, ref expr) => {
-                self.head(&visibility_qualified(item.vis, "static"))?;
+                self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m == ast::Mutability::Mutable {
                     self.word_space("mut")?;
                 }
@@ -1159,7 +1161,7 @@ impl<'a> State<'a> {
                 self.end()?; // end the outer cbox
             }
             ast::ItemKind::Const(ref ty, ref expr) => {
-                self.head(&visibility_qualified(item.vis, "const"))?;
+                self.head(&visibility_qualified(&item.vis, "const"))?;
                 self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
@@ -1181,13 +1183,13 @@ impl<'a> State<'a> {
                     Some(item.ident),
                     typarams,
                     None,
-                    item.vis
+                    &item.vis
                 )?;
                 word(&mut self.s, " ")?;
                 self.print_block_with_attrs(&body, &item.attrs)?;
             }
             ast::ItemKind::Mod(ref _mod) => {
-                self.head(&visibility_qualified(item.vis, "mod"))?;
+                self.head(&visibility_qualified(&item.vis, "mod"))?;
                 self.print_ident(item.ident)?;
                 self.nbsp()?;
                 self.bopen()?;
@@ -1204,7 +1206,7 @@ impl<'a> State<'a> {
             ast::ItemKind::Ty(ref ty, ref params) => {
                 self.ibox(INDENT_UNIT)?;
                 self.ibox(0)?;
-                self.word_nbsp(&visibility_qualified(item.vis, "type"))?;
+                self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
                 self.print_ident(item.ident)?;
                 self.print_generics(params)?;
                 self.end()?; // end the inner ibox
@@ -1222,17 +1224,17 @@ impl<'a> State<'a> {
                     params,
                     item.ident,
                     item.span,
-                    item.vis
+                    &item.vis
                 )?;
             }
             ast::ItemKind::Struct(ref struct_def, ref generics) => {
-                self.head(&visibility_qualified(item.vis,"struct"))?;
+                self.head(&visibility_qualified(&item.vis, "struct"))?;
                 self.print_struct(&struct_def, generics, item.ident, item.span, true)?;
             }
 
             ast::ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
                 self.print_trait_ref(trait_ref)?;
@@ -1249,7 +1251,7 @@ impl<'a> State<'a> {
                           ref ty,
                           ref impl_items) => {
                 self.head("")?;
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
@@ -1287,7 +1289,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Trait(unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
                 self.print_ident(item.ident)?;
@@ -1312,7 +1314,7 @@ impl<'a> State<'a> {
                 self.bclose(item.span)?;
             }
             ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_path(&node.path, false, 0)?;
                 word(&mut self.s, "! ")?;
                 self.print_ident(item.ident)?;
@@ -1355,7 +1357,7 @@ impl<'a> State<'a> {
     pub fn print_enum_def(&mut self, enum_definition: &ast::EnumDef,
                           generics: &ast::Generics, ident: ast::Ident,
                           span: codemap::Span,
-                          visibility: ast::Visibility) -> io::Result<()> {
+                          visibility: &ast::Visibility) -> io::Result<()> {
         self.head(&visibility_qualified(visibility, "enum"))?;
         self.print_ident(ident)?;
         self.print_generics(generics)?;
@@ -1381,9 +1383,12 @@ impl<'a> State<'a> {
         self.bclose(span)
     }
 
-    pub fn print_visibility(&mut self, vis: ast::Visibility) -> io::Result<()> {
-        match vis {
+    pub fn print_visibility(&mut self, vis: &ast::Visibility) -> io::Result<()> {
+        match *vis {
             ast::Visibility::Public => self.word_nbsp("pub"),
+            ast::Visibility::Crate => self.word_nbsp("pub(crate)"),
+            ast::Visibility::Restricted { ref path, .. } =>
+                self.word_nbsp(&format!("pub({})", path)),
             ast::Visibility::Inherited => Ok(())
         }
     }
@@ -1404,7 +1409,7 @@ impl<'a> State<'a> {
                     |s, field| {
                         match field.node.kind {
                             ast::NamedField(..) => panic!("unexpected named field"),
-                            ast::UnnamedField(vis) => {
+                            ast::UnnamedField(ref vis) => {
                                 s.print_visibility(vis)?;
                                 s.maybe_print_comment(field.span.lo)?;
                                 s.print_type(&field.node.ty)
@@ -1429,7 +1434,7 @@ impl<'a> State<'a> {
             for field in struct_def.fields() {
                 match field.node.kind {
                     ast::UnnamedField(..) => panic!("unexpected unnamed field"),
-                    ast::NamedField(ident, visibility) => {
+                    ast::NamedField(ident, ref visibility) => {
                         self.hardbreak_if_not_bol()?;
                         self.maybe_print_comment(field.span.lo)?;
                         self.print_outer_attributes(&field.node.attrs)?;
@@ -1528,7 +1533,7 @@ impl<'a> State<'a> {
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
                             m: &ast::MethodSig,
-                            vis: ast::Visibility)
+                            vis: &ast::Visibility)
                             -> io::Result<()> {
         self.print_fn(&m.decl,
                       m.unsafety,
@@ -1550,13 +1555,13 @@ impl<'a> State<'a> {
             ast::TraitItemKind::Const(ref ty, ref default) => {
                 self.print_associated_const(ti.ident, &ty,
                                             default.as_ref().map(|expr| &**expr),
-                                            ast::Visibility::Inherited)?;
+                                            &ast::Visibility::Inherited)?;
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
                     self.head("")?;
                 }
-                self.print_method_sig(ti.ident, sig, ast::Visibility::Inherited)?;
+                self.print_method_sig(ti.ident, sig, &ast::Visibility::Inherited)?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
                     self.print_block_with_attrs(body, &ti.attrs)?;
@@ -1582,11 +1587,11 @@ impl<'a> State<'a> {
         }
         match ii.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
-                self.print_associated_const(ii.ident, &ty, Some(&expr), ii.vis)?;
+                self.print_associated_const(ii.ident, &ty, Some(&expr), &ii.vis)?;
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.head("")?;
-                self.print_method_sig(ii.ident, sig, ii.vis)?;
+                self.print_method_sig(ii.ident, sig, &ii.vis)?;
                 self.nbsp()?;
                 self.print_block_with_attrs(body, &ii.attrs)?;
             }
@@ -2655,7 +2660,7 @@ impl<'a> State<'a> {
                     name: Option<ast::Ident>,
                     generics: &ast::Generics,
                     opt_explicit_self: Option<&ast::SelfKind>,
-                    vis: ast::Visibility) -> io::Result<()> {
+                    vis: &ast::Visibility) -> io::Result<()> {
         self.print_fn_header_info(unsafety, constness, abi, vis)?;
 
         if let Some(name) = name {
@@ -3037,7 +3042,7 @@ impl<'a> State<'a> {
                       name,
                       &generics,
                       opt_explicit_self,
-                      ast::Visibility::Inherited)?;
+                      &ast::Visibility::Inherited)?;
         self.end()
     }
 
@@ -3112,7 +3117,7 @@ impl<'a> State<'a> {
                                 unsafety: ast::Unsafety,
                                 constness: ast::Constness,
                                 abi: Abi,
-                                vis: ast::Visibility) -> io::Result<()> {
+                                vis: &ast::Visibility) -> io::Result<()> {
         word(&mut self.s, &visibility_qualified(vis, ""))?;
 
         match constness {

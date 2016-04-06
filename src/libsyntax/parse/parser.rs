@@ -3842,7 +3842,7 @@ impl<'a> Parser<'a> {
                          attrs: Vec<Attribute> ) -> PResult<'a, StructField> {
         let lo = match pr {
             Visibility::Inherited => self.span.lo,
-            Visibility::Public => self.last_span.lo,
+            _ => self.last_span.lo,
         };
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
@@ -4952,7 +4952,7 @@ impl<'a> Parser<'a> {
             self.commit_expr_expecting(&expr, token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr))
         } else {
-            let (name, inner_attrs, node) = self.parse_impl_method(vis)?;
+            let (name, inner_attrs, node) = self.parse_impl_method(&vis)?;
             attrs.extend(inner_attrs);
             (name, node)
         };
@@ -4968,9 +4968,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
-        match visa {
-            Visibility::Public => {
+    fn complain_if_pub_macro(&mut self, visa: &Visibility, span: Span) {
+        match *visa {
+            Visibility::Inherited => (),
+            _ => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid, _) => sid.name == intern("macro_rules"),
                     _ => false,
@@ -4988,12 +4989,11 @@ impl<'a> Parser<'a> {
                                      .emit();
                 }
             }
-            Visibility::Inherited => (),
         }
     }
 
     /// Parse a method or a macro invocation in a trait impl.
-    fn parse_impl_method(&mut self, vis: Visibility)
+    fn parse_impl_method(&mut self, vis: &Visibility)
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if !self.token.is_any_keyword()
@@ -5003,7 +5003,7 @@ impl<'a> Parser<'a> {
             // method macro.
 
             let last_span = self.last_span;
-            self.complain_if_pub_macro(vis, last_span);
+            self.complain_if_pub_macro(&vis, last_span);
 
             let lo = self.span.lo;
             let pth = self.parse_path(NoTypesAllowed)?;
@@ -6045,7 +6045,7 @@ impl<'a> Parser<'a> {
             // MACRO INVOCATION ITEM
 
             let last_span = self.last_span;
-            self.complain_if_pub_macro(visibility, last_span);
+            self.complain_if_pub_macro(&visibility, last_span);
 
             let mac_lo = self.span.lo;
 
@@ -6096,7 +6096,7 @@ impl<'a> Parser<'a> {
         // FAILURE TO PARSE ITEM
         match visibility {
             Visibility::Inherited => {}
-            Visibility::Public => {
+            _ => {
                 let last_span = self.last_span;
                 return Err(self.span_fatal(last_span, "unmatched visibility `pub`"));
             }
