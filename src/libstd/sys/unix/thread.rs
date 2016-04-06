@@ -304,7 +304,6 @@ pub mod guard {
         #[cfg(not(target_os = "freebsd"))]
             let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
         if e == 0 {
-        //if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
             let mut guardsize = 0;
             assert_eq!(libc::pthread_attr_getguardsize(&attr, &mut guardsize), 0);
             if guardsize == 0 {
