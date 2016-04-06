@@ -246,23 +246,22 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn get_field_data(&self, field: &ast::StructField,
                           scope: NodeId) -> Option<VariableData> {
-        match field.node.kind {
-            ast::NamedField(ident, _) => {
-                let qualname = format!("::{}::{}", self.tcx.map.path_to_string(scope), ident);
-                let typ = self.tcx.node_types().get(&field.node.id).unwrap().to_string();
-                let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
-                filter!(self.span_utils, sub_span, field.span, None);
-                Some(VariableData {
-                    id: field.node.id,
-                    name: ident.to_string(),
-                    qualname: qualname,
-                    span: sub_span.unwrap(),
-                    scope: scope,
-                    value: "".to_owned(),
-                    type_value: typ,
-                })
-            }
-            _ => None,
+        if let Some(ident) = field.ident {
+            let qualname = format!("::{}::{}", self.tcx.map.path_to_string(scope), ident);
+            let typ = self.tcx.node_types().get(&field.id).unwrap().to_string();
+            let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
+            filter!(self.span_utils, sub_span, field.span, None);
+            Some(VariableData {
+                id: field.id,
+                name: ident.to_string(),
+                qualname: qualname,
+                span: sub_span.unwrap(),
+                scope: scope,
+                value: "".to_owned(),
+                type_value: typ,
+            })
+        } else {
+            None
         }
     }
 

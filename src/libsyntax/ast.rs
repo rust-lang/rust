@@ -10,7 +10,6 @@
 
 // The Rust abstract syntax tree.
 
-pub use self::StructFieldKind::*;
 pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
@@ -1877,44 +1876,13 @@ pub enum Visibility {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct StructField_ {
-    pub kind: StructFieldKind,
+pub struct StructField {
+    pub span: Span,
+    pub ident: Option<Ident>,
+    pub vis: Visibility,
     pub id: NodeId,
     pub ty: P<Ty>,
     pub attrs: Vec<Attribute>,
-}
-
-impl StructField_ {
-    pub fn ident(&self) -> Option<Ident> {
-        match self.kind {
-            NamedField(ref ident, _) => Some(ident.clone()),
-            UnnamedField(_) => None
-        }
-    }
-}
-
-pub type StructField = Spanned<StructField_>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum StructFieldKind {
-    NamedField(Ident, Visibility),
-    /// Element of a tuple-like struct
-    UnnamedField(Visibility),
-}
-
-impl StructFieldKind {
-    pub fn is_unnamed(&self) -> bool {
-        match *self {
-            UnnamedField(..) => true,
-            NamedField(..) => false,
-        }
-    }
-
-    pub fn visibility(&self) -> &Visibility {
-        match *self {
-            NamedField(_, ref vis) | UnnamedField(ref vis) => vis
-        }
-    }
 }
 
 /// Fields and Ids of enum variants and structs

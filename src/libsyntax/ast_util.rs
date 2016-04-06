@@ -95,12 +95,6 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: Option<&Ty>) -> Ident 
     token::gensym_ident(&pretty[..])
 }
 
-pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
-    match field.node.kind {
-        ast::NamedField(_, v) | ast::UnnamedField(v) => v
-    }
-}
-
 // ______________________________________________________________________
 // Enumerating the IDs which appear in an AST
 
@@ -269,7 +263,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
     }
 
     fn visit_struct_field(&mut self, struct_field: &StructField) {
-        self.operation.visit_id(struct_field.node.id);
+        self.operation.visit_id(struct_field.id);
         visit::walk_struct_field(self, struct_field)
     }
 
