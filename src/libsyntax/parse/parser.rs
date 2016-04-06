@@ -1188,12 +1188,12 @@ impl<'a> Parser<'a> {
                             -> PResult<'a, TyKind> {
         /*
 
-        [unsafe] [extern "ABI"] fn <'lt> (S) -> T
-         ^~~~^           ^~~~^     ^~~~^ ^~^    ^
-           |               |         |    |     |
-           |               |         |    |   Return type
-           |               |         |  Argument types
-           |               |     Lifetimes
+        [unsafe] [extern "ABI"] fn (S) -> T
+         ^~~~^           ^~~~^     ^~^    ^
+           |               |        |     |
+           |               |        |   Return type
+           |               |      Argument types
+           |               |
            |              ABI
         Function Style
         */
