@@ -216,7 +216,7 @@ fn write_scope_tree(tcx: &TyCtxt,
 /// local variables (both user-defined bindings and compiler temporaries).
 fn write_mir_intro(tcx: &TyCtxt, nid: NodeId, mir: &Mir, w: &mut Write)
                    -> io::Result<()> {
-    write!(w, "fn {}(", tcx.map.path_to_string(nid))?;
+    write!(w, "fn {}(", tcx.node_path_str(nid))?;
 
     // fn argument types.
     for (i, arg) in mir.arg_decls.iter().enumerate() {

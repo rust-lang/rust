@@ -85,7 +85,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
         InlinedItemRef::ImplItem(_, ii) => ii.id,
     };
     debug!("> Encoding inlined item: {} ({:?})",
-           ecx.tcx.map.path_to_string(id),
+           ecx.tcx.node_path_str(id),
            rbml_w.writer.seek(SeekFrom::Current(0)));
 
     // Folding could be avoided with a smarter encoder.
@@ -99,7 +99,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     rbml_w.end_tag();
 
     debug!("< Encoded inlined fn: {} ({:?})",
-           ecx.tcx.map.path_to_string(id),
+           ecx.tcx.node_path_str(id),
            rbml_w.writer.seek(SeekFrom::Current(0)));
 }
 
@@ -124,20 +124,12 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
 /// ast-map.
 pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &TyCtxt<'tcx>,
-                                 parent_path: Vec<ast_map::PathElem>,
                                  parent_def_path: ast_map::DefPath,
                                  parent_did: DefId,
                                  ast_doc: rbml::Doc,
                                  orig_did: DefId)
                                  -> &'tcx InlinedItem {
-    let mut path_as_str = None;
-    debug!("> Decoding inlined fn: {:?}::?",
-    {
-        // Do an Option dance to use the path after it is moved below.
-        let s = ast_map::path_to_string(parent_path.iter().cloned());
-        path_as_str = Some(s);
-        path_as_str.as_ref().map(|x| &x[..])
-    });
+    debug!("> Decoding inlined fn: {:?}", tcx.item_path_str(orig_did));
     let mut ast_dsr = reader::Decoder::new(ast_doc);
     let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();
     let to_id_range = reserve_id_range(&tcx.sess, from_id_range);
@@ -149,7 +141,6 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         last_filemap_index: Cell::new(0)
     };
     let ii = ast_map::map_decoded_item(&dcx.tcx.map,
-                                       parent_path,
                                        parent_def_path,
                                        parent_did,
                                        decode_ast(ast_doc),
@@ -162,7 +153,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
     };
     debug!("Fn named: {}", name);
     debug!("< Decoded inlined fn: {}::{}",
-            path_as_str.unwrap(),
+            tcx.item_path_str(parent_did),
             name);
     region::resolve_inlined_item(&tcx.sess, &tcx.region_maps, ii);
     decode_side_tables(dcx, ast_doc);

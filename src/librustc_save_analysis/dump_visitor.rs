@@ -519,7 +519,7 @@ where D: Dump
                      span: Span,
                      typ: &ast::Ty,
                      expr: &ast::Expr) {
-        let qualname = format!("::{}", self.tcx.map.path_to_string(id));
+        let qualname = format!("::{}", self.tcx.node_path_str(id));
 
         let sub_span = self.span.sub_span_after_keyword(span, keywords::Const);
 
@@ -544,7 +544,7 @@ where D: Dump
                       item: &ast::Item,
                       def: &ast::VariantData,
                       ty_params: &ast::Generics) {
-        let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
@@ -677,7 +677,7 @@ where D: Dump
                      generics: &ast::Generics,
                      trait_refs: &ast::TyParamBounds,
                      methods: &[ast::TraitItem]) {
-        let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
         if !self.span.filter_generated(sub_span, item.span) {
@@ -1108,7 +1108,7 @@ impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
                 self.nest(item.id, |v| visit::walk_mod(v, m));
             }
             Ty(ref ty, ref ty_params) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let value = ty_to_string(&ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 if !self.span.filter_generated(sub_span, item.span) {

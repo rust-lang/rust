@@ -166,9 +166,7 @@ pub trait CrateStore<'tcx> : Any {
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr>;
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx>;
-    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
-    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem>;
     fn item_name(&self, def: DefId) -> ast::Name;
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx>;
@@ -345,12 +343,9 @@ impl<'tcx> CrateStore<'tcx> for DummyCrateStore {
     fn repr_attrs(&self, def: DefId) -> Vec<attr::ReprAttr> { bug!("repr_attrs") }
     fn item_type(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                  -> ty::TypeScheme<'tcx> { bug!("item_type") }
-    fn relative_item_path(&self, def: DefId)
-                          -> Vec<hir_map::PathElem> { bug!("relative_item_path") }
     fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
-    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> { bug!("extern_item_path") }
     fn item_name(&self, def: DefId) -> ast::Name { bug!("item_name") }
     fn item_predicates(&self, tcx: &TyCtxt<'tcx>, def: DefId)
                        -> ty::GenericPredicates<'tcx> { bug!("item_predicates") }

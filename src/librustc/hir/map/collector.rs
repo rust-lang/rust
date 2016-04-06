@@ -14,6 +14,7 @@ use super::MapEntry::*;
 use hir::*;
 use hir::intravisit::Visitor;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use middle::cstore::InlinedItem;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;
@@ -46,7 +47,7 @@ impl<'ast> NodeCollector<'ast> {
     }
 
     pub fn extend(krate: &'ast Crate,
-                  parent: &'ast InlinedParent,
+                  parent: &'ast InlinedItem,
                   parent_node: NodeId,
                   parent_def_path: DefPath,
                   parent_def_id: DefId,

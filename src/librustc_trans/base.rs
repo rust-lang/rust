@@ -1351,7 +1351,7 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
         None if id == ast::DUMMY_NODE_ID => return (ast::DUMMY_NODE_ID, None),
 
         _ => bug!("unexpected variant in has_nested_returns: {}",
-                  tcx.map.path_to_string(id)),
+                  tcx.node_path_str(id)),
     };
 
     (blk.id, Some(cfg::CFG::new(tcx, blk)))
@@ -1412,9 +1412,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
 
         debug!("FunctionContext::new(path={}, def_id={:?}, param_substs={:?})",
-            inlined_id.map_or(String::new(), |id| {
-                ccx.tcx().map.path_to_string(id).to_string()
-            }),
+            inlined_id.map_or(String::new(), |id| ccx.tcx().node_path_str(id)),
             def_id,
             param_substs);
 
@@ -1906,7 +1904,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           llfndecl: ValueRef,
                           param_substs: &'tcx Substs<'tcx>,
                           id: ast::NodeId) {
-    let _s = StatRecorder::new(ccx, ccx.tcx().map.path_to_string(id).to_string());
+    let _s = StatRecorder::new(ccx, ccx.tcx().node_path_str(id));
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
     let fn_ty = ccx.tcx().node_id_to_type(id);
@@ -2446,8 +2444,7 @@ pub fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
-                let path = ccx.tcx().map.def_path_from_id(id);
-                path.data.last().unwrap().data.to_string()
+                ccx.tcx().map.name(id).as_str().to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
                     Some(name) => name.to_string(),
