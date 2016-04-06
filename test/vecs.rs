@@ -16,7 +16,7 @@ fn make_vec_macro() -> Vec<i32> {
 
 #[miri_run]
 fn make_vec_macro_repeat() -> Vec<u8> {
-    vec![42; 8]
+    vec![42; 5]
 }
 
 #[miri_run]

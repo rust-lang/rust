@@ -17,3 +17,9 @@ fn pointers_to_different_allocations_are_unorderable() -> bool {
     let y: *const u8 = &2;
     x < y
 }
+
+#[miri_run]
+fn invalid_bools_are_rejected() -> u8 {
+    let b = unsafe { std::mem::transmute::<u8, bool>(2) };
+    if b { 1 } else { 2 }
+}
