@@ -106,7 +106,7 @@ impl Memory {
         let alloc = Allocation {
             bytes: vec![0; size].into_boxed_slice(),
             relocations: BTreeMap::new(),
-            undef_mask: UndefMask::new(),
+            undef_mask: UndefMask::new(size),
         };
         self.alloc_map.insert(self.next_id, alloc);
         self.next_id += 1;
@@ -426,11 +426,13 @@ pub struct UndefMask {
 }
 
 impl UndefMask {
-    fn new() -> Self {
-        UndefMask {
+    fn new(size: usize) -> Self {
+        let mut m = UndefMask {
             blocks: vec![],
             len: 0,
-        }
+        };
+        m.grow(size, false);
+        m
     }
 
     /// Check whether the range `start..end` (end-exclusive) is entirely defined.

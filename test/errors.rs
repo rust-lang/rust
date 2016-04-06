@@ -23,3 +23,10 @@ fn invalid_bools_are_rejected() -> u8 {
     let b = unsafe { std::mem::transmute::<u8, bool>(2) };
     if b { 1 } else { 2 }
 }
+
+#[miri_run]
+fn undefined_byte_reads_are_rejected() -> u8 {
+    let v: Vec<u8> = Vec::with_capacity(10);
+    let undef = unsafe { *v.get_unchecked(5) };
+    undef + 1
+}
