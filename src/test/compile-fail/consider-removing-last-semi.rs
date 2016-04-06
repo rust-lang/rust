@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-#![allow(unused_imports)]
+fn f() -> String {  //~ ERROR E0269
+                    //~^ HELP detailed explanation
+    0u8;
+    "bla".to_string();  //~ HELP consider removing this semicolon
+}
 
-pub type Type = i32;
+fn g() -> String {  //~ ERROR E0269
+                    //~^ HELP detailed explanation
+    "this won't work".to_string();
+    "removeme".to_string(); //~ HELP consider removing this semicolon
+}
 
-mod one { use super::Type; }
-pub use self::one::*;
-
-mod two { use super::Type; }
-pub use self::two::*;
-
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+fn main() {}

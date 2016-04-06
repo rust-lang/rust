@@ -16,6 +16,7 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use traits::PredicateObligations;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -26,6 +27,10 @@ pub struct Sub<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Sub<'a, 'tcx> {
     pub fn new(f: CombineFields<'a, 'tcx>) -> Sub<'a, 'tcx> {
         Sub { fields: f }
+    }
+
+    pub fn obligations(self) -> PredicateObligations<'tcx> {
+        self.fields.obligations
     }
 }
 

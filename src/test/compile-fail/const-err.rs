@@ -10,14 +10,10 @@
 
 #![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
-#![deny(const_err)]
 
 fn black_box<T>(_: T) {
     unimplemented!()
 }
-
-const BLA: u8 = 200u8 + 200u8;
-//~^ ERROR attempted to add with overflow
 
 #[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
@@ -30,7 +26,8 @@ fn main() {
     //~^ WARN attempted to multiply with overflow
     let d = 42u8 - (42u8 + 1);
     //~^ WARN attempted to subtract with overflow
-    let _e = BLA;
+    let _e = [5u8][1];
+    //~^ ERROR const index-expr is out of bounds
     black_box(a);
     black_box(b);
     black_box(c);

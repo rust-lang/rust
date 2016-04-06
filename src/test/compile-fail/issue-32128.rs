@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Note: This test is checking that we forbid a coding pattern that
-// Issue #5873 explicitly wants to allow.
-
-enum State { ST_NULL, ST_WHITESPACE }
+struct Example {
+    example: Box<Fn(i32) -> i32>
+}
 
 fn main() {
-    [State::ST_NULL; (State::ST_WHITESPACE as usize)];
-    //~^ ERROR expected constant integer for repeat count, but unimplemented constant expression
+    let demo = Example {
+        example: Box::new(|x| {
+            x + 1
+        })
+    };
+
+    demo.example(1);    //~ ERROR no method named `example`
+                        //~^ NOTE use `(demo.example)(...)`
+    // (demo.example)(1);
 }
