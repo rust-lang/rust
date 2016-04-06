@@ -64,7 +64,7 @@ impl CFG {
     }
 
     pub fn node_is_reachable(&self, id: ast::NodeId) -> bool {
-        self.graph.depth_traverse(self.entry)
+        self.graph.depth_traverse(self.entry, graph::OUTGOING)
                   .any(|idx| self.graph.node_data(idx).id() == id)
     }
 }

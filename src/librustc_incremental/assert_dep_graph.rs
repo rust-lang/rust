@@ -195,7 +195,7 @@ fn check_paths<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         for &(_, source_def_id, source_dep_node) in sources {
-            let dependents = query.transitive_dependents(source_dep_node);
+            let dependents = query.transitive_successors(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in targets {
                 if !dependents.contains(&target_dep_node) {
                     tcx.sess.span_err(

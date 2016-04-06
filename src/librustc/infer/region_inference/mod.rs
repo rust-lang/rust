@@ -20,7 +20,7 @@ pub use self::VarValue::*;
 use super::{RegionVariableOrigin, SubregionOrigin, MiscVariable};
 use super::unify_key;
 
-use rustc_data_structures::graph::{self, Direction, NodeIndex};
+use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
 use rustc_data_structures::unify::{self, UnificationTable};
 use middle::free_region::FreeRegionMap;
 use ty::{self, Ty, TyCtxt};
@@ -872,7 +872,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         let seeds: Vec<_> = givens.iter().cloned().collect();
         for (fr, vid) in seeds {
             let seed_index = NodeIndex(vid.index as usize);
-            for succ_index in graph.depth_traverse(seed_index) {
+            for succ_index in graph.depth_traverse(seed_index, OUTGOING) {
                 let succ_index = succ_index.0 as u32;
                 if succ_index < self.num_vars() {
                     let succ_vid = RegionVid { index: succ_index };
