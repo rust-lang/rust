@@ -14,7 +14,7 @@ use std::rc::Rc;
 use super::{Overlap, specializes};
 
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use infer;
 use traits::{self, ProjectionMode};
 use ty::{self, TyCtxt, ImplOrTraitItem, TraitDef, TypeFoldable};

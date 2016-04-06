@@ -15,7 +15,7 @@
 // done by the orphan and overlap modules. Then we build up various
 // mappings. That mapping code resides here.
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::lang_items::UnsizeTraitLangItem;
 use rustc::ty::subst::{self, Subst};
 use rustc::ty::{self, TyCtxt, TypeFoldable};
@@ -39,10 +39,10 @@ use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
-use rustc_front::intravisit;
-use rustc_front::hir::{Item, ItemImpl};
-use rustc_front::hir;
+use rustc::hir::map as hir_map;
+use rustc::hir::intravisit;
+use rustc::hir::{Item, ItemImpl};
+use rustc::hir;
 
 mod orphan;
 mod overlap;

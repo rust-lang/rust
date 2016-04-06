@@ -20,7 +20,7 @@
 use super::supertraits;
 use super::elaborate_predicates;
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::{self, SelfSpace, TypeSpace};
 use traits;
 use ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};

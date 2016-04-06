@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def::*;
-use middle::def_id::DefId;
+use hir::def::*;
+use hir::def_id::DefId;
 use ty::TyCtxt;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
-use rustc_front::hir::{self, PatKind};
-use rustc_front::util::walk_pat;
+use hir::{self, PatKind};
 use syntax::codemap::{respan, Span, Spanned, DUMMY_SP};
 
 use std::cell::RefCell;
@@ -115,7 +114,7 @@ pub fn pat_is_binding_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
 pub fn pat_bindings<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
     I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<ast::Name>),
 {
-    walk_pat(pat, |p| {
+    pat.walk(|p| {
         match p.node {
           PatKind::Ident(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node.name));
@@ -128,7 +127,7 @@ pub fn pat_bindings<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
 pub fn pat_bindings_ident<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) where
     I: FnMut(hir::BindingMode, ast::NodeId, Span, &Spanned<hir::Ident>),
 {
-    walk_pat(pat, |p| {
+    pat.walk(|p| {
         match p.node {
           PatKind::Ident(binding_mode, ref pth, _) if pat_is_binding(&dm.borrow(), p) => {
             it(binding_mode, p.id, p.span, &respan(pth.span, pth.node));
@@ -143,7 +142,7 @@ pub fn pat_bindings_ident<I>(dm: &RefCell<DefMap>, pat: &hir::Pat, mut it: I) wh
 /// an ident, e.g. `foo`, or `Foo(foo)` or `foo @ Bar(..)`.
 pub fn pat_contains_bindings(dm: &DefMap, pat: &hir::Pat) -> bool {
     let mut contains_bindings = false;
-    walk_pat(pat, |p| {
+    pat.walk(|p| {
         if pat_is_binding(dm, p) {
             contains_bindings = true;
             false // there's at least one binding, can short circuit now.
@@ -188,7 +187,7 @@ pub fn arm_contains_ref_binding(dm: &RefCell<DefMap>, arm: &hir::Arm) -> Option<
 /// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
 pub fn pat_contains_bindings_or_wild(dm: &DefMap, pat: &hir::Pat) -> bool {
     let mut contains_bindings = false;
-    walk_pat(pat, |p| {
+    pat.walk(|p| {
         if pat_is_binding_or_wild(dm, p) {
             contains_bindings = true;
             false // there's at least one binding/wildcard, can short circuit now.
@@ -211,20 +210,14 @@ pub fn simple_name<'a>(pat: &'a hir::Pat) -> Option<ast::Name> {
 }
 
 pub fn def_to_path(tcx: &TyCtxt, id: DefId) -> hir::Path {
-    tcx.with_path(id, |path| hir::Path {
-        global: false,
-        segments: path.last().map(|elem| hir::PathSegment {
-            identifier: hir::Ident::from_name(elem.name()),
-            parameters: hir::PathParameters::none(),
-        }).into_iter().collect(),
-        span: DUMMY_SP,
-    })
+    let name = tcx.item_name(id);
+    hir::Path::from_ident(DUMMY_SP, hir::Ident::from_name(name))
 }
 
 /// Return variants that are necessary to exist for the pattern to match.
 pub fn necessary_variants(dm: &DefMap, pat: &hir::Pat) -> Vec<DefId> {
     let mut variants = vec![];
-    walk_pat(pat, |p| {
+    pat.walk(|p| {
         match p.node {
             PatKind::TupleStruct(..) |
             PatKind::Path(..) |

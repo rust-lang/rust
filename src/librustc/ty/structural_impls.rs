@@ -17,7 +17,7 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::ptr::P;
 
-use rustc_front::hir;
+use hir;
 
 ///////////////////////////////////////////////////////////////////////////
 // Lift implementations

@@ -40,7 +40,7 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use Disr;
 use rustc::ty::subst::Substs;
 use rustc::dep_graph::DepNode;
-use rustc_front::hir;
+use rustc::hir;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;

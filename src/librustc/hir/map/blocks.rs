@@ -23,14 +23,14 @@
 
 pub use self::Code::*;
 
-use front::map::{self, Node};
+use hir::map::{self, Node};
 use syntax::abi;
-use rustc_front::hir::{Block, FnDecl};
+use hir::{Block, FnDecl};
 use syntax::ast::{Attribute, Name, NodeId};
 use syntax::attr::ThinAttributesExt;
-use rustc_front::hir as ast;
+use hir as ast;
 use syntax::codemap::Span;
-use rustc_front::intravisit::FnKind;
+use hir::intravisit::FnKind;
 
 /// An FnLikeNode is a Node that is like a fn, in that it has a decl
 /// and a body (as well as a NodeId, a span, etc).

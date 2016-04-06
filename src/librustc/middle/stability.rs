@@ -14,12 +14,12 @@
 pub use self::StabilityLevel::*;
 
 use dep_graph::DepNode;
-use front::map as hir_map;
+use hir::map as hir_map;
 use session::Session;
 use lint;
 use middle::cstore::{CrateStore, LOCAL_CRATE};
-use middle::def::Def;
-use middle::def_id::{CRATE_DEF_INDEX, DefId};
+use hir::def::Def;
+use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use ty::{self, TyCtxt};
 use middle::privacy::AccessLevels;
 use syntax::parse::token::InternedString;
@@ -30,9 +30,9 @@ use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation, AttrMetaMethods};
 use util::nodemap::{DefIdMap, FnvHashSet, FnvHashMap};
 
-use rustc_front::hir;
-use rustc_front::hir::{Item, Generics, StructField, Variant, PatKind};
-use rustc_front::intravisit::{self, Visitor};
+use hir;
+use hir::{Item, Generics, StructField, Variant, PatKind};
+use hir::intravisit::{self, Visitor};
 
 use std::mem::replace;
 use std::cmp::Ordering;

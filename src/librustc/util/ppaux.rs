@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyStruct, TyEnum};
@@ -23,7 +23,7 @@ use std::fmt;
 use syntax::abi::Abi;
 use syntax::parse::token;
 use syntax::ast::CRATE_NODE_ID;
-use rustc_front::hir;
+use hir;
 
 pub fn verbose() -> bool {
     ty::tls::with(|tcx| tcx.sess.verbose())

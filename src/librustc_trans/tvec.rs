@@ -29,7 +29,7 @@ use type_of;
 use value::Value;
 use rustc::ty::{self, Ty};
 
-use rustc_front::hir;
+use rustc::hir;
 use rustc_const_eval::eval_repeat_count;
 
 use syntax::ast;

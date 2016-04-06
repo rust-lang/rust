@@ -12,9 +12,9 @@ use self::Context::*;
 use rustc::session::Session;
 
 use rustc::dep_graph::DepNode;
-use rustc::front::map::Map;
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
+use rustc::hir::map::Map;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir;
 use syntax::codemap::Span;
 
 #[derive(Clone, Copy, PartialEq)]

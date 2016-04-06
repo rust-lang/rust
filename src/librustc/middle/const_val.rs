@@ -11,7 +11,7 @@
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use std::rc::Rc;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use std::hash;
 use std::mem::transmute;
 use rustc_const_math::*;

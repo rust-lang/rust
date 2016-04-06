@@ -13,14 +13,14 @@
 //! constructor provide a method with the same name.
 
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::traits::{self, ProjectionMode};
 use rustc::infer;
 use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use rustc::dep_graph::DepNode;
-use rustc_front::hir;
-use rustc_front::intravisit;
+use rustc::hir;
+use rustc::hir::intravisit;
 use util::nodemap::DefIdMap;
 use lint;
 

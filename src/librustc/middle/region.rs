@@ -17,7 +17,7 @@
 //! `middle/infer/region_inference/README.md`
 
 use dep_graph::DepNode;
-use front::map as ast_map;
+use hir::map as ast_map;
 use session::Session;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 use middle::cstore::InlinedItem;
@@ -30,10 +30,9 @@ use std::mem;
 use syntax::codemap::{self, Span};
 use syntax::ast::{self, NodeId};
 
-use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
-use rustc_front::util::stmt_id;
+use hir;
+use hir::intravisit::{self, Visitor, FnKind};
+use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
            RustcDecodable, Copy)]
@@ -765,7 +764,7 @@ fn resolve_pat(visitor: &mut RegionResolutionVisitor, pat: &hir::Pat) {
 }
 
 fn resolve_stmt(visitor: &mut RegionResolutionVisitor, stmt: &hir::Stmt) {
-    let stmt_id = stmt_id(stmt);
+    let stmt_id = stmt.node.id();
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
     // Every statement will clean up the temporaries created during

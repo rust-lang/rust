@@ -10,15 +10,15 @@
 
 
 use dep_graph::DepNode;
-use front::map as ast_map;
-use middle::def_id::{CRATE_DEF_INDEX};
+use hir::map as ast_map;
+use hir::def_id::{CRATE_DEF_INDEX};
 use session::{config, Session};
 use syntax::ast::NodeId;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::entry::EntryPointType;
-use rustc_front::hir::{Item, ItemFn};
-use rustc_front::intravisit::Visitor;
+use hir::{Item, ItemFn};
+use hir::intravisit::Visitor;
 
 struct EntryContext<'a, 'tcx: 'a> {
     session: &'a Session,

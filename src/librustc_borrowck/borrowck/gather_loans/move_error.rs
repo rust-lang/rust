@@ -16,7 +16,7 @@ use rustc::ty;
 use syntax::ast;
 use syntax::codemap;
 use syntax::errors::DiagnosticBuilder;
-use rustc_front::hir;
+use rustc::hir;
 
 pub struct MoveErrorCollector<'tcx> {
     errors: Vec<MoveError<'tcx>>

@@ -13,14 +13,12 @@
 #![feature(plugin_registrar)]
 #![feature(box_syntax, rustc_private)]
 
-extern crate rustc_front;
-
 // Load rustc as a plugin to get macros
 #[macro_use]
 extern crate rustc;
 extern crate rustc_plugin;
 
-use rustc_front::hir;
+use rustc::hir;
 use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPassObject, LintArray};
 use rustc_plugin::Registry;
 

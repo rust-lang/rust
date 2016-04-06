@@ -44,7 +44,6 @@ extern crate syntax;
 extern crate rustc;
 #[macro_use]
 extern crate log;
-extern crate rustc_front;
 extern crate rustc_back;
 extern crate rustc_const_eval;
 

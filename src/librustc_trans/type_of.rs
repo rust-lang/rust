@@ -10,7 +10,7 @@
 
 #![allow(non_camel_case_types)]
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst;
 use abi::FnType;

@@ -15,8 +15,8 @@ use super::suggest;
 
 use check;
 use check::{FnCtxt, UnresolvedTypeAction};
-use middle::def_id::DefId;
-use middle::def::Def;
+use hir::def_id::DefId;
+use hir::def::Def;
 use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits;
@@ -24,7 +24,7 @@ use rustc::ty::{self, NoPreference, Ty, TyCtxt, ToPolyTraitRef, TraitRef, TypeFo
 use rustc::infer::{self, InferCtxt, InferOk, TypeOrigin};
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
-use rustc_front::hir;
+use rustc::hir;
 use std::collections::HashSet;
 use std::mem;
 use std::rc::Rc;

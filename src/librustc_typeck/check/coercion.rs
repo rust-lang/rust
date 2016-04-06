@@ -76,7 +76,7 @@ use util::common::indent;
 
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use rustc_front::hir;
+use rustc::hir;
 
 struct Coerce<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,

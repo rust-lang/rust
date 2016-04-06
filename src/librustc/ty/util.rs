@@ -10,11 +10,11 @@
 
 //! misc. type-system utilities too small to deserve their own file
 
-use back::svh::Svh;
-use middle::def_id::DefId;
+use hir::svh::Svh;
+use hir::def_id::DefId;
 use ty::subst;
 use infer;
-use middle::pat_util;
+use hir::pat_util;
 use traits::{self, ProjectionMode};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
@@ -28,7 +28,7 @@ use syntax::ast::{self, Name};
 use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
 
-use rustc_front::hir;
+use hir;
 
 pub trait IntTypeExt {
     fn to_ty<'tcx>(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx>;

@@ -48,8 +48,8 @@
 
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
-use rustc_front::hir;
-use rustc_front::intravisit as visit;
+use hir;
+use hir::intravisit as visit;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Svh {
@@ -134,10 +134,10 @@ mod svh_visitor {
     use syntax::ast::{self, Name, NodeId};
     use syntax::codemap::Span;
     use syntax::parse::token;
-    use rustc_front::intravisit as visit;
-    use rustc_front::intravisit::{Visitor, FnKind};
-    use rustc_front::hir::*;
-    use rustc_front::hir;
+    use hir::intravisit as visit;
+    use hir::intravisit::{Visitor, FnKind};
+    use hir::*;
+    use hir;
 
     use std::hash::{Hash, SipHasher};
 

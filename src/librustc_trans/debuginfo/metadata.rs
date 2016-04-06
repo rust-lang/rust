@@ -23,12 +23,12 @@ use super::{declare_local, VariableKind, VariableAccess};
 use llvm::{self, ValueRef};
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor, DICompositeType};
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
-use middle::pat_util;
+use rustc::hir::pat_util;
 use rustc::ty::subst;
-use rustc::front::map as hir_map;
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::map as hir_map;
+use rustc::hir::{self, PatKind};
 use {type_of, adt, machine, monomorphize};
 use common::{self, CrateContext, FunctionContext, Block};
 use _match::{BindingInfo, TransBindingMode};

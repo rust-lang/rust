@@ -86,13 +86,10 @@ pub const tag_item_trait_ref: usize = 0x3b;
 // discriminator value for variants
 pub const tag_disr_val: usize = 0x3c;
 
-// used to encode ast_map::PathElem
-pub const tag_path: usize = 0x3d;
-pub const tag_path_len: usize = 0x3e;
-pub const tag_path_elem_mod: usize = 0x3f;
-pub const tag_path_elem_name: usize = 0x40;
-pub const tag_item_field: usize = 0x41;
+// GAP 0x3d, 0x3e, 0x3f, 0x40
 
+pub const tag_item_field: usize = 0x41;
+// GAP 0x42
 pub const tag_item_variances: usize = 0x43;
 /*
   trait items contain tag_item_trait_item elements,

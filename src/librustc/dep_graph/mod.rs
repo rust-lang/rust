@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use self::thread::{DepGraphThreadData, DepMessage};
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use syntax::ast::NodeId;
 use ty::TyCtxt;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use hir;
+use hir::intravisit::Visitor;
 use std::rc::Rc;
 
 mod dep_tracking_map;

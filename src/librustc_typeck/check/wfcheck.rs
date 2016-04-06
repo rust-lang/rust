@@ -12,7 +12,7 @@ use astconv::AstConv;
 use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::region::{CodeExtent};
 use rustc::ty::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use rustc::traits;
@@ -25,8 +25,8 @@ use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{special_idents};
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir;
 
 pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
     ccx: &'ccx CrateCtxt<'ccx, 'tcx>,

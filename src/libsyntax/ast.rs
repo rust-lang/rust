@@ -204,6 +204,23 @@ impl fmt::Display for Path {
     }
 }
 
+impl Path {
+    // convert a span and an identifier to the corresponding
+    // 1-segment path
+    pub fn from_ident(s: Span, identifier: Ident) -> Path {
+        Path {
+            span: s,
+            global: false,
+            segments: vec!(
+                PathSegment {
+                    identifier: identifier,
+                    parameters: PathParameters::none()
+                }
+            ),
+        }
+    }
+}
+
 /// A segment of a path: an identifier, an optional lifetime, and a set of
 /// types.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

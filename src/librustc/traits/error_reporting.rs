@@ -24,7 +24,7 @@ use super::{
 };
 
 use fmt_macros::{Parser, Piece, Position};
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use infer::InferCtxt;
 use ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::fast_reject;

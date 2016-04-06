@@ -11,7 +11,7 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
 use rustc::mir::repr::*;
-use rustc_front::hir;
+use rustc::hir;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn ast_block(&mut self,

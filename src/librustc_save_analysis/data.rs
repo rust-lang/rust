@@ -15,7 +15,7 @@
 
 use std::hash::Hasher;
 
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty;
 use syntax::ast::{CrateNum, NodeId};
 use syntax::codemap::Span;

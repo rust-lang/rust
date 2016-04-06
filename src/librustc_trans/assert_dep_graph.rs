@@ -39,12 +39,12 @@
 
 use graphviz as dot;
 use rustc::dep_graph::{DepGraphQuery, DepNode};
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::intravisit::Visitor;
 use graphviz::IntoCow;
 use std::env;
 use std::fs::File;
