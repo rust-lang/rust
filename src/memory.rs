@@ -178,7 +178,7 @@ impl Memory {
                     print!("__ ");
                 }
             }
-            println!("");
+            println!("({} bytes)", alloc.bytes.len());
 
             if !relocations.is_empty() {
                 print!("{:1$}", "", prefix.len()); // Print spaces.
