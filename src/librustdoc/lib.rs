@@ -54,21 +54,15 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::env;
-use std::fs::File;
-use std::io::{self, Read, Write};
+use std::io::Read;
 use std::path::PathBuf;
 use std::process;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 
 use externalfiles::ExternalHtml;
-use serialize::Decodable;
-use serialize::json::{self, Json};
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options};
-
-// reexported from `clean` so it can be easily updated with the mod itself
-pub use clean::SCHEMA_VERSION;
 
 #[macro_use]
 pub mod externalfiles;
@@ -127,7 +121,6 @@ thread_local!(pub static ANALYSISKEY: Rc<RefCell<Option<core::CrateAnalysis>>> =
 
 struct Output {
     krate: clean::Crate,
-    json_plugins: Vec<plugins::PluginJson>,
     passes: Vec<String>,
 }
 
@@ -150,9 +143,9 @@ pub fn opts() -> Vec<RustcOptGroup> {
         stable(optflag("V", "version", "print rustdoc's version")),
         stable(optflag("v", "verbose", "use verbose output")),
         stable(optopt("r", "input-format", "the input type of the specified file",
-                      "[rust|json]")),
+                      "[rust]")),
         stable(optopt("w", "output-format", "the output type to write",
-                      "[html|json]")),
+                      "[html]")),
         stable(optopt("o", "output", "where to place the output", "PATH")),
         stable(optopt("", "crate-name", "specify the name of this crate", "NAME")),
         stable(optmulti("L", "library-path", "directory to add to crate search path",
@@ -311,7 +304,7 @@ pub fn main_args(args: &[String]) -> isize {
             return 1;
         }
     };
-    let Output { krate, json_plugins, passes, } = out;
+    let Output { krate, passes, } = out;
     info!("going to format");
     match matches.opt_str("w").as_ref().map(|s| &**s) {
         Some("html") | None => {
@@ -320,11 +313,6 @@ pub fn main_args(args: &[String]) -> isize {
                               passes.into_iter().collect(),
                               css_file_extension)
                 .expect("failed to generate documentation")
-        }
-        Some("json") => {
-            json_output(krate, json_plugins,
-                        output.unwrap_or(PathBuf::from("doc.json")))
-                .expect("failed to write json")
         }
         Some(s) => {
             println!("unknown output format: {}", s);
@@ -342,14 +330,9 @@ fn acquire_input(input: &str,
                  matches: &getopts::Matches) -> Result<Output, String> {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
         Some("rust") => Ok(rust_input(input, externs, matches)),
-        Some("json") => json_input(input),
         Some(s) => Err(format!("unknown input format: {}", s)),
         None => {
-            if input.ends_with(".json") {
-                json_input(input)
-            } else {
-                Ok(rust_input(input, externs, matches))
-            }
+            Ok(rust_input(input, externs, matches))
         }
     }
 }
@@ -461,76 +444,6 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // Run everything!
     info!("Executing passes/plugins");
-    let (krate, json) = pm.run_plugins(krate);
-    Output { krate: krate, json_plugins: json, passes: passes }
-}
-
-/// This input format purely deserializes the json output file. No passes are
-/// run over the deserialized output.
-fn json_input(input: &str) -> Result<Output, String> {
-    let mut bytes = Vec::new();
-    if let Err(e) = File::open(input).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        return Err(format!("couldn't open {}: {}", input, e))
-    }
-    match json::from_reader(&mut &bytes[..]) {
-        Err(s) => Err(format!("{:?}", s)),
-        Ok(Json::Object(obj)) => {
-            let mut obj = obj;
-            // Make sure the schema is what we expect
-            match obj.remove(&"schema".to_string()) {
-                Some(Json::String(version)) => {
-                    if version != SCHEMA_VERSION {
-                        return Err(format!(
-                                "sorry, but I only understand version {}",
-                                SCHEMA_VERSION))
-                    }
-                }
-                Some(..) => return Err("malformed json".to_string()),
-                None => return Err("expected a schema version".to_string()),
-            }
-            let krate = match obj.remove(&"crate".to_string()) {
-                Some(json) => {
-                    let mut d = json::Decoder::new(json);
-                    Decodable::decode(&mut d).unwrap()
-                }
-                None => return Err("malformed json".to_string()),
-            };
-            // FIXME: this should read from the "plugins" field, but currently
-            //      Json doesn't implement decodable...
-            let plugin_output = Vec::new();
-            Ok(Output { krate: krate, json_plugins: plugin_output, passes: Vec::new(), })
-        }
-        Ok(..) => {
-            Err("malformed json input: expected an object at the \
-                 top".to_string())
-        }
-    }
-}
-
-/// Outputs the crate/plugin json as a giant json blob at the specified
-/// destination.
-fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
-               dst: PathBuf) -> io::Result<()> {
-    // {
-    //   "schema": version,
-    //   "crate": { parsed crate ... },
-    //   "plugins": { output of plugins ... }
-    // }
-    let mut json = std::collections::BTreeMap::new();
-    json.insert("schema".to_string(), Json::String(SCHEMA_VERSION.to_string()));
-    let plugins_json = res.into_iter()
-                          .filter_map(|opt| {
-                              opt.map(|(string, json)| (string.to_string(), json))
-                          }).collect();
-
-    // FIXME #8335: yuck, Rust -> str -> JSON round trip! No way to .encode
-    // straight to the Rust JSON representation.
-    let crate_json_str = format!("{}", json::as_json(&krate));
-    let crate_json = json::from_str(&crate_json_str).expect("Rust generated JSON is invalid");
-
-    json.insert("crate".to_string(), crate_json);
-    json.insert("plugins".to_string(), Json::Object(plugins_json));
-
-    let mut file = File::create(&dst)?;
-    write!(&mut file, "{}", Json::Object(json))
+    let krate = pm.run_plugins(krate);
+    Output { krate: krate, passes: passes }
 }

@@ -122,8 +122,8 @@ pub fn run(input: &str,
     if let Some(name) = crate_name {
         krate.name = name;
     }
-    let (krate, _) = passes::collapse_docs(krate);
-    let (krate, _) = passes::unindent_comments(krate);
+    let krate = passes::collapse_docs(krate);
+    let krate = passes::unindent_comments(krate);
 
     let mut collector = Collector::new(krate.name.to_string(),
                                        cfgs,
