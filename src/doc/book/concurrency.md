@@ -164,7 +164,7 @@ The same [ownership system](ownership.html) that helps prevent using pointers
 incorrectly also helps rule out data races, one of the worst kinds of
 concurrency bugs.
 
-As an example, here is a Rust program that would have a data race in many
+As an example, here is a Rust program that could have a data race in many
 languages. It will not compile:
 
 ```ignore
@@ -196,6 +196,11 @@ Rust knows this wouldn't be safe! If we had a reference to `data` in each
 thread, and the thread takes ownership of the reference, we'd have three owners!
 `data` gets moved out of `main` in the first call to `spawn()`, so subsequent
 calls in the loop cannot use this variable.
+
+Note that this specific example will not cause a data race since different array
+indices are being accessed. But this can't be determined at compile time, and in
+a similar situation where `i` is a constant or is random, you would have a data
+race.
 
 So, we need some type that lets us have more than one owning reference to a
 value. Usually, we'd use `Rc<T>` for this, which is a reference counted type
