@@ -225,8 +225,10 @@ impl Memory {
             }
         }
 
-        // TODO(tsion): Copy undef ranges from src to dest.
-        self.copy_relocations(src, dest, size)
+        try!(self.copy_undef_mask(src, dest, size));
+        try!(self.copy_relocations(src, dest, size));
+
+        Ok(())
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<()> {
@@ -378,6 +380,20 @@ impl Memory {
     ////////////////////////////////////////////////////////////////////////////////
     // Undefined bytes
     ////////////////////////////////////////////////////////////////////////////////
+
+    // FIXME(tsino): This is a very naive, slow version.
+    fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
+        // The bits have to be saved locally before writing to dest in case src and dest overlap.
+        let mut v = Vec::with_capacity(size);
+        for i in 0..size {
+            let defined = try!(self.get(src.alloc_id)).undef_mask.get(src.offset + i);
+            v.push(defined);
+        }
+        for (i, defined) in v.into_iter().enumerate() {
+            try!(self.get_mut(dest.alloc_id)).undef_mask.set(dest.offset + i, defined);
+        }
+        Ok(())
+    }
 
     fn check_defined(&self, ptr: Pointer, size: usize) -> EvalResult<()> {
         let alloc = try!(self.get(ptr.alloc_id));

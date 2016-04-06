@@ -47,3 +47,8 @@ fn match_opt_some() -> i8 {
         None => 20,
     }
 }
+
+#[miri_run]
+fn two_nones() -> (Option<i16>, Option<i16>) {
+    (None, None)
+}
