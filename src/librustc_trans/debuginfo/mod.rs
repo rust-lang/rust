@@ -14,8 +14,9 @@ mod doc;
 use self::VariableAccess::*;
 use self::VariableKind::*;
 
-use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
-use self::namespace::{namespace_for_item, NamespaceTreeNode};
+use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit,
+                  get_namespace_and_span_for_item};
+use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, diverging_type_metadata};
 use self::metadata::{file_metadata, scope_metadata, TypeMap, compile_unit_metadata};
@@ -26,6 +27,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       FlagPrototyped};
 use rustc::hir::def_id::DefId;
+use rustc::hir::map::DefPathData;
 use rustc::ty::subst::Substs;
 use rustc::hir;
 
@@ -34,18 +36,16 @@ use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
 use monomorphize::Instance;
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
-use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
+use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
 use std::ffi::CString;
 use std::ptr;
-use std::rc::Rc;
 
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
 use syntax::attr::IntType;
-use syntax::parse::token;
 
 pub mod gdb;
 mod utils;
@@ -80,7 +80,7 @@ pub struct CrateDebugContext<'tcx> {
     created_enum_disr_types: RefCell<FnvHashMap<(DefId, IntType), DIType>>,
 
     type_map: RefCell<TypeMap<'tcx>>,
-    namespace_map: RefCell<FnvHashMap<Vec<ast::Name>, Rc<NamespaceTreeNode>>>,
+    namespace_map: RefCell<DefIdMap<DIScope>>,
 
     // This collection is used to assert that composite types (structs, enums,
     // ...) have their members only set once:
@@ -100,7 +100,7 @@ impl<'tcx> CrateDebugContext<'tcx> {
             created_files: RefCell::new(FnvHashMap()),
             created_enum_disr_types: RefCell::new(FnvHashMap()),
             type_map: RefCell::new(TypeMap::new()),
-            namespace_map: RefCell::new(FnvHashMap()),
+            namespace_map: RefCell::new(DefIdMap()),
             composite_types_completed: RefCell::new(FnvHashSet()),
         };
     }
@@ -232,9 +232,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                instance: Instance<'tcx>,
                                                sig: &ty::FnSig<'tcx>,
                                                abi: Abi,
-                                               generics: &ty::Generics<'tcx>,
-                                               name: Option<ast::Name>,
-                                               span: Span,
                                                llfn: ValueRef) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
         return FunctionDebugContext::DebugInfoDisabled;
@@ -245,6 +242,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     source_loc::set_debug_location(cx, InternalDebugLocation::UnknownLocation);
 
     // This can be the case for functions inlined from another crate
+    let (containing_scope, span) = get_namespace_and_span_for_item(cx, instance.def);
     if span == codemap::DUMMY_SP {
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
@@ -257,38 +255,34 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         llvm::LLVMDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
+    // Find the enclosing function, in case this is a closure.
+    let mut fn_def_id = instance.def;
+    let mut def_key = cx.tcx().def_key(fn_def_id);
+    let mut name = def_key.disambiguated_data.data.to_string();
+    let name_len = name.len();
+    while def_key.disambiguated_data.data == DefPathData::ClosureExpr {
+        fn_def_id.index = def_key.parent.expect("closure without a parent?");
+        def_key = cx.tcx().def_key(fn_def_id);
+    }
+
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let mut function_name = name.map(|name| name.to_string()).unwrap_or_else(|| {
-        // We do this only for closures atm.
-        format!("fn{}", token::gensym("fn"))
-    });
+    let generics = cx.tcx().lookup_item_type(fn_def_id).generics;
     let template_parameters = get_template_parameters(cx,
-                                                      generics,
+                                                      &generics,
                                                       instance.substs,
                                                       file_metadata,
-                                                      &mut function_name);
+                                                      &mut name);
 
-    // There is no hir_map::Path for hir::ExprClosure-type functions. For now,
-    // just don't put them into a namespace. In the future this could be improved
-    // somehow (storing a path in the hir_map, or construct a path using the
-    // enclosing function).
-    let (linkage_name, containing_scope) = if name.is_some() {
-        let namespace_node = namespace_for_item(cx, instance.def);
-        let linkage_name = namespace_node.mangled_name_of_contained_item(
-            &function_name[..]);
-        let containing_scope = namespace_node.scope;
-        (linkage_name, containing_scope)
-    } else {
-        (function_name.clone(), file_metadata)
-    };
+    // Build the linkage_name out of the item path and "template" parameters.
+    let linkage_name = mangled_name_of_item(cx, instance.def, &name[name_len..]);
 
     let scope_line = span_start(cx, span).line;
 
     let local_id = cx.tcx().map.as_local_node_id(instance.def);
     let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
 
-    let function_name = CString::new(function_name).unwrap();
+    let function_name = CString::new(name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
     let fn_metadata = unsafe {
         llvm::LLVMDIBuilderCreateFunction(

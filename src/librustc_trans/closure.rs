@@ -235,10 +235,6 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
         variadic: false
     };
 
-    // This is not quite right. It should actually inherit
-    // the generics of the enclosing function.
-    let generics = ty::Generics::empty();
-
     trans_closure(ccx,
                   decl,
                   body,
@@ -247,8 +243,6 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   id,
                   &sig,
                   Abi::RustCall,
-                  &generics,
-                  None,
                   ClosureEnv::Closure(closure_def_id, id));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
