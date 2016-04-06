@@ -75,7 +75,7 @@ impl IndexData {
 
     pub fn record(&mut self, def_id: DefId, position: u64) {
         assert!(def_id.is_local());
-        self.record_index(def_id.index, position)
+        self.record_index(def_id.index, position);
     }
 
     pub fn record_index(&mut self, item: DefIndex, position: u64) {
