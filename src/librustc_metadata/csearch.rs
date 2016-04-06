@@ -64,7 +64,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         decoder::closure_kind(&cdata, def_id.index)
     }
 
-    fn closure_ty(&self, tcx: &TyCtxt<'tcx>, def_id: DefId) -> ty::ClosureTy<'tcx> {
+    fn closure_ty<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> ty::ClosureTy<'tcx> {
         assert!(!def_id.is_local());
         self.dep_graph.read(DepNode::MetaData(def_id));
         let cdata = self.get_crate_data(def_id.krate);
