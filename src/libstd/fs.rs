@@ -1708,7 +1708,7 @@ mod tests {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
         check!(fs::create_dir(dir));
-        assert!(dir.is_file() == false);
+        assert!(!dir.is_file());
         check!(fs::remove_dir(dir));
     }
 
