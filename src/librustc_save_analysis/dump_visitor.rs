@@ -563,7 +563,7 @@ where D: Dump
         // fields
         for field in def.fields() {
             self.process_struct_field_def(field, item.id);
-            self.visit_ty(&field.node.ty);
+            self.visit_ty(&field.ty);
         }
 
         self.process_generic_params(ty_params, item.span, &qualname, item.id);
@@ -624,7 +624,7 @@ where D: Dump
 
             for field in variant.node.data.fields() {
                 self.process_struct_field_def(field, variant.node.data.id());
-                self.visit_ty(&field.node.ty);
+                self.visit_ty(&field.ty);
             }
         }
         self.process_generic_params(ty_params, item.span, &enum_data.qualname, enum_data.id);

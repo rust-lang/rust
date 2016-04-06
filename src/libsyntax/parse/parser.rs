@@ -29,7 +29,6 @@ use ast::Local;
 use ast::MacStmtStyle;
 use ast::Mac_;
 use ast::{MutTy, Mutability};
-use ast::NamedField;
 use ast::{Pat, PatKind};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Stmt, StmtKind};
@@ -38,7 +37,6 @@ use ast::StrStyle;
 use ast::SelfKind;
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
-use ast::UnnamedField;
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
@@ -3847,12 +3845,14 @@ impl<'a> Parser<'a> {
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty_sum()?;
-        Ok(spanned(lo, self.last_span.hi, ast::StructField_ {
-            kind: NamedField(name, pr),
+        Ok(StructField {
+            span: mk_sp(lo, self.last_span.hi),
+            ident: Some(name),
+            vis: pr,
             id: ast::DUMMY_NODE_ID,
             ty: ty,
             attrs: attrs,
-        }))
+        })
     }
 
     /// Emit an expected item after attributes error.
@@ -5246,13 +5246,16 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let struct_field_ = ast::StructField_ {
-                    kind: UnnamedField(p.parse_visibility()?),
+                let vis = p.parse_visibility()?;
+                let ty = p.parse_ty_sum()?;
+                Ok(StructField {
+                    span: mk_sp(lo, p.span.hi),
+                    vis: vis,
+                    ident: None,
                     id: ast::DUMMY_NODE_ID,
-                    ty: p.parse_ty_sum()?,
+                    ty: ty,
                     attrs: attrs,
-                };
-                Ok(spanned(lo, p.span.hi, struct_field_))
+                })
             })?;
 
         Ok(fields)
