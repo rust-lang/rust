@@ -301,6 +301,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::Predicate::Equate(..) |
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
+                    ty::Predicate::ClosureKind(..) |
                     ty::Predicate::RegionOutlives(..) => {
                         None
                     }

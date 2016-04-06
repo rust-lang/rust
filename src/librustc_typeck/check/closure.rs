@@ -179,6 +179,9 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
                 ty::Predicate::TypeOutlives(..) => None,
                 ty::Predicate::WellFormed(..) => None,
                 ty::Predicate::ObjectSafe(..) => None,
+                ty::Predicate::ClosureKind(_closure_def_id, kind) => {
+                    return Some(kind);
+                }
             };
             opt_trait_ref
                 .and_then(|trait_ref| self_type_matches_expected_vid(fcx, trait_ref, expected_vid))

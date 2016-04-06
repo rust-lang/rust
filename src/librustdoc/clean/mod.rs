@@ -853,6 +853,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
             Predicate::Projection(ref pred) => pred.clean(cx),
             Predicate::WellFormed(_) => panic!("not user writable"),
             Predicate::ObjectSafe(_) => panic!("not user writable"),
+            Predicate::ClosureKind(..) => panic!("not user writable"),
         }
     }
 }

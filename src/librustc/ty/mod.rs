@@ -784,6 +784,11 @@ pub enum Predicate<'tcx> {
 
     /// trait must be object-safe
     ObjectSafe(DefId),
+
+    /// No direct syntax. May be thought of as `where T : FnFoo<...>` for some 'TypeSpace'
+    /// substitutions `...` and T being a closure type.  Satisfied (or refuted) once we know the
+    /// closure's kind.
+    ClosureKind(DefId, ClosureKind),
 }
 
 impl<'tcx> Predicate<'tcx> {
@@ -873,6 +878,8 @@ impl<'tcx> Predicate<'tcx> {
                 Predicate::WellFormed(data.subst(tcx, substs)),
             Predicate::ObjectSafe(trait_def_id) =>
                 Predicate::ObjectSafe(trait_def_id),
+            Predicate::ClosureKind(closure_def_id, kind) =>
+                Predicate::ClosureKind(closure_def_id, kind),
         }
     }
 }
@@ -1060,6 +1067,9 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::ObjectSafe(_trait_def_id) => {
                 vec![]
             }
+            ty::Predicate::ClosureKind(_closure_def_id, _kind) => {
+                vec![]
+            }
         };
 
         // The only reason to collect into a vector here is that I was
@@ -1080,6 +1090,7 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::RegionOutlives(..) |
             Predicate::WellFormed(..) |
             Predicate::ObjectSafe(..) |
+            Predicate::ClosureKind(..) |
             Predicate::TypeOutlives(..) => {
                 None
             }
@@ -1735,7 +1746,7 @@ pub struct ItemSubsts<'tcx> {
     pub substs: Substs<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
     // Warning: Ordering is significant here! The ordering is chosen
     // because the trait Fn is a subtrait of FnMut and so in turn, and
