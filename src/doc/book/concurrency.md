@@ -127,9 +127,7 @@ thread may outlive the scope of `x`, leading to a dangling pointer.
 
 To fix this, we use a `move` closure as mentioned in the error message. `move`
 closures are explained in depth [here](closures.html#move-closures); basically
-they move variables from their environment into themselves. This means that `x`
-is now owned by the closure, and cannot be used in `main()` after the call to
-`spawn()`.
+they move variables from their environment into themselves.
 
 ```rust
 use std::thread;
