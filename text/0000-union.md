@@ -268,6 +268,11 @@ In particular, Rust code must not use unions to break the pointer aliasing
 rules with raw pointers, or access a field containing a primitive type with an
 invalid value.
 
+In addition, since a union declared without `#[repr(C)]` uses an unspecified
+binary layout, code reading fields of such a union or pattern-matching such a
+union must not read from a field other than the one written to.  This includes
+pattern-matching a specific value in a union field.
+
 ## Union size and alignment
 
 A union declared with `#[repr(C)]` must have the same size and alignment as an
