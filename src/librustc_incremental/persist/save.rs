@@ -10,6 +10,7 @@
 
 use rbml::opaque::Encoder;
 use rustc::dep_graph::DepNode;
+use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::ty::TyCtxt;
 use rustc_serialize::{Encodable as RustcEncodable};
 use std::hash::{Hasher, SipHasher};
@@ -25,7 +26,7 @@ pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     save_in(tcx, dep_graph_path(tcx), encode_dep_graph);
-    save_in(tcx, metadata_hash_path(tcx), encode_metadata_hashes);
+    save_in(tcx, metadata_hash_path(tcx, LOCAL_CRATE), encode_metadata_hashes);
 }
 
 fn save_in<'a,'tcx,F>(tcx: TyCtxt<'a, 'tcx, 'tcx>, opt_path_buf: Option<PathBuf>, encode: F)
