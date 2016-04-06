@@ -1400,15 +1400,11 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn new(ccx: &'blk CrateContext<'blk, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
-               definition: Option<(Instance<'tcx>,
-                                   &ty::FnSig<'tcx>,
-                                   Abi,
-                                   &ty::Generics<'tcx>,
-                                   Option<ast::Name>)>,
+               definition: Option<(Instance<'tcx>, &ty::FnSig<'tcx>, Abi)>,
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
         let (param_substs, def_id) = match definition {
-            Some((instance, _, _, _, _)) => {
+            Some((instance, _, _)) => {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def))
             }
@@ -1450,14 +1446,9 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             None
         };
 
-        let span = inlined_id.and_then(|id| ccx.tcx().map.opt_span(id));
-
         let debug_context = if let (false, Some(definition)) = (no_debug, definition) {
-            let (instance, sig, abi, generics, name) = definition;
-            debuginfo::create_function_debug_context(ccx, instance, sig,
-                                                     abi, generics, name,
-                                                     span.unwrap_or(DUMMY_SP),
-                                                     llfndecl)
+            let (instance, sig, abi) = definition;
+            debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfndecl)
         } else {
             debuginfo::empty_function_debug_context(ccx)
         };
@@ -1476,7 +1467,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             lldropflag_hints: RefCell::new(DropFlagHintsMap::new()),
             fn_ty: fn_ty,
             param_substs: param_substs,
-            span: span,
+            span: inlined_id.and_then(|id| ccx.tcx().map.opt_span(id)),
             block_arena: block_arena,
             lpad_arena: TypedArena::new(),
             ccx: ccx,
@@ -1831,8 +1822,6 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                inlined_id: ast::NodeId,
                                sig: &ty::FnSig<'tcx>,
                                abi: Abi,
-                               generics: &ty::Generics<'tcx>,
-                               name: Option<ast::Name>,
                                closure_env: closure::ClosureEnv) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
@@ -1849,8 +1838,7 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty,
-                               Some((instance, sig, abi, generics, name)), &arena);
+    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, Some((instance, sig, abi)), &arena);
 
     if fcx.mir.is_some() {
         return mir::trans_mir(&fcx);
@@ -1931,8 +1919,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     } else {
         ccx.tcx().map.local_def_id(id)
     };
-    let scheme = ccx.tcx().lookup_item_type(def_id);
-    let fn_ty = scheme.ty;
+    let fn_ty = ccx.tcx().lookup_item_type(def_id).ty;
     let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
@@ -1945,8 +1932,6 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   id,
                   &sig,
                   abi,
-                  &scheme.generics,
-                  Some(ccx.tcx().item_name(def_id)),
                   closure::ClosureEnv::NotClosure);
 }
 

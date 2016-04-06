@@ -11,7 +11,7 @@
 // Utility Functions.
 
 use super::{FunctionDebugContext, CrateDebugContext};
-use super::namespace::namespace_for_item;
+use super::namespace::item_namespace;
 
 use rustc::hir::def_id::DefId;
 
@@ -79,10 +79,17 @@ pub fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
 
 pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
                                    -> (DIScope, Span) {
-    let containing_scope = namespace_for_item(cx, def_id).scope;
-    let definition_span = cx.tcx().map.def_id_span(def_id, codemap::DUMMY_SP /* (1) */ );
+    let containing_scope = item_namespace(cx, DefId {
+        krate: def_id.krate,
+        index: cx.tcx().def_key(def_id).parent
+                 .expect("get_namespace_and_span_for_item: missing parent?")
+    });
 
-    // (1) For external items there is no span information
+    // Try to get some span information, if we have an inlined item.
+    let definition_span = match cx.external().borrow().get(&def_id) {
+        Some(&Some(node_id)) => cx.tcx().map.span(node_id),
+        _ => cx.tcx().map.def_id_span(def_id, codemap::DUMMY_SP)
+    };
 
     (containing_scope, definition_span)
 }
