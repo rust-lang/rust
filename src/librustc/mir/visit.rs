@@ -298,9 +298,11 @@ macro_rules! make_mir_visitor {
             fn super_scope_data(&mut self,
                                 scope_data: & $($mutability)* ScopeData) {
                 let ScopeData {
+                    ref $($mutability)* span,
                     ref $($mutability)* parent_scope,
                 } = *scope_data;
 
+                self.visit_span(span);
                 if let Some(ref $($mutability)* parent_scope) = *parent_scope {
                     self.visit_scope_id(parent_scope);
                 }
