@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use rustc::infer::{self, TypeOrigin};
+use rustc::infer::{self, InferOk, TypeOrigin};
 use rustc::ty::{self, TyCtxt};
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
@@ -475,7 +475,10 @@ pub fn compare_const_impl<'tcx>(tcx: &TyCtxt<'tcx>,
     });
 
     match err {
-        Ok(()) => { }
+        Ok(InferOk { obligations, .. }) => {
+            // FIXME(#32730) propagate obligations
+            assert!(obligations.is_empty())
+        }
         Err(terr) => {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
                    impl_ty,

@@ -1502,7 +1502,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 } else {
                     let ends_with_stmt = match body.expr {
                         None if !body.stmts.is_empty() =>
-                            match body.stmts.first().unwrap().node {
+                            match body.stmts.last().unwrap().node {
                                 hir::StmtSemi(ref e, _) => {
                                     self.ir.tcx.expr_ty(&e) == t_ret
                                 },
@@ -1515,7 +1515,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                                                    E0269,
                                                    "not all control paths return a value");
                     if ends_with_stmt {
-                        let last_stmt = body.stmts.first().unwrap();
+                        let last_stmt = body.stmts.last().unwrap();
                         let original_span = original_sp(self.ir.tcx.sess.codemap(),
                                                         last_stmt.span, sp);
                         let span_semicolon = Span {

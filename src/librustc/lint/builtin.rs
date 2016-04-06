@@ -179,6 +179,12 @@ declare_lint! {
     "lints that have been renamed or removed"
 }
 
+declare_lint! {
+    pub SUPER_OR_SELF_IN_GLOBAL_PATH,
+    Warn,
+    "detects super or self keywords at the beginning of global path"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy, Clone)]
@@ -213,7 +219,8 @@ impl LintPass for HardwiredLints {
             RAW_POINTER_DERIVE,
             TRANSMUTE_FROM_FN_ITEM_TYPES,
             OVERLAPPING_INHERENT_IMPLS,
-            RENAMED_AND_REMOVED_LINTS
+            RENAMED_AND_REMOVED_LINTS,
+            SUPER_OR_SELF_IN_GLOBAL_PATH
         )
     }
 }

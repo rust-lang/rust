@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Note: This test is checking that we forbid a coding pattern that
-// Issue #5873 explicitly wants to allow.
+#![feature(rustc_attrs)]
 
-enum State { ST_NULL, ST_WHITESPACE }
+pub type T = ();
+mod foo { pub use super::T; }
+mod bar { pub use super::T; }
 
-fn main() {
-    [State::ST_NULL; (State::ST_WHITESPACE as usize)];
-    //~^ ERROR expected constant integer for repeat count, but unimplemented constant expression
+pub use foo::*;
+pub use bar::*;
+
+mod baz {
+    pub type T = ();
+    mod foo { pub use super::T as S; }
+    mod bar { pub use super::foo::S as T; }
+    pub use self::bar::*;
 }
+
+#[rustc_error]
+fn main() {} //~ ERROR compilation successful
