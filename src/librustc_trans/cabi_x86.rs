@@ -15,25 +15,29 @@ use super::common::*;
 use super::machine::*;
 
 pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
-    if !fty.ret.is_ignore() && fty.ret.ty.kind() == Struct {
-        // Returning a structure. Most often, this will use
-        // a hidden first argument. On some platforms, though,
-        // small structs are returned as integers.
-        //
-        // Some links:
-        // http://www.angelcode.com/dev/callconv/callconv.html
-        // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
-        let t = &ccx.sess().target.target;
-        if t.options.is_like_osx || t.options.is_like_windows {
-            match llsize_of_alloc(ccx, fty.ret.ty) {
-                1 => fty.ret.cast = Some(Type::i8(ccx)),
-                2 => fty.ret.cast = Some(Type::i16(ccx)),
-                4 => fty.ret.cast = Some(Type::i32(ccx)),
-                8 => fty.ret.cast = Some(Type::i64(ccx)),
-                _ => fty.ret.make_indirect(ccx)
+    if !fty.ret.is_ignore() {
+        if fty.ret.ty.kind() == Struct {
+            // Returning a structure. Most often, this will use
+            // a hidden first argument. On some platforms, though,
+            // small structs are returned as integers.
+            //
+            // Some links:
+            // http://www.angelcode.com/dev/callconv/callconv.html
+            // Clang's ABI handling is in lib/CodeGen/TargetInfo.cpp
+            let t = &ccx.sess().target.target;
+            if t.options.is_like_osx || t.options.is_like_windows {
+                match llsize_of_alloc(ccx, fty.ret.ty) {
+                    1 => fty.ret.cast = Some(Type::i8(ccx)),
+                    2 => fty.ret.cast = Some(Type::i16(ccx)),
+                    4 => fty.ret.cast = Some(Type::i32(ccx)),
+                    8 => fty.ret.cast = Some(Type::i64(ccx)),
+                    _ => fty.ret.make_indirect(ccx)
+                }
+            } else {
+                fty.ret.make_indirect(ccx);
             }
         } else {
-            fty.ret.make_indirect(ccx);
+            fty.ret.extend_integer_width_to(32);
         }
     }
 
@@ -42,6 +46,8 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
         if arg.ty.kind() == Struct {
             arg.make_indirect(ccx);
             arg.attrs.set(Attribute::ByVal);
+        } else {
+            arg.extend_integer_width_to(32);
         }
     }
 }
