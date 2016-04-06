@@ -14,16 +14,15 @@ use rustc_const_math::ConstInt;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
-use rustc::front::map;
-use rustc::middle::def::Def;
+use rustc::hir::map;
+use rustc::hir::def::Def;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
 use rustc::middle::region::CodeExtent;
-use rustc::middle::pat_util;
+use rustc::hir::pat_util;
 use rustc::ty::{self, VariantDef, Ty};
 use rustc::mir::repr::*;
-use rustc_front::hir;
-use rustc_front::util as hir_util;
+use rustc::hir;
 use syntax::ptr::P;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
@@ -150,7 +149,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 if cx.tcx.is_method_call(self.id) {
-                    let pass_args = if hir_util::is_by_value_binop(op.node) {
+                    let pass_args = if op.node.is_by_value() {
                         PassArgs::ByValue
                     } else {
                         PassArgs::ByRef
@@ -172,7 +171,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
             hir::ExprBinary(op, ref lhs, ref rhs) => {
                 if cx.tcx.is_method_call(self.id) {
-                    let pass_args = if hir_util::is_by_value_binop(op.node) {
+                    let pass_args = if op.node.is_by_value() {
                         PassArgs::ByValue
                     } else {
                         PassArgs::ByRef
@@ -959,7 +958,7 @@ fn overloaded_lvalue<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
 
 fn capture_freevar<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
                                  closure_expr: &'tcx hir::Expr,
-                                 freevar: &ty::Freevar,
+                                 freevar: &hir::Freevar,
                                  freevar_ty: Ty<'tcx>)
                                  -> ExprRef<'tcx> {
     let id_var = freevar.def.var_id();

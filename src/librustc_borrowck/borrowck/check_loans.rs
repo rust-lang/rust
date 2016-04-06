@@ -30,7 +30,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::traits::ProjectionMode;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::hir;
+use rustc::hir;
 
 use std::rc::Rc;
 

@@ -22,10 +22,10 @@
 pub use self::LangItem::*;
 
 use dep_graph::DepNode;
-use front::map as hir_map;
+use hir::map as hir_map;
 use session::Session;
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty;
 use middle::weak_lang_items;
 use util::nodemap::FnvHashMap;
@@ -33,8 +33,8 @@ use util::nodemap::FnvHashMap;
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
-use rustc_front::intravisit::Visitor;
-use rustc_front::hir;
+use hir::intravisit::Visitor;
+use hir;
 
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.

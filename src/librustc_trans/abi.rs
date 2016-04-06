@@ -26,7 +26,7 @@ use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use type_::Type;
 use type_of;
 
-use rustc_front::hir;
+use rustc::hir;
 use rustc::ty::{self, Ty};
 
 use libc::c_uint;

@@ -33,8 +33,10 @@ pub use self::ViewPath_::*;
 pub use self::Visibility::*;
 pub use self::PathParameters::*;
 
-use intravisit::Visitor;
-use std::collections::BTreeMap;
+use hir::def::Def;
+use hir::def_id::DefId;
+use util::nodemap::{NodeMap, FnvHashSet};
+
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
@@ -43,9 +45,7 @@ use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
-use print::pprust;
-use util;
-
+use std::collections::BTreeMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -63,8 +63,19 @@ macro_rules! hir_vec {
     ($($x:expr),*) => (
         $crate::hir::HirVec::from(vec![$($x),*])
     );
-    ($($x:expr,)*) => (vec![$($x),*])
+    ($($x:expr,)*) => (hir_vec![$($x),*])
 }
+
+pub mod check_attr;
+pub mod def;
+pub mod def_id;
+pub mod fold;
+pub mod intravisit;
+pub mod lowering;
+pub mod map;
+pub mod pat_util;
+pub mod print;
+pub mod svh;
 
 /// Identifier in HIR
 #[derive(Clone, Copy, Eq)]
@@ -135,7 +146,7 @@ impl fmt::Debug for Lifetime {
         write!(f,
                "lifetime({}: {})",
                self.id,
-               pprust::lifetime_to_string(self))
+               print::lifetime_to_string(self))
     }
 }
 
@@ -161,13 +172,28 @@ pub struct Path {
 
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "path({})", pprust::path_to_string(self))
+        write!(f, "path({})", print::path_to_string(self))
     }
 }
 
 impl fmt::Display for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", pprust::path_to_string(self))
+        write!(f, "{}", print::path_to_string(self))
+    }
+}
+
+impl Path {
+    /// Convert a span and an identifier to the corresponding
+    /// 1-segment path.
+    pub fn from_ident(s: Span, ident: Ident) -> Path {
+        Path {
+            span: s,
+            global: false,
+            segments: hir_vec![PathSegment {
+                identifier: ident,
+                parameters: PathParameters::none()
+            }],
+        }
     }
 }
 
@@ -344,12 +370,25 @@ pub struct Generics {
 }
 
 impl Generics {
+    pub fn empty() -> Generics {
+        Generics {
+            lifetimes: HirVec::new(),
+            ty_params: HirVec::new(),
+            where_clause: WhereClause {
+                id: DUMMY_NODE_ID,
+                predicates: HirVec::new(),
+            },
+        }
+    }
+
     pub fn is_lt_parameterized(&self) -> bool {
         !self.lifetimes.is_empty()
     }
+
     pub fn is_type_parameterized(&self) -> bool {
         !self.ty_params.is_empty()
     }
+
     pub fn is_parameterized(&self) -> bool {
         self.is_lt_parameterized() || self.is_type_parameterized()
     }
@@ -434,7 +473,9 @@ impl Crate {
     /// follows lexical scoping rules -- then you want a different
     /// approach. You should override `visit_nested_item` in your
     /// visitor and then call `intravisit::walk_crate` instead.
-    pub fn visit_all_items<'hir, V:Visitor<'hir>>(&'hir self, visitor: &mut V) {
+    pub fn visit_all_items<'hir, V>(&'hir self, visitor: &mut V)
+        where V: intravisit::Visitor<'hir>
+    {
         for (_, item) in &self.items {
             visitor.visit_item(item);
         }
@@ -479,7 +520,51 @@ pub struct Pat {
 
 impl fmt::Debug for Pat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "pat({}: {})", self.id, pprust::pat_to_string(self))
+        write!(f, "pat({}: {})", self.id, print::pat_to_string(self))
+    }
+}
+
+impl Pat {
+    // FIXME(#19596) this is a workaround, but there should be a better way
+    fn walk_<G>(&self, it: &mut G) -> bool
+        where G: FnMut(&Pat) -> bool
+    {
+        if !it(self) {
+            return false;
+        }
+
+        match self.node {
+            PatKind::Ident(_, _, Some(ref p)) => p.walk_(it),
+            PatKind::Struct(_, ref fields, _) => {
+                fields.iter().all(|field| field.node.pat.walk_(it))
+            }
+            PatKind::TupleStruct(_, Some(ref s)) | PatKind::Tup(ref s) => {
+                s.iter().all(|p| p.walk_(it))
+            }
+            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
+                s.walk_(it)
+            }
+            PatKind::Vec(ref before, ref slice, ref after) => {
+                before.iter().all(|p| p.walk_(it)) &&
+                slice.iter().all(|p| p.walk_(it)) &&
+                after.iter().all(|p| p.walk_(it))
+            }
+            PatKind::Wild |
+            PatKind::Lit(_) |
+            PatKind::Range(_, _) |
+            PatKind::Ident(_, _, _) |
+            PatKind::TupleStruct(..) |
+            PatKind::Path(..) |
+            PatKind::QPath(_, _) => {
+                true
+            }
+        }
+    }
+
+    pub fn walk<F>(&self, mut it: F) -> bool
+        where F: FnMut(&Pat) -> bool
+    {
+        self.walk_(&mut it)
     }
 }
 
@@ -597,6 +682,68 @@ pub enum BinOp_ {
     BiGt,
 }
 
+impl BinOp_ {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            BiAdd => "+",
+            BiSub => "-",
+            BiMul => "*",
+            BiDiv => "/",
+            BiRem => "%",
+            BiAnd => "&&",
+            BiOr => "||",
+            BiBitXor => "^",
+            BiBitAnd => "&",
+            BiBitOr => "|",
+            BiShl => "<<",
+            BiShr => ">>",
+            BiEq => "==",
+            BiLt => "<",
+            BiLe => "<=",
+            BiNe => "!=",
+            BiGe => ">=",
+            BiGt => ">",
+        }
+    }
+
+    pub fn is_lazy(self) -> bool {
+        match self {
+            BiAnd | BiOr => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_shift(self) -> bool {
+        match self {
+            BiShl | BiShr => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_comparison(self) -> bool {
+        match self {
+            BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+            BiAnd |
+            BiOr |
+            BiAdd |
+            BiSub |
+            BiMul |
+            BiDiv |
+            BiRem |
+            BiBitXor |
+            BiBitAnd |
+            BiBitOr |
+            BiShl |
+            BiShr => false,
+        }
+    }
+
+    /// Returns `true` if the binary operator takes its arguments by value
+    pub fn is_by_value(self) -> bool {
+        !self.is_comparison()
+    }
+}
+
 pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -609,6 +756,24 @@ pub enum UnOp {
     UnNeg,
 }
 
+impl UnOp {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            UnDeref => "*",
+            UnNot => "!",
+            UnNeg => "-",
+        }
+    }
+
+    /// Returns `true` if the unary operator takes its argument by value
+    pub fn is_by_value(self) -> bool {
+        match self {
+            UnNeg | UnNot => true,
+            _ => false,
+        }
+    }
+}
+
 /// A statement
 pub type Stmt = Spanned<Stmt_>;
 
@@ -618,8 +783,8 @@ impl fmt::Debug for Stmt_ {
         let spanned = codemap::dummy_spanned(self.clone());
         write!(f,
                "stmt({}: {})",
-               util::stmt_id(&spanned),
-               pprust::stmt_to_string(&spanned))
+               spanned.node.id(),
+               print::stmt_to_string(&spanned))
     }
 }
 
@@ -641,6 +806,14 @@ impl Stmt_ {
             StmtDecl(ref d, _) => d.node.attrs(),
             StmtExpr(ref e, _) |
             StmtSemi(ref e, _) => e.attrs.as_attr_slice(),
+        }
+    }
+
+    pub fn id(&self) -> NodeId {
+        match *self {
+            StmtDecl(_, id) => id,
+            StmtExpr(_, id) => id,
+            StmtSemi(_, id) => id,
         }
     }
 }
@@ -722,7 +895,7 @@ pub struct Expr {
 
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "expr({}: {})", self.id, pprust::expr_to_string(self))
+        write!(f, "expr({}: {})", self.id, print::expr_to_string(self))
     }
 }
 
@@ -940,7 +1113,7 @@ pub struct Ty {
 
 impl fmt::Debug for Ty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "type({})", pprust::ty_to_string(self))
+        write!(f, "type({})", print::ty_to_string(self))
     }
 }
 
@@ -1456,3 +1629,24 @@ impl ForeignItem_ {
         }
     }
 }
+
+/// A free variable referred to in a function.
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
+pub struct Freevar {
+    /// The variable being accessed free.
+    pub def: Def,
+
+    // First span where it is accessed (there can be multiple).
+    pub span: Span
+}
+
+pub type FreevarMap = NodeMap<Vec<Freevar>>;
+
+pub type CaptureModeMap = NodeMap<CaptureClause>;
+
+// Trait method resolution
+pub type TraitMap = NodeMap<Vec<DefId>>;
+
+// Map from the NodeId of a glob import to a list of items which are actually
+// imported.
+pub type GlobMap = NodeMap<FnvHashSet<Name>>;

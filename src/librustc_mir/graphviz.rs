@@ -118,7 +118,7 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// all the variables and temporaries.
 fn write_graph_label<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
 -> io::Result<()> {
-    write!(w, "    label=<fn {}(", dot::escape_html(&tcx.map.path_to_string(nid)))?;
+    write!(w, "    label=<fn {}(", dot::escape_html(&tcx.node_path_str(nid)))?;
 
     // fn argument types.
     for (i, arg) in mir.arg_decls.iter().enumerate() {

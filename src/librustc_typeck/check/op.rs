@@ -18,12 +18,11 @@ use super::{
     method,
     FnCtxt,
 };
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use rustc::ty::{Ty, TypeFoldable, PreferMutLvalue};
 use syntax::ast;
 use syntax::parse::token;
-use rustc_front::hir;
-use rustc_front::util as hir_util;
+use rustc::hir;
 
 /// Check a `a <op>= b`
 pub fn check_binop_assign<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
@@ -184,12 +183,12 @@ fn check_overloaded_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if let IsAssign::Yes = is_assign {
                     span_err!(fcx.tcx().sess, lhs_expr.span, E0368,
                               "binary assignment operation `{}=` cannot be applied to type `{}`",
-                              hir_util::binop_to_string(op.node),
+                              op.node.as_str(),
                               lhs_ty);
                 } else {
                     let mut err = struct_span_err!(fcx.tcx().sess, lhs_expr.span, E0369,
                         "binary operation `{}` cannot be applied to type `{}`",
-                        hir_util::binop_to_string(op.node),
+                        op.node.as_str(),
                         lhs_ty);
                     let missing_trait = match op.node {
                         hir::BiAdd    => Some("std::ops::Add"),
@@ -235,7 +234,7 @@ pub fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  op: hir::UnOp)
                                  -> Ty<'tcx>
 {
-    assert!(hir_util::is_by_value_unop(op));
+    assert!(op.is_by_value());
     match lookup_op_method(fcx, ex, operand_ty, vec![],
                            token::intern(mname), trait_did,
                            operand_expr) {
@@ -272,7 +271,7 @@ fn name_and_trait_def_id(fcx: &FnCtxt,
             hir::BiOr => {
                 span_bug!(op.span,
                           "impossible assignment operation: {}=",
-                          hir_util::binop_to_string(op.node))
+                          op.node.as_str())
             }
         }
     } else {

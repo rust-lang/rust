@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use front::map::DefPathData;
+use hir::map::DefPathData;
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::{DefId, CRATE_DEF_INDEX};
+use hir::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 
@@ -22,6 +22,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let mut buffer = LocalPathBuffer::new(RootMode::Local);
         self.push_item_path(&mut buffer, def_id);
         buffer.into_string()
+    }
+
+    /// Returns a string identifying this local node-id.
+    pub fn node_path_str(&self, id: ast::NodeId) -> String {
+        self.item_path_str(self.map.local_def_id(id))
     }
 
     /// Returns a string identifying this def-id. This string is

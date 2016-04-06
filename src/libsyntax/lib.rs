@@ -91,7 +91,6 @@ pub mod syntax {
 
 pub mod abi;
 pub mod ast;
-pub mod ast_util;
 pub mod attr;
 pub mod codemap;
 pub mod config;

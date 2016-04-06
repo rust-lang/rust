@@ -93,16 +93,15 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, TypeFoldable};
 use rustc::infer::{self, GenericKind, InferCtxt, InferOk, SubregionOrigin, TypeOrigin, VerifyBound};
-use middle::pat_util;
+use hir::pat_util;
 use rustc::ty::adjustment;
 use rustc::ty::wf::ImpliedBound;
 
 use std::mem;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir::{self, PatKind};
-use rustc_front::util as hir_util;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir::{self, PatKind};
 
 use self::SubjectNode::Subject;
 
@@ -689,7 +688,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         },
 
         hir::ExprBinary(op, ref lhs, ref rhs) if has_method_map => {
-            let implicitly_ref_args = !hir_util::is_by_value_binop(op.node);
+            let implicitly_ref_args = !op.node.is_by_value();
 
             // As `expr_method_call`, but the call is via an
             // overloaded op.  Note that we (sadly) currently use an
@@ -716,7 +715,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
         }
 
         hir::ExprUnary(op, ref lhs) if has_method_map => {
-            let implicitly_ref_args = !hir_util::is_by_value_unop(op);
+            let implicitly_ref_args = !op.is_by_value();
 
             // As above.
             constrain_call(rcx, expr, Some(&lhs),

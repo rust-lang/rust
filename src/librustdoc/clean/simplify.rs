@@ -29,7 +29,7 @@
 use std::mem;
 use std::collections::HashMap;
 
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::subst;
 
 use clean::PathParameters as PP;

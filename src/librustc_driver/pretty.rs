@@ -50,11 +50,11 @@ use std::option;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use rustc::front::map as hir_map;
-use rustc::front::map::{blocks, NodePrinter};
-use rustc_front::hir;
-use rustc_front::lowering::{lower_crate, LoweringContext};
-use rustc_front::print::pprust as pprust_hir;
+use rustc::hir::map as hir_map;
+use rustc::hir::map::{blocks, NodePrinter};
+use rustc::hir;
+use rustc::hir::lowering::{lower_crate, LoweringContext};
+use rustc::hir::print as pprust_hir;
 
 use rustc::mir::mir_map::MirMap;
 
@@ -256,6 +256,15 @@ trait HirPrinterSupport<'ast>: pprust_hir::PpAnn {
     /// (Rust does not yet support upcasting from a trait object to
     /// an object for one of its super-traits.)
     fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn;
+
+    /// Computes an user-readable representation of a path, if possible.
+    fn node_path(&self, id: ast::NodeId) -> Option<String> {
+        self.ast_map().and_then(|map| map.def_path_from_id(id)).map(|path| {
+            path.data.into_iter().map(|elem| {
+                elem.data.to_string()
+            }).collect::<Vec<_>>().join("::")
+        })
+    }
 }
 
 struct NoAnn<'ast> {
@@ -451,6 +460,10 @@ impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
 
     fn pp_ann<'a>(&'a self) -> &'a pprust_hir::PpAnn {
         self
+    }
+
+    fn node_path(&self, id: ast::NodeId) -> Option<String> {
+        Some(self.tcx.node_path_str(id))
     }
 }
 
@@ -794,7 +807,7 @@ pub fn pretty_print_input(sess: Session,
                                        |annotation, (out,uii), _| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
-                let ast_map = annotation.ast_map().expect("--pretty missing ast_map");
+                let ast_map = annotation.ast_map().expect("--unpretty missing HIR map");
                 let mut pp_state =
                     pprust_hir::State::new_from_input(sess.codemap(),
                                                       sess.diagnostic(),
@@ -808,7 +821,9 @@ pub fn pretty_print_input(sess: Session,
                     let node = ast_map.get(node_id);
                     pp_state.print_node(&node)?;
                     pp::space(&mut pp_state.s)?;
-                    pp_state.synth_comment(ast_map.path_to_string(node_id))?;
+                    let path = annotation.node_path(node_id)
+                                         .expect("--unpretty missing node paths");
+                    pp_state.synth_comment(path)?;
                     pp::hardbreak(&mut pp_state.s)?;
                 }
                 pp::eof(&mut pp_state.s)

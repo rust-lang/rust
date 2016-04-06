@@ -13,7 +13,7 @@
 use super::{FunctionDebugContext, CrateDebugContext};
 use super::namespace::namespace_for_item;
 
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};

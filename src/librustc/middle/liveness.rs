@@ -110,8 +110,8 @@ use self::LiveNodeKind::*;
 use self::VarKind::*;
 
 use dep_graph::DepNode;
-use middle::def::*;
-use middle::pat_util;
+use hir::def::*;
+use hir::pat_util;
 use ty::{self, TyCtxt, ParameterEnvironment};
 use traits::{self, ProjectionMode};
 use infer;
@@ -128,10 +128,10 @@ use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
 
-use rustc_front::hir::Expr;
-use rustc_front::hir;
-use rustc_front::print::pprust::{expr_to_string, block_to_string};
-use rustc_front::intravisit::{self, Visitor, FnKind};
+use hir::Expr;
+use hir;
+use hir::print::{expr_to_string, block_to_string};
+use hir::intravisit::{self, Visitor, FnKind};
 
 /// For use with `propagate_through_loop`.
 enum LoopKind<'a> {
@@ -484,7 +484,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
-      hir::ExprBinary(op, _, _) if ::rustc_front::util::lazy_binop(op.node) => {
+      hir::ExprBinary(op, _, _) if op.node.is_lazy() => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         intravisit::walk_expr(ir, expr);
       }
@@ -1142,7 +1142,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_exprs(&exprs[..], succ)
           }
 
-          hir::ExprBinary(op, ref l, ref r) if ::rustc_front::util::lazy_binop(op.node) => {
+          hir::ExprBinary(op, ref l, ref r) if op.node.is_lazy() => {
             let r_succ = self.propagate_through_expr(&r, succ);
 
             let ln = self.live_node(expr.id, expr.span);

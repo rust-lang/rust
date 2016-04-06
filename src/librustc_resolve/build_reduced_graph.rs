@@ -24,8 +24,8 @@ use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::{CrateStore, ChildItem, DlDef};
 use rustc::lint;
-use rustc::middle::def::*;
-use rustc::middle::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def::*;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::VariantKind;
 
 use syntax::ast::Name;
@@ -33,15 +33,15 @@ use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{special_idents, SELF_KEYWORD_NAME, SUPER_KEYWORD_NAME};
 use syntax::codemap::{Span, DUMMY_SP};
 
-use rustc_front::hir;
-use rustc_front::hir::{Block, DeclItem};
-use rustc_front::hir::{ForeignItem, ForeignItemFn, ForeignItemStatic};
-use rustc_front::hir::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
-use rustc_front::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
-use rustc_front::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use rustc_front::hir::{PathListIdent, PathListMod, StmtDecl};
-use rustc_front::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
-use rustc_front::intravisit::{self, Visitor};
+use rustc::hir;
+use rustc::hir::{Block, DeclItem};
+use rustc::hir::{ForeignItem, ForeignItemFn, ForeignItemStatic};
+use rustc::hir::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
+use rustc::hir::{ItemForeignMod, ItemImpl, ItemMod, ItemStatic, ItemDefaultImpl};
+use rustc::hir::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use rustc::hir::{PathListIdent, PathListMod, StmtDecl};
+use rustc::hir::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
+use rustc::hir::intravisit::{self, Visitor};
 
 trait ToNameBinding<'a> {
     fn to_name_binding(self) -> NameBinding<'a>;

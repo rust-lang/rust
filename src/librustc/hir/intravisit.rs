@@ -31,6 +31,9 @@ use syntax::attr::ThinAttributesExt;
 use syntax::codemap::Span;
 use hir::*;
 
+use std::cmp;
+use std::u32;
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
@@ -834,4 +837,234 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
     walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
+}
+
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct IdRange {
+    pub min: NodeId,
+    pub max: NodeId,
+}
+
+impl IdRange {
+    pub fn max() -> IdRange {
+        IdRange {
+            min: u32::MAX,
+            max: u32::MIN,
+        }
+    }
+
+    pub fn empty(&self) -> bool {
+        self.min >= self.max
+    }
+
+    pub fn add(&mut self, id: NodeId) {
+        self.min = cmp::min(self.min, id);
+        self.max = cmp::max(self.max, id + 1);
+    }
+}
+
+pub trait IdVisitingOperation {
+    fn visit_id(&mut self, node_id: NodeId);
+}
+
+pub struct IdRangeComputingVisitor {
+    pub result: IdRange,
+}
+
+impl IdRangeComputingVisitor {
+    pub fn new() -> IdRangeComputingVisitor {
+        IdRangeComputingVisitor { result: IdRange::max() }
+    }
+
+    pub fn result(&self) -> IdRange {
+        self.result
+    }
+}
+
+impl IdVisitingOperation for IdRangeComputingVisitor {
+    fn visit_id(&mut self, id: NodeId) {
+        self.result.add(id);
+    }
+}
+
+pub struct IdVisitor<'a, O: 'a> {
+    operation: &'a mut O,
+
+    // In general, the id visitor visits the contents of an item, but
+    // not including nested trait/impl items, nor other nested items.
+    // The base visitor itself always skips nested items, but not
+    // trait/impl items. This means in particular that if you start by
+    // visiting a trait or an impl, you should not visit the
+    // trait/impl items respectively.  This is handled by setting
+    // `skip_members` to true when `visit_item` is on the stack. This
+    // way, if the user begins by calling `visit_trait_item`, we will
+    // visit the trait item, but if they begin with `visit_item`, we
+    // won't visit the (nested) trait items.
+    skip_members: bool,
+}
+
+impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
+    pub fn new(operation: &'a mut O) -> IdVisitor<'a, O> {
+        IdVisitor { operation: operation, skip_members: false }
+    }
+
+    fn visit_generics_helper(&mut self, generics: &Generics) {
+        for type_parameter in generics.ty_params.iter() {
+            self.operation.visit_id(type_parameter.id)
+        }
+        for lifetime in &generics.lifetimes {
+            self.operation.visit_id(lifetime.lifetime.id)
+        }
+    }
+}
+
+impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
+    fn visit_mod(&mut self, module: &Mod, _: Span, node_id: NodeId) {
+        self.operation.visit_id(node_id);
+        walk_mod(self, module)
+    }
+
+    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
+        self.operation.visit_id(foreign_item.id);
+        walk_foreign_item(self, foreign_item)
+    }
+
+    fn visit_item(&mut self, item: &Item) {
+        assert!(!self.skip_members);
+        self.skip_members = true;
+
+        self.operation.visit_id(item.id);
+        match item.node {
+            ItemUse(ref view_path) => {
+                match view_path.node {
+                    ViewPathSimple(_, _) |
+                    ViewPathGlob(_) => {}
+                    ViewPathList(_, ref paths) => {
+                        for path in paths {
+                            self.operation.visit_id(path.node.id())
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        walk_item(self, item);
+
+        self.skip_members = false;
+    }
+
+    fn visit_local(&mut self, local: &Local) {
+        self.operation.visit_id(local.id);
+        walk_local(self, local)
+    }
+
+    fn visit_block(&mut self, block: &Block) {
+        self.operation.visit_id(block.id);
+        walk_block(self, block)
+    }
+
+    fn visit_stmt(&mut self, statement: &Stmt) {
+        self.operation.visit_id(statement.node.id());
+        walk_stmt(self, statement)
+    }
+
+    fn visit_pat(&mut self, pattern: &Pat) {
+        self.operation.visit_id(pattern.id);
+        walk_pat(self, pattern)
+    }
+
+    fn visit_expr(&mut self, expression: &Expr) {
+        self.operation.visit_id(expression.id);
+        walk_expr(self, expression)
+    }
+
+    fn visit_ty(&mut self, typ: &Ty) {
+        self.operation.visit_id(typ.id);
+        walk_ty(self, typ)
+    }
+
+    fn visit_generics(&mut self, generics: &Generics) {
+        self.visit_generics_helper(generics);
+        walk_generics(self, generics)
+    }
+
+    fn visit_fn(&mut self,
+                function_kind: FnKind<'v>,
+                function_declaration: &'v FnDecl,
+                block: &'v Block,
+                span: Span,
+                node_id: NodeId) {
+        self.operation.visit_id(node_id);
+
+        match function_kind {
+            FnKind::ItemFn(_, generics, _, _, _, _, _) => {
+                self.visit_generics_helper(generics)
+            }
+            FnKind::Method(_, sig, _, _) => {
+                self.visit_generics_helper(&sig.generics)
+            }
+            FnKind::Closure(_) => {}
+        }
+
+        for argument in &function_declaration.inputs {
+            self.operation.visit_id(argument.id)
+        }
+
+        walk_fn(self, function_kind, function_declaration, block, span);
+    }
+
+    fn visit_struct_field(&mut self, struct_field: &StructField) {
+        self.operation.visit_id(struct_field.id);
+        walk_struct_field(self, struct_field)
+    }
+
+    fn visit_variant_data(&mut self,
+                          struct_def: &VariantData,
+                          _: Name,
+                          _: &Generics,
+                          _: NodeId,
+                          _: Span) {
+        self.operation.visit_id(struct_def.id());
+        walk_struct_def(self, struct_def);
+    }
+
+    fn visit_trait_item(&mut self, ti: &TraitItem) {
+        if !self.skip_members {
+            self.operation.visit_id(ti.id);
+            walk_trait_item(self, ti);
+        }
+    }
+
+    fn visit_impl_item(&mut self, ii: &ImplItem) {
+        if !self.skip_members {
+            self.operation.visit_id(ii.id);
+            walk_impl_item(self, ii);
+        }
+    }
+
+    fn visit_lifetime(&mut self, lifetime: &Lifetime) {
+        self.operation.visit_id(lifetime.id);
+    }
+
+    fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
+        self.visit_lifetime(&def.lifetime);
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {
+        self.operation.visit_id(trait_ref.ref_id);
+        walk_trait_ref(self, trait_ref);
+    }
+}
+
+/// Computes the id range for a single fn body, ignoring nested items.
+pub fn compute_id_range_for_fn_body(fk: FnKind,
+                                    decl: &FnDecl,
+                                    body: &Block,
+                                    sp: Span,
+                                    id: NodeId)
+                                    -> IdRange {
+    let mut visitor = IdRangeComputingVisitor { result: IdRange::max() };
+    let mut id_visitor = IdVisitor::new(&mut visitor);
+    id_visitor.visit_fn(fk, decl, body, sp, id);
+    id_visitor.operation.result
 }

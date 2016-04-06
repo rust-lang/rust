@@ -19,9 +19,9 @@ use std::iter::repeat;
 use std::path::Path;
 use std::time::Instant;
 
-use rustc_front::hir;
-use rustc_front::intravisit;
-use rustc_front::intravisit::Visitor;
+use hir;
+use hir::intravisit;
+use hir::intravisit::Visitor;
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";

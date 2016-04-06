@@ -13,8 +13,8 @@ use borrowck::BorrowckCtxt;
 use syntax::ast;
 use syntax::codemap::Span;
 
-use rustc_front::hir;
-use rustc_front::intravisit::{FnKind};
+use rustc::hir;
+use rustc::hir::intravisit::{FnKind};
 
 use rustc::mir::repr::{BasicBlock, BasicBlockData, Mir, Statement, Terminator};
 

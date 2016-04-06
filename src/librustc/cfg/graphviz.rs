@@ -17,7 +17,7 @@ use graphviz::IntoCow;
 
 use syntax::ast;
 
-use front::map as ast_map;
+use hir::map as ast_map;
 use cfg;
 
 pub type Node<'a> = (cfg::CFGIndex, &'a cfg::CFGNode);

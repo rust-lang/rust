@@ -26,9 +26,9 @@ use rustc::lint;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
 
-use rustc_front::hir;
-use rustc_front::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::{ViewPathGlob, ViewPathList, ViewPathSimple};
+use rustc::hir::intravisit::Visitor;
 
 struct UnusedImportCheckVisitor<'a, 'b: 'a, 'tcx: 'b> {
     resolver: &'a mut Resolver<'b, 'tcx>,

@@ -11,10 +11,10 @@
 use super::*;
 use super::MapEntry::*;
 
-use rustc_front::hir::*;
-use rustc_front::util;
-use rustc_front::intravisit::{self, Visitor};
-use middle::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use hir::*;
+use hir::intravisit::Visitor;
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use middle::cstore::InlinedItem;
 use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;
@@ -47,7 +47,7 @@ impl<'ast> NodeCollector<'ast> {
     }
 
     pub fn extend(krate: &'ast Crate,
-                  parent: &'ast InlinedParent,
+                  parent: &'ast InlinedItem,
                   parent_node: NodeId,
                   parent_def_path: DefPath,
                   parent_def_id: DefId,
@@ -305,7 +305,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        let id = util::stmt_id(stmt);
+        let id = stmt.node.id();
         self.insert(id, NodeStmt(stmt));
         let parent_node = self.parent_node;
         self.parent_node = id;

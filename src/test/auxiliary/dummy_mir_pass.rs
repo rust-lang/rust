@@ -14,7 +14,6 @@
 #![feature(box_syntax)]
 
 #[macro_use] extern crate rustc;
-extern crate rustc_front;
 extern crate rustc_plugin;
 extern crate rustc_const_math;
 extern crate syntax;

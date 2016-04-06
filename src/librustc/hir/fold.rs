@@ -908,14 +908,6 @@ pub fn noop_fold_item<T: Folder>(item: Item, folder: &mut T) -> Item {
     let Item { id, name, attrs, node, vis, span } = item;
     let id = folder.new_id(id);
     let node = folder.fold_item_underscore(node);
-    // FIXME: we should update the impl_pretty_name, but it uses pretty printing.
-    // let ident = match node {
-    //     // The node may have changed, recompute the "pretty" impl name.
-    //     ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
-    //         impl_pretty_name(maybe_trait, Some(&**ty))
-    //     }
-    //     _ => ident
-    // };
 
     Item {
         id: id,

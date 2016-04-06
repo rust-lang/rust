@@ -45,13 +45,11 @@
 extern crate syntax;
 extern crate libc;
 extern crate serialize;
-extern crate rustc_front;
 #[macro_use] extern crate log;
 
 pub mod tempdir;
 pub mod rpath;
 pub mod sha2;
-pub mod svh;
 pub mod target;
 pub mod slice;
 pub mod dynamic_lib;

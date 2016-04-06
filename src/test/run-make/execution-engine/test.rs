@@ -14,7 +14,6 @@
 extern crate libc;
 extern crate rustc;
 extern crate rustc_driver;
-extern crate rustc_front;
 extern crate rustc_lint;
 extern crate rustc_llvm as llvm;
 extern crate rustc_metadata;
@@ -28,13 +27,13 @@ use std::rc::Rc;
 use std::thread::Builder;
 
 use rustc::dep_graph::DepGraph;
-use rustc::front::map as ast_map;
+use rustc::hir::map as ast_map;
 use rustc::middle::cstore::{CrateStore, LinkagePreference};
 use rustc::ty;
 use rustc::session::config::{self, basic_options, build_configuration, Input, Options};
 use rustc::session::build_session;
 use rustc_driver::{driver, abort_on_err};
-use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
 use rustc_metadata::cstore::CStore;
 use libc::c_void;

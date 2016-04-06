@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def::Def;
+use rustc::hir::def::Def;
 use rustc::ty;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -17,8 +17,8 @@ use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::FnKind;
+use rustc::hir::{self, PatKind};
+use rustc::hir::intravisit::FnKind;
 
 #[derive(PartialEq)]
 pub enum MethodLateContext {

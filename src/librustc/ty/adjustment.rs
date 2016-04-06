@@ -17,7 +17,7 @@ use ty::LvaluePreference::{NoPreference};
 use syntax::ast;
 use syntax::codemap::Span;
 
-use rustc_front::hir;
+use hir;
 
 #[derive(Copy, Clone)]
 pub enum AutoAdjustment<'tcx> {

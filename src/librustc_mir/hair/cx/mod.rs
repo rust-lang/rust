@@ -20,12 +20,12 @@ use rustc::mir::repr::*;
 
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval as const_eval;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
 use syntax::parse::token;
-use rustc_front::hir;
+use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]

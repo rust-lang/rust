@@ -18,9 +18,9 @@ use middle::lang_items;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
-use rustc_front::intravisit::Visitor;
-use rustc_front::intravisit;
-use rustc_front::hir;
+use hir::intravisit::Visitor;
+use hir::intravisit;
+use hir;
 
 use std::collections::HashSet;
 

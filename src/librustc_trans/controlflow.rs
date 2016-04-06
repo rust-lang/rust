@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use middle::def::Def;
+use rustc::hir::def::Def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
 use rustc::ty::subst::Substs;
 use base::*;
@@ -25,8 +25,7 @@ use debuginfo::{DebugLoc, ToDebugLoc};
 use expr;
 use machine;
 
-use rustc_front::hir;
-use rustc_front::util as ast_util;
+use rustc::hir;
 
 use syntax::ast;
 use syntax::parse::token::InternedString;
@@ -49,7 +48,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let mut bcx = cx;
 
-    let id = ast_util::stmt_id(s);
+    let id = s.node.id();
     let cleanup_debug_loc =
         debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), id, s.span, false);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
@@ -70,7 +69,7 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         }
     }
 
-    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, ast_util::stmt_id(s));
+    bcx = fcx.pop_and_trans_ast_cleanup_scope(bcx, s.node.id());
 
     return bcx;
 }

@@ -20,7 +20,7 @@ use syntax::ast;
 use syntax::ast::{Name, NodeId};
 use syntax::attr;
 use syntax::ptr::P;
-use rustc_front::hir;
+use rustc::hir;
 
 pub struct Module {
     pub name: Option<Name>,

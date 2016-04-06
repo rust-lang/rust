@@ -14,16 +14,16 @@
 //! We walk the set of items and, for each member, generate new constraints.
 
 use dep_graph::DepTrackingMapConfig;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use rustc::ty::subst;
 use rustc::ty::subst::ParamSpace;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::ItemVariances;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use syntax::ast;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::intravisit::Visitor;
 
 use super::terms::*;
 use super::terms::VarianceTerm::*;

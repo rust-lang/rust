@@ -13,14 +13,14 @@ use rustc_lint;
 use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
-use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
 
 use syntax::{ast, codemap, errors};
