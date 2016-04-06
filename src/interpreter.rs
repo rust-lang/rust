@@ -530,6 +530,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_ptr(dest, ptr));
             }
 
+            "__rust_reallocate" => {
+                let ptr_arg = try!(self.eval_operand(&args[0]));
+                let _old_size_arg = try!(self.eval_operand(&args[1]));
+                let size_arg = try!(self.eval_operand(&args[2]));
+                let _align_arg = try!(self.eval_operand(&args[3]));
+                let ptr = try!(self.memory.read_ptr(ptr_arg));
+                let size = try!(self.memory.read_usize(size_arg));
+                try!(self.memory.reallocate(ptr, size as usize));
+                try!(self.memory.write_ptr(dest, ptr));
+            }
+
             _ => panic!("can't call C ABI function: {}", link_name),
         }
 

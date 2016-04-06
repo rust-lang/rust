@@ -63,7 +63,7 @@ pub struct AllocId(u64);
 
 #[derive(Debug)]
 pub struct Allocation {
-    pub bytes: Box<[u8]>,
+    pub bytes: Vec<u8>,
     pub relocations: BTreeMap<usize, AllocId>,
     pub undef_mask: UndefMask,
 }
@@ -104,7 +104,7 @@ impl Memory {
     pub fn allocate(&mut self, size: usize) -> Pointer {
         let id = AllocId(self.next_id);
         let alloc = Allocation {
-            bytes: vec![0; size].into_boxed_slice(),
+            bytes: vec![0; size],
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
         };
@@ -114,6 +114,30 @@ impl Memory {
             alloc_id: id,
             offset: 0,
         }
+    }
+
+    // TODO(tsion): Track which allocations were returned from __rust_allocate and report an error
+    // when reallocating/deallocating any others.
+    pub fn reallocate(&mut self, ptr: Pointer, new_size: usize) -> EvalResult<()> {
+        if ptr.offset != 0 {
+            // TODO(tsion): Report error about non-__rust_allocate'd pointer.
+            panic!()
+        }
+
+        let alloc = try!(self.get_mut(ptr.alloc_id));
+        let size = alloc.bytes.len();
+        if new_size > size {
+            let amount = new_size - size;
+            alloc.bytes.extend(iter::repeat(0).take(amount));
+            alloc.undef_mask.grow(amount, false);
+        } else if size > new_size {
+            unimplemented!()
+            // alloc.bytes.truncate(new_size);
+            // alloc.undef_mask.len = new_size;
+            // TODO: potentially remove relocations
+        }
+
+        Ok(())
     }
 
     ////////////////////////////////////////////////////////////////////////////////

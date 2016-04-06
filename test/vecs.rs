@@ -2,7 +2,7 @@
 #![allow(dead_code, unused_attributes)]
 
 #[miri_run]
-fn make_vec() -> Vec<i32> {
+fn make_vec() -> Vec<u8> {
     let mut v = Vec::with_capacity(4);
     v.push(1);
     v.push(2);
@@ -10,7 +10,7 @@ fn make_vec() -> Vec<i32> {
 }
 
 #[miri_run]
-fn make_vec_macro() -> Vec<i32> {
+fn make_vec_macro() -> Vec<u8> {
     vec![1, 2]
 }
 
@@ -22,4 +22,13 @@ fn make_vec_macro_repeat() -> Vec<u8> {
 #[miri_run]
 fn vec_into_iter() -> i32 {
     vec![1, 2, 3, 4].into_iter().fold(0, |x, y| x + y)
+}
+
+#[miri_run]
+fn vec_reallocate() -> Vec<u8> {
+    let mut v = vec![1, 2];
+    v.push(3);
+    v.push(4);
+    v.push(5);
+    v
 }
