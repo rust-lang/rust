@@ -54,7 +54,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
     };
 
     // strip any traits implemented on stripped items
-    let krate = {
+    {
         struct ImplStripper<'a> {
             stripped: &'a mut DefIdSet
         }
@@ -80,9 +80,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
         }
         let mut stripper = ImplStripper{ stripped: &mut stripped };
         stripper.fold_crate(krate)
-    };
-
-    (krate, None)
+    }
 }
 
 /// Strip private items from the point of view of a crate or externally from a
@@ -107,9 +105,8 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     // strip all private implementations of traits
     {
         let mut stripper = ImplStripper(&retained);
-        krate = stripper.fold_crate(krate);
+        stripper.fold_crate(krate)
     }
-    (krate, None)
 }
 
 struct Stripper<'a> {
@@ -192,17 +189,19 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             self.fold_item_recur(i)
         };
 
-        i.and_then(|i| { match i.inner {
-            // emptied modules/impls have no need to exist
-            clean::ModuleItem(ref m)
-                if m.items.is_empty() &&
-                   i.doc_value().is_none() => None,
-            clean::ImplItem(ref i) if i.items.is_empty() => None,
-            _ => {
-                self.retained.insert(i.def_id);
-                Some(i)
+        i.and_then(|i| {
+            match i.inner {
+                // emptied modules/impls have no need to exist
+                clean::ModuleItem(ref m)
+                    if m.items.is_empty() &&
+                       i.doc_value().is_none() => None,
+                clean::ImplItem(ref i) if i.items.is_empty() => None,
+                _ => {
+                    self.retained.insert(i.def_id);
+                    Some(i)
+                }
             }
-        }})
+        })
     }
 }
 
@@ -234,7 +233,7 @@ impl fold::DocFolder for ImportStripper {
 }
 
 pub fn strip_priv_imports(krate: clean::Crate)  -> plugins::PluginResult {
-    (ImportStripper.fold_crate(krate), None)
+    ImportStripper.fold_crate(krate)
 }
 
 pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
@@ -258,7 +257,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
     }
     let mut cleaner = CommentCleaner;
     let krate = cleaner.fold_crate(krate);
-    (krate, None)
+    krate
 }
 
 pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
@@ -287,7 +286,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
     }
     let mut collapser = Collapser;
     let krate = collapser.fold_crate(krate);
-    (krate, None)
+    krate
 }
 
 pub fn unindent(s: &str) -> String {
