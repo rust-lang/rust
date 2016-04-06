@@ -198,9 +198,10 @@ enum SelectionCandidate<'tcx> {
     /// we found an applicable bound in the trait definition.
     ProjectionCandidate,
 
-    /// Implementation of a `Fn`-family trait by one of the
-    /// anonymous types generated for a `||` expression.
-    ClosureCandidate(/* closure */ DefId, &'tcx ty::ClosureSubsts<'tcx>),
+    /// Implementation of a `Fn`-family trait by one of the anonymous types
+    /// generated for a `||` expression. The ty::ClosureKind informs the
+    /// confirmation step what ClosureKind obligation to emit.
+    ClosureCandidate(/* closure */ DefId, &'tcx ty::ClosureSubsts<'tcx>, ty::ClosureKind),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -321,72 +322,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         match self.candidate_from_obligation(&stack)? {
-            None => {
-                self.consider_unification_despite_ambiguity(obligation);
-                Ok(None)
-            }
+            None => Ok(None),
             Some(candidate) => Ok(Some(self.confirm_candidate(obligation, candidate)?)),
-        }
-    }
-
-    /// In the particular case of unboxed closure obligations, we can
-    /// sometimes do some amount of unification for the
-    /// argument/return types even though we can't yet fully match obligation.
-    /// The particular case we are interesting in is an obligation of the form:
-    ///
-    ///    C : FnFoo<A>
-    ///
-    /// where `C` is an unboxed closure type and `FnFoo` is one of the
-    /// `Fn` traits. Because we know that users cannot write impls for closure types
-    /// themselves, the only way that `C : FnFoo` can fail to match is under two
-    /// conditions:
-    ///
-    /// 1. The closure kind for `C` is not yet known, because inference isn't complete.
-    /// 2. The closure kind for `C` *is* known, but doesn't match what is needed.
-    ///    For example, `C` may be a `FnOnce` closure, but a `Fn` closure is needed.
-    ///
-    /// In either case, we always know what argument types are
-    /// expected by `C`, no matter what kind of `Fn` trait it
-    /// eventually matches. So we can go ahead and unify the argument
-    /// types, even though the end result is ambiguous.
-    ///
-    /// Note that this is safe *even if* the trait would never be
-    /// matched (case 2 above). After all, in that case, an error will
-    /// result, so it kind of doesn't matter what we do --- unifying
-    /// the argument types can only be helpful to the user, because
-    /// once they patch up the kind of closure that is expected, the
-    /// argment types won't really change.
-    fn consider_unification_despite_ambiguity(&mut self, obligation: &TraitObligation<'tcx>) {
-        // Is this a `C : FnFoo(...)` trait reference for some trait binding `FnFoo`?
-        match self.tcx().lang_items.fn_trait_kind(obligation.predicate.0.def_id()) {
-            Some(_) => { }
-            None => { return; }
-        }
-
-        // Is the self-type a closure type? We ignore bindings here
-        // because if it is a closure type, it must be a closure type from
-        // within this current fn, and hence none of the higher-ranked
-        // lifetimes can appear inside the self-type.
-        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
-        let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, ref substs) => (id, substs),
-            _ => { return; }
-        };
-        assert!(!substs.has_escaping_regions());
-
-        // It is OK to call the unnormalized variant here - this is only
-        // reached for TyClosure: Fn inputs where the closure kind is
-        // still unknown, which should only occur in typeck where the
-        // closure type is already normalized.
-        let closure_trait_ref = self.closure_trait_ref_unnormalized(obligation,
-                                                                    closure_def_id,
-                                                                    substs);
-
-        match self.confirm_poly_trait_refs(obligation.cause.clone(),
-                                           obligation.predicate.to_poly_trait_ref(),
-                                           closure_trait_ref) {
-            Ok(()) => { }
-            Err(_) => { /* Silently ignore errors. */ }
         }
     }
 
@@ -529,6 +466,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                     Err(_) => {
                         EvaluatedToErr
+                    }
+                }
+            }
+
+            ty::Predicate::ClosureKind(closure_def_id, kind) => {
+                match self.infcx.closure_kind(closure_def_id) {
+                    Some(closure_kind) => {
+                        if closure_kind.extends(kind) {
+                            EvaluatedToOk
+                        } else {
+                            EvaluatedToErr
+                        }
+                    }
+                    None => {
+                        EvaluatedToAmbig
                     }
                 }
             }
@@ -1282,12 +1234,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
                 if closure_kind.extends(kind) {
-                    candidates.vec.push(ClosureCandidate(closure_def_id, substs));
+                    candidates.vec.push(ClosureCandidate(closure_def_id, substs, kind));
                 }
             }
             None => {
                 debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                candidates.ambiguous = true;
+                candidates.vec.push(ClosureCandidate(closure_def_id, substs, kind));
             }
         }
 
@@ -2071,9 +2023,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(VtableImpl(vtable_impl))
             }
 
-            ClosureCandidate(closure_def_id, substs) => {
+            ClosureCandidate(closure_def_id, substs, kind) => {
                 let vtable_closure =
-                    self.confirm_closure_candidate(obligation, closure_def_id, substs)?;
+                    self.confirm_closure_candidate(obligation, closure_def_id, substs, kind)?;
                 Ok(VtableClosure(vtable_closure))
             }
 
@@ -2430,7 +2382,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_closure_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  closure_def_id: DefId,
-                                 substs: &ty::ClosureSubsts<'tcx>)
+                                 substs: &ty::ClosureSubsts<'tcx>,
+                                 kind: ty::ClosureKind)
                                  -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
     {
@@ -2441,7 +2394,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let Normalized {
             value: trait_ref,
-            obligations
+            mut obligations
         } = self.closure_trait_ref(obligation, closure_def_id, substs);
 
         debug!("confirm_closure_candidate(closure_def_id={:?}, trait_ref={:?}, obligations={:?})",
@@ -2452,6 +2405,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.confirm_poly_trait_refs(obligation.cause.clone(),
                                      obligation.predicate.to_poly_trait_ref(),
                                      trait_ref)?;
+
+        obligations.push(Obligation::new(
+                obligation.cause.clone(),
+                ty::Predicate::ClosureKind(closure_def_id, kind)));
 
         Ok(VtableClosureData {
             closure_def_id: closure_def_id,

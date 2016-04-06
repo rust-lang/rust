@@ -92,6 +92,8 @@ pub fn predicate_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         }
         ty::Predicate::ObjectSafe(_) => {
         }
+        ty::Predicate::ClosureKind(..) => {
+        }
     }
 
     wf.normalize()
@@ -155,6 +157,7 @@ pub fn implied_bounds<'a,'tcx>(
                     ty::Predicate::Trait(..) |
                     ty::Predicate::Equate(..) |
                     ty::Predicate::Projection(..) |
+                    ty::Predicate::ClosureKind(..) |
                     ty::Predicate::ObjectSafe(..) =>
                         vec![],
 
