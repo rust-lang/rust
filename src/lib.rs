@@ -31,7 +31,7 @@ use syntax::errors::Handler;
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::parse::{self, ParseSess};
 
-use std::io::stdout;
+use std::io::{stdout, Write};
 use std::ops::{Add, Sub};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -456,7 +456,7 @@ pub fn run(input: Input, config: &Config) {
 
     if let Err(msg) = write_result {
         if !ignore_errors {
-            println!("Error writing files: {}", msg);
+            msg!("Error writing files: {}", msg);
         }
     }
 }

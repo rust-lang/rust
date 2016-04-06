@@ -232,6 +232,16 @@ macro_rules! try_opt {
     })
 }
 
+macro_rules! msg {
+    ($($arg:tt)*) => (
+        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
+            Ok(_) => {},
+            Err(x) => panic!("Unable to write to stderr: {}", x),
+        }
+    )
+}
+
+
 // Wraps string-like values in an Option. Returns Some when the string adheres
 // to the Rewrite constraints defined for the Rewrite trait and else otherwise.
 pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, width: usize, offset: Indent) -> Option<S> {
