@@ -16,17 +16,18 @@ use rustc::ty::TyCtxt;
 
 use std::fs;
 use std::io;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
+use syntax::ast;
 
 pub fn dep_graph_path(tcx: TyCtxt) -> Option<PathBuf> {
-    path(tcx, "local")
+    path(tcx, LOCAL_CRATE, "local")
 }
 
-pub fn metadata_hash_path(tcx: TyCtxt) -> Option<PathBuf> {
-    path(tcx, "metadata")
+pub fn metadata_hash_path(tcx: TyCtxt, cnum: ast::CrateNum) -> Option<PathBuf> {
+    path(tcx, cnum, "metadata")
 }
 
-fn path(tcx: TyCtxt, suffix: &str) -> Option<PathBuf> {
+fn path(tcx: TyCtxt, cnum: ast::CrateNum, suffix: &str) -> Option<PathBuf> {
     // For now, just save/load dep-graph from
     // directory/dep_graph.rbml
     tcx.sess.opts.incremental.as_ref().and_then(|incr_dir| {
@@ -40,8 +41,8 @@ fn path(tcx: TyCtxt, suffix: &str) -> Option<PathBuf> {
             }
         }
 
-        let crate_name = tcx.crate_name(LOCAL_CRATE);
-        let crate_disambiguator = tcx.crate_disambiguator(LOCAL_CRATE);
+        let crate_name = tcx.crate_name(cnum);
+        let crate_disambiguator = tcx.crate_disambiguator(cnum);
         let file_name = format!("{}-{}.{}.bin",
                                 crate_name,
                                 crate_disambiguator,
