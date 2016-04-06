@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::ty::TyCtxt;
 
 use std::fs;
@@ -28,7 +29,12 @@ pub fn dep_graph_path(tcx: TyCtxt) -> Option<PathBuf> {
             }
         }
 
-        Some(incr_dir.join("dep_graph.rbml"))
+        let crate_name = tcx.crate_name(LOCAL_CRATE);
+        let crate_disambiguator = tcx.crate_disambiguator(LOCAL_CRATE);
+        let file_name = format!("dep-graph-{}-{}.bin",
+                                crate_name,
+                                crate_disambiguator);
+        Some(incr_dir.join(file_name))
     })
 }
 
