@@ -234,7 +234,10 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
         output: sig.output,
         variadic: false
     };
-    let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
+
+    // This is not quite right. It should actually inherit
+    // the generics of the enclosing function.
+    let generics = ty::Generics::empty();
 
     trans_closure(ccx,
                   decl,
@@ -242,8 +245,10 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   llfn,
                   Instance::new(closure_def_id, param_substs),
                   id,
-                  fn_ty,
+                  &sig,
                   Abi::RustCall,
+                  &generics,
+                  None,
                   ClosureEnv::Closure(closure_def_id, id));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate

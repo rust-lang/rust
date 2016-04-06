@@ -1400,11 +1400,15 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
     pub fn new(ccx: &'blk CrateContext<'blk, 'tcx>,
                llfndecl: ValueRef,
                fn_ty: FnType,
-               instance: Option<Instance<'tcx>>,
+               definition: Option<(Instance<'tcx>,
+                                   &ty::FnSig<'tcx>,
+                                   Abi,
+                                   &ty::Generics<'tcx>,
+                                   Option<ast::Name>)>,
                block_arena: &'blk TypedArena<common::BlockS<'blk, 'tcx>>)
                -> FunctionContext<'blk, 'tcx> {
-        let (param_substs, def_id) = match instance {
-            Some(instance) => {
+        let (param_substs, def_id) = match definition {
+            Some((instance, _, _, _, _)) => {
                 common::validate_substs(instance.substs);
                 (instance.substs, Some(instance.def))
             }
@@ -1416,10 +1420,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         let local_id = def_id.and_then(|id| ccx.tcx().map.as_local_node_id(id));
 
         debug!("FunctionContext::new({})",
-               instance.map_or(String::new(), |i| i.to_string()));
-
-        let debug_context = debuginfo::create_function_debug_context(ccx,
-            inlined_id.unwrap_or(ast::DUMMY_NODE_ID), param_substs, llfndecl);
+               definition.map_or(String::new(), |d| d.0.to_string()));
 
         let cfg = inlined_id.map(|id| build_cfg(ccx.tcx(), id));
         let nested_returns = if let Some((blk_id, Some(ref cfg))) = cfg {
@@ -1431,10 +1432,11 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
         let check_attrs = |attrs: &[ast::Attribute]| {
             let default_to_mir = ccx.sess().opts.debugging_opts.orbit;
             let invert = if default_to_mir { "rustc_no_mir" } else { "rustc_mir" };
-            default_to_mir ^ attrs.iter().any(|item| item.check_name(invert))
+            (default_to_mir ^ attrs.iter().any(|item| item.check_name(invert)),
+             attrs.iter().any(|item| item.check_name("no_debug")))
         };
 
-        let use_mir = if let Some(id) = local_id {
+        let (use_mir, no_debug) = if let Some(id) = local_id {
             check_attrs(ccx.tcx().map.attrs(id))
         } else if let Some(def_id) = def_id {
             check_attrs(&ccx.sess().cstore.item_attrs(def_id))
@@ -1446,6 +1448,18 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             def_id.and_then(|id| ccx.get_mir(id))
         } else {
             None
+        };
+
+        let span = inlined_id.and_then(|id| ccx.tcx().map.opt_span(id));
+
+        let debug_context = if let (false, Some(definition)) = (no_debug, definition) {
+            let (instance, sig, abi, generics, name) = definition;
+            debuginfo::create_function_debug_context(ccx, instance, sig,
+                                                     abi, generics, name,
+                                                     span.unwrap_or(DUMMY_SP),
+                                                     llfndecl)
+        } else {
+            debuginfo::empty_function_debug_context(ccx)
         };
 
         FunctionContext {
@@ -1462,7 +1476,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
             lldropflag_hints: RefCell::new(DropFlagHintsMap::new()),
             fn_ty: fn_ty,
             param_substs: param_substs,
-            span: inlined_id.and_then(|id| ccx.tcx().map.opt_span(id)),
+            span: span,
             block_arena: block_arena,
             lpad_arena: TypedArena::new(),
             ccx: ccx,
@@ -1815,8 +1829,10 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                llfndecl: ValueRef,
                                instance: Instance<'tcx>,
                                inlined_id: ast::NodeId,
-                               fn_ty: FnType,
+                               sig: &ty::FnSig<'tcx>,
                                abi: Abi,
+                               generics: &ty::Generics<'tcx>,
+                               name: Option<ast::Name>,
                                closure_env: closure::ClosureEnv) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
@@ -1829,13 +1845,18 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("trans_closure(..., {})", instance);
 
+    let fn_ty = FnType::new(ccx, abi, sig, &[]);
+
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, llfndecl, fn_ty, Some(instance), &arena);
+    fcx = FunctionContext::new(ccx, llfndecl, fn_ty,
+                               Some((instance, sig, abi, generics, name)), &arena);
 
     if fcx.mir.is_some() {
         return mir::trans_mir(&fcx);
     }
+
+    debuginfo::fill_scope_map_for_function(&fcx, decl, body, inlined_id);
 
     // cleanup scope for the incoming arguments
     let fn_cleanup_debug_loc = debuginfo::get_cleanup_debug_loc_for_ast_node(
@@ -1891,10 +1912,8 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    let ret_debug_loc = DebugLoc::At(fn_cleanup_debug_loc.id, fn_cleanup_debug_loc.span);
-
     // Insert the mandatory first few basic blocks before lltop.
-    fcx.finish(bcx, ret_debug_loc);
+    fcx.finish(bcx, fn_cleanup_debug_loc.debug_loc());
 }
 
 /// Creates an LLVM function corresponding to a source language function.
@@ -1907,25 +1926,27 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let _s = StatRecorder::new(ccx, ccx.tcx().node_path_str(id));
     debug!("trans_fn(param_substs={:?})", param_substs);
     let _icx = push_ctxt("trans_fn");
-    let fn_ty = ccx.tcx().node_id_to_type(id);
-    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
-    let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
-    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
-    let abi = fn_ty.fn_abi();
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
     let def_id = if let Some(&def_id) = ccx.external_srcs().borrow().get(&id) {
         def_id
     } else {
         ccx.tcx().map.local_def_id(id)
     };
+    let scheme = ccx.tcx().lookup_item_type(def_id);
+    let fn_ty = scheme.ty;
+    let fn_ty = monomorphize::apply_param_substs(ccx.tcx(), param_substs, &fn_ty);
+    let sig = ccx.tcx().erase_late_bound_regions(fn_ty.fn_sig());
+    let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
+    let abi = fn_ty.fn_abi();
     trans_closure(ccx,
                   decl,
                   body,
                   llfndecl,
                   Instance::new(def_id, param_substs),
                   id,
-                  fn_ty,
+                  &sig,
                   abi,
+                  &scheme.generics,
+                  Some(ccx.tcx().item_name(def_id)),
                   closure::ClosureEnv::NotClosure);
 }
 

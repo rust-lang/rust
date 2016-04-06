@@ -44,16 +44,6 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     };
 }
 
-pub fn contains_nodebug_attribute(attributes: &[ast::Attribute]) -> bool {
-    attributes.iter().any(|attr| {
-        let meta_item: &ast::MetaItem = &attr.node.value;
-        match meta_item.node {
-            ast::MetaItemKind::Word(ref value) => &value[..] == "no_debug",
-            _ => false
-        }
-    })
-}
-
 /// Return codemap::Loc corresponding to the beginning of the span
 pub fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo)
@@ -84,15 +74,6 @@ pub fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
     match fcx.debug_context {
         FunctionDebugContext::RegularContext(_) => false,
         _ => true
-    }
-}
-
-pub fn assert_type_for_node_id(cx: &CrateContext,
-                           node_id: ast::NodeId,
-                           error_reporting_span: Span) {
-    if !cx.tcx().node_types().contains_key(&node_id) {
-        span_bug!(error_reporting_span,
-                  "debuginfo: Could not find type for node id!");
     }
 }
 
