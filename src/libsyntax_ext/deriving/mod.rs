@@ -96,6 +96,36 @@ fn expand_derive(cx: &mut ExtCtxt,
             let mut found_partial_eq = false;
             let mut found_eq = false;
 
+            // This span is **very** sensitive and crucial to
+            // getting the stability behavior we want. What we are
+            // doing is marking the generated `#[derive_*]` with the
+            // span of the `#[deriving(...)]` attribute (the
+            // entire attribute, not just the `PartialEq` or `Eq`
+            // part), but with the current backtrace. The current
+            // backtrace will contain a topmost entry that IS this
+            // `#[deriving(...)]` attribute and with the
+            // "allow-unstable" flag set to true.
+            //
+            // Note that we do NOT use the span of the `Eq`
+            // text itself. You might think this is
+            // equivalent, because the `Eq` appears within the
+            // `#[deriving(Eq)]` attribute, and hence we would
+            // inherit the "allows unstable" from the
+            // backtrace.  But in fact this is not always the
+            // case. The actual source text that led to
+            // deriving can be `#[$attr]`, for example, where
+            // `$attr == deriving(Eq)`. In that case, the
+            // "#[derive_*]" would be considered to
+            // originate not from the deriving call but from
+            // text outside the deriving call, and hence would
+            // be forbidden from using unstable
+            // content.
+            //
+            // See tests src/run-pass/rfc1445 for
+            // examples. --nmatsakis
+            let span = Span { expn_id: cx.backtrace(), .. span };
+            assert!(cx.parse_sess.codemap().span_allows_unstable(span));
+
             for titem in traits.iter().rev() {
                 let tname = match titem.node {
                     MetaItemKind::Word(ref tname) => tname,
@@ -121,42 +151,13 @@ fn expand_derive(cx: &mut ExtCtxt,
                 }
 
                 // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
-                item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,
+                item.attrs.push(cx.attribute(span, cx.meta_word(titem.span,
                     intern_and_get_ident(&format!("derive_{}", tname)))));
             }
 
             // RFC #1445. `#[derive(PartialEq, Eq)]` adds a (trusted)
             // `#[structural_match]` attribute.
             if found_partial_eq && found_eq {
-                // This span is **very** sensitive and crucial to
-                // getting the stability behavior we want. What we are
-                // doing is marking `#[structural_match]` with the
-                // span of the `#[deriving(...)]` attribute (the
-                // entire attribute, not just the `PartialEq` or `Eq`
-                // part), but with the current backtrace. The current
-                // backtrace will contain a topmost entry that IS this
-                // `#[deriving(...)]` attribute and with the
-                // "allow-unstable" flag set to true.
-                //
-                // Note that we do NOT use the span of the `Eq`
-                // text itself. You might think this is
-                // equivalent, because the `Eq` appears within the
-                // `#[deriving(Eq)]` attribute, and hence we would
-                // inherit the "allows unstable" from the
-                // backtrace.  But in fact this is not always the
-                // case. The actual source text that led to
-                // deriving can be `#[$attr]`, for example, where
-                // `$attr == deriving(Eq)`. In that case, the
-                // "#[structural_match]" would be considered to
-                // originate not from the deriving call but from
-                // text outside the deriving call, and hence would
-                // be forbidden from using unstable
-                // content.
-                //
-                // See tests src/run-pass/rfc1445 for
-                // examples. --nmatsakis
-                let span = Span { expn_id: cx.backtrace(), .. span };
-                assert!(cx.parse_sess.codemap().span_allows_unstable(span));
                 debug!("inserting structural_match with span {:?}", span);
                 let structural_match = intern_and_get_ident("structural_match");
                 item.attrs.push(cx.attribute(span,
@@ -188,6 +189,39 @@ macro_rules! derive_traits {
                               mitem: &MetaItem,
                               annotatable: &Annotatable,
                               push: &mut FnMut(Annotatable)) {
+                        if !ecx.parse_sess.codemap().span_allows_unstable(sp)
+                            && !ecx.ecfg.features.unwrap().custom_derive {
+                            // FIXME:
+                            // https://github.com/rust-lang/rust/pull/32671#issuecomment-206245303
+                            // This is just to avoid breakage with syntex.
+                            // Remove that to spawn an error instead.
+                            let cm = ecx.parse_sess.codemap();
+                            let parent = cm.with_expn_info(ecx.backtrace(),
+                                                           |info| info.unwrap().call_site.expn_id);
+                            cm.with_expn_info(parent, |info| {
+                                if info.is_some() {
+                                    let mut w = ecx.parse_sess.span_diagnostic.struct_span_warn(
+                                        sp, feature_gate::EXPLAIN_DERIVE_UNDERSCORE,
+                                    );
+                                    if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_none() {
+                                        w.fileline_help(
+                                            sp, &format!("add #![feature(custom_derive)] to \
+                                                          the crate attributes to enable")
+                                        );
+                                    }
+                                    w.emit();
+                                } else {
+                                    feature_gate::emit_feature_err(
+                                        &ecx.parse_sess.span_diagnostic,
+                                        "custom_derive", sp, feature_gate::GateIssue::Language,
+                                        feature_gate::EXPLAIN_DERIVE_UNDERSCORE
+                                    );
+
+                                    return;
+                                }
+                            })
+                        }
+
                         warn_if_deprecated(ecx, sp, $name);
                         $func(ecx, sp, mitem, annotatable, push);
                     }

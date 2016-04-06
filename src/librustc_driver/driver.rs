@@ -512,18 +512,12 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         middle::recursion_limit::update_recursion_limit(sess, &krate);
     });
 
-    time(time_passes, "gated macro checking", || {
-        sess.track_errors(|| {
-            let features =
-              syntax::feature_gate::check_crate_macros(sess.codemap(),
-                                                       &sess.parse_sess.span_diagnostic,
-                                                       &krate);
-
-            // these need to be set "early" so that expansion sees `quote` if enabled.
-            *sess.features.borrow_mut() = features;
-        })
+    // these need to be set "early" so that expansion sees `quote` if enabled.
+    sess.track_errors(|| {
+        *sess.features.borrow_mut() =
+            syntax::feature_gate::get_features(&sess.parse_sess.span_diagnostic,
+                                               &krate);
     })?;
-
 
     krate = time(time_passes, "crate injection", || {
         syntax::std_inject::maybe_inject_crates_ref(krate, sess.opts.alt_std_name.clone())
