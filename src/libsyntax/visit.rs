@@ -31,10 +31,10 @@ use codemap::Span;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Ident, &'a Generics, Unsafety, Constness, Abi, Visibility),
+    ItemFn(Ident, &'a Generics, Unsafety, Constness, Abi, &'a Visibility),
 
     /// fn foo(&self)
-    Method(Ident, &'a MethodSig, Option<Visibility>),
+    Method(Ident, &'a MethodSig, Option<&'a Visibility>),
 
     /// |x, y| {}
     Closure,
@@ -128,6 +128,9 @@ pub trait Visitor<'v> : Sized {
     fn visit_attribute(&mut self, _attr: &'v Attribute) {}
     fn visit_macro_def(&mut self, macro_def: &'v MacroDef) {
         walk_macro_def(self, macro_def)
+    }
+    fn visit_vis(&mut self, vis: &'v Visibility) {
+        walk_vis(self, vis)
     }
 }
 
@@ -260,7 +263,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
         }
         ItemKind::Fn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
             visitor.visit_fn(FnKind::ItemFn(item.ident, generics, unsafety,
-                                            constness, abi, item.vis),
+                                            constness, abi, &item.vis),
                              declaration,
                              body,
                              item.span,
@@ -546,7 +549,7 @@ pub fn walk_fn_kind<'v, V: Visitor<'v>>(visitor: &mut V,
         FnKind::ItemFn(_, generics, _, _, _, _) => {
             visitor.visit_generics(generics);
         }
-        FnKind::Method(_, sig, _) => {
+        FnKind::Method(_, ref sig, _) => {
             visitor.visit_generics(&sig.generics);
             visitor.visit_explicit_self(&sig.explicit_self);
         }
@@ -597,7 +600,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_expr(expr);
         }
         ImplItemKind::Method(ref sig, ref body) => {
-            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(impl_item.vis)), &sig.decl,
+            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis)), &sig.decl,
                              body, impl_item.span, impl_item.id);
         }
         ImplItemKind::Type(ref ty) => {
@@ -806,4 +809,11 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
     walk_list!(visitor, visit_expr, &arm.guard);
     visitor.visit_expr(&arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
+}
+
+pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
+    match *vis {
+        Visibility::Restricted { ref path, id } => visitor.visit_path(path, id),
+        _ => {}
+    }
 }
