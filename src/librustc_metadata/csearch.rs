@@ -15,12 +15,12 @@ use loader;
 
 use middle::cstore::{CrateStore, CrateSource, ChildItem, ExternCrate, FoundAst, DefLike};
 use middle::cstore::{NativeLibraryKind, LinkMeta, LinkagePreference};
-use middle::def;
+use rustc::hir::def;
 use middle::lang_items;
 use rustc::ty::{self, Ty, TyCtxt, VariantKind};
-use middle::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
@@ -31,9 +31,9 @@ use std::path::PathBuf;
 use syntax::ast;
 use syntax::attr;
 use syntax::parse::token;
-use rustc_back::svh::Svh;
+use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
-use rustc_front::hir;
+use rustc::hir;
 
 impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability>
@@ -126,22 +126,6 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         let cdata = self.get_crate_data(did.krate);
         decoder::get_method_arg_names(&cdata, did.index)
-    }
-
-    fn relative_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
-        let cdata = self.get_crate_data(def.krate);
-        decoder::get_item_path(&cdata, def.index)
-    }
-
-    fn extern_item_path(&self, def: DefId) -> Vec<hir_map::PathElem> {
-        let cdata = self.get_crate_data(def.krate);
-        let path = decoder::get_item_path(&cdata, def.index);
-
-        let mut r = Vec::with_capacity(path.len() + 1);
-        let crate_name = hir_map::PathMod(token::intern(&cdata.name));
-        r.push(crate_name);
-        r.extend_from_slice(&path);
-        r
     }
 
     fn item_name(&self, def: DefId) -> ast::Name {
@@ -552,7 +536,7 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
         let mut visible_parent_map = self.visible_parent_map.borrow_mut();
         if !visible_parent_map.is_empty() { return visible_parent_map; }
 
-        use rustc_front::hir;
+        use rustc::hir;
         use rustc::middle::cstore::{CrateStore, ChildItem};
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;

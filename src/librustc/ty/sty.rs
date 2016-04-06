@@ -11,7 +11,7 @@
 //! This module contains TypeVariants and its major components
 
 use middle::cstore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use middle::region;
 use ty::subst::{self, Substs};
 use traits;
@@ -28,7 +28,7 @@ use syntax::parse::token::special_idents;
 
 use serialize::{Decodable, Decoder};
 
-use rustc_front::hir;
+use hir;
 
 use self::FnOutput::*;
 use self::InferTy::*;

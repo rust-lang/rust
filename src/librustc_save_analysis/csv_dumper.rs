@@ -10,7 +10,7 @@
 
 use std::io::Write;
 
-use rustc::middle::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{DefId, DefIndex};
 use syntax::codemap::Span;
 
 use super::data::*;

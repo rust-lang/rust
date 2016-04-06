@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::{DepNode, DepTrackingMapConfig};
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty;
 use std::marker::PhantomData;
 use std::rc::Rc;

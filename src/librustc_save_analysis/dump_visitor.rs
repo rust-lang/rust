@@ -27,8 +27,8 @@
 //! is used for recording the output in a format-agnostic way (see CsvDumper
 //! for an example).
 
-use rustc::middle::def::Def;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
@@ -42,7 +42,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
-use rustc_front::lowering::{lower_expr, LoweringContext};
+use rustc::hir::lowering::{lower_expr, LoweringContext};
 
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;
@@ -519,7 +519,7 @@ where D: Dump
                      span: Span,
                      typ: &ast::Ty,
                      expr: &ast::Expr) {
-        let qualname = format!("::{}", self.tcx.map.path_to_string(id));
+        let qualname = format!("::{}", self.tcx.node_path_str(id));
 
         let sub_span = self.span.sub_span_after_keyword(span, keywords::Const);
 
@@ -544,7 +544,7 @@ where D: Dump
                       item: &ast::Item,
                       def: &ast::VariantData,
                       ty_params: &ast::Generics) {
-        let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
 
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Struct);
@@ -563,7 +563,7 @@ where D: Dump
         // fields
         for field in def.fields() {
             self.process_struct_field_def(field, item.id);
-            self.visit_ty(&field.node.ty);
+            self.visit_ty(&field.ty);
         }
 
         self.process_generic_params(ty_params, item.span, &qualname, item.id);
@@ -624,7 +624,7 @@ where D: Dump
 
             for field in variant.node.data.fields() {
                 self.process_struct_field_def(field, variant.node.data.id());
-                self.visit_ty(&field.node.ty);
+                self.visit_ty(&field.ty);
             }
         }
         self.process_generic_params(ty_params, item.span, &enum_data.qualname, enum_data.id);
@@ -677,7 +677,7 @@ where D: Dump
                      generics: &ast::Generics,
                      trait_refs: &ast::TyParamBounds,
                      methods: &[ast::TraitItem]) {
-        let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
         if !self.span.filter_generated(sub_span, item.span) {
@@ -1108,7 +1108,7 @@ impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
                 self.nest(item.id, |v| visit::walk_mod(v, m));
             }
             Ty(ref ty, ref ty_params) => {
-                let qualname = format!("::{}", self.tcx.map.path_to_string(item.id));
+                let qualname = format!("::{}", self.tcx.node_path_str(item.id));
                 let value = ty_to_string(&ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 if !self.span.filter_generated(sub_span, item.span) {

@@ -22,7 +22,7 @@ use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
 use rustc::lint;
-use rustc::middle::def::*;
+use rustc::hir::def::*;
 
 use syntax::ast::{NodeId, Name};
 use syntax::attr::AttrMetaMethods;

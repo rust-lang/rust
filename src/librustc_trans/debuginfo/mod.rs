@@ -26,11 +26,10 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::{DIFile, DIType, DIScope, DIBuilderRef, DISubprogram, DIArray,
                       DIDescriptor, FlagPrototyped};
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer::normalize_associated_type;
 use rustc::ty::subst::{self, Substs};
-use rustc_front;
-use rustc_front::hir;
+use rustc::hir;
 
 use abi::Abi;
 use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
@@ -39,7 +38,7 @@ use rustc::infer;
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 
 use libc::c_uint;
 use std::cell::{Cell, RefCell};
@@ -239,7 +238,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return FunctionDebugContext::FunctionWithoutDebugInfo;
     }
 
-    let empty_generics = rustc_front::util::empty_generics();
+    let empty_generics = hir::Generics::empty();
 
     let fnitem = cx.tcx().map.get(fn_ast_id);
 

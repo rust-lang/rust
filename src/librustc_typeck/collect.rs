@@ -60,8 +60,8 @@ There are some shortcomings in this design:
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use lint;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use constrained_type_params as ctp;
 use coherence;
 use middle::lang_items::SizedTraitLangItem;
@@ -77,7 +77,7 @@ use rustc::ty::fold::{TypeFolder};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use util::common::{ErrorReported, MemoizationMap};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use write_ty_to_tcx;
@@ -94,9 +94,9 @@ use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::ptr::P;
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit;
-use rustc_front::print::pprust;
+use rustc::hir::{self, PatKind};
+use rustc::hir::intravisit;
+use rustc::hir::print as pprust;
 
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point

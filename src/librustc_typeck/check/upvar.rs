@@ -51,8 +51,8 @@ use rustc::infer::{InferCtxt, UpvarRegion};
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor};
+use rustc::hir;
+use rustc::hir::intravisit::{self, Visitor};
 
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS

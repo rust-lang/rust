@@ -9,7 +9,6 @@
 // except according to those terms.
 
 pub use self::Node::*;
-pub use self::PathElem::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
@@ -19,99 +18,25 @@ use dep_graph::{DepGraph, DepNode};
 
 use middle::cstore::InlinedItem;
 use middle::cstore::InlinedItem as II;
-use middle::def_id::{CRATE_DEF_INDEX, DefId};
+use hir::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
 use syntax::attr::ThinAttributesExt;
 use syntax::codemap::{Span, Spanned};
-use syntax::parse::token;
 
-use rustc_front::hir::*;
-use rustc_front::fold::Folder;
-use rustc_front::intravisit;
-use rustc_front::print::pprust;
+use hir::*;
+use hir::fold::Folder;
+use hir::print as pprust;
 
 use arena::TypedArena;
 use std::cell::RefCell;
-use std::fmt;
 use std::io;
-use std::iter;
 use std::mem;
-use std::slice;
 
 pub mod blocks;
 mod collector;
 pub mod definitions;
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub enum PathElem {
-    PathMod(Name),
-    PathName(Name)
-}
-
-impl PathElem {
-    pub fn name(&self) -> Name {
-        match *self {
-            PathMod(name) | PathName(name) => name
-        }
-    }
-}
-
-impl fmt::Display for PathElem {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.name())
-    }
-}
-
-#[derive(Clone)]
-pub struct LinkedPathNode<'a> {
-    node: PathElem,
-    next: LinkedPath<'a>,
-}
-
-#[derive(Copy, Clone)]
-pub struct LinkedPath<'a>(Option<&'a LinkedPathNode<'a>>);
-
-impl<'a> LinkedPath<'a> {
-    pub fn empty() -> LinkedPath<'a> {
-        LinkedPath(None)
-    }
-
-    pub fn from(node: &'a LinkedPathNode) -> LinkedPath<'a> {
-        LinkedPath(Some(node))
-    }
-}
-
-impl<'a> Iterator for LinkedPath<'a> {
-    type Item = PathElem;
-
-    fn next(&mut self) -> Option<PathElem> {
-        match self.0 {
-            Some(node) => {
-                *self = node.next;
-                Some(node.node)
-            }
-            None => None
-        }
-    }
-}
-
-/// The type of the iterator used by with_path.
-pub type PathElems<'a, 'b> = iter::Chain<iter::Cloned<slice::Iter<'a, PathElem>>, LinkedPath<'b>>;
-
-pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
-    let itr = token::get_ident_interner();
-
-    path.fold(String::new(), |mut s, e| {
-        let e = itr.get(e.name());
-        if !s.is_empty() {
-            s.push_str("::");
-        }
-        s.push_str(&e[..]);
-        s
-    })
-}
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'ast> {
@@ -157,19 +82,13 @@ pub enum MapEntry<'ast> {
 
     /// Roots for node trees.
     RootCrate,
-    RootInlinedParent(&'ast InlinedParent)
+    RootInlinedParent(&'ast InlinedItem)
 }
 
 impl<'ast> Clone for MapEntry<'ast> {
     fn clone(&self) -> MapEntry<'ast> {
         *self
     }
-}
-
-#[derive(Debug)]
-pub struct InlinedParent {
-    path: Vec<PathElem>,
-    ii: InlinedItem
 }
 
 impl<'ast> MapEntry<'ast> {
@@ -234,7 +153,7 @@ impl<'ast> MapEntry<'ast> {
 pub struct Forest {
     krate: Crate,
     pub dep_graph: DepGraph,
-    inlined_items: TypedArena<InlinedParent>
+    inlined_items: TypedArena<InlinedItem>
 }
 
 impl Forest {
@@ -352,8 +271,10 @@ impl<'ast> Map<'ast> {
         self.definitions.borrow().def_key(def_id.index)
     }
 
-    pub fn def_path_from_id(&self, id: NodeId) -> DefPath {
-        self.def_path(self.local_def_id(id))
+    pub fn def_path_from_id(&self, id: NodeId) -> Option<DefPath> {
+        self.opt_local_def_id(id).map(|def_id| {
+            self.def_path(def_id)
+        })
     }
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
@@ -552,8 +473,8 @@ impl<'ast> Map<'ast> {
     pub fn get_parent_did(&self, id: NodeId) -> DefId {
         let parent = self.get_parent(id);
         match self.find_entry(parent) {
-            Some(RootInlinedParent(&InlinedParent {ii: II::TraitItem(did, _), ..})) => did,
-            Some(RootInlinedParent(&InlinedParent {ii: II::ImplItem(did, _), ..})) => did,
+            Some(RootInlinedParent(&II::TraitItem(did, _))) |
+            Some(RootInlinedParent(&II::ImplItem(did, _))) => did,
             _ => self.local_def_id(parent)
         }
     }
@@ -635,80 +556,21 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    /// returns the name associated with the given NodeId's AST
-    pub fn get_path_elem(&self, id: NodeId) -> PathElem {
-        let node = self.get(id);
-        match node {
-            NodeItem(item) => {
-                match item.node {
-                    ItemMod(_) | ItemForeignMod(_) => {
-                        PathMod(item.name)
-                    }
-                    _ => PathName(item.name)
-                }
-            }
-            NodeForeignItem(i) => PathName(i.name),
-            NodeImplItem(ii) => PathName(ii.name),
-            NodeTraitItem(ti) => PathName(ti.name),
-            NodeVariant(v) => PathName(v.node.name),
-            NodeLifetime(lt) => PathName(lt.name),
-            NodeTyParam(tp) => PathName(tp.name),
+    /// Returns the name associated with the given NodeId's AST.
+    pub fn name(&self, id: NodeId) -> Name {
+        match self.get(id) {
+            NodeItem(i) => i.name,
+            NodeForeignItem(i) => i.name,
+            NodeImplItem(ii) => ii.name,
+            NodeTraitItem(ti) => ti.name,
+            NodeVariant(v) => v.node.name,
+            NodeLifetime(lt) => lt.name,
+            NodeTyParam(tp) => tp.name,
             NodeLocal(&Pat { node: PatKind::Ident(_,l,_), .. }) => {
-                PathName(l.node.name)
+                l.node.name
             },
-            _ => bug!("no path elem for {:?}", node)
-        }
-    }
-
-    pub fn with_path<T, F>(&self, id: NodeId, f: F) -> T where
-        F: FnOnce(PathElems) -> T,
-    {
-        self.with_path_next(id, LinkedPath::empty(), f)
-    }
-
-    pub fn path_to_string(&self, id: NodeId) -> String {
-        self.with_path(id, |path| path_to_string(path))
-    }
-
-    fn path_to_str_with_name(&self, id: NodeId, name: Name) -> String {
-        self.with_path(id, |path| {
-            path_to_string(path.chain(Some(PathName(name))))
-        })
-    }
-
-    fn with_path_next<T, F>(&self, id: NodeId, next: LinkedPath, f: F) -> T where
-        F: FnOnce(PathElems) -> T,
-    {
-        // This function reveals the name of the item and hence is a
-        // kind of read. This is inefficient, since it walks ancestors
-        // and we are walking them anyhow, but whatever.
-        self.read(id);
-
-        let parent = self.get_parent(id);
-        let parent = match self.find_entry(id) {
-            Some(EntryForeignItem(..)) => {
-                // Anonymous extern items go in the parent scope.
-                self.get_parent(parent)
-            }
-            // But tuple struct ctors don't have names, so use the path of its
-            // parent, the struct item. Similarly with closure expressions.
-            Some(EntryStructCtor(..)) | Some(EntryExpr(..)) => {
-                return self.with_path_next(parent, next, f);
-            }
-            _ => parent
-        };
-        if parent == id {
-            match self.find_entry(id) {
-                Some(RootInlinedParent(data)) => {
-                    f(data.path.iter().cloned().chain(next))
-                }
-                _ => f([].iter().cloned().chain(next))
-            }
-        } else {
-            self.with_path_next(parent, LinkedPath::from(&LinkedPathNode {
-                node: self.get_path_elem(id),
-                next: next
-            }), f)
+            NodeStructCtor(_) => self.name(self.get_parent(id)),
+            _ => bug!("no name for {}", self.node_to_string(id))
         }
     }
 
@@ -959,7 +821,6 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
 /// Used for items loaded from external crate that are being inlined into this
 /// crate.
 pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
-                                          parent_path: Vec<PathElem>,
                                           parent_def_path: DefPath,
                                           parent_def_id: DefId,
                                           ii: InlinedItem,
@@ -979,27 +840,24 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
         II::Foreign(i) => II::Foreign(i.map(|i| fld.fold_foreign_item(i)))
     };
 
-    let ii_parent = map.forest.inlined_items.alloc(InlinedParent {
-        path: parent_path,
-        ii: ii
-    });
+    let ii = map.forest.inlined_items.alloc(ii);
 
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
     let mut collector =
         NodeCollector::extend(
             map.krate(),
-            ii_parent,
+            ii,
             ii_parent_id,
             parent_def_path,
             parent_def_id,
             mem::replace(&mut *map.map.borrow_mut(), vec![]),
             mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
-    ii_parent.ii.visit(&mut collector);
+    ii.visit(&mut collector);
 
     *map.map.borrow_mut() = collector.map;
     *map.definitions.borrow_mut() = collector.definitions;
 
-    &ii_parent.ii
+    ii
 }
 
 pub trait NodePrinter {
@@ -1033,9 +891,24 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
     let id_str = format!(" (id={})", id);
     let id_str = if include_id { &id_str[..] } else { "" };
 
+    let path_str = || {
+        // This functionality is used for debugging, try to use TyCtxt to get
+        // the user-friendly path, otherwise fall back to stringifying DefPath.
+        ::ty::tls::with_opt(|tcx| {
+            if let Some(tcx) = tcx {
+                tcx.node_path_str(id)
+            } else if let Some(path) = map.def_path_from_id(id) {
+                path.data.into_iter().map(|elem| {
+                    elem.data.to_string()
+                }).collect::<Vec<_>>().join("::")
+            } else {
+                String::from("<missing path>")
+            }
+        })
+    };
+
     match map.find(id) {
         Some(NodeItem(item)) => {
-            let path_str = map.path_to_str_with_name(id, item.name);
             let item_str = match item.node {
                 ItemExternCrate(..) => "extern crate",
                 ItemUse(..) => "use",
@@ -1051,30 +924,21 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemImpl(..) => "impl",
                 ItemDefaultImpl(..) => "default impl",
             };
-            format!("{} {}{}", item_str, path_str, id_str)
+            format!("{} {}{}", item_str, path_str(), id_str)
         }
-        Some(NodeForeignItem(item)) => {
-            let path_str = map.path_to_str_with_name(id, item.name);
-            format!("foreign item {}{}", path_str, id_str)
+        Some(NodeForeignItem(_)) => {
+            format!("foreign item {}{}", path_str(), id_str)
         }
         Some(NodeImplItem(ii)) => {
             match ii.node {
                 ImplItemKind::Const(..) => {
-                    format!("assoc const {} in {}{}",
-                            ii.name,
-                            map.path_to_string(id),
-                            id_str)
+                    format!("assoc const {} in {}{}", ii.name, path_str(), id_str)
                 }
                 ImplItemKind::Method(..) => {
-                    format!("method {} in {}{}",
-                            ii.name,
-                            map.path_to_string(id), id_str)
+                    format!("method {} in {}{}", ii.name, path_str(), id_str)
                 }
                 ImplItemKind::Type(_) => {
-                    format!("assoc type {} in {}{}",
-                            ii.name,
-                            map.path_to_string(id),
-                            id_str)
+                    format!("assoc type {} in {}{}", ii.name, path_str(), id_str)
                 }
             }
         }
@@ -1085,16 +949,12 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 TypeTraitItem(..) => "assoc type",
             };
 
-            format!("{} {} in {}{}",
-                    kind,
-                    ti.name,
-                    map.path_to_string(id),
-                    id_str)
+            format!("{} {} in {}{}", kind, ti.name, path_str(), id_str)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {}{}",
                     variant.node.name,
-                    map.path_to_string(id), id_str)
+                    path_str(), id_str)
         }
         Some(NodeExpr(ref expr)) => {
             format!("expr {}{}", pprust::expr_to_string(&expr), id_str)
@@ -1112,7 +972,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
             format!("block {}{}", pprust::block_to_string(&block), id_str)
         }
         Some(NodeStructCtor(_)) => {
-            format!("struct_ctor {}{}", map.path_to_string(id), id_str)
+            format!("struct_ctor {}{}", path_str(), id_str)
         }
         Some(NodeLifetime(ref l)) => {
             format!("lifetime {}{}",

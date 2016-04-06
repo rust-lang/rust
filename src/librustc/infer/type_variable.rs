@@ -11,7 +11,7 @@
 pub use self::RelationDir::*;
 use self::TypeVariableValue::*;
 use self::UndoEntry::*;
-use middle::def_id::{DefId};
+use hir::def_id::{DefId};
 use ty::{self, Ty};
 use syntax::codemap::Span;
 

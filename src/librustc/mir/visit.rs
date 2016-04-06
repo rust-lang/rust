@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::const_val::ConstVal;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, FnOutput, Region, Ty};
 use mir::repr::*;

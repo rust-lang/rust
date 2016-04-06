@@ -10,15 +10,13 @@
 
 // Type Names for Debug Info.
 
-use super::namespace::crate_root_namespace;
-
 use common::CrateContext;
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst;
 use rustc::ty::{self, Ty};
 
-use rustc_front::hir;
+use rustc::hir;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e. calling the function twice with the same type will also do
@@ -163,31 +161,15 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       def_id: DefId,
                       qualified: bool,
                       output: &mut String) {
-        cx.tcx().with_path(def_id, |path| {
-            if qualified {
-                if def_id.is_local() {
-                    output.push_str(crate_root_namespace(cx));
-                    output.push_str("::");
-                }
-
-                let mut path_element_count = 0;
-                for path_element in path {
-                    output.push_str(&path_element.name().as_str());
-                    output.push_str("::");
-                    path_element_count += 1;
-                }
-
-                if path_element_count == 0 {
-                    bug!("debuginfo: Encountered empty item path!");
-                }
-
-                output.pop();
-                output.pop();
-            } else {
-                let name = path.last().expect("debuginfo: Empty item path?").name();
-                output.push_str(&name.as_str());
+        if qualified {
+            output.push_str(&cx.tcx().crate_name(def_id.krate));
+            for path_element in cx.tcx().def_path(def_id).data {
+                output.push_str("::");
+                output.push_str(&path_element.data.as_interned_str());
             }
-        });
+        } else {
+            output.push_str(&cx.tcx().item_name(def_id).as_str());
+        }
     }
 
     // Pushes the type parameters in the given `Substs` to the output string.

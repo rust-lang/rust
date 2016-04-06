@@ -17,14 +17,14 @@ use rustc::middle::const_val::ConstVal;
 use ::{eval_const_expr, eval_const_expr_partial, compare_const_vals};
 use ::{const_expr_to_pat, lookup_const_by_id};
 use ::EvalHint::ExprTypeChecked;
-use rustc::middle::def::*;
-use rustc::middle::def_id::{DefId};
+use rustc::hir::def::*;
+use rustc::hir::def_id::{DefId};
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::infer;
 use rustc::middle::mem_categorization::{cmt};
-use rustc::middle::pat_util::*;
+use rustc::hir::pat_util::*;
 use rustc::traits::ProjectionMode;
 use rustc::ty::*;
 use rustc::ty;
@@ -32,17 +32,15 @@ use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator, repeat};
 
-use rustc_front::hir;
-use rustc_front::hir::{Pat, PatKind};
-use rustc_front::intravisit::{self, Visitor, FnKind};
-use rustc_front::util as front_util;
+use rustc::hir;
+use rustc::hir::{Pat, PatKind};
+use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKind};
 use rustc_back::slice;
 
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
-use syntax::ast_util;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
-use rustc_front::fold::{Folder, noop_fold_pat};
-use rustc_front::print::pprust::pat_to_string;
+use rustc::hir::fold::{Folder, noop_fold_pat};
+use rustc::hir::print::pat_to_string;
 use syntax::ptr::P;
 use rustc::util::nodemap::FnvHashMap;
 
@@ -241,7 +239,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &hir::Expr) {
 }
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
-    front_util::walk_pat(pat, |p| {
+    pat.walk(|p| {
         match p.node {
             PatKind::Ident(hir::BindByValue(hir::MutImmutable), ident, None) => {
                 let pat_ty = cx.tcx.pat_ty(p);
@@ -274,7 +272,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 
 // Check that we do not match against a static NaN (#6804)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
-    front_util::walk_pat(pat, |p| {
+    pat.walk(|p| {
         if let PatKind::Lit(ref expr) = p.node {
             match eval_const_expr_partial(cx.tcx, &expr, ExprTypeChecked, None) {
                 Ok(ConstVal::Float(f)) if f.is_nan() => {
@@ -461,7 +459,7 @@ struct RenamingRecorder<'map> {
     renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
 }
 
-impl<'map> ast_util::IdVisitingOperation for RenamingRecorder<'map> {
+impl<'map> IdVisitingOperation for RenamingRecorder<'map> {
     fn visit_id(&mut self, node_id: NodeId) {
         let key = (node_id, self.origin_span);
         self.renaming_map.insert(key, self.substituted_node_id);
@@ -518,7 +516,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 renaming_map: renaming_map,
             };
 
-            let mut id_visitor = front_util::IdVisitor::new(&mut renaming_recorder);
+            let mut id_visitor = IdVisitor::new(&mut renaming_recorder);
 
             id_visitor.visit_expr(const_expr);
         }
@@ -1100,7 +1098,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     };
 
     for pat in pats {
-        front_util::walk_pat(&pat, |p| {
+        pat.walk(|p| {
             if pat_is_binding(&def_map.borrow(), &p) {
                 match p.node {
                     PatKind::Ident(hir::BindByValue(_), _, ref sub) => {

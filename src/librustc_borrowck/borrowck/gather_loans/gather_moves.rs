@@ -23,7 +23,7 @@ use rustc::ty;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
 
 struct GatherMoveInfo<'tcx> {
     id: ast::NodeId,

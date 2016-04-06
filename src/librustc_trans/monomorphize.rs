@@ -11,7 +11,7 @@
 use back::symbol_names;
 use llvm::ValueRef;
 use llvm;
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::infer::normalize_associated_type;
 use rustc::ty::subst;
 use rustc::ty::subst::{Subst, Substs};
@@ -23,10 +23,10 @@ use base;
 use common::*;
 use declare;
 use Disr;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::util::ppaux;
 
-use rustc_front::hir;
+use rustc::hir;
 
 use syntax::attr;
 use syntax::errors;

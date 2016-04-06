@@ -30,8 +30,8 @@ use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, compare_lit_exprs};
 use rustc_const_eval::{eval_const_expr_partial, lookup_const_by_id};
 use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal};
 use rustc_const_eval::EvalHint::ExprTypeChecked;
-use rustc::middle::def::Def;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::infer;
 use rustc::middle::mem_categorization as mc;
@@ -42,11 +42,11 @@ use rustc::util::nodemap::NodeMap;
 use rustc::middle::const_qualif::ConstQualif;
 use rustc::lint::builtin::CONST_ERR;
 
-use rustc_front::hir::{self, PatKind};
+use rustc::hir::{self, PatKind};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::feature_gate::UnstableFeatures;
-use rustc_front::intravisit::{self, FnKind, Visitor};
+use rustc::hir::intravisit::{self, FnKind, Visitor};
 
 use std::collections::hash_map::Entry;
 use std::cmp::Ordering;

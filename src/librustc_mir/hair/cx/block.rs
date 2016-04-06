@@ -12,7 +12,7 @@ use hair::*;
 use hair::cx::Cx;
 use hair::cx::to_ref::ToRef;
 use rustc::middle::region::{BlockRemainder, CodeExtentData};
-use rustc_front::hir;
+use rustc::hir;
 use syntax::ast;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {

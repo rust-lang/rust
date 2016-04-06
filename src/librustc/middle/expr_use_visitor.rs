@@ -19,14 +19,14 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use middle::pat_util;
-use middle::def::Def;
-use middle::def_id::{DefId};
+use hir::pat_util;
+use hir::def::Def;
+use hir::def_id::{DefId};
 use infer;
 use middle::mem_categorization as mc;
 use ty::{self, TyCtxt, adjustment};
 
-use rustc_front::hir::{self, PatKind};
+use hir::{self, PatKind};
 
 use syntax::ast;
 use syntax::ptr::P;
@@ -479,7 +479,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             }
 
             hir::ExprUnary(op, ref lhs) => {
-                let pass_args = if ::rustc_front::util::is_by_value_unop(op) {
+                let pass_args = if op.is_by_value() {
                     PassArgs::ByValue
                 } else {
                     PassArgs::ByRef
@@ -491,7 +491,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
             }
 
             hir::ExprBinary(op, ref lhs, ref rhs) => {
-                let pass_args = if ::rustc_front::util::is_by_value_binop(op.node) {
+                let pass_args = if op.node.is_by_value() {
                     PassArgs::ByValue
                 } else {
                     PassArgs::ByRef
@@ -524,7 +524,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
 
             hir::ExprAssignOp(op, ref lhs, ref rhs) => {
                 // NB All our assignment operations take the RHS by value
-                assert!(::rustc_front::util::is_by_value_binop(op.node));
+                assert!(op.node.is_by_value());
 
                 if !self.walk_overloaded_operator(expr, lhs, vec![rhs], PassArgs::ByValue) {
                     self.mutate_expr(expr, &lhs, MutateMode::WriteAndRead);

@@ -11,13 +11,13 @@
 //! type context book-keeping
 
 use dep_graph::{DepGraph, DepTrackingMap};
-use front::map as ast_map;
+use hir::map as ast_map;
 use session::Session;
 use lint;
 use middle;
 use middle::cstore::{CrateStore, LOCAL_CRATE};
-use middle::def::DefMap;
-use middle::def_id::DefId;
+use hir::def::DefMap;
+use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use middle::region::RegionMaps;
 use middle::resolve_lifetime;
@@ -27,7 +27,7 @@ use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants};
 use ty::{AdtDef, ClosureSubsts, ExistentialBounds, Region};
-use ty::{FreevarMap};
+use hir::FreevarMap;
 use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
@@ -45,7 +45,7 @@ use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::parse::token::{self, special_idents};
 
-use rustc_front::hir;
+use hir;
 
 /// Internal storage
 pub struct CtxtArenas<'tcx> {

@@ -1007,12 +1007,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn variant(&self, span: Span, name: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
         let fields: Vec<_> = tys.into_iter().map(|ty| {
-            Spanned { span: ty.span, node: ast::StructField_ {
+            ast::StructField {
+                span: ty.span,
                 ty: ty,
-                kind: ast::UnnamedField(ast::Visibility::Inherited),
+                ident: None,
+                vis: ast::Visibility::Inherited,
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
-            }}
+            }
         }).collect();
 
         let vdata = if fields.is_empty() {

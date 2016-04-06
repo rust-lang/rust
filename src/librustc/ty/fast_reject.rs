@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 

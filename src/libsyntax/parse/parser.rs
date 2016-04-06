@@ -29,7 +29,6 @@ use ast::Local;
 use ast::MacStmtStyle;
 use ast::Mac_;
 use ast::{MutTy, Mutability};
-use ast::NamedField;
 use ast::{Pat, PatKind};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Stmt, StmtKind};
@@ -38,13 +37,11 @@ use ast::StrStyle;
 use ast::SelfKind;
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{Ty, TyKind, TypeBinding, TyParam, TyParamBounds};
-use ast::UnnamedField;
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use attr::{ThinAttributes, ThinAttributesExt, AttributesExt};
 use ast::{BinOpKind, UnOp};
 use ast;
-use ast_util::{self, ident_to_path};
 use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp, CodeMap};
 use errors::{self, DiagnosticBuilder};
 use ext::tt::macro_parser;
@@ -1577,9 +1574,14 @@ impl<'a> Parser<'a> {
             pat
         } else {
             debug!("parse_arg_general ident_to_pat");
-            ast_util::ident_to_pat(ast::DUMMY_NODE_ID,
-                                   self.last_span,
-                                   special_idents::invalid)
+            let sp = self.last_span;
+            let spanned = Spanned { span: sp, node: special_idents::invalid };
+            P(Pat {
+                id: ast::DUMMY_NODE_ID,
+                node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable),
+                                     spanned, None),
+                span: sp
+            })
         };
 
         let t = self.parse_ty_sum()?;
@@ -2223,7 +2225,7 @@ impl<'a> Parser<'a> {
                             ctxt: _
                          }, token::Plain) => {
                 self.bump();
-                let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
+                let path = ast::Path::from_ident(mk_sp(lo, hi), id);
                 ex = ExprKind::Path(None, path);
                 hi = self.last_span.hi;
             }
@@ -3679,7 +3681,7 @@ impl<'a> Parser<'a> {
                         // Parse macro invocation
                         let ident = self.parse_ident()?;
                         let ident_span = self.last_span;
-                        let path = ident_to_path(ident_span, ident);
+                        let path = ast::Path::from_ident(ident_span, ident);
                         self.bump();
                         let delim = self.expect_open_delim()?;
                         let tts = self.parse_seq_to_end(
@@ -3847,12 +3849,14 @@ impl<'a> Parser<'a> {
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty_sum()?;
-        Ok(spanned(lo, self.last_span.hi, ast::StructField_ {
-            kind: NamedField(name, pr),
+        Ok(StructField {
+            span: mk_sp(lo, self.last_span.hi),
+            ident: Some(name),
+            vis: pr,
             id: ast::DUMMY_NODE_ID,
             ty: ty,
             attrs: attrs,
-        }))
+        })
     }
 
     /// Emit an expected item after attributes error.
@@ -5116,7 +5120,7 @@ impl<'a> Parser<'a> {
 
             self.expect(&token::OpenDelim(token::Brace))?;
             self.expect(&token::CloseDelim(token::Brace))?;
-            Ok((ast_util::impl_pretty_name(&opt_trait, None),
+            Ok((special_idents::invalid,
              ItemKind::DefaultImpl(unsafety, opt_trait.unwrap()), None))
         } else {
             if opt_trait.is_some() {
@@ -5132,7 +5136,7 @@ impl<'a> Parser<'a> {
                 impl_items.push(self.parse_impl_item()?);
             }
 
-            Ok((ast_util::impl_pretty_name(&opt_trait, Some(&ty)),
+            Ok((special_idents::invalid,
              ItemKind::Impl(unsafety, polarity, generics, opt_trait, ty, impl_items),
              Some(attrs)))
         }
@@ -5246,13 +5250,16 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let struct_field_ = ast::StructField_ {
-                    kind: UnnamedField(p.parse_visibility()?),
+                let vis = p.parse_visibility()?;
+                let ty = p.parse_ty_sum()?;
+                Ok(StructField {
+                    span: mk_sp(lo, p.span.hi),
+                    vis: vis,
+                    ident: None,
                     id: ast::DUMMY_NODE_ID,
-                    ty: p.parse_ty_sum()?,
+                    ty: ty,
                     attrs: attrs,
-                };
-                Ok(spanned(lo, p.span.hi, struct_field_))
+                })
             })?;
 
         Ok(fields)

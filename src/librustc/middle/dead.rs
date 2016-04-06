@@ -13,14 +13,14 @@
 // from live codes are live, and everything else is dead.
 
 use dep_graph::DepNode;
-use front::map as ast_map;
-use rustc_front::hir::{self, PatKind};
-use rustc_front::intravisit::{self, Visitor};
+use hir::map as ast_map;
+use hir::{self, pat_util, PatKind};
+use hir::intravisit::{self, Visitor};
 
-use middle::{pat_util, privacy};
+use middle::privacy;
 use ty::{self, TyCtxt};
-use middle::def::Def;
-use middle::def_id::{DefId};
+use hir::def::Def;
+use hir::def_id::{DefId};
 use lint;
 
 use std::collections::HashSet;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use infer::InferCtxt;
 use ty::outlives::{self, Component};
 use ty::subst::Substs;

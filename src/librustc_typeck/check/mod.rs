@@ -86,10 +86,10 @@ use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::prohibit_type_params;
 use middle::cstore::LOCAL_CRATE;
-use middle::def::{self, Def};
-use middle::def_id::DefId;
+use hir::def::{self, Def};
+use hir::def_id::DefId;
 use rustc::infer::{self, InferOk, TypeOrigin, TypeTrace, type_variable};
-use middle::pat_util::{self, pat_id_map};
+use hir::pat_util::{self, pat_id_map};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace};
 use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
 use rustc::ty::{GenericPredicates, TypeScheme};
@@ -124,10 +124,10 @@ use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use rustc_front::intravisit::{self, Visitor};
-use rustc_front::hir;
-use rustc_front::hir::{Visibility, PatKind};
-use rustc_front::print::pprust;
+use rustc::hir::intravisit::{self, Visitor};
+use rustc::hir;
+use rustc::hir::{Visibility, PatKind};
+use rustc::hir::print as pprust;
 use rustc_back::slice;
 use rustc_const_eval::eval_repeat_count;
 
@@ -3987,7 +3987,7 @@ fn check_block_with_expected<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let mut any_err = false;
     for s in &blk.stmts {
         check_stmt(fcx, s);
-        let s_id = ::rustc_front::util::stmt_id(s);
+        let s_id = s.node.id();
         let s_ty = fcx.node_ty(s_id);
         if any_diverges && !warned && match s.node {
             hir::StmtDecl(ref decl, _) => {

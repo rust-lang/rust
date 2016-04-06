@@ -39,16 +39,15 @@ use std::cell::RefCell;
 use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
-use syntax::ast_util::{self, IdVisitingOperation};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ast;
 use syntax::attr::ThinAttributesExt;
-use rustc_front::hir;
-use rustc_front::util;
-use rustc_front::intravisit as hir_visit;
+use hir;
+use hir::intravisit as hir_visit;
+use hir::intravisit::{IdVisitor, IdVisitingOperation};
 use syntax::visit as ast_visit;
 
 /// Information about the registered lints.
@@ -654,16 +653,6 @@ impl<'a> EarlyContext<'a> {
             level_stack: vec![],
         }
     }
-
-    fn visit_ids<F>(&mut self, f: F)
-        where F: FnOnce(&mut ast_util::IdVisitor<EarlyContext>)
-    {
-        let mut v = ast_util::IdVisitor {
-            operation: self,
-            visited_outermost: false,
-        };
-        f(&mut v);
-    }
 }
 
 impl<'a, 'tcx> LateContext<'a, 'tcx> {
@@ -685,9 +674,9 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 
     fn visit_ids<F>(&mut self, f: F)
-        where F: FnOnce(&mut util::IdVisitor<LateContext>)
+        where F: FnOnce(&mut IdVisitor<LateContext>)
     {
-        let mut v = util::IdVisitor::new(self);
+        let mut v = IdVisitor::new(self);
         f(&mut v);
     }
 }
@@ -928,7 +917,6 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_item(&mut self, it: &ast::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, early_passes, it);
-            cx.visit_ids(|v| v.visit_item(it));
             ast_visit::walk_item(cx, it);
             run_lints!(cx, check_item_post, early_passes, it);
         })
@@ -978,7 +966,7 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField) {
-        self.with_lint_attrs(&s.node.attrs, |cx| {
+        self.with_lint_attrs(&s.attrs, |cx| {
             run_lints!(cx, check_struct_field, early_passes, s);
             ast_visit::walk_struct_field(cx, s);
         })
@@ -1042,7 +1030,6 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
         self.with_lint_attrs(&trait_item.attrs, |cx| {
             run_lints!(cx, check_trait_item, early_passes, trait_item);
-            cx.visit_ids(|v| v.visit_trait_item(trait_item));
             ast_visit::walk_trait_item(cx, trait_item);
             run_lints!(cx, check_trait_item_post, early_passes, trait_item);
         });
@@ -1051,7 +1038,6 @@ impl<'a, 'v> ast_visit::Visitor<'v> for EarlyContext<'a> {
     fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
         self.with_lint_attrs(&impl_item.attrs, |cx| {
             run_lints!(cx, check_impl_item, early_passes, impl_item);
-            cx.visit_ids(|v| v.visit_impl_item(impl_item));
             ast_visit::walk_impl_item(cx, impl_item);
             run_lints!(cx, check_impl_item_post, early_passes, impl_item);
         });
@@ -1092,18 +1078,6 @@ impl<'a, 'tcx> IdVisitingOperation for LateContext<'a, 'tcx> {
             None => {}
             Some(lints) => {
                 debug!("LateContext::visit_id: id={:?} lints={:?}", id, lints);
-                for (lint_id, span, msg) in lints {
-                    self.span_lint(lint_id.lint, span, &msg[..])
-                }
-            }
-        }
-    }
-}
-impl<'a> IdVisitingOperation for EarlyContext<'a> {
-    fn visit_id(&mut self, id: ast::NodeId) {
-        match self.sess.lints.borrow_mut().remove(&id) {
-            None => {}
-            Some(lints) => {
                 for (lint_id, span, msg) in lints {
                     self.span_lint(lint_id.lint, span, &msg[..])
                 }
@@ -1292,11 +1266,12 @@ pub fn check_ast_crate(sess: &Session, krate: &ast::Crate) {
 
     // Visit the whole crate.
     cx.with_lint_attrs(&krate.attrs, |cx| {
-        cx.visit_id(ast::CRATE_NODE_ID);
-        cx.visit_ids(|v| {
-            v.visited_outermost = true;
-            ast_visit::walk_crate(v, krate);
-        });
+        // Lints may be assigned to the whole crate.
+        if let Some(lints) = cx.sess.lints.borrow_mut().remove(&ast::CRATE_NODE_ID) {
+            for (lint_id, span, msg) in lints {
+                cx.span_lint(lint_id.lint, span, &msg[..])
+            }
+        }
 
         // since the root module isn't visited as an item (because it isn't an
         // item), warn for it here.

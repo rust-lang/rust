@@ -13,7 +13,7 @@
 use super::{SelectionContext, Obligation, ObligationCause};
 
 use middle::cstore::LOCAL_CRATE;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst::TypeSpace;
 use ty::{self, Ty, TyCtxt};
 use infer::{self, InferCtxt, TypeOrigin};

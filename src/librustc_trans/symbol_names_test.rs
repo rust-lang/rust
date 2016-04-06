@@ -15,8 +15,8 @@
 //! paths etc in all kinds of annoying scenarios.
 
 use back::symbol_names;
-use rustc_front::hir;
-use rustc_front::intravisit::{self, Visitor};
+use rustc::hir;
+use rustc::hir::intravisit::{self, Visitor};
 use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 

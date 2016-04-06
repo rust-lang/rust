@@ -52,8 +52,8 @@ use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_project
 use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
-use middle::def::{self, Def};
-use middle::def_id::DefId;
+use hir::def::{self, Def};
+use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
 use rustc::ty::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs, ParamSpace};
 use rustc::traits;
@@ -74,8 +74,8 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::parse::token;
 
-use rustc_front::print::pprust;
-use rustc_front::hir;
+use rustc::hir::print as pprust;
+use rustc::hir;
 use rustc_back::slice;
 
 pub trait AstConv<'tcx> {

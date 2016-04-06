@@ -24,11 +24,11 @@ use std::sync::{Arc, Mutex};
 use testing;
 use rustc_lint;
 use rustc::dep_graph::DepGraph;
-use rustc::front::map as hir_map;
+use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
 use rustc::session::config::{get_unstable_features_setting, OutputType};
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_front::lowering::{lower_crate, LoweringContext};
+use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_back::dynamic_lib::DynamicLibrary;
 use rustc_back::tempdir::TempDir;
 use rustc_driver::{driver, Compilation};
@@ -141,7 +141,7 @@ pub fn run(input: &str,
 }
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
-fn scrape_test_config(krate: &::rustc_front::hir::Crate) -> TestOptions {
+fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     use syntax::attr::AttrMetaMethods;
     use syntax::print::pprust;
 

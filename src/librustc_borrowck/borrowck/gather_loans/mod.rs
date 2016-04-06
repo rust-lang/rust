@@ -29,10 +29,10 @@ use rustc::traits::ProjectionMode;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::ast::NodeId;
-use rustc_front::hir;
-use rustc_front::hir::Expr;
-use rustc_front::intravisit;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::Expr;
+use rustc::hir::intravisit;
+use rustc::hir::intravisit::Visitor;
 
 use self::restrictions::RestrictionResult;
 

@@ -20,10 +20,10 @@ use decoder;
 use index;
 use loader;
 
-use rustc::back::svh::Svh;
+use rustc::hir::def_id::DefId;
+use rustc::hir::svh::Svh;
 use rustc::middle::cstore::{ExternCrate};
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
-use rustc::middle::def_id::DefId;
 
 use std::cell::{RefCell, Ref, Cell};
 use std::rc::Rc;

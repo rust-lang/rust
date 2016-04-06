@@ -41,7 +41,6 @@ extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_back;
-extern crate rustc_front;
 extern crate rustc_metadata;
 extern crate serialize;
 #[macro_use] extern crate syntax;

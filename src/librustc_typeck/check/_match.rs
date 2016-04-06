@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def::{self, Def};
+use hir::def::{self, Def};
 use rustc::infer::{self, InferOk, TypeOrigin};
-use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
-use middle::pat_util::pat_is_resolved_const;
+use hir::pat_util::{PatIdMap, pat_id_map, pat_is_binding};
+use hir::pat_util::pat_is_resolved_const;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
@@ -30,9 +30,8 @@ use syntax::ast;
 use syntax::codemap::{Span, Spanned};
 use syntax::ptr::P;
 
-use rustc_front::hir::{self, PatKind};
-use rustc_front::print::pprust;
-use rustc_front::util as hir_util;
+use rustc::hir::{self, PatKind};
+use rustc::hir::print as pprust;
 
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                            pat: &'tcx hir::Pat,
@@ -197,7 +196,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             }
         }
         PatKind::Ident(_, ref path, _) => {
-            let path = hir_util::ident_to_path(path.span, path.node);
+            let path = hir::Path::from_ident(path.span, path.node);
             check_pat_enum(pcx, pat, &path, Some(&[]), expected, false);
         }
         PatKind::TupleStruct(ref path, ref subpats) => {

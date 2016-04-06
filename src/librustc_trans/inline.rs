@@ -10,14 +10,14 @@
 
 use llvm::{AvailableExternallyLinkage, InternalLinkage, SetLinkage};
 use middle::cstore::{CrateStore, FoundAst, InlinedItem};
-use middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use base::{push_ctxt, trans_item, trans_fn};
 use callee::Callee;
 use common::*;
 
 use rustc::dep_graph::DepNode;
-use rustc_front::hir;
+use rustc::hir;
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: DefId) -> Option<DefId> {
     debug!("instantiate_inline({:?})", fn_id);

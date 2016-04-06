@@ -21,7 +21,7 @@ use super::{SelectionContext, FulfillmentContext};
 use super::util::{fresh_type_vars_for_impl, impl_trait_ref_and_oblig};
 
 use middle::cstore::CrateStore;
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use infer::{self, InferCtxt, TypeOrigin};
 use middle::region;
 use ty::subst::{Subst, Substs};

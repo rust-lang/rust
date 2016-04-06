@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::AccessLevels;
 use rustc::util::nodemap::DefIdSet;
 use std::cmp;
 use std::string::String;
 use std::usize;
-use rustc_front::hir;
+use rustc::hir;
 
 use clean::{self, Attributes, GetDefId};
 use clean::Item;

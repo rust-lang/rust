@@ -38,6 +38,7 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
+#![feature(step_by)]
 #![feature(str_char)]
 #![feature(question_mark)]
 #![cfg_attr(test, feature(test))]
@@ -51,7 +52,6 @@ extern crate graphviz;
 extern crate libc;
 extern crate rbml;
 extern crate rustc_back;
-extern crate rustc_front;
 extern crate rustc_data_structures;
 extern crate serialize;
 extern crate collections;
@@ -72,19 +72,9 @@ mod macros;
 // registered before they are used.
 pub mod diagnostics;
 
-pub mod back {
-    pub use rustc_back::rpath;
-    pub use rustc_back::svh;
-}
-
 pub mod cfg;
 pub mod dep_graph;
-
-pub mod front {
-    pub mod check_attr;
-    pub mod map;
-}
-
+pub mod hir;
 pub mod infer;
 pub mod lint;
 
@@ -96,8 +86,6 @@ pub mod middle {
     pub mod cstore;
     pub mod dataflow;
     pub mod dead;
-    pub mod def;
-    pub mod def_id;
     pub mod dependency_format;
     pub mod effect;
     pub mod entry;
@@ -106,7 +94,6 @@ pub mod middle {
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
-    pub mod pat_util;
     pub mod privacy;
     pub mod reachable;
     pub mod region;

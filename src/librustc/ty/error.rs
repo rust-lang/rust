@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::def_id::DefId;
+use hir::def_id::DefId;
 use ty::subst;
 use infer::type_variable;
 use ty::{self, BoundRegion, Region, Ty, TyCtxt};
@@ -19,7 +19,7 @@ use syntax::ast::{self, Name};
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
-use rustc_front::hir;
+use hir;
 
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedFound<T> {

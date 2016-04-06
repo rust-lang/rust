@@ -73,13 +73,13 @@ use super::region_inference::SameRegions;
 
 use std::collections::HashSet;
 
-use front::map as ast_map;
-use rustc_front::hir;
-use rustc_front::print::pprust;
+use hir::map as ast_map;
+use hir;
+use hir::print as pprust;
 
 use middle::cstore::CrateStore;
-use middle::def::Def;
-use middle::def_id::DefId;
+use hir::def::Def;
+use hir::def_id::DefId;
 use infer::{self, TypeOrigin};
 use middle::region;
 use ty::subst;
@@ -587,13 +587,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             // Only external crates, if either is from a local
             // module we could have false positives
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
-                let exp_path = self.tcx.with_path(did1,
-                                                  |p| p.map(|x| x.to_string())
-                                                       .collect::<Vec<_>>());
-                let found_path = self.tcx.with_path(did2,
-                                                    |p| p.map(|x| x.to_string())
-                                                         .collect::<Vec<_>>());
-                // We compare strings because PathMod and PathName can be different
+                let exp_path = self.tcx.item_path_str(did1);
+                let found_path = self.tcx.item_path_str(did2);
+                // We compare strings because DefPath can be different
                 // for imported and non-imported crates
                 if exp_path == found_path {
                     let crate_name = self.tcx.sess.cstore.crate_name(did1.krate);

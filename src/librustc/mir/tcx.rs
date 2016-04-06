@@ -17,7 +17,7 @@ use mir::repr::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc_front::hir;
+use hir;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LvalueTy<'tcx> {

@@ -26,7 +26,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::parse::token;
 
-use rustc_front::hir;
+use rustc::hir;
 
 fn equate_intrinsic_type<'a, 'tcx>(tcx: &TyCtxt<'tcx>, it: &hir::ForeignItem,
                                    n_tps: usize,
