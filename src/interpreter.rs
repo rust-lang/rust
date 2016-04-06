@@ -412,6 +412,25 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             // FIXME(tsion): Handle different integer types correctly.
+            "add_with_overflow" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                let size = self.ty_size(ty);
+
+                let left_arg  = try!(self.eval_operand(&args[0]));
+                let right_arg = try!(self.eval_operand(&args[1]));
+
+                let left = try!(self.memory.read_int(left_arg, size));
+                let right = try!(self.memory.read_int(right_arg, size));
+
+                let (n, overflowed) = unsafe {
+                    ::std::intrinsics::add_with_overflow::<i64>(left, right)
+                };
+
+                try!(self.memory.write_int(dest, n, size));
+                try!(self.memory.write_bool(dest.offset(size as isize), overflowed));
+            }
+
+            // FIXME(tsion): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.ty_size(ty);
@@ -1174,15 +1193,13 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 };
                 let substs = miri.tcx.mk_substs(Substs::empty());
                 miri.push_stack_frame(CachedMir::Ref(mir), substs, return_ptr);
-                if let Err(e) = miri.run() {
-                    tcx.sess.err(&e.to_string());
-                }
-                tcx.sess.abort_if_errors();
-
-                if let Some(ret) = return_ptr {
+                if let Err(_e) = miri.run() {
+                    // TODO(tsion): Detect whether the error was already reported or not.
+                    // tcx.sess.err(&e.to_string());
+                } else if let Some(ret) = return_ptr {
                     miri.memory.dump(ret.alloc_id);
-                    println!("");
                 }
+                println!("");
             }
         }
     }
