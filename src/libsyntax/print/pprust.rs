@@ -1407,9 +1407,9 @@ impl<'a> State<'a> {
                 self.commasep(
                     Inconsistent, struct_def.fields(),
                     |s, field| {
-                        s.print_visibility(field.node.vis)?;
+                        s.print_visibility(&field.vis)?;
                         s.maybe_print_comment(field.span.lo)?;
-                        s.print_type(&field.node.ty)
+                        s.print_type(&field.ty)
                     }
                 )?;
                 self.pclose()?;
@@ -1429,11 +1429,11 @@ impl<'a> State<'a> {
             for field in struct_def.fields() {
                 self.hardbreak_if_not_bol()?;
                 self.maybe_print_comment(field.span.lo)?;
-                self.print_outer_attributes(&field.node.attrs)?;
-                self.print_visibility(field.node.vis)?;
-                self.print_ident(field.node.ident.unwrap())?;
+                self.print_outer_attributes(&field.attrs)?;
+                self.print_visibility(&field.vis)?;
+                self.print_ident(field.ident.unwrap())?;
                 self.word_nbsp(":")?;
-                self.print_type(&field.node.ty)?;
+                self.print_type(&field.ty)?;
                 word(&mut self.s, ",")?;
             }
 

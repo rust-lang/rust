@@ -3845,13 +3845,14 @@ impl<'a> Parser<'a> {
         let name = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty_sum()?;
-        Ok(spanned(lo, self.last_span.hi, ast::StructField_ {
+        Ok(StructField {
+            span: mk_sp(lo, self.last_span.hi),
             ident: Some(name),
             vis: pr,
             id: ast::DUMMY_NODE_ID,
             ty: ty,
             attrs: attrs,
-        }))
+        })
     }
 
     /// Emit an expected item after attributes error.
@@ -5245,14 +5246,16 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let struct_field_ = ast::StructField_ {
-                    vis: p.parse_visibility()?,
+                let vis = p.parse_visibility()?;
+                let ty = p.parse_ty_sum()?;
+                Ok(StructField {
+                    span: mk_sp(lo, p.span.hi),
+                    vis: vis,
                     ident: None,
                     id: ast::DUMMY_NODE_ID,
-                    ty: p.parse_ty_sum()?,
+                    ty: ty,
                     attrs: attrs,
-                };
-                Ok(spanned(lo, p.span.hi, struct_field_))
+                })
             })?;
 
         Ok(fields)

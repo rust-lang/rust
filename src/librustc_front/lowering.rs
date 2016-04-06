@@ -621,11 +621,11 @@ pub fn lower_struct_field(lctx: &LoweringContext,
                           -> hir::StructField {
     hir::StructField {
         span: f.span,
-        id: f.node.id,
-        name: f.node.ident.map(|ident| ident.name).unwrap_or(token::intern(&index.to_string())),
-        vis: lower_visibility(lctx, f.node.vis),
-        ty: lower_ty(lctx, &f.node.ty),
-        attrs: lower_attrs(lctx, &f.node.attrs),
+        id: f.id,
+        name: f.ident.map(|ident| ident.name).unwrap_or(token::intern(&index.to_string())),
+        vis: lower_visibility(lctx, &f.vis),
+        ty: lower_ty(lctx, &f.ty),
+        attrs: lower_attrs(lctx, &f.attrs),
     }
 }
 
