@@ -30,3 +30,9 @@ fn undefined_byte_reads_are_rejected() -> u8 {
     let undef = unsafe { *v.get_unchecked(5) };
     undef + 1
 }
+
+#[miri_run]
+fn out_of_bounds_reads_are_rejected() -> u8 {
+    let v: Vec<u8> = vec![1, 2];
+    unsafe { *v.get_unchecked(5) }
+}
