@@ -688,7 +688,7 @@ pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &Handler, span: Span
 }
 
 struct Context<'a> {
-    features: Features,
+    features: &'a Features,
     span_handler: &'a Handler,
     cm: &'a CodeMap,
     plugin_attributes: &'a [(String, AttributeType)],
@@ -739,9 +739,7 @@ impl<'a> Context<'a> {
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
-            gate_feature!(self, custom_derive, attr.span,
-                          "attributes of the form `#[derive_*]` are reserved \
-                           for the compiler");
+            gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs
@@ -757,6 +755,15 @@ impl<'a> Context<'a> {
             }
         }
     }
+}
+
+pub fn check_attribute(attr: &ast::Attribute, handler: &Handler,
+                       cm: &CodeMap, features: &Features) {
+    let cx = Context {
+        features: features, span_handler: handler,
+        cm: cm, plugin_attributes: &[]
+    };
+    cx.check_attribute(attr, true);
 }
 
 fn find_lang_feature_issue(feature: &str) -> Option<u32> {
@@ -819,64 +826,8 @@ pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
 pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
     "`#[derive]` for custom traits is not stable enough for use and is subject to change";
 
-struct MacroVisitor<'a> {
-    context: &'a Context<'a>
-}
-
-impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
-    fn visit_mac(&mut self, mac: &ast::Mac) {
-        let path = &mac.node.path;
-        let name = path.segments.last().unwrap().identifier.name.as_str();
-
-        // Issue 22234: If you add a new case here, make sure to also
-        // add code to catch the macro during or after expansion.
-        //
-        // We still keep this MacroVisitor (rather than *solely*
-        // relying on catching cases during or after expansion) to
-        // catch uses of these macros within conditionally-compiled
-        // code, e.g. `#[cfg]`-guarded functions.
-
-        if name == "asm" {
-            gate_feature!(self.context, asm, path.span, EXPLAIN_ASM);
-        }
-
-        else if name == "log_syntax" {
-            gate_feature!(self.context, log_syntax, path.span, EXPLAIN_LOG_SYNTAX);
-        }
-
-        else if name == "trace_macros" {
-            gate_feature!(self.context, trace_macros, path.span, EXPLAIN_TRACE_MACROS);
-        }
-
-        else if name == "concat_idents" {
-            gate_feature!(self.context, concat_idents, path.span, EXPLAIN_CONCAT_IDENTS);
-        }
-    }
-
-    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-        self.context.check_attribute(attr, true);
-    }
-
-    fn visit_expr(&mut self, e: &ast::Expr) {
-        // Issue 22181: overloaded-`box` and placement-`in` are
-        // implemented via a desugaring expansion, so their feature
-        // gates go into MacroVisitor since that works pre-expansion.
-        //
-        // Issue 22234: we also check during expansion as well.
-        // But we keep these checks as a pre-expansion check to catch
-        // uses in e.g. conditionalized code.
-
-        if let ast::ExprKind::Box(_) = e.node {
-            gate_feature!(self.context, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
-        }
-
-        if let ast::ExprKind::InPlace(..) = e.node {
-            gate_feature!(self.context, placement_in_syntax, e.span, EXPLAIN_PLACEMENT_IN);
-        }
-
-        visit::walk_expr(self, e);
-    }
-}
+pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
+    "attributes of the form `#[derive_*]` are reserved for the compiler";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
@@ -1177,13 +1128,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 }
 
-fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
-                        krate: &ast::Crate,
-                        plugin_attributes: &[(String, AttributeType)],
-                        check: F)
-                       -> Features
-    where F: FnOnce(&mut Context, &ast::Crate)
-{
+pub fn get_features(span_handler: &Handler, krate: &ast::Crate) -> Features {
     let mut features = Features::new();
 
     for attr in &krate.attrs {
@@ -1226,32 +1171,24 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         }
     }
 
-    let mut cx = Context {
-        features: features,
-        span_handler: span_handler,
-        cm: cm,
-        plugin_attributes: plugin_attributes,
-    };
-
-    check(&mut cx, krate);
-    cx.features
-}
-
-pub fn check_crate_macros(cm: &CodeMap, span_handler: &Handler, krate: &ast::Crate)
--> Features {
-    check_crate_inner(cm, span_handler, krate, &[] as &'static [_],
-                      |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
+    features
 }
 
 pub fn check_crate(cm: &CodeMap, span_handler: &Handler, krate: &ast::Crate,
                    plugin_attributes: &[(String, AttributeType)],
-                   unstable: UnstableFeatures) -> Features
-{
+                   unstable: UnstableFeatures) -> Features {
     maybe_stage_features(span_handler, krate, unstable);
-
-    check_crate_inner(cm, span_handler, krate, plugin_attributes,
-                      |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
-                                                     krate))
+    let features = get_features(span_handler, krate);
+    {
+        let ctx = Context {
+            features: &features,
+            span_handler: span_handler,
+            cm: cm,
+            plugin_attributes: plugin_attributes,
+        };
+        visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);
+    }
+    features
 }
 
 #[derive(Clone, Copy)]

@@ -51,27 +51,32 @@ pub fn load_plugins(sess: &Session,
                     addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrar> {
     let mut loader = PluginLoader::new(sess, cstore, crate_name);
 
-    for attr in &krate.attrs {
-        if !attr.check_name("plugin") {
-            continue;
-        }
-
-        let plugins = match attr.meta_item_list() {
-            Some(xs) => xs,
-            None => {
-                call_malformed_plugin_attribute(sess, attr.span);
-                continue;
-            }
-        };
-
-        for plugin in plugins {
-            if plugin.value_str().is_some() {
-                call_malformed_plugin_attribute(sess, attr.span);
+    // do not report any error now. since crate attributes are
+    // not touched by expansion, every use of plugin without
+    // the feature enabled will result in an error later...
+    if sess.features.borrow().plugin {
+        for attr in &krate.attrs {
+            if !attr.check_name("plugin") {
                 continue;
             }
 
-            let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
-            loader.load_plugin(plugin.span, &plugin.name(), args);
+            let plugins = match attr.meta_item_list() {
+                Some(xs) => xs,
+                None => {
+                    call_malformed_plugin_attribute(sess, attr.span);
+                    continue;
+                }
+            };
+
+            for plugin in plugins {
+                if plugin.value_str().is_some() {
+                    call_malformed_plugin_attribute(sess, attr.span);
+                    continue;
+                }
+
+                let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
+                loader.load_plugin(plugin.span, &plugin.name(), args);
+            }
         }
     }
 

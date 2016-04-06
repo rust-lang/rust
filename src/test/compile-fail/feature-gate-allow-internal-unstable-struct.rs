@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! bar {
-    () => {
-        // more layers don't help:
-        #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
-        macro_rules! baz {
-            () => {}
-        }
-    }
-}
+// checks that this attribute is caught on non-macro items.
+// this needs a different test since this is done after expansion
 
-bar!();
+#[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
+struct S;
 
 fn main() {}

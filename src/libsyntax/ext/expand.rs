@@ -35,6 +35,16 @@ use std_inject;
 use std::collections::HashSet;
 use std::env;
 
+// this function is called to detect use of feature-gated or invalid attributes
+// on macro invoations since they will not be detected after macro expansion
+fn check_attributes(attrs: &[ast::Attribute], fld: &MacroExpander) {
+    for attr in attrs.iter() {
+        feature_gate::check_attribute(&attr, &fld.cx.parse_sess.span_diagnostic,
+                                      &fld.cx.parse_sess.codemap(),
+                                      &fld.cx.ecfg.features.unwrap());
+    }
+}
+
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     let expr_span = e.span;
     return e.and_then(|ast::Expr {id, node, span, attrs}| match node {
@@ -42,6 +52,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprKind::Mac(mac) => {
+            if let Some(ref attrs) = attrs {
+                check_attributes(attrs, fld);
+            }
 
             // Assert that we drop any macro attributes on the floor here
             drop(attrs);
@@ -367,6 +380,8 @@ pub fn expand_item_mac(it: P<ast::Item>,
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     });
 
+    check_attributes(&attrs, fld);
+
     let fm = fresh_mark();
     let items = {
         let expanded = match fld.cx.syntax_env.find(extname) {
@@ -441,18 +456,6 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     let allow_internal_unstable = attr::contains_name(&attrs,
                                                                       "allow_internal_unstable");
 
-                    // ensure any #[allow_internal_unstable]s are
-                    // detected (including nested macro definitions
-                    // etc.)
-                    if allow_internal_unstable && !fld.cx.ecfg.enable_allow_internal_unstable() {
-                        feature_gate::emit_feature_err(
-                            &fld.cx.parse_sess.span_diagnostic,
-                            "allow_internal_unstable",
-                            span,
-                            feature_gate::GateIssue::Language,
-                            feature_gate::EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
-                    }
-
                     let export = attr::contains_name(&attrs, "macro_export");
                     let def = ast::MacroDef {
                         ident: ident,
@@ -515,6 +518,10 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
         StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
     };
+
+    if let Some(ref attrs) = attrs {
+        check_attributes(attrs, fld);
+    }
 
     // Assert that we drop any macro attributes on the floor here
     drop(attrs);
@@ -1063,7 +1070,7 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             attrs: ii.attrs,
             vis: ii.vis,
             defaultness: ii.defaultness,
-            node: match ii.node  {
+            node: match ii.node {
                 ast::ImplItemKind::Method(sig, body) => {
                     let (sig, body) = expand_and_rename_method(sig, body, fld);
                     ast::ImplItemKind::Method(sig, body)
@@ -1072,13 +1079,11 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             },
             span: fld.new_span(ii.span)
         }),
-        ast::ImplItemKind::Macro(_) => {
-            let (span, mac) = match ii.node {
-                ast::ImplItemKind::Macro(mac) => (ii.span, mac),
-                _ => unreachable!()
-            };
+        ast::ImplItemKind::Macro(mac) => {
+            check_attributes(&ii.attrs, fld);
+
             let maybe_new_items =
-                expand_mac_invoc(mac, span,
+                expand_mac_invoc(mac, ii.span,
                                  |r| r.make_impl_items(),
                                  |meths, mark| meths.move_map(|m| mark_impl_item(m, mark)),
                                  fld);
