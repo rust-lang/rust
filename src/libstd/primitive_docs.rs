@@ -425,10 +425,11 @@ mod prim_str { }
 ///
 /// # Trait implementations
 ///
-/// If every type inside a tuple implements one of the following
-/// traits, then a tuple itself also implements it.
+/// If every type inside a tuple implements one of the following traits, then a
+/// tuple itself also implements it.
 ///
 /// * [`Clone`]
+/// * [`Copy`]
 /// * [`PartialEq`]
 /// * [`Eq`]
 /// * [`PartialOrd`]
@@ -438,6 +439,7 @@ mod prim_str { }
 /// * [`Hash`]
 ///
 /// [`Clone`]: clone/trait.Clone.html
+/// [`Copy`]: marker/trait.Copy.html
 /// [`PartialEq`]: cmp/trait.PartialEq.html
 /// [`Eq`]: cmp/trait.Eq.html
 /// [`PartialOrd`]: cmp/trait.PartialOrd.html
