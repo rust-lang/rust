@@ -220,7 +220,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     TempRef::Lvalue(lvalue) => f(self, lvalue),
                     TempRef::Operand(None) => {
                         let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
-                        let lvalue = LvalueRef::alloca(bcx, lvalue_ty.to_ty(bcx.tcx()), "lvalue_temp");
+                        let lvalue = LvalueRef::alloca(bcx,
+                                                       lvalue_ty.to_ty(bcx.tcx()),
+                                                       "lvalue_temp");
                         let ret = f(self, lvalue);
                         let op = self.trans_load(bcx, lvalue.llval, lvalue_ty.to_ty(bcx.tcx()));
                         self.temps[idx as usize] = TempRef::Operand(Some(op));
