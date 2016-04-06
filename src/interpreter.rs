@@ -19,7 +19,7 @@ use syntax::attr;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
-use memory::{self, FieldRepr, Memory, Pointer, Repr};
+use memory::{FieldRepr, Memory, Pointer, Repr};
 use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = false;
@@ -150,31 +150,32 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         r
     }
 
-    fn run(&mut self) -> EvalResult<()> {
-        use std::fmt::Debug;
-        fn print_trace<T: Debug>(t: &T, suffix: &'static str, indent: usize) {
-            if !TRACE_EXECUTION { return; }
-            for _ in 0..indent { print!("  "); }
-            println!("{:?}{}", t, suffix);
-        }
+    fn log<F>(&self, extra_indent: usize, f: F) where F: FnOnce() {
+        let indent = self.stack.len() - 1 + extra_indent;
+        if !TRACE_EXECUTION { return; }
+        for _ in 0..indent { print!("  "); }
+        f();
+        println!("");
+    }
 
+    fn run(&mut self) -> EvalResult<()> {
         'outer: while !self.stack.is_empty() {
             let mut current_block = self.frame().next_block;
 
             loop {
-                print_trace(&current_block, ":", self.stack.len());
+                self.log(0, || print!("{:?}", current_block));
                 let current_mir = self.mir().clone(); // Cloning a reference.
                 let block_data = current_mir.basic_block_data(current_block);
 
                 for stmt in &block_data.statements {
-                    print_trace(stmt, "", self.stack.len() + 1);
+                    self.log(1, || print!("{:?}", stmt));
                     let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
                     let result = self.eval_assignment(lvalue, rvalue);
                     try!(self.maybe_report(stmt.span, result));
                 }
 
                 let terminator = block_data.terminator();
-                print_trace(&terminator.kind, "", self.stack.len() + 1);
+                self.log(1, || print!("{:?}", terminator.kind));
 
                 let result = self.eval_terminator(terminator);
                 match try!(self.maybe_report(terminator.span, result)) {
@@ -1154,15 +1155,6 @@ pub fn get_impl_method<'tcx>(
 }
 
 pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
-    /// Print the given allocation and all allocations it depends on.
-    fn print_allocation_tree(memory: &Memory, alloc_id: memory::AllocId) {
-        let alloc = memory.get(alloc_id).unwrap();
-        println!("  {:?}: {:?}", alloc_id, alloc);
-        for &target_alloc in alloc.relocations.values() {
-            print_allocation_tree(memory, target_alloc);
-        }
-    }
-
     for (&id, mir) in &mir_map.map {
         for attr in tcx.map.attrs(id) {
             use syntax::attr::AttrMetaMethods;
@@ -1188,8 +1180,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 tcx.sess.abort_if_errors();
 
                 if let Some(ret) = return_ptr {
-                    println!("Result:");
-                    print_allocation_tree(&miri.memory, ret.alloc_id);
+                    miri.memory.dump(ret.alloc_id);
                     println!("");
                 }
             }
