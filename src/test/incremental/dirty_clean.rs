@@ -48,7 +48,6 @@ mod z {
     #[rustc_dirty(label="TransCrateItem", cfg="cfail2")]
     pub fn z() {
         //[cfail2]~^ ERROR `TypeckItemBody("z::z")` found in dep graph, but should be dirty
-        // FIXME(#32014) -- TransCrateItem ought to be clean, but it is in fact
-        // dirty, hence we don't see an error here.
+        //[cfail2]~| ERROR `TransCrateItem("z::z")` found in dep graph, but should be dirty
     }
 }

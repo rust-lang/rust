@@ -41,7 +41,7 @@ mod y {
     use x;
 
     #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-    #[rustc_dirty(label="TransCrateItem", cfg="rpass2")]
+    #[rustc_clean(label="TransCrateItem", cfg="rpass2")]
     pub fn y() {
         x::x();
     }
@@ -51,7 +51,7 @@ mod z {
     use y;
 
     #[rustc_clean(label="TypeckItemBody", cfg="rpass2")]
-    #[rustc_dirty(label="TransCrateItem", cfg="rpass2")]
+    #[rustc_clean(label="TransCrateItem", cfg="rpass2")]
     pub fn z() {
         y::y();
     }
