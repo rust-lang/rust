@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir;
 use hir::def_id::DefId;
+use hir::intravisit::Visitor;
 use ty::TyCtxt;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
 
 use super::dep_node::DepNode;
 

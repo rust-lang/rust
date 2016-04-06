@@ -14,7 +14,7 @@ use calculate_svh::SvhCalculate;
 use rbml::Error;
 use rbml::opaque::Decoder;
 use rustc::dep_graph::DepNode;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fnv::FnvHashSet;
 use rustc_serialize::Decodable as RustcDecodable;

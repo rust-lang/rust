@@ -25,9 +25,9 @@
 //! the required condition is not met.
 
 use rustc::dep_graph::{DepGraphQuery, DepNode};
-use rustc::middle::def_id::DefId;
-use rustc_front::hir;
-use rustc_front::intravisit::Visitor;
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::hir::intravisit::Visitor;
 use syntax::ast::{self, Attribute, MetaItem};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;

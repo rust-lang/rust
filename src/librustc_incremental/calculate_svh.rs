@@ -15,7 +15,7 @@ use std::hash::{Hash, SipHasher, Hasher};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::svh::Svh;
 use rustc::ty;
-use rustc_front::intravisit::{self, Visitor};
+use rustc::hir::intravisit::{self, Visitor};
 
 use self::svh_visitor::StrictVersionHashVisitor;
 
@@ -110,10 +110,10 @@ mod svh_visitor {
     use syntax::codemap::Span;
     use syntax::parse::token;
     use rustc::ty;
-    use rustc_front::intravisit as visit;
-    use rustc_front::intravisit::{Visitor, FnKind};
-    use rustc_front::hir::*;
-    use rustc_front::hir;
+    use rustc::hir;
+    use rustc::hir::*;
+    use rustc::hir::intravisit as visit;
+    use rustc::hir::intravisit::{Visitor, FnKind};
 
     use std::hash::{Hash, SipHasher};
 

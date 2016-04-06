@@ -44,8 +44,6 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::attr::AttrMetaMethods;
 
-use rustc::hir;
-
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
 // Bytes    Data
