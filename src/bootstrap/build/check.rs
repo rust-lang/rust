@@ -18,9 +18,18 @@ pub fn linkcheck(build: &Build, stage: u32, host: &str) {
 }
 
 pub fn cargotest(build: &Build, stage: u32, host: &str) {
+
     let ref compiler = Compiler::new(stage, host);
+
+    // Configure PATH to find the right rustc. NB. we have to use PATH
+    // and not RUSTC because the Cargo test suite has tests that will
+    // fail if rustc is not spelled `rustc`.
+    let path = build.sysroot(compiler).join("bin");
+    let old_path = ::std::env::var("PATH").expect("");
+    let sep = if cfg!(windows) { ";" } else {":" };
+    let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
+
     build.run(build.tool_cmd(compiler, "cargotest")
-              .env("RUSTC", build.compiler_path(compiler))
-              .env("RUSTDOC", build.rustdoc(compiler))
+              .env("PATH", newpath)
               .arg(&build.cargo));
 }

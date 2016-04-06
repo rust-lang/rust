@@ -19,7 +19,7 @@ use std::io::Write;
 
 const TEST_REPOS: &'static [(&'static str, &'static str, Option<&'static str>)] = &[
     ("https://github.com/rust-lang/cargo",
-     "ff02b156f094fb83e70acd965c83c9286411914e",
+     "fae9c539388f1b7c70c31fd0a21b5dd9cd071177",
      None),
     ("https://github.com/iron/iron",
      "16c858ec2901e2992fe5e529780f59fa8ed12903",
