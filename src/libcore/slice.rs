@@ -1672,6 +1672,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
     }
 }
 
+#[doc(hidden)]
 // intermediate trait for specialization of slice's PartialEq
 trait SlicePartialEq<B> {
     fn equal(&self, other: &[B]) -> bool;
@@ -1731,6 +1732,7 @@ impl<A> SlicePartialEq<A> for [A]
     }
 }
 
+#[doc(hidden)]
 // intermediate trait for specialization of slice's PartialOrd
 trait SlicePartialOrd<B> {
     fn partial_compare(&self, other: &[B]) -> Option<Ordering>;
@@ -1765,6 +1767,7 @@ impl SlicePartialOrd<u8> for [u8] {
     }
 }
 
+#[doc(hidden)]
 // intermediate trait for specialization of slice's Ord
 trait SliceOrd<B> {
     fn compare(&self, other: &[B]) -> Ordering;
@@ -1811,6 +1814,7 @@ impl SliceOrd<u8> for [u8] {
     }
 }
 
+#[doc(hidden)]
 /// Trait implemented for types that can be compared for equality using
 /// their bytewise representation
 trait BytewiseEquality { }
