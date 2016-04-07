@@ -303,8 +303,13 @@ mod inner {
         }
     }
 
+    #[cfg(not(target_os = "dragonfly"))]
+    pub type clock_t = libc::c_int;
+    #[cfg(target_os = "dragonfly")]
+    pub type clock_t = libc::c_ulong;
+
     impl Timespec {
-        pub fn now(clock: libc::c_int) -> Timespec {
+        pub fn now(clock: clock_t) -> Timespec {
             let mut t = Timespec {
                 t: libc::timespec {
                     tv_sec: 0,
