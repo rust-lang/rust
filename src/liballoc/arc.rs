@@ -124,9 +124,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _ptr: Shared<ArcInner<T>>,
+    ptr: Shared<ArcInner<T>>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -144,9 +142,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 #[unsafe_no_drop_flag]
 #[stable(feature = "arc_weak", since = "1.4.0")]
 pub struct Weak<T: ?Sized> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _ptr: Shared<ArcInner<T>>,
+    ptr: Shared<ArcInner<T>>,
 }
 
 #[stable(feature = "arc_weak", since = "1.4.0")]
@@ -198,7 +194,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: data,
         };
-        Arc { _ptr: unsafe { Shared::new(Box::into_raw(x)) } }
+        Arc { ptr: unsafe { Shared::new(Box::into_raw(x)) } }
     }
 
     /// Unwraps the contained value if the `Arc<T>` has exactly one strong reference.
@@ -230,11 +226,11 @@ impl<T> Arc<T> {
         atomic::fence(Acquire);
 
         unsafe {
-            let ptr = *this._ptr;
+            let ptr = *this.ptr;
             let elem = ptr::read(&(*ptr).data);
 
             // Make a weak pointer to clean up the implicit strong-weak reference
-            let _weak = Weak { _ptr: this._ptr };
+            let _weak = Weak { ptr: this.ptr };
             mem::forget(this);
 
             Ok(elem)
@@ -275,7 +271,7 @@ impl<T: ?Sized> Arc<T> {
             // synchronize with the write coming from `is_unique`, so that the
             // events prior to that write happen before this read.
             match this.inner().weak.compare_exchange_weak(cur, cur + 1, Acquire, Relaxed) {
-                Ok(_) => return Weak { _ptr: this._ptr },
+                Ok(_) => return Weak { ptr: this.ptr },
                 Err(old) => cur = old,
             }
         }
@@ -304,13 +300,13 @@ impl<T: ?Sized> Arc<T> {
         // `ArcInner` structure itself is `Sync` because the inner data is
         // `Sync` as well, so we're ok loaning out an immutable pointer to these
         // contents.
-        unsafe { &**self._ptr }
+        unsafe { &**self.ptr }
     }
 
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        let ptr = *self._ptr;
+        let ptr = *self.ptr;
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
@@ -368,7 +364,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             }
         }
 
-        Arc { _ptr: self._ptr }
+        Arc { ptr: self.ptr }
     }
 }
 
@@ -436,7 +432,7 @@ impl<T: Clone> Arc<T> {
 
             // Materialize our own implicit weak pointer, so that it can clean
             // up the ArcInner as needed.
-            let weak = Weak { _ptr: this._ptr };
+            let weak = Weak { ptr: this.ptr };
 
             // mark the data itself as already deallocated
             unsafe {
@@ -444,7 +440,7 @@ impl<T: Clone> Arc<T> {
                 // here (due to zeroing) because data is no longer accessed by
                 // other threads (due to there being no more strong refs at this
                 // point).
-                let mut swap = Arc::new(ptr::read(&(**weak._ptr).data));
+                let mut swap = Arc::new(ptr::read(&(**weak.ptr).data));
                 mem::swap(this, &mut swap);
                 mem::forget(swap);
             }
@@ -457,7 +453,7 @@ impl<T: Clone> Arc<T> {
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         unsafe {
-            let inner = &mut **this._ptr;
+            let inner = &mut **this.ptr;
             &mut inner.data
         }
     }
@@ -489,7 +485,7 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                let inner = &mut **this._ptr;
+                let inner = &mut **this.ptr;
                 Some(&mut inner.data)
             }
         } else {
@@ -558,7 +554,7 @@ impl<T: ?Sized> Drop for Arc<T> {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run
         // more than once (but it is guaranteed to be zeroed after the first if
         // it's run more than once)
-        let thin = *self._ptr as *const ();
+        let thin = *self.ptr as *const ();
 
         if thin as usize == mem::POST_DROP_USIZE {
             return;
@@ -639,7 +635,7 @@ impl<T: ?Sized> Weak<T> {
 
             // Relaxed is valid for the same reason it is on Arc's Clone impl
             match inner.strong.compare_exchange_weak(n, n + 1, Relaxed, Relaxed) {
-                Ok(_) => return Some(Arc { _ptr: self._ptr }),
+                Ok(_) => return Some(Arc { ptr: self.ptr }),
                 Err(old) => n = old,
             }
         }
@@ -648,7 +644,7 @@ impl<T: ?Sized> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &**self._ptr }
+        unsafe { &**self.ptr }
     }
 }
 
@@ -682,7 +678,7 @@ impl<T: ?Sized> Clone for Weak<T> {
             }
         }
 
-        return Weak { _ptr: self._ptr };
+        return Weak { ptr: self.ptr };
     }
 }
 
@@ -714,7 +710,7 @@ impl<T: ?Sized> Drop for Weak<T> {
     /// } // implicit drop
     /// ```
     fn drop(&mut self) {
-        let ptr = *self._ptr;
+        let ptr = *self.ptr;
         let thin = ptr as *const ();
 
         // see comments above for why this check is here
@@ -886,7 +882,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Arc<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> fmt::Pointer for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Pointer::fmt(&*self._ptr, f)
+        fmt::Pointer::fmt(&*self.ptr, f)
     }
 }
 
@@ -931,7 +927,7 @@ impl<T> Weak<T> {
                issue = "30425")]
     pub fn new() -> Weak<T> {
         unsafe {
-            Weak { _ptr: Shared::new(Box::into_raw(box ArcInner {
+            Weak { ptr: Shared::new(Box::into_raw(box ArcInner {
                 strong: atomic::AtomicUsize::new(0),
                 weak: atomic::AtomicUsize::new(1),
                 data: uninitialized(),

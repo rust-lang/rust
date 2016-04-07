@@ -26,6 +26,8 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
                 8 => a.cast = Some(Type::i64(ccx)),
                 _ => a.make_indirect(ccx)
             }
+        } else {
+            a.extend_integer_width_to(32);
         }
     };
 
