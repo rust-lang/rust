@@ -156,6 +156,15 @@ impl<T> RwLock<T> {
     }
 }
 
+#[unstable(feature = "defaults",
+           reason = "has not yet been decided",
+           issue = "31865")]
+impl<T: Default> Default for RwLock<T> {
+    fn default() -> RwLock<T> {
+        RwLock::new(Default::default())
+    }
+}
+
 impl<T: ?Sized> RwLock<T> {
     /// Locks this rwlock with shared read access, blocking the current thread
     /// until it can be acquired.
