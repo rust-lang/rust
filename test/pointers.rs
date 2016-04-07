@@ -51,3 +51,9 @@ fn match_ref_mut() -> i8 {
     }
     t.0
 }
+
+#[miri_run]
+fn dangling_pointer() -> *const i32 {
+    let b = Box::new(42);
+    &*b as *const i32
+}

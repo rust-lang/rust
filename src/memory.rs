@@ -176,10 +176,17 @@ impl Memory {
 
         while let Some(id) = allocs_to_print.pop_front() {
             allocs_seen.insert(id.0);
-            let alloc = self.get(id).unwrap();
             let prefix = format!("Alloc {:<5} ", format!("{}:", id.0));
             print!("{}", prefix);
             let mut relocations = vec![];
+
+            let alloc = match self.alloc_map.get(&id.0) {
+                Some(a) => a,
+                None => {
+                    println!("(deallocated)");
+                    continue;
+                }
+            };
 
             for i in 0..alloc.bytes.len() {
                 if let Some(&target_id) = alloc.relocations.get(&i) {
