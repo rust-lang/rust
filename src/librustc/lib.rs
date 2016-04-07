@@ -28,7 +28,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(const_fn)]
-#![feature(copy_from_slice)]
 #![feature(enumset)]
 #![feature(iter_arith)]
 #![feature(libc)]
@@ -39,7 +38,6 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(step_by)]
-#![feature(str_char)]
 #![feature(question_mark)]
 #![cfg_attr(test, feature(test))]
 

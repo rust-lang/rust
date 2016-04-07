@@ -228,8 +228,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(str_char)]
-    ///
     /// let s = "Löwe 老虎 Léopard";
     /// assert!(s.is_char_boundary(0));
     /// // start of `老`
@@ -242,12 +240,7 @@ impl str {
     /// // third byte of `老`
     /// assert!(!s.is_char_boundary(8));
     /// ```
-    #[unstable(feature = "str_char",
-               reason = "it is unclear whether this method pulls its weight \
-                         with the existence of the char_indices iterator or \
-                         this method may want to be replaced with checked \
-                         slicing",
-               issue = "27754")]
+    #[stable(feature = "is_char_boundary", since = "1.9.0")]
     #[inline]
     pub fn is_char_boundary(&self, index: usize) -> bool {
         core_str::StrExt::is_char_boundary(self, index)
@@ -374,6 +367,7 @@ impl str {
     ///
     /// ```
     /// #![feature(str_char)]
+    /// #![allow(deprecated)]
     ///
     /// use std::str::CharRange;
     ///
@@ -408,6 +402,9 @@ impl str {
                          removed altogether",
                issue = "27754")]
     #[inline]
+    #[rustc_deprecated(reason = "use slicing plus chars() plus len_utf8",
+                       since = "1.9.0")]
+    #[allow(deprecated)]
     pub fn char_range_at(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at(self, start)
     }
@@ -432,6 +429,7 @@ impl str {
     ///
     /// ```
     /// #![feature(str_char)]
+    /// #![allow(deprecated)]
     ///
     /// use std::str::CharRange;
     ///
@@ -466,6 +464,9 @@ impl str {
                          eventually removed altogether",
                issue = "27754")]
     #[inline]
+    #[rustc_deprecated(reason = "use slicing plus chars().rev() plus len_utf8",
+                       since = "1.9.0")]
+    #[allow(deprecated)]
     pub fn char_range_at_reverse(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at_reverse(self, start)
     }
@@ -481,6 +482,7 @@ impl str {
     ///
     /// ```
     /// #![feature(str_char)]
+    /// #![allow(deprecated)]
     ///
     /// let s = "abπc";
     /// assert_eq!(s.char_at(1), 'b');
@@ -495,6 +497,9 @@ impl str {
                          subslice",
                issue = "27754")]
     #[inline]
+    #[allow(deprecated)]
+    #[rustc_deprecated(reason = "use slicing plus chars()",
+                       since = "1.9.0")]
     pub fn char_at(&self, i: usize) -> char {
         core_str::StrExt::char_at(self, i)
     }
@@ -511,6 +516,7 @@ impl str {
     ///
     /// ```
     /// #![feature(str_char)]
+    /// #![allow(deprecated)]
     ///
     /// let s = "abπc";
     /// assert_eq!(s.char_at_reverse(1), 'a');
@@ -523,6 +529,9 @@ impl str {
                          cases generate panics",
                issue = "27754")]
     #[inline]
+    #[rustc_deprecated(reason = "use slicing plus chars().rev()",
+                       since = "1.9.0")]
+    #[allow(deprecated)]
     pub fn char_at_reverse(&self, i: usize) -> char {
         core_str::StrExt::char_at_reverse(self, i)
     }
@@ -541,6 +550,7 @@ impl str {
     ///
     /// ```
     /// #![feature(str_char)]
+    /// #![allow(deprecated)]
     ///
     /// let s = "Łódź"; // \u{141}o\u{301}dz\u{301}
     /// let (c, s1) = s.slice_shift_char().unwrap();
@@ -559,6 +569,9 @@ impl str {
                          and/or char_indices iterators",
                issue = "27754")]
     #[inline]
+    #[rustc_deprecated(reason = "use chars() plus Chars::as_str",
+                       since = "1.9.0")]
+    #[allow(deprecated)]
     pub fn slice_shift_char(&self) -> Option<(char, &str)> {
         core_str::StrExt::slice_shift_char(self)
     }

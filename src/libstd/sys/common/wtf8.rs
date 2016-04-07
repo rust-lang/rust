@@ -191,8 +191,11 @@ impl Wtf8Buf {
             match item {
                 Ok(ch) => string.push_char(ch),
                 Err(surrogate) => {
+                    let surrogate = surrogate.unpaired_surrogate();
                     // Surrogates are known to be in the code point range.
-                    let code_point = unsafe { CodePoint::from_u32_unchecked(surrogate as u32) };
+                    let code_point = unsafe {
+                        CodePoint::from_u32_unchecked(surrogate as u32)
+                    };
                     // Skip the WTF-8 concatenation check,
                     // surrogate pairs are already decoded by decode_utf16
                     string.push_code_point_unchecked(code_point)

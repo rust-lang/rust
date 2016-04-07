@@ -302,7 +302,7 @@ impl File {
     /// The returned `File` is a reference to the same state that this object
     /// references. Both handles will read and write with the same cursor
     /// position.
-    #[unstable(feature = "file_try_clone", reason = "newly added", issue = "31405")]
+    #[stable(feature = "file_try_clone", since = "1.9.0")]
     pub fn try_clone(&self) -> io::Result<File> {
         Ok(File {
             inner: self.inner.duplicate()?
@@ -523,16 +523,13 @@ impl OpenOptions {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(expand_open_options)]
     /// use std::fs::OpenOptions;
     ///
     /// let file = OpenOptions::new().write(true)
     ///                              .create_new(true)
     ///                              .open("foo.txt");
     /// ```
-    #[unstable(feature = "expand_open_options",
-               reason = "recently added",
-               issue = "30014")]
+    #[stable(feature = "expand_open_options2", since = "1.9.0")]
     pub fn create_new(&mut self, create_new: bool) -> &mut OpenOptions {
         self.0.create_new(create_new); self
     }

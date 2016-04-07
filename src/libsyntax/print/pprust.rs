@@ -2209,12 +2209,14 @@ impl<'a> State<'a> {
 
                 self.commasep(Inconsistent, &a.outputs,
                                    |s, out| {
-                    match out.constraint.slice_shift_char() {
-                        Some(('=', operand)) if out.is_rw => {
-                            s.print_string(&format!("+{}", operand),
+                    let mut ch = out.constraint.chars();
+                    match ch.next() {
+                        Some('=') if out.is_rw => {
+                            s.print_string(&format!("+{}", ch.as_str()),
                                            ast::StrStyle::Cooked)?
                         }
-                        _ => s.print_string(&out.constraint, ast::StrStyle::Cooked)?
+                        _ => s.print_string(&out.constraint,
+                                            ast::StrStyle::Cooked)?
                     }
                     s.popen()?;
                     s.print_expr(&out.expr)?;

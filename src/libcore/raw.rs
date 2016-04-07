@@ -60,12 +60,17 @@ use mem;
 /// ```
 #[repr(C)]
 #[allow(missing_debug_implementations)]
+#[rustc_deprecated(reason = "use raw accessors/constructors in `slice` module",
+                   since = "1.9.0")]
+#[unstable(feature = "raw", issue = "27751")]
 pub struct Slice<T> {
     pub data: *const T,
     pub len: usize,
 }
 
+#[allow(deprecated)]
 impl<T> Copy for Slice<T> {}
+#[allow(deprecated)]
 impl<T> Clone for Slice<T> {
     fn clone(&self) -> Slice<T> { *self }
 }
@@ -152,6 +157,9 @@ pub struct TraitObject {
 
 /// This trait is meant to map equivalences between raw structs and their
 /// corresponding rust values.
+#[rustc_deprecated(reason = "use raw accessors/constructors in `slice` module",
+                   since = "1.9.0")]
+#[unstable(feature = "raw", issue = "27751")]
 pub unsafe trait Repr<T> {
     /// This function "unwraps" a rust value (without consuming it) into its raw
     /// struct representation. This can be used to read/write different values
@@ -161,5 +169,7 @@ pub unsafe trait Repr<T> {
     fn repr(&self) -> T { unsafe { mem::transmute_copy(&self) } }
 }
 
+#[allow(deprecated)]
 unsafe impl<T> Repr<Slice<T>> for [T] {}
+#[allow(deprecated)]
 unsafe impl Repr<Slice<u8>> for str {}

@@ -60,7 +60,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         sys_common::args::init(argc, argv);
 
         // Let's run some code!
-        let res = panic::recover(mem::transmute::<_, fn()>(main));
+        let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
         sys_common::cleanup();
         res.is_err()
     };

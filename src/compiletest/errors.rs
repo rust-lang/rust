@@ -115,7 +115,7 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
                   tag: &str)
                   -> Option<(WhichLine, ExpectedError)> {
     let start = match line.find(tag) { Some(i) => i, None => return None };
-    let (follow, adjusts) = if line.char_at(start + tag.len()) == '|' {
+    let (follow, adjusts) = if line[start + tag.len()..].chars().next().unwrap() == '|' {
         (true, 0)
     } else {
         (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
