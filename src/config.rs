@@ -11,6 +11,7 @@
 extern crate toml;
 
 use lists::{SeparatorTactic, ListTactic};
+use std::io::Write;
 
 macro_rules! configuration_option_enum{
     ($e:ident: $( $x:ident ),+ $(,)*) => {
@@ -45,7 +46,7 @@ configuration_option_enum! { ReturnIndent:
     WithWhereClause,
 }
 
-// How to stle a struct literal.
+// How to style a struct literal.
 configuration_option_enum! { StructLitStyle:
     // First line on the same line as the opening brace, all lines aligned with
     // the first line.
@@ -222,9 +223,9 @@ macro_rules! create_config {
                 let parsed_config:ParsedConfig = match toml::decode(parsed) {
                     Some(decoded) => decoded,
                     None => {
-                        println!("Decoding config file failed. Config:\n{}", toml);
+                        msg!("Decoding config file failed. Config:\n{}", toml);
                         let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
-                        println!("\n\nParsed:\n{:?}", parsed);
+                        msg!("\n\nParsed:\n{:?}", parsed);
                         panic!();
                     }
                 };

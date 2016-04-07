@@ -10,14 +10,14 @@
 
 #![cfg(not(test))]
 
-#[macro_use]
+
 extern crate log;
 extern crate rustfmt;
 extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{run, run_from_stdin};
+use rustfmt::{run, Input};
 use rustfmt::config::{Config, WriteMode};
 
 use std::env;
@@ -28,14 +28,6 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
-macro_rules! msg {
-    ($($arg:tt)*) => (
-        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
-            Ok(_) => {},
-            Err(x) => panic!("Unable to write to stderr: {}", x),
-        }
-    )
-}
 
 /// Rustfmt operations.
 enum Operation {
@@ -197,7 +189,7 @@ fn execute() -> i32 {
             // write_mode is always Plain for Stdin.
             config.write_mode = WriteMode::Plain;
 
-            run_from_stdin(input, &config);
+            run(Input::Text(input), &config);
             0
         }
         Operation::Format { files, config_path } => {
@@ -212,7 +204,7 @@ fn execute() -> i32 {
                 path = path_tmp;
             };
             if let Some(path) = path.as_ref() {
-                msg!("Using rustfmt config file {}", path.display());
+                println!("Using rustfmt config file {}", path.display());
             }
             for file in files {
                 // Check the file directory if the config-path could not be read or not provided
@@ -222,9 +214,9 @@ fn execute() -> i32 {
                                                                        for {}",
                                                                       file.display()));
                     if let Some(path) = path_tmp.as_ref() {
-                        msg!("Using rustfmt config file {} for {}",
-                             path.display(),
-                             file.display());
+                        println!("Using rustfmt config file {} for {}",
+                                 path.display(),
+                                 file.display());
                     }
                     config = config_tmp;
                 }
@@ -233,7 +225,7 @@ fn execute() -> i32 {
                     print_usage(&opts, &e);
                     return 1;
                 }
-                run(&file, &config);
+                run(Input::File(file), &config);
             }
             0
         }
