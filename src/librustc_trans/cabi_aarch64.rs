@@ -163,6 +163,7 @@ fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
 
 fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
     if is_reg_ty(ret.ty) {
+        ret.extend_integer_width_to(32);
         return;
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
@@ -190,6 +191,7 @@ fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
 
 fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
     if is_reg_ty(arg.ty) {
+        arg.extend_integer_width_to(32);
         return;
     }
     if let Some((base_ty, members)) = is_homogenous_aggregate_ty(arg.ty) {
