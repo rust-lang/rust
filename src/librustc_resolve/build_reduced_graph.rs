@@ -26,7 +26,7 @@ use rustc::middle::cstore::{CrateStore, ChildItem, DlDef};
 use rustc::lint;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
-use rustc::ty::VariantKind;
+use rustc::ty::{self, VariantKind};
 
 use syntax::ast::Name;
 use syntax::attr::AttrMetaMethods;
@@ -434,7 +434,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
         }
 
         let name = xcdef.name;
-        let is_public = xcdef.vis == hir::Public || parent.is_trait();
+        let is_public = xcdef.vis == ty::Visibility::Public || parent.is_trait();
 
         let mut modifiers = DefModifiers::empty();
         if is_public {

@@ -343,7 +343,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let def = pick.item.def();
 
     if let probe::InherentImplPick = pick.kind {
-        if pick.item.vis() != hir::Public && !fcx.private_item_is_visible(def.def_id()) {
+        if !pick.item.vis().is_accessible_from(fcx.body_id, &fcx.tcx().map) {
             let msg = format!("{} `{}` is private", def.kind_name(), &method_name.as_str());
             fcx.tcx().sess.span_err(span, &msg);
         }

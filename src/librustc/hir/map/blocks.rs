@@ -113,7 +113,7 @@ struct ItemFnParts<'a> {
     unsafety: ast::Unsafety,
     constness: ast::Constness,
     abi:      abi::Abi,
-    vis:      ast::Visibility,
+    vis:      &'a ast::Visibility,
     generics: &'a ast::Generics,
     body:     &'a Block,
     id:       NodeId,
@@ -208,7 +208,7 @@ impl<'a> FnLikeNode<'a> {
         M: FnOnce(NodeId,
                   Name,
                   &'a ast::MethodSig,
-                  Option<ast::Visibility>,
+                  Option<&'a ast::Visibility>,
                   &'a ast::Block,
                   Span,
                   &'a [Attribute])
@@ -226,7 +226,7 @@ impl<'a> FnLikeNode<'a> {
                         body: &block,
                         generics: generics,
                         abi: abi,
-                        vis: i.vis,
+                        vis: &i.vis,
                         constness: constness,
                         span: i.span,
                         attrs: &i.attrs,
@@ -242,7 +242,7 @@ impl<'a> FnLikeNode<'a> {
             map::NodeImplItem(ii) => {
                 match ii.node {
                     ast::ImplItemKind::Method(ref sig, ref body) => {
-                        method(ii.id, ii.name, sig, Some(ii.vis), body, ii.span, &ii.attrs)
+                        method(ii.id, ii.name, sig, Some(&ii.vis), body, ii.span, &ii.attrs)
                     }
                     _ => {
                         bug!("impl method FnLikeNode that is not fn-like")

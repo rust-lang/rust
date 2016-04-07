@@ -1630,12 +1630,60 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 }
 
 //
-// Boilerplate traits
+// Comparison traits
 //
+
+extern {
+    /// Call implementation provided memcmp
+    ///
+    /// Interprets the data as u8.
+    ///
+    /// Return 0 for equal, < 0 for less than and > 0 for greater
+    /// than.
+    // FIXME(#32610): Return type should be c_int
+    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     fn eq(&self, other: &[B]) -> bool {
+        SlicePartialEq::equal(self, other)
+    }
+
+    fn ne(&self, other: &[B]) -> bool {
+        SlicePartialEq::not_equal(self, other)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Eq> Eq for [T] {}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Ord> Ord for [T] {
+    fn cmp(&self, other: &[T]) -> Ordering {
+        SliceOrd::compare(self, other)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PartialOrd> PartialOrd for [T] {
+    fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
+        SlicePartialOrd::partial_compare(self, other)
+    }
+}
+
+#[doc(hidden)]
+// intermediate trait for specialization of slice's PartialEq
+trait SlicePartialEq<B> {
+    fn equal(&self, other: &[B]) -> bool;
+    fn not_equal(&self, other: &[B]) -> bool;
+}
+
+// Generic slice equality
+impl<A, B> SlicePartialEq<B> for [A]
+    where A: PartialEq<B>
+{
+    default fn equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
             return false;
         }
@@ -1648,7 +1696,8 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
 
         true
     }
-    fn ne(&self, other: &[B]) -> bool {
+
+    default fn not_equal(&self, other: &[B]) -> bool {
         if self.len() != other.len() {
             return true;
         }
@@ -1663,12 +1712,71 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Eq> Eq for [T] {}
+// Use memcmp for bytewise equality when the types allow
+impl<A> SlicePartialEq<A> for [A]
+    where A: PartialEq<A> + BytewiseEquality
+{
+    fn equal(&self, other: &[A]) -> bool {
+        if self.len() != other.len() {
+            return false;
+        }
+        unsafe {
+            let size = mem::size_of_val(self);
+            memcmp(self.as_ptr() as *const u8,
+                   other.as_ptr() as *const u8, size) == 0
+        }
+    }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Ord> Ord for [T] {
-    fn cmp(&self, other: &[T]) -> Ordering {
+    fn not_equal(&self, other: &[A]) -> bool {
+        !self.equal(other)
+    }
+}
+
+#[doc(hidden)]
+// intermediate trait for specialization of slice's PartialOrd
+trait SlicePartialOrd<B> {
+    fn partial_compare(&self, other: &[B]) -> Option<Ordering>;
+}
+
+impl<A> SlicePartialOrd<A> for [A]
+    where A: PartialOrd
+{
+    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
+        let l = cmp::min(self.len(), other.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
+        let lhs = &self[..l];
+        let rhs = &other[..l];
+
+        for i in 0..l {
+            match lhs[i].partial_cmp(&rhs[i]) {
+                Some(Ordering::Equal) => (),
+                non_eq => return non_eq,
+            }
+        }
+
+        self.len().partial_cmp(&other.len())
+    }
+}
+
+impl SlicePartialOrd<u8> for [u8] {
+    #[inline]
+    fn partial_compare(&self, other: &[u8]) -> Option<Ordering> {
+        Some(SliceOrd::compare(self, other))
+    }
+}
+
+#[doc(hidden)]
+// intermediate trait for specialization of slice's Ord
+trait SliceOrd<B> {
+    fn compare(&self, other: &[B]) -> Ordering;
+}
+
+impl<A> SliceOrd<A> for [A]
+    where A: Ord
+{
+    default fn compare(&self, other: &[A]) -> Ordering {
         let l = cmp::min(self.len(), other.len());
 
         // Slice to the loop iteration range to enable bound check
@@ -1687,23 +1795,38 @@ impl<T: Ord> Ord for [T] {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: PartialOrd> PartialOrd for [T] {
-    fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
-        let l = cmp::min(self.len(), other.len());
-
-        // Slice to the loop iteration range to enable bound check
-        // elimination in the compiler
-        let lhs = &self[..l];
-        let rhs = &other[..l];
-
-        for i in 0..l {
-            match lhs[i].partial_cmp(&rhs[i]) {
-                Some(Ordering::Equal) => (),
-                non_eq => return non_eq,
-            }
+// memcmp compares a sequence of unsigned bytes lexicographically.
+// this matches the order we want for [u8], but no others (not even [i8]).
+impl SliceOrd<u8> for [u8] {
+    #[inline]
+    fn compare(&self, other: &[u8]) -> Ordering {
+        let order = unsafe {
+            memcmp(self.as_ptr(), other.as_ptr(),
+                   cmp::min(self.len(), other.len()))
+        };
+        if order == 0 {
+            self.len().cmp(&other.len())
+        } else if order < 0 {
+            Less
+        } else {
+            Greater
         }
-
-        self.len().partial_cmp(&other.len())
     }
 }
+
+#[doc(hidden)]
+/// Trait implemented for types that can be compared for equality using
+/// their bytewise representation
+trait BytewiseEquality { }
+
+macro_rules! impl_marker_for {
+    ($traitname:ident, $($ty:ty)*) => {
+        $(
+            impl $traitname for $ty { }
+        )*
+    }
+}
+
+impl_marker_for!(BytewiseEquality,
+                 u8 i8 u16 i16 u32 i32 u64 i64 usize isize char bool);
+

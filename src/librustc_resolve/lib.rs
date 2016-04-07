@@ -1714,9 +1714,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             match self.resolve_crate_relative_path(prefix.span,
                                                                    &prefix.segments,
                                                                    TypeNS) {
-                                Some(def) =>
+                                Ok(def) =>
                                     self.record_def(item.id, PathResolution::new(def, 0)),
-                                None => {
+                                Err(true) => self.record_def(item.id, err_path_resolution()),
+                                Err(false) => {
                                     resolve_error(self,
                                                   prefix.span,
                                                   ResolutionError::FailedToResolve(
@@ -1835,7 +1836,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                trait_path: &Path,
                                path_depth: usize)
                                -> Result<PathResolution, ()> {
-        if let Some(path_res) = self.resolve_path(id, trait_path, path_depth, TypeNS) {
+        self.resolve_path(id, trait_path, path_depth, TypeNS).and_then(|path_res| {
             if let Def::Trait(_) = path_res.base_def {
                 debug!("(resolving trait) found trait def: {:?}", path_res);
                 Ok(path_res)
@@ -1855,9 +1856,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
                 err.emit();
-                Err(())
+                Err(true)
             }
-        } else {
+        }).map_err(|error_reported| {
+            if error_reported { return }
 
             // find possible candidates
             let trait_name = trait_path.segments.last().unwrap().identifier.name;
@@ -1880,8 +1882,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
 
             resolve_error(self, trait_path.span, error);
-            Err(())
-        }
+        })
     }
 
     fn resolve_generics(&mut self, generics: &Generics) {
@@ -1890,15 +1891,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &hir::WherePredicate::BoundPredicate(_) |
                 &hir::WherePredicate::RegionPredicate(_) => {}
                 &hir::WherePredicate::EqPredicate(ref eq_pred) => {
-                    let path_res = self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS);
-                    if let Some(PathResolution { base_def: Def::TyParam(..), .. }) = path_res {
-                        self.record_def(eq_pred.id, path_res.unwrap());
-                    } else {
-                        resolve_error(self,
-                                      eq_pred.span,
-                                      ResolutionError::UndeclaredAssociatedType);
+                    self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS).and_then(|path_res| {
+                        if let PathResolution { base_def: Def::TyParam(..), .. } = path_res {
+                            Ok(self.record_def(eq_pred.id, path_res))
+                        } else {
+                            Err(false)
+                        }
+                    }).map_err(|error_reported| {
                         self.record_def(eq_pred.id, err_path_resolution());
-                    }
+                        if error_reported { return }
+                        let error_variant = ResolutionError::UndeclaredAssociatedType;
+                        resolve_error(self, eq_pred.span, error_variant);
+                    }).unwrap_or(());
                 }
             }
         }
@@ -2168,21 +2172,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
-                match resolution {
-                    Some(def) => {
-                        // Write the result into the def map.
-                        debug!("(resolving type) writing resolution for `{}` (id {}) = {:?}",
-                               path_names_to_string(path, 0),
-                               ty.id,
-                               def);
-                        self.record_def(ty.id, def);
-                    }
-                    None => {
-                        self.record_def(ty.id, err_path_resolution());
+                if let Some(def) = resolution {
+                    // Write the result into the def map.
+                    debug!("(resolving type) writing resolution for `{}` (id {}) = {:?}",
+                           path_names_to_string(path, 0), ty.id, def);
+                    self.record_def(ty.id, def);
+                } else {
+                    self.record_def(ty.id, err_path_resolution());
 
-                        // Keep reporting some errors even if they're ignored above.
-                        self.resolve_path(ty.id, path, 0, TypeNS);
-
+                    // Keep reporting some errors even if they're ignored above.
+                    if let Err(true) = self.resolve_path(ty.id, path, 0, TypeNS) {
+                        // `resolve_path` already reported the error
+                    } else {
                         let kind = if maybe_qself.is_some() {
                             "associated type"
                         } else {
@@ -2481,11 +2482,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 PatKind::Struct(ref path, _, _) => {
                     match self.resolve_path(pat_id, path, 0, TypeNS) {
-                        Some(definition) => {
+                        Ok(definition) => {
                             self.record_def(pattern.id, definition);
                         }
-                        result => {
-                            debug!("(resolving pattern) didn't find struct def: {:?}", result);
+                        Err(true) => self.record_def(pattern.id, err_path_resolution()),
+                        Err(false) => {
                             resolve_error(
                                 self,
                                 path.span,
@@ -2552,14 +2553,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let mut resolution = self.with_no_errors(|this| {
-            this.resolve_path(id, path, 0, namespace)
+            this.resolve_path(id, path, 0, namespace).ok()
         });
         for depth in 1..max_assoc_types {
             if resolution.is_some() {
                 break;
             }
             self.with_no_errors(|this| {
-                resolution = this.resolve_path(id, path, depth, TypeNS);
+                resolution = this.resolve_path(id, path, depth, TypeNS).ok();
             });
         }
         if let Some(Def::Mod(_)) = resolution.map(|r| r.base_def) {
@@ -2572,7 +2573,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     /// Skips `path_depth` trailing segments, which is also reflected in the
     /// returned value. See `hir::def::PathResolution` for more info.
     fn resolve_path(&mut self, id: NodeId, path: &Path, path_depth: usize, namespace: Namespace)
-                    -> Option<PathResolution> {
+                    -> Result<PathResolution, bool /* true if an error was reported */ > {
         let span = path.span;
         let segments = &path.segments[..path.segments.len() - path_depth];
 
@@ -2611,14 +2612,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            let unqualified_def = resolve_identifier_with_fallback(self, true);
-            return unqualified_def.and_then(|def| self.adjust_local_def(def, span)).map(mk_res);
+            let def = resolve_identifier_with_fallback(self, true).ok_or(false);
+            return def.and_then(|def| self.adjust_local_def(def, span).ok_or(true)).map(mk_res);
         }
 
         let unqualified_def = resolve_identifier_with_fallback(self, false);
         let def = self.resolve_module_relative_path(span, segments, namespace);
         match (def, unqualified_def) {
-            (Some(d), Some(ref ud)) if d == ud.def => {
+            (Ok(d), Some(ref ud)) if d == ud.def => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
@@ -2739,7 +2740,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     span: Span,
                                     segments: &[hir::PathSegment],
                                     namespace: Namespace)
-                                    -> Option<Def> {
+                                    -> Result<Def, bool /* true if an error was reported */> {
         let module_path = segments.split_last()
                                   .unwrap()
                                   .1
@@ -2760,9 +2761,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                return None;
+                return Err(true);
             }
-            Indeterminate => return None,
+            Indeterminate => return Err(false),
             Success(resulting_module) => {
                 containing_module = resulting_module;
             }
@@ -2773,7 +2774,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         result.success().map(|binding| {
             self.check_privacy(containing_module, name, binding, span);
             binding.def().unwrap()
-        })
+        }).ok_or(false)
     }
 
     /// Invariant: This must be called only during main resolution, not during
@@ -2782,7 +2783,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    span: Span,
                                    segments: &[hir::PathSegment],
                                    namespace: Namespace)
-                                   -> Option<Def> {
+                                   -> Result<Def, bool /* true if an error was reported */> {
         let module_path = segments.split_last()
                                   .unwrap()
                                   .1
@@ -2808,10 +2809,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
-                return None;
+                return Err(true);
             }
 
-            Indeterminate => return None,
+            Indeterminate => return Err(false),
 
             Success(resulting_module) => {
                 containing_module = resulting_module;
@@ -2823,7 +2824,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         result.success().map(|binding| {
             self.check_privacy(containing_module, name, binding, span);
             binding.def().unwrap()
-        })
+        }).ok_or(false)
     }
 
     fn with_no_errors<T, F>(&mut self, f: F) -> T
@@ -3038,25 +3039,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     });
 
                     self.record_def(expr.id, err_path_resolution());
-                    match type_res.map(|r| r.base_def) {
-                        Some(Def::Struct(..)) => {
-                            let mut err = resolve_struct_error(self,
-                                expr.span,
-                                ResolutionError::StructVariantUsedAsFunction(&path_name));
 
-                            let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
-                                              path_name);
-                            if self.emit_errors {
-                                err.fileline_help(expr.span, &msg);
-                            } else {
-                                err.span_help(expr.span, &msg);
-                            }
-                            err.emit();
+                    if let Ok(Def::Struct(..)) = type_res.map(|r| r.base_def) {
+                        let error_variant =
+                            ResolutionError::StructVariantUsedAsFunction(&path_name);
+                        let mut err = resolve_struct_error(self, expr.span, error_variant);
+
+                        let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
+                                          path_name);
+
+                        if self.emit_errors {
+                            err.fileline_help(expr.span, &msg);
+                        } else {
+                            err.span_help(expr.span, &msg);
                         }
-                        _ => {
-                            // Keep reporting some errors even if they're ignored above.
-                            self.resolve_path(expr.id, path, 0, ValueNS);
-
+                        err.emit();
+                    } else {
+                        // Keep reporting some errors even if they're ignored above.
+                        if let Err(true) = self.resolve_path(expr.id, path, 0, ValueNS) {
+                            // `resolve_path` already reported the error
+                        } else {
                             let mut method_scope = false;
                             self.value_ribs.iter().rev().all(|rib| {
                                 method_scope = match rib.kind {
@@ -3130,8 +3132,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // check to ensure that the path is actually a structure; that
                 // is checked later during typeck.
                 match self.resolve_path(expr.id, path, 0, TypeNS) {
-                    Some(definition) => self.record_def(expr.id, definition),
-                    None => {
+                    Ok(definition) => self.record_def(expr.id, definition),
+                    Err(true) => self.record_def(expr.id, err_path_resolution()),
+                    Err(false) => {
                         debug!("(resolving expression) didn't find struct def",);
 
                         resolve_error(self,

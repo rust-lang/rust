@@ -95,7 +95,7 @@ use rustc::traits::{self, report_fulfillment_errors, ProjectionMode};
 use rustc::ty::{GenericPredicates, TypeScheme};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
-use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, Visibility};
 use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::error::TypeError;
@@ -125,8 +125,7 @@ use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc::hir::intravisit::{self, Visitor};
-use rustc::hir;
-use rustc::hir::{Visibility, PatKind};
+use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 use rustc_back::slice;
 use rustc_const_eval::eval_repeat_count;
@@ -2055,13 +2054,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
         }
     }
-
-    fn private_item_is_visible(&self, def_id: DefId) -> bool {
-        match self.tcx().map.as_local_node_id(def_id) {
-            Some(node_id) => self.tcx().map.private_item_is_visible_from(node_id, self.body_id),
-            None => false, // Private items from other crates are never visible
-        }
-    }
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
@@ -2967,7 +2959,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     debug!("struct named {:?}",  base_t);
                     if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
                         let field_ty = fcx.field_ty(expr.span, field, substs);
-                        if field.vis == hir::Public || fcx.private_item_is_visible(base_def.did) {
+                        if field.vis.is_accessible_from(fcx.body_id, &fcx.tcx().map) {
                             return Some(field_ty);
                         }
                         private_candidate = Some((base_def.did, field_ty));
@@ -3079,7 +3071,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 debug!("tuple struct named {:?}",  base_t);
                 if let Some(field) = base_def.struct_variant().fields.get(idx.node) {
                     let field_ty = fcx.field_ty(expr.span, field, substs);
-                    if field.vis == hir::Public || fcx.private_item_is_visible(base_def.did) {
+                    if field.vis.is_accessible_from(fcx.body_id, &fcx.tcx().map) {
                         return Some(field_ty);
                     }
                     private_candidate = Some((base_def.did, field_ty));
