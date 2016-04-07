@@ -10,8 +10,6 @@
 
 // calling pin_thread and that's having weird side-effects.
 
-// pretty-expanded FIXME #23616
-
 #![feature(libc)]
 
 mod rustrt1 {
