@@ -18,6 +18,7 @@ mod rusti {
         pub fn cttz<T>(x: T) -> T;
         pub fn cttz_nonzero<T>(x: T) -> T;
         pub fn bswap<T>(x: T) -> T;
+        pub fn bitreverse<T>(x: T) -> T;
     }
 }
 
@@ -138,5 +139,14 @@ pub fn main() {
         assert_eq!(bswap(0x0ABBCC0Di32), 0x0DCCBB0A);
         assert_eq!(bswap(0x0122334455667708u64), 0x0877665544332201);
         assert_eq!(bswap(0x0122334455667708i64), 0x0877665544332201);
+
+        assert_eq!(bitreverse(0x0Au8), 0x50);
+        assert_eq!(bitreverse(0x0Ai8), 0x50);
+        assert_eq!(bitreverse(0x0A0Cu16), 0x3050);
+        assert_eq!(bitreverse(0x0A0Ci16), 0x3050);
+        assert_eq!(bitreverse(0x0ABBCC0Eu32), 0x7033DD50);
+        assert_eq!(bitreverse(0x0ABBCC0Ei32), 0x7033DD50);
+        assert_eq!(bitreverse(0x0122334455667708u64), 0x10EE66AA22CC4480);
+        assert_eq!(bitreverse(0x0122334455667708i64), 0x10EE66AA22CC4480);
     }
 }
