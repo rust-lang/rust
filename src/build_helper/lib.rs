@@ -43,10 +43,16 @@ pub fn cc2ar(cc: &Path, target: &str) -> PathBuf {
     if target.contains("musl") || target.contains("msvc") {
         PathBuf::from("ar")
     } else {
+        let parent = cc.parent().unwrap();
         let file = cc.file_name().unwrap().to_str().unwrap();
-        cc.parent().unwrap().join(file.replace("gcc", "ar")
-                                      .replace("cc", "ar")
-                                      .replace("clang", "ar"))
+        for suffix in &["gcc", "cc", "clang"] {
+            if let Some(idx) = file.rfind(suffix) {
+                let mut file = file[..idx].to_owned();
+                file.push_str("ar");
+                return parent.join(&file);
+            }
+        }
+        parent.join(file)
     }
 }
 

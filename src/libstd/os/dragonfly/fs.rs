@@ -63,10 +63,6 @@ pub trait MetadataExt {
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_ctime_nsec(&self) -> i64;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_birthtime(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_birthtime_nsec(&self) -> i64;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_blksize(&self) -> u64;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_blocks(&self) -> u64;
@@ -128,12 +124,6 @@ impl MetadataExt for Metadata {
     }
     fn st_ctime_nsec(&self) -> i64 {
         self.as_inner().as_inner().st_ctime_nsec as i64
-    }
-    fn st_birthtime(&self) -> i64 {
-        self.as_inner().as_inner().st_birthtime as i64
-    }
-    fn st_birthtime_nsec(&self) -> i64 {
-        self.as_inner().as_inner().st_birthtime_nsec as i64
     }
     fn st_blksize(&self) -> u64 {
         self.as_inner().as_inner().st_blksize as u64

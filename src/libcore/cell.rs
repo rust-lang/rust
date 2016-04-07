@@ -390,8 +390,8 @@ impl<T: ?Sized> RefCell<T> {
     pub fn borrow(&self) -> Ref<T> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Ref {
-                _value: unsafe { &*self.value.get() },
-                _borrow: b,
+                value: unsafe { &*self.value.get() },
+                borrow: b,
             },
             None => panic!("RefCell<T> already mutably borrowed"),
         }
@@ -438,8 +438,8 @@ impl<T: ?Sized> RefCell<T> {
     pub fn borrow_mut(&self) -> RefMut<T> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => RefMut {
-                _value: unsafe { &mut *self.value.get() },
-                _borrow: b,
+                value: unsafe { &mut *self.value.get() },
+                borrow: b,
             },
             None => panic!("RefCell<T> already borrowed"),
         }
@@ -491,7 +491,7 @@ impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
 impl<T: ?Sized + Eq> Eq for RefCell<T> {}
 
 struct BorrowRef<'b> {
-    _borrow: &'b Cell<BorrowFlag>,
+    borrow: &'b Cell<BorrowFlag>,
 }
 
 impl<'b> BorrowRef<'b> {
@@ -501,7 +501,7 @@ impl<'b> BorrowRef<'b> {
             WRITING => None,
             b => {
                 borrow.set(b + 1);
-                Some(BorrowRef { _borrow: borrow })
+                Some(BorrowRef { borrow: borrow })
             },
         }
     }
@@ -510,9 +510,9 @@ impl<'b> BorrowRef<'b> {
 impl<'b> Drop for BorrowRef<'b> {
     #[inline]
     fn drop(&mut self) {
-        let borrow = self._borrow.get();
+        let borrow = self.borrow.get();
         debug_assert!(borrow != WRITING && borrow != UNUSED);
-        self._borrow.set(borrow - 1);
+        self.borrow.set(borrow - 1);
     }
 }
 
@@ -521,10 +521,10 @@ impl<'b> Clone for BorrowRef<'b> {
     fn clone(&self) -> BorrowRef<'b> {
         // Since this Ref exists, we know the borrow flag
         // is not set to WRITING.
-        let borrow = self._borrow.get();
+        let borrow = self.borrow.get();
         debug_assert!(borrow != WRITING && borrow != UNUSED);
-        self._borrow.set(borrow + 1);
-        BorrowRef { _borrow: self._borrow }
+        self.borrow.set(borrow + 1);
+        BorrowRef { borrow: self.borrow }
     }
 }
 
@@ -534,10 +534,8 @@ impl<'b> Clone for BorrowRef<'b> {
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ref<'b, T: ?Sized + 'b> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _value: &'b T,
-    _borrow: BorrowRef<'b>,
+    value: &'b T,
+    borrow: BorrowRef<'b>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -546,7 +544,7 @@ impl<'b, T: ?Sized> Deref for Ref<'b, T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        self._value
+        self.value
     }
 }
 
@@ -565,8 +563,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     #[inline]
     pub fn clone(orig: &Ref<'b, T>) -> Ref<'b, T> {
         Ref {
-            _value: orig._value,
-            _borrow: orig._borrow.clone(),
+            value: orig.value,
+            borrow: orig.borrow.clone(),
         }
     }
 
@@ -594,8 +592,8 @@ impl<'b, T: ?Sized> Ref<'b, T> {
         where F: FnOnce(&T) -> &U
     {
         Ref {
-            _value: f(orig._value),
-            _borrow: orig._borrow,
+            value: f(orig.value),
+            borrow: orig.borrow,
         }
     }
 
@@ -627,9 +625,9 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     pub fn filter_map<U: ?Sized, F>(orig: Ref<'b, T>, f: F) -> Option<Ref<'b, U>>
         where F: FnOnce(&T) -> Option<&U>
     {
-        f(orig._value).map(move |new| Ref {
-            _value: new,
-            _borrow: orig._borrow,
+        f(orig.value).map(move |new| Ref {
+            value: new,
+            borrow: orig.borrow,
         })
     }
 }
@@ -667,8 +665,8 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
         where F: FnOnce(&mut T) -> &mut U
     {
         RefMut {
-            _value: f(orig._value),
-            _borrow: orig._borrow,
+            value: f(orig.value),
+            borrow: orig.borrow,
         }
     }
 
@@ -706,24 +704,24 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     pub fn filter_map<U: ?Sized, F>(orig: RefMut<'b, T>, f: F) -> Option<RefMut<'b, U>>
         where F: FnOnce(&mut T) -> Option<&mut U>
     {
-        let RefMut { _value, _borrow } = orig;
-        f(_value).map(move |new| RefMut {
-            _value: new,
-            _borrow: _borrow,
+        let RefMut { value, borrow } = orig;
+        f(value).map(move |new| RefMut {
+            value: new,
+            borrow: borrow,
         })
     }
 }
 
 struct BorrowRefMut<'b> {
-    _borrow: &'b Cell<BorrowFlag>,
+    borrow: &'b Cell<BorrowFlag>,
 }
 
 impl<'b> Drop for BorrowRefMut<'b> {
     #[inline]
     fn drop(&mut self) {
-        let borrow = self._borrow.get();
+        let borrow = self.borrow.get();
         debug_assert!(borrow == WRITING);
-        self._borrow.set(UNUSED);
+        self.borrow.set(UNUSED);
     }
 }
 
@@ -733,7 +731,7 @@ impl<'b> BorrowRefMut<'b> {
         match borrow.get() {
             UNUSED => {
                 borrow.set(WRITING);
-                Some(BorrowRefMut { _borrow: borrow })
+                Some(BorrowRefMut { borrow: borrow })
             },
             _ => None,
         }
@@ -745,10 +743,8 @@ impl<'b> BorrowRefMut<'b> {
 /// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefMut<'b, T: ?Sized + 'b> {
-    // FIXME #12808: strange name to try to avoid interfering with
-    // field accesses of the contained type via Deref
-    _value: &'b mut T,
-    _borrow: BorrowRefMut<'b>,
+    value: &'b mut T,
+    borrow: BorrowRefMut<'b>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -757,7 +753,7 @@ impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
 
     #[inline]
     fn deref(&self) -> &T {
-        self._value
+        self.value
     }
 }
 
@@ -765,7 +761,7 @@ impl<'b, T: ?Sized> Deref for RefMut<'b, T> {
 impl<'b, T: ?Sized> DerefMut for RefMut<'b, T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut T {
-        self._value
+        self.value
     }
 }
 
