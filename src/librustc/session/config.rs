@@ -308,6 +308,7 @@ pub enum PrintRequest {
     TargetFeatures,
     RelocationModels,
     CodeModels,
+    TargetSpec,
 }
 
 pub enum Input {
@@ -1141,6 +1142,9 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
     let mut print_opts = vec!["crate-name", "file-names", "sysroot", "cfg",
                               "target-list", "target-cpus", "target-features",
                               "relocation-models", "code-models"];
+    if nightly_options::is_nightly_build() {
+        print_opts.push("target-spec-json");
+    }
 
     vec![
         opt::flag_s("h", "help", "Display this message"),
@@ -1471,6 +1475,8 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
             "target-features" => PrintRequest::TargetFeatures,
             "relocation-models" => PrintRequest::RelocationModels,
             "code-models" => PrintRequest::CodeModels,
+            "target-spec-json" if nightly_options::is_unstable_enabled(matches)
+                => PrintRequest::TargetSpec,
             req => {
                 early_error(error_format, &format!("unknown print request `{}`", req))
             }
