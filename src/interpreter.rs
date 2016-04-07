@@ -203,7 +203,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let temp_tys = mir.temp_decls.iter().map(|t| t.ty);
 
         let locals: Vec<Pointer> = arg_tys.chain(var_tys).chain(temp_tys).map(|ty| {
-            let size = self.ty_size(ty);
+            let size = self.type_size(ty);
             self.memory.allocate(size)
         }).collect();
 
@@ -294,7 +294,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 let name = self.tcx.item_name(def_id).as_str();
                                 match fn_ty.sig.0.output {
                                     ty::FnConverging(ty) => {
-                                        let size = self.ty_size(ty);
+                                        let size = self.type_size(ty);
                                         try!(self.call_intrinsic(&name, substs, args,
                                             return_ptr.unwrap(), size))
                                     }
@@ -380,7 +380,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
-                let elem_size = self.ty_size(elem_ty);
+                let elem_size = self.type_size(elem_ty);
 
                 let src_arg   = try!(self.eval_operand(&args[0]));
                 let dest_arg  = try!(self.eval_operand(&args[1]));
@@ -402,7 +402,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             "move_val_init" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.ty_size(ty);
+                let size = self.type_size(ty);
 
                 let ptr_arg = try!(self.eval_operand(&args[0]));
                 let ptr = try!(self.memory.read_ptr(ptr_arg));
@@ -414,7 +414,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             // FIXME(tsion): Handle different integer types correctly.
             "add_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.ty_size(ty);
+                let size = self.type_size(ty);
 
                 let left_arg  = try!(self.eval_operand(&args[0]));
                 let right_arg = try!(self.eval_operand(&args[1]));
@@ -433,7 +433,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             // FIXME(tsion): Handle different integer types correctly.
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.ty_size(ty);
+                let size = self.type_size(ty);
 
                 let left_arg  = try!(self.eval_operand(&args[0]));
                 let right_arg = try!(self.eval_operand(&args[1]));
@@ -451,7 +451,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
-                let pointee_size = self.ty_size(pointee_ty) as isize;
+                let pointee_size = self.type_size(pointee_ty) as isize;
 
                 let ptr_arg    = try!(self.eval_operand(&args[0]));
                 let offset_arg = try!(self.eval_operand(&args[1]));
@@ -475,7 +475,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             // FIXME(tsion): Handle different integer types correctly. Use primvals?
             "overflowing_sub" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.ty_size(ty);
+                let size = self.type_size(ty);
 
                 let left_arg  = try!(self.eval_operand(&args[0]));
                 let right_arg = try!(self.eval_operand(&args[1]));
@@ -489,7 +489,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             "size_of" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.ty_size(ty) as u64;
+                let size = self.type_size(ty) as u64;
                 try!(self.memory.write_uint(dest, size, dest_size));
             }
 
@@ -672,7 +672,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Box(ty) => {
-                let size = self.ty_size(ty);
+                let size = self.type_size(ty);
                 let ptr = self.memory.allocate(size);
                 try!(self.memory.write_ptr(dest, ptr));
             }
@@ -731,7 +731,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 match *literal {
                     Value { ref value } => Ok((
                         try!(self.const_to_ptr(value)),
-                        self.ty_to_repr(ty),
+                        self.type_repr(ty),
                     )),
                     Item { .. } => unimplemented!(),
                 }
@@ -743,7 +743,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn lvalue_repr(&self, lvalue: &mir::Lvalue<'tcx>) -> &'arena Repr {
         use rustc::mir::tcx::LvalueTy;
         match self.mir().lvalue_ty(self.tcx, lvalue) {
-            LvalueTy::Ty { ty } => self.ty_to_repr(ty),
+            LvalueTy::Ty { ty } => self.type_repr(ty),
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
                 let field_tys = adt_def.variants[variant_index].fields.iter()
                     .map(|f| f.ty(self.tcx, substs));
@@ -799,8 +799,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                     Index(ref operand) => {
                         let elem_size = match base_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.ty_size(elem_ty),
-                            ty::TySlice(elem_ty) => self.ty_size(elem_ty),
+                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty),
+                            ty::TySlice(elem_ty) => self.type_size(elem_ty),
                             _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
                         };
                         let n_ptr = try!(self.eval_operand(operand));
@@ -876,11 +876,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         ty.is_sized(&self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
-    fn ty_size(&self, ty: ty::Ty<'tcx>) -> usize {
-        self.ty_to_repr(ty).size()
+    fn type_size(&self, ty: ty::Ty<'tcx>) -> usize {
+        self.type_repr(ty).size()
     }
 
-    fn ty_to_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
+    fn type_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
         let ty = self.monomorphize(ty);
 
         if let Some(repr) = self.repr_cache.borrow().get(ty) {
@@ -910,7 +910,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             ty::TyArray(elem_ty, length) => Repr::Array {
-                elem_size: self.ty_size(elem_ty),
+                elem_size: self.type_size(elem_ty),
                 length: length,
             },
 
@@ -948,7 +948,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             let mut size = 0;
 
             for ty in field_tys {
-                let field_size = self.ty_size(ty);
+                let field_size = self.type_size(ty);
                 let offest = size;
                 size += field_size;
                 fields.push(FieldRepr { offset: offest, size: field_size });
@@ -1197,7 +1197,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 let mut miri = Interpreter::new(tcx, mir_map, &repr_arena);
                 let return_ptr = match mir.return_ty {
                     ty::FnConverging(ty) => {
-                        let size = miri.ty_size(ty);
+                        let size = miri.type_size(ty);
                         Some(miri.memory.allocate(size))
                     }
                     ty::FnDiverging => None,
