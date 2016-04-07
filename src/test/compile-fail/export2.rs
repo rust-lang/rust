@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: unresolved name
+// error-pattern: failed to resolve. Use of undeclared type or module `bar`
 
 mod foo {
     pub fn x() { bar::x(); }
