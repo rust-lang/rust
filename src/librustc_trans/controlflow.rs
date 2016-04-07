@@ -167,11 +167,11 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         if cv == 1 {
             // if true { .. } [else { .. }]
             bcx = trans_block(bcx, &thn, dest);
-            debuginfo::clear_source_location(bcx.fcx);
+            DebugLoc::None.apply(bcx.fcx);
         } else {
             if let Some(elexpr) = els {
                 bcx = expr::trans_into(bcx, &elexpr, dest);
-                debuginfo::clear_source_location(bcx.fcx);
+                DebugLoc::None.apply(bcx.fcx);
             }
         }
 
@@ -181,7 +181,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let name = format!("then-block-{}-", thn.id);
     let then_bcx_in = bcx.fcx.new_id_block(&name[..], thn.id);
     let then_bcx_out = trans_block(then_bcx_in, &thn, dest);
-    debuginfo::clear_source_location(bcx.fcx);
+    DebugLoc::None.apply(bcx.fcx);
 
     let cond_source_loc = cond.debug_loc();
 
@@ -204,7 +204,7 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Clear the source location because it is still set to whatever has been translated
     // right before.
-    debuginfo::clear_source_location(next_bcx.fcx);
+    DebugLoc::None.apply(next_bcx.fcx);
 
     next_bcx
 }

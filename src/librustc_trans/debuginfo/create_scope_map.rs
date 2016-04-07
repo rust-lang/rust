@@ -8,19 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::FunctionDebugContext;
 use super::metadata::file_metadata;
-use super::utils::DIB;
+use super::utils::{DIB, span_start};
 
 use llvm;
 use llvm::debuginfo::{DIScope, DISubprogram};
-use common::CrateContext;
+use common::{CrateContext, FunctionContext};
 use rustc::hir::pat_util;
+use rustc::mir::repr::{Mir, ScopeId};
 use rustc::util::nodemap::NodeMap;
 
 use libc::c_uint;
+use std::ptr;
+
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap};
 
+use rustc_data_structures::bitvec::BitVector;
 use rustc::hir::{self, PatKind};
 
 // This procedure builds the *scope map* for a given function, which maps any
@@ -65,6 +70,74 @@ pub fn create_scope_map(cx: &CrateContext,
     return scope_map;
 }
 
+/// Produce DIScope DIEs for each MIR Scope which has variables defined in it.
+/// If debuginfo is disabled, the returned vector is empty.
+pub fn create_mir_scopes(fcx: &FunctionContext) -> Vec<DIScope> {
+    let mir = fcx.mir.clone().expect("create_mir_scopes: missing MIR for fn");
+    let mut scopes = vec![ptr::null_mut(); mir.scopes.len()];
+
+    let fn_metadata = match fcx.debug_context {
+        FunctionDebugContext::RegularContext(box ref data) => data.fn_metadata,
+        FunctionDebugContext::DebugInfoDisabled |
+        FunctionDebugContext::FunctionWithoutDebugInfo => {
+            return scopes;
+        }
+    };
+
+    // Find all the scopes with variables defined in them.
+    let mut has_variables = BitVector::new(mir.scopes.len());
+    for var in &mir.var_decls {
+        has_variables.insert(var.scope.index());
+    }
+
+    // Instantiate all scopes.
+    for idx in 0..mir.scopes.len() {
+        let scope = ScopeId::new(idx);
+        make_mir_scope(fcx.ccx, &mir, &has_variables, fn_metadata, scope, &mut scopes);
+    }
+
+    scopes
+}
+
+fn make_mir_scope(ccx: &CrateContext,
+                  mir: &Mir,
+                  has_variables: &BitVector,
+                  fn_metadata: DISubprogram,
+                  scope: ScopeId,
+                  scopes: &mut [DIScope]) {
+    let idx = scope.index();
+    if !scopes[idx].is_null() {
+        return;
+    }
+
+    let scope_data = &mir.scopes[scope];
+    let parent_scope = if let Some(parent) = scope_data.parent_scope {
+        make_mir_scope(ccx, mir, has_variables, fn_metadata, parent, scopes);
+        scopes[parent.index()]
+    } else {
+        // The root is the function itself.
+        scopes[idx] = fn_metadata;
+        return;
+    };
+
+    scopes[idx] = if !has_variables.contains(idx) {
+        // Do not create a DIScope if there are no variables
+        // defined in this MIR Scope, to avoid debuginfo bloat.
+        parent_scope
+    } else {
+        let loc = span_start(ccx, scope_data.span);
+        let file_metadata = file_metadata(ccx, &loc.file.name);
+        unsafe {
+            llvm::LLVMDIBuilderCreateLexicalBlock(
+                DIB(ccx),
+                parent_scope,
+                file_metadata,
+                loc.line as c_uint,
+                loc.col.to_usize() as c_uint)
+        }
+    };
+}
+
 // local helper functions for walking the AST.
 fn with_new_scope<F>(cx: &CrateContext,
                      scope_span: Span,
@@ -74,7 +147,7 @@ fn with_new_scope<F>(cx: &CrateContext,
     F: FnOnce(&CrateContext, &mut Vec<ScopeStackEntry>, &mut NodeMap<DIScope>),
 {
     // Create a new lexical scope and push it onto the stack
-    let loc = cx.sess().codemap().lookup_char_pos(scope_span.lo);
+    let loc = span_start(cx, scope_span);
     let file_metadata = file_metadata(cx, &loc.file.name);
     let parent_scope = scope_stack.last().unwrap().scope_metadata;
 
@@ -199,7 +272,7 @@ fn walk_pattern(cx: &CrateContext,
 
                 if need_new_scope {
                     // Create a new lexical scope and push it onto the stack
-                    let loc = cx.sess().codemap().lookup_char_pos(pat.span.lo);
+                    let loc = span_start(cx, pat.span);
                     let file_metadata = file_metadata(cx, &loc.file.name);
                     let parent_scope = scope_stack.last().unwrap().scope_metadata;
 

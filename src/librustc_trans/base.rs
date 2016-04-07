@@ -1276,7 +1276,7 @@ pub fn alloca(cx: Block, ty: Type, name: &str) -> ValueRef {
             return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
         }
     }
-    debuginfo::clear_source_location(cx.fcx);
+    DebugLoc::None.apply(cx.fcx);
     Alloca(cx, ty, name)
 }
 
@@ -1739,7 +1739,7 @@ impl<'blk, 'tcx> FunctionContext<'blk, 'tcx> {
 
         self.build_return_block(ret_cx, ret_debug_loc);
 
-        debuginfo::clear_source_location(self);
+        DebugLoc::None.apply(self);
         self.cleanup();
     }
 
