@@ -294,7 +294,7 @@ pub fn fun_to_string(decl: &hir::FnDecl,
                    Some(name),
                    generics,
                    opt_explicit_self,
-                   hir::Inherited)?;
+                   &hir::Inherited)?;
         s.end()?; // Close the head box
         s.end() // Close the outer box
     })
@@ -322,8 +322,8 @@ pub fn arg_to_string(arg: &hir::Arg) -> String {
     to_string(|s| s.print_arg(arg, false))
 }
 
-pub fn visibility_qualified(vis: hir::Visibility, s: &str) -> String {
-    match vis {
+pub fn visibility_qualified(vis: &hir::Visibility, s: &str) -> String {
+    match *vis {
         hir::Public => format!("pub {}", s),
         hir::Inherited => s.to_string(),
     }
@@ -573,13 +573,13 @@ impl<'a> State<'a> {
                               Some(item.name),
                               generics,
                               None,
-                              item.vis)?;
+                              &item.vis)?;
                 self.end()?; // end head-ibox
                 word(&mut self.s, ";")?;
                 self.end() // end the outer fn box
             }
             hir::ForeignItemStatic(ref t, m) => {
-                self.head(&visibility_qualified(item.vis, "static"))?;
+                self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m {
                     self.word_space("mut")?;
                 }
@@ -597,7 +597,7 @@ impl<'a> State<'a> {
                               name: ast::Name,
                               ty: &hir::Ty,
                               default: Option<&hir::Expr>,
-                              vis: hir::Visibility)
+                              vis: &hir::Visibility)
                               -> io::Result<()> {
         word(&mut self.s, &visibility_qualified(vis, ""))?;
         self.word_space("const")?;
@@ -648,7 +648,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, NodeItem(item))?;
         match item.node {
             hir::ItemExternCrate(ref optional_path) => {
-                self.head(&visibility_qualified(item.vis, "extern crate"))?;
+                self.head(&visibility_qualified(&item.vis, "extern crate"))?;
                 if let Some(p) = *optional_path {
                     let val = p.as_str();
                     if val.contains("-") {
@@ -666,14 +666,14 @@ impl<'a> State<'a> {
                 self.end()?; // end outer head-block
             }
             hir::ItemUse(ref vp) => {
-                self.head(&visibility_qualified(item.vis, "use"))?;
+                self.head(&visibility_qualified(&item.vis, "use"))?;
                 self.print_view_path(&vp)?;
                 word(&mut self.s, ";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
             hir::ItemStatic(ref ty, m, ref expr) => {
-                self.head(&visibility_qualified(item.vis, "static"))?;
+                self.head(&visibility_qualified(&item.vis, "static"))?;
                 if m == hir::MutMutable {
                     self.word_space("mut")?;
                 }
@@ -689,7 +689,7 @@ impl<'a> State<'a> {
                 self.end()?; // end the outer cbox
             }
             hir::ItemConst(ref ty, ref expr) => {
-                self.head(&visibility_qualified(item.vis, "const"))?;
+                self.head(&visibility_qualified(&item.vis, "const"))?;
                 self.print_name(item.name)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
@@ -710,12 +710,12 @@ impl<'a> State<'a> {
                               Some(item.name),
                               typarams,
                               None,
-                              item.vis)?;
+                              &item.vis)?;
                 word(&mut self.s, " ")?;
                 self.print_block_with_attrs(&body, &item.attrs)?;
             }
             hir::ItemMod(ref _mod) => {
-                self.head(&visibility_qualified(item.vis, "mod"))?;
+                self.head(&visibility_qualified(&item.vis, "mod"))?;
                 self.print_name(item.name)?;
                 self.nbsp()?;
                 self.bopen()?;
@@ -732,7 +732,7 @@ impl<'a> State<'a> {
             hir::ItemTy(ref ty, ref params) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
-                self.word_nbsp(&visibility_qualified(item.vis, "type"))?;
+                self.word_nbsp(&visibility_qualified(&item.vis, "type"))?;
                 self.print_name(item.name)?;
                 self.print_generics(params)?;
                 self.end()?; // end the inner ibox
@@ -745,16 +745,16 @@ impl<'a> State<'a> {
                 self.end()?; // end the outer ibox
             }
             hir::ItemEnum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.name, item.span, item.vis)?;
+                self.print_enum_def(enum_definition, params, item.name, item.span, &item.vis)?;
             }
             hir::ItemStruct(ref struct_def, ref generics) => {
-                self.head(&visibility_qualified(item.vis, "struct"))?;
+                self.head(&visibility_qualified(&item.vis, "struct"))?;
                 self.print_struct(struct_def, generics, item.name, item.span, true)?;
             }
 
             hir::ItemDefaultImpl(unsafety, ref trait_ref) => {
                 self.head("")?;
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
                 self.print_trait_ref(trait_ref)?;
@@ -771,7 +771,7 @@ impl<'a> State<'a> {
                           ref ty,
                           ref impl_items) => {
                 self.head("")?;
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("impl")?;
 
@@ -809,7 +809,7 @@ impl<'a> State<'a> {
             }
             hir::ItemTrait(unsafety, ref generics, ref bounds, ref trait_items) => {
                 self.head("")?;
-                self.print_visibility(item.vis)?;
+                self.print_visibility(&item.vis)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
                 self.print_name(item.name)?;
@@ -867,7 +867,7 @@ impl<'a> State<'a> {
                           generics: &hir::Generics,
                           name: ast::Name,
                           span: codemap::Span,
-                          visibility: hir::Visibility)
+                          visibility: &hir::Visibility)
                           -> io::Result<()> {
         self.head(&visibility_qualified(visibility, "enum"))?;
         self.print_name(name)?;
@@ -895,8 +895,8 @@ impl<'a> State<'a> {
         self.bclose(span)
     }
 
-    pub fn print_visibility(&mut self, vis: hir::Visibility) -> io::Result<()> {
-        match vis {
+    pub fn print_visibility(&mut self, vis: &hir::Visibility) -> io::Result<()> {
+        match *vis {
             hir::Public => self.word_nbsp("pub"),
             hir::Inherited => Ok(()),
         }
@@ -915,7 +915,7 @@ impl<'a> State<'a> {
             if struct_def.is_tuple() {
                 self.popen()?;
                 self.commasep(Inconsistent, struct_def.fields(), |s, field| {
-                    s.print_visibility(field.vis)?;
+                    s.print_visibility(&field.vis)?;
                     s.maybe_print_comment(field.span.lo)?;
                     s.print_type(&field.ty)
                 })?;
@@ -937,7 +937,7 @@ impl<'a> State<'a> {
                 self.hardbreak_if_not_bol()?;
                 self.maybe_print_comment(field.span.lo)?;
                 self.print_outer_attributes(&field.attrs)?;
-                self.print_visibility(field.vis)?;
+                self.print_visibility(&field.vis)?;
                 self.print_name(field.name)?;
                 self.word_nbsp(":")?;
                 self.print_type(&field.ty)?;
@@ -964,7 +964,7 @@ impl<'a> State<'a> {
     pub fn print_method_sig(&mut self,
                             name: ast::Name,
                             m: &hir::MethodSig,
-                            vis: hir::Visibility)
+                            vis: &hir::Visibility)
                             -> io::Result<()> {
         self.print_fn(&m.decl,
                       m.unsafety,
@@ -986,13 +986,13 @@ impl<'a> State<'a> {
                 self.print_associated_const(ti.name,
                                             &ty,
                                             default.as_ref().map(|expr| &**expr),
-                                            hir::Inherited)?;
+                                            &hir::Inherited)?;
             }
             hir::MethodTraitItem(ref sig, ref body) => {
                 if body.is_some() {
                     self.head("")?;
                 }
-                self.print_method_sig(ti.name, sig, hir::Inherited)?;
+                self.print_method_sig(ti.name, sig, &hir::Inherited)?;
                 if let Some(ref body) = *body {
                     self.nbsp()?;
                     self.print_block_with_attrs(body, &ti.attrs)?;
@@ -1021,11 +1021,11 @@ impl<'a> State<'a> {
 
         match ii.node {
             hir::ImplItemKind::Const(ref ty, ref expr) => {
-                self.print_associated_const(ii.name, &ty, Some(&expr), ii.vis)?;
+                self.print_associated_const(ii.name, &ty, Some(&expr), &ii.vis)?;
             }
             hir::ImplItemKind::Method(ref sig, ref body) => {
                 self.head("")?;
-                self.print_method_sig(ii.name, sig, ii.vis)?;
+                self.print_method_sig(ii.name, sig, &ii.vis)?;
                 self.nbsp()?;
                 self.print_block_with_attrs(body, &ii.attrs)?;
             }
@@ -1910,7 +1910,7 @@ impl<'a> State<'a> {
                     name: Option<ast::Name>,
                     generics: &hir::Generics,
                     opt_explicit_self: Option<&hir::ExplicitSelf_>,
-                    vis: hir::Visibility)
+                    vis: &hir::Visibility)
                     -> io::Result<()> {
         self.print_fn_header_info(unsafety, constness, abi, vis)?;
 
@@ -2267,7 +2267,7 @@ impl<'a> State<'a> {
                       name,
                       &generics,
                       opt_explicit_self,
-                      hir::Inherited)?;
+                      &hir::Inherited)?;
         self.end()
     }
 
@@ -2347,7 +2347,7 @@ impl<'a> State<'a> {
                                 unsafety: hir::Unsafety,
                                 constness: hir::Constness,
                                 abi: Abi,
-                                vis: hir::Visibility)
+                                vis: &hir::Visibility)
                                 -> io::Result<()> {
         word(&mut self.s, &visibility_qualified(vis, ""))?;
         self.print_unsafety(unsafety)?;

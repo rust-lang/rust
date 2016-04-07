@@ -37,10 +37,10 @@ use std::u32;
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    ItemFn(Name, &'a Generics, Unsafety, Constness, Abi, Visibility, &'a [Attribute]),
+    ItemFn(Name, &'a Generics, Unsafety, Constness, Abi, &'a Visibility, &'a [Attribute]),
 
     /// fn foo(&self)
-    Method(Name, &'a MethodSig, Option<Visibility>, &'a [Attribute]),
+    Method(Name, &'a MethodSig, Option<&'a Visibility>, &'a [Attribute]),
 
     /// |x, y| {}
     Closure(&'a [Attribute]),
@@ -324,7 +324,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
                                             unsafety,
                                             constness,
                                             abi,
-                                            item.vis,
+                                            &item.vis,
                                             &item.attrs),
                              declaration,
                              body,
@@ -672,7 +672,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         ImplItemKind::Method(ref sig, ref body) => {
             visitor.visit_fn(FnKind::Method(impl_item.name,
                                             sig,
-                                            Some(impl_item.vis),
+                                            Some(&impl_item.vis),
                                             &impl_item.attrs),
                              &sig.decl,
                              body,
