@@ -766,12 +766,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
          "external crate/lib resolution",
          || LocalCrateReader::new(sess, cstore, &hir_map, name).read_crates());
 
-    let lang_items = time(time_passes, "language item collection", || {
-        sess.track_errors(|| {
-            middle::lang_items::collect_language_items(&sess, &hir_map)
-        })
-    })?;
-
     let resolve::CrateMap {
         def_map,
         freevars,
@@ -779,8 +773,14 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         trait_map,
         glob_map,
     } = time(time_passes,
-             "resolution",
+             "name resolution",
              || resolve::resolve_crate(sess, &hir_map, make_glob_map));
+
+    let lang_items = time(time_passes, "language item collection", || {
+        sess.track_errors(|| {
+            middle::lang_items::collect_language_items(&sess, &hir_map)
+        })
+    })?;
 
     let mut analysis = ty::CrateAnalysis {
         export_map: export_map,
