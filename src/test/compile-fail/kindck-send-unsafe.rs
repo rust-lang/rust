@@ -14,7 +14,7 @@ fn assert_send<T:Send>() { }
 
 fn test71<'a>() {
     assert_send::<*mut &'a isize>();
-    //~^ ERROR the trait `core::marker::Send` is not implemented for the type
+    //~^ ERROR `*mut &'a isize: core::marker::Send` is not satisfied
 }
 
 fn main() {

@@ -32,7 +32,7 @@ fn main() {
     let f1 = Bar;
 
     f1.foo(1usize);
-    //~^ error: the trait `Foo<usize>` is not implemented for the type `Bar`
+    //~^ error: the trait bound `Bar: Foo<usize>` is not satisfied
     //~| help: the following implementations were found:
     //~| help:   <Bar as Foo<i32>>
     //~| help:   <Bar as Foo<u8>>

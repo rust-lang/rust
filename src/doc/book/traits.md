@@ -154,7 +154,7 @@ print_area(5);
 We get a compile-time error:
 
 ```text
-error: the trait `HasArea` is not implemented for the type `_` [E0277]
+error: the trait bound `_ : HasArea` is not satisfied [E0277]
 ```
 
 ## Trait bounds on generic structs
@@ -496,7 +496,7 @@ impl FooBar for Baz {
 If we forget to implement `Foo`, Rust will tell us:
 
 ```text
-error: the trait `main::Foo` is not implemented for the type `main::Baz` [E0277]
+error: the trait bound `main::Baz : main::Foo` is not satisfied [E0277]
 ```
 
 # Deriving

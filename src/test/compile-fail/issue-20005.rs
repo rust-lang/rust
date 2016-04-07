@@ -15,7 +15,7 @@ trait From<Src> {
 }
 
 trait To {
-    fn to<Dst>(  //~ ERROR the trait `std::marker::Sized` is not implemented
+    fn to<Dst>(  //~ ERROR `Self: std::marker::Sized` is not satisfied
         self
     ) -> <Dst as From<Self>>::Result where Dst: From<Self> {
         From::from(self)
