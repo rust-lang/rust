@@ -327,7 +327,7 @@ impl AtomicBool {
     /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
     /// operation. The first describes the required ordering if the operation succeeds while the
     /// second describes the required ordering when the operation fails. The failure ordering can't
-    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    /// be `Release` or `AcqRel` and must be equivalent or weaker than the success ordering.
     ///
     /// # Examples
     ///
@@ -376,7 +376,7 @@ impl AtomicBool {
     /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the operation
     /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker than the
     /// success ordering.
     ///
     /// # Examples
@@ -663,7 +663,7 @@ impl AtomicIsize {
     /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
     /// operation. The first describes the required ordering if the operation succeeds while the
     /// second describes the required ordering when the operation fails. The failure ordering can't
-    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    /// be `Release` or `AcqRel` and must be equivalent or weaker than the success ordering.
     ///
     /// # Examples
     ///
@@ -705,7 +705,7 @@ impl AtomicIsize {
     /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the operation
     /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker than the
     /// success ordering.
     ///
     /// # Examples
@@ -939,7 +939,7 @@ impl AtomicUsize {
     /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
     /// operation. The first describes the required ordering if the operation succeeds while the
     /// second describes the required ordering when the operation fails. The failure ordering can't
-    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    /// be `Release` or `AcqRel` and must be equivalent or weaker than the success ordering.
     ///
     /// # Examples
     ///
@@ -981,7 +981,7 @@ impl AtomicUsize {
     /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the operation
     /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker than the
     /// success ordering.
     ///
     /// # Examples
@@ -1223,7 +1223,7 @@ impl<T> AtomicPtr<T> {
     /// `compare_exchange` takes two `Ordering` arguments to describe the memory ordering of this
     /// operation. The first describes the required ordering if the operation succeeds while the
     /// second describes the required ordering when the operation fails. The failure ordering can't
-    /// be `Acquire` or `AcqRel` and must be equivalent or weaker than the success ordering.
+    /// be `Release` or `AcqRel` and must be equivalent or weaker than the success ordering.
     ///
     /// # Examples
     ///
@@ -1270,7 +1270,7 @@ impl<T> AtomicPtr<T> {
     /// `compare_exchange_weak` takes two `Ordering` arguments to describe the memory
     /// ordering of this operation. The first describes the required ordering if the operation
     /// succeeds while the second describes the required ordering when the operation fails. The
-    /// failure ordering can't be `Acquire` or `AcqRel` and must be equivalent or weaker than the
+    /// failure ordering can't be `Release` or `AcqRel` and must be equivalent or weaker than the
     /// success ordering.
     ///
     /// # Examples
@@ -1396,8 +1396,8 @@ unsafe fn atomic_compare_exchange<T>(dst: *mut T,
         (AcqRel, Relaxed)  => intrinsics::atomic_cxchg_acqrel_failrelaxed(dst, old, new),
         (SeqCst, Relaxed)  => intrinsics::atomic_cxchg_failrelaxed(dst, old, new),
         (SeqCst, Acquire)  => intrinsics::atomic_cxchg_failacq(dst, old, new),
-        (_, Release) => panic!("there is no such thing as an acquire/release failure ordering"),
-        (_, AcqRel) => panic!("there is no such thing as a release failure ordering"),
+        (_, AcqRel) => panic!("there is no such thing as an acquire/release failure ordering"),
+        (_, Release) => panic!("there is no such thing as a release failure ordering"),
         _ => panic!("a failure ordering can't be stronger than a success ordering"),
     };
     if ok {
@@ -1446,8 +1446,8 @@ unsafe fn atomic_compare_exchange_weak<T>(dst: *mut T,
         (AcqRel, Relaxed)  => intrinsics::atomic_cxchgweak_acqrel_failrelaxed(dst, old, new),
         (SeqCst, Relaxed)  => intrinsics::atomic_cxchgweak_failrelaxed(dst, old, new),
         (SeqCst, Acquire)  => intrinsics::atomic_cxchgweak_failacq(dst, old, new),
-        (_, Release) => panic!("there is no such thing as an acquire/release failure ordering"),
-        (_, AcqRel) => panic!("there is no such thing as a release failure ordering"),
+        (_, AcqRel) => panic!("there is no such thing as an acquire/release failure ordering"),
+        (_, Release) => panic!("there is no such thing as a release failure ordering"),
         _ => panic!("a failure ordering can't be stronger than a success ordering"),
     };
     if ok {
