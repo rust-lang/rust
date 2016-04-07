@@ -1,4 +1,11 @@
-#![feature(btree_range, collections, collections_bound, core_intrinsics, rustc_private)]
+#![feature(
+    btree_range,
+    collections,
+    collections_bound,
+    core_intrinsics,
+    filling_drop,
+    rustc_private,
+)]
 
 // From rustc.
 extern crate arena;

@@ -279,7 +279,19 @@ impl Memory {
     }
 
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<()> {
-        self.get_bytes_mut(ptr, src.len()).map(|dest| dest.clone_from_slice(src))
+        let bytes = try!(self.get_bytes_mut(ptr, src.len()));
+        bytes.clone_from_slice(src);
+        Ok(())
+    }
+
+    pub fn write_repeat(&mut self, ptr: Pointer, val: u8, count: usize) -> EvalResult<()> {
+        let bytes = try!(self.get_bytes_mut(ptr, count));
+        for b in bytes { *b = val; }
+        Ok(())
+    }
+
+    pub fn drop_fill(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
+        self.write_repeat(ptr, mem::POST_DROP_U8, size)
     }
 
     pub fn read_ptr(&self, ptr: Pointer) -> EvalResult<Pointer> {

@@ -11,9 +11,9 @@ use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::cell::RefCell;
-use std::iter;
 use std::ops::Deref;
 use std::rc::Rc;
+use std::{iter, mem};
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::{self, DUMMY_SP};
@@ -318,25 +318,27 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                                 let mut arg_srcs = Vec::new();
                                 for arg in args {
-                                    let (src, repr) = try!(self.eval_operand_and_repr(arg));
-                                    arg_srcs.push((src, repr.size()));
+                                    let src = try!(self.eval_operand(arg));
+                                    let src_ty = self.operand_ty(arg);
+                                    arg_srcs.push((src, src_ty));
                                 }
 
                                 if fn_ty.abi == Abi::RustCall && !args.is_empty() {
                                     arg_srcs.pop();
                                     let last_arg = args.last().unwrap();
-                                    let (last_src, last_repr) =
-                                        try!(self.eval_operand_and_repr(last_arg));
-                                    match *last_repr {
-                                        Repr::Aggregate { discr_size: 0, ref variants, .. } => {
+                                    let last = try!(self.eval_operand(last_arg));
+                                    let last_ty = self.operand_ty(last_arg);
+                                    let last_repr = self.type_repr(last_ty);
+                                    match (&last_ty.sty, last_repr) {
+                                        (&ty::TyTuple(ref fields),
+                                         &Repr::Aggregate { discr_size: 0, ref variants, .. }) => {
                                             assert_eq!(variants.len(), 1);
-                                            for field in &variants[0] {
-                                                let src = last_src.offset(field.offset as isize);
-                                                arg_srcs.push((src, field.size));
+                                            for (repr, ty) in variants[0].iter().zip(fields) {
+                                                let src = last.offset(repr.offset as isize);
+                                                arg_srcs.push((src, ty));
                                             }
                                         }
-
-                                        _ => panic!("expected tuple as last argument in function with 'rust-call' ABI"),
+                                        ty => panic!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
                                     }
                                 }
 
@@ -344,9 +346,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                 self.name_stack.push((def_id, substs, terminator.span));
                                 self.push_stack_frame(mir, resolved_substs, return_ptr);
 
-                                for (i, (src, size)) in arg_srcs.into_iter().enumerate() {
+                                for (i, (src, src_ty)) in arg_srcs.into_iter().enumerate() {
                                     let dest = self.frame().locals[i];
-                                    try!(self.memory.copy(src, dest, size));
+                                    try!(self.move_(src, dest, src_ty));
                                 }
 
                                 TerminatorTarget::Call
@@ -380,17 +382,36 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
         self.log(1, || print!("need to drop {:?}", ty));
 
+        // TODO(tsion): Call user-defined Drop::drop impls.
+
         match ty.sty {
             ty::TyBox(contents_ty) => {
-                let contents_ptr = try!(self.memory.read_ptr(ptr));
-                try!(self.drop(contents_ptr, contents_ty));
-                self.log(1, || print!("deallocating box"));
-                try!(self.memory.deallocate(contents_ptr));
+                match self.memory.read_ptr(ptr) {
+                    Ok(contents_ptr) => {
+                        try!(self.drop(contents_ptr, contents_ty));
+                        self.log(1, || print!("deallocating box"));
+                        try!(self.memory.deallocate(contents_ptr));
+                    }
+                    Err(EvalError::ReadBytesAsPointer) => {
+                        let possible_drop_fill = try!(self.memory.read_usize(ptr));
+                        if possible_drop_fill == mem::POST_DROP_U64 {
+                            return Ok(());
+                        } else {
+                            return Err(EvalError::ReadBytesAsPointer);
+                        }
+                    }
+                    Err(e) => return Err(e),
+                }
             }
 
             // TODO(tsion): Implement drop for other relevant types (e.g. aggregates).
             _ => {}
         }
+
+        // Filling drop.
+        // FIXME(tsion): Trait objects (with no static size) probably get filled, too.
+        let size = self.type_size(ty);
+        try!(self.memory.drop_fill(ptr, size));
 
         Ok(())
     }
@@ -420,8 +441,13 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.copy(src, dest, count as usize * elem_size));
             }
 
-            // TODO(tsion): Mark as dropped?
-            "forget" => {}
+            "forget" => {
+                let arg_ty = *substs.types.get(subst::FnSpace, 0);
+                let arg_size = self.type_size(arg_ty);
+                try!(self.memory.drop_fill(args[0], arg_size));
+            }
+
+            "init" => try!(self.memory.write_repeat(dest, 0, dest_size)),
 
             "min_align_of" => {
                 try!(self.memory.write_int(dest, 1, dest_size));
@@ -429,9 +455,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             "move_val_init" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
-                let size = self.type_size(ty);
                 let ptr = try!(self.memory.read_ptr(args[0]));
-                try!(self.memory.copy(args[1], ptr, size));
+                try!(self.move_(args[1], ptr, ty));
             }
 
             // FIXME(tsion): Handle different integer types correctly.
@@ -496,7 +521,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_uint(dest, size, dest_size));
             }
 
-            "transmute" => try!(self.memory.copy(args[0], dest, dest_size)),
+            "transmute" => {
+                let ty = *substs.types.get(subst::FnSpace, 0);
+                try!(self.move_(args[0], dest, ty));
+            }
             "uninit" => try!(self.memory.mark_definedness(dest, dest_size, false)),
 
             name => panic!("can't handle intrinsic: {}", name),
@@ -565,8 +593,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 let after_discr = dest.offset(discr_size as isize);
                 for (field, operand) in variants[variant].iter().zip(operands) {
                     let src = try!(self.eval_operand(operand));
+                    let src_ty = self.operand_ty(operand);
                     let field_dest = after_discr.offset(field.offset as isize);
-                    try!(self.memory.copy(src, field_dest, field.size));
+                    try!(self.move_(src, field_dest, src_ty));
                 }
             }
             _ => panic!("expected Repr::Aggregate target"),
@@ -578,13 +607,14 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         -> EvalResult<()>
     {
         let dest = try!(self.eval_lvalue(lvalue)).to_ptr();
+        let dest_ty = self.lvalue_ty(lvalue);
         let dest_repr = self.lvalue_repr(lvalue);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
             Use(ref operand) => {
                 let src = try!(self.eval_operand(operand));
-                try!(self.memory.copy(src, dest, dest_repr.size()));
+                try!(self.move_(src, dest, dest_ty));
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
@@ -622,8 +652,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         assert_eq!(length, operands.len());
                         for (i, operand) in operands.iter().enumerate() {
                             let src = try!(self.eval_operand(operand));
+                            let src_ty = self.operand_ty(operand);
                             let elem_dest = dest.offset((i * elem_size) as isize);
-                            try!(self.memory.copy(src, elem_dest, elem_size));
+                            try!(self.move_(src, elem_dest, src_ty));
                         }
                     } else {
                         panic!("expected Repr::Array target");
@@ -683,7 +714,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 use rustc::mir::repr::CastKind::*;
                 match kind {
                     Unsize => {
-                        try!(self.memory.copy(src, dest, 8));
+                        try!(self.move_(src, dest, src_ty));
                         let src_pointee_ty = pointee_type(src_ty).unwrap();
                         let dest_pointee_ty = pointee_type(dest_ty).unwrap();
 
@@ -873,6 +904,15 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
     fn type_needs_drop(&self, ty: ty::Ty<'tcx>) -> bool {
         self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
+    }
+
+    fn move_(&mut self, src: Pointer, dest: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<()> {
+        let size = self.type_size(ty);
+        try!(self.memory.copy(src, dest, size));
+        if self.type_needs_drop(ty) {
+            try!(self.memory.drop_fill(src, size));
+        }
+        Ok(())
     }
 
     fn type_is_sized(&self, ty: ty::Ty<'tcx>) -> bool {
