@@ -88,10 +88,7 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
 pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = DefIdSet();
-    let analysis = super::ANALYSISKEY.with(|a| a.clone());
-    let analysis = analysis.borrow();
-    let analysis = analysis.as_ref().unwrap();
-    let access_levels = analysis.access_levels.clone();
+    let access_levels = krate.access_levels.clone();
 
     // strip all private items
     {

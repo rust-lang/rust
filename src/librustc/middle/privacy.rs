@@ -15,10 +15,11 @@
 use util::nodemap::{DefIdSet, FnvHashMap};
 
 use std::hash::Hash;
+use std::fmt;
 use syntax::ast::NodeId;
 
 // Accessibility levels, sorted in ascending order
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AccessLevel {
     // Exported items + items participating in various kinds of public interfaces,
     // but not directly nameable. For example, if function `fn f() -> T {...}` is
@@ -53,6 +54,12 @@ impl<Id: Hash + Eq> AccessLevels<Id> {
 impl<Id: Hash + Eq> Default for AccessLevels<Id> {
     fn default() -> Self {
         AccessLevels { map: Default::default() }
+    }
+}
+
+impl<Id: Hash + Eq + fmt::Debug> fmt::Debug for AccessLevels<Id> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.map, f)
     }
 }
 

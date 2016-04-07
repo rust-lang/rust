@@ -35,6 +35,7 @@ use syntax::ptr::P;
 
 use rustc_trans::back::link;
 use rustc::middle::cstore::{self, CrateStore};
+use rustc::middle::privacy::AccessLevels;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
@@ -46,8 +47,10 @@ use rustc::hir;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::u32;
 use std::env::current_dir;
+use std::mem;
 
 use core::DocContext;
 use doctree;
@@ -112,13 +115,16 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for P<[T]> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Debug)]
 pub struct Crate {
     pub name: String,
     pub src: PathBuf,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
+    pub access_levels: Arc<AccessLevels<DefId>>,
+    // These are later on moved into `CACHEKEY`, leaving the map empty.
+    // Only here so that they can be filtered through the rustdoc passes.
     pub external_traits: HashMap<DefId, Trait>,
 }
 
@@ -130,6 +136,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         if let Some(t) = cx.tcx_opt() {
             cx.deref_trait_did.set(t.lang_items.deref_trait());
+            cx.renderinfo.borrow_mut().deref_trait_did = cx.deref_trait_did.get();
         }
 
         let mut externs = Vec::new();
@@ -204,14 +211,17 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             Input::Str { ref name, .. } => PathBuf::from(name.clone()),
         };
 
+        let mut access_levels = cx.access_levels.borrow_mut();
+        let mut external_traits = cx.external_traits.borrow_mut();
+
         Crate {
             name: name.to_string(),
             src: src,
             module: Some(module),
             externs: externs,
             primitives: primitives,
-            external_traits: cx.external_traits.borrow_mut().take()
-                               .unwrap_or(HashMap::new()),
+            access_levels: Arc::new(mem::replace(&mut access_levels, Default::default())),
+            external_traits: mem::replace(&mut external_traits, Default::default()),
         }
     }
 }
@@ -540,8 +550,7 @@ impl Clean<TyParam> for hir::TyParam {
 
 impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParam {
-        cx.external_typarams.borrow_mut().as_mut().unwrap()
-          .insert(self.def_id, self.name.clean(cx));
+        cx.renderinfo.borrow_mut().external_typarams.insert(self.def_id, self.name.clean(cx));
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
@@ -2668,7 +2677,7 @@ fn register_def(cx: &DocContext, def: Def) -> DefId {
     inline::record_extern_fqn(cx, did, kind);
     if let TypeTrait = kind {
         let t = inline::build_external_trait(cx, tcx, did);
-        cx.external_traits.borrow_mut().as_mut().unwrap().insert(did, t);
+        cx.external_traits.borrow_mut().insert(did, t);
     }
     did
 }

@@ -41,14 +41,12 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
-    pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
     inlining_from_glob: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx>,
-               analysis: Option<&'a core::CrateAnalysis>) -> RustdocVisitor<'a, 'tcx> {
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
         let mut stack = HashSet::new();
         stack.insert(ast::CRATE_NODE_ID);
@@ -56,7 +54,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             module: Module::new(None),
             attrs: hir::HirVec::new(),
             cx: cx,
-            analysis: analysis,
             view_item_stack: stack,
             inlining_from_glob: false,
         }
@@ -247,13 +244,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let def_node_id = match tcx.map.as_local_node_id(def) {
             Some(n) => n, None => return false
         };
-        let analysis = match self.analysis {
-            Some(analysis) => analysis, None => return false
-        };
 
         let use_attrs = tcx.map.attrs(id).clean(self.cx);
 
-        let is_private = !analysis.access_levels.is_public(def);
+        let is_private = !self.cx.access_levels.borrow().is_public(def);
         let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
         let is_no_inline = use_attrs.list("doc").has_word("no_inline");
 

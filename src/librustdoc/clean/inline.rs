@@ -116,7 +116,7 @@ fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
         }
         _ => return None,
     };
-    cx.inlined.borrow_mut().as_mut().unwrap().insert(did);
+    cx.renderinfo.borrow_mut().inlined.insert(did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
         name: Some(tcx.item_name(did).to_string()),
@@ -146,7 +146,7 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
             elem.data.to_string()
         });
         let fqn = once(crate_name).chain(relative).collect();
-        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
+        cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
     }
 }
 
@@ -295,7 +295,7 @@ pub fn build_impl(cx: &DocContext,
                   tcx: &TyCtxt,
                   did: DefId,
                   ret: &mut Vec<clean::Item>) {
-    if !cx.inlined.borrow_mut().as_mut().unwrap().insert(did) {
+    if !cx.renderinfo.borrow_mut().inlined.insert(did) {
         return
     }
 
