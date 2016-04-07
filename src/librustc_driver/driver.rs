@@ -119,6 +119,15 @@ pub fn compile_input(sess: &Session,
                                 Ok(()));
 
         let expanded_crate = assign_node_ids(sess, expanded_crate);
+
+        time(sess.time_passes(), "attribute checking", || {
+            hir::check_attr::check_crate(sess, &expanded_crate);
+        });
+
+        time(sess.time_passes(),
+             "early lint checks",
+             || lint::check_ast_crate(sess, &expanded_crate));
+
         // Lower ast -> hir.
         let lcx = LoweringContext::new(sess, Some(&expanded_crate));
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
@@ -152,14 +161,6 @@ pub fn compile_input(sess: &Session,
                                                                          &lcx),
                                     Ok(()));
         }
-
-        time(sess.time_passes(), "attribute checking", || {
-            hir::check_attr::check_crate(sess, &expanded_crate);
-        });
-
-        time(sess.time_passes(),
-             "early lint checks",
-             || lint::check_ast_crate(sess, &expanded_crate));
 
         let opt_crate = if sess.opts.debugging_opts.keep_ast ||
                            sess.opts.debugging_opts.save_analysis {
