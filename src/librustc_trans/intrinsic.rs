@@ -658,7 +658,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
                                   expected basic integer type, found `{}`", name, sty));
-                        C_null(llret_ty)
+                        C_nil(ccx)
                 }
             }
 
@@ -681,7 +681,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         tcx.sess, span,
                         &format!("invalid monomorphization of `{}` intrinsic: \
                                   expected basic float type, found `{}`", name, sty));
-                        C_null(llret_ty)
+                        C_nil(ccx)
                 }
             }
 
@@ -1475,7 +1475,7 @@ fn generic_simd_intrinsic<'blk, 'tcx, 'a>
         ($cond: expr, $($fmt: tt)*) => {
             if !$cond {
                 emit_error!($($fmt)*);
-                return C_null(llret_ty)
+                return C_nil(bcx.ccx())
             }
         }
     }
