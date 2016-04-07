@@ -115,7 +115,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               -> Block<'blk, 'tcx> {
     let mut bcx = bcx;
 
-    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+    expr.debug_loc().apply(bcx.fcx);
 
     if adjustment_required(bcx, expr) {
         // use trans, which may be less efficient but
@@ -587,7 +587,7 @@ fn trans_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("trans_unadjusted(expr={:?})", expr);
     let _indenter = indenter();
 
-    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+    expr.debug_loc().apply(bcx.fcx);
 
     return match expr_kind(bcx.tcx(), expr) {
         ExprKind::Lvalue | ExprKind::RvalueDatum => {
@@ -923,7 +923,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return bcx;
     }
 
-    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+    expr.debug_loc().apply(bcx.fcx);
 
     match expr.node {
         hir::ExprBreak(label_opt) => {
@@ -987,7 +987,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 //
                 // We could avoid this intermediary with some analysis
                 // to determine whether `dst` may possibly own `src`.
-                debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+                expr.debug_loc().apply(bcx.fcx);
                 let src_datum = unpack_datum!(
                     bcx, src_datum.to_rvalue_datum(bcx, "ExprAssign"));
                 let opt_hint_datum = dst_datum.kind.drop_flag_info.hint_datum(bcx);
@@ -1062,7 +1062,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let mut bcx = bcx;
 
-    debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
+    expr.debug_loc().apply(bcx.fcx);
 
     // Entry into the method table if this is an overloaded call/op.
     let method_call = MethodCall::expr(expr.id);

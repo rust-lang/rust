@@ -20,7 +20,7 @@ use self::namespace::mangled_name_of_item;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, diverging_type_metadata};
 use self::metadata::{file_metadata, scope_metadata, TypeMap, compile_unit_metadata};
-use self::source_loc::InternalDebugLocation;
+use self::source_loc::InternalDebugLocation::{self, UnknownLocation};
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
@@ -32,7 +32,7 @@ use rustc::ty::subst::Substs;
 use rustc::hir;
 
 use abi::Abi;
-use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block};
+use common::{NodeIdAndSpan, CrateContext, FunctionContext, Block, BlockAndBuilder};
 use monomorphize::Instance;
 use rustc::ty::{self, Ty};
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -55,8 +55,7 @@ mod metadata;
 mod create_scope_map;
 mod source_loc;
 
-pub use self::source_loc::set_source_location;
-pub use self::source_loc::clear_source_location;
+pub use self::create_scope_map::create_mir_scopes;
 pub use self::source_loc::start_emitting_source_locations;
 pub use self::source_loc::get_cleanup_debug_loc_for_ast_node;
 pub use self::source_loc::with_source_location_override;
@@ -218,7 +217,7 @@ pub fn empty_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>)
     }
 
     // Clear the debug location so we don't assign them in the function prelude.
-    source_loc::set_debug_location(cx, InternalDebugLocation::UnknownLocation);
+    source_loc::set_debug_location(cx, None, UnknownLocation);
     FunctionDebugContext::FunctionWithoutDebugInfo
 }
 
@@ -239,7 +238,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Clear the debug location so we don't assign them in the function prelude.
     // Do this here already, in case we do an early exit from this function.
-    source_loc::set_debug_location(cx, InternalDebugLocation::UnknownLocation);
+    source_loc::set_debug_location(cx, None, UnknownLocation);
 
     // This can be the case for functions inlined from another crate
     let (containing_scope, span) = get_namespace_and_span_for_item(cx, instance.def);
@@ -425,13 +424,13 @@ pub fn fill_scope_map_for_function<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     }
 }
 
-fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             variable_name: ast::Name,
-                             variable_type: Ty<'tcx>,
-                             scope_metadata: DIScope,
-                             variable_access: VariableAccess,
-                             variable_kind: VariableKind,
-                             span: Span) {
+pub fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                 variable_name: ast::Name,
+                                 variable_type: Ty<'tcx>,
+                                 scope_metadata: DIScope,
+                                 variable_access: VariableAccess,
+                                 variable_kind: VariableKind,
+                                 span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
     let filename = span_start(cx, span).file.name.clone();
@@ -465,9 +464,8 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     address_operations.len() as c_uint,
                     argument_index)
             };
-            source_loc::set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
-                                                                          loc.line,
-                                                                          loc.col.to_usize()));
+            source_loc::set_debug_location(cx, None,
+                InternalDebugLocation::new(scope_metadata, loc.line, loc.col.to_usize()));
             unsafe {
                 let debug_loc = llvm::LLVMGetCurrentDebugLocation(cx.raw_builder());
                 let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
@@ -491,7 +489,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                         .get_ref(span)
                         .source_locations_enabled
                         .get());
-            source_loc::set_debug_location(cx, InternalDebugLocation::UnknownLocation);
+            source_loc::set_debug_location(cx, None, UnknownLocation);
         }
         _ => { /* nothing to do */ }
     }
@@ -500,19 +498,17 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum DebugLoc {
     At(ast::NodeId, Span),
+    ScopeAt(DIScope, Span),
     None
 }
 
 impl DebugLoc {
-    pub fn apply(&self, fcx: &FunctionContext) {
-        match *self {
-            DebugLoc::At(node_id, span) => {
-                source_loc::set_source_location(fcx, node_id, span);
-            }
-            DebugLoc::None => {
-                source_loc::clear_source_location(fcx);
-            }
-        }
+    pub fn apply(self, fcx: &FunctionContext) {
+        source_loc::set_source_location(fcx, None, self);
+    }
+
+    pub fn apply_to_bcx(self, bcx: &BlockAndBuilder) {
+        source_loc::set_source_location(bcx.fcx(), Some(bcx), self);
     }
 }
 

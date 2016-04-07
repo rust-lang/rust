@@ -10,12 +10,13 @@
 
 use self::InternalDebugLocation::*;
 
-use super::utils::{debug_context, span_start, fn_should_be_ignored};
+use super::utils::{debug_context, span_start};
 use super::metadata::{scope_metadata,UNKNOWN_COLUMN_NUMBER};
 use super::{FunctionDebugContext, DebugLoc};
 
 use llvm;
 use llvm::debuginfo::DIScope;
+use builder::Builder;
 use common::{NodeIdAndSpan, CrateContext, FunctionContext};
 
 use libc::c_uint;
@@ -86,41 +87,46 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 /// Sets the current debug location at the beginning of the span.
 ///
-/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...). The node_id
-/// parameter is used to reliably find the correct visibility scope for the code
-/// position.
+/// Maps to a call to llvm::LLVMSetCurrentDebugLocation(...).
 pub fn set_source_location(fcx: &FunctionContext,
-                           node_id: ast::NodeId,
-                           span: Span) {
-    match fcx.debug_context {
+                           builder: Option<&Builder>,
+                           debug_loc: DebugLoc) {
+    let builder = builder.map(|b| b.llbuilder);
+    let function_debug_context = match fcx.debug_context {
         FunctionDebugContext::DebugInfoDisabled => return,
         FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(fcx.ccx, UnknownLocation);
+            set_debug_location(fcx.ccx, builder, UnknownLocation);
             return;
         }
-        FunctionDebugContext::RegularContext(box ref function_debug_context) => {
-            if function_debug_context.source_location_override.get() {
-                // Just ignore any attempts to set a new debug location while
-                // the override is active.
+        FunctionDebugContext::RegularContext(box ref data) => data
+    };
+
+    if function_debug_context.source_location_override.get() {
+        // Just ignore any attempts to set a new debug location while
+        // the override is active.
+        return;
+    }
+
+    let dbg_loc = if function_debug_context.source_locations_enabled.get() {
+        let (scope, span) = match debug_loc {
+            DebugLoc::At(node_id, span) => {
+                (scope_metadata(fcx, node_id, span), span)
+            }
+            DebugLoc::ScopeAt(scope, span) => (scope, span),
+            DebugLoc::None => {
+                set_debug_location(fcx.ccx, builder, UnknownLocation);
                 return;
             }
+        };
 
-            let cx = fcx.ccx;
-
-            debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
-
-            if function_debug_context.source_locations_enabled.get() {
-                let loc = span_start(cx, span);
-                let scope = scope_metadata(fcx, node_id, span);
-
-                set_debug_location(cx, InternalDebugLocation::new(scope,
-                                                                  loc.line,
-                                                                  loc.col.to_usize()));
-            } else {
-                set_debug_location(cx, UnknownLocation);
-            }
-        }
-    }
+        debug!("set_source_location: {}",
+               fcx.ccx.sess().codemap().span_to_string(span));
+        let loc = span_start(fcx.ccx, span);
+        InternalDebugLocation::new(scope, loc.line, loc.col.to_usize())
+    } else {
+        UnknownLocation
+    };
+    set_debug_location(fcx.ccx, builder, dbg_loc);
 }
 
 /// This function makes sure that all debug locations emitted while executing
@@ -135,7 +141,7 @@ pub fn with_source_location_override<F, R>(fcx: &FunctionContext,
             wrapped_function()
         }
         FunctionDebugContext::FunctionWithoutDebugInfo => {
-            set_debug_location(fcx.ccx, UnknownLocation);
+            set_debug_location(fcx.ccx, None, UnknownLocation);
             wrapped_function()
         }
         FunctionDebugContext::RegularContext(box ref function_debug_context) => {
@@ -150,17 +156,6 @@ pub fn with_source_location_override<F, R>(fcx: &FunctionContext,
             }
         }
     }
-}
-
-/// Clears the current debug location.
-///
-/// Instructions generated hereafter won't be assigned a source location.
-pub fn clear_source_location(fcx: &FunctionContext) {
-    if fn_should_be_ignored(fcx) {
-        return;
-    }
-
-    set_debug_location(fcx.ccx, UnknownLocation);
 }
 
 /// Enables emitting source locations for the given functions.
@@ -195,37 +190,42 @@ impl InternalDebugLocation {
     }
 }
 
-pub fn set_debug_location(cx: &CrateContext, debug_location: InternalDebugLocation) {
-    if debug_location == debug_context(cx).current_debug_location.get() {
-        return;
+pub fn set_debug_location(cx: &CrateContext,
+                          builder: Option<llvm::BuilderRef>,
+                          debug_location: InternalDebugLocation) {
+    if builder.is_none() {
+        if debug_location == debug_context(cx).current_debug_location.get() {
+            return;
+        }
     }
 
-    let metadata_node;
-
-    match debug_location {
+    let metadata_node = match debug_location {
         KnownLocation { scope, line, .. } => {
             // Always set the column to zero like Clang and GCC
             let col = UNKNOWN_COLUMN_NUMBER;
             debug!("setting debug location to {} {}", line, col);
 
             unsafe {
-                metadata_node = llvm::LLVMDIBuilderCreateDebugLocation(
+                llvm::LLVMDIBuilderCreateDebugLocation(
                     debug_context(cx).llcontext,
                     line as c_uint,
                     col as c_uint,
                     scope,
-                    ptr::null_mut());
+                    ptr::null_mut())
             }
         }
         UnknownLocation => {
             debug!("clearing debug location ");
-            metadata_node = ptr::null_mut();
+            ptr::null_mut()
         }
     };
 
-    unsafe {
-        llvm::LLVMSetCurrentDebugLocation(cx.raw_builder(), metadata_node);
+    if builder.is_none() {
+        debug_context(cx).current_debug_location.set(debug_location);
     }
 
-    debug_context(cx).current_debug_location.set(debug_location);
+    let builder = builder.unwrap_or_else(|| cx.raw_builder());
+    unsafe {
+        llvm::LLVMSetCurrentDebugLocation(builder, metadata_node);
+    }
 }
