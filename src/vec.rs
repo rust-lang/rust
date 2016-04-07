@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::codemap::Span;
 use syntax::ptr::P;
 use utils::VEC_FROM_ELEM_PATH;

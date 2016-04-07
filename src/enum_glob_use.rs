@@ -1,10 +1,10 @@
 //! lint on `use`ing all variants of an enum
 
-use rustc::front::map::Node::NodeItem;
+use rustc::hir::*;
+use rustc::hir::def::Def;
+use rustc::hir::map::Node::NodeItem;
 use rustc::lint::{LateLintPass, LintPass, LateContext, LintArray, LintContext};
-use rustc::middle::def::Def;
 use rustc::middle::cstore::DefLike;
-use rustc_front::hir::*;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;

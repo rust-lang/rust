@@ -1,15 +1,15 @@
 use reexport::*;
-use rustc::front::map::Node;
-use rustc::lint::{LintContext, LateContext, Level, Lint};
-use rustc::middle::def_id::DefId;
-use rustc::traits;
-use rustc::traits::ProjectionMode;
-use rustc::middle::{cstore, def};
+use rustc::hir::*;
+use rustc::hir::def_id::DefId;
+use rustc::hir::map::Node;
 use rustc::infer;
-use rustc::ty;
-use rustc::ty::subst::Subst;
+use rustc::lint::{LintContext, LateContext, Level, Lint};
+use rustc::middle::cstore;
 use rustc::session::Session;
-use rustc_front::hir::*;
+use rustc::traits::ProjectionMode;
+use rustc::traits;
+use rustc::ty::subst::Subst;
+use rustc::ty;
 use std::borrow::Cow;
 use std::mem;
 use std::ops::{Deref, DerefMut};
@@ -56,7 +56,7 @@ pub const RANGE_TO_PATH: [&'static str; 3] = ["std", "ops", "RangeTo"];
 pub const REGEX_NEW_PATH: [&'static str; 3] = ["regex", "Regex", "new"];
 pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
-pub const TRANSMUTE_PATH: [&'static str; 3] = ["core", "intrinsics", "transmute"];
+pub const TRANSMUTE_PATH: [&'static str; 4] = ["core", "intrinsics", "", "transmute"];
 pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];
 pub const VEC_PATH: [&'static str; 3] = ["collections", "vec", "Vec"];
 pub const BOX_PATH: [&'static str; 3] = ["std", "boxed", "Box"];
@@ -157,13 +157,22 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 /// match_def_path(cx, id, &["core", "option", "Option"])
 /// ```
 pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
-    cx.tcx.with_path(def_id, |iter| {
-        let mut len = 0;
+    let krate = &cx.tcx.crate_name(def_id.krate);
+    if krate != &path[0] {
+        return false;
+    }
 
-        iter.inspect(|_| len += 1)
-            .zip(path)
-            .all(|(nm, p)| nm.name().as_str() == *p) && len == path.len()
-    })
+    let path = &path[1..];
+    let other = cx.tcx.def_path(def_id).data;
+
+    if other.len() != path.len() {
+        return false;
+    }
+
+    other.into_iter()
+         .map(|e| e.data)
+         .zip(path)
+         .all(|(nm, p)| nm.as_interned_str() == *p)
 }
 
 /// Check if type is struct or enum type with given def path.

@@ -4,7 +4,7 @@ use rustc::ty::TyArray;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstInt;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::RangeLimits;
 use utils;
 

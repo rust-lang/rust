@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::ty;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::DROP_PATH;
 use utils::{match_def_path, span_note_and_lint};

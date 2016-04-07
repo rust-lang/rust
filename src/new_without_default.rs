@@ -1,6 +1,6 @@
 use rustc::lint::*;
-use rustc_front::hir;
-use rustc_front::intravisit::FnKind;
+use rustc::hir;
+use rustc::hir::intravisit::FnKind;
 use syntax::ast;
 use syntax::codemap::Span;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint,

@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use unicode_normalization::UnicodeNormalization;

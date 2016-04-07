@@ -1,6 +1,6 @@
 use consts::{constant_simple, Constant};
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::{span_lint, snippet, in_macro};
 use rustc_const_math::ConstInt;

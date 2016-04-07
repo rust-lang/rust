@@ -13,7 +13,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use std::borrow::Cow;
 use syntax::codemap::Spanned;
 

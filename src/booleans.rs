@@ -1,6 +1,6 @@
 use rustc::lint::{LintArray, LateLintPass, LateContext, LintPass};
-use rustc_front::hir::*;
-use rustc_front::intravisit::*;
+use rustc::hir::*;
+use rustc::hir::intravisit::*;
 use syntax::ast::{LitKind, DUMMY_NODE_ID};
 use syntax::codemap::{DUMMY_SP, dummy_spanned};
 use utils::{span_lint_and_then, in_macro, snippet_opt, SpanlessEq};

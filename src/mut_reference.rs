@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::ty::{TypeAndMut, TypeVariants, MethodCall, TyS};
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ptr::P;
 use utils::span_lint;
 

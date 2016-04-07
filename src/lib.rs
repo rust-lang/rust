@@ -19,8 +19,6 @@ fn main() {
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
-#[macro_use]
-extern crate rustc_front;
 
 extern crate toml;
 

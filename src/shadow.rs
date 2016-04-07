@@ -1,8 +1,8 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::middle::def::Def;
-use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, FnKind};
+use rustc::hir::def::Def;
+use rustc::hir::*;
+use rustc::hir::intravisit::{Visitor, FnKind};
 use std::ops::Deref;
 use syntax::codemap::Span;
 use utils::{is_from_for_desugar, in_external_macro, snippet, span_lint, span_note_and_lint, DiagnosticWrapper};

@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::ty;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use syntax::parse::token::InternedString;

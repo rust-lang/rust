@@ -3,7 +3,7 @@
 //! This lint is **warn** by default
 
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::LitKind;
 use syntax::codemap::Spanned;
 use utils::{span_lint, span_lint_and_then, snippet, snippet_opt};

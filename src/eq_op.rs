@@ -1,6 +1,5 @@
+use rustc::hir::*;
 use rustc::lint::*;
-use rustc_front::hir::*;
-use rustc_front::util as ast_util;
 use utils::{SpanlessEq, span_lint};
 
 /// **What it does:** This lint checks for equal operands to comparison, logical and bitwise,
@@ -34,7 +33,7 @@ impl LateLintPass for EqOp {
                 span_lint(cx,
                           EQ_OP,
                           e.span,
-                          &format!("equal expressions as operands to `{}`", ast_util::binop_to_string(op.node)));
+                          &format!("equal expressions as operands to `{}`", op.node.as_str()));
             }
         }
     }

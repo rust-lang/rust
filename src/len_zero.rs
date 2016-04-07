@@ -1,7 +1,7 @@
 use rustc::lint::*;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, MethodTraitItemId, ImplOrTraitItemId};
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::{Lit, LitKind, Name};
 use syntax::codemap::{Span, Spanned};
 use syntax::ptr::P;
@@ -111,6 +111,8 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
     if !impl_items.iter().any(|i| is_named_self(i, "is_empty")) {
         for i in impl_items {
             if is_named_self(i, "len") {
+                let ty = cx.tcx.node_id_to_type(item.id);
+
                 let s = i.span;
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
@@ -121,7 +123,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItem]) {
                           },
                           &format!("item `{}` has a `.len(_: &Self)` method, but no `.is_empty(_: &Self)` method. \
                                     Consider adding one",
-                                   item.name));
+                                   ty));
                 return;
             }
         }

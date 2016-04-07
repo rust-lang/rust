@@ -1,6 +1,6 @@
 use rustc::lint::*;
-use rustc_front::hir;
-use rustc_front::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
+use rustc::hir;
+use rustc::hir::intravisit::{FnKind, Visitor, walk_expr, walk_fn};
 use std::collections::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;

@@ -6,6 +6,10 @@ extern crate core;
 use std::mem::transmute as my_transmute;
 use std::vec::Vec as MyVec;
 
+fn my_int() -> usize {
+    42
+}
+
 fn my_vec() -> MyVec<i32> {
     vec![]
 }
@@ -86,22 +90,22 @@ fn useless() {
 
 #[deny(crosspointer_transmute)]
 fn crosspointer() {
-    let mut vec: Vec<i32> = vec![];
-    let vec_const_ptr: *const Vec<i32> = &vec as *const Vec<i32>;
-    let vec_mut_ptr: *mut Vec<i32> = &mut vec as *mut Vec<i32>;
+    let mut int: usize = 0;
+    let int_const_ptr: *const usize = &int as *const usize;
+    let int_mut_ptr: *mut usize = &mut int as *mut usize;
 
     unsafe {
-        let _: Vec<i32> = core::intrinsics::transmute(vec_const_ptr);
-        //~^ ERROR transmute from a type (`*const std::vec::Vec<i32>`) to the type that it points to (`std::vec::Vec<i32>`)
+        let _: usize = core::intrinsics::transmute(int_const_ptr);
+        //~^ ERROR transmute from a type (`*const usize`) to the type that it points to (`usize`)
 
-        let _: Vec<i32> = core::intrinsics::transmute(vec_mut_ptr);
-        //~^ ERROR transmute from a type (`*mut std::vec::Vec<i32>`) to the type that it points to (`std::vec::Vec<i32>`)
+        let _: usize = core::intrinsics::transmute(int_mut_ptr);
+        //~^ ERROR transmute from a type (`*mut usize`) to the type that it points to (`usize`)
 
-        let _: *const Vec<i32> = core::intrinsics::transmute(my_vec());
-        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to a pointer to that type (`*const std::vec::Vec<i32>`)
+        let _: *const usize = core::intrinsics::transmute(my_int());
+        //~^ ERROR transmute from a type (`usize`) to a pointer to that type (`*const usize`)
 
-        let _: *mut Vec<i32> = core::intrinsics::transmute(my_vec());
-        //~^ ERROR transmute from a type (`std::vec::Vec<i32>`) to a pointer to that type (`*mut std::vec::Vec<i32>`)
+        let _: *mut usize = core::intrinsics::transmute(my_int());
+        //~^ ERROR transmute from a type (`usize`) to a pointer to that type (`*mut usize`)
     }
 }
 

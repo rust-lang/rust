@@ -5,7 +5,7 @@
 use rustc::lint::{LintPass, LintArray, LateLintPass, LateContext};
 use rustc::ty::subst::ParamSpace;
 use rustc::ty;
-use rustc_front::hir::Expr;
+use rustc::hir::Expr;
 use syntax::ast;
 use utils::{span_lint, MUTEX_PATH, match_type};
 

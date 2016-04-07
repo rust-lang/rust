@@ -1,6 +1,6 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, walk_expr, walk_block};
+use rustc::hir::*;
+use rustc::hir::intravisit::{Visitor, walk_expr, walk_block};
 use syntax::codemap::Span;
 use utils::SpanlessEq;
 use utils::{BTREEMAP_PATH, HASHMAP_PATH};

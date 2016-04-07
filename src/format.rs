@@ -1,7 +1,7 @@
-use rustc::front::map::Node::NodeItem;
+use rustc::hir::map::Node::NodeItem;
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::LitKind;
 use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH, STRING_PATH};
 use utils::{is_expn_of, match_path, match_type, span_lint, walk_ptrs_ty};

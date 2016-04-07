@@ -3,7 +3,7 @@ use rustc::ty::subst::Subst;
 use rustc::ty::TypeVariants;
 use rustc::ty::fast_reject::simplify_type;
 use rustc::ty;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::{Attribute, MetaItemKind};
 use syntax::codemap::Span;
 use utils::{CLONE_TRAIT_PATH, HASH_PATH};

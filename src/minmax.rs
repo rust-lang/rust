@@ -1,6 +1,6 @@
 use consts::{Constant, constant_simple};
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use std::cmp::{PartialOrd, Ordering};
 use syntax::ptr::P;
 use utils::{match_def_path, span_lint};

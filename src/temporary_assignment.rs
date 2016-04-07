@@ -1,5 +1,5 @@
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc_front::hir::{Expr, ExprAssign, ExprField, ExprStruct, ExprTup, ExprTupField};
+use rustc::hir::{Expr, ExprAssign, ExprField, ExprStruct, ExprTup, ExprTupField};
 use utils::is_adjusted;
 use utils::span_lint;
 

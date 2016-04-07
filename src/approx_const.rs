@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use std::f64::consts as f64;
 use syntax::ast::{Lit, LitKind, FloatTy};
 use utils::span_lint;

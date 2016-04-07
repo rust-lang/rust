@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::LitKind;
 use utils::{span_lint, is_direct_expn_of, match_path, BEGIN_UNWIND};
 

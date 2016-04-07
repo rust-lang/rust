@@ -3,8 +3,8 @@
 use rustc::lint::*;
 use rustc::cfg::CFG;
 use rustc::ty;
-use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, walk_expr};
+use rustc::hir::*;
+use rustc::hir::intravisit::{Visitor, walk_expr};
 use syntax::ast::Attribute;
 use syntax::attr::*;
 use syntax::codemap::Span;

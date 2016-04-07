@@ -3,7 +3,7 @@
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_math::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::attr::*;
 use utils::span_lint;
 

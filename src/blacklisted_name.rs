@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use utils::span_lint;
 
 /// **What it does:** This lints about usage of blacklisted names.

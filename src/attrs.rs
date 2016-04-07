@@ -2,7 +2,7 @@
 
 use reexport::*;
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
 use syntax::attr::*;

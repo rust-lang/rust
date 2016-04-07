@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::ty;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use utils::{snippet_opt, span_lint_and_then, is_adjusted};
 
 #[allow(missing_copy_implementations)]

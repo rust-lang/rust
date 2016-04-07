@@ -1,8 +1,7 @@
+use rustc::hir::*;
+use rustc::hir::def::{Def, PathResolution};
 use rustc::lint::*;
-use rustc::middle::def::{Def, PathResolution};
 use rustc_const_eval::lookup_const_by_id;
-use rustc_front::hir::*;
-use rustc_front::util::is_comparison_binop;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::span_lint;
@@ -91,7 +90,7 @@ impl LintPass for BitMask {
 impl LateLintPass for BitMask {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
-            if is_comparison_binop(cmp.node) {
+            if cmp.node.is_comparison() {
                 fetch_int_literal(cx, right).map_or_else(|| {
                                                              fetch_int_literal(cx, left).map_or((), |cmp_val| {
                                                                  check_compare(cx,

@@ -1,10 +1,8 @@
 use reexport::*;
+use rustc::hir::*;
+use rustc::hir::intravisit::{FnKind, Visitor, walk_ty};
 use rustc::lint::*;
-use rustc::middle::def;
 use rustc::ty;
-use rustc_front::hir::*;
-use rustc_front::intravisit::{FnKind, Visitor, walk_ty};
-use rustc_front::util::{is_comparison_binop, binop_to_string};
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
@@ -162,7 +160,7 @@ impl LateLintPass for UnitCmp {
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
             let op = cmp.node;
             let sty = &cx.tcx.expr_ty(left).sty;
-            if *sty == ty::TyTuple(vec![]) && is_comparison_binop(op) {
+            if *sty == ty::TyTuple(vec![]) && op.is_comparison() {
                 let result = match op {
                     BiEq | BiLe | BiGe => "true",
                     _ => "false",
@@ -171,7 +169,7 @@ impl LateLintPass for UnitCmp {
                           UNIT_CMP,
                           expr.span,
                           &format!("{}-comparison of unit values detected. This will always be {}",
-                                   binop_to_string(op),
+                                   op.as_str(),
                                    result));
             }
         }

@@ -1,4 +1,4 @@
-use rustc_front::hir::{BinOp_, Expr};
+use rustc::hir::{BinOp_, Expr};
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum Rel {

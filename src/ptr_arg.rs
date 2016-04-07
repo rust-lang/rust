@@ -1,9 +1,9 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use rustc::front::map::NodeItem;
+use rustc::hir::map::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::NodeId;
 use utils::{STRING_PATH, VEC_PATH};
 use utils::{span_lint, match_type};

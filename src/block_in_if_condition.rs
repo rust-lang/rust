@@ -1,6 +1,6 @@
 use rustc::lint::{LateLintPass, LateContext, LintArray, LintPass};
-use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, walk_expr};
+use rustc::hir::*;
+use rustc::hir::intravisit::{Visitor, walk_expr};
 use utils::*;
 
 /// **What it does:** This lint checks for `if` conditions that use blocks to contain an expression.

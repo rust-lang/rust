@@ -1,8 +1,8 @@
 use reexport::*;
 use rustc::lint::*;
-use rustc::middle::def::Def;
-use rustc_front::hir::*;
-use rustc_front::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
+use rustc::hir::def::Def;
+use rustc::hir::*;
+use rustc::hir::intravisit::{Visitor, walk_ty, walk_ty_param_bound, walk_fn_decl, walk_generics};
 use std::collections::{HashSet, HashMap};
 use syntax::codemap::Span;
 use utils::{in_external_macro, span_lint};

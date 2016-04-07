@@ -1,14 +1,14 @@
-use rustc::front::map::Node::{NodeExpr, NodeStmt};
+use rustc::hir::*;
+use rustc::hir::intravisit as visit;
+use rustc::hir::map::Node::{NodeExpr, NodeStmt};
+use rustc::infer;
 use rustc::lint::*;
 use rustc::middle::expr_use_visitor::*;
-use rustc::infer;
 use rustc::middle::mem_categorization::{cmt, Categorization};
 use rustc::traits::ProjectionMode;
 use rustc::ty::adjustment::AutoAdjustment;
 use rustc::ty;
 use rustc::util::nodemap::NodeSet;
-use rustc_front::hir::*;
-use rustc_front::intravisit as visit;
 use syntax::ast::NodeId;
 use syntax::codemap::Span;
 use utils::span_lint;

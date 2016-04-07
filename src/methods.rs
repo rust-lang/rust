@@ -1,3 +1,4 @@
+use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::cstore::CrateStore;
@@ -5,7 +6,6 @@ use rustc::ty::subst::{Subst, TypeSpace};
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
-use rustc_front::hir::*;
 use std::borrow::Cow;
 use std::fmt;
 use syntax::codemap::Span;

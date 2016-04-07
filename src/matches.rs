@@ -1,10 +1,10 @@
+use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_math::ConstInt;
-use rustc_front::hir::*;
 use std::cmp::Ordering;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;

@@ -5,12 +5,11 @@ extern crate clippy;
 extern crate rustc;
 extern crate rustc_const_eval;
 extern crate rustc_const_math;
-extern crate rustc_front;
 extern crate syntax;
 
 use clippy::consts::{constant_simple, Constant, FloatWidth};
 use rustc_const_math::ConstInt;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::ast::{LitIntType, LitKind, StrStyle};
 use syntax::codemap::{Spanned, COMMAND_LINE_SP};
 use syntax::parse::token::InternedString;

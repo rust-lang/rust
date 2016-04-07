@@ -1,6 +1,6 @@
 use consts::constant;
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use std::hash::{Hash, Hasher, SipHasher};
 use syntax::ast::Name;
 use syntax::ptr::P;

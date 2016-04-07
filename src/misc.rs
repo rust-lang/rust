@@ -1,12 +1,11 @@
 use reexport::*;
+use rustc::hir::*;
+use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
-use rustc_front::hir::*;
-use rustc_front::intravisit::FnKind;
-use rustc_front::util::{is_comparison_binop, binop_to_string};
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use syntax::ptr::P;
 use utils::{get_item_name, match_path, snippet, get_parent_expr, span_lint};
@@ -105,7 +104,7 @@ impl LintPass for CmpNan {
 impl LateLintPass for CmpNan {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-            if is_comparison_binop(cmp.node) {
+            if cmp.node.is_comparison() {
                 if let ExprPath(_, ref path) = left.node {
                     check_nan(cx, path, expr.span);
                 }
@@ -170,7 +169,7 @@ impl LateLintPass for FloatCmp {
                           &format!("{}-comparison of f32 or f64 detected. Consider changing this to `({} - {}).abs() < \
                                     epsilon` for some suitable value of epsilon. \
                                     std::f32::EPSILON and std::f64::EPSILON are available.",
-                                   binop_to_string(op),
+                                   op.as_str(),
                                    snippet(cx, left.span, ".."),
                                    snippet(cx, right.span, "..")));
             }
@@ -217,7 +216,7 @@ impl LintPass for CmpOwned {
 impl LateLintPass for CmpOwned {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-            if is_comparison_binop(cmp.node) {
+            if cmp.node.is_comparison() {
                 check_to_owned(cx, left, right, true, cmp.span);
                 check_to_owned(cx, right, left, false, cmp.span)
             }

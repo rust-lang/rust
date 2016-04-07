@@ -1,15 +1,14 @@
 use regex_syntax;
+use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::eval_const_expr_partial;
-use rustc_front::hir::*;
 use std::collections::HashSet;
 use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
-
 use utils::{is_expn_of, match_path, match_type, REGEX_NEW_PATH, span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.

@@ -4,7 +4,7 @@
 //! disable the subsumed lint unless it has a higher level
 
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::codemap::Spanned;
 use utils::STRING_PATH;
 use utils::SpanlessEq;

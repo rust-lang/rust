@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use utils::TRANSMUTE_PATH;
 use utils::{match_def_path, snippet_opt, span_lint, span_lint_and_then};
 

@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::codemap::mk_sp;
 use utils::{differing_macro_contexts, snippet_opt, span_lint_and_then, SpanlessEq};
 

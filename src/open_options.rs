@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::{Expr, ExprMethodCall, ExprLit};
+use rustc::hir::{Expr, ExprMethodCall, ExprLit};
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
 use utils::{walk_ptrs_ty_depth, match_type, span_lint, OPEN_OPTIONS_PATH};

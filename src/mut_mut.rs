@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::ty::{TypeAndMut, TyRef};
-use rustc_front::hir::*;
+use rustc::hir::*;
 use utils::{in_external_macro, span_lint};
 
 /// **What it does:** This lint checks for instances of `mut mut` references.

@@ -1,5 +1,5 @@
 use rustc::lint::*;
-use rustc_front::hir::*;
+use rustc::hir::*;
 use syntax::codemap::Spanned;
 use utils::{is_integer_literal, match_type, snippet, span_lint, unsugar_range, UnsugaredRange};
 
