@@ -433,7 +433,6 @@ Rust will give us a compile-time error:
 src/main.rs:4:5: 4:40 error: a value named `hello` has already been imported in this module [E0252]
 src/main.rs:4 use phrases::japanese::greetings::hello;
                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-error: aborting due to previous error
 Could not compile `phrases`.
 ```
 

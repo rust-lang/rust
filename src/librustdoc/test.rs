@@ -271,7 +271,7 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         Ok(r) => {
             match r {
                 Err(count) if count > 0 && compile_fail == false => {
-                    sess.fatal("aborting due to previous error(s)")
+                    panic!("couldn't compile the test");
                 }
                 Ok(()) if compile_fail => panic!("test compiled while it wasn't supposed to"),
                 _ => {}

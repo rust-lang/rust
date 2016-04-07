@@ -61,7 +61,6 @@ is not satisfied [E0277]
 v[j];
 ^~~~
 note: the type `collections::vec::Vec<_>` cannot be indexed by `i32`
-error: aborting due to previous error
 ```
 
 There’s a lot of punctuation in that message, but the core of it makes sense:
