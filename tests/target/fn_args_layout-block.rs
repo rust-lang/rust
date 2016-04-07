@@ -98,10 +98,6 @@ fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Looooo
     foo();
 }
 
-fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Loooooooooooooooong>(a: Aaaaaaaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbbb, c: Cccccccccccccccccc, d: Dddddddddddddddd) {
-    foo();
-}
-
 trait Test {
     fn foo(a: u8) {}
 
@@ -113,4 +109,22 @@ trait Test {
         e: Eeeeeeeeeeeeeee
     ) -> String {
     }
+}
+
+fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Loooooooooooooooong>(
+    a: Aaaaaaaaaaaaaaaaaaaa,
+    b: Bbbbbbbbbbbbbbbbb,
+    c: Cccccccccccccccccc,
+    d: Dddddddddddddddd
+) {
+    foo();
+}
+
+fn foo()
+    -> (Looooooooooooooooooooooooooong,
+        Reeeeeeeeeeeeeeeeeeeeeeeeeeeeeturn,
+        iiiiiiiiiiiiiis,
+        Loooooooooooooooooooooong)
+{
+    foo();
 }

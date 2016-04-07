@@ -62,12 +62,16 @@ fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Looooo
     foo();
 }
 
-fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Loooooooooooooooong>(a: Aaaaaaaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbbb, c: Cccccccccccccccccc, d: Dddddddddddddddd) {
-    foo();
-}
-
 trait Test {
     fn foo(a: u8) {}
 
     fn bar(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb, c: Cccccccccccccccccc, d: Dddddddddddddddd, e: Eeeeeeeeeeeeeee) -> String {}
+}
+
+fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Loooooooooooooooong>(a: Aaaaaaaaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbbbbb, c: Cccccccccccccccccc, d: Dddddddddddddddd) {
+    foo();
+}
+
+fn foo() -> (Looooooooooooooooooooooooooong, Reeeeeeeeeeeeeeeeeeeeeeeeeeeeeturn, iiiiiiiiiiiiiis, Loooooooooooooooooooooong) {
+    foo();
 }

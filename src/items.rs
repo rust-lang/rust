@@ -1290,12 +1290,13 @@ fn rewrite_fn_base(context: &RewriteContext,
     };
 
     // Args.
-    let (mut one_line_budget, multi_line_budget, mut arg_indent) =
+    let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
         compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace);
 
     if context.config.fn_args_layout == FnArgLayoutStyle::Block ||
        context.config.fn_args_layout == FnArgLayoutStyle::BlockAlways {
         arg_indent = indent.block_indent(context.config);
+        multi_line_budget = context.config.max_width - arg_indent.width();
     }
 
     debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
@@ -1568,6 +1569,8 @@ fn rewrite_args(context: &RewriteContext,
         DefinitiveListTactic::Horizontal => one_line_budget,
         _ => multi_line_budget,
     };
+
+    debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
 
     let end_with_newline = match context.config.fn_args_layout {
         FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => true,
