@@ -1179,7 +1179,7 @@ pub fn get_impl_method<'tcx>(
             }
         }
         None => {
-            tcx.sess.bug(&format!("method {:?} not found in {:?}", name, impl_def_id))
+            bug!("method {:?} not found in {:?}", name, impl_def_id);
         }
     }
 }
