@@ -44,8 +44,9 @@ impl fmt::Debug for CodeExtent {
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                let data = tcx.region_maps.code_extents.borrow()[self.0 as usize];
-                write!(f, "/{:?}", data)?;
+                if let Some(data) = tcx.region_maps.code_extents.borrow().get(self.0 as usize) {
+                    write!(f, "/{:?}", data)?;
+                }
             }
             Ok(())
         })?;
