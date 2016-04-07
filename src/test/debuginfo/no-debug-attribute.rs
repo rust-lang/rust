@@ -23,10 +23,11 @@
 // gdb-command:continue
 
 #![allow(unused_variables)]
-#![feature(no_debug)]
+#![feature(no_debug, rustc_attrs)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is inaccurate for returns.
 fn function_with_debuginfo() {
     let abc = 10_usize;
     return (); // #break

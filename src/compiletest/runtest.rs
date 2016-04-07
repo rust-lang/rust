@@ -868,26 +868,10 @@ fn cleanup_debug_info_options(options: &Option<String>) -> Option<String> {
         "-g".to_owned(),
         "--debuginfo".to_owned()
     ];
-    let mut new_options =
+    let new_options =
         split_maybe_args(options).into_iter()
                                  .filter(|x| !options_to_remove.contains(x))
                                  .collect::<Vec<String>>();
-
-    let mut i = 0;
-    while i + 1 < new_options.len() {
-        if new_options[i] == "-Z" {
-            // FIXME #31005 MIR missing debuginfo currently.
-            if new_options[i + 1] == "orbit" {
-                // Remove "-Z" and "orbit".
-                new_options.remove(i);
-                new_options.remove(i);
-                continue;
-            }
-            // Always skip over -Z's argument.
-            i += 1;
-        }
-        i += 1;
-    }
 
     Some(new_options.join(" "))
 }
