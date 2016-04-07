@@ -151,9 +151,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn log<F>(&self, extra_indent: usize, f: F) where F: FnOnce() {
-        let indent = self.stack.len() - 1 + extra_indent;
+        let indent = self.stack.len() + extra_indent;
         if !TRACE_EXECUTION { return; }
-        for _ in 0..indent { print!("  "); }
+        for _ in 0..indent { print!("    "); }
         f();
         println!("");
     }
@@ -163,19 +163,19 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             let mut current_block = self.frame().next_block;
 
             loop {
-                self.log(0, || print!("{:?}", current_block));
+                self.log(0, || print!("// {:?}", current_block));
                 let current_mir = self.mir().clone(); // Cloning a reference.
                 let block_data = current_mir.basic_block_data(current_block);
 
                 for stmt in &block_data.statements {
-                    self.log(1, || print!("{:?}", stmt));
+                    self.log(0, || print!("{:?}", stmt));
                     let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
                     let result = self.eval_assignment(lvalue, rvalue);
                     try!(self.maybe_report(stmt.span, result));
                 }
 
                 let terminator = block_data.terminator();
-                self.log(1, || print!("{:?}", terminator.kind));
+                self.log(0, || print!("{:?}", terminator.kind));
 
                 let result = self.eval_terminator(terminator);
                 match try!(self.maybe_report(terminator.span, result)) {
