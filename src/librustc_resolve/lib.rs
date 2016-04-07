@@ -1902,7 +1902,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }).map_err(|error_reported| {
                         self.record_def(eq_pred.id, err_path_resolution());
                         if error_reported { return }
-                        resolve_error(self, eq_pred.span, ResolutionError::UndeclaredAssociatedType);
+                        let error_variant = ResolutionError::UndeclaredAssociatedType;
+                        resolve_error(self, eq_pred.span, error_variant);
                     }).unwrap_or(());
                 }
             }
@@ -3042,7 +3043,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.record_def(expr.id, err_path_resolution());
 
                     if let Ok(Def::Struct(..)) = type_res.map(|r| r.base_def) {
-                        let error_variant = ResolutionError::StructVariantUsedAsFunction(&path_name);
+                        let error_variant =
+                            ResolutionError::StructVariantUsedAsFunction(&path_name);
                         let mut err = resolve_struct_error(self, expr.span, error_variant);
 
                         let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
