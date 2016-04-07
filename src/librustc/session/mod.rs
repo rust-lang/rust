@@ -337,6 +337,16 @@ impl NodeIdAssigner for Session {
     fn diagnostic(&self) -> &errors::Handler {
         self.diagnostic()
     }
+
+    fn target_bitwidth(&self) -> u32 {
+        match self.target.int_type {
+            ast::IntTy::Is => bug!("target int type defined as isize"),
+            ast::IntTy::I64 => 64,
+            ast::IntTy::I32 => 32,
+            ast::IntTy::I16 => unimplemented!(),
+            ast::IntTy::I8 => unimplemented!(),
+        }
+    }
 }
 
 fn split_msg_into_multilines(msg: &str) -> Option<String> {

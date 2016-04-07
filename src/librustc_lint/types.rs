@@ -14,7 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc_const_math::ConstVal;
+use rustc_const_math::{ConstVal, ConstInt};
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::{FnvHashSet};
@@ -138,14 +138,13 @@ impl LateLintPass for TypeLimits {
 
                     if let Some(bits) = opt_ty_bits {
                         let exceeding = if let hir::ExprLit(ref lit) = r.node {
-                            if let ast::LitKind::Int(shift, _) = lit.node { shift >= bits }
-                            else { false }
+                            if let ConstVal::Integral(i) = *lit {
+                                i.is_negative() || i >= ConstInt::Infer(bits)
+                            } else { false }
                         } else {
                             match eval_const_expr_partial(cx.tcx, &r, ExprTypeChecked, None) {
                                 Ok(ConstVal::Integral(i)) => {
-                                    i.is_negative() || i.to_u64()
-                                                        .map(|i| i >= bits)
-                                                        .unwrap_or(true)
+                                    i.is_negative() || i >= ConstInt::Infer(bits)
                                 },
                                 _ => { false }
                             }
@@ -160,62 +159,63 @@ impl LateLintPass for TypeLimits {
             hir::ExprLit(ref lit) => {
                 match cx.tcx.node_id_to_type(e.id).sty {
                     ty::TyInt(t) => {
-                        match lit.node {
-                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
-                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
+                        match *lit {
+                            ConstVal::Integral(ConstInt::Infer(v)) => {
                                 let int_type = if let ast::IntTy::Is = t {
                                     cx.sess().target.int_type
                                 } else {
                                     t
                                 };
                                 let (_, max) = int_ty_range(int_type);
-                                let negative = self.negated_expr_id == e.id;
-
-                                // Detect literal value out of range [min, max] inclusive
-                                // avoiding use of -min to prevent overflow/panic
-                                if (negative && v > max as u64 + 1) ||
-                                   (!negative && v > max as u64) {
+                                if v > max as u64 {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                                  &format!("literal out of range for {:?}", t));
                                     return;
                                 }
-                            }
-                            _ => bug!()
-                        };
+                            },
+                            ConstVal::Integral(ConstInt::InferSigned(v)) => {
+                                let int_type = if let ast::IntTy::Is = t {
+                                    cx.sess().target.int_type
+                                } else {
+                                    t
+                                };
+                                let (min, max) = int_ty_range(int_type);
+                                if v < min || v > max {
+                                    cx.span_lint(OVERFLOWING_LITERALS, e.span,
+                                                 &format!("literal out of range for {:?}", t));
+                                    return;
+                                }
+                            },
+                            _ => bug!(),
+                        }
                     },
                     ty::TyUint(t) => {
-                        let uint_type = if let ast::UintTy::Us = t {
-                            cx.sess().target.uint_type
-                        } else {
-                            t
-                        };
-                        let (min, max) = uint_ty_range(uint_type);
-                        let lit_val: u64 = match lit.node {
-                            // _v is u8, within range by definition
-                            ast::LitKind::Byte(_v) => return,
-                            ast::LitKind::Int(v, _) => v,
-                            _ => bug!()
-                        };
-                        if lit_val < min || lit_val > max {
-                            cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         &format!("literal out of range for {:?}", t));
+                        match *lit {
+                            ConstVal::Integral(ConstInt::Infer(lit_val)) => {
+                                let uint_type = if let ast::UintTy::Us = t {
+                                    cx.sess().target.uint_type
+                                } else {
+                                    t
+                                };
+                                let (min, max) = uint_ty_range(uint_type);
+                                if lit_val < min || lit_val > max {
+                                    cx.span_lint(OVERFLOWING_LITERALS, e.span,
+                                                 &format!("literal out of range for {:?}", t));
+                                }
+                            },
+                            ConstVal::Integral(ConstInt::InferSigned(_)) => {
+                                forbid_unsigned_negation(cx.sess(), e.span);
+                            },
+                            _ => {},
                         }
                     },
                     ty::TyFloat(t) => {
                         let (min, max) = float_ty_range(t);
-                        let lit_val: f64 = match lit.node {
-                            ast::LitKind::Float(ref v, _) |
-                            ast::LitKind::FloatUnsuffixed(ref v) => {
-                                match v.parse() {
-                                    Ok(f) => f,
-                                    Err(_) => return
-                                }
+                        if let ConstVal::Float(lit_val, _) = *lit {
+                            if lit_val < min || lit_val > max {
+                                cx.span_lint(OVERFLOWING_LITERALS, e.span,
+                                             &format!("literal out of range for {:?}", t));
                             }
-                            _ => bug!()
-                        };
-                        if lit_val < min || lit_val > max {
-                            cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         &format!("literal out of range for {:?}", t));
                         }
                     },
                     _ => ()
@@ -298,8 +298,8 @@ impl LateLintPass for TypeLimits {
         fn check_limits(tcx: &TyCtxt, binop: hir::BinOp,
                         l: &hir::Expr, r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
-                (&hir::ExprLit(_), _) => (l, r, true),
-                (_, &hir::ExprLit(_)) => (r, l, false),
+                (&hir::ExprLit(ref lit), _) => (lit, r, true),
+                (_, &hir::ExprLit(ref lit)) => (lit, l, false),
                 _ => return true
             };
             // Normalize the binop so that the literal is always on the RHS in
@@ -312,24 +312,25 @@ impl LateLintPass for TypeLimits {
             match tcx.node_id_to_type(expr.id).sty {
                 ty::TyInt(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
-                    let lit_val: i64 = match lit.node {
-                        hir::ExprLit(ref li) => match li.node {
-                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
-                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => v as i64,
-                            _ => return true
+                    let lit_val: i64 = match *lit {
+                        ConstVal::Integral(ConstInt::InferSigned(v)) => v,
+                        ConstVal::Integral(ConstInt::Infer(v)) => v as i64,
+                        ConstVal::Integral(ConstInt::I8(v)) => v as i64,
+                        ConstVal::Integral(ConstInt::I16(v)) => v as i64,
+                        ConstVal::Integral(ConstInt::I32(v)) => v as i64,
+                        ConstVal::Integral(ConstInt::I64(v)) => v,
+                        ConstVal::Integral(ConstInt::Isize(v)) => {
+                            v.as_i64(tcx.sess.target.int_type)
                         },
-                        _ => bug!()
+                        _ => return true,
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
                 ty::TyUint(uint_ty) => {
                     let (min, max): (u64, u64) = uint_ty_range(uint_ty);
-                    let lit_val: u64 = match lit.node {
-                        hir::ExprLit(ref li) => match li.node {
-                            ast::LitKind::Int(v, _) => v,
-                            _ => return true
-                        },
-                        _ => bug!()
+                    let lit_val: u64 = match *lit {
+                        ConstVal::Integral(i) => i.to_u64_unchecked(),
+                        _ => return true,
                     };
                     is_valid(norm_binop, lit_val, min, max)
                 }
@@ -344,14 +345,13 @@ impl LateLintPass for TypeLimits {
                 _ => false
             }
         }
-
-        fn forbid_unsigned_negation(cx: &LateContext, span: Span) {
-            cx.sess()
-              .struct_span_err_with_code(span, "unary negation of unsigned integer", "E0519")
-              .span_help(span, "use a cast or the `!` operator")
-              .emit();
-        }
     }
+}
+
+fn forbid_unsigned_negation(sess: &Session, span: Span) {
+    sess.struct_span_err_with_code(span, "unary negation of unsigned integer", "E0519")
+        .span_help(span, "use a cast or the `!` operator")
+        .emit();
 }
 
 declare_lint! {

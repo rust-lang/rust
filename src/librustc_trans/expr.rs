@@ -82,6 +82,8 @@ use type_::Type;
 
 use rustc::hir;
 
+use rustc_const_math::ConstVal;
+
 use syntax::{ast, codemap};
 use syntax::parse::token::InternedString;
 use std::fmt;
@@ -675,7 +677,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
 
         }
-        hir::ExprLit(ref lit) => trans_immediate_lit(bcx, expr, &lit),
+        hir::ExprLit(ref lit) => trans_immediate_lit(bcx, expr, lit),
         hir::ExprBinary(op, ref lhs, ref rhs) => {
             trans_binary(bcx, expr, op, &lhs, &rhs)
         }
@@ -1103,18 +1105,9 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                       dest,
                       expr.debug_loc())
         }
-        hir::ExprLit(ref lit) => {
-            match lit.node {
-                ast::LitKind::Str(ref s, _) => {
-                    tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
-                }
-                _ => {
-                    span_bug!(expr.span,
-                              "trans_rvalue_dps_unadjusted shouldn't be \
-                              translating this type of literal")
-                }
-            }
-        }
+        hir::ExprLit(ConstVal::Str(ref s)) => tvec::trans_lit_str(bcx, expr, (*s).clone(), dest),
+        hir::ExprLit(_) => span_bug!(expr.span, "trans_rvalue_dps_unadjusted shouldn't be \
+                                                 translating this type of literal"),
         hir::ExprVec(..) | hir::ExprRepeat(..) => {
             tvec::trans_fixed_vstore(bcx, expr, dest)
         }
@@ -1459,7 +1452,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn trans_immediate_lit<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    expr: &hir::Expr,
-                                   lit: &ast::Lit)
+                                   lit: &ConstVal)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -2444,11 +2437,8 @@ fn expr_kind(tcx: &TyCtxt, expr: &hir::Expr) -> ExprKind {
         hir::ExprClosure(..) |
         hir::ExprBlock(..) |
         hir::ExprRepeat(..) |
+        hir::ExprLit(ConstVal::Str(_)) |
         hir::ExprVec(..) => {
-            ExprKind::RvalueDps
-        }
-
-        hir::ExprLit(ref lit) if lit.node.is_str() => {
             ExprKind::RvalueDps
         }
 

@@ -38,6 +38,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment;
 use rustc::traits::{self, ProjectionMode};
 use rustc::hir::map as hir_map;
+use rustc_const_math::ConstVal;
 use util::nodemap::{NodeSet};
 use lint::{Level, LateContext, LintContext, LintArray, Lint};
 use lint::{LintPass, LateLintPass};
@@ -74,11 +75,9 @@ impl LintPass for WhileTrue {
 impl LateLintPass for WhileTrue {
     fn check_expr(&mut self, cx: &LateContext, e: &hir::Expr) {
         if let hir::ExprWhile(ref cond, _, _) = e.node {
-            if let hir::ExprLit(ref lit) = cond.node {
-                if let ast::LitKind::Bool(true) = lit.node {
-                    cx.span_lint(WHILE_TRUE, e.span,
-                                 "denote infinite loops with loop { ... }");
-                }
+            if let hir::ExprLit(ConstVal::Bool(true)) = cond.node {
+                cx.span_lint(WHILE_TRUE, e.span,
+                             "denote infinite loops with loop { ... }");
             }
         }
     }

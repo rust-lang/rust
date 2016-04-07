@@ -37,7 +37,7 @@ use rustc::hir::{Pat, PatKind};
 use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKind};
 use rustc_back::slice;
 
-use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
+use syntax::ast::{DUMMY_NODE_ID, NodeId};
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
@@ -423,13 +423,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
 }
 
 fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
-    let node = match value {
-        &ConstVal::Bool(b) => ast::LitKind::Bool(b),
-        _ => bug!()
-    };
     P(hir::Expr {
         id: 0,
-        node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
+        node: hir::ExprLit(value.clone()),
         span: DUMMY_SP,
         attrs: None,
     })

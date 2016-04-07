@@ -362,6 +362,10 @@ pub trait NodeIdAssigner {
     fn next_node_id(&self) -> NodeId;
     fn peek_node_id(&self) -> NodeId;
 
+    fn target_bitwidth(&self) -> u32 {
+        panic!("this ID assigner doesn't know the compilation target's bitwidth");
+    }
+
     fn diagnostic(&self) -> &errors::Handler {
         panic!("this ID assigner cannot emit diagnostics")
     }

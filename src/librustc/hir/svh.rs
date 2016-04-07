@@ -138,6 +138,7 @@ mod svh_visitor {
     use hir::intravisit::{Visitor, FnKind};
     use hir::*;
     use hir;
+    use rustc_const_math::ConstVal;
 
     use std::hash::{Hash, SipHasher};
 
@@ -232,7 +233,7 @@ mod svh_visitor {
         SawExprTup,
         SawExprBinary(hir::BinOp_),
         SawExprUnary(hir::UnOp),
-        SawExprLit(ast::LitKind),
+        SawExprLit(ConstVal),
         SawExprCast,
         SawExprType,
         SawExprIf,
@@ -260,7 +261,7 @@ mod svh_visitor {
             ExprTup(..)              => SawExprTup,
             ExprBinary(op, _, _)     => SawExprBinary(op.node),
             ExprUnary(op, _)         => SawExprUnary(op),
-            ExprLit(ref lit)         => SawExprLit(lit.node.clone()),
+            ExprLit(ref lit)         => SawExprLit(lit.clone()),
             ExprCast(..)             => SawExprCast,
             ExprType(..)             => SawExprType,
             ExprIf(..)               => SawExprIf,

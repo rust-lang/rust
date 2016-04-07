@@ -31,8 +31,8 @@ use rustc::ty::{self, Ty};
 
 use rustc::hir;
 use rustc_const_eval::eval_repeat_count;
+use rustc_const_math::ConstVal;
 
-use syntax::ast;
 use syntax::parse::token::InternedString;
 
 #[derive(Copy, Clone, Debug)]
@@ -83,15 +83,13 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vec_ty = node_id_type(bcx, slice_expr.id);
 
     // Handle the "..." case (returns a slice since strings are always unsized):
-    if let hir::ExprLit(ref lit) = content_expr.node {
-        if let ast::LitKind::Str(ref s, _) = lit.node {
-            let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
-            bcx = trans_lit_str(bcx,
-                                content_expr,
-                                s.clone(),
-                                SaveIn(scratch.val));
-            return DatumBlock::new(bcx, scratch.to_expr_datum());
-        }
+    if let hir::ExprLit(ConstVal::Str(ref s)) = content_expr.node {
+        let scratch = rvalue_scratch_datum(bcx, vec_ty, "");
+        bcx = trans_lit_str(bcx,
+                            content_expr,
+                            s.clone(),
+                            SaveIn(scratch.val));
+        return DatumBlock::new(bcx, scratch.to_expr_datum());
     }
 
     // Handle the &[...] case:
@@ -166,27 +164,20 @@ fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            vt, dest, vstore_expr);
 
     match content_expr.node {
-        hir::ExprLit(ref lit) => {
-            match lit.node {
-                ast::LitKind::Str(ref s, _) => {
-                    match dest {
-                        Ignore => return bcx,
-                        SaveIn(lldest) => {
-                            let bytes = s.len();
-                            let llbytes = C_uint(bcx.ccx(), bytes);
-                            let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
-                            if !bcx.unreachable.get() {
-                                base::call_memcpy(&B(bcx), lldest, llcstr, llbytes, 1);
-                            }
-                            return bcx;
-                        }
+        hir::ExprLit(ConstVal::Str(ref s)) => {
+            match dest {
+                Ignore => return bcx,
+                SaveIn(lldest) => {
+                    let bytes = s.len();
+                    let llbytes = C_uint(bcx.ccx(), bytes);
+                    let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
+                    if !bcx.unreachable.get() {
+                        base::call_memcpy(&B(bcx), lldest, llcstr, llbytes, 1);
                     }
-                }
-                _ => {
-                    span_bug!(content_expr.span, "unexpected evec content");
+                    return bcx;
                 }
             }
-        }
+        },
         hir::ExprVec(ref elements) => {
             match dest {
                 Ignore => {
@@ -258,14 +249,7 @@ fn elements_required(bcx: Block, content_expr: &hir::Expr) -> usize {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        hir::ExprLit(ref lit) => {
-            match lit.node {
-                ast::LitKind::Str(ref s, _) => s.len(),
-                _ => {
-                    span_bug!(content_expr.span, "unexpected evec content")
-                }
-            }
-        },
+        hir::ExprLit(ConstVal::Str(ref s)) => s.len(),
         hir::ExprVec(ref es) => es.len(),
         hir::ExprRepeat(_, ref count_expr) => {
             eval_repeat_count(bcx.tcx(), &count_expr)

@@ -564,30 +564,24 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
         // unary neg literals already got their sign during creation
         if let hir::ExprLit(ref lit) = inner.node {
             use syntax::ast::*;
-            use syntax::ast::LitIntType::*;
             const I8_OVERFLOW: u64 = ::std::i8::MAX as u64 + 1;
             const I16_OVERFLOW: u64 = ::std::i16::MAX as u64 + 1;
             const I32_OVERFLOW: u64 = ::std::i32::MAX as u64 + 1;
             const I64_OVERFLOW: u64 = ::std::i64::MAX as u64 + 1;
-            match (&lit.node, ety.map(|t| &t.sty)) {
-                (&LitKind::Int(I8_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I8))) |
-                (&LitKind::Int(I8_OVERFLOW, Signed(IntTy::I8)), _) => {
+            match (lit, ety.map(|t| &t.sty)) {
+                (&Integral(Infer(I8_OVERFLOW)), Some(&ty::TyInt(IntTy::I8))) => {
                     return Ok(Integral(I8(::std::i8::MIN)))
                 },
-                (&LitKind::Int(I16_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I16))) |
-                (&LitKind::Int(I16_OVERFLOW, Signed(IntTy::I16)), _) => {
+                (&Integral(Infer(I16_OVERFLOW)), Some(&ty::TyInt(IntTy::I16))) => {
                     return Ok(Integral(I16(::std::i16::MIN)))
                 },
-                (&LitKind::Int(I32_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I32))) |
-                (&LitKind::Int(I32_OVERFLOW, Signed(IntTy::I32)), _) => {
+                (&Integral(Infer(I32_OVERFLOW)), Some(&ty::TyInt(IntTy::I32))) => {
                     return Ok(Integral(I32(::std::i32::MIN)))
                 },
-                (&LitKind::Int(I64_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I64))) |
-                (&LitKind::Int(I64_OVERFLOW, Signed(IntTy::I64)), _) => {
+                (&Integral(Infer(I64_OVERFLOW)), Some(&ty::TyInt(IntTy::I64))) => {
                     return Ok(Integral(I64(::std::i64::MIN)))
                 },
-                (&LitKind::Int(n, Unsuffixed), Some(&ty::TyInt(IntTy::Is))) |
-                (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
+                (&Integral(Infer(n)), Some(&ty::TyInt(IntTy::Is))) => {
                     match tcx.sess.target.int_type {
                         IntTy::I32 => if n == I32_OVERFLOW {
                             return Ok(Integral(Isize(Is32(::std::i32::MIN))));
@@ -806,7 +800,12 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           debug!("const call({:?})", call_args);
           eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
       },
-      hir::ExprLit(ref lit) => lit_to_const(&lit.node, tcx, ety, lit.span)?,
+      hir::ExprLit(ConstVal::Integral(i)) => if let Some(ref ty) = ety {
+          ConstVal::Integral(infer(i, tcx, &ty.sty, e.span)?)
+      } else {
+          ConstVal::Integral(i)
+      },
+      hir::ExprLit(ref cv) => cv.clone(),
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
@@ -1113,63 +1112,6 @@ fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult
         Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
         Function { .. } => Err(UnimplementedConstVal("casting fn pointers")),
         _ => Err(CannotCast),
-    }
-}
-
-fn lit_to_const<'tcx>(lit: &ast::LitKind,
-                      tcx: &TyCtxt<'tcx>,
-                      ty_hint: Option<Ty<'tcx>>,
-                      span: Span,
-                      ) -> Result<ConstVal, ConstEvalErr> {
-    use syntax::ast::*;
-    use syntax::ast::LitIntType::*;
-    match *lit {
-        LitKind::Str(ref s, _) => Ok(Str((*s).clone())),
-        LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
-        LitKind::Byte(n) => Ok(Integral(U8(n))),
-        LitKind::Int(n, Signed(ity)) => {
-            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
-        },
-
-        LitKind::Int(n, Unsuffixed) => {
-            match ty_hint.map(|t| &t.sty) {
-                Some(&ty::TyInt(ity)) => {
-                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
-                },
-                Some(&ty::TyUint(uty)) => {
-                    infer(Infer(n), tcx, &ty::TyUint(uty), span).map(Integral)
-                },
-                None => Ok(Integral(Infer(n))),
-                Some(&ty::TyEnum(ref adt, _)) => {
-                    let hints = tcx.lookup_repr_hints(adt.did);
-                    let int_ty = tcx.enum_repr_type(hints.iter().next());
-                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty, span).map(Integral)
-                },
-                Some(ty_hint) => bug!("bad ty_hint: {:?}, {:?}", ty_hint, lit),
-            }
-        },
-        LitKind::Int(n, Unsigned(ity)) => {
-            infer(Infer(n), tcx, &ty::TyUint(ity), span).map(Integral)
-        },
-
-        LitKind::Float(ref n, fty) => {
-            if let Ok(x) = n.parse::<f64>() {
-                Ok(Float(x, Some(fty)))
-            } else {
-                // FIXME(#31407) this is only necessary because float parsing is buggy
-                span_bug!(span, "could not evaluate float literal (see issue #31407)");
-            }
-        }
-        LitKind::FloatUnsuffixed(ref n) => {
-            if let Ok(x) = n.parse::<f64>() {
-                Ok(Float(x, None))
-            } else {
-                // FIXME(#31407) this is only necessary because float parsing is buggy
-                span_bug!(span, "could not evaluate float literal (see issue #31407)");
-            }
-        }
-        LitKind::Bool(b) => Ok(Bool(b)),
-        LitKind::Char(c) => Ok(Char(c)),
     }
 }
 

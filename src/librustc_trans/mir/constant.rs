@@ -82,7 +82,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let u = v.as_u64(ccx.tcx().sess.target.uint_type);
                 C_integral(Type::int(ccx), u, false)
             },
-            ConstVal::Integral(Infer(v)) => C_integral(llty, v as u64, false),
+            ConstVal::Integral(Infer(v)) => C_integral(llty, v, false),
             ConstVal::Integral(InferSigned(v)) => C_integral(llty, v as u64, true),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),

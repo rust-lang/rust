@@ -23,10 +23,13 @@ use syntax::print::pp::Breaks::{Consistent, Inconsistent};
 use syntax::print::pprust::{self as ast_pp, PrintState};
 use syntax::ptr::P;
 
+use rustc_const_math::ConstVal;
+
 use hir;
 use hir::{Crate, PatKind, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 
 use std::io::{self, Write, Read};
+use std::ascii;
 
 pub enum AnnNode<'a> {
     NodeName(&'a ast::Name),
@@ -1303,6 +1306,29 @@ impl<'a> State<'a> {
         self.print_expr_maybe_paren(expr)
     }
 
+    fn print_const_val(&mut self, const_val: &ConstVal) -> io::Result<()> {
+        match *const_val {
+            ConstVal::Float(f, None) => word(&mut self.s, &format!("{}", f)),
+            ConstVal::Float(f, Some(t)) => {
+                word(&mut self.s, &format!("{}_{}", f, t.ty_to_string()))
+            },
+            ConstVal::Integral(ref i) => word(&mut self.s, &format!("{}", i)),
+            ConstVal::Str(ref s) => word(&mut self.s, &format!("{:?}", s)),
+            ConstVal::ByteStr(ref v) => {
+                let mut escaped: String = String::new();
+                for &ch in v.iter() {
+                    escaped.extend(ascii::escape_default(ch)
+                                         .map(|c| c as char));
+                }
+                word(&mut self.s, &format!("b\"{}\"", escaped))
+            },
+            ConstVal::Bool(true) => word(&mut self.s, "true"),
+            ConstVal::Bool(false) => word(&mut self.s, "false"),
+            ConstVal::Char(c) => word(&mut self.s, &format!("{:?}", c)),
+            _ => unimplemented!(),
+        }
+    }
+
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {
         self.maybe_print_comment(expr.span.lo)?;
         self.ibox(indent_unit)?;
@@ -1339,8 +1365,8 @@ impl<'a> State<'a> {
             hir::ExprAddrOf(m, ref expr) => {
                 self.print_expr_addr_of(m, &expr)?;
             }
-            hir::ExprLit(ref lit) => {
-                self.print_literal(&lit)?;
+            hir::ExprLit(ref const_val) => {
+                self.print_const_val(&const_val)?;
             }
             hir::ExprCast(ref expr, ref ty) => {
                 self.print_expr(&expr)?;

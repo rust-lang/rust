@@ -76,6 +76,8 @@ use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
 
+use rustc_const_math::{ConstVal, ConstInt, ConstIsize, ConstUsize};
+
 use std::cell::{Cell, RefCell};
 
 pub struct LoweringContext<'a> {
@@ -1147,7 +1149,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let ohs = lower_expr(lctx, ohs);
                 hir::ExprUnary(op, ohs)
             }
-            ExprKind::Lit(ref l) => hir::ExprLit(P((**l).clone())),
+            ExprKind::Lit(ref l) => hir::ExprLit(lower_lit(lctx, &l.node, l.span)),
             ExprKind::Cast(ref expr, ref ty) => {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprCast(expr, lower_ty(lctx, ty))
@@ -1672,6 +1674,63 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
         span: e.span,
         attrs: e.attrs.clone(),
     })
+}
+
+pub fn lower_lit(lctx: &LoweringContext, lit: &LitKind, span: Span) -> ConstVal {
+    use syntax::ast::LitIntType::*;
+    use syntax::ast::LitKind::*;
+    use syntax::ast::IntTy::*;
+    use syntax::ast::UintTy::*;
+    match *lit {
+        Str(ref s, _) => ConstVal::Str((*s).clone()),
+        ByteStr(ref data) => ConstVal::ByteStr(data.clone()),
+        Byte(n) => ConstVal::Integral(ConstInt::U8(n)),
+        Int(n, Signed(I8)) => ConstVal::Integral(ConstInt::I8(n as i64 as i8)),
+        Int(n, Signed(I16)) => ConstVal::Integral(ConstInt::I16(n as i64 as i16)),
+        Int(n, Signed(I32)) => ConstVal::Integral(ConstInt::I32(n as i64 as i32)),
+        Int(n, Signed(I64)) => ConstVal::Integral(ConstInt::I64(n as i64)),
+        Int(n, Signed(Is)) => {
+            ConstVal::Integral(match lctx.id_assigner.target_bitwidth() {
+                32 => ConstInt::Isize(ConstIsize::Is32(n as i64 as i32)),
+                64 => ConstInt::Isize(ConstIsize::Is64(n as i64)),
+                _ => unimplemented!(),
+            })
+        },
+        Int(n, Unsigned(U8)) => ConstVal::Integral(ConstInt::U8(n as u8)),
+        Int(n, Unsigned(U16)) => ConstVal::Integral(ConstInt::U16(n as u16)),
+        Int(n, Unsigned(U32)) => ConstVal::Integral(ConstInt::U32(n as u32)),
+        Int(n, Unsigned(U64)) => ConstVal::Integral(ConstInt::U64(n)),
+        Int(n, Unsigned(Us)) => {
+            ConstVal::Integral(match lctx.id_assigner.target_bitwidth() {
+                32 => ConstInt::Usize(ConstUsize::Us32(n as u32)),
+                64 => ConstInt::Usize(ConstUsize::Us64(n)),
+                _ => unimplemented!(),
+            })
+        },
+        Int(n, Unsuffixed) => ConstVal::Integral(ConstInt::Infer(n)),
+        Float(ref f, fty) => {
+            if let Ok(x) = f.parse::<f64>() {
+                ConstVal::Float(x, Some(fty))
+            } else {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                lctx.id_assigner
+                    .diagnostic()
+                    .span_bug(span, "could not evaluate float literal (see issue #31407)");
+            }
+        },
+        FloatUnsuffixed(ref f) => {
+            if let Ok(x) = f.parse::<f64>() {
+                ConstVal::Float(x, None)
+            } else {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                lctx.id_assigner
+                    .diagnostic()
+                    .span_bug(span, "could not evaluate float literal (see issue #31407)");
+            }
+        },
+        Bool(b) => ConstVal::Bool(b),
+        Char(c) => ConstVal::Char(c),
+    }
 }
 
 pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> hir::Stmt {

@@ -246,15 +246,9 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                                         PassArgs::ByValue, arg.to_ref(), vec![])
                 } else {
                     // FIXME runtime-overflow
-                    if let hir::ExprLit(_) = arg.node {
-                        ExprKind::Literal {
-                            literal: cx.const_eval_literal(self),
-                        }
-                    } else {
-                        ExprKind::Unary {
-                            op: UnOp::Neg,
-                            arg: arg.to_ref(),
-                        }
+                    ExprKind::Unary {
+                        op: UnOp::Neg,
+                        arg: arg.to_ref(),
                     }
                 }
             }
