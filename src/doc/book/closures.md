@@ -371,14 +371,13 @@ assert_eq!(6, answer);
 This gives us these long, related errors:
 
 ```text
-error: the trait `core::marker::Sized` is not implemented for the type
-`core::ops::Fn(i32) -> i32` [E0277]
+error: the trait bound `core::ops::Fn(i32) -> i32 : core::marker::Sized` is not satisfied [E0277]
 fn factory() -> (Fn(i32) -> i32) {
                 ^~~~~~~~~~~~~~~~
 note: `core::ops::Fn(i32) -> i32` does not have a constant size known at compile-time
 fn factory() -> (Fn(i32) -> i32) {
                 ^~~~~~~~~~~~~~~~
-error: the trait `core::marker::Sized` is not implemented for the type `core::ops::Fn(i32) -> i32` [E0277]
+error: the trait bound `core::ops::Fn(i32) -> i32 : core::marker::Sized` is not satisfied [E0277]
 let f = factory();
     ^
 note: `core::ops::Fn(i32) -> i32` does not have a constant size known at compile-time

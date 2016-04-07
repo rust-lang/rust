@@ -16,5 +16,5 @@ use std::panic::RecoverSafe;
 fn assert<T: RecoverSafe + ?Sized>() {}
 
 fn main() {
-    assert::<&mut i32>(); //~ ERROR: RecoverSafe` is not implemented
+    assert::<&mut i32>(); //~ ERROR: RecoverSafe` is not satisfied
 }

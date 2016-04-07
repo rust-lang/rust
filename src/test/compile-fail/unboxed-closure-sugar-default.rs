@@ -29,7 +29,7 @@ fn test<'a,'b>() {
 
     // In angle version, we supply something other than the default
     eq::< Foo<(isize,),isize,Output=()>,      Foo(isize)                      >();
-    //~^ ERROR not implemented
+    //~^ ERROR E0277
 
     // Supply default explicitly.
     eq::< Foo<(isize,),(isize,),Output=()>,   Foo(isize)                      >();

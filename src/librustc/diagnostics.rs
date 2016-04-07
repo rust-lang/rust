@@ -1006,8 +1006,7 @@ fn some_func<T: Foo>(foo: T) {
 fn main() {
     // we now call the method with the i32 type, which doesn't implement
     // the Foo trait
-    some_func(5i32); // error: the trait `Foo` is not implemented for the
-                     //        type `i32`
+    some_func(5i32); // error: the trait bound `i32 : Foo` is not satisfied
 }
 ```
 

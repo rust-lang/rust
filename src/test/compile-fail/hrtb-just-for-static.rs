@@ -31,7 +31,7 @@ fn give_any() {
 struct StaticInt;
 impl Foo<&'static isize> for StaticInt { }
 fn give_static() {
-    want_hrtb::<StaticInt>() //~ ERROR `for<'a> Foo<&'a isize>` is not implemented
+    want_hrtb::<StaticInt>() //~ ERROR `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
 }
 
 fn main() { }
