@@ -15,7 +15,7 @@ use ty;
 use ty::fast_reject;
 use ty::{Ty, TyCtxt, TraitRef};
 use std::borrow::{Borrow};
-use std::cell::{Cell, Ref, RefCell};
+use std::cell::{Cell, RefCell};
 use syntax::ast::Name;
 use hir;
 use util::nodemap::FnvHashMap;
@@ -43,10 +43,17 @@ pub struct TraitDef<'tcx> {
     /// for resolving `X::Foo` type markers.
     pub associated_type_names: Vec<Name>,
 
-    // Impls of this trait. To allow for quicker lookup, the impls are indexed
-    // by a simplified version of their Self type: impls with a simplifiable
-    // Self are stored in nonblanket_impls keyed by it, while all other impls
-    // are stored in blanket_impls.
+    // Impls of a trait. To allow for quicker lookup, the impls are indexed by a
+    // simplified version of their `Self` type: impls with a simplifiable `Self`
+    // are stored in `nonblanket_impls` keyed by it, while all other impls are
+    // stored in `blanket_impls`.
+    //
+    // A similar division is used within `specialization_graph`, but the ones
+    // here are (1) stored as a flat list for the trait and (2) populated prior
+    // to -- and used while -- determining specialization order.
+    //
+    // FIXME: solve the reentrancy issues and remove these lists in favor of the
+    // ones in `specialization_graph`.
     //
     // These lists are tracked by `DepNode::TraitImpls`; we don't use
     // a DepTrackingMap but instead have the `TraitDef` insert the
@@ -184,7 +191,7 @@ impl<'tcx> TraitDef<'tcx> {
             // if the impl is non-local, it's placed directly into the
             // specialization graph using parent information drawn from metadata.
             self.specialization_graph.borrow_mut()
-                .record_impl_from_cstore(parent_impl, impl_def_id)
+                .record_impl_from_cstore(tcx, parent_impl, impl_def_id)
         }
     }
 
@@ -261,14 +268,6 @@ impl<'tcx> TraitDef<'tcx> {
             }
         }
     }
-
-    pub fn borrow_impl_lists<'s>(&'s self, tcx: &TyCtxt<'tcx>)
-                                 -> (Ref<'s, Vec<DefId>>,
-                                     Ref<'s, FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>>) {
-        self.read_trait_impls(tcx);
-        (self.blanket_impls.borrow(), self.nonblanket_impls.borrow())
-    }
-
 }
 
 bitflags! {
