@@ -49,5 +49,5 @@ pub fn main() {
     //~| found `Bar1`
     //~| expected trait ToBar
     //~| found struct `Bar1`
-    //~| ERROR the trait `std::marker::Sized` is not implemented for the type `ToBar`
+    //~| ERROR `ToBar: std::marker::Sized` is not satisfied
 }

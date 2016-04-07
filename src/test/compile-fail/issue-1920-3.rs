@@ -20,5 +20,5 @@ fn assert_clone<T>() where T : Clone { }
 
 fn main() {
     assert_clone::<foo::core::sync::atomic::AtomicBool>();
-    //~^ ERROR the trait `core::clone::Clone` is not implemented for the type `core::sync::atomic::
+    //~^ ERROR `core::sync::atomic::AtomicBool: core::clone::Clone` is not satisfied
 }

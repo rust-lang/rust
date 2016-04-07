@@ -38,12 +38,12 @@ pub fn f1_int_uint() {
 
 pub fn f1_uint_uint() {
     f1(2u32, 4u32);
-    //~^ ERROR the trait `Foo` is not implemented
+    //~^ ERROR `u32: Foo` is not satisfied
 }
 
 pub fn f1_uint_int() {
     f1(2u32, 4i32);
-    //~^ ERROR the trait `Foo` is not implemented
+    //~^ ERROR `u32: Foo` is not satisfied
 }
 
 pub fn f2_int() {

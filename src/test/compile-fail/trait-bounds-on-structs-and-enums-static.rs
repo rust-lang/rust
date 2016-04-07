@@ -17,7 +17,7 @@ struct Foo<T:Trait> {
 }
 
 static X: Foo<usize> = Foo {
-//~^ ERROR not implemented
+//~^ ERROR E0277
     x: 1,
 };
 

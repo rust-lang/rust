@@ -56,8 +56,8 @@ v[j];
 Indexing with a non-`usize` type gives an error that looks like this:
 
 ```text
-error: the trait `core::ops::Index<i32>` is not implemented for the type
-`collections::vec::Vec<_>` [E0277]
+error: the trait bound `collections::vec::Vec<_> : core::ops::Index<i32>`
+is not satisfied [E0277]
 v[j];
 ^~~~
 note: the type `collections::vec::Vec<_>` cannot be indexed by `i32`

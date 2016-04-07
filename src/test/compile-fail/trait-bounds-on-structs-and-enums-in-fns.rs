@@ -21,10 +21,10 @@ enum Bar<T:Trait> {
 }
 
 fn explode(x: Foo<u32>) {}
-//~^ ERROR not implemented
+//~^ ERROR E0277
 
 fn kaboom(y: Bar<f32>) {}
-//~^ ERROR not implemented
+//~^ ERROR E0277
 
 fn main() {
 }

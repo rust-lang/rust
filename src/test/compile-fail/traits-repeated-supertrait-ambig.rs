@@ -33,21 +33,21 @@ impl CompareTo<u64> for i64 {
 impl CompareToInts for i64 { }
 
 fn with_obj(c: &CompareToInts) -> bool {
-    c.same_as(22) //~ ERROR `CompareTo<i32>` is not implemented
+    c.same_as(22) //~ ERROR `CompareToInts: CompareTo<i32>` is not satisfied
 }
 
 fn with_trait<C:CompareToInts>(c: &C) -> bool {
-    c.same_as(22) //~ ERROR `CompareTo<i32>` is not implemented
+    c.same_as(22) //~ ERROR `C: CompareTo<i32>` is not satisfied
 }
 
 fn with_ufcs1<C:CompareToInts>(c: &C) -> bool {
-    CompareToInts::same_as(c, 22) //~ ERROR `CompareTo<i32>` is not implemented
+    CompareToInts::same_as(c, 22) //~ ERROR `CompareToInts: CompareTo<i32>` is not satisfied
 }
 
 fn with_ufcs2<C:CompareToInts>(c: &C) -> bool {
-    CompareTo::same_as(c, 22) //~ ERROR `CompareTo<i32>` is not implemented
+    CompareTo::same_as(c, 22) //~ ERROR `C: CompareTo<i32>` is not satisfied
 }
 
 fn main() {
-    assert_eq!(22_i64.same_as(22), true); //~ ERROR `CompareTo<i32>` is not implemented
+    assert_eq!(22_i64.same_as(22), true); //~ ERROR `i64: CompareTo<i32>` is not satisfied
 }
