@@ -1363,15 +1363,16 @@ fn rewrite_fn_base(context: &RewriteContext,
     // Return type.
     if !ret_str.is_empty() {
         let ret_should_indent = match context.config.fn_args_layout {
+            // If our args are block layout then we surely must have space.
             FnArgLayoutStyle::Block if put_args_in_block => false,
             FnArgLayoutStyle::BlockAlways => false,
             _ => {
+                // If we've already gone multi-line, or the return type would push
+                // over the max width, then put the return type on a new line.
                 result.contains("\n") || multi_line_ret_str ||
                 result.len() + indent.width() + ret_str_len > context.config.max_width
             }
         };
-        // If we've already gone multi-line, or the return type would push
-        // over the max width, then put the return type on a new line.
         let ret_indent = if ret_should_indent {
             let indent = match context.config.fn_return_indent {
                 ReturnIndent::WithWhereClause => indent + 4,
@@ -1423,13 +1424,13 @@ fn rewrite_fn_base(context: &RewriteContext,
         }
     }
 
-    let where_compressed = match context.config.where_density {
+    let should_compress_where = match context.config.where_density {
         Density::Compressed => !result.contains('\n') || put_args_in_block,
         Density::CompressedIfEmpty => !has_body && !result.contains('\n'),
         _ => false,
     } || (put_args_in_block && ret_str.is_empty());
 
-    let where_density = if where_compressed {
+    let where_density = if should_compress_where {
         Density::Compressed
     } else {
         Density::Tall
