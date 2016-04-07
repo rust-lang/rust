@@ -24,6 +24,17 @@ CFG_PRERELEASE_VERSION=.1
 # versions in the same place
 CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(CFG_HASH_COMMAND))
 
+# A magic value that allows the compiler to use unstable features during the
+# bootstrap even when doing so would normally be an error because of feature
+# staging or because the build turns on warnings-as-errors and unstable features
+# default to warnings. The build has to match this key in an env var.
+#
+# This value is keyed off the release to ensure that all compilers for one
+# particular release have the same bootstrap key. Note that this is
+# intentionally not "secure" by any definition, this is largely just a deterrent
+# from users enabling unstable features on the stable compiler.
+CFG_BOOTSTRAP_KEY=$(CFG_FILENAME_EXTRA)
+
 ifeq ($(CFG_RELEASE_CHANNEL),stable)
 # This is the normal semver version string, e.g. "0.12.0", "0.12.0-nightly"
 CFG_RELEASE=$(CFG_RELEASE_NUM)
