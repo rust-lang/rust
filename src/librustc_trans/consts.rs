@@ -23,7 +23,7 @@ use base::{self, exported_name, imported_name, push_ctxt};
 use callee::Callee;
 use collector::{self, TransItem};
 use common::{type_is_sized, C_nil, const_get_elt};
-use common::{CrateContext, C_integral, C_floating, C_bool, C_str_slice, C_bytes, val_ty};
+use common::{CrateContext, C_integral, C_floating_f64, C_bool, C_str_slice, C_bytes, val_ty};
 use common::{C_struct, C_undef, const_to_opt_int, const_to_opt_uint, VariantInfo, C_uint};
 use common::{type_is_fat_ptr, Field, C_vector, C_array, C_null};
 use datum::{Datum, Lvalue};
@@ -39,68 +39,74 @@ use rustc::ty::adjustment::{AdjustUnsafeFnPointer, AdjustMutToConstPointer};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::cast::{CastTy,IntTy};
 use util::nodemap::NodeMap;
-use rustc_const_math::{ConstInt, ConstMathErr, ConstUsize, ConstIsize};
+use rustc_const_math::{ConstInt, ConstMathErr, ConstUsize, ConstIsize, ConstVal};
 
 use rustc::hir;
 
 use std::ffi::{CStr, CString};
 use std::borrow::Cow;
 use libc::c_uint;
-use syntax::ast::{self, LitKind};
+use syntax::ast;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::parse::token;
 use syntax::ptr::P;
 
 pub type FnArgMap<'a> = Option<&'a NodeMap<ValueRef>>;
 
-pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ast::Lit)
+pub fn const_lit(cx: &CrateContext, e: &hir::Expr, lit: &ConstVal)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     debug!("const_lit: {:?}", lit);
-    match lit.node {
-        LitKind::Byte(b) => C_integral(Type::uint_from_ty(cx, ast::UintTy::U8), b as u64, false),
-        LitKind::Char(i) => C_integral(Type::char(cx), i as u64, false),
-        LitKind::Int(i, ast::LitIntType::Signed(t)) => {
-            C_integral(Type::int_from_ty(cx, t), i, true)
-        }
-        LitKind::Int(u, ast::LitIntType::Unsigned(t)) => {
-            C_integral(Type::uint_from_ty(cx, t), u, false)
-        }
-        LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
-            let lit_int_ty = cx.tcx().node_id_to_type(e.id);
-            match lit_int_ty.sty {
-                ty::TyInt(t) => {
-                    C_integral(Type::int_from_ty(cx, t), i as u64, true)
-                }
-                ty::TyUint(t) => {
-                    C_integral(Type::uint_from_ty(cx, t), i as u64, false)
-                }
-                _ => span_bug!(lit.span,
-                        "integer literal has type {:?} (expected int \
-                         or usize)",
-                        lit_int_ty)
+    match *lit {
+        ConstVal::Integral(ConstInt::I8(i)) => C_integral(Type::i8(cx), i as u64, true),
+        ConstVal::Integral(ConstInt::I16(i)) => C_integral(Type::i16(cx), i as u64, true),
+        ConstVal::Integral(ConstInt::I32(i)) => C_integral(Type::i32(cx), i as u64, true),
+        ConstVal::Integral(ConstInt::I64(i)) => C_integral(Type::i64(cx), i as u64, true),
+        ConstVal::Integral(ConstInt::Isize(i)) => {
+            let i = i.as_i64(cx.tcx().sess.target.int_type);
+            C_integral(Type::int(cx), i as u64, true)
+        },
+        ConstVal::Integral(ConstInt::U8(i)) => C_integral(Type::i8(cx), i as u64, false),
+        ConstVal::Integral(ConstInt::U16(i)) => C_integral(Type::i16(cx), i as u64, false),
+        ConstVal::Integral(ConstInt::U32(i)) => C_integral(Type::i32(cx), i as u64, false),
+        ConstVal::Integral(ConstInt::U64(i)) => C_integral(Type::i64(cx), i, false),
+        ConstVal::Integral(ConstInt::Usize(i)) => {
+            let u = i.as_u64(cx.tcx().sess.target.uint_type);
+            C_integral(Type::int(cx), u, false)
+        },
+        ConstVal::Integral(ConstInt::Infer(i)) => {
+            match cx.tcx().node_id_to_type(e.id).sty {
+                ty::TyInt(t) => C_integral(Type::int_from_ty(cx, t), i, true),
+                ty::TyUint(t) => C_integral(Type::uint_from_ty(cx, t), i, false),
+                _ => span_bug!(e.span, "integer literal has type {:?} (expected int or usize)",
+                               cx.tcx().node_id_to_type(e.id))
             }
+        },
+        ConstVal::Integral(ConstInt::InferSigned(i)) => {
+            match cx.tcx().node_id_to_type(e.id).sty {
+                ty::TyInt(t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
+                _ => span_bug!(e.span, "integer literal has type {:?} (expected int)",
+                               cx.tcx().node_id_to_type(e.id))
+            }
+        },
+        ConstVal::Str(ref v) => C_str_slice(cx, v.clone()),
+        ConstVal::ByteStr(ref v) => addr_of(cx, C_bytes(cx, v), 1, "byte_str"),
+        ConstVal::Struct(_) | ConstVal::Tuple(_) |
+        ConstVal::Array(..) | ConstVal::Repeat(..) |
+        ConstVal::Function { .. } => {
+            bug!("MIR must not use {:?} (which refers to a local ID)", lit)
         }
-        LitKind::Float(ref fs, t) => {
-            C_floating(&fs, Type::float_from_ty(cx, t))
-        }
-        LitKind::FloatUnsuffixed(ref fs) => {
+        ConstVal::Char(c) => C_integral(Type::char(cx), c as u64, false),
+        ConstVal::Float(v, Some(t)) => C_floating_f64(v, Type::float_from_ty(cx, t)),
+        ConstVal::Float(v, None) => {
             let lit_float_ty = cx.tcx().node_id_to_type(e.id);
             match lit_float_ty.sty {
-                ty::TyFloat(t) => {
-                    C_floating(&fs, Type::float_from_ty(cx, t))
-                }
-                _ => {
-                    span_bug!(lit.span,
-                        "floating point literal doesn't have the right type");
-                }
+                ty::TyFloat(t) => C_floating_f64(v, Type::float_from_ty(cx, t)),
+                _ => span_bug!(e.span, "floating point literal doesn't have the right type"),
             }
-        }
-        LitKind::Bool(b) => C_bool(cx, b),
-        LitKind::Str(ref s, _) => C_str_slice(cx, (*s).clone()),
-        LitKind::ByteStr(ref data) => {
-            addr_of(cx, C_bytes(cx, &data[..]), 1, "byte_str")
-        }
+        },
+        ConstVal::Bool(v) => C_bool(cx, v),
+        ConstVal::Dummy => bug!(),
     }
 }
 
@@ -590,7 +596,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
     let _icx = push_ctxt("const_expr");
     Ok(match e.node {
-        hir::ExprLit(ref lit) => const_lit(cx, e, &lit),
+        hir::ExprLit(ref lit) => const_lit(cx, e, lit),
         hir::ExprBinary(b, ref e1, ref e2) => {
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */

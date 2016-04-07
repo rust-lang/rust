@@ -11,8 +11,7 @@
 use llvm::ValueRef;
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use middle::const_val::ConstVal;
-use rustc_const_math::ConstInt;
+use rustc_const_math::{ConstInt, ConstVal};
 use rustc::mir::repr as mir;
 
 use asm;

@@ -13,7 +13,7 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use rustc::dep_graph::DepNode;
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal;
 use ::{eval_const_expr, eval_const_expr_partial, compare_const_vals};
 use ::{const_expr_to_pat, lookup_const_by_id};
 use ::EvalHint::ExprTypeChecked;
@@ -37,7 +37,7 @@ use rustc::hir::{Pat, PatKind};
 use rustc::hir::intravisit::{self, IdVisitor, IdVisitingOperation, Visitor, FnKind};
 use rustc_back::slice;
 
-use syntax::ast::{self, DUMMY_NODE_ID, NodeId};
+use syntax::ast::{DUMMY_NODE_ID, NodeId};
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use rustc::hir::fold::{Folder, noop_fold_pat};
 use rustc::hir::print::pat_to_string;
@@ -275,7 +275,7 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Lit(ref expr) = p.node {
             match eval_const_expr_partial(cx.tcx, &expr, ExprTypeChecked, None) {
-                Ok(ConstVal::Float(f)) if f.is_nan() => {
+                Ok(ConstVal::Float(f, _)) if f.is_nan() => {
                     span_warn!(cx.tcx.sess, p.span, E0003,
                                "unmatchable NaN in pattern, \
                                 use the is_nan method in a guard instead");
@@ -423,13 +423,9 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: hir:
 }
 
 fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
-    let node = match value {
-        &ConstVal::Bool(b) => ast::LitKind::Bool(b),
-        _ => bug!()
-    };
     P(hir::Expr {
         id: 0,
-        node: hir::ExprLit(P(Spanned { node: node, span: DUMMY_SP })),
+        node: hir::ExprLit(value.clone()),
         span: DUMMY_SP,
         attrs: None,
     })

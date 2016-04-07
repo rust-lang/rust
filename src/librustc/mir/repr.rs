@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use graphviz::IntoCow;
-use middle::const_val::ConstVal;
-use rustc_const_math::{ConstUsize, ConstInt};
-use hir::def_id::DefId;
+use rustc_const_math::{ConstUsize, ConstInt, ConstVal};
+use hir::def_id::{DefId, DefIndex};
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, FnOutput, Region, Ty};
 use util::ppaux;
@@ -999,9 +998,11 @@ impl<'tcx> Debug for Literal<'tcx> {
 
 /// Write a `ConstVal` in a way closer to the original source code than the `Debug` output.
 fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
-    use middle::const_val::ConstVal::*;
+    use rustc_const_math::ConstVal::*;
     match *const_val {
-        Float(f) => write!(fmt, "{:?}", f),
+        Float(f, Some(ast::FloatTy::F32)) => write!(fmt, "{}_f32", f as f32),
+        Float(f, Some(ast::FloatTy::F64)) => write!(fmt, "{}_f64", f),
+        Float(f, None) => write!(fmt, "{}", f),
         Integral(n) => write!(fmt, "{}", n),
         Str(ref s) => write!(fmt, "{:?}", s),
         ByteStr(ref bytes) => {
@@ -1012,7 +1013,10 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
-        Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
+        Function { krate, index } => {
+            let path = item_path_str(DefId { krate: krate, index: DefIndex::from_u32(index) });
+            write!(fmt, "{}", path)
+        },
         Struct(node_id) | Tuple(node_id) | Array(node_id, _) | Repeat(node_id, _) =>
             write!(fmt, "{}", node_to_string(node_id)),
         Char(c) => write!(fmt, "{:?}", c),

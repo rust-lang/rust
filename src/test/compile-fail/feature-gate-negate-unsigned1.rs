@@ -17,7 +17,11 @@ impl std::ops::Neg for S {
 }
 
 fn main() {
-    let _d = -1u8;
+    let a = -1;
+    //~^ ERROR unary negation of unsigned integer
+    let _b : u8 = a; // for infering variable a to u8.
+
+    for _ in -10..10u8 {}
     //~^ ERROR unary negation of unsigned integer
 
     -S; // should not trigger the gate; issue 26840

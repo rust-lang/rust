@@ -814,13 +814,6 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     }
 }
 
-pub fn C_floating(s: &str, t: Type) -> ValueRef {
-    unsafe {
-        let s = CString::new(s).unwrap();
-        llvm::LLVMConstRealOfString(t.to_ref(), s.as_ptr())
-    }
-}
-
 pub fn C_floating_f64(f: f64, t: Type) -> ValueRef {
     unsafe {
         llvm::LLVMConstReal(t.to_ref(), f)

@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::const_val::ConstVal;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, FnOutput, Region, Ty};
 use mir::repr::*;
-use rustc_const_math::ConstUsize;
+use rustc_const_math::{ConstUsize, ConstVal};
 use rustc_data_structures::tuple_slice::TupleSlice;
 use syntax::codemap::Span;
 

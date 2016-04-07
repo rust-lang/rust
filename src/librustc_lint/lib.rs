@@ -46,6 +46,7 @@ extern crate rustc;
 extern crate log;
 extern crate rustc_back;
 extern crate rustc_const_eval;
+extern crate rustc_const_math;
 
 pub use rustc::lint as lint;
 pub use rustc::middle as middle;
@@ -79,7 +80,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     }
 
     macro_rules! add_early_builtin {
-        ($sess:ident, $($name:ident),*,) => (
+        ($sess:ident, $($name:expr),*,) => (
             {$(
                 store.register_early_pass($sess, false, box $name);
                 )*}
@@ -102,6 +103,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
 
     add_early_builtin!(sess,
                        UnusedParens,
+                       EarlyTypeLimits::new(),
                        );
 
     add_builtin!(sess,
@@ -129,10 +131,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
                  PluginAsLibrary,
                  DropWithReprExtern,
                  MutableTransmutes,
+                 TypeLimits,
                  );
 
     add_builtin_with_new!(sess,
-                          TypeLimits,
                           MissingDoc,
                           MissingDebugImplementations,
                           );

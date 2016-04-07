@@ -49,7 +49,6 @@
 //! an rptr (`&r.T`) use the region `r` that appears in the rptr.
 
 use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
-use middle::const_val::ConstVal;
 use rustc_const_eval::eval_const_expr_partial;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use hir::def::{self, Def};
@@ -66,7 +65,7 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::FnvHashSet;
 
-use rustc_const_math::ConstInt;
+use rustc_const_math::{ConstInt, ConstVal};
 
 use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};

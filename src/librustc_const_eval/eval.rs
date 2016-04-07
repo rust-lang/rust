@@ -10,8 +10,7 @@
 
 //#![allow(non_camel_case_types)]
 
-use rustc::middle::const_val::ConstVal::*;
-use rustc::middle::const_val::ConstVal;
+use rustc_const_math::ConstVal::*;
 use self::ErrKind::*;
 use self::EvalHint::*;
 
@@ -20,7 +19,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use rustc::middle::cstore::{self, CrateStore, InlinedItem};
 use rustc::{infer, traits};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::pat_util::def_to_path;
 use rustc::ty::{self, Ty, TyCtxt, subst};
 use rustc::ty::util::IntTypeExt;
@@ -410,9 +409,9 @@ pub enum ErrKind {
     IndexOpFeatureGated,
     Math(ConstMathErr),
 
-    IntermediateUnsignedNegative,
     /// Expected, Got
     TypeMismatch(String, ConstInt),
+    FloatTypeMismatch,
     BadType(ConstVal),
 }
 
@@ -471,15 +470,13 @@ impl ConstEvalErr {
             IndexOpFeatureGated => "the index operation on const values is unstable".into_cow(),
             Math(ref err) => err.description().into_cow(),
 
-            IntermediateUnsignedNegative => "during the computation of an unsigned a negative \
-                                             number was encountered. This is most likely a bug in\
-                                             the constant evaluator".into_cow(),
-
             TypeMismatch(ref expected, ref got) => {
                 format!("mismatched types: expected `{}`, found `{}`",
                         expected, got.description()).into_cow()
             },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
+            FloatTypeMismatch => "tried to apply a binary operation to values of \
+                                  different float types".into_cow(),
         }
     }
 }
@@ -562,30 +559,24 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
         // unary neg literals already got their sign during creation
         if let hir::ExprLit(ref lit) = inner.node {
             use syntax::ast::*;
-            use syntax::ast::LitIntType::*;
             const I8_OVERFLOW: u64 = ::std::i8::MAX as u64 + 1;
             const I16_OVERFLOW: u64 = ::std::i16::MAX as u64 + 1;
             const I32_OVERFLOW: u64 = ::std::i32::MAX as u64 + 1;
             const I64_OVERFLOW: u64 = ::std::i64::MAX as u64 + 1;
-            match (&lit.node, ety.map(|t| &t.sty)) {
-                (&LitKind::Int(I8_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I8))) |
-                (&LitKind::Int(I8_OVERFLOW, Signed(IntTy::I8)), _) => {
+            match (lit, ety.map(|t| &t.sty)) {
+                (&Integral(Infer(I8_OVERFLOW)), Some(&ty::TyInt(IntTy::I8))) => {
                     return Ok(Integral(I8(::std::i8::MIN)))
                 },
-                (&LitKind::Int(I16_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I16))) |
-                (&LitKind::Int(I16_OVERFLOW, Signed(IntTy::I16)), _) => {
+                (&Integral(Infer(I16_OVERFLOW)), Some(&ty::TyInt(IntTy::I16))) => {
                     return Ok(Integral(I16(::std::i16::MIN)))
                 },
-                (&LitKind::Int(I32_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I32))) |
-                (&LitKind::Int(I32_OVERFLOW, Signed(IntTy::I32)), _) => {
+                (&Integral(Infer(I32_OVERFLOW)), Some(&ty::TyInt(IntTy::I32))) => {
                     return Ok(Integral(I32(::std::i32::MIN)))
                 },
-                (&LitKind::Int(I64_OVERFLOW, Unsuffixed), Some(&ty::TyInt(IntTy::I64))) |
-                (&LitKind::Int(I64_OVERFLOW, Signed(IntTy::I64)), _) => {
+                (&Integral(Infer(I64_OVERFLOW)), Some(&ty::TyInt(IntTy::I64))) => {
                     return Ok(Integral(I64(::std::i64::MIN)))
                 },
-                (&LitKind::Int(n, Unsuffixed), Some(&ty::TyInt(IntTy::Is))) |
-                (&LitKind::Int(n, Signed(IntTy::Is)), _) => {
+                (&Integral(Infer(n)), Some(&ty::TyInt(IntTy::Is))) => {
                     match tcx.sess.target.int_type {
                         IntTy::I32 => if n == I32_OVERFLOW {
                             return Ok(Integral(Isize(Is32(::std::i32::MIN))));
@@ -600,7 +591,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
             }
         }
         match eval_const_expr_partial(tcx, &inner, ty_hint, fn_args)? {
-          Float(f) => Float(-f),
+          Float(f, ft) => Float(-f, ft),
           Integral(i) => Integral(math!(e, -i)),
           const_val => signal!(e, NegateOn(const_val)),
         }
@@ -624,13 +615,15 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
         // not inferred
         match (eval_const_expr_partial(tcx, &a, ty_hint, fn_args)?,
                eval_const_expr_partial(tcx, &b, b_ty, fn_args)?) {
-          (Float(a), Float(b)) => {
+          (Float(_, Some(at)), Float(_, Some(bt))) if at != bt => signal!(e, FloatTypeMismatch),
+          (Float(a, at), Float(b, bt)) => {
+            let ft = at.or(bt);
             match op.node {
-              hir::BiAdd => Float(a + b),
-              hir::BiSub => Float(a - b),
-              hir::BiMul => Float(a * b),
-              hir::BiDiv => Float(a / b),
-              hir::BiRem => Float(a % b),
+              hir::BiAdd => Float(a + b, ft),
+              hir::BiSub => Float(a - b, ft),
+              hir::BiMul => Float(a * b, ft),
+              hir::BiDiv => Float(a / b, ft),
+              hir::BiRem => Float(a % b, ft),
               hir::BiEq => Bool(a == b),
               hir::BiLt => Bool(a < b),
               hir::BiLe => Bool(a <= b),
@@ -765,7 +758,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                       signal!(e, NonConstPath);
                   }
               },
-              Def::Method(id) | Def::Fn(id) => Function(id),
+              Def::Method(id) |
+              Def::Fn(id) => Function { krate: id.krate, index: id.index.as_u32() },
               _ => signal!(e, NonConstPath),
           }
       }
@@ -773,7 +767,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           let sub_ty_hint = ty_hint.erase_hint();
           let callee_val = eval_const_expr_partial(tcx, callee, sub_ty_hint, fn_args)?;
           let did = match callee_val {
-              Function(did) => did,
+              Function { krate, index } => DefId { krate: krate, index: DefIndex::from_u32(index) },
               Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
               callee => signal!(e, CallOn(callee)),
           };
@@ -801,7 +795,12 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           debug!("const call({:?})", call_args);
           eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
       },
-      hir::ExprLit(ref lit) => lit_to_const(&lit.node, tcx, ety, lit.span)?,
+      hir::ExprLit(ConstVal::Integral(i)) => if let Some(ref ty) = ety {
+          ConstVal::Integral(infer(i, tcx, &ty.sty, e.span)?)
+      } else {
+          ConstVal::Integral(i)
+      },
+      hir::ExprLit(ref cv) => cv.clone(),
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
@@ -970,7 +969,7 @@ fn infer<'tcx>(
                 Err(_) => Ok(Usize(ConstUsize::Us32(i as u32))),
             }
         },
-        (&ty::TyUint(_), InferSigned(_)) => Err(err(IntermediateUnsignedNegative)),
+        (&ty::TyUint(_), InferSigned(_)) => Err(err(Math(ConstMathErr::UnsignedNegation))),
 
         (&ty::TyInt(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
         (&ty::TyUint(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
@@ -1066,22 +1065,24 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
                 Err(_) => Ok(Integral(Usize(ConstUsize::Us32(v as u32)))),
             }
         },
-        ty::TyFloat(ast::FloatTy::F64) if val.is_negative() => {
+        ty::TyFloat(ft @ ast::FloatTy::F64) if val.is_negative() => {
             // FIXME: this could probably be prettier
             // there's no easy way to turn an `Infer` into a f64
             let val = (-val).map_err(Math)?;
             let val = val.to_u64().unwrap() as f64;
             let val = -val;
-            Ok(Float(val))
+            Ok(Float(val, Some(ft)))
         },
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64)),
-        ty::TyFloat(ast::FloatTy::F32) if val.is_negative() => {
+        ty::TyFloat(ft @ ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64, Some(ft))),
+        ty::TyFloat(ft @ ast::FloatTy::F32) if val.is_negative() => {
             let val = (-val).map_err(Math)?;
             let val = val.to_u64().unwrap() as f32;
             let val = -val;
-            Ok(Float(val as f64))
+            Ok(Float(val as f64, Some(ft)))
         },
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(val.to_u64().unwrap() as f32 as f64)),
+        ty::TyFloat(ft @ ast::FloatTy::F32) => {
+            Ok(Float(val.to_u64().unwrap() as f32 as f64, Some(ft)))
+        },
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
         _ => Err(CannotCast),
     }
@@ -1092,8 +1093,8 @@ fn cast_const_float<'tcx>(tcx: &TyCtxt<'tcx>, f: f64, ty: ty::Ty) -> CastResult 
         ty::TyInt(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
         ty::TyInt(_) => cast_const_int(tcx, InferSigned(f as i64), ty),
         ty::TyUint(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(f)),
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(f as f32 as f64)),
+        ty::TyFloat(ft @ ast::FloatTy::F64) => Ok(Float(f, Some(ft))),
+        ty::TyFloat(ft @ ast::FloatTy::F32) => Ok(Float(f as f32 as f64, Some(ft))),
         _ => Err(CannotCast),
     }
 }
@@ -1102,67 +1103,20 @@ fn cast_const<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult
     match val {
         Integral(i) => cast_const_int(tcx, i, ty),
         Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),
-        Float(f) => cast_const_float(tcx, f, ty),
+        Float(f, _) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, Infer(c as u64), ty),
-        Function(_) => Err(UnimplementedConstVal("casting fn pointers")),
+        Function { .. } => Err(UnimplementedConstVal("casting fn pointers")),
         _ => Err(CannotCast),
-    }
-}
-
-fn lit_to_const<'tcx>(lit: &ast::LitKind,
-                      tcx: &TyCtxt<'tcx>,
-                      ty_hint: Option<Ty<'tcx>>,
-                      span: Span,
-                      ) -> Result<ConstVal, ConstEvalErr> {
-    use syntax::ast::*;
-    use syntax::ast::LitIntType::*;
-    match *lit {
-        LitKind::Str(ref s, _) => Ok(Str((*s).clone())),
-        LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
-        LitKind::Byte(n) => Ok(Integral(U8(n))),
-        LitKind::Int(n, Signed(ity)) => {
-            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
-        },
-
-        LitKind::Int(n, Unsuffixed) => {
-            match ty_hint.map(|t| &t.sty) {
-                Some(&ty::TyInt(ity)) => {
-                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
-                },
-                Some(&ty::TyUint(uty)) => {
-                    infer(Infer(n), tcx, &ty::TyUint(uty), span).map(Integral)
-                },
-                None => Ok(Integral(Infer(n))),
-                Some(&ty::TyEnum(ref adt, _)) => {
-                    let hints = tcx.lookup_repr_hints(adt.did);
-                    let int_ty = tcx.enum_repr_type(hints.iter().next());
-                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty, span).map(Integral)
-                },
-                Some(ty_hint) => bug!("bad ty_hint: {:?}, {:?}", ty_hint, lit),
-            }
-        },
-        LitKind::Int(n, Unsigned(ity)) => {
-            infer(Infer(n), tcx, &ty::TyUint(ity), span).map(Integral)
-        },
-
-        LitKind::Float(ref n, _) |
-        LitKind::FloatUnsuffixed(ref n) => {
-            if let Ok(x) = n.parse::<f64>() {
-                Ok(Float(x))
-            } else {
-                // FIXME(#31407) this is only necessary because float parsing is buggy
-                span_bug!(span, "could not evaluate float literal (see issue #31407)");
-            }
-        }
-        LitKind::Bool(b) => Ok(Bool(b)),
-        LitKind::Char(c) => Ok(Char(c)),
     }
 }
 
 pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
     match (a, b) {
         (&Integral(a), &Integral(b)) => a.try_cmp(b).ok(),
-        (&Float(a), &Float(b)) => {
+        (&Float(a, at), &Float(b, bt)) => {
+            if at != bt {
+                return None;
+            }
             // This is pretty bad but it is the existing behavior.
             Some(if a == b {
                 Ordering::Equal

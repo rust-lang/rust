@@ -40,12 +40,14 @@ use util::nodemap::{NodeMap, FnvHashSet};
 use syntax::codemap::{self, Span, Spanned, DUMMY_SP, ExpnId};
 use syntax::abi::Abi;
 use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, TokenTree, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ast::{Attribute, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 
 use std::collections::BTreeMap;
+use rustc_const_math::ConstVal;
+
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -930,7 +932,7 @@ pub enum Expr_ {
     /// A unary operation (For example: `!x`, `*x`)
     ExprUnary(UnOp, P<Expr>),
     /// A literal (For example: `1`, `"foo"`)
-    ExprLit(P<Lit>),
+    ExprLit(ConstVal),
     /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
     ExprType(P<Expr>, P<Ty>),

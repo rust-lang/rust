@@ -76,6 +76,8 @@ use syntax::parse::token;
 use syntax::std_inject;
 use syntax::visit::{self, Visitor};
 
+use rustc_const_math::{ConstVal, ConstInt, ConstIsize, ConstUsize};
+
 use std::cell::{Cell, RefCell};
 
 pub struct LoweringContext<'a> {
@@ -1142,12 +1144,24 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let rhs = lower_expr(lctx, rhs);
                 hir::ExprBinary(binop, lhs, rhs)
             }
+            ExprKind::Unary(UnOp::Neg, ref inner) => {
+                let (new, mut attrs) = lower_un_neg(lctx, inner);
+                attrs.update(|a| {
+                    a.prepend(e.attrs.clone())
+                });
+                return P(hir::Expr {
+                    id: e.id,
+                    span: e.span,
+                    attrs: attrs,
+                    node: new,
+                });
+            },
             ExprKind::Unary(op, ref ohs) => {
                 let op = lower_unop(lctx, op);
                 let ohs = lower_expr(lctx, ohs);
                 hir::ExprUnary(op, ohs)
             }
-            ExprKind::Lit(ref l) => hir::ExprLit(P((**l).clone())),
+            ExprKind::Lit(ref l) => hir::ExprLit(lower_lit(lctx, &l.node, l.span)),
             ExprKind::Cast(ref expr, ref ty) => {
                 let expr = lower_expr(lctx, expr);
                 hir::ExprCast(expr, lower_ty(lctx, ty))
@@ -1672,6 +1686,121 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
         span: e.span,
         attrs: e.attrs.clone(),
     })
+}
+
+fn negate_lit(lctx: &LoweringContext, n: u64, ty: LitIntType) -> ConstVal {
+    use syntax::ast::LitIntType::*;
+    use syntax::ast::IntTy::*;
+    use std::{i8, i16, i32, i64};
+    use rustc_const_math::ConstVal::Integral;
+    const I8_OVERFLOW: u64 = i8::MAX as u64 + 1;
+    const I16_OVERFLOW: u64 = i16::MAX as u64 + 1;
+    const I32_OVERFLOW: u64 = i32::MAX as u64 + 1;
+    const I64_OVERFLOW: u64 = i64::MAX as u64 + 1;
+    match (n, ty, lctx.id_assigner.target_bitwidth()) {
+        (I8_OVERFLOW, Signed(I8), _) => Integral(ConstInt::I8(i8::MIN)),
+        (I16_OVERFLOW, Signed(I16), _) => Integral(ConstInt::I16(i16::MIN)),
+        (I32_OVERFLOW, Signed(I32), _) => Integral(ConstInt::I32(i32::MIN)),
+        (I64_OVERFLOW, Signed(I64), _) => Integral(ConstInt::I64(i64::MIN)),
+        (I64_OVERFLOW, Signed(Is), 64) => Integral(ConstInt::Isize(ConstIsize::Is64(i64::MIN))),
+        (I32_OVERFLOW, Signed(Is), 32) => Integral(ConstInt::Isize(ConstIsize::Is32(i32::MIN))),
+        (I64_OVERFLOW, Unsuffixed, _) => Integral(ConstInt::InferSigned(i64::MIN)),
+        (n, Signed(I8), _) => Integral(ConstInt::I8(-(n as i64 as i8))),
+        (n, Signed(I16), _) => Integral(ConstInt::I16(-(n as i64 as i16))),
+        (n, Signed(I32), _) => Integral(ConstInt::I32(-(n as i64 as i32))),
+        (n, Signed(I64), _) => Integral(ConstInt::I64(-(n as i64))),
+        (n, Signed(Is), 64) => Integral(ConstInt::Isize(ConstIsize::Is64(-(n as i64)))),
+        (n, Signed(Is), 32) => Integral(ConstInt::Isize(ConstIsize::Is32(-(n as i64 as i32)))),
+        (_, Signed(Is), _) => unreachable!(),
+         // unary negation of unsigned has already been reported by EarlyTypeLimits
+        (_, Unsigned(_), _) => ConstVal::Dummy,
+        (n, Unsuffixed, _) => Integral(ConstInt::InferSigned(-(n as i64))),
+    }
+}
+
+pub fn lower_un_neg(lctx: &LoweringContext, inner: &Expr) -> (hir::Expr_, ThinAttributes) {
+    match inner.node {
+        ExprKind::Paren(ref ex) => {
+            let (new, mut attrs) = lower_un_neg(lctx, ex);
+            attrs.update(|attrs| attrs.prepend(ex.attrs.clone()));
+            return (new, attrs);
+        }
+        ExprKind::Lit(ref lit) => {
+            if let LitKind::Int(n, ty) = lit.node {
+                return (hir::ExprLit(negate_lit(lctx, n, ty)), None);
+            }
+        },
+        ExprKind::Unary(UnOp::Neg, ref double_inner) => {
+            if let ExprKind::Lit(ref lit) = double_inner.node {
+                // skip double negation where applicable
+                if let LitKind::Int(..) = lit.node {
+                    return (
+                        hir::ExprLit(lower_lit(lctx, &lit.node, inner.span)),
+                        double_inner.attrs.clone(),
+                    );
+                }
+            }
+        },
+        _ => {},
+    }
+    (hir::ExprUnary(hir::UnNeg, lower_expr(lctx, inner)), None)
+}
+
+pub fn lower_lit(lctx: &LoweringContext, lit: &LitKind, span: Span) -> ConstVal {
+    use syntax::ast::LitIntType::*;
+    use syntax::ast::LitKind::*;
+    use syntax::ast::IntTy::*;
+    use syntax::ast::UintTy::*;
+    match *lit {
+        Str(ref s, _) => ConstVal::Str((*s).clone()),
+        ByteStr(ref data) => ConstVal::ByteStr(data.clone()),
+        Byte(n) => ConstVal::Integral(ConstInt::U8(n)),
+        Int(n, Signed(I8)) => ConstVal::Integral(ConstInt::I8(n as i64 as i8)),
+        Int(n, Signed(I16)) => ConstVal::Integral(ConstInt::I16(n as i64 as i16)),
+        Int(n, Signed(I32)) => ConstVal::Integral(ConstInt::I32(n as i64 as i32)),
+        Int(n, Signed(I64)) => ConstVal::Integral(ConstInt::I64(n as i64)),
+        Int(n, Signed(Is)) => {
+            ConstVal::Integral(match lctx.id_assigner.target_bitwidth() {
+                32 => ConstInt::Isize(ConstIsize::Is32(n as i64 as i32)),
+                64 => ConstInt::Isize(ConstIsize::Is64(n as i64)),
+                _ => unimplemented!(),
+            })
+        },
+        Int(n, Unsigned(U8)) => ConstVal::Integral(ConstInt::U8(n as u8)),
+        Int(n, Unsigned(U16)) => ConstVal::Integral(ConstInt::U16(n as u16)),
+        Int(n, Unsigned(U32)) => ConstVal::Integral(ConstInt::U32(n as u32)),
+        Int(n, Unsigned(U64)) => ConstVal::Integral(ConstInt::U64(n)),
+        Int(n, Unsigned(Us)) => {
+            ConstVal::Integral(match lctx.id_assigner.target_bitwidth() {
+                32 => ConstInt::Usize(ConstUsize::Us32(n as u32)),
+                64 => ConstInt::Usize(ConstUsize::Us64(n)),
+                _ => unimplemented!(),
+            })
+        },
+        Int(n, Unsuffixed) => ConstVal::Integral(ConstInt::Infer(n)),
+        Float(ref f, fty) => {
+            if let Ok(x) = f.parse::<f64>() {
+                ConstVal::Float(x, Some(fty))
+            } else {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                lctx.id_assigner
+                    .diagnostic()
+                    .span_bug(span, "could not evaluate float literal (see issue #31407)");
+            }
+        },
+        FloatUnsuffixed(ref f) => {
+            if let Ok(x) = f.parse::<f64>() {
+                ConstVal::Float(x, None)
+            } else {
+                // FIXME(#31407) this is only necessary because float parsing is buggy
+                lctx.id_assigner
+                    .diagnostic()
+                    .span_bug(span, "could not evaluate float literal (see issue #31407)");
+            }
+        },
+        Bool(b) => ConstVal::Bool(b),
+        Char(c) => ConstVal::Char(c),
+    }
 }
 
 pub fn lower_stmt(lctx: &LoweringContext, s: &Stmt) -> hir::Stmt {

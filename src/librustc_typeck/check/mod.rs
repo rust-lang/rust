@@ -129,6 +129,7 @@ use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 use rustc_back::slice;
 use rustc_const_eval::eval_repeat_count;
+use rustc_const_math::{ConstVal, ConstInt};
 
 mod assoc;
 pub mod dropck;
@@ -2618,23 +2619,31 @@ fn write_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // AST fragment checking
 fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                       lit: &ast::Lit,
+                       lit: &ConstVal,
                        expected: Expectation<'tcx>)
                        -> Ty<'tcx>
 {
     let tcx = fcx.ccx.tcx;
 
-    match lit.node {
-        ast::LitKind::Str(..) => tcx.mk_static_str(),
-        ast::LitKind::ByteStr(ref v) => {
+    match *lit {
+        ConstVal::Str(..) => tcx.mk_static_str(),
+        ConstVal::ByteStr(ref v) => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
                             tcx.mk_array(tcx.types.u8, v.len()))
         }
-        ast::LitKind::Byte(_) => tcx.types.u8,
-        ast::LitKind::Char(_) => tcx.types.char,
-        ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => tcx.mk_mach_int(t),
-        ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => tcx.mk_mach_uint(t),
-        ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
+        ConstVal::Char(_) => tcx.types.char,
+        ConstVal::Integral(ConstInt::I8(_)) => tcx.types.i8,
+        ConstVal::Integral(ConstInt::I16(_)) => tcx.types.i16,
+        ConstVal::Integral(ConstInt::I32(_)) => tcx.types.i32,
+        ConstVal::Integral(ConstInt::I64(_)) => tcx.types.i64,
+        ConstVal::Integral(ConstInt::Isize(_)) => tcx.types.isize,
+        ConstVal::Integral(ConstInt::U8(_)) => tcx.types.u8,
+        ConstVal::Integral(ConstInt::U16(_)) => tcx.types.u16,
+        ConstVal::Integral(ConstInt::U32(_)) => tcx.types.u32,
+        ConstVal::Integral(ConstInt::U64(_)) => tcx.types.u64,
+        ConstVal::Integral(ConstInt::Usize(_)) => tcx.types.usize,
+        ConstVal::Integral(ConstInt::Infer(_)) |
+        ConstVal::Integral(ConstInt::InferSigned(_)) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyInt(_) | ty::TyUint(_) => Some(ty),
@@ -2647,8 +2656,8 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             opt_ty.unwrap_or_else(
                 || tcx.mk_int_var(fcx.infcx().next_int_var_id()))
         }
-        ast::LitKind::Float(_, t) => tcx.mk_mach_float(t),
-        ast::LitKind::FloatUnsuffixed(_) => {
+        ConstVal::Float(_, Some(t)) => tcx.mk_mach_float(t),
+        ConstVal::Float(_, None) => {
             let opt_ty = expected.to_option(fcx).and_then(|ty| {
                 match ty.sty {
                     ty::TyFloat(_) => Some(ty),
@@ -2658,7 +2667,10 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             opt_ty.unwrap_or_else(
                 || tcx.mk_float_var(fcx.infcx().next_float_var_id()))
         }
-        ast::LitKind::Bool(_) => tcx.types.bool
+        ConstVal::Bool(_) => tcx.types.bool,
+        // if a dummy is emitted, an error has already been reported
+        ConstVal::Dummy => tcx.types.err,
+        _ => bug!(),
     }
 }
 
@@ -3281,7 +3293,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       }
 
       hir::ExprLit(ref lit) => {
-        let typ = check_lit(fcx, &lit, expected);
+        let typ = check_lit(fcx, lit, expected);
         fcx.write_ty(id, typ);
       }
       hir::ExprBinary(op, ref lhs, ref rhs) => {

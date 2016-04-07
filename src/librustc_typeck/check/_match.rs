@@ -33,6 +33,8 @@ use syntax::ptr::P;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 
+use rustc_const_math::ConstVal;
+
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                            pat: &'tcx hir::Pat,
                            expected: Ty<'tcx>)
@@ -55,14 +57,12 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // Byte string patterns behave the same way as array patterns
             // They can denote both statically and dynamically sized byte arrays
             let mut pat_ty = expr_ty;
-            if let hir::ExprLit(ref lt) = lt.node {
-                if let ast::LitKind::ByteStr(_) = lt.node {
-                    let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
-                    if let ty::TyRef(_, mt) = expected_ty.sty {
-                        if let ty::TySlice(_) = mt.ty.sty {
-                            pat_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
-                                                     tcx.mk_slice(tcx.types.u8))
-                        }
+            if let hir::ExprLit(ConstVal::ByteStr(_)) = lt.node {
+                let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
+                if let ty::TyRef(_, mt) = expected_ty.sty {
+                    if let ty::TySlice(_) = mt.ty.sty {
+                        pat_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
+                                                 tcx.mk_slice(tcx.types.u8))
                     }
                 }
             }
