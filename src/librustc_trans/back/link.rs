@@ -13,7 +13,6 @@ use super::linker::{Linker, GnuLinker, MsvcLinker};
 use super::rpath::RPathConfig;
 use super::rpath;
 use super::msvc;
-use super::svh::Svh;
 use session::config;
 use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputType};
@@ -26,8 +25,10 @@ use middle::dependency_format::Linkage;
 use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
+use rustc::ty::TyCtxt;
 use rustc_back::tempdir::TempDir;
 
+use rustc_incremental::SvhCalculate;
 use std::ascii;
 use std::char;
 use std::env;
@@ -42,8 +43,6 @@ use flate;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::attr::AttrMetaMethods;
-
-use rustc::hir;
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
@@ -122,15 +121,15 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
 
     "rust_out".to_string()
+
 }
 
-pub fn build_link_meta(sess: &Session,
-                       krate: &hir::Crate,
+pub fn build_link_meta(tcx: &TyCtxt,
                        name: &str)
                        -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
-        crate_hash: Svh::calculate(&sess.crate_disambiguator.get().as_str(), krate),
+        crate_hash: tcx.calculate_krate_hash(),
     };
     info!("{:?}", r);
     return r;

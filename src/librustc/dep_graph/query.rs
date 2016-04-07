@@ -10,16 +10,20 @@
 
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc_data_structures::graph::{Graph, NodeIndex};
+use std::fmt::Debug;
+use std::hash::Hash;
 
 use super::DepNode;
 
-pub struct DepGraphQuery {
-    pub graph: Graph<DepNode, ()>,
-    pub indices: FnvHashMap<DepNode, NodeIndex>,
+pub struct DepGraphQuery<D: Clone + Debug + Hash + Eq> {
+    pub graph: Graph<DepNode<D>, ()>,
+    pub indices: FnvHashMap<DepNode<D>, NodeIndex>,
 }
 
-impl DepGraphQuery {
-    pub fn new(nodes: &[DepNode], edges: &[(DepNode, DepNode)]) -> DepGraphQuery {
+impl<D: Clone + Debug + Hash + Eq> DepGraphQuery<D> {
+    pub fn new(nodes: &[DepNode<D>],
+               edges: &[(DepNode<D>, DepNode<D>)])
+               -> DepGraphQuery<D> {
         let mut graph = Graph::new();
         let mut indices = FnvHashMap();
         for node in nodes {
@@ -39,27 +43,43 @@ impl DepGraphQuery {
         }
     }
 
-    pub fn nodes(&self) -> Vec<DepNode> {
+    pub fn contains_node(&self, node: &DepNode<D>) -> bool {
+        self.indices.contains_key(&node)
+    }
+
+    pub fn nodes(&self) -> Vec<DepNode<D>> {
         self.graph.all_nodes()
                   .iter()
                   .map(|n| n.data.clone())
                   .collect()
     }
 
-    pub fn edges(&self) -> Vec<(DepNode,DepNode)> {
+    pub fn edges(&self) -> Vec<(DepNode<D>,DepNode<D>)> {
         self.graph.all_edges()
                   .iter()
                   .map(|edge| (edge.source(), edge.target()))
-                  .map(|(s, t)| (self.graph.node_data(s).clone(), self.graph.node_data(t).clone()))
+                  .map(|(s, t)| (self.graph.node_data(s).clone(),
+                                 self.graph.node_data(t).clone()))
                   .collect()
     }
 
     /// All nodes reachable from `node`. In other words, things that
     /// will have to be recomputed if `node` changes.
-    pub fn dependents(&self, node: DepNode) -> Vec<DepNode> {
+    pub fn transitive_dependents(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
         if let Some(&index) = self.indices.get(&node) {
             self.graph.depth_traverse(index)
-                      .map(|dependent_node| self.graph.node_data(dependent_node).clone())
+                      .map(|s| self.graph.node_data(s).clone())
+                      .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    /// Just the outgoing edges from `node`.
+    pub fn immediate_dependents(&self, node: DepNode<D>) -> Vec<DepNode<D>> {
+        if let Some(&index) = self.indices.get(&node) {
+            self.graph.successor_nodes(index)
+                      .map(|s| self.graph.node_data(s).clone())
                       .collect()
         } else {
             vec![]

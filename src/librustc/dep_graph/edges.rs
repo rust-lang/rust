@@ -9,11 +9,13 @@
 // except according to those terms.
 
 use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
+use std::fmt::Debug;
+use std::hash::Hash;
 use super::{DepGraphQuery, DepNode};
 
-pub struct DepGraphEdges {
-    nodes: Vec<DepNode>,
-    indices: FnvHashMap<DepNode, IdIndex>,
+pub struct DepGraphEdges<D: Clone + Debug + Eq + Hash> {
+    nodes: Vec<DepNode<D>>,
+    indices: FnvHashMap<DepNode<D>, IdIndex>,
     edges: FnvHashSet<(IdIndex, IdIndex)>,
     open_nodes: Vec<OpenNode>,
 }
@@ -40,8 +42,8 @@ enum OpenNode {
     Ignore,
 }
 
-impl DepGraphEdges {
-    pub fn new() -> DepGraphEdges {
+impl<D: Clone + Debug + Eq + Hash> DepGraphEdges<D> {
+    pub fn new() -> DepGraphEdges<D> {
         DepGraphEdges {
             nodes: vec![],
             indices: FnvHashMap(),
@@ -50,12 +52,12 @@ impl DepGraphEdges {
         }
     }
 
-    fn id(&self, index: IdIndex) -> DepNode {
-        self.nodes[index.index()]
+    fn id(&self, index: IdIndex) -> DepNode<D> {
+        self.nodes[index.index()].clone()
     }
 
     /// Creates a node for `id` in the graph.
-    fn make_node(&mut self, id: DepNode) -> IdIndex {
+    fn make_node(&mut self, id: DepNode<D>) -> IdIndex {
         if let Some(&i) = self.indices.get(&id) {
             return i;
         }
@@ -80,7 +82,7 @@ impl DepGraphEdges {
         assert_eq!(popped_node, OpenNode::Ignore);
     }
 
-    pub fn push_task(&mut self, key: DepNode) {
+    pub fn push_task(&mut self, key: DepNode<D>) {
         let top_node = self.current_node();
 
         let new_node = self.make_node(key);
@@ -93,7 +95,7 @@ impl DepGraphEdges {
         }
     }
 
-    pub fn pop_task(&mut self, key: DepNode) {
+    pub fn pop_task(&mut self, key: DepNode<D>) {
         let popped_node = self.open_nodes.pop().unwrap();
         assert_eq!(OpenNode::Node(self.indices[&key]), popped_node);
     }
@@ -101,7 +103,7 @@ impl DepGraphEdges {
     /// Indicates that the current task `C` reads `v` by adding an
     /// edge from `v` to `C`. If there is no current task, panics. If
     /// you want to suppress this edge, use `ignore`.
-    pub fn read(&mut self, v: DepNode) {
+    pub fn read(&mut self, v: DepNode<D>) {
         let source = self.make_node(v);
         self.add_edge_from_current_node(|current| (source, current))
     }
@@ -109,7 +111,7 @@ impl DepGraphEdges {
     /// Indicates that the current task `C` writes `v` by adding an
     /// edge from `C` to `v`. If there is no current task, panics. If
     /// you want to suppress this edge, use `ignore`.
-    pub fn write(&mut self, v: DepNode) {
+    pub fn write(&mut self, v: DepNode<D>) {
         let target = self.make_node(v);
         self.add_edge_from_current_node(|current| (current, target))
     }
@@ -153,7 +155,7 @@ impl DepGraphEdges {
         }
     }
 
-    pub fn query(&self) -> DepGraphQuery {
+    pub fn query(&self) -> DepGraphQuery<D> {
         let edges: Vec<_> = self.edges.iter()
                                       .map(|&(i, j)| (self.id(i), self.id(j)))
                                       .collect();

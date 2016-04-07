@@ -208,7 +208,7 @@ impl<'ast> Map<'ast> {
         self.dep_graph.read(self.dep_node(id));
     }
 
-    fn dep_node(&self, id0: NodeId) -> DepNode {
+    fn dep_node(&self, id0: NodeId) -> DepNode<DefId> {
         let map = self.map.borrow();
         let mut id = id0;
         loop {
@@ -280,6 +280,11 @@ impl<'ast> Map<'ast> {
     pub fn def_path(&self, def_id: DefId) -> DefPath {
         assert!(def_id.is_local());
         self.definitions.borrow().def_path(def_id.index)
+    }
+
+    pub fn retrace_path(&self, path: &DefPath) -> Option<DefId> {
+        self.definitions.borrow().retrace_path(path)
+                                 .map(DefId::local)
     }
 
     pub fn local_def_id(&self, node: NodeId) -> DefId {

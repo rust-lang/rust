@@ -24,7 +24,7 @@ macro_rules! dep_map_ty {
         impl<'tcx> DepTrackingMapConfig for $ty_name<'tcx> {
             type Key = $key;
             type Value = $value;
-            fn to_dep_node(key: &$key) -> DepNode { DepNode::$node_name(*key) }
+            fn to_dep_node(key: &$key) -> DepNode<DefId> { DepNode::$node_name(*key) }
         }
     }
 }
