@@ -412,7 +412,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             return self.record_static_candidate(ImplSource(impl_def_id));
         }
 
-        if item.vis() != hir::Public && !self.fcx.private_item_is_visible(item.def_id()) {
+        if !item.vis().is_accessible_from(self.fcx.body_id, &self.tcx().map) {
             self.private_candidate = Some(item.def());
             return
         }

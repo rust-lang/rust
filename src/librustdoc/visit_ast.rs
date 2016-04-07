@@ -101,7 +101,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             id: item.id,
             struct_type: struct_type,
             name: name,
-            vis: item.vis,
+            vis: item.vis.clone(),
             stab: self.stability(item.id),
             depr: self.deprecation(item.id),
             attrs: item.attrs.clone(),
@@ -125,7 +125,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 def: v.node.data.clone(),
                 whence: v.span,
             }).collect(),
-            vis: it.vis,
+            vis: it.vis.clone(),
             stab: self.stability(it.id),
             depr: self.deprecation(it.id),
             generics: params.clone(),
@@ -144,7 +144,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("Visiting fn");
         Function {
             id: item.id,
-            vis: item.vis,
+            vis: item.vis.clone(),
             stab: self.stability(item.id),
             depr: self.deprecation(item.id),
             attrs: item.attrs.clone(),
@@ -166,7 +166,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om.where_outer = span;
         om.where_inner = m.inner;
         om.attrs = attrs;
-        om.vis = vis;
+        om.vis = vis.clone();
         om.stab = self.stability(id);
         om.depr = self.deprecation(id);
         om.id = id;
@@ -299,7 +299,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.extern_crates.push(ExternCrate {
                     name: name,
                     path: p.map(|x|x.to_string()),
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     attrs: item.attrs.clone(),
                     whence: item.span,
                 })
@@ -324,7 +324,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.imports.push(Import {
                     id: item.id,
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     attrs: item.attrs.clone(),
                     node: node,
                     whence: item.span,
@@ -333,7 +333,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemMod(ref m) => {
                 om.mods.push(self.visit_mod_contents(item.span,
                                                      item.attrs.clone(),
-                                                     item.vis,
+                                                     item.vis.clone(),
                                                      item.id,
                                                      m,
                                                      Some(name)));
@@ -353,7 +353,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     id: item.id,
                     attrs: item.attrs.clone(),
                     whence: item.span,
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     stab: self.stability(item.id),
                     depr: self.deprecation(item.id),
                 };
@@ -368,7 +368,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     name: name,
                     attrs: item.attrs.clone(),
                     whence: item.span,
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     stab: self.stability(item.id),
                     depr: self.deprecation(item.id),
                 };
@@ -382,7 +382,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     name: name,
                     attrs: item.attrs.clone(),
                     whence: item.span,
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     stab: self.stability(item.id),
                     depr: self.deprecation(item.id),
                 };
@@ -398,7 +398,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     id: item.id,
                     attrs: item.attrs.clone(),
                     whence: item.span,
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     stab: self.stability(item.id),
                     depr: self.deprecation(item.id),
                 };
@@ -415,7 +415,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     attrs: item.attrs.clone(),
                     id: item.id,
                     whence: item.span,
-                    vis: item.vis,
+                    vis: item.vis.clone(),
                     stab: self.stability(item.id),
                     depr: self.deprecation(item.id),
                 };

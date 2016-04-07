@@ -361,7 +361,7 @@ pub fn build_impl(cx: &DocContext,
                 })
             }
             ty::MethodTraitItem(method) => {
-                if method.vis != hir::Public && associated_trait.is_none() {
+                if method.vis != ty::Visibility::Public && associated_trait.is_none() {
                     return None
                 }
                 let mut item = method.clean(cx);
@@ -471,7 +471,7 @@ fn build_module(cx: &DocContext, tcx: &TyCtxt,
                 cstore::DlDef(Def::ForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
-                cstore::DlDef(def) if item.vis == hir::Public => {
+                cstore::DlDef(def) if item.vis == ty::Visibility::Public => {
                     if !visited.insert(def) { continue }
                     if let Some(i) = try_inline_def(cx, tcx, def) {
                         items.extend(i)

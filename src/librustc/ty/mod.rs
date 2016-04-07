@@ -232,7 +232,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
         }
     }
 
-    pub fn vis(&self) -> hir::Visibility {
+    pub fn vis(&self) -> Visibility {
         match *self {
             ConstTraitItem(ref associated_const) => associated_const.vis,
             MethodTraitItem(ref method) => method.vis,
@@ -273,6 +273,56 @@ impl ImplOrTraitItemId {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Copy)]
+pub enum Visibility {
+    /// Visible everywhere (including in other crates).
+    Public,
+    /// Visible only in the given crate-local module.
+    Restricted(NodeId),
+    /// Not visible anywhere in the local crate. This is the visibility of private external items.
+    PrivateExternal,
+}
+
+impl Visibility {
+    pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: &TyCtxt) -> Self {
+        match *visibility {
+            hir::Public => Visibility::Public,
+            hir::Inherited => Visibility::Restricted(tcx.map.get_module_parent(id)),
+        }
+    }
+
+    /// Returns true if an item with this visibility is accessible from the given block.
+    pub fn is_accessible_from(self, block: NodeId, map: &ast_map::Map) -> bool {
+        let restriction = match self {
+            // Public items are visible everywhere.
+            Visibility::Public => return true,
+            // Private items from other crates are visible nowhere.
+            Visibility::PrivateExternal => return false,
+            // Restricted items are visible in an arbitrary local module.
+            Visibility::Restricted(module) => module,
+        };
+
+        let mut block_ancestor = block;
+        loop {
+            if block_ancestor == restriction { return true }
+            let block_ancestor_parent = map.get_module_parent(block_ancestor);
+            if block_ancestor_parent == block_ancestor { return false }
+            block_ancestor = block_ancestor_parent;
+        }
+    }
+
+    /// Returns true if this visibility is at least as accessible as the given visibility
+    pub fn is_at_least(self, vis: Visibility, map: &ast_map::Map) -> bool {
+        let vis_restriction = match vis {
+            Visibility::Public => return self == Visibility::Public,
+            Visibility::PrivateExternal => return true,
+            Visibility::Restricted(module) => module,
+        };
+
+        self.is_accessible_from(vis_restriction, map)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Method<'tcx> {
     pub name: Name,
@@ -280,7 +330,7 @@ pub struct Method<'tcx> {
     pub predicates: GenericPredicates<'tcx>,
     pub fty: BareFnTy<'tcx>,
     pub explicit_self: ExplicitSelfCategory,
-    pub vis: hir::Visibility,
+    pub vis: Visibility,
     pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
@@ -292,7 +342,7 @@ impl<'tcx> Method<'tcx> {
                predicates: GenericPredicates<'tcx>,
                fty: BareFnTy<'tcx>,
                explicit_self: ExplicitSelfCategory,
-               vis: hir::Visibility,
+               vis: Visibility,
                defaultness: hir::Defaultness,
                def_id: DefId,
                container: ImplOrTraitItemContainer)
@@ -336,7 +386,7 @@ impl<'tcx> Hash for Method<'tcx> {
 pub struct AssociatedConst<'tcx> {
     pub name: Name,
     pub ty: Ty<'tcx>,
-    pub vis: hir::Visibility,
+    pub vis: Visibility,
     pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
@@ -347,7 +397,7 @@ pub struct AssociatedConst<'tcx> {
 pub struct AssociatedType<'tcx> {
     pub name: Name,
     pub ty: Option<Ty<'tcx>>,
-    pub vis: hir::Visibility,
+    pub vis: Visibility,
     pub defaultness: hir::Defaultness,
     pub def_id: DefId,
     pub container: ImplOrTraitItemContainer,
@@ -1419,7 +1469,7 @@ pub struct FieldDefData<'tcx, 'container: 'tcx> {
     /// are not real items, and don't have entries in tcache etc.
     pub did: DefId,
     pub name: Name,
-    pub vis: hir::Visibility,
+    pub vis: Visibility,
     /// TyIVar is used here to allow for variance (see the doc at
     /// AdtDefData).
     ///
@@ -1704,7 +1754,7 @@ impl<'tcx, 'container> VariantDefData<'tcx, 'container> {
 impl<'tcx, 'container> FieldDefData<'tcx, 'container> {
     pub fn new(did: DefId,
                name: Name,
-               vis: hir::Visibility) -> Self {
+               vis: Visibility) -> Self {
         FieldDefData {
             did: did,
             name: name,
