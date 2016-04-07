@@ -360,8 +360,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 }
             }
 
-            Drop { target, .. } => {
-                // TODO: Handle destructors and dynamic drop.
+            Drop { ref value, target, .. } => {
+                let ptr = try!(self.eval_lvalue(value)).to_ptr();
+                let ty = self.lvalue_ty(value);
+                try!(self.drop(ptr, ty));
                 TerminatorTarget::Block(target)
             }
 
@@ -369,6 +371,28 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         };
 
         Ok(target)
+    }
+
+    fn drop(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<()> {
+        if !self.type_needs_drop(ty) {
+            self.log(1, || print!("no need to drop {:?}", ty));
+            return Ok(());
+        }
+        self.log(1, || print!("need to drop {:?}", ty));
+
+        match ty.sty {
+            ty::TyBox(contents_ty) => {
+                let contents_ptr = try!(self.memory.read_ptr(ptr));
+                try!(self.drop(contents_ptr, contents_ty));
+                self.log(1, || print!("deallocating box"));
+                try!(self.memory.deallocate(contents_ptr));
+            }
+
+            // TODO(tsion): Implement drop for other relevant types (e.g. aggregates).
+            _ => {}
+        }
+
+        Ok(())
     }
 
     fn call_intrinsic(
@@ -845,6 +869,10 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     fn monomorphize(&self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         let substituted = ty.subst(self.tcx, self.substs());
         infer::normalize_associated_type(self.tcx, &substituted)
+    }
+
+    fn type_needs_drop(&self, ty: ty::Ty<'tcx>) -> bool {
+        self.tcx.type_needs_drop_given_env(ty, &self.tcx.empty_parameter_environment())
     }
 
     fn type_is_sized(&self, ty: ty::Ty<'tcx>) -> bool {

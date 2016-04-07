@@ -140,6 +140,22 @@ impl Memory {
         Ok(())
     }
 
+    // TODO(tsion): See comment on `reallocate`.
+    pub fn deallocate(&mut self, ptr: Pointer) -> EvalResult<()> {
+        if ptr.offset != 0 {
+            // TODO(tsion): Report error about non-__rust_allocate'd pointer.
+            panic!()
+        }
+
+        if self.alloc_map.remove(&ptr.alloc_id.0).is_none() {
+            // TODO(tsion): Report error about erroneous free. This is blocked on properly tracking
+            // already-dropped state since this if-statement is entered even in safe code without
+            // it.
+        }
+
+        Ok(())
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Allocation accessors
     ////////////////////////////////////////////////////////////////////////////////
