@@ -67,7 +67,7 @@ use rustc_save_analysis as save;
 use rustc_trans::back::link;
 use rustc::session::{config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
-use rustc::session::config::{get_unstable_features_setting, OptionStability};
+use rustc::session::config::{get_unstable_features_setting, nightly_options};
 use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
 use rustc::lint;
@@ -88,7 +88,7 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use rustc::session::{early_error, early_warn};
+use rustc::session::early_error;
 
 use syntax::ast;
 use syntax::parse::{self, PResult};
@@ -909,51 +909,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     // * If we're a historically stable-but-should-be-unstable option then we
     //   emit a warning that we're going to turn this into an error soon.
-    let has_z_unstable_options = matches.opt_strs("Z")
-                                        .iter()
-                                        .any(|x| *x == "unstable-options");
-    let really_allows_unstable_options = match get_unstable_features_setting() {
-        UnstableFeatures::Disallow => false,
-        _ => true,
-    };
-    for opt in config::rustc_optgroups() {
-        if opt.stability == OptionStability::Stable {
-            continue
-        }
-        let opt_name = if opt.opt_group.long_name.is_empty() {
-            &opt.opt_group.short_name
-        } else {
-            &opt.opt_group.long_name
-        };
-        if !matches.opt_present(opt_name) {
-            continue
-        }
-        if opt_name != "Z" && !has_z_unstable_options {
-            let msg = format!("the `-Z unstable-options` flag must also be \
-                               passed to enable the flag `{}`", opt_name);
-            early_error(ErrorOutputType::default(), &msg);
-        }
-        if really_allows_unstable_options {
-            continue
-        }
-        match opt.stability {
-            OptionStability::Unstable => {
-                let msg = format!("the option `{}` is only accepted on the \
-                                   nightly compiler", opt_name);
-                early_error(ErrorOutputType::default(), &msg);
-            }
-            OptionStability::UnstableButNotReally => {
-                let msg = format!("the option `{}` is is unstable and should \
-                                   only be used on the nightly compiler, but \
-                                   it is currently accepted for backwards \
-                                   compatibility; this will soon change, \
-                                   see issue #31847 for more details",
-                                  opt_name);
-                early_warn(ErrorOutputType::default(), &msg);
-            }
-            OptionStability::Stable => {}
-        }
-    }
+    nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we *really* accept unstable
@@ -961,12 +917,11 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
         // the stable channel of Rust which was accidentally allowed
         // historically.
         usage(matches.opt_present("verbose"),
-              has_z_unstable_options && really_allows_unstable_options);
+              nightly_options::is_unstable_enabled(&matches));
         return None;
     }
 
     // Don't handle -W help here, because we might first load plugins.
-
     let r = matches.opt_strs("Z");
     if r.iter().any(|x| *x == "help") {
         describe_debug_flags();

@@ -65,7 +65,7 @@ use externalfiles::ExternalHtml;
 use serialize::Decodable;
 use serialize::json::{self, Json};
 use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::ErrorOutputType;
+use rustc::session::config::{ErrorOutputType, RustcOptGroup, nightly_options};
 
 // reexported from `clean` so it can be easily updated with the mod itself
 pub use clean::SCHEMA_VERSION;
@@ -140,68 +140,87 @@ pub fn main() {
     process::exit(res as i32);
 }
 
-pub fn opts() -> Vec<getopts::OptGroup> {
+fn stable(g: getopts::OptGroup) -> RustcOptGroup { RustcOptGroup::stable(g) }
+fn unstable(g: getopts::OptGroup) -> RustcOptGroup { RustcOptGroup::unstable(g) }
+
+pub fn opts() -> Vec<RustcOptGroup> {
     use getopts::*;
     vec!(
-        optflag("h", "help", "show this help message"),
-        optflag("V", "version", "print rustdoc's version"),
-        optflag("v", "verbose", "use verbose output"),
-        optopt("r", "input-format", "the input type of the specified file",
-               "[rust|json]"),
-        optopt("w", "output-format", "the output type to write",
-               "[html|json]"),
-        optopt("o", "output", "where to place the output", "PATH"),
-        optopt("", "crate-name", "specify the name of this crate", "NAME"),
-        optmulti("L", "library-path", "directory to add to crate search path",
-                 "DIR"),
-        optmulti("", "cfg", "pass a --cfg to rustc", ""),
-        optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH"),
-        optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
-        optmulti("", "passes", "list of passes to also run, you might want \
-                                to pass it multiple times; a value of `list` \
-                                will print available passes",
-                 "PASSES"),
-        optmulti("", "plugins", "space separated list of plugins to also load",
-                 "PLUGINS"),
-        optflag("", "no-defaults", "don't run the default passes"),
-        optflag("", "test", "run code examples as tests"),
-        optmulti("", "test-args", "arguments to pass to the test runner",
-                 "ARGS"),
-        optopt("", "target", "target triple to document", "TRIPLE"),
-        optmulti("", "markdown-css", "CSS files to include via <link> in a rendered Markdown file",
-                 "FILES"),
-        optmulti("", "html-in-header",
-                 "files to include inline in the <head> section of a rendered Markdown file \
-                 or generated documentation",
-                 "FILES"),
-        optmulti("", "html-before-content",
-                 "files to include inline between <body> and the content of a rendered \
-                 Markdown file or generated documentation",
-                 "FILES"),
-        optmulti("", "html-after-content",
-                 "files to include inline between the content and </body> of a rendered \
-                 Markdown file or generated documentation",
-                 "FILES"),
-        optopt("", "markdown-playground-url",
-               "URL to send code snippets to", "URL"),
-        optflag("", "markdown-no-toc", "don't include table of contents")
+        stable(optflag("h", "help", "show this help message")),
+        stable(optflag("V", "version", "print rustdoc's version")),
+        stable(optflag("v", "verbose", "use verbose output")),
+        stable(optopt("r", "input-format", "the input type of the specified file",
+                      "[rust|json]")),
+        stable(optopt("w", "output-format", "the output type to write",
+                      "[html|json]")),
+        stable(optopt("o", "output", "where to place the output", "PATH")),
+        stable(optopt("", "crate-name", "specify the name of this crate", "NAME")),
+        stable(optmulti("L", "library-path", "directory to add to crate search path",
+                        "DIR")),
+        stable(optmulti("", "cfg", "pass a --cfg to rustc", "")),
+        stable(optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH")),
+        stable(optmulti("", "plugin-path", "directory to load plugins from", "DIR")),
+        stable(optmulti("", "passes",
+                        "list of passes to also run, you might want \
+                         to pass it multiple times; a value of `list` \
+                         will print available passes",
+                        "PASSES")),
+        stable(optmulti("", "plugins", "space separated list of plugins to also load",
+                        "PLUGINS")),
+        stable(optflag("", "no-defaults", "don't run the default passes")),
+        stable(optflag("", "test", "run code examples as tests")),
+        stable(optmulti("", "test-args", "arguments to pass to the test runner",
+                        "ARGS")),
+        stable(optopt("", "target", "target triple to document", "TRIPLE")),
+        stable(optmulti("", "markdown-css",
+                        "CSS files to include via <link> in a rendered Markdown file",
+                        "FILES")),
+        stable(optmulti("", "html-in-header",
+                        "files to include inline in the <head> section of a rendered Markdown file \
+                         or generated documentation",
+                        "FILES")),
+        stable(optmulti("", "html-before-content",
+                        "files to include inline between <body> and the content of a rendered \
+                         Markdown file or generated documentation",
+                        "FILES")),
+        stable(optmulti("", "html-after-content",
+                        "files to include inline between the content and </body> of a rendered \
+                         Markdown file or generated documentation",
+                        "FILES")),
+        stable(optopt("", "markdown-playground-url",
+                      "URL to send code snippets to", "URL")),
+        stable(optflag("", "markdown-no-toc", "don't include table of contents")),
+        unstable(optopt("e", "extend-css",
+                        "to redefine some css rules with a given file to generate doc with your \
+                         own theme", "PATH")),
+        unstable(optmulti("Z", "",
+                          "internal and debugging options (only on nightly build)", "FLAG")),
     )
 }
 
 pub fn usage(argv0: &str) {
     println!("{}",
              getopts::usage(&format!("{} [options] <input>", argv0),
-                            &opts()));
+                            &opts().into_iter()
+                                   .map(|x| x.opt_group)
+                                   .collect::<Vec<getopts::OptGroup>>()));
 }
 
 pub fn main_args(args: &[String]) -> isize {
-    let matches = match getopts::getopts(&args[1..], &opts()) {
+    let all_groups: Vec<getopts::OptGroup> = opts()
+                                             .into_iter()
+                                             .map(|x| x.opt_group)
+                                             .collect();
+    let matches = match getopts::getopts(&args[1..], &all_groups) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err);
             return 1;
         }
     };
+    // Check for unstable options.
+    nightly_options::check_nightly_options(&matches, &opts());
+
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(&args[0]);
         return 0;
@@ -253,7 +272,15 @@ pub fn main_args(args: &[String]) -> isize {
     let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
 
     let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
+    let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
+
+    if let Some(ref p) = css_file_extension {
+        if !p.is_file() {
+            println!("{}", "--extend-css option must take a css file as input");
+            return 1;
+        }
+    }
 
     let external_html = match ExternalHtml::load(
             &matches.opt_strs("html-in-header"),
@@ -290,7 +317,8 @@ pub fn main_args(args: &[String]) -> isize {
         Some("html") | None => {
             html::render::run(krate, &external_html,
                               output.unwrap_or(PathBuf::from("doc")),
-                              passes.into_iter().collect())
+                              passes.into_iter().collect(),
+                              css_file_extension)
                 .expect("failed to generate documentation")
         }
         Some("json") => {
