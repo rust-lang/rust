@@ -36,7 +36,6 @@
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
-#![feature(str_char)]
 
 #[macro_use]
 extern crate syntax;

@@ -32,7 +32,6 @@ Core encoding and decoding interfaces.
 #![feature(enumset)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(str_char)]
 #![feature(unicode)]
 #![feature(question_mark)]
 #![cfg_attr(test, feature(test))]

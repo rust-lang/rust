@@ -237,7 +237,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("stmt_expr_attributes", "1.6.0", Some(15701), Active),
 
     // Allows `#[deprecated]` attribute
-    ("deprecated", "1.6.0", Some(29935), Active),
+    ("deprecated", "1.9.0", Some(29935), Accepted),
 
     // allow using type ascription in expressions
     ("type_ascription", "1.6.0", Some(23416), Active),
@@ -435,7 +435,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("must_use", Whitelisted, Ungated),
     ("stable", Whitelisted, Ungated),
     ("unstable", Whitelisted, Ungated),
-    ("deprecated", Normal, Gated("deprecated", "`#[deprecated]` attribute is unstable")),
+    ("deprecated", Normal, Ungated),
 
     ("rustc_paren_sugar", Normal, Gated("unboxed_closures",
                                         "unboxed_closures are still evolving")),

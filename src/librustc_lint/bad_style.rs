@@ -63,7 +63,9 @@ impl NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            !name.is_empty() && !name.char_at(0).is_lowercase() && !name.contains('_')
+            !name.is_empty() &&
+                !name.chars().next().unwrap().is_lowercase() &&
+                !name.contains('_')
         }
 
         fn to_camel_case(s: &str) -> String {

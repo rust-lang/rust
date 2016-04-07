@@ -29,8 +29,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::char::CharExt as C;
-use core::option::Option::{self, Some, None};
-use core::iter::Iterator;
+use core::fmt;
 use tables::{derived_property, property, general_category, conversions};
 
 // stable reexports
@@ -739,13 +738,20 @@ impl char {
 }
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
-#[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
+#[stable(feature = "decode_utf16", since = "1.9.0")]
 #[derive(Clone)]
 pub struct DecodeUtf16<I>
     where I: Iterator<Item = u16>
 {
     iter: I,
     buf: Option<u16>,
+}
+
+/// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DecodeUtf16Error {
+    code: u16,
 }
 
 /// Create an iterator over the UTF-16 encoded code points in `iter`,
@@ -756,8 +762,6 @@ pub struct DecodeUtf16<I>
 /// Basic usage:
 ///
 /// ```
-/// #![feature(decode_utf16)]
-///
 /// use std::char::decode_utf16;
 ///
 /// fn main() {
@@ -766,7 +770,9 @@ pub struct DecodeUtf16<I>
 ///              0x0073, 0xDD1E, 0x0069, 0x0063,
 ///              0xD834];
 ///
-///     assert_eq!(decode_utf16(v.iter().cloned()).collect::<Vec<_>>(),
+///     assert_eq!(decode_utf16(v.iter().cloned())
+///                            .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+///                            .collect::<Vec<_>>(),
 ///                vec![Ok('𝄞'),
 ///                     Ok('m'), Ok('u'), Ok('s'),
 ///                     Err(0xDD1E),
@@ -778,8 +784,6 @@ pub struct DecodeUtf16<I>
 /// A lossy decoder can be obtained by replacing `Err` results with the replacement character:
 ///
 /// ```
-/// #![feature(decode_utf16)]
-///
 /// use std::char::{decode_utf16, REPLACEMENT_CHARACTER};
 ///
 /// fn main() {
@@ -794,7 +798,7 @@ pub struct DecodeUtf16<I>
 ///                "𝄞mus�ic�");
 /// }
 /// ```
-#[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
+#[stable(feature = "decode_utf16", since = "1.9.0")]
 #[inline]
 pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::IntoIter> {
     DecodeUtf16 {
@@ -803,11 +807,11 @@ pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::Into
     }
 }
 
-#[unstable(feature = "decode_utf16", reason = "recently exposed", issue = "27830")]
+#[stable(feature = "decode_utf16", since = "1.9.0")]
 impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
-    type Item = Result<char, u16>;
+    type Item = Result<char, DecodeUtf16Error>;
 
-    fn next(&mut self) -> Option<Result<char, u16>> {
+    fn next(&mut self) -> Option<Result<char, DecodeUtf16Error>> {
         let u = match self.buf.take() {
             Some(buf) => buf,
             None => match self.iter.next() {
@@ -821,18 +825,18 @@ impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
             Some(Ok(unsafe { from_u32_unchecked(u as u32) }))
         } else if u >= 0xDC00 {
             // a trailing surrogate
-            Some(Err(u))
+            Some(Err(DecodeUtf16Error { code: u }))
         } else {
             let u2 = match self.iter.next() {
                 Some(u2) => u2,
                 // eof
-                None => return Some(Err(u)),
+                None => return Some(Err(DecodeUtf16Error { code: u })),
             };
             if u2 < 0xDC00 || u2 > 0xDFFF {
                 // not a trailing surrogate so we're not a valid
                 // surrogate pair, so rewind to redecode u2 next time.
                 self.buf = Some(u2);
-                return Some(Err(u));
+                return Some(Err(DecodeUtf16Error { code: u }));
             }
 
             // all ok, so lets decode it.
@@ -850,8 +854,25 @@ impl<I: Iterator<Item=u16>> Iterator for DecodeUtf16<I> {
     }
 }
 
-/// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a decoding error.
+impl DecodeUtf16Error {
+    /// Returns the unpaired surrogate which caused this error.
+    #[stable(feature = "decode_utf16", since = "1.9.0")]
+    pub fn unpaired_surrogate(&self) -> u16 {
+        self.code
+    }
+}
+
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+impl fmt::Display for DecodeUtf16Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "unpaired surrogate found: {:x}", self.code)
+    }
+}
+
+/// `U+FFFD REPLACEMENT CHARACTER` (�) is used in Unicode to represent a
+/// decoding error.
+///
 /// It can occur, for example, when giving ill-formed UTF-8 bytes to
 /// [`String::from_utf8_lossy`](../../std/string/struct.String.html#method.from_utf8_lossy).
-#[unstable(feature = "decode_utf16", reason = "recently added", issue = "27830")]
+#[stable(feature = "decode_utf16", since = "1.9.0")]
 pub const REPLACEMENT_CHARACTER: char = '\u{FFFD}';

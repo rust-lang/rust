@@ -464,12 +464,14 @@ fn test_is_whitespace() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_slice_shift_char() {
     let data = "ประเทศไทย中";
     assert_eq!(data.slice_shift_char(), Some(('ป', "ระเทศไทย中")));
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_slice_shift_char_2() {
     let empty = "";
     assert_eq!(empty.slice_shift_char(), None);
@@ -657,6 +659,7 @@ fn test_contains_char() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_char_at() {
     let s = "ศไทย中华Việt Nam";
     let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
@@ -668,6 +671,7 @@ fn test_char_at() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_char_at_reverse() {
     let s = "ศไทย中华Việt Nam";
     let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
@@ -745,6 +749,7 @@ fn test_total_ord() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_char_range_at() {
     let data = "b¢€𤭢𤭢€¢b";
     assert_eq!('b', data.char_range_at(0).ch);
@@ -758,6 +763,7 @@ fn test_char_range_at() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn test_char_range_at_reverse_underflow() {
     assert_eq!("abc".char_range_at_reverse(0).next, 0);
 }

@@ -10,8 +10,6 @@
 
 // aux-build:deprecation-lint.rs
 
-#![feature(deprecated)]
-
 #![deny(deprecated)]
 #![allow(warnings)]
 
