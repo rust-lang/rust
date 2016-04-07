@@ -22,19 +22,19 @@ fn call_it_once<F:FnOnce(&isize)->isize>(_: F, _: isize) -> isize { 0 }
 
 fn a() {
     let x = call_it(&square, 22);
-    //~^ ERROR not implemented
-    //~| ERROR not implemented
+    //~^ ERROR E0277
+    //~| ERROR E0277
 }
 
 fn b() {
     let y = call_it_mut(&mut square, 22);
-    //~^ ERROR not implemented
-    //~| ERROR not implemented
+    //~^ ERROR E0277
+    //~| ERROR E0277
 }
 
 fn c() {
     let z = call_it_once(square, 22);
-    //~^ ERROR not implemented
+    //~^ ERROR E0277
 }
 
 fn main() { }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn add_state(op: <isize as HasState>::State) {
-//~^ ERROR the trait `HasState` is not implemented for the type `isize`
+//~^ ERROR `isize: HasState` is not satisfied
 }
 
 trait HasState {

@@ -24,7 +24,7 @@ struct Struct<T>(T);
 fn is_reflect<T:Reflect>() { }
 
 fn a<T>() {
-    is_reflect::<Box<Get<Output=T>>>(); //~ ERROR not implemented
+    is_reflect::<Box<Get<Output=T>>>(); //~ ERROR E0277
 }
 
 fn ok_a<T: Reflect>() {

@@ -13,10 +13,12 @@ use super::{
     FulfillmentErrorCode,
     MismatchedProjectionTypes,
     Obligation,
+    ObligationCause,
     ObligationCauseCode,
     OutputTypeParameterMismatch,
     TraitNotObjectSafe,
     PredicateObligation,
+    SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
     MethodViolationCode,
@@ -26,8 +28,9 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use hir::def_id::DefId;
 use infer::InferCtxt;
-use ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, Ty, TyCtxt, TypeFoldable};
+use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fast_reject;
+use ty::fold::{TypeFoldable, TypeFolder};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cmp;
@@ -90,12 +93,7 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
 
-    // The TyError created by normalize_to_error can end up being unified
-    // into all obligations: for example, if our obligation is something
-    // like `$X = <() as Foo<$X>>::Out` and () does not implement Foo<_>,
-    // then $X will be unified with TyError, but the error still needs to be
-    // reported.
-    if !infcx.tcx.sess.has_errors() || !predicate.references_error() {
+    if !predicate.references_error() {
         let mut err = struct_span_err!(infcx.tcx.sess, obligation.cause.span, E0271,
             "type mismatch resolving `{}`: {}",
             predicate,
@@ -105,9 +103,10 @@ pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                     trait_ref: &TraitRef<'tcx>,
-                                     span: Span) -> Option<String> {
+fn on_unimplemented_note<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                   trait_ref: ty::PolyTraitRef<'tcx>,
+                                   span: Span) -> Option<String> {
+    let trait_ref = trait_ref.skip_binder();
     let def_id = trait_ref.def_id;
     let mut report = None;
     for item in infcx.tcx.get_attrs(def_id).iter() {
@@ -173,6 +172,53 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         }
     }
     report
+}
+
+fn find_similar_impl_candidates<'a, 'tcx>(
+    infcx: &InferCtxt<'a, 'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>)
+    -> Vec<ty::TraitRef<'tcx>>
+{
+    let simp = fast_reject::simplify_type(infcx.tcx,
+                                          trait_ref.skip_binder().self_ty(),
+                                          true);
+    let mut impl_candidates = Vec::new();
+    let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
+
+    match simp {
+        Some(simp) => trait_def.for_each_impl(infcx.tcx, |def_id| {
+            let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
+            let imp_simp = fast_reject::simplify_type(infcx.tcx,
+                                                      imp.self_ty(),
+                                                      true);
+            if let Some(imp_simp) = imp_simp {
+                if simp != imp_simp {
+                    return;
+                }
+            }
+            impl_candidates.push(imp);
+        }),
+        None => trait_def.for_each_impl(infcx.tcx, |def_id| {
+            impl_candidates.push(
+                infcx.tcx.impl_trait_ref(def_id).unwrap());
+        })
+    };
+    impl_candidates
+}
+
+fn report_similar_impl_candidates(span: Span,
+                                  err: &mut DiagnosticBuilder,
+                                  impl_candidates: &[ty::TraitRef])
+{
+    err.fileline_help(span, &format!("the following implementations were found:"));
+
+    let end = cmp::min(4, impl_candidates.len());
+    for candidate in &impl_candidates[0..end] {
+        err.fileline_help(span, &format!("  {:?}", candidate));
+    }
+    if impl_candidates.len() > 4 {
+        err.fileline_help(span, &format!("and {} others", impl_candidates.len()-4));
+    }
 }
 
 /// Reports that an overflow has occurred and halts compilation. We
@@ -362,56 +408,39 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             let trait_ref = trait_predicate.to_poly_trait_ref();
                             let mut err = struct_span_err!(
                                 infcx.tcx.sess, obligation.cause.span, E0277,
-                                "the trait `{}` is not implemented for the type `{}`",
-                                trait_ref, trait_ref.self_ty());
+                                "the trait bound `{}` is not satisfied",
+                                trait_ref.to_predicate());
 
-                            // Check if it has a custom "#[rustc_on_unimplemented]"
-                            // error message, report with that message if it does
-                            let custom_note = report_on_unimplemented(infcx, &trait_ref.0,
-                                                                      obligation.cause.span);
-                            if let Some(s) = custom_note {
+                            // Try to report a help message
+
+                            if !trait_ref.has_infer_types() &&
+                                predicate_can_apply(infcx, trait_ref)
+                            {
+                                // If a where-clause may be useful, remind the
+                                // user that they can add it.
+                                //
+                                // don't display an on-unimplemented note, as
+                                // these notes will often be of the form
+                                //     "the type `T` can't be frobnicated"
+                                // which is somewhat confusing.
+                                err.fileline_help(obligation.cause.span, &format!(
+                                    "consider adding a `where {}` bound",
+                                    trait_ref.to_predicate()
+                                    ));
+                            } else if let Some(s) = on_unimplemented_note(infcx, trait_ref,
+                                                                          obligation.cause.span) {
+                                // Otherwise, if there is an on-unimplemented note,
+                                // display it.
                                 err.fileline_note(obligation.cause.span, &s);
                             } else {
-                                let simp = fast_reject::simplify_type(infcx.tcx,
-                                                                      trait_ref.self_ty(),
-                                                                      true);
-                                let mut impl_candidates = Vec::new();
-                                let trait_def = infcx.tcx.lookup_trait_def(trait_ref.def_id());
+                                // If we can't show anything useful, try to find
+                                // similar impls.
 
-                                match simp {
-                                    Some(simp) => trait_def.for_each_impl(infcx.tcx, |def_id| {
-                                        let imp = infcx.tcx.impl_trait_ref(def_id).unwrap();
-                                        let imp_simp = fast_reject::simplify_type(infcx.tcx,
-                                                                                  imp.self_ty(),
-                                                                                  true);
-                                        if let Some(imp_simp) = imp_simp {
-                                            if simp != imp_simp {
-                                                return;
-                                            }
-                                        }
-                                        impl_candidates.push(imp);
-                                    }),
-                                    None => trait_def.for_each_impl(infcx.tcx, |def_id| {
-                                        impl_candidates.push(
-                                            infcx.tcx.impl_trait_ref(def_id).unwrap());
-                                    })
-                                };
-
+                                let impl_candidates =
+                                    find_similar_impl_candidates(infcx, trait_ref);
                                 if impl_candidates.len() > 0 {
-                                    err.fileline_help(
-                                        obligation.cause.span,
-                                        &format!("the following implementations were found:"));
-
-                                    let end = cmp::min(4, impl_candidates.len());
-                                    for candidate in &impl_candidates[0..end] {
-                                        err.fileline_help(obligation.cause.span,
-                                                          &format!("  {:?}", candidate));
-                                    }
-                                    if impl_candidates.len() > 4 {
-                                        err.fileline_help(obligation.cause.span,
-                                                          &format!("and {} others",
-                                                                   impl_candidates.len()-4));
-                                    }
+                                    report_similar_impl_candidates(obligation.cause.span,
+                                                                   &mut err, &impl_candidates);
                                 }
                             }
                             note_obligation_cause(infcx, &mut err, obligation);
@@ -648,6 +677,55 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         }
     }
 }
+
+/// Returns whether the trait predicate may apply for *some* assignment
+/// to the type parameters.
+fn predicate_can_apply<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                 pred: ty::PolyTraitRef<'tcx>)
+                                 -> bool
+{
+    struct ParamToVarFolder<'a, 'tcx: 'a> {
+        infcx: &'a InferCtxt<'a, 'tcx>,
+        var_map: FnvHashMap<Ty<'tcx>, Ty<'tcx>>
+    }
+
+    impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx>
+    {
+        fn tcx(&self) -> &TyCtxt<'tcx> { self.infcx.tcx }
+
+        fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+            if let ty::TyParam(..) = ty.sty {
+                let infcx = self.infcx;
+                self.var_map.entry(ty).or_insert_with(|| infcx.next_ty_var())
+            } else {
+                ty.super_fold_with(self)
+            }
+        }
+    }
+
+    infcx.probe(|_| {
+        let mut selcx = SelectionContext::new(infcx);
+
+        let cleaned_pred = pred.fold_with(&mut ParamToVarFolder {
+            infcx: infcx,
+            var_map: FnvHashMap()
+        });
+
+        let cleaned_pred = super::project::normalize(
+            &mut selcx,
+            ObligationCause::dummy(),
+            &cleaned_pred
+        ).value;
+
+        let obligation = Obligation::new(
+            ObligationCause::dummy(),
+            cleaned_pred.to_predicate()
+        );
+
+        selcx.evaluate_obligation(&obligation)
+    })
+}
+
 
 fn need_type_info<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             span: Span,

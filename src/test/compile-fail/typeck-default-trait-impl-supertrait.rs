@@ -24,6 +24,6 @@ fn foo<T:MyTrait>() { bar::<T>() }
 fn bar<T:NotImplemented>() { }
 
 fn main() {
-    foo::<i32>(); //~ ERROR the trait `NotImplemented` is not implemented for the type `i32`
-    bar::<i64>(); //~ ERROR the trait `NotImplemented` is not implemented for the type `i64`
+    foo::<i32>(); //~ ERROR `i32: NotImplemented` is not satisfied
+    bar::<i64>(); //~ ERROR `i64: NotImplemented` is not satisfied
 }
