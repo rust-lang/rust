@@ -140,13 +140,13 @@ fn item_family(item: rbml::Doc) -> Family {
     }
 }
 
-fn item_visibility(item: rbml::Doc) -> hir::Visibility {
+fn item_visibility(item: rbml::Doc) -> ty::Visibility {
     match reader::maybe_get_doc(item, tag_items_data_item_visibility) {
-        None => hir::Public,
+        None => ty::Visibility::Public,
         Some(visibility_doc) => {
             match reader::doc_as_u8(visibility_doc) as char {
-                'y' => hir::Public,
-                'i' => hir::Inherited,
+                'y' => ty::Visibility::Public,
+                'i' => ty::Visibility::PrivateExternal,
                 _ => bug!("unknown visibility character")
             }
         }
@@ -541,7 +541,7 @@ pub fn get_deprecation(cdata: Cmd, id: DefIndex) -> Option<attr::Deprecation> {
     })
 }
 
-pub fn get_visibility(cdata: Cmd, id: DefIndex) -> hir::Visibility {
+pub fn get_visibility(cdata: Cmd, id: DefIndex) -> ty::Visibility {
     item_visibility(cdata.lookup_item(id))
 }
 
@@ -639,7 +639,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
                                      item_doc: rbml::Doc,
                                      mut get_crate_data: G,
                                      mut callback: F) where
-    F: FnMut(DefLike, ast::Name, hir::Visibility),
+    F: FnMut(DefLike, ast::Name, ty::Visibility),
     G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     // Iterate over all children.
@@ -723,7 +723,7 @@ fn each_child_of_item_or_crate<F, G>(intr: Rc<IdentInterner>,
             let def_like = item_to_def_like(crate_data, child_item_doc, child_def_id);
             // These items have a public visibility because they're part of
             // a public re-export.
-            callback(def_like, token::intern(name), hir::Public);
+            callback(def_like, token::intern(name), ty::Visibility::Public);
         }
     }
 }
@@ -734,7 +734,7 @@ pub fn each_child_of_item<F, G>(intr: Rc<IdentInterner>,
                                id: DefIndex,
                                get_crate_data: G,
                                callback: F) where
-    F: FnMut(DefLike, ast::Name, hir::Visibility),
+    F: FnMut(DefLike, ast::Name, ty::Visibility),
     G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     // Find the item.
@@ -755,7 +755,7 @@ pub fn each_top_level_item_of_crate<F, G>(intr: Rc<IdentInterner>,
                                           cdata: Cmd,
                                           get_crate_data: G,
                                           callback: F) where
-    F: FnMut(DefLike, ast::Name, hir::Visibility),
+    F: FnMut(DefLike, ast::Name, ty::Visibility),
     G: FnMut(ast::CrateNum) -> Rc<crate_metadata>,
 {
     let root_doc = rbml::Doc::new(cdata.data());
@@ -1138,11 +1138,11 @@ pub fn get_struct_field_attrs(cdata: Cmd) -> FnvHashMap<DefId, Vec<ast::Attribut
     }).collect()
 }
 
-fn struct_field_family_to_visibility(family: Family) -> hir::Visibility {
+fn struct_field_family_to_visibility(family: Family) -> ty::Visibility {
     match family {
-      PublicField => hir::Public,
-      InheritedField => hir::Inherited,
-      _ => bug!()
+        PublicField => ty::Visibility::Public,
+        InheritedField => ty::Visibility::PrivateExternal,
+        _ => bug!()
     }
 }
 
