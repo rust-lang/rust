@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z continue-parse-after-error
+
 // Test that we can recover from missing braces in the parser.
 
 trait Foo {
