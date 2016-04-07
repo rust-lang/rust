@@ -813,9 +813,8 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
 
     fn process_crate(&self, c: &hir::Crate) {
         for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
-            match a.value_str() {
-                Some(ref linkarg) => self.cstore.add_used_link_args(&linkarg),
-                None => { /* fallthrough */ }
+            if let Some(ref linkarg) = a.value_str() {
+                self.cstore.add_used_link_args(&linkarg);
             }
         }
     }
@@ -830,12 +829,12 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                 match self.creader.extract_crate_info_hir(i) {
                     Some(info) => {
                         let (cnum, _, _) = self.creader.resolve_crate(&None,
-                                                                          &info.ident,
-                                                                          &info.name,
-                                                                          None,
-                                                                          i.span,
-                                                                          PathKind::Crate,
-                                                                          true);
+                                                                      &info.ident,
+                                                                      &info.name,
+                                                                      None,
+                                                                      i.span,
+                                                                      PathKind::Crate,
+                                                                      true);
                         let def_id = self.ast_map.local_def_id(i.id);
 
                         let len = self.ast_map.def_path(def_id).data.len();
