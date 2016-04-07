@@ -29,12 +29,13 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
 
 use std::cell::{RefCell, Cell};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::rc::Rc;
 
 use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
+use html::render::RenderInfo;
 
 pub use rustc::session::config::Input;
 pub use rustc::session::search_paths::SearchPaths;
@@ -45,19 +46,20 @@ pub enum MaybeTyped<'a, 'tcx: 'a> {
     NotTyped(&'a session::Session)
 }
 
-pub type ExternalPaths = RefCell<Option<HashMap<DefId,
-                                                (Vec<String>, clean::TypeKind)>>>;
+pub type ExternalPaths = HashMap<DefId, (Vec<String>, clean::TypeKind)>;
 
 pub struct DocContext<'a, 'tcx: 'a> {
     pub map: &'a hir_map::Map<'tcx>,
     pub maybe_typed: MaybeTyped<'a, 'tcx>,
     pub input: Input,
-    pub external_paths: ExternalPaths,
-    pub external_traits: RefCell<Option<HashMap<DefId, clean::Trait>>>,
-    pub external_typarams: RefCell<Option<HashMap<DefId, String>>>,
-    pub inlined: RefCell<Option<HashSet<DefId>>>,
     pub all_crate_impls: RefCell<HashMap<ast::CrateNum, Vec<clean::Item>>>,
+    // Later on moved into `clean::Crate`
+    pub access_levels: RefCell<AccessLevels<DefId>>,
+    // Later on moved into `html::render::CACHE_KEY`
+    pub renderinfo: RefCell<RenderInfo>,
     pub deref_trait_did: Cell<Option<DefId>>,
+    // Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
+    pub external_traits: RefCell<HashMap<DefId, clean::Trait>>,
 }
 
 impl<'b, 'tcx> DocContext<'b, 'tcx> {
@@ -81,20 +83,14 @@ impl<'b, 'tcx> DocContext<'b, 'tcx> {
     }
 }
 
-pub struct CrateAnalysis {
-    pub access_levels: AccessLevels<DefId>,
-    pub external_paths: ExternalPaths,
-    pub external_typarams: RefCell<Option<HashMap<DefId, String>>>,
-    pub inlined: RefCell<Option<HashSet<DefId>>>,
-    pub deref_trait_did: Option<DefId>,
-}
-
 pub type Externs = HashMap<String, Vec<String>>;
 
-pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
-                input: Input, triple: Option<String>)
-                -> (clean::Crate, CrateAnalysis) {
-
+pub fn run_core(search_paths: SearchPaths,
+                cfgs: Vec<String>,
+                externs: Externs,
+                input: Input,
+                triple: Option<String>) -> (clean::Crate, RenderInfo)
+{
     // Parse, resolve, and typecheck the given crate.
 
     let cpath = match input {
@@ -148,7 +144,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let arenas = ty::CtxtArenas::new();
     let hir_map = driver::make_map(&sess, &mut hir_forest);
 
-    let krate_and_analysis = abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
                                                      &cstore,
                                                      hir_map,
                                                      &arenas,
@@ -175,42 +171,20 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
             map: &tcx.map,
             maybe_typed: Typed(tcx),
             input: input,
-            external_traits: RefCell::new(Some(HashMap::new())),
-            external_typarams: RefCell::new(Some(HashMap::new())),
-            external_paths: RefCell::new(Some(HashMap::new())),
-            inlined: RefCell::new(Some(HashSet::new())),
             all_crate_impls: RefCell::new(HashMap::new()),
             deref_trait_did: Cell::new(None),
+            access_levels: RefCell::new(access_levels),
+            external_traits: RefCell::new(HashMap::new()),
+            renderinfo: RefCell::new(Default::default()),
         };
         debug!("crate: {:?}", ctxt.map.krate());
 
-        let mut analysis = CrateAnalysis {
-            access_levels: access_levels,
-            external_paths: RefCell::new(None),
-            external_typarams: RefCell::new(None),
-            inlined: RefCell::new(None),
-            deref_trait_did: None,
-        };
-
         let krate = {
-            let mut v = RustdocVisitor::new(&ctxt, Some(&analysis));
+            let mut v = RustdocVisitor::new(&ctxt);
             v.visit(ctxt.map.krate());
             v.clean(&ctxt)
         };
 
-        let external_paths = ctxt.external_paths.borrow_mut().take();
-        *analysis.external_paths.borrow_mut() = external_paths;
-
-        let map = ctxt.external_typarams.borrow_mut().take();
-        *analysis.external_typarams.borrow_mut() = map;
-
-        let map = ctxt.inlined.borrow_mut().take();
-        *analysis.inlined.borrow_mut() = map;
-
-        analysis.deref_trait_did = ctxt.deref_trait_did.get();
-
-        Some((krate, analysis))
-    }), &sess);
-
-    krate_and_analysis.unwrap()
+        Some((krate, ctxt.renderinfo.into_inner()))
+    }), &sess).unwrap()
 }
