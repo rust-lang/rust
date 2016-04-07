@@ -139,11 +139,9 @@ pub struct Options {
     pub continue_parse_after_error: bool,
     pub mir_opt_level: usize,
 
-    /// if true, build up the dep-graph
-    pub build_dep_graph: bool,
-
-    /// if true, -Z dump-dep-graph was passed to dump out the dep-graph
-    pub dump_dep_graph: bool,
+    /// if Some, enable incremental compilation, using the given
+    /// directory to store intermediate results
+    pub incremental: Option<PathBuf>,
 
     pub no_analysis: bool,
     pub debugging_opts: DebuggingOptions,
@@ -260,8 +258,7 @@ pub fn basic_options() -> Options {
         treat_err_as_bug: false,
         continue_parse_after_error: false,
         mir_opt_level: 1,
-        build_dep_graph: false,
-        dump_dep_graph: false,
+        incremental: None,
         no_analysis: false,
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
@@ -273,6 +270,15 @@ pub fn basic_options() -> Options {
         libs: Vec::new(),
         unstable_features: UnstableFeatures::Disallow,
         debug_assertions: true,
+    }
+}
+
+impl Options {
+    /// True if there is a reason to build the dep graph.
+    pub fn build_dep_graph(&self) -> bool {
+        self.incremental.is_some() ||
+            self.debugging_opts.dump_dep_graph ||
+            self.debugging_opts.query_dep_graph
     }
 }
 
@@ -635,10 +641,12 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "treat all errors that occur as bugs"),
     continue_parse_after_error: bool = (false, parse_bool,
           "attempt to recover from parse errors (experimental)"),
-    incr_comp: bool = (false, parse_bool,
+    incremental: Option<String> = (None, parse_opt_string,
           "enable incremental compilation (experimental)"),
     dump_dep_graph: bool = (false, parse_bool,
           "dump the dependency graph to $RUST_DEP_GRAPH (default: /tmp/dep_graph.gv)"),
+    query_dep_graph: bool = (false, parse_bool,
+          "enable queries of the dependency graph for regression testing"),
     no_analysis: bool = (false, parse_bool,
           "parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list,
@@ -1050,8 +1058,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let treat_err_as_bug = debugging_opts.treat_err_as_bug;
     let continue_parse_after_error = debugging_opts.continue_parse_after_error;
     let mir_opt_level = debugging_opts.mir_opt_level.unwrap_or(1);
-    let incremental_compilation = debugging_opts.incr_comp;
-    let dump_dep_graph = debugging_opts.dump_dep_graph;
     let no_analysis = debugging_opts.no_analysis;
 
     let mut output_types = HashMap::new();
@@ -1211,6 +1217,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let crate_name = matches.opt_str("crate-name");
 
+    let incremental = debugging_opts.incremental.as_ref().map(|m| PathBuf::from(m));
+
     Options {
         crate_types: crate_types,
         gc: gc,
@@ -1230,8 +1238,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         treat_err_as_bug: treat_err_as_bug,
         continue_parse_after_error: continue_parse_after_error,
         mir_opt_level: mir_opt_level,
-        build_dep_graph: incremental_compilation || dump_dep_graph,
-        dump_dep_graph: dump_dep_graph,
+        incremental: incremental,
         no_analysis: no_analysis,
         debugging_opts: debugging_opts,
         prints: prints,

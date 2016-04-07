@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::DefId;
 use rustc_data_structures::fnv::FnvHashMap;
 use std::cell::RefCell;
 use std::ops::Index;
@@ -29,7 +30,7 @@ pub struct DepTrackingMap<M: DepTrackingMapConfig> {
 pub trait DepTrackingMapConfig {
     type Key: Eq + Hash + Clone;
     type Value: Clone;
-    fn to_dep_node(key: &Self::Key) -> DepNode;
+    fn to_dep_node(key: &Self::Key) -> DepNode<DefId>;
 }
 
 impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
