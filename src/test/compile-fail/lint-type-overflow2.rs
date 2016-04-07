@@ -19,4 +19,8 @@ fn main() {
     let x =  3.40282348e+38_f32; //~ error: literal out of range for f32
     let x = -1.7976931348623159e+308_f64; //~ error: literal out of range for f64
     let x =  1.7976931348623159e+308_f64; //~ error: literal out of range for f64
+    let x: f32 = -3.40282348e+38; //~ error: literal out of range for f32
+    let x: f32 =  3.40282348e+38; //~ error: literal out of range for f32
+    let x: f64 = -1.7976931348623159e+308; //~ error: literal out of range for f64
+    let x: f64 =  1.7976931348623159e+308; //~ error: literal out of range for f64
 }
