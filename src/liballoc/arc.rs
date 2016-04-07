@@ -263,6 +263,7 @@ impl<T: ?Sized> Arc<T> {
         loop {
             // check if the weak counter is currently "locked"; if so, spin.
             if cur == usize::MAX {
+                cur = this.inner().weak.load(Relaxed);
                 continue;
             }
 
