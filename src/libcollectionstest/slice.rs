@@ -574,18 +574,48 @@ fn test_slice_2() {
     assert_eq!(v[1], 3);
 }
 
+macro_rules! assert_order {
+    (Greater, $a:expr, $b:expr) => {
+        assert_eq!($a.cmp($b), Greater);
+        assert!($a > $b);
+    };
+    (Less, $a:expr, $b:expr) => {
+        assert_eq!($a.cmp($b), Less);
+        assert!($a < $b);
+    };
+    (Equal, $a:expr, $b:expr) => {
+        assert_eq!($a.cmp($b), Equal);
+        assert_eq!($a, $b);
+    }
+}
+
 #[test]
-fn test_total_ord() {
+fn test_total_ord_u8() {
+    let c = &[1u8, 2, 3];
+    assert_order!(Greater, &[1u8, 2, 3, 4][..], &c[..]);
+    let c = &[1u8, 2, 3, 4];
+    assert_order!(Less, &[1u8, 2, 3][..], &c[..]);
+    let c = &[1u8, 2, 3, 6];
+    assert_order!(Equal, &[1u8, 2, 3, 6][..], &c[..]);
+    let c = &[1u8, 2, 3, 4, 5, 6];
+    assert_order!(Less, &[1u8, 2, 3, 4, 5, 5, 5, 5][..], &c[..]);
+    let c = &[1u8, 2, 3, 4];
+    assert_order!(Greater, &[2u8, 2][..], &c[..]);
+}
+
+
+#[test]
+fn test_total_ord_i32() {
     let c = &[1, 2, 3];
-    [1, 2, 3, 4][..].cmp(c) == Greater;
+    assert_order!(Greater, &[1, 2, 3, 4][..], &c[..]);
     let c = &[1, 2, 3, 4];
-    [1, 2, 3][..].cmp(c) == Less;
+    assert_order!(Less, &[1, 2, 3][..], &c[..]);
     let c = &[1, 2, 3, 6];
-    [1, 2, 3, 4][..].cmp(c) == Equal;
+    assert_order!(Equal, &[1, 2, 3, 6][..], &c[..]);
     let c = &[1, 2, 3, 4, 5, 6];
-    [1, 2, 3, 4, 5, 5, 5, 5][..].cmp(c) == Less;
+    assert_order!(Less, &[1, 2, 3, 4, 5, 5, 5, 5][..], &c[..]);
     let c = &[1, 2, 3, 4];
-    [2, 2][..].cmp(c) == Greater;
+    assert_order!(Greater, &[2, 2][..], &c[..]);
 }
 
 #[test]
