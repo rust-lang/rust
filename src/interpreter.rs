@@ -371,25 +371,28 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(target)
     }
 
-    fn call_intrinsic(&mut self, name: &str, substs: &'tcx Substs<'tcx>,
-        args: &[mir::Operand<'tcx>], dest: Pointer, dest_size: usize)
-        -> EvalResult<TerminatorTarget>
-    {
+    fn call_intrinsic(
+        &mut self,
+        name: &str,
+        substs: &'tcx Substs<'tcx>,
+        args: &[mir::Operand<'tcx>],
+        dest: Pointer,
+        dest_size: usize
+    ) -> EvalResult<TerminatorTarget> {
+        let args_res: EvalResult<Vec<Pointer>> = args.iter()
+            .map(|arg| self.eval_operand(arg))
+            .collect();
+        let args = try!(args_res);
+
         match name {
             "assume" => {}
 
             "copy_nonoverlapping" => {
                 let elem_ty = *substs.types.get(subst::FnSpace, 0);
                 let elem_size = self.type_size(elem_ty);
-
-                let src_arg   = try!(self.eval_operand(&args[0]));
-                let dest_arg  = try!(self.eval_operand(&args[1]));
-                let count_arg = try!(self.eval_operand(&args[2]));
-
-                let src   = try!(self.memory.read_ptr(src_arg));
-                let dest  = try!(self.memory.read_ptr(dest_arg));
-                let count = try!(self.memory.read_isize(count_arg));
-
+                let src = try!(self.memory.read_ptr(args[0]));
+                let dest = try!(self.memory.read_ptr(args[1]));
+                let count = try!(self.memory.read_isize(args[2]));
                 try!(self.memory.copy(src, dest, count as usize * elem_size));
             }
 
@@ -403,29 +406,19 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             "move_val_init" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-
-                let ptr_arg = try!(self.eval_operand(&args[0]));
-                let ptr = try!(self.memory.read_ptr(ptr_arg));
-
-                let val = try!(self.eval_operand(&args[1]));
-                try!(self.memory.copy(val, ptr, size));
+                let ptr = try!(self.memory.read_ptr(args[0]));
+                try!(self.memory.copy(args[1], ptr, size));
             }
 
             // FIXME(tsion): Handle different integer types correctly.
             "add_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-
-                let left_arg  = try!(self.eval_operand(&args[0]));
-                let right_arg = try!(self.eval_operand(&args[1]));
-
-                let left = try!(self.memory.read_int(left_arg, size));
-                let right = try!(self.memory.read_int(right_arg, size));
-
+                let left = try!(self.memory.read_int(args[0], size));
+                let right = try!(self.memory.read_int(args[1], size));
                 let (n, overflowed) = unsafe {
                     ::std::intrinsics::add_with_overflow::<i64>(left, right)
                 };
-
                 try!(self.memory.write_int(dest, n, size));
                 try!(self.memory.write_bool(dest.offset(size as isize), overflowed));
             }
@@ -434,17 +427,11 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             "mul_with_overflow" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-
-                let left_arg  = try!(self.eval_operand(&args[0]));
-                let right_arg = try!(self.eval_operand(&args[1]));
-
-                let left = try!(self.memory.read_int(left_arg, size));
-                let right = try!(self.memory.read_int(right_arg, size));
-
+                let left = try!(self.memory.read_int(args[0], size));
+                let right = try!(self.memory.read_int(args[1], size));
                 let (n, overflowed) = unsafe {
                     ::std::intrinsics::mul_with_overflow::<i64>(left, right)
                 };
-
                 try!(self.memory.write_int(dest, n, size));
                 try!(self.memory.write_bool(dest.offset(size as isize), overflowed));
             }
@@ -452,11 +439,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             "offset" => {
                 let pointee_ty = *substs.types.get(subst::FnSpace, 0);
                 let pointee_size = self.type_size(pointee_ty) as isize;
-
-                let ptr_arg    = try!(self.eval_operand(&args[0]));
-                let offset_arg = try!(self.eval_operand(&args[1]));
-
-                let offset = try!(self.memory.read_isize(offset_arg));
+                let ptr_arg = args[0];
+                let offset = try!(self.memory.read_isize(args[1]));
 
                 match self.memory.read_ptr(ptr_arg) {
                     Ok(ptr) => {
@@ -476,13 +460,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             "overflowing_sub" => {
                 let ty = *substs.types.get(subst::FnSpace, 0);
                 let size = self.type_size(ty);
-
-                let left_arg  = try!(self.eval_operand(&args[0]));
-                let right_arg = try!(self.eval_operand(&args[1]));
-
-                let left = try!(self.memory.read_int(left_arg, size));
-                let right = try!(self.memory.read_int(right_arg, size));
-
+                let left = try!(self.memory.read_int(args[0], size));
+                let right = try!(self.memory.read_int(args[1], size));
                 let n = left.wrapping_sub(right);
                 try!(self.memory.write_int(dest, n, size));
             }
@@ -493,14 +472,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                 try!(self.memory.write_uint(dest, size, dest_size));
             }
 
-            "transmute" => {
-                let src = try!(self.eval_operand(&args[0]));
-                try!(self.memory.copy(src, dest, dest_size));
-            }
-
-            "uninit" => {
-                try!(self.memory.mark_definedness(dest, dest_size, false));
-            }
+            "transmute" => try!(self.memory.copy(args[0], dest, dest_size)),
+            "uninit" => try!(self.memory.mark_definedness(dest, dest_size, false)),
 
             name => panic!("can't handle intrinsic: {}", name),
         }
@@ -511,9 +484,12 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(TerminatorTarget::Call)
     }
 
-    fn call_c_abi(&mut self, def_id: DefId, args: &[mir::Operand<'tcx>], dest: Pointer)
-        -> EvalResult<TerminatorTarget>
-    {
+    fn call_c_abi(
+        &mut self,
+        def_id: DefId,
+        args: &[mir::Operand<'tcx>],
+        dest: Pointer
+    ) -> EvalResult<TerminatorTarget> {
         let name = self.tcx.item_name(def_id);
         let attrs = self.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
@@ -521,22 +497,21 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             None => name.as_str(),
         };
 
+        let args_res: EvalResult<Vec<Pointer>> = args.iter()
+            .map(|arg| self.eval_operand(arg))
+            .collect();
+        let args = try!(args_res);
+
         match &link_name[..] {
             "__rust_allocate" => {
-                let size_arg  = try!(self.eval_operand(&args[0]));
-                let _align_arg = try!(self.eval_operand(&args[1]));
-                let size = try!(self.memory.read_usize(size_arg));
+                let size = try!(self.memory.read_usize(args[0]));
                 let ptr = self.memory.allocate(size as usize);
                 try!(self.memory.write_ptr(dest, ptr));
             }
 
             "__rust_reallocate" => {
-                let ptr_arg = try!(self.eval_operand(&args[0]));
-                let _old_size_arg = try!(self.eval_operand(&args[1]));
-                let size_arg = try!(self.eval_operand(&args[2]));
-                let _align_arg = try!(self.eval_operand(&args[3]));
-                let ptr = try!(self.memory.read_ptr(ptr_arg));
-                let size = try!(self.memory.read_usize(size_arg));
+                let ptr = try!(self.memory.read_ptr(args[0]));
+                let size = try!(self.memory.read_usize(args[2]));
                 try!(self.memory.reallocate(ptr, size as usize));
                 try!(self.memory.write_ptr(dest, ptr));
             }
