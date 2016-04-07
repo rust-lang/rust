@@ -15,7 +15,7 @@ use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
-use std::panic::{self, AssertRecoverSafe};
+use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
 use std::rc::Rc;
 use std::str;
@@ -256,18 +256,13 @@ fn runtest(test: &str, cratename: &str, cfgs: Vec<String>, libs: SearchPaths,
         control.after_analysis.stop = Compilation::Stop;
     }
 
-    match {
-        let b_sess = AssertRecoverSafe(&sess);
-        let b_cstore = AssertRecoverSafe(&cstore);
-        let b_cfg = AssertRecoverSafe(cfg.clone());
-        let b_control = AssertRecoverSafe(&control);
+    let res = panic::catch_unwind(AssertUnwindSafe(|| {
+        driver::compile_input(&sess, &cstore, cfg.clone(),
+                              &input, &out,
+                              &None, None, &control)
+    }));
 
-        panic::recover(|| {
-            driver::compile_input(&b_sess, &b_cstore, (*b_cfg).clone(),
-                                  &input, &out,
-                                  &None, None, &b_control)
-        })
-    } {
+    match res {
         Ok(r) => {
             match r {
                 Err(count) if count > 0 && compile_fail == false => {

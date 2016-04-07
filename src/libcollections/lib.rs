@@ -27,7 +27,6 @@
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
 
 #![cfg_attr(test, allow(deprecated))] // rand
-#![cfg_attr(not(test), feature(copy_from_slice))] // impl [T]
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(alloc)]
@@ -35,7 +34,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
-#![feature(decode_utf16)]
 #![feature(dropck_parametricity)]
 #![feature(fmt_internals)]
 #![feature(heap_api)]

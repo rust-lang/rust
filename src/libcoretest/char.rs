@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::char;
+
 #[test]
 fn test_is_lowercase() {
     assert!('a'.is_lowercase());
@@ -213,7 +215,10 @@ fn test_len_utf16() {
 #[test]
 fn test_decode_utf16() {
     fn check(s: &[u16], expected: &[Result<char, u16>]) {
-        assert_eq!(::std::char::decode_utf16(s.iter().cloned()).collect::<Vec<_>>(), expected);
+        let v = char::decode_utf16(s.iter().cloned())
+                     .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+                     .collect::<Vec<_>>();
+        assert_eq!(v, expected);
     }
     check(&[0xD800, 0x41, 0x42], &[Err(0xD800), Ok('A'), Ok('B')]);
     check(&[0xD800, 0], &[Err(0xD800), Ok('\0')]);

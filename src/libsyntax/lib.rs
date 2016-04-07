@@ -29,7 +29,6 @@
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(str_char)]
 #![feature(str_escape)]
 #![feature(unicode)]
 #![feature(question_mark)]
