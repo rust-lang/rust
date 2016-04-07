@@ -2676,6 +2676,8 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 || tcx.mk_float_var(fcx.infcx().next_float_var_id()))
         }
         ConstVal::Bool(_) => tcx.types.bool,
+        // if a dummy is emitted, an error has already been reported
+        ConstVal::Dummy => tcx.types.err,
         _ => bug!(),
     }
 }

@@ -409,7 +409,6 @@ pub enum ErrKind {
     IndexOpFeatureGated,
     Math(ConstMathErr),
 
-    IntermediateUnsignedNegative,
     /// Expected, Got
     TypeMismatch(String, ConstInt),
     FloatTypeMismatch,
@@ -470,10 +469,6 @@ impl ConstEvalErr {
             MiscCatchAll => "unsupported constant expr".into_cow(),
             IndexOpFeatureGated => "the index operation on const values is unstable".into_cow(),
             Math(ref err) => err.description().into_cow(),
-
-            IntermediateUnsignedNegative => "during the computation of an unsigned a negative \
-                                             number was encountered. This is most likely a bug in\
-                                             the constant evaluator".into_cow(),
 
             TypeMismatch(ref expected, ref got) => {
                 format!("mismatched types: expected `{}`, found `{}`",
@@ -974,7 +969,7 @@ fn infer<'tcx>(
                 Err(_) => Ok(Usize(ConstUsize::Us32(i as u32))),
             }
         },
-        (&ty::TyUint(_), InferSigned(_)) => Err(err(IntermediateUnsignedNegative)),
+        (&ty::TyUint(_), InferSigned(_)) => Err(err(Math(ConstMathErr::UnsignedNegation))),
 
         (&ty::TyInt(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
         (&ty::TyUint(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),

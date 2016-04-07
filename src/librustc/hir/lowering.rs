@@ -1144,6 +1144,18 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let rhs = lower_expr(lctx, rhs);
                 hir::ExprBinary(binop, lhs, rhs)
             }
+            ExprKind::Unary(UnOp::Neg, ref inner) => {
+                let (new, mut attrs) = lower_un_neg(lctx, inner);
+                attrs.update(|a| {
+                    a.prepend(e.attrs.clone())
+                });
+                return P(hir::Expr {
+                    id: e.id,
+                    span: e.span,
+                    attrs: attrs,
+                    node: new,
+                });
+            },
             ExprKind::Unary(op, ref ohs) => {
                 let op = lower_unop(lctx, op);
                 let ohs = lower_expr(lctx, ohs);
@@ -1674,6 +1686,64 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
         span: e.span,
         attrs: e.attrs.clone(),
     })
+}
+
+fn negate_lit(lctx: &LoweringContext, n: u64, ty: LitIntType) -> ConstVal {
+    use syntax::ast::LitIntType::*;
+    use syntax::ast::IntTy::*;
+    use std::{i8, i16, i32, i64};
+    use rustc_const_math::ConstVal::Integral;
+    const I8_OVERFLOW: u64 = i8::MAX as u64 + 1;
+    const I16_OVERFLOW: u64 = i16::MAX as u64 + 1;
+    const I32_OVERFLOW: u64 = i32::MAX as u64 + 1;
+    const I64_OVERFLOW: u64 = i64::MAX as u64 + 1;
+    match (n, ty, lctx.id_assigner.target_bitwidth()) {
+        (I8_OVERFLOW, Signed(I8), _) => Integral(ConstInt::I8(i8::MIN)),
+        (I16_OVERFLOW, Signed(I16), _) => Integral(ConstInt::I16(i16::MIN)),
+        (I32_OVERFLOW, Signed(I32), _) => Integral(ConstInt::I32(i32::MIN)),
+        (I64_OVERFLOW, Signed(I64), _) => Integral(ConstInt::I64(i64::MIN)),
+        (I64_OVERFLOW, Signed(Is), 64) => Integral(ConstInt::Isize(ConstIsize::Is64(i64::MIN))),
+        (I32_OVERFLOW, Signed(Is), 32) => Integral(ConstInt::Isize(ConstIsize::Is32(i32::MIN))),
+        (I64_OVERFLOW, Unsuffixed, _) => Integral(ConstInt::InferSigned(i64::MIN)),
+        (n, Signed(I8), _) => Integral(ConstInt::I8(-(n as i64 as i8))),
+        (n, Signed(I16), _) => Integral(ConstInt::I16(-(n as i64 as i16))),
+        (n, Signed(I32), _) => Integral(ConstInt::I32(-(n as i64 as i32))),
+        (n, Signed(I64), _) => Integral(ConstInt::I64(-(n as i64))),
+        (n, Signed(Is), 64) => Integral(ConstInt::Isize(ConstIsize::Is64(-(n as i64)))),
+        (n, Signed(Is), 32) => Integral(ConstInt::Isize(ConstIsize::Is32(-(n as i64 as i32)))),
+        (_, Signed(Is), _) => unreachable!(),
+         // unary negation of unsigned has already been reported by EarlyTypeLimits
+        (_, Unsigned(_), _) => ConstVal::Dummy,
+        (n, Unsuffixed, _) => Integral(ConstInt::InferSigned(-(n as i64))),
+    }
+}
+
+pub fn lower_un_neg(lctx: &LoweringContext, inner: &Expr) -> (hir::Expr_, ThinAttributes) {
+    match inner.node {
+        ExprKind::Paren(ref ex) => {
+            let (new, mut attrs) = lower_un_neg(lctx, ex);
+            attrs.update(|attrs| attrs.prepend(ex.attrs.clone()));
+            return (new, attrs);
+        }
+        ExprKind::Lit(ref lit) => {
+            if let LitKind::Int(n, ty) = lit.node {
+                return (hir::ExprLit(negate_lit(lctx, n, ty)), None);
+            }
+        },
+        ExprKind::Unary(UnOp::Neg, ref double_inner) => {
+            if let ExprKind::Lit(ref lit) = double_inner.node {
+                // skip double negation where applicable
+                if let LitKind::Int(..) = lit.node {
+                    return (
+                        hir::ExprLit(lower_lit(lctx, &lit.node, inner.span)),
+                        double_inner.attrs.clone(),
+                    );
+                }
+            }
+        },
+        _ => {},
+    }
+    (hir::ExprUnary(hir::UnNeg, lower_expr(lctx, inner)), None)
 }
 
 pub fn lower_lit(lctx: &LoweringContext, lit: &LitKind, span: Span) -> ConstVal {
