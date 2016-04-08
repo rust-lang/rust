@@ -11,12 +11,12 @@
 use llvm::{self, BasicBlockRef, ValueRef, OperandBundleDef};
 use rustc::ty;
 use rustc::mir::repr as mir;
-use abi::{Abi, FnType};
+use abi::{Abi, FnType, ArgType};
 use adt;
 use base;
 use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
-use common::{self, Block, BlockAndBuilder, C_undef};
+use common::{self, type_is_fat_ptr, Block, BlockAndBuilder, C_undef};
 use debuginfo::DebugLoc;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
@@ -25,7 +25,7 @@ use type_of;
 use glue;
 use type_::Type;
 
-use super::{MirContext, drop};
+use super::{MirContext, TempRef, drop};
 use super::lvalue::{LvalueRef, load_fat_ptr};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{self, FatPtr, Immediate, Ref};
@@ -169,6 +169,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
+                let sig = bcx.tcx().erase_late_bound_regions(sig);
+
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {
                     (&ty::TyFnDef(def_id, _, _), &Intrinsic) => {
@@ -191,31 +193,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 if intrinsic == Some("transmute") {
                     let &(ref dest, target) = destination.as_ref().unwrap();
-                    let dst = self.trans_lvalue(&bcx, dest);
-                    let mut val = self.trans_operand(&bcx, &args[0]);
-                    if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
-                        let llouttype = type_of::type_of(bcx.ccx(), dst.ty.to_ty(bcx.tcx()));
-                        let out_type_size = llbitsize_of_real(bcx.ccx(), llouttype);
-                        if out_type_size != 0 {
-                            // FIXME #19925 Remove this hack after a release cycle.
-                            let f = Callee::def(bcx.ccx(), def_id, substs);
-                            let datum = f.reify(bcx.ccx());
-                            val = OperandRef {
-                                val: OperandValue::Immediate(datum.val),
-                                ty: datum.ty
-                            };
-                        }
-                    }
+                    self.with_lvalue_ref(&bcx, dest, |this, dest| {
+                        this.trans_transmute(&bcx, &args[0], dest);
+                    });
 
-                    let llty = type_of::type_of(bcx.ccx(), val.ty);
-                    let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
-                    self.store_operand(&bcx, cast_ptr, val);
                     self.set_operand_dropped(&bcx, &args[0]);
                     funclet_br(bcx, self.llblock(target));
                     return;
                 }
 
-                let extra_args = &args[sig.0.inputs.len()..];
+                let extra_args = &args[sig.inputs.len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
                     self.mir.operand_ty(bcx.tcx(), op_arg)
                 }).collect::<Vec<_>>();
@@ -226,18 +213,15 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let mut llargs = Vec::with_capacity(arg_count);
 
                 // Prepare the return value destination
-                let ret_dest = if let Some((ref d, _)) = *destination {
-                    let dest = self.trans_lvalue(&bcx, d);
-                    if fn_ty.ret.is_indirect() {
-                        llargs.push(dest.llval);
-                        None
-                    } else if fn_ty.ret.is_ignore() {
-                        None
+                let ret_dest = if let Some((ref dest, _)) = *destination {
+                    let is_intrinsic = if let Intrinsic = callee.data {
+                        true
                     } else {
-                        Some(dest)
-                    }
+                        false
+                    };
+                    self.make_return_dest(&bcx, dest, &fn_ty.ret, &mut llargs, is_intrinsic)
                 } else {
-                    None
+                    ReturnDest::Nothing
                 };
 
                 // Split the rust-call tupled arguments off.
@@ -269,29 +253,42 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         use expr::{Ignore, SaveIn};
                         use intrinsic::trans_intrinsic_call;
 
-                        let (dest, llargs) = if fn_ty.ret.is_indirect() {
-                            (SaveIn(llargs[0]), &llargs[1..])
-                        } else if let Some(dest) = ret_dest {
-                            (SaveIn(dest.llval), &llargs[..])
-                        } else {
-                            (Ignore, &llargs[..])
+                        let (dest, llargs) = match ret_dest {
+                            _ if fn_ty.ret.is_indirect() => {
+                                (SaveIn(llargs[0]), &llargs[1..])
+                            }
+                            ReturnDest::Nothing => (Ignore, &llargs[..]),
+                            ReturnDest::IndirectOperand(dst, _) |
+                            ReturnDest::Store(dst) => (SaveIn(dst), &llargs[..]),
+                            ReturnDest::DirectOperand(_) =>
+                                bug!("Cannot use direct operand with an intrinsic call")
                         };
 
                         bcx.with_block(|bcx| {
-                            let res = trans_intrinsic_call(bcx, callee.ty, &fn_ty,
+                            trans_intrinsic_call(bcx, callee.ty, &fn_ty,
                                                            ArgVals(llargs), dest,
                                                            DebugLoc::None);
-                            let bcx = res.bcx.build();
-                            if let Some((_, target)) = *destination {
-                                for op in args {
-                                    self.set_operand_dropped(&bcx, op);
-                                }
-                                funclet_br(bcx, self.llblock(target));
-                            } else {
-                                // trans_intrinsic_call already used Unreachable.
-                                // bcx.unreachable();
-                            }
                         });
+
+                        if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
+                            // Make a fake operand for store_return
+                            let op = OperandRef {
+                                val: OperandValue::Ref(dst),
+                                ty: sig.output.unwrap()
+                            };
+                            self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+                        }
+
+                        if let Some((_, target)) = *destination {
+                            for op in args {
+                                self.set_operand_dropped(&bcx, op);
+                            }
+                            funclet_br(bcx, self.llblock(target));
+                        } else {
+                            // trans_intrinsic_call already used Unreachable.
+                            // bcx.unreachable();
+                        }
+
                         return;
                     }
                     Fn(f) => f,
@@ -321,9 +318,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if destination.is_some() {
                         let ret_bcx = ret_bcx.build();
                         ret_bcx.at_start(|ret_bcx| {
-                            if let Some(ret_dest) = ret_dest {
-                                fn_ty.ret.store(&ret_bcx, invokeret, ret_dest.llval);
-                            }
+                            let op = OperandRef {
+                                val: OperandValue::Immediate(invokeret),
+                                ty: sig.output.unwrap()
+                            };
+                            self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
                             for op in args {
                                 self.set_operand_dropped(&ret_bcx, op);
                             }
@@ -333,9 +332,11 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle.as_ref());
                     fn_ty.apply_attrs_callsite(llret);
                     if let Some((_, target)) = *destination {
-                        if let Some(ret_dest) = ret_dest {
-                            fn_ty.ret.store(&bcx, llret, ret_dest.llval);
-                        }
+                        let op = OperandRef {
+                            val: OperandValue::Immediate(llret),
+                            ty: sig.output.unwrap()
+                        };
+                        self.store_return(&bcx, ret_dest, fn_ty.ret, op);
                         for op in args {
                             self.set_operand_dropped(&bcx, op);
                         }
@@ -544,4 +545,122 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn llblock(&self, bb: mir::BasicBlock) -> BasicBlockRef {
         self.blocks[bb.index()].llbb
     }
+
+    fn make_return_dest(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                        dest: &mir::Lvalue<'tcx>, fn_ret_ty: &ArgType,
+                        llargs: &mut Vec<ValueRef>, is_intrinsic: bool) -> ReturnDest {
+        // If the return is ignored, we can just return a do-nothing ReturnDest
+        if fn_ret_ty.is_ignore() {
+            return ReturnDest::Nothing;
+        }
+        let dest = match *dest {
+            mir::Lvalue::Temp(idx) => {
+                let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), dest);
+                let lvalue_ty = bcx.monomorphize(&lvalue_ty);
+                let ret_ty = lvalue_ty.to_ty(bcx.tcx());
+                match self.temps[idx as usize] {
+                    TempRef::Lvalue(dest) => dest,
+                    TempRef::Operand(None) => {
+                        // Handle temporary lvalues, specifically Operand ones, as
+                        // they don't have allocas
+                        return if fn_ret_ty.is_indirect() {
+                            // Odd, but possible, case, we have an operand temporary,
+                            // but the calling convention has an indirect return.
+                            let tmp = bcx.with_block(|bcx| {
+                                base::alloc_ty(bcx, ret_ty, "tmp_ret")
+                            });
+                            llargs.push(tmp);
+                            ReturnDest::IndirectOperand(tmp, idx)
+                        } else if is_intrinsic {
+                            // Currently, intrinsics always need a location to store
+                            // the result. so we create a temporary alloca for the
+                            // result
+                            let tmp = bcx.with_block(|bcx| {
+                                base::alloc_ty(bcx, ret_ty, "tmp_ret")
+                            });
+                            ReturnDest::IndirectOperand(tmp, idx)
+                        } else {
+                            ReturnDest::DirectOperand(idx)
+                        };
+                    }
+                    TempRef::Operand(Some(_)) => {
+                        bug!("lvalue temp already assigned to");
+                    }
+                }
+            }
+            _ => self.trans_lvalue(bcx, dest)
+        };
+        if fn_ret_ty.is_indirect() {
+            llargs.push(dest.llval);
+            ReturnDest::Nothing
+        } else {
+            ReturnDest::Store(dest.llval)
+        }
+    }
+
+    fn trans_transmute(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                       src: &mir::Operand<'tcx>, dst: LvalueRef<'tcx>) {
+        let mut val = self.trans_operand(bcx, src);
+        if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
+            let llouttype = type_of::type_of(bcx.ccx(), dst.ty.to_ty(bcx.tcx()));
+            let out_type_size = llbitsize_of_real(bcx.ccx(), llouttype);
+            if out_type_size != 0 {
+                // FIXME #19925 Remove this hack after a release cycle.
+                let f = Callee::def(bcx.ccx(), def_id, substs);
+                let datum = f.reify(bcx.ccx());
+                val = OperandRef {
+                    val: OperandValue::Immediate(datum.val),
+                    ty: datum.ty
+                };
+            }
+        }
+
+        let llty = type_of::type_of(bcx.ccx(), val.ty);
+        let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
+        self.store_operand(bcx, cast_ptr, val);
+    }
+
+    // Stores the return value of a function call into it's final location.
+    fn store_return(&mut self,
+                    bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                    dest: ReturnDest,
+                    ret_ty: ArgType,
+                    op: OperandRef<'tcx>) {
+        use self::ReturnDest::*;
+
+        match dest {
+            Nothing => (),
+            Store(dst) => ret_ty.store(bcx, op.immediate(), dst),
+            IndirectOperand(tmp, idx) => {
+                let op = self.trans_load(bcx, tmp, op.ty);
+                self.temps[idx as usize] = TempRef::Operand(Some(op));
+            }
+            DirectOperand(idx) => {
+                let op = if type_is_fat_ptr(bcx.tcx(), op.ty) {
+                    let llval = op.immediate();
+                    let ptr = bcx.extract_value(llval, 0);
+                    let meta = bcx.extract_value(llval, 1);
+
+                    OperandRef {
+                        val: OperandValue::FatPtr(ptr, meta),
+                        ty: op.ty
+                    }
+                } else {
+                    op
+                };
+                self.temps[idx as usize] = TempRef::Operand(Some(op));
+            }
+        }
+    }
+}
+
+enum ReturnDest {
+    // Do nothing, the return value is indirect or ignored
+    Nothing,
+    // Store the return value to the pointer
+    Store(ValueRef),
+    // Stores an indirect return value to an operand temporary lvalue
+    IndirectOperand(ValueRef, u32),
+    // Stores a direct return value to an operand temporary lvalue
+    DirectOperand(u32)
 }

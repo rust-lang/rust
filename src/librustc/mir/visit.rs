@@ -407,7 +407,7 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(arg);
                         }
                         if let Some((ref $($mutability)* destination, target)) = *destination {
-                            self.visit_lvalue(destination, LvalueContext::Store);
+                            self.visit_lvalue(destination, LvalueContext::Call);
                             self.visit_branch(block, target);
                         }
                         cleanup.map(|t| self.visit_branch(block, t));
@@ -692,8 +692,11 @@ make_mir_visitor!(MutVisitor,mut);
 
 #[derive(Copy, Clone, Debug)]
 pub enum LvalueContext {
-    // Appears as LHS of an assignment or as dest of a call
+    // Appears as LHS of an assignment
     Store,
+
+    // Dest of a call
+    Call,
 
     // Being dropped
     Drop,
