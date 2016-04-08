@@ -715,7 +715,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
             // Create generics from the generics specified in the impl head.
             debug!("convert: ast_generics={:?}", generics);
             let def_id = ccx.tcx.map.local_def_id(it.id);
-            let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
+            let ty_generics = ty_generics_for_impl(ccx, generics);
             let mut ty_predicates = ty_generic_predicates_for_type_or_impl(ccx, generics);
 
             debug!("convert: impl_bounds={:?}", ty_predicates);
@@ -1455,19 +1455,19 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemTy(ref t, ref generics) => {
-            let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
+            let ty_generics = ty_generics_for_type(ccx, generics);
             let ty = ccx.icx(generics).to_ty(&ExplicitRscope, &t);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
         hir::ItemEnum(ref ei, ref generics) => {
-            let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
+            let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
             let def = convert_enum_def(tcx, it, ei);
             let t = tcx.mk_enum(def, tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         hir::ItemStruct(ref si, ref generics) => {
-            let ty_generics = ty_generics_for_type_or_impl(ccx, generics);
+            let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
             let def = convert_struct_def(tcx, it, si);
             let t = tcx.mk_struct(def, tcx.mk_substs(substs));
@@ -1611,10 +1611,14 @@ fn convert_foreign_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     assert!(prev_predicates.is_none());
 }
 
-fn ty_generics_for_type_or_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                          generics: &hir::Generics)
-                                          -> ty::Generics<'tcx> {
-    ty_generics(ccx, TypeSpace, generics, &ty::Generics::empty())
+fn ty_generics_for_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, generics: &hir::Generics)
+                                  -> ty::Generics<'tcx> {
+    ty_generics(ccx, TypeSpace, generics, &ty::Generics::empty(), true)
+}
+
+fn ty_generics_for_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, generics: &hir::Generics)
+                                  -> ty::Generics<'tcx> {
+    ty_generics(ccx, TypeSpace, generics, &ty::Generics::empty(), false)
 }
 
 fn ty_generic_predicates_for_type_or_impl<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -1633,7 +1637,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("ty_generics_for_trait(trait_id={:?}, substs={:?})",
            ccx.tcx.map.local_def_id(trait_id), substs);
 
-    let mut generics = ty_generics_for_type_or_impl(ccx, ast_generics);
+    let mut generics = ty_generics_for_type(ccx, ast_generics);
 
     // Add in the self type parameter.
     //
@@ -1665,7 +1669,7 @@ fn ty_generics_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                base_generics: &ty::Generics<'tcx>)
                                -> ty::Generics<'tcx>
 {
-    ty_generics(ccx, FnSpace, generics, base_generics)
+    ty_generics(ccx, FnSpace, generics, base_generics, false)
 }
 
 fn ty_generic_predicates_for_fn<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
@@ -1840,7 +1844,8 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         space: ParamSpace,
                         ast_generics: &hir::Generics,
-                        base_generics: &ty::Generics<'tcx>)
+                        base_generics: &ty::Generics<'tcx>,
+                        allow_defaults: bool)
                         -> ty::Generics<'tcx>
 {
     let tcx = ccx.tcx;
@@ -1863,7 +1868,8 @@ fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     // Now create the real type parameters.
     for i in 0..ast_generics.ty_params.len() {
-        let def = get_or_create_type_parameter_def(ccx, ast_generics, space, i as u32);
+        let def =
+            get_or_create_type_parameter_def(ccx, ast_generics, space, i as u32, allow_defaults);
         debug!("ty_generics: def for type param: {:?}, {:?}", def, space);
         result.types.push(space, def);
     }
@@ -1897,7 +1903,8 @@ fn convert_default_type_parameter<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                              ast_generics: &hir::Generics,
                                              space: ParamSpace,
-                                             index: u32)
+                                             index: u32,
+                                             allow_defaults: bool)
                                              -> ty::TypeParameterDef<'tcx>
 {
     let param = &ast_generics.ty_params[index as usize];
@@ -1918,7 +1925,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     let parent = tcx.map.get_parent(param.id);
 
-    if space != TypeSpace && default.is_some() {
+    if !allow_defaults && default.is_some() {
         if !tcx.sess.features.borrow().default_type_parameter_fallback {
             tcx.sess.add_lint(
                 lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
