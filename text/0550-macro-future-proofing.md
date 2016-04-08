@@ -485,6 +485,9 @@ reasonable freedom and can be extended in the future.
 
 - Updated by https://github.com/rust-lang/rfcs/pull/1462, which added
   open square bracket into the follow set for types.
+  
+- Updated by https://github.com/rust-lang/rfcs/pull/1494, which adjusted
+  the follow set for types to include block nonterminals.
 
 # Appendices
 
