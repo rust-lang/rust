@@ -1,7 +1,7 @@
 - Feature Name: allocator_api
 - Start Date: 2015-12-01
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1398
+- Rust Issue: https://github.com/rust-lang/rust/issues/32838
 
 # Summary
 [summary]: #summary
