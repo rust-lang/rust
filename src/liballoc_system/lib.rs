@@ -18,10 +18,8 @@
                       form or name",
             issue = "27783")]
 #![feature(allocator)]
-#![feature(libc)]
 #![feature(staged_api)]
-
-extern crate libc;
+#![cfg_attr(unix, feature(libc))]
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values. In practice, the alignment is a
@@ -72,9 +70,10 @@ pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
 
 #[cfg(unix)]
 mod imp {
+    extern crate libc;
+
     use core::cmp;
     use core::ptr;
-    use libc;
     use MIN_ALIGN;
 
     pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {

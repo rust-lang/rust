@@ -53,7 +53,8 @@ TARGET_CRATES := libc std term \
                  getopts collections test rand \
                  core alloc \
                  rustc_unicode rustc_bitflags \
-		 alloc_system alloc_jemalloc
+		 alloc_system alloc_jemalloc \
+		 panic_abort panic_unwind unwind
 RUSTC_CRATES := rustc rustc_typeck rustc_mir rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
                 rustc_data_structures rustc_platform_intrinsics \
@@ -72,10 +73,18 @@ DEPS_libc := core
 DEPS_rand := core
 DEPS_rustc_bitflags := core
 DEPS_rustc_unicode := core
+DEPS_panic_abort := libc alloc
+DEPS_panic_unwind := libc alloc unwind
+DEPS_unwind := libc
+
+# FIXME(stage0): change this to just `RUSTFLAGS_panic_abort := ...`
+RUSTFLAGS1_panic_abort := -C panic=abort
+RUSTFLAGS2_panic_abort := -C panic=abort
+RUSTFLAGS3_panic_abort := -C panic=abort
 
 DEPS_std := core libc rand alloc collections rustc_unicode \
 	native:backtrace \
-	alloc_system
+	alloc_system panic_abort panic_unwind unwind
 DEPS_arena := std
 DEPS_glob := std
 DEPS_flate := std native:miniz
@@ -148,6 +157,9 @@ ONLY_RLIB_rustc_unicode := 1
 ONLY_RLIB_rustc_bitflags := 1
 ONLY_RLIB_alloc_system := 1
 ONLY_RLIB_alloc_jemalloc := 1
+ONLY_RLIB_panic_unwind := 1
+ONLY_RLIB_panic_abort := 1
+ONLY_RLIB_unwind := 1
 
 TARGET_SPECIFIC_alloc_jemalloc := 1
 

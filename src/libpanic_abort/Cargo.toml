@@ -1,0 +1,11 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "panic_abort"
+version = "0.0.0"
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+core = { path = "../libcore" }
+libc = { path = "../rustc/libc_shim" }

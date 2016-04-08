@@ -163,14 +163,15 @@ use prelude::v1::*;
 
 use any::Any;
 use cell::UnsafeCell;
+use ffi::{CStr, CString};
 use fmt;
 use io;
+use panic;
+use panicking;
 use str;
-use ffi::{CStr, CString};
 use sync::{Mutex, Condvar, Arc};
 use sys::thread as imp;
 use sys_common::thread_info;
-use sys_common::unwind;
 use sys_common::util;
 use sys_common::{AsInner, IntoInner};
 use time::Duration;
@@ -273,14 +274,8 @@ impl Builder {
             }
             unsafe {
                 thread_info::set(imp::guard::current(), their_thread);
-                let mut output = None;
-                let try_result = {
-                    let ptr = &mut output;
-                    unwind::try(move || *ptr = Some(f()))
-                };
-                *their_packet.get() = Some(try_result.map(|()| {
-                    output.unwrap()
-                }));
+                let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
+                *their_packet.get() = Some(try_result);
             }
         };
 
@@ -337,7 +332,7 @@ pub fn yield_now() {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn panicking() -> bool {
-    unwind::panicking()
+    panicking::panicking()
 }
 
 /// Puts the current thread to sleep for the specified amount of time.

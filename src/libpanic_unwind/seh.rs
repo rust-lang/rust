@@ -45,7 +45,7 @@
 //!   the precise codegen for this was lifted from an LLVM test case for SEH
 //!   (this is the `__rust_try_filter` function below).
 //! * We've got some data to transmit across the unwinding boundary,
-//!   specifically a `Box<Any + Send + 'static>`. Like with Dwarf exceptions
+//!   specifically a `Box<Any + Send>`. Like with Dwarf exceptions
 //!   these two pointers are stored as a payload in the exception itself. On
 //!   MSVC, however, there's no need for an extra allocation because the call
 //!   stack is preserved while filter functions are being executed. This means
@@ -56,90 +56,84 @@
 //! [win64]: http://msdn.microsoft.com/en-us/library/1eyas8tf.aspx
 //! [llvm]: http://llvm.org/docs/ExceptionHandling.html#background-on-windows-exceptions
 
-use sys::c;
+use alloc::boxed::Box;
+use core::any::Any;
+use core::intrinsics;
+use core::mem;
+use core::raw;
+
+use windows as c;
 
 // A code which indicates panics that originate from Rust. Note that some of the
 // upper bits are used by the system so we just set them to 0 and ignore them.
 //                           0x 0 R S T
 const RUST_PANIC: c::DWORD = 0x00525354;
 
-pub use self::imp::*;
-
-mod imp {
-    use prelude::v1::*;
-
-    use any::Any;
-    use mem;
-    use raw;
-    use super::RUST_PANIC;
-    use sys::c;
-
-    pub unsafe fn panic(data: Box<Any + Send + 'static>) -> ! {
-        // As mentioned above, the call stack here is preserved while the filter
-        // functions are running, so it's ok to pass stack-local arrays into
-        // `RaiseException`.
-        //
-        // The two pointers of the `data` trait object are written to the stack,
-        // passed to `RaiseException`, and they're later extracted by the filter
-        // function below in the "custom exception information" section of the
-        // `EXCEPTION_RECORD` type.
-        let ptrs = mem::transmute::<_, raw::TraitObject>(data);
-        let ptrs = [ptrs.data, ptrs.vtable];
-        c::RaiseException(RUST_PANIC, 0, 2, ptrs.as_ptr() as *mut _);
-        rtabort!("could not unwind stack");
-    }
-
-    pub fn payload() -> [usize; 2] {
-        [0; 2]
-    }
-
-    pub unsafe fn cleanup(payload: [usize; 2]) -> Box<Any + Send + 'static> {
-        mem::transmute(raw::TraitObject {
-            data: payload[0] as *mut _,
-            vtable: payload[1] as *mut _,
-        })
-    }
-
-    // This is quite a special function, and it's not literally passed in as the
-    // filter function for the `catchpad` of the `try` intrinsic. The compiler
-    // actually generates its own filter function wrapper which will delegate to
-    // this for the actual execution logic for whether the exception should be
-    // caught. The reasons for this are:
+pub unsafe fn panic(data: Box<Any + Send>) -> u32 {
+    // As mentioned above, the call stack here is preserved while the filter
+    // functions are running, so it's ok to pass stack-local arrays into
+    // `RaiseException`.
     //
-    // * Each architecture has a slightly different ABI for the filter function
-    //   here. For example on x86 there are no arguments but on x86_64 there are
-    //   two.
-    // * This function needs access to the stack frame of the `try` intrinsic
-    //   which is using this filter as a catch pad. This is because the payload
-    //   of this exception, `Box<Any>`, needs to be transmitted to that
-    //   location.
-    //
-    // Both of these differences end up using a ton of weird llvm-specific
-    // intrinsics, so it's actually pretty difficult to express the entire
-    // filter function in Rust itself. As a compromise, the compiler takes care
-    // of all the weird LLVM-specific and platform-specific stuff, getting to
-    // the point where this function makes the actual decision about what to
-    // catch given two parameters.
-    //
-    // The first parameter is `*mut EXCEPTION_POINTERS` which is some contextual
-    // information about the exception being filtered, and the second pointer is
-    // `*mut *mut [usize; 2]` (the payload here). This value points directly
-    // into the stack frame of the `try` intrinsic itself, and we use it to copy
-    // information from the exception onto the stack.
-    #[lang = "msvc_try_filter"]
-    #[cfg(not(test))]
-    unsafe extern fn __rust_try_filter(eh_ptrs: *mut u8,
-                                       payload: *mut u8) -> i32 {
-        let eh_ptrs = eh_ptrs as *mut c::EXCEPTION_POINTERS;
-        let payload = payload as *mut *mut [usize; 2];
-        let record = &*(*eh_ptrs).ExceptionRecord;
-        if record.ExceptionCode != RUST_PANIC {
-            return 0
-        }
-        (**payload)[0] = record.ExceptionInformation[0] as usize;
-        (**payload)[1] = record.ExceptionInformation[1] as usize;
-        return 1
+    // The two pointers of the `data` trait object are written to the stack,
+    // passed to `RaiseException`, and they're later extracted by the filter
+    // function below in the "custom exception information" section of the
+    // `EXCEPTION_RECORD` type.
+    let ptrs = mem::transmute::<_, raw::TraitObject>(data);
+    let ptrs = [ptrs.data, ptrs.vtable];
+    c::RaiseException(RUST_PANIC, 0, 2, ptrs.as_ptr() as *mut _);
+    u32::max_value()
+}
+
+pub fn payload() -> [usize; 2] {
+    [0; 2]
+}
+
+pub unsafe fn cleanup(payload: [usize; 2]) -> Box<Any + Send> {
+    mem::transmute(raw::TraitObject {
+        data: payload[0] as *mut _,
+        vtable: payload[1] as *mut _,
+    })
+}
+
+// This is quite a special function, and it's not literally passed in as the
+// filter function for the `catchpad` of the `try` intrinsic. The compiler
+// actually generates its own filter function wrapper which will delegate to
+// this for the actual execution logic for whether the exception should be
+// caught. The reasons for this are:
+//
+// * Each architecture has a slightly different ABI for the filter function
+//   here. For example on x86 there are no arguments but on x86_64 there are
+//   two.
+// * This function needs access to the stack frame of the `try` intrinsic
+//   which is using this filter as a catch pad. This is because the payload
+//   of this exception, `Box<Any>`, needs to be transmitted to that
+//   location.
+//
+// Both of these differences end up using a ton of weird llvm-specific
+// intrinsics, so it's actually pretty difficult to express the entire
+// filter function in Rust itself. As a compromise, the compiler takes care
+// of all the weird LLVM-specific and platform-specific stuff, getting to
+// the point where this function makes the actual decision about what to
+// catch given two parameters.
+//
+// The first parameter is `*mut EXCEPTION_POINTERS` which is some contextual
+// information about the exception being filtered, and the second pointer is
+// `*mut *mut [usize; 2]` (the payload here). This value points directly
+// into the stack frame of the `try` intrinsic itself, and we use it to copy
+// information from the exception onto the stack.
+#[lang = "msvc_try_filter"]
+#[cfg(not(test))]
+unsafe extern fn __rust_try_filter(eh_ptrs: *mut u8,
+                                   payload: *mut u8) -> i32 {
+    let eh_ptrs = eh_ptrs as *mut c::EXCEPTION_POINTERS;
+    let payload = payload as *mut *mut [usize; 2];
+    let record = &*(*eh_ptrs).ExceptionRecord;
+    if record.ExceptionCode != RUST_PANIC {
+        return 0
     }
+    (**payload)[0] = record.ExceptionInformation[0] as usize;
+    (**payload)[1] = record.ExceptionInformation[1] as usize;
+    return 1
 }
 
 // This is required by the compiler to exist (e.g. it's a lang item), but
@@ -149,5 +143,5 @@ mod imp {
 #[lang = "eh_personality"]
 #[cfg(not(test))]
 fn rust_eh_personality() {
-    unsafe { ::intrinsics::abort() }
+    unsafe { intrinsics::abort() }
 }
