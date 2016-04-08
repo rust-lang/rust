@@ -1,4 +1,4 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unwind library interface
+#![allow(bad_style)]
 
-#![allow(non_upper_case_globals)]
-#![allow(non_camel_case_types)]
-#![allow(non_snake_case)]
-#![allow(dead_code)] // these are just bindings
+use libc;
 
 #[cfg(any(not(target_arch = "arm"), target_os = "ios"))]
 pub use self::_Unwind_Action::*;
@@ -21,11 +18,9 @@ pub use self::_Unwind_Action::*;
 pub use self::_Unwind_State::*;
 pub use self::_Unwind_Reason_Code::*;
 
-use libc;
-
 #[cfg(any(not(target_arch = "arm"), target_os = "ios"))]
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone, Copy)]
 pub enum _Unwind_Action {
     _UA_SEARCH_PHASE = 1,
     _UA_CLEANUP_PHASE = 2,
@@ -36,7 +31,7 @@ pub enum _Unwind_Action {
 
 #[cfg(target_arch = "arm")]
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Clone, Copy)]
 pub enum _Unwind_State {
     _US_VIRTUAL_UNWIND_FRAME = 0,
     _US_UNWIND_FRAME_STARTING = 1,
@@ -47,7 +42,6 @@ pub enum _Unwind_State {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone)]
 pub enum _Unwind_Reason_Code {
     _URC_NO_REASON = 0,
     _URC_FOREIGN_EXCEPTION_CAUGHT = 1,
@@ -64,6 +58,10 @@ pub enum _Unwind_Reason_Code {
 pub type _Unwind_Exception_Class = u64;
 
 pub type _Unwind_Word = libc::uintptr_t;
+
+pub type _Unwind_Trace_Fn =
+        extern fn(ctx: *mut _Unwind_Context,
+                  arg: *mut libc::c_void) -> _Unwind_Reason_Code;
 
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
@@ -126,9 +124,12 @@ pub type _Unwind_Exception_Cleanup_Fn =
            link(name = "gcc_pic"))]
 #[cfg_attr(target_os = "bitrig",
            link(name = "c++abi"))]
-#[cfg_attr(all(target_os = "windows", target_env="gnu"),
+#[cfg_attr(all(target_os = "windows", target_env = "gnu"),
            link(name = "gcc_eh"))]
-extern "C" {
+#[cfg(not(cargobuild))]
+extern {}
+
+extern {
     // iOS on armv7 uses SjLj exceptions and requires to link
     // against corresponding routine (..._SjLj_...)
     #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
@@ -145,14 +146,102 @@ extern "C" {
 
     #[unwind]
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
+
+    // No native _Unwind_Backtrace on iOS
+    #[cfg(not(all(target_os = "ios", target_arch = "arm")))]
+    pub fn _Unwind_Backtrace(trace: _Unwind_Trace_Fn,
+                             trace_argument: *mut libc::c_void)
+                -> _Unwind_Reason_Code;
+
+    // available since GCC 4.2.0, should be fine for our purpose
+    #[cfg(all(not(all(target_os = "android", target_arch = "arm")),
+              not(all(target_os = "linux", target_arch = "arm"))))]
+    pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
+                             ip_before_insn: *mut libc::c_int)
+                -> libc::uintptr_t;
+
+    #[cfg(all(not(target_os = "android"),
+              not(all(target_os = "linux", target_arch = "arm"))))]
+    pub fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
+        -> *mut libc::c_void;
 }
 
 // ... and now we just providing access to SjLj counterspart
 // through a standard name to hide those details from others
 // (see also comment above regarding _Unwind_RaiseException)
 #[cfg(all(target_os = "ios", target_arch = "arm"))]
-#[inline(always)]
+#[inline]
 pub unsafe fn _Unwind_RaiseException(exc: *mut _Unwind_Exception)
                                      -> _Unwind_Reason_Code {
     _Unwind_SjLj_RaiseException(exc)
+}
+
+// On android, the function _Unwind_GetIP is a macro, and this is the
+// expansion of the macro. This is all copy/pasted directly from the
+// header file with the definition of _Unwind_GetIP.
+#[cfg(any(all(target_os = "android", target_arch = "arm"),
+          all(target_os = "linux", target_arch = "arm")))]
+pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> libc::uintptr_t {
+    #[repr(C)]
+    enum _Unwind_VRS_Result {
+        _UVRSR_OK = 0,
+        _UVRSR_NOT_IMPLEMENTED = 1,
+        _UVRSR_FAILED = 2,
+    }
+    #[repr(C)]
+    enum _Unwind_VRS_RegClass {
+        _UVRSC_CORE = 0,
+        _UVRSC_VFP = 1,
+        _UVRSC_FPA = 2,
+        _UVRSC_WMMXD = 3,
+        _UVRSC_WMMXC = 4,
+    }
+    #[repr(C)]
+    enum _Unwind_VRS_DataRepresentation {
+        _UVRSD_UINT32 = 0,
+        _UVRSD_VFPX = 1,
+        _UVRSD_FPAX = 2,
+        _UVRSD_UINT64 = 3,
+        _UVRSD_FLOAT = 4,
+        _UVRSD_DOUBLE = 5,
+    }
+
+    type _Unwind_Word = libc::c_uint;
+    extern {
+        fn _Unwind_VRS_Get(ctx: *mut _Unwind_Context,
+                           klass: _Unwind_VRS_RegClass,
+                           word: _Unwind_Word,
+                           repr: _Unwind_VRS_DataRepresentation,
+                           data: *mut libc::c_void)
+            -> _Unwind_VRS_Result;
+    }
+
+    let mut val: _Unwind_Word = 0;
+    let ptr = &mut val as *mut _Unwind_Word;
+    let _ = _Unwind_VRS_Get(ctx, _Unwind_VRS_RegClass::_UVRSC_CORE, 15,
+                            _Unwind_VRS_DataRepresentation::_UVRSD_UINT32,
+                            ptr as *mut libc::c_void);
+    (val & !1) as libc::uintptr_t
+}
+
+// This function doesn't exist on Android or ARM/Linux, so make it same
+// to _Unwind_GetIP
+#[cfg(any(all(target_os = "android", target_arch = "arm"),
+          all(target_os = "linux", target_arch = "arm")))]
+pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
+                                ip_before_insn: *mut libc::c_int)
+    -> libc::uintptr_t
+{
+    *ip_before_insn = 0;
+    _Unwind_GetIP(ctx)
+}
+
+// This function also doesn't exist on Android or ARM/Linux, so make it
+// a no-op
+#[cfg(any(target_os = "android",
+          all(target_os = "linux", target_arch = "arm")))]
+pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut libc::c_void)
+    -> *mut libc::c_void
+{
+    pc
 }

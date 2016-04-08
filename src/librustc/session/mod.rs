@@ -12,6 +12,7 @@ use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
 use session::search_paths::PathKind;
+use session::config::PanicStrategy;
 use ty::tls;
 use util::nodemap::{NodeMap, FnvHashMap};
 use mir::transform as mir_pass;
@@ -82,9 +83,11 @@ pub struct Session {
     /// operations such as auto-dereference and monomorphization.
     pub recursion_limit: Cell<usize>,
 
-    /// The metadata::creader module may inject an allocator dependency if it
-    /// didn't already find one, and this tracks what was injected.
+    /// The metadata::creader module may inject an allocator/panic_runtime
+    /// dependency if it didn't already find one, and this tracks what was
+    /// injected.
     pub injected_allocator: Cell<Option<ast::CrateNum>>,
+    pub injected_panic_runtime: Cell<Option<ast::CrateNum>>,
 
     /// Names of all bang-style macros and syntax extensions
     /// available in this crate
@@ -295,7 +298,8 @@ impl Session {
         self.opts.cg.lto
     }
     pub fn no_landing_pads(&self) -> bool {
-        self.opts.debugging_opts.no_landing_pads
+        self.opts.debugging_opts.no_landing_pads ||
+            self.opts.cg.panic == PanicStrategy::Abort
     }
     pub fn unstable_options(&self) -> bool {
         self.opts.debugging_opts.unstable_options
@@ -502,6 +506,7 @@ pub fn build_session_(sopts: config::Options,
         recursion_limit: Cell::new(64),
         next_node_id: Cell::new(1),
         injected_allocator: Cell::new(None),
+        injected_panic_runtime: Cell::new(None),
         available_macros: RefCell::new(HashSet::new()),
         imported_macro_spans: RefCell::new(HashMap::new()),
     };

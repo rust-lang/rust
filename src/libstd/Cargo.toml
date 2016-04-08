@@ -14,11 +14,14 @@ test = false
 alloc = { path = "../liballoc" }
 alloc_jemalloc = { path = "../liballoc_jemalloc", optional = true }
 alloc_system = { path = "../liballoc_system" }
+panic_unwind = { path = "../libpanic_unwind" }
+panic_abort = { path = "../libpanic_abort" }
 collections = { path = "../libcollections" }
 core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
 rand = { path = "../librand" }
 rustc_unicode = { path = "../librustc_unicode" }
+unwind = { path = "../libunwind" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }

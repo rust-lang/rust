@@ -1829,7 +1829,9 @@ pub fn trans_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     let _icx = push_ctxt("trans_closure");
-    attributes::emit_uwtable(llfndecl, true);
+    if !ccx.sess().no_landing_pads() {
+        attributes::emit_uwtable(llfndecl, true);
+    }
 
     debug!("trans_closure(..., {})", instance);
 

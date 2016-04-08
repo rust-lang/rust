@@ -317,6 +317,21 @@ impl Passes {
     }
 }
 
+#[derive(Clone, PartialEq)]
+pub enum PanicStrategy {
+    Unwind,
+    Abort,
+}
+
+impl PanicStrategy {
+    pub fn desc(&self) -> &str {
+        match *self {
+            PanicStrategy::Unwind => "unwind",
+            PanicStrategy::Abort => "abort",
+        }
+    }
+}
+
 /// Declare a macro that will define all CodegenOptions/DebuggingOptions fields and parsers all
 /// at once. The goal of this macro is to define an interface that can be
 /// programmatically used by the option parser in order to initialize the struct
@@ -402,11 +417,13 @@ macro_rules! options {
             Some("a space-separated list of passes, or `all`");
         pub const parse_opt_uint: Option<&'static str> =
             Some("a number");
+        pub const parse_panic_strategy: Option<&'static str> =
+            Some("either `panic` or `abort`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, SomePasses, AllPasses};
+        use super::{$struct_name, Passes, SomePasses, AllPasses, PanicStrategy};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -510,6 +527,15 @@ macro_rules! options {
                 }
             }
         }
+
+        fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+            match v {
+                Some("unwind") => *slot = PanicStrategy::Unwind,
+                Some("abort") => *slot = PanicStrategy::Abort,
+                _ => return false
+            }
+            true
+        }
     }
 ) }
 
@@ -575,6 +601,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "explicitly enable the cfg(debug_assertions) directive"),
     inline_threshold: Option<usize> = (None, parse_opt_uint,
         "set the inlining threshold for"),
+    panic: PanicStrategy = (PanicStrategy::Unwind, parse_panic_strategy,
+        "panic strategy to compile crate with"),
 }
 
 
