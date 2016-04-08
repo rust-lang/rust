@@ -1,0 +1,55 @@
+% vim: tw=100
+
+\documentclass[twocolumn]{article}
+\usepackage{blindtext}
+\usepackage{fontspec}
+\usepackage[colorlinks, urlcolor={blue!80!black}]{hyperref}
+\usepackage{relsize}
+\usepackage{xcolor}
+
+\begin{document}
+
+\title{Miri: \\ \smaller{An interpreter for Rust's mid-level intermediate representation}}
+% \subtitle{test}
+\author{Scott Olson\footnote{\href{mailto:scott@solson.me}{scott@solson.me}} \\
+  \smaller{Supervised by Christopher Dutchyn}}
+\date{April 8th, 2016}
+\maketitle
+
+\section{Abstract}
+
+The increasing need for safe low-level code in contexts like operating systems and browsers is
+driving the development of Rust\footnote{\url{https://www.rust-lang.org}}, a programming language
+backed by Mozilla promising blazing speed without the segfaults. To make programming more
+convenient, it's often desirable to be able to generate code or perform some computation at
+compile-time. The former is mostly covered by Rust's existing macro feature, but the latter is
+currently restricted to a limited form of constant evaluation capable of little beyond simple math.
+
+When the existing constant evaluator was built, it would have been difficult to make it more
+powerful than it is. However, a new intermediate representation was recently
+added\footnote{\href{https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md}{The MIR RFC}}
+to the Rust compiler between the abstract syntax tree and the back-end LLVM IR, called mid-level
+intermediate representation, or MIR for short. As it turns out, writing an interpreter for MIR is a
+surprisingly effective approach for supporting a large proportion of Rust's features in compile-time
+execution.
+
+\section{Motivation}
+
+\blindtext
+
+\section{First implementation}
+
+% TODO(tsion): Find a place for this text.
+Making Miri work was primarily an implementation problem. Writing an interpreter which models values
+of varying sizes, stack and heap allocation, unsafe memory operations, and more requires some
+unconventional techniques compared to many interpreters. Miri's execution remains safe even while
+simulating execution of unsafe code, which allows it to detect when unsafe code does something
+invalid.
+
+\blindtext[2]
+
+\section{Data layout}
+
+\blindtext
+
+\end{document}
