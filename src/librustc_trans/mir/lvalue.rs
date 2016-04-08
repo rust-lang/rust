@@ -207,6 +207,40 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         }
     }
 
+    // Perform an action using the given Lvalue.
+    // If the Lvalue is an empty TempRef::Operand, then a temporary stack slot
+    // is created first, then used as an operand to update the Lvalue.
+    pub fn with_lvalue_ref<F, U>(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                                 lvalue: &mir::Lvalue<'tcx>, f: F) -> U
+    where F: FnOnce(&mut Self, LvalueRef<'tcx>) -> U
+    {
+        match *lvalue {
+            mir::Lvalue::Temp(idx) => {
+                match self.temps[idx as usize] {
+                    TempRef::Lvalue(lvalue) => f(self, lvalue),
+                    TempRef::Operand(None) => {
+                        let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
+                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
+                        let lvalue = LvalueRef::alloca(bcx,
+                                                       lvalue_ty.to_ty(bcx.tcx()),
+                                                       "lvalue_temp");
+                        let ret = f(self, lvalue);
+                        let op = self.trans_load(bcx, lvalue.llval, lvalue_ty.to_ty(bcx.tcx()));
+                        self.temps[idx as usize] = TempRef::Operand(Some(op));
+                        ret
+                    }
+                    TempRef::Operand(Some(_)) => {
+                        bug!("Lvalue temp already set");
+                    }
+                }
+            }
+            _ => {
+                let lvalue = self.trans_lvalue(bcx, lvalue);
+                f(self, lvalue)
+            }
+        }
+    }
+
     /// Adjust the bitwidth of an index since LLVM is less forgiving
     /// than we are.
     ///

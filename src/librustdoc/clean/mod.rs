@@ -54,10 +54,6 @@ use doctree;
 use visit_ast;
 use html::item_type::ItemType;
 
-/// A stable identifier to the particular version of JSON output.
-/// Increment this when the `Crate` and related structures change.
-pub const SCHEMA_VERSION: &'static str = "0.8.3";
-
 mod inline;
 mod simplify;
 

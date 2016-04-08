@@ -52,7 +52,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
        .arg(format!("--image-dir={}", sanitize_sh(&image)))
        .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
        .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
-       .arg(format!("--package-name={}", name))
+       .arg(format!("--package-name={}-{}", name, host))
        .arg("--component-name=rust-docs")
        .arg("--legacy-manifest-dirs=rustlib,cargo")
        .arg("--bulk-dirs=share/doc/rust/html");
@@ -61,9 +61,11 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
 
     // As part of this step, *also* copy the docs directory to a directory which
     // buildbot typically uploads.
-    let dst = distdir(build).join("doc").join(&build.package_vers);
-    t!(fs::create_dir_all(&dst));
-    cp_r(&src, &dst);
+    if host == build.config.build {
+        let dst = distdir(build).join("doc").join(&build.package_vers);
+        t!(fs::create_dir_all(&dst));
+        cp_r(&src, &dst);
+    }
 }
 
 pub fn mingw(build: &Build, host: &str) {

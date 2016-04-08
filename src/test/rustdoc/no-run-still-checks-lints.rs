@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "foo"]
+// compile-flags:--test
+// should-fail
 
-//! Very docs
+#![doc(test(attr(deny(warnings))))]
 
-pub mod bar {
-
-    /// So correct
-    pub mod baz {
-        /// Much detail
-        pub fn baz() { }
-    }
-
-    /// *wow*
-    pub trait Doge { fn dummy(&self) { } }
-}
+/// ```no_run
+/// let a = 3;
+/// ```
+pub fn foo() {}
