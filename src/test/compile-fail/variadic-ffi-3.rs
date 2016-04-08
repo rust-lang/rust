@@ -33,11 +33,11 @@ fn main() {
         //~| expected variadic fn
         //~| found non-variadic function
 
-        foo(1, 2, 3f32); //~ ERROR: can't pass an f32 to variadic function, cast to c_double
-        foo(1, 2, true); //~ ERROR: can't pass bool to variadic function, cast to c_int
-        foo(1, 2, 1i8); //~ ERROR: can't pass i8 to variadic function, cast to c_int
-        foo(1, 2, 1u8); //~ ERROR: can't pass u8 to variadic function, cast to c_uint
-        foo(1, 2, 1i16); //~ ERROR: can't pass i16 to variadic function, cast to c_int
-        foo(1, 2, 1u16); //~ ERROR: can't pass u16 to variadic function, cast to c_uint
+        foo(1, 2, 3f32); //~ ERROR: can't pass an `f32` to variadic function, cast to `c_double`
+        foo(1, 2, true); //~ ERROR: can't pass `bool` to variadic function, cast to `c_int`
+        foo(1, 2, 1i8); //~ ERROR: can't pass `i8` to variadic function, cast to `c_int`
+        foo(1, 2, 1u8); //~ ERROR: can't pass `u8` to variadic function, cast to `c_uint`
+        foo(1, 2, 1i16); //~ ERROR: can't pass `i16` to variadic function, cast to `c_int`
+        foo(1, 2, 1u16); //~ ERROR: can't pass `u16` to variadic function, cast to `c_uint`
     }
 }
