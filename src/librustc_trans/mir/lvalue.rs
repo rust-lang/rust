@@ -220,6 +220,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     TempRef::Lvalue(lvalue) => f(self, lvalue),
                     TempRef::Operand(None) => {
                         let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
+                        let lvalue_ty = bcx.monomorphize(&lvalue_ty);
                         let lvalue = LvalueRef::alloca(bcx,
                                                        lvalue_ty.to_ty(bcx.tcx()),
                                                        "lvalue_temp");

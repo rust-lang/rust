@@ -105,7 +105,9 @@ impl<'tcx> Visitor<'tcx> for TempAnalyzer {
         match *lvalue {
             mir::Lvalue::Temp(index) => {
                 match context {
-                    LvalueContext::Call |
+                    LvalueContext::Call => {
+                        self.mark_assigned(index as usize);
+                    }
                     LvalueContext::Consume => {
                     }
                     LvalueContext::Store |
