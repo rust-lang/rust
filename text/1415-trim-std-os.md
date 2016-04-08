@@ -36,7 +36,7 @@ This strategy, however, runs into a few problems:
   this, however, would [involve changing the `stat`
   structure][libc-stat-change] and may be difficult to do.
 * Trait extensions in the `raw` module attempt to return the `libc` aliased type
-  on all platforms, for example [`DirEntryExt::ino`][std-nio] returns a type of
+  on all platforms, for example [`DirEntryExt::ino`][std-ino] returns a type of
   `ino_t`.  The `ino_t` type is billed as being FFI compatible with the libc
   `ino_t` type, but not all platforms store the `d_ino` field in `dirent` with
   the `ino_t` type. For example on Android the [definition of
