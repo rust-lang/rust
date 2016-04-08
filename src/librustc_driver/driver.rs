@@ -625,21 +625,6 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         ret
     });
 
-    // Needs to go *after* expansion to be able to check the results
-    // of macro expansion.  This runs before #[cfg] to try to catch as
-    // much as possible (e.g. help the programmer avoid platform
-    // specific differences)
-    time(time_passes, "complete gated feature checking 1", || {
-        sess.track_errors(|| {
-            let features = syntax::feature_gate::check_crate(sess.codemap(),
-                                                             &sess.parse_sess.span_diagnostic,
-                                                             &krate,
-                                                             &attributes,
-                                                             sess.opts.unstable_features);
-            *sess.features.borrow_mut() = features;
-        })
-    })?;
-
     // JBC: make CFG processing part of expansion to avoid this problem:
 
     // strip again, in case expansion added anything with a #[cfg].
@@ -660,6 +645,19 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         });
 
         krate
+    })?;
+
+    // Needs to go *after* expansion to be able to check the results
+    // of macro expansion.
+    time(time_passes, "complete gated feature checking 1", || {
+        sess.track_errors(|| {
+            let features = syntax::feature_gate::check_crate(sess.codemap(),
+                                                             &sess.parse_sess.span_diagnostic,
+                                                             &krate,
+                                                             &attributes,
+                                                             sess.opts.unstable_features);
+            *sess.features.borrow_mut() = features;
+        })
     })?;
 
     krate = time(time_passes, "maybe building test harness", || {
