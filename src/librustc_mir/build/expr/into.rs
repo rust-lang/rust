@@ -268,7 +268,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ExprKind::Call { ty, fun, args } => {
                 let diverges = match ty.sty {
                     ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
-                        f.sig.0.output.diverges()
+                        f.sig.diverges()
                     }
                     _ => false
                 };

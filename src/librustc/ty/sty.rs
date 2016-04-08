@@ -273,7 +273,7 @@ pub struct TraitTy<'tcx> {
 
 impl<'tcx> TraitTy<'tcx> {
     pub fn principal_def_id(&self) -> DefId {
-        self.principal.0.def_id
+        self.principal.skip_binder().def_id
     }
 
     /// Object types don't have a self-type specified. Therefore, when
@@ -288,9 +288,11 @@ impl<'tcx> TraitTy<'tcx> {
         // otherwise the escaping regions would be captured by the binder
         assert!(!self_ty.has_escaping_regions());
 
-        ty::Binder(TraitRef {
-            def_id: self.principal.0.def_id,
-            substs: tcx.mk_substs(self.principal.0.substs.with_self_ty(self_ty)),
+        self.principal.map_bound_ref(|p| {
+            TraitRef {
+                def_id: p.def_id,
+                substs: tcx.mk_substs(p.substs.with_self_ty(self_ty))
+            }
         })
     }
 
@@ -304,17 +306,21 @@ impl<'tcx> TraitTy<'tcx> {
 
         self.bounds.projection_bounds.iter()
             .map(|in_poly_projection_predicate| {
-                let in_projection_ty = &in_poly_projection_predicate.0.projection_ty;
-                let substs = tcx.mk_substs(in_projection_ty.trait_ref.substs.with_self_ty(self_ty));
-                let trait_ref = ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
-                                              substs);
-                let projection_ty = ty::ProjectionTy {
-                    trait_ref: trait_ref,
-                    item_name: in_projection_ty.item_name
-                };
-                ty::Binder(ty::ProjectionPredicate {
-                    projection_ty: projection_ty,
-                    ty: in_poly_projection_predicate.0.ty
+                in_poly_projection_predicate.map_bound_ref(|in_projection_predicate| {
+                    let in_projection_ty = &in_projection_predicate.projection_ty;
+                    let substs =
+                        tcx.mk_substs(
+                            in_projection_ty.trait_ref.substs.with_self_ty(self_ty));
+                    let trait_ref = ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
+                                                      substs);
+                    let projection_ty = ty::ProjectionTy {
+                        trait_ref: trait_ref,
+                        item_name: in_projection_ty.item_name
+                    };
+                    ty::ProjectionPredicate {
+                        projection_ty: projection_ty,
+                        ty: in_projection_predicate.ty
+                    }
                 })
             })
             .collect()
@@ -346,26 +352,27 @@ pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
-        self.0.self_ty()
+        // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
+        self.skip_binder().self_ty()
     }
 
     pub fn def_id(&self) -> DefId {
-        self.0.def_id
+        self.skip_binder().def_id
     }
 
     pub fn substs(&self) -> &'tcx Substs<'tcx> {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
-        self.0.substs
+        self.skip_binder().substs
     }
 
     pub fn input_types(&self) -> &[Ty<'tcx>] {
         // FIXME(#20664) every use of this fn is probably a bug, it should yield Binder<>
-        self.0.input_types()
+        self.skip_binder().input_types()
     }
 
     pub fn to_poly_trait_predicate(&self) -> ty::PolyTraitPredicate<'tcx> {
         // Note that we preserve binding levels
-        Binder(ty::TraitPredicate { trait_ref: self.0.clone() })
+        self.map_bound_ref(|&trait_ref| ty::TraitPredicate { trait_ref: trait_ref })
     }
 }
 
@@ -377,9 +384,15 @@ impl<'tcx> PolyTraitRef<'tcx> {
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct Binder<T>(pub T);
+pub struct Binder<T> {
+    bound: T
+}
 
 impl<T> Binder<T> {
+    pub fn new(bound: T) -> Binder<T> {
+        Binder { bound: bound }
+    }
+
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// debruijn indices and the like. It is usually better to
@@ -396,11 +409,15 @@ impl<T> Binder<T> {
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
     ///   a type parameter `X`, since the type `X`  does not reference any regions
     pub fn skip_binder(&self) -> &T {
-        &self.0
+        &self.bound
+    }
+
+    pub fn skip_binder_mut(&mut self) -> &mut T {
+        &mut self.bound
     }
 
     pub fn as_ref(&self) -> Binder<&T> {
-        ty::Binder(&self.0)
+        ty::Binder::new(&self.bound)
     }
 
     pub fn map_bound_ref<F,U>(&self, f: F) -> Binder<U>
@@ -412,7 +429,7 @@ impl<T> Binder<T> {
     pub fn map_bound<F,U>(self, f: F) -> Binder<U>
         where F: FnOnce(T) -> U
     {
-        ty::Binder(f(self.0))
+        ty::Binder::new(f(self.bound))
     }
 }
 
@@ -483,7 +500,7 @@ pub type PolyFnOutput<'tcx> = Binder<FnOutput<'tcx>>;
 
 impl<'tcx> PolyFnOutput<'tcx> {
     pub fn diverges(&self) -> bool {
-        self.0.diverges()
+        self.skip_binder().diverges()
     }
 }
 
@@ -503,6 +520,9 @@ pub struct FnSig<'tcx> {
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
+    pub fn inputs_len(&self) -> usize {
+        self.skip_binder().inputs.len()
+    }
     pub fn inputs(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs.clone())
     }
@@ -511,6 +531,12 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
     pub fn output(&self) -> ty::Binder<FnOutput<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output.clone())
+    }
+    pub fn is_converging(&self) -> bool {
+        !self.diverges()
+    }
+    pub fn diverges(&self) -> bool {
+        self.skip_binder().output.diverges()
     }
     pub fn variadic(&self) -> bool {
         self.skip_binder().variadic

@@ -106,10 +106,11 @@ impl FlagComputation {
 
             &ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
                 let mut computation = FlagComputation::new();
-                computation.add_substs(principal.0.substs);
+                computation.add_substs(principal.skip_binder().substs);
                 for projection_bound in &bounds.projection_bounds {
                     let mut proj_computation = FlagComputation::new();
-                    proj_computation.add_projection_predicate(&projection_bound.0);
+                    proj_computation.add_projection_predicate(
+                        projection_bound.skip_binder());
                     self.add_bound_computation(&proj_computation);
                 }
                 self.add_bound_computation(&computation);
@@ -159,9 +160,9 @@ impl FlagComputation {
     fn add_fn_sig(&mut self, fn_sig: &ty::PolyFnSig) {
         let mut computation = FlagComputation::new();
 
-        computation.add_tys(&fn_sig.0.inputs);
+        computation.add_tys(&fn_sig.skip_binder().inputs);
 
-        if let ty::FnConverging(output) = fn_sig.0.output {
+        if let ty::FnConverging(output) = fn_sig.skip_binder().output {
             computation.add_ty(output);
         }
 

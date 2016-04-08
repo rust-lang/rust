@@ -1316,7 +1316,7 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
-        sig: ty::Binder(sig)
+        sig: ty::Binder::new(sig)
     });
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
     let empty_substs = ccx.tcx().mk_substs(Substs::empty());
@@ -1347,7 +1347,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     let fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
-        sig: ty::Binder(ty::FnSig {
+        sig: ty::Binder::new(ty::FnSig {
             inputs: vec![i8p],
             output: ty::FnOutput::FnConverging(tcx.mk_nil()),
             variadic: false,

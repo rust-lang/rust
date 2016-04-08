@@ -361,7 +361,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         &unsized_args
     };
 
-    let trait_ref = ty::Binder(ty::TraitRef {
+    let trait_ref = ty::Binder::new(ty::TraitRef {
         def_id: tcx.lang_items.drop_trait().unwrap(),
         substs: tcx.mk_substs(Substs::empty().with_self_ty(t))
     });

@@ -42,7 +42,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &TyCtxt<'tcx>, it: &hir::ForeignItem,
     let fty = tcx.mk_fn_def(def_id, tcx.mk_substs(substs), ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: abi,
-        sig: ty::Binder(FnSig {
+        sig: ty::Binder::new(FnSig {
             inputs: inputs,
             output: output,
             variadic: false,
@@ -293,7 +293,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                 let fn_ty = ty::BareFnTy {
                     unsafety: hir::Unsafety::Normal,
                     abi: Abi::Rust,
-                    sig: ty::Binder(FnSig {
+                    sig: ty::Binder::new(FnSig {
                         inputs: vec![mut_u8],
                         output: ty::FnOutput::FnConverging(tcx.mk_nil()),
                         variadic: false,

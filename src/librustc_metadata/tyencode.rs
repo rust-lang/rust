@@ -106,7 +106,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
         ty::TyTrait(box ty::TraitTy { ref principal,
                                        ref bounds }) => {
             write!(w, "x[");
-            enc_trait_ref(w, cx, principal.0);
+            enc_trait_ref(w, cx, *principal.skip_binder());
             enc_existential_bounds(w, cx, bounds);
             write!(w, "]");
         }
@@ -358,16 +358,16 @@ pub fn enc_closure_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
 fn enc_fn_sig<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>,
                         fsig: &ty::PolyFnSig<'tcx>) {
     write!(w, "[");
-    for ty in &fsig.0.inputs {
+    for ty in &fsig.skip_binder().inputs {
         enc_ty(w, cx, *ty);
     }
     write!(w, "]");
-    if fsig.0.variadic {
+    if fsig.skip_binder().variadic {
         write!(w, "V");
     } else {
         write!(w, "N");
     }
-    match fsig.0.output {
+    match fsig.skip_binder().output {
         ty::FnConverging(result_type) => {
             enc_ty(w, cx, result_type);
         }
@@ -399,7 +399,7 @@ pub fn enc_existential_bounds<'a,'tcx>(w: &mut Cursor<Vec<u8>>,
 
     for tp in &bs.projection_bounds {
         write!(w, "P");
-        enc_projection_predicate(w, cx, &tp.0);
+        enc_projection_predicate(w, cx, tp.skip_binder());
     }
 
     write!(w, ".");
@@ -451,26 +451,29 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
     match *p {
         ty::Predicate::Trait(ref trait_ref) => {
             write!(w, "t");
-            enc_trait_ref(w, cx, trait_ref.0.trait_ref);
+            enc_trait_ref(w, cx, trait_ref.skip_binder().trait_ref);
         }
-        ty::Predicate::Equate(ty::Binder(ty::EquatePredicate(a, b))) => {
+        ty::Predicate::Equate(ref data) => {
+            let &ty::EquatePredicate(a, b) = data.skip_binder();
             write!(w, "e");
             enc_ty(w, cx, a);
             enc_ty(w, cx, b);
         }
-        ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(a, b))) => {
+        ty::Predicate::RegionOutlives(ref data) => {
+            let &ty::OutlivesPredicate(a, b) = data.skip_binder();
             write!(w, "r");
             enc_region(w, cx, a);
             enc_region(w, cx, b);
         }
-        ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(a, b))) => {
+        ty::Predicate::TypeOutlives(ref data) => {
+            let &ty::OutlivesPredicate(a, b) = data.skip_binder();
             write!(w, "o");
             enc_ty(w, cx, a);
             enc_region(w, cx, b);
         }
-        ty::Predicate::Projection(ty::Binder(ref data)) => {
+        ty::Predicate::Projection(ref data) => {
             write!(w, "p");
-            enc_projection_predicate(w, cx, data);
+            enc_projection_predicate(w, cx, data.skip_binder());
         }
         ty::Predicate::WellFormed(data) => {
             write!(w, "w");

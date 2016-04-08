@@ -905,18 +905,18 @@ impl<'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
 
-        let substs = &trait_ref.0.substs;
+        let substs = &trait_ref.skip_binder().substs; // (*) see final paragraph above
         match *self {
-            Predicate::Trait(ty::Binder(ref data)) =>
-                Predicate::Trait(ty::Binder(data.subst(tcx, substs))),
-            Predicate::Equate(ty::Binder(ref data)) =>
-                Predicate::Equate(ty::Binder(data.subst(tcx, substs))),
-            Predicate::RegionOutlives(ty::Binder(ref data)) =>
-                Predicate::RegionOutlives(ty::Binder(data.subst(tcx, substs))),
-            Predicate::TypeOutlives(ty::Binder(ref data)) =>
-                Predicate::TypeOutlives(ty::Binder(data.subst(tcx, substs))),
-            Predicate::Projection(ty::Binder(ref data)) =>
-                Predicate::Projection(ty::Binder(data.subst(tcx, substs))),
+            Predicate::Trait(ref data) =>
+                Predicate::Trait(data.map_bound_ref(|d| d.subst(tcx, substs))),
+            Predicate::Equate(ref data) =>
+                Predicate::Equate(data.map_bound_ref(|d| d.subst(tcx, substs))),
+            Predicate::RegionOutlives(ref data) =>
+                Predicate::RegionOutlives(data.map_bound_ref(|d| d.subst(tcx, substs))),
+            Predicate::TypeOutlives(ref data) =>
+                Predicate::TypeOutlives(data.map_bound_ref(|d| d.subst(tcx, substs))),
+            Predicate::Projection(ref data) =>
+                Predicate::Projection(data.map_bound_ref(|d| d.subst(tcx, substs))),
             Predicate::WellFormed(data) =>
                 Predicate::WellFormed(data.subst(tcx, substs)),
             Predicate::ObjectSafe(trait_def_id) =>
@@ -953,12 +953,12 @@ impl<'tcx> TraitPredicate<'tcx> {
 impl<'tcx> PolyTraitPredicate<'tcx> {
     pub fn def_id(&self) -> DefId {
         // ok to skip binder since trait def-id does not care about regions
-        self.0.def_id()
+        self.skip_binder().def_id()
     }
 
     pub fn dep_node(&self) -> DepNode {
         // ok to skip binder since depnode does not care about regions
-        self.0.dep_node()
+        self.skip_binder().dep_node()
     }
 }
 
@@ -994,11 +994,11 @@ pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn item_name(&self) -> Name {
-        self.0.projection_ty.item_name // safe to skip the binder to access a name
+        self.skip_binder().projection_ty.item_name // safe to skip the binder to access a name
     }
 
     pub fn sort_key(&self) -> (DefId, Name) {
-        self.0.projection_ty.sort_key()
+        self.skip_binder().projection_ty.sort_key()
     }
 }
 
@@ -1009,7 +1009,7 @@ pub trait ToPolyTraitRef<'tcx> {
 impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         assert!(!self.has_escaping_regions());
-        ty::Binder(self.clone())
+        ty::Binder::new(self.clone())
     }
 }
 
@@ -1021,12 +1021,7 @@ impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
 
 impl<'tcx> ToPolyTraitRef<'tcx> for PolyProjectionPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        // Note: unlike with TraitRef::to_poly_trait_ref(),
-        // self.0.trait_ref is permitted to have escaping regions.
-        // This is because here `self` has a `Binder` and so does our
-        // return value, so we are preserving the number of binding
-        // levels.
-        ty::Binder(self.0.projection_ty.trait_ref)
+        self.map_bound_ref(|s| s.projection_ty.trait_ref)
     }
 }
 
@@ -1041,7 +1036,7 @@ impl<'tcx> ToPredicate<'tcx> for TraitRef<'tcx> {
         // weird debruijn accounting.
         assert!(!self.has_escaping_regions());
 
-        ty::Predicate::Trait(ty::Binder(ty::TraitPredicate {
+        ty::Predicate::Trait(ty::Binder::new(ty::TraitPredicate {
             trait_ref: self.clone()
         }))
     }
@@ -1084,22 +1079,25 @@ impl<'tcx> Predicate<'tcx> {
     pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
         let vec: Vec<_> = match *self {
             ty::Predicate::Trait(ref data) => {
-                data.0.trait_ref.substs.types.as_slice().to_vec()
+                data.skip_binder().trait_ref.substs.types.as_slice().to_vec()
+                    // ^ skip binders
             }
-            ty::Predicate::Equate(ty::Binder(ref data)) => {
+            ty::Predicate::Equate(ref data) => {
+                let data = data.skip_binder(); // as noted above, skip binders
                 vec![data.0, data.1]
             }
-            ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
-                vec![data.0]
+            ty::Predicate::TypeOutlives(ref data) => {
+                vec![data.skip_binder().0] // as noted above, skip binders
             }
             ty::Predicate::RegionOutlives(..) => {
                 vec![]
             }
             ty::Predicate::Projection(ref data) => {
-                let trait_inputs = data.0.projection_ty.trait_ref.substs.types.as_slice();
+                let trait_inputs =
+                    data.skip_binder().projection_ty.trait_ref.substs.types.as_slice();
                 trait_inputs.iter()
                             .cloned()
-                            .chain(Some(data.0.ty))
+                            .chain(Some(data.skip_binder().ty))
                             .collect()
             }
             ty::Predicate::WellFormed(data) => {
@@ -2670,7 +2668,8 @@ impl<'tcx> TyCtxt<'tcx> {
         //
 
         let bounds = generic_predicates.instantiate(self, &free_substs);
-        let bounds = self.liberate_late_bound_regions(free_id_outlive, &ty::Binder(bounds));
+        let bounds = self.liberate_late_bound_regions(free_id_outlive,
+                                                      &ty::Binder::new(bounds));
         let predicates = bounds.predicates.into_vec();
 
         // Finally, we have to normalize the bounds in the environment, in

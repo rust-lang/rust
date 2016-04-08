@@ -500,7 +500,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let ty = tcx.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: Abi::C,
-            sig: ty::Binder(ty::FnSig {
+            sig: ty::Binder::new(ty::FnSig {
                 inputs: vec![tcx.mk_mut_ptr(tcx.types.u8)],
                 output: ty::FnDiverging,
                 variadic: false
@@ -1181,10 +1181,10 @@ pub fn inlined_variant_def<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("inlined_variant_def: ctor_ty={:?} inlined_vid={:?}", ctor_ty,
            inlined_vid);
     let adt_def = match ctor_ty.sty {
-        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
-            output: ty::FnConverging(ty), ..
-        }), ..}) => ty,
-        _ => ctor_ty
+        ty::TyFnDef(_, _, &ty::BareFnTy { ref sig, .. }) =>
+            ccx.tcx().no_late_bound_regions(&sig.output()).unwrap().unwrap(),
+        _ =>
+            ctor_ty,
     }.ty_adt_def().unwrap();
     let inlined_vid_def_id = ccx.tcx().map.local_def_id(inlined_vid);
     adt_def.variants.iter().find(|v| {

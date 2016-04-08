@@ -858,7 +858,7 @@ impl LateLintPass for UnconditionalRecursion {
                 // Attempt to select a concrete impl before checking.
                 ty::TraitContainer(trait_def_id) => {
                     let trait_ref = callee_substs.to_trait_ref(tcx, trait_def_id);
-                    let trait_ref = ty::Binder(trait_ref);
+                    let trait_ref = ty::Binder::new(trait_ref);
                     let span = tcx.map.span(expr_id);
                     let obligation =
                         traits::Obligation::new(traits::ObligationCause::misc(span, expr_id),
@@ -1071,8 +1071,9 @@ impl LateLintPass for MutableTransmutes {
                 let typ = cx.tcx.node_id_to_type(expr.id);
                 match typ.sty {
                     ty::TyFnDef(_, _, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
-                        if let ty::FnConverging(to) = bare_fn.sig.0.output {
-                            let from = bare_fn.sig.0.inputs[0];
+                        let sig = bare_fn.sig.skip_binder();
+                        if let ty::FnConverging(to) = sig.output {
+                            let from = sig.inputs[0];
                             return Some((&from.sty, &to.sty));
                         }
                     },

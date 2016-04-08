@@ -62,7 +62,10 @@ impl FreeRegionMap {
                 ty::Predicate::TypeOutlives(..) => {
                     // No region bounds here
                 }
-                ty::Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
+                ty::Predicate::RegionOutlives(ref data) => {
+                    let &ty::OutlivesPredicate(r_a, r_b) = data.skip_binder(); // (*)
+                    // (*) OK to skip binder because the code below
+                    // ignores bound regions.
                     match (r_a, r_b) {
                         (ty::ReStatic, ty::ReFree(_)) => {},
                         (ty::ReFree(fr_a), ty::ReStatic) => self.relate_to_static(fr_a),

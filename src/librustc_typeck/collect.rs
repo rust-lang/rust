@@ -931,7 +931,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             tcx.mk_fn_def(def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: abi::Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
+                sig: ty::Binder::new(ty::FnSig {
                     inputs: inputs,
                     output: ty::FnConverging(scheme.ty),
                     variadic: false
@@ -1775,7 +1775,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             });
         for bound in &param.bounds {
             let bound_region = ast_region_to_region(ccx.tcx, bound);
-            let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
+            let outlives = ty::Binder::new(ty::OutlivesPredicate(region, bound_region));
             result.predicates.push(space, outlives.to_predicate());
         }
     }
@@ -1809,7 +1809,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
                         &hir::TyParamBound::RegionTyParamBound(ref lifetime) => {
                             let region = ast_region_to_region(tcx, lifetime);
-                            let pred = ty::Binder(ty::OutlivesPredicate(ty, region));
+                            let pred = ty::Binder::new(ty::OutlivesPredicate(ty, region));
                             result.predicates.push(space, ty::Predicate::TypeOutlives(pred))
                         }
                     }
@@ -1820,7 +1820,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 let r1 = ast_region_to_region(tcx, &region_pred.lifetime);
                 for bound in &region_pred.bounds {
                     let r2 = ast_region_to_region(tcx, bound);
-                    let pred = ty::Binder(ty::OutlivesPredicate(r1, r2));
+                    let pred = ty::Binder::new(ty::OutlivesPredicate(r1, r2));
                     result.predicates.push(space, ty::Predicate::RegionOutlives(pred))
                 }
             }
@@ -2064,7 +2064,7 @@ fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx>,
         }
         hir::RegionTyParamBound(ref lifetime) => {
             let region = ast_region_to_region(astconv.tcx(), lifetime);
-            let pred = ty::Binder(ty::OutlivesPredicate(param_ty, region));
+            let pred = ty::Binder::new(ty::OutlivesPredicate(param_ty, region));
             vec![ty::Predicate::TypeOutlives(pred)]
         }
         hir::TraitTyParamBound(_, hir::TraitBoundModifier::Maybe) => {
@@ -2185,9 +2185,9 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     let t_fn = ccx.tcx.mk_fn_def(id, substs, ty::BareFnTy {
         abi: abi,
         unsafety: hir::Unsafety::Unsafe,
-        sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                                    output: output,
-                                    variadic: decl.variadic}),
+        sig: ty::Binder::new(ty::FnSig {inputs: input_tys,
+                                        output: output,
+                                        variadic: decl.variadic}),
     });
 
     ty::TypeScheme {

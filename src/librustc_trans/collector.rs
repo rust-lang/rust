@@ -733,7 +733,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                        param_substs,
                                                        callee_substs);
 
-    let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
+    let trait_ref = ty::Binder::new(rcvr_substs.to_trait_ref(tcx, trait_id));
     let vtbl = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
 
     // Now that we know which impl is being used, we can dispatch to

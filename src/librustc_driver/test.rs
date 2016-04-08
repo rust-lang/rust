@@ -269,7 +269,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         self.infcx.tcx.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Normal,
             abi: Abi::Rust,
-            sig: ty::Binder(ty::FnSig {
+            sig: ty::Binder::new(ty::FnSig {
                 inputs: input_args,
                 output: ty::FnConverging(output_ty),
                 variadic: false,

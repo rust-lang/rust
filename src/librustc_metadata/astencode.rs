@@ -948,7 +948,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
     fn read_poly_trait_ref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                    -> ty::PolyTraitRef<'tcx> {
-        ty::Binder(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
+        ty::Binder::new(self.read_ty_encoded(dcx, |decoder| decoder.parse_trait_ref()))
     }
 
     fn read_predicate<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)

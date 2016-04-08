@@ -155,10 +155,11 @@ pub fn supertraits_reference_self<'tcx>(tcx: &TyCtxt<'tcx>,
             match predicate {
                 ty::Predicate::Trait(ref data) => {
                     // In the case of a trait predicate, we can skip the "self" type.
-                    data.0.trait_ref.substs.types.get_slice(TypeSpace)
-                                                 .iter()
-                                                 .cloned()
-                                                 .any(|t| t.has_self_ty())
+                    data.skip_binder() // ok to skip binder, bound regions not relevant
+                        .trait_ref.substs.types.get_slice(TypeSpace)
+                                               .iter()
+                                               .cloned()
+                                               .any(|t| t.has_self_ty())
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::WellFormed(..) |
@@ -199,7 +200,8 @@ fn generics_require_sized_self<'tcx>(tcx: &TyCtxt<'tcx>,
         .any(|predicate| {
             match predicate {
                 ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    trait_pred.0.self_ty().is_self()
+                    trait_pred.skip_binder().self_ty().is_self()
+                        // ok to skip_binder, bound regions not relevant
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::Trait(..) |
@@ -267,16 +269,17 @@ fn virtual_call_violation_for_method<'tcx>(tcx: &TyCtxt<'tcx>,
     // The `Self` type is erased, so it should not appear in list of
     // arguments or return type apart from the receiver.
     let ref sig = method.fty.sig;
-    for &input_ty in &sig.0.inputs[1..] {
+    for &input_ty in &sig.skip_binder().inputs[1..] { // (*)
         if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
             return Some(MethodViolationCode::ReferencesSelf);
         }
     }
-    if let ty::FnConverging(result_type) = sig.0.output {
+    if let ty::FnConverging(result_type) = sig.skip_binder().output { // (*)
         if contains_illegal_self_type_reference(tcx, trait_def_id, result_type) {
             return Some(MethodViolationCode::ReferencesSelf);
         }
     }
+    // (*) ok to skip binders, bound regions not relevant here
 
     // We can't monomorphize things like `fn foo<A>(...)`.
     if !method.generics.types.is_empty_in(subst::FnSpace) {
@@ -348,7 +351,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &TyCtxt<'tcx>,
                 // Compute supertraits of current trait lazily.
                 if supertraits.is_none() {
                     let trait_def = tcx.lookup_trait_def(trait_def_id);
-                    let trait_ref = ty::Binder(trait_def.trait_ref.clone());
+                    let trait_ref = ty::Binder::new(trait_def.trait_ref.clone());
                     supertraits = Some(traits::supertraits(tcx, trait_ref).collect());
                 }
 
@@ -360,7 +363,7 @@ fn contains_illegal_self_type_reference<'tcx>(tcx: &TyCtxt<'tcx>,
                 // direct equality here because all of these types
                 // are part of the formal parameter listing, and
                 // hence there should be no inference variables.
-                let projection_trait_ref = ty::Binder(data.trait_ref.clone());
+                let projection_trait_ref = ty::Binder::new(data.trait_ref.clone());
                 let is_supertrait_of_current_trait =
                     supertraits.as_ref().unwrap().contains(&projection_trait_ref);
 

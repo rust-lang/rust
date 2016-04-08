@@ -304,7 +304,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     ty::Predicate::RegionOutlives(..) => {
                         None
                     }
-                    ty::Predicate::TypeOutlives(ty::Binder(ty::OutlivesPredicate(t, r))) => {
+                    ty::Predicate::TypeOutlives(ref data) => {
+                        let &ty::OutlivesPredicate(t, r) = data.skip_binder(); // (*)
+
                         // Search for a bound of the form `erased_self_ty
                         // : 'a`, but be wary of something like `for<'a>
                         // erased_self_ty : 'a` (we interpret a
@@ -314,6 +316,9 @@ impl<'tcx> TyCtxt<'tcx> {
                         // it's kind of a moot point since you could never
                         // construct such an object, but this seems
                         // correct even if that code changes).
+                        //
+                        // (*) ok to skip-binder because we are
+                        // careful about escaping regions below.
                         if t == erased_self_ty && !r.has_escaping_regions() {
                             Some(r)
                         } else {
@@ -368,7 +373,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 mt.mutbl.hash(state);
             };
             let fn_sig = |state: &mut SipHasher, sig: &ty::Binder<ty::FnSig<'tcx>>| {
-                let sig = tcx.anonymize_late_bound_regions(sig).0;
+                let sig = tcx.anonymize_late_bound_regions(sig);
+                let sig = sig.skip_binder();
                 for a in &sig.inputs { helper(tcx, *a, svh, state); }
                 if let ty::FnConverging(output) = sig.output {
                     helper(tcx, output, svh, state);
@@ -432,7 +438,10 @@ impl<'tcx> TyCtxt<'tcx> {
                         did(state, data.principal_def_id());
                         hash!(data.bounds);
 
-                        let principal = tcx.anonymize_late_bound_regions(&data.principal).0;
+                        let principal =
+                            tcx.anonymize_late_bound_regions(&data.principal)
+                               .skip_binder()
+                               .clone();
                         for subty in &principal.substs.types {
                             helper(tcx, subty, svh, state);
                         }

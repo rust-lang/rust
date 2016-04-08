@@ -468,10 +468,9 @@ pub fn get_adt_def<'tcx>(intr: &IdentInterner,
                    variant.name,
                    ctor_ty);
             let field_tys = match ctor_ty.sty {
-                ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
-                    ref inputs, ..
-                }), ..}) => {
+                ty::TyFnDef(_, _, &ty::BareFnTy { ref sig, .. }) => {
                     // tuple-struct constructors don't have escaping regions
+                    let inputs = &sig.skip_binder().inputs;
                     assert!(!inputs.has_escaping_regions());
                     inputs
                 },

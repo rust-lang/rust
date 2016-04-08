@@ -843,7 +843,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
             err.fileline_note(
                 cause_span,
                 &format!("required because it appears within the type `{}`",
-                         parent_trait_ref.0.self_ty()));
+                         parent_trait_ref.skip_binder().self_ty()));
             let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx,
                                        err,
@@ -857,7 +857,7 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                 cause_span,
                 &format!("required because of the requirements on the impl of `{}` for `{}`",
                          parent_trait_ref,
-                         parent_trait_ref.0.self_ty()));
+                         parent_trait_ref.skip_binder().self_ty()));
             let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx,
                                        err,
