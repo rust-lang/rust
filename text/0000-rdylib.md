@@ -39,7 +39,7 @@ cdylibs:
   into somewhere else, however, you have no need for the metadata!
 * *Reachable* symbols are exposed from dynamic libraries, but if you're loading
   Rust into somewhere else then, like executables, only *public* non-Rust-ABI
-  function sneed to be exported. This can lead to unnecessarily large Rust
+  functions need to be exported. This can lead to unnecessarily large Rust
   dynamic libraries in terms of object size as well as missed optimization
   opportunities from knowing that a function is otherwise private.
 * We can't run LTO for dylibs because those are intended for end products, not
