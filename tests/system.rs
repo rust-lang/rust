@@ -173,7 +173,7 @@ fn print_mismatches(result: HashMap<String, Vec<Mismatch>>) {
                    |line_num| format!("\nMismatch at {}:{}:", file_name, line_num));
     }
 
-    assert!(t.reset().unwrap());
+    t.reset().unwrap();
 }
 
 fn read_config(filename: &str) -> Config {

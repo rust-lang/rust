@@ -14,14 +14,14 @@ default = ["cargo-fmt"]
 cargo-fmt = []
 
 [dependencies]
-toml = "0.1.20"
-rustc-serialize = "0.3.14"
-unicode-segmentation = "0.1.2"
-regex = "0.1.41"
-term = "0.2.11"
+toml = "0.1"
+rustc-serialize = "0.3"
+unicode-segmentation = "0.1"
+regex = "0.1"
+term = "0.4"
 strings = "0.0.1"
-diff = "0.1.8"
+diff = "0.1"
 syntex_syntax = "0.30"
-log = "0.3.2"
-env_logger = "0.3.1"
+log = "0.3"
+env_logger = "0.3"
 getopts = "0.2"
