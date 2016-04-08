@@ -1,5 +1,5 @@
 /target
 /doc
-/final-presentation/out
+tex/*/out
 *.dot
 *.mir
