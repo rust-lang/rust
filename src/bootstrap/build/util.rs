@@ -16,6 +16,29 @@ use std::process::Command;
 use bootstrap::{dylib_path, dylib_path_var};
 use filetime::FileTime;
 
+#[cfg(not(windows))]
+pub fn build_path(path: &str) -> PathBuf {
+    PathBuf::from(path)
+}
+
+#[cfg(windows)]
+pub fn build_path(path: &str) -> PathBuf {
+    use std::io::{stderr, Write};
+    use build_helper::output;
+
+    if path.chars().next() == Some('/') {
+        let output = output(&mut Command::new("cygpath").arg("-w").arg(path));
+        let win_path = output.trim_right();
+        writeln!(&mut stderr(),
+                 "note: Converted Unix path '{}' to Windows path '{}'",
+                 path,
+                 win_path).ok();
+        PathBuf::from(win_path)
+    } else {
+        PathBuf::from(path)
+    }
+}
+
 pub fn staticlib(name: &str, target: &str) -> String {
     if target.contains("windows-msvc") {
         format!("{}.lib", name)

@@ -149,15 +149,20 @@ pub fn compiler_rt(build: &Build, target: &str) {
     }
     let _ = fs::remove_dir_all(&dst);
     t!(fs::create_dir_all(&dst));
-    let build_llvm_config = build.llvm_out(&build.config.build)
-                                 .join("bin")
-                                 .join(exe("llvm-config", &build.config.build));
+
+    let internal_config = build.llvm_out(&build.config.build)
+                               .join("bin")
+                               .join("llvm-config");
+    let external_config = build.config.target_config.get(target).and_then(|config| {
+        config.llvm_config.clone()
+    });
+    let llvm_config = external_config.unwrap_or(internal_config);
     let mut cfg = cmake::Config::new(build.src.join("src/compiler-rt"));
     cfg.target(target)
        .host(&build.config.build)
        .out_dir(&dst)
        .profile(mode)
-       .define("LLVM_CONFIG_PATH", build_llvm_config)
+       .define("LLVM_CONFIG_PATH", llvm_config)
        .define("COMPILER_RT_DEFAULT_TARGET_TRIPLE", target)
        .define("COMPILER_RT_BUILD_SANITIZERS", "OFF")
        .define("COMPILER_RT_BUILD_EMUTLS", "OFF")
