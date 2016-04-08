@@ -356,6 +356,14 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
                                        "the `#[rustc_if_this_changed]` attribute \
                                         is just used for rustc unit tests \
                                         and will never be stable")),
+    ("rustc_dirty", Whitelisted, Gated("rustc_attrs",
+                                       "the `#[rustc_dirty]` attribute \
+                                        is just used for rustc unit tests \
+                                        and will never be stable")),
+    ("rustc_clean", Whitelisted, Gated("rustc_attrs",
+                                       "the `#[rustc_clean]` attribute \
+                                        is just used for rustc unit tests \
+                                        and will never be stable")),
     ("rustc_symbol_name", Whitelisted, Gated("rustc_attrs",
                                        "internal rustc attributes will never be stable")),
     ("rustc_item_path", Whitelisted, Gated("rustc_attrs",

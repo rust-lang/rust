@@ -11,6 +11,7 @@
 use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
+use common::{Incremental};
 use errors::{self, ErrorKind};
 use header::TestProps;
 use header;
@@ -59,6 +60,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         Codegen => run_codegen_test(&config, &props, &testpaths),
         Rustdoc => run_rustdoc_test(&config, &props, &testpaths),
         CodegenUnits => run_codegen_units_test(&config, &props, &testpaths),
+        Incremental => run_incremental_test(&config, &props, &testpaths),
     }
 }
 
@@ -1964,5 +1966,69 @@ fn run_codegen_units_test(config: &Config, props: &TestProps, testpaths: &TestPa
             missing.iter().fold("".to_string(), |s1, s2| s1 + "\n" + s2),
             too_much.iter().fold("".to_string(), |s1, s2| s1 + "\n" + s2));
         panic!();
+    }
+}
+
+fn run_incremental_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
+    // Basic plan for a test incremental/foo/bar.rs:
+    // - load list of revisions pass1, fail2, pass3
+    //   - each should begin with `rpass`, `rfail`, or `cfail`
+    //   - if `rpass`, expect compile and execution to succeed
+    //   - if `cfail`, expect compilation to fail
+    //   - if `rfail`, expect execution to fail
+    // - create a directory build/foo/bar.incremental
+    // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C pass1
+    //   - because name of revision starts with "pass", expect success
+    // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C fail2
+    //   - because name of revision starts with "fail", expect an error
+    //   - load expected errors as usual, but filter for those that end in `[fail2]`
+    // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C pass3
+    //   - because name of revision starts with "pass", expect success
+    // - execute build/foo/bar.exe and save output
+    //
+    // FIXME -- use non-incremental mode as an oracle? That doesn't apply
+    // to #[rustc_dirty] and clean tests I guess
+
+    assert!(!props.revisions.is_empty(), "incremental tests require a list of revisions");
+
+    let output_base_name = output_base_name(config, testpaths);
+
+    // Create the incremental workproduct directory.
+    let incremental_dir = output_base_name.with_extension("incremental");
+    if incremental_dir.exists() {
+        fs::remove_dir_all(&incremental_dir).unwrap();
+    }
+    fs::create_dir_all(&incremental_dir).unwrap();
+
+    if config.verbose {
+        print!("incremental_dir={}", incremental_dir.display());
+    }
+
+    for revision in &props.revisions {
+        let mut revision_props = props.clone();
+        header::load_props_into(&mut revision_props, &testpaths.file, Some(&revision));
+
+        revision_props.compile_flags.extend(vec![
+            format!("-Z"),
+            format!("incremental={}", incremental_dir.display()),
+            format!("--cfg"),
+            format!("{}", revision),
+        ]);
+
+        if config.verbose {
+            print!("revision={:?} revision_props={:#?}", revision, revision_props);
+        }
+
+        if revision.starts_with("rpass") {
+            run_rpass_test_revision(config, &revision_props, testpaths, Some(&revision));
+        } else if revision.starts_with("rfail") {
+            run_rfail_test_revision(config, &revision_props, testpaths, Some(&revision));
+        } else if revision.starts_with("cfail") {
+            run_cfail_test_revision(config, &revision_props, testpaths, Some(&revision));
+        } else {
+            fatal(
+                Some(revision),
+                "revision name must begin with rpass, rfail, or cfail");
+        }
     }
 }

@@ -45,6 +45,7 @@ extern crate rustc_passes;
 extern crate rustc_lint;
 extern crate rustc_plugin;
 extern crate rustc_privacy;
+extern crate rustc_incremental;
 extern crate rustc_metadata;
 extern crate rustc_mir;
 extern crate rustc_resolve;

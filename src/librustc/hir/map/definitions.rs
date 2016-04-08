@@ -203,16 +203,55 @@ impl Definitions {
         }
     }
 
+    pub fn retrace_path(&self, path: &DefPath) -> Option<DefIndex> {
+        debug!("retrace_path(path={:?})", path);
+
+        // we assume that we only want to retrace paths relative to
+        // the crate root
+        assert!(path.is_local());
+
+        let root_key = DefKey {
+            parent: None,
+            disambiguated_data: DisambiguatedDefPathData {
+                data: DefPathData::CrateRoot,
+                disambiguator: 0,
+            },
+        };
+        let root_id = self.key_map[&root_key];
+
+        debug!("retrace_path: root_id={:?}", root_id);
+
+        let mut id = root_id;
+        for data in &path.data {
+            let key = DefKey { parent: Some(id), disambiguated_data: data.clone() };
+            debug!("key = {:?}", key);
+            id = match self.key_map.get(&key) {
+                Some(&id) => id,
+                None => return None
+            };
+        }
+
+        Some(id)
+    }
+
     pub fn create_def_with_parent(&mut self,
                                   parent: Option<DefIndex>,
                                   node_id: ast::NodeId,
                                   data: DefPathData)
                                   -> DefIndex {
+        debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
+               parent, node_id, data);
+
         assert!(!self.node_map.contains_key(&node_id),
                 "adding a def'n for node-id {:?} and data {:?} but a previous def'n exists: {:?}",
                 node_id,
                 data,
                 self.data[self.node_map[&node_id].as_usize()]);
+
+        assert!(parent.is_some() ^ match data {
+            DefPathData::CrateRoot | DefPathData::InlinedRoot(_) => true,
+            _ => false,
+        });
 
         // Find a unique DefKey. This basically means incrementing the disambiguator
         // until we get no match.
@@ -228,11 +267,16 @@ impl Definitions {
             key.disambiguated_data.disambiguator += 1;
         }
 
+        debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
+
         // Create the definition.
         let index = DefIndex::new(self.data.len());
         self.data.push(DefData { key: key.clone(), node_id: node_id });
+        debug!("create_def_with_parent: node_map[{:?}] = {:?}", node_id, index);
         self.node_map.insert(node_id, index);
+        debug!("create_def_with_parent: key_map[{:?}] = {:?}", key, index);
         self.key_map.insert(key, index);
+
 
         index
     }

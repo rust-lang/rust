@@ -24,6 +24,7 @@ use rustc::util::common::time;
 use rustc::util::nodemap::NodeSet;
 use rustc_back::sha2::{Sha256, Digest};
 use rustc_borrowck as borrowck;
+use rustc_incremental;
 use rustc_resolve as resolve;
 use rustc_metadata::macro_import;
 use rustc_metadata::creader::LocalCrateReader;
@@ -121,7 +122,7 @@ pub fn compile_input(sess: &Session,
         let expanded_crate = assign_node_ids(sess, expanded_crate);
         // Lower ast -> hir.
         let lcx = LoweringContext::new(sess, Some(&expanded_crate));
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+        let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
         let mut hir_forest = time(sess.time_passes(),
                                   "lowering ast -> hir",
                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),
@@ -828,6 +829,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                index,
                                name,
                                |tcx| {
+        time(time_passes,
+             "load_dep_graph",
+             || rustc_incremental::load_dep_graph(tcx));
+
         // passes are timed inside typeck
         try_with_f!(typeck::check_crate(tcx, trait_map), (tcx, None, analysis));
 
@@ -952,9 +957,20 @@ pub fn phase_4_translate_to_llvm<'tcx>(tcx: &TyCtxt<'tcx>,
         passes.run_passes(tcx, &mut mir_map);
     });
 
+    let translation =
+        time(time_passes,
+             "translation",
+             move || trans::trans_crate(tcx, &mir_map, analysis));
+
     time(time_passes,
-         "translation",
-         move || trans::trans_crate(tcx, &mir_map, analysis))
+         "assert dep graph",
+         move || rustc_incremental::assert_dep_graph(tcx));
+
+    time(time_passes,
+         "serialize dep graph",
+         move || rustc_incremental::save_dep_graph(tcx));
+
+    translation
 }
 
 /// Run LLVM itself, producing a bitcode file, assembly file or object file

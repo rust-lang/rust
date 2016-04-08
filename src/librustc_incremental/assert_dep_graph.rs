@@ -13,12 +13,17 @@
 //! will dump graphs in graphviz form to disk, and it searches for
 //! `#[rustc_if_this_changed]` and `#[rustc_then_this_would_need]`
 //! annotations. These annotations can be used to test whether paths
-//! exist in the graph. We report errors on each
-//! `rustc_if_this_changed` annotation. If a path exists in all
-//! cases, then we would report "all path(s) exist". Otherwise, we
-//! report: "no path to `foo`" for each case where no path exists.
-//! `compile-fail` tests can then be used to check when paths exist or
-//! do not.
+//! exist in the graph. These checks run after trans, so they view the
+//! the final state of the dependency graph. Note that there are
+//! similar assertions found in `persist::dirty_clean` which check the
+//! **initial** state of the dependency graph, just after it has been
+//! loaded from disk.
+//!
+//! In this code, we report errors on each `rustc_if_this_changed`
+//! annotation. If a path exists in all cases, then we would report
+//! "all path(s) exist". Otherwise, we report: "no path to `foo`" for
+//! each case where no path exists.  `compile-fail` tests can then be
+//! used to check when paths exist or do not.
 //!
 //! The full form of the `rustc_if_this_changed` annotation is
 //! `#[rustc_if_this_changed(id)]`. The `"id"` is optional and
@@ -61,7 +66,7 @@ const ID: &'static str = "id";
 pub fn assert_dep_graph(tcx: &TyCtxt) {
     let _ignore = tcx.dep_graph.in_ignore();
 
-    if tcx.sess.opts.dump_dep_graph {
+    if tcx.sess.opts.debugging_opts.dump_dep_graph {
         dump_graph(tcx);
     }
 
@@ -74,14 +79,23 @@ pub fn assert_dep_graph(tcx: &TyCtxt) {
         (visitor.if_this_changed, visitor.then_this_would_need)
     };
 
+    if !if_this_changed.is_empty() || !then_this_would_need.is_empty() {
+        assert!(tcx.sess.opts.debugging_opts.query_dep_graph,
+                "cannot use the `#[{}]` or `#[{}]` annotations \
+                 without supplying `-Z query-dep-graph`",
+                IF_THIS_CHANGED, THEN_THIS_WOULD_NEED);
+    }
+
     // Check paths.
     check_paths(tcx, &if_this_changed, &then_this_would_need);
 }
 
-type SourceHashMap = FnvHashMap<InternedString,
-                                FnvHashSet<(Span, DefId, DepNode)>>;
-type TargetHashMap = FnvHashMap<InternedString,
-                                FnvHashSet<(Span, InternedString, ast::NodeId, DepNode)>>;
+type SourceHashMap =
+    FnvHashMap<InternedString,
+               FnvHashSet<(Span, DefId, DepNode<DefId>)>>;
+type TargetHashMap =
+    FnvHashMap<InternedString,
+               FnvHashSet<(Span, InternedString, ast::NodeId, DepNode<DefId>)>>;
 
 struct IfThisChanged<'a, 'tcx:'a> {
     tcx: &'a TyCtxt<'tcx>,
@@ -124,34 +138,21 @@ impl<'a, 'tcx> IfThisChanged<'a, 'tcx> {
                         }
                     }
                 }
-                let dep_node_str = dep_node_interned.as_ref().map(|s| &**s);
-                macro_rules! match_depnode_name {
-                    ($input:expr, $def_id:expr, match { $($variant:ident,)* } else $y:expr) => {
-                        match $input {
-                            $(Some(stringify!($variant)) => DepNode::$variant($def_id),)*
-                            _ => $y
+                let dep_node = match dep_node_interned {
+                    Some(ref n) => {
+                        match DepNode::from_label_string(&n[..], def_id) {
+                            Ok(n) => n,
+                            Err(()) => {
+                                self.tcx.sess.span_fatal(
+                                    attr.span,
+                                    &format!("unrecognized DepNode variant {:?}", n));
+                            }
                         }
                     }
-                }
-                let dep_node = match_depnode_name! {
-                    dep_node_str, def_id, match {
-                        CollectItem,
-                        BorrowCheck,
-                        TransCrateItem,
-                        TypeckItemType,
-                        TypeckItemBody,
-                        ImplOrTraitItems,
-                        ItemSignature,
-                        FieldTy,
-                        TraitItemDefIds,
-                        InherentImpls,
-                        ImplItems,
-                        TraitImpls,
-                        ReprHints,
-                    } else {
+                    None => {
                         self.tcx.sess.span_fatal(
                             attr.span,
-                            &format!("unrecognized DepNode variant {:?}", dep_node_str));
+                            &format!("missing DepNode variant"));
                     }
                 };
                 let id = id.unwrap_or(InternedString::new(ID));
@@ -194,7 +195,7 @@ fn check_paths(tcx: &TyCtxt,
         };
 
         for &(_, source_def_id, source_dep_node) in sources {
-            let dependents = query.dependents(source_dep_node);
+            let dependents = query.transitive_dependents(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in targets {
                 if !dependents.contains(&target_dep_node) {
                     tcx.sess.span_err(
@@ -251,33 +252,34 @@ fn dump_graph(tcx: &TyCtxt) {
     }
 }
 
-pub struct GraphvizDepGraph(FnvHashSet<DepNode>, Vec<(DepNode, DepNode)>);
+pub struct GraphvizDepGraph(FnvHashSet<DepNode<DefId>>,
+                            Vec<(DepNode<DefId>, DepNode<DefId>)>);
 
 impl<'a, 'tcx> dot::GraphWalk<'a> for GraphvizDepGraph {
-    type Node = DepNode;
-    type Edge = (DepNode, DepNode);
-    fn nodes(&self) -> dot::Nodes<DepNode> {
+    type Node = DepNode<DefId>;
+    type Edge = (DepNode<DefId>, DepNode<DefId>);
+    fn nodes(&self) -> dot::Nodes<DepNode<DefId>> {
         let nodes: Vec<_> = self.0.iter().cloned().collect();
         nodes.into_cow()
     }
-    fn edges(&self) -> dot::Edges<(DepNode, DepNode)> {
+    fn edges(&self) -> dot::Edges<(DepNode<DefId>, DepNode<DefId>)> {
         self.1[..].into_cow()
     }
-    fn source(&self, edge: &(DepNode, DepNode)) -> DepNode {
+    fn source(&self, edge: &(DepNode<DefId>, DepNode<DefId>)) -> DepNode<DefId> {
         edge.0
     }
-    fn target(&self, edge: &(DepNode, DepNode)) -> DepNode {
+    fn target(&self, edge: &(DepNode<DefId>, DepNode<DefId>)) -> DepNode<DefId> {
         edge.1
     }
 }
 
 impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
-    type Node = DepNode;
-    type Edge = (DepNode, DepNode);
+    type Node = DepNode<DefId>;
+    type Edge = (DepNode<DefId>, DepNode<DefId>);
     fn graph_id(&self) -> dot::Id {
         dot::Id::new("DependencyGraph").unwrap()
     }
-    fn node_id(&self, n: &DepNode) -> dot::Id {
+    fn node_id(&self, n: &DepNode<DefId>) -> dot::Id {
         let s: String =
             format!("{:?}", n).chars()
                               .map(|c| if c == '_' || c.is_alphanumeric() { c } else { '_' })
@@ -285,7 +287,7 @@ impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
         debug!("n={:?} s={:?}", n, s);
         dot::Id::new(s).unwrap()
     }
-    fn node_label(&self, n: &DepNode) -> dot::LabelText {
+    fn node_label(&self, n: &DepNode<DefId>) -> dot::LabelText {
         dot::LabelText::label(format!("{:?}", n))
     }
 }
@@ -293,7 +295,9 @@ impl<'a, 'tcx> dot::Labeller<'a> for GraphvizDepGraph {
 // Given an optional filter like `"x,y,z"`, returns either `None` (no
 // filter) or the set of nodes whose labels contain all of those
 // substrings.
-fn node_set(query: &DepGraphQuery, filter: &str) -> Option<FnvHashSet<DepNode>> {
+fn node_set(query: &DepGraphQuery<DefId>, filter: &str)
+            -> Option<FnvHashSet<DepNode<DefId>>>
+{
     debug!("node_set(filter={:?})", filter);
 
     if filter.trim().is_empty() {
@@ -313,10 +317,10 @@ fn node_set(query: &DepGraphQuery, filter: &str) -> Option<FnvHashSet<DepNode>> 
         .collect())
 }
 
-fn filter_nodes(query: &DepGraphQuery,
-                sources: &Option<FnvHashSet<DepNode>>,
-                targets: &Option<FnvHashSet<DepNode>>)
-                -> FnvHashSet<DepNode>
+fn filter_nodes(query: &DepGraphQuery<DefId>,
+                sources: &Option<FnvHashSet<DepNode<DefId>>>,
+                targets: &Option<FnvHashSet<DepNode<DefId>>>)
+                -> FnvHashSet<DepNode<DefId>>
 {
     if let &Some(ref sources) = sources {
         if let &Some(ref targets) = targets {
@@ -331,10 +335,10 @@ fn filter_nodes(query: &DepGraphQuery,
     }
 }
 
-fn walk_nodes(query: &DepGraphQuery,
-              starts: &FnvHashSet<DepNode>,
+fn walk_nodes(query: &DepGraphQuery<DefId>,
+              starts: &FnvHashSet<DepNode<DefId>>,
               direction: Direction)
-              -> FnvHashSet<DepNode>
+              -> FnvHashSet<DepNode<DefId>>
 {
     let mut set = FnvHashSet();
     for start in starts {
@@ -355,10 +359,10 @@ fn walk_nodes(query: &DepGraphQuery,
     set
 }
 
-fn walk_between(query: &DepGraphQuery,
-                sources: &FnvHashSet<DepNode>,
-                targets: &FnvHashSet<DepNode>)
-                -> FnvHashSet<DepNode>
+fn walk_between(query: &DepGraphQuery<DefId>,
+                sources: &FnvHashSet<DepNode<DefId>>,
+                targets: &FnvHashSet<DepNode<DefId>>)
+                -> FnvHashSet<DepNode<DefId>>
 {
     // This is a bit tricky. We want to include a node only if it is:
     // (a) reachable from a source and (b) will reach a target. And we
@@ -386,7 +390,7 @@ fn walk_between(query: &DepGraphQuery,
                 })
                 .collect();
 
-    fn recurse(query: &DepGraphQuery,
+    fn recurse(query: &DepGraphQuery<DefId>,
                node_states: &mut [State],
                node: NodeIndex)
                -> bool
@@ -423,9 +427,9 @@ fn walk_between(query: &DepGraphQuery,
     }
 }
 
-fn filter_edges(query: &DepGraphQuery,
-                nodes: &FnvHashSet<DepNode>)
-                -> Vec<(DepNode, DepNode)>
+fn filter_edges(query: &DepGraphQuery<DefId>,
+                nodes: &FnvHashSet<DepNode<DefId>>)
+                -> Vec<(DepNode<DefId>, DepNode<DefId>)>
 {
     query.edges()
          .into_iter()

@@ -584,7 +584,8 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-        let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(id));
+        let def_id = tcx.map.local_def_id(id);
+        let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(def_id));
         let param_env = ty::ParameterEnvironment::for_item(tcx, id);
         let infcx = infer::new_infer_ctxt(tcx,
                                           &tcx.tables,

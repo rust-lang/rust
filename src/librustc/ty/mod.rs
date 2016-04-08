@@ -937,7 +937,7 @@ impl<'tcx> TraitPredicate<'tcx> {
     }
 
     /// Creates the dep-node for selecting/evaluating this trait reference.
-    fn dep_node(&self) -> DepNode {
+    fn dep_node(&self) -> DepNode<DefId> {
         DepNode::TraitSelect(self.def_id())
     }
 
@@ -956,7 +956,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
         self.0.def_id()
     }
 
-    pub fn dep_node(&self) -> DepNode {
+    pub fn dep_node(&self) -> DepNode<DefId> {
         // ok to skip binder since depnode does not care about regions
         self.0.dep_node()
     }
@@ -2716,7 +2716,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn visit_all_items_in_krate<V,F>(&self,
                                          dep_node_fn: F,
                                          visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode, V: Visitor<'tcx>
+        where F: FnMut(DefId) -> DepNode<DefId>, V: Visitor<'tcx>
     {
         dep_graph::visit_all_items_in_krate(self, dep_node_fn, visitor);
     }
