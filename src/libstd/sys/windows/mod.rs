@@ -48,7 +48,6 @@ pub fn init() {
 
     // See comment in sys/unix/mod.rs
     fn oom_handler() -> ! {
-        use intrinsics;
         use ptr;
         let msg = "fatal runtime error: out of memory\n";
         unsafe {
@@ -59,7 +58,7 @@ pub fn init() {
                          msg.len() as c::DWORD,
                          ptr::null_mut(),
                          ptr::null_mut());
-            intrinsics::abort();
+            rtabort!();
         }
     }
 }
