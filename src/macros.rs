@@ -82,7 +82,10 @@ pub fn rewrite_macro(mac: &ast::Mac,
         loop {
             expr_vec.push(match parser.parse_expr() {
                 Ok(expr) => expr,
-                Err(..) => return None,
+                Err(mut e) => {
+                    e.cancel();
+                    return None;
+                }
             });
 
             match parser.token {
