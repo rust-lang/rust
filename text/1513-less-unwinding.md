@@ -1,7 +1,7 @@
 - Feature Name: `panic_runtime`
 - Start Date: 2016-02-25
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1513
+- Rust Issue: https://github.com/rust-lang/rust/issues/32837
 
 # Summary
 [summary]: #summary
