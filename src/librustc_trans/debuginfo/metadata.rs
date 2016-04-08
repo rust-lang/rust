@@ -326,7 +326,7 @@ impl<'tcx> TypeMap<'tcx> {
                                             output: &mut String) {
             // First, find out the 'real' def_id of the type. Items inlined from
             // other crates have to be mapped back to their source.
-            let source_def_id = if let Some(node_id) = cx.tcx().map.as_local_node_id(def_id) {
+            let def_id = if let Some(node_id) = cx.tcx().map.as_local_node_id(def_id) {
                 match cx.external_srcs().borrow().get(&node_id).cloned() {
                     Some(source_def_id) => {
                         // The given def_id identifies the inlined copy of a
@@ -339,18 +339,20 @@ impl<'tcx> TypeMap<'tcx> {
                 def_id
             };
 
-            // Get the crate hash as first part of the identifier.
-            let crate_hash = if source_def_id.is_local() {
-                cx.link_meta().crate_hash.clone()
+            // Get the crate name/disambiguator as first part of the identifier.
+            let crate_name = if def_id.is_local() {
+                cx.tcx().crate_name.clone()
             } else {
-                cx.sess().cstore.crate_hash(source_def_id.krate)
+                cx.sess().cstore.original_crate_name(def_id.krate)
             };
+            let crate_disambiguator = cx.tcx().crate_disambiguator(def_id.krate);
 
-            output.push_str(crate_hash.as_str());
+            output.push_str(&crate_name[..]);
             output.push_str("/");
+            output.push_str(&crate_disambiguator[..]);
+            output.push_str("/");
+            // Add the def-index as the second part
             output.push_str(&format!("{:x}", def_id.index.as_usize()));
-
-            // Maybe check that there is no self type here.
 
             let tps = substs.types.get_slice(subst::TypeSpace);
             if !tps.is_empty() {
