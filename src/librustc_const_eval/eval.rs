@@ -990,7 +990,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a TyCtxt<'tcx>,
                                                 rcvr_substs: subst::Substs<'tcx>)
                                                 -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
 {
-    let trait_ref = ty::Binder(
+    let trait_ref = ty::Binder::new(
         rcvr_substs.erase_regions().to_trait_ref(tcx, trait_id)
     );
     debug!("resolve_trait_associated_const: trait_ref={:?}",

@@ -215,7 +215,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return;
                 }
 
-                let extra_args = &args[sig.0.inputs.len()..];
+                let extra_args = &args[sig.inputs_len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
                     self.mir.operand_ty(bcx.tcx(), op_arg)
                 }).collect::<Vec<_>>();

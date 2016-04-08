@@ -250,7 +250,7 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // This is the "default" function signature, used in case of error.
             // In that case, we check each argument against "error" in order to
             // set up all the node type bindings.
-            error_fn_sig = ty::Binder(ty::FnSig {
+            error_fn_sig = ty::Binder::new(ty::FnSig {
                 inputs: err_args(fcx.tcx(), arg_exprs.len()),
                 output: ty::FnConverging(fcx.tcx().types.err),
                 variadic: false

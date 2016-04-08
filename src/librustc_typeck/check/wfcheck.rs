@@ -411,7 +411,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         };
         let rcvr_ty = fcx.instantiate_type_scheme(span, free_substs, &rcvr_ty);
         let rcvr_ty = fcx.tcx().liberate_late_bound_regions(free_id_outlive,
-                                                            &ty::Binder(rcvr_ty));
+                                                            &ty::Binder::new(rcvr_ty));
 
         debug!("check_method_receiver: receiver ty = {:?}", rcvr_ty);
 

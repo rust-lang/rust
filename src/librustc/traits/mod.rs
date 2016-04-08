@@ -618,6 +618,6 @@ impl<'tcx> FulfillmentError<'tcx> {
 
 impl<'tcx> TraitObligation<'tcx> {
     fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
-        ty::Binder(self.predicate.skip_binder().self_ty())
+        self.predicate.map_bound_ref(|p| p.self_ty())
     }
 }

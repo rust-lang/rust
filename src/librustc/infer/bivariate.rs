@@ -112,6 +112,6 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
         let a1 = self.tcx().erase_late_bound_regions(a);
         let b1 = self.tcx().erase_late_bound_regions(b);
         let c = self.relate(&a1, &b1)?;
-        Ok(ty::Binder(c))
+        Ok(ty::Binder::new(c))
     }
 }

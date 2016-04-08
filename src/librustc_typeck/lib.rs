@@ -242,7 +242,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             let se_ty = tcx.mk_fn_def(main_def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
+                sig: ty::Binder::new(ty::FnSig {
                     inputs: Vec::new(),
                     output: ty::FnConverging(tcx.mk_nil()),
                     variadic: false
@@ -290,7 +290,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             let se_ty = tcx.mk_fn_def(start_def_id, substs, ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                sig: ty::Binder(ty::FnSig {
+                sig: ty::Binder::new(ty::FnSig {
                     inputs: vec!(
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))

@@ -369,16 +369,16 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
         });
-        Binder(value)
+        Binder::new(value)
     }
 
     pub fn no_late_bound_regions<T>(&self, value: &Binder<T>) -> Option<T>
         where T : TypeFoldable<'tcx>
     {
-        if value.0.has_escaping_regions() {
+        if value.skip_binder().has_escaping_regions() {
             None
         } else {
-            Some(value.0.clone())
+            Some(value.skip_binder().clone())
         }
     }
 
@@ -402,7 +402,7 @@ impl<'tcx> TyCtxt<'tcx> {
         where T : TypeFoldable<'tcx>,
     {
         let mut counter = 0;
-        Binder(self.replace_late_bound_regions(sig, |_| {
+        Binder::new(self.replace_late_bound_regions(sig, |_| {
             counter += 1;
             ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrAnon(counter))
         }).0)

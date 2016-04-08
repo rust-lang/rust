@@ -106,7 +106,7 @@ impl<T: Clean<U>, U> Clean<Option<U>> for Option<T> {
 
 impl<T, U> Clean<U> for ty::Binder<T> where T: Clean<U> {
     fn clean(&self, cx: &DocContext) -> U {
-        self.0.clean(cx)
+        self.skip_binder().clean(cx)
     }
 }
 
@@ -602,7 +602,8 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBound
         }
 
         let mut bindings = vec![];
-        for &ty::Binder(ref pb) in &self.projection_bounds {
+        for pb in &self.projection_bounds {
+            let pb = pb.skip_binder();
             bindings.push(TypeBinding {
                 name: pb.projection_ty.item_name.clean(cx),
                 ty: pb.ty.clean(cx)
@@ -1175,11 +1176,11 @@ impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
             let _ = names.next();
         }
         FnDecl {
-            output: Return(sig.0.output.clean(cx)),
+            output: Return(sig.skip_binder().output.clean(cx)),
             attrs: Vec::new(),
-            variadic: sig.0.variadic,
+            variadic: sig.variadic(),
             inputs: Arguments {
-                values: sig.0.inputs.iter().map(|t| {
+                values: sig.skip_binder().inputs.iter().map(|t| {
                     Argument {
                         type_: t.clean(cx),
                         id: 0,
@@ -1337,14 +1338,14 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             ty::ExplicitSelfCategory::Static => (hir::SelfStatic.clean(cx),
                                                  self.fty.sig.clone()),
             s => {
-                let sig = ty::Binder(ty::FnSig {
-                    inputs: self.fty.sig.0.inputs[1..].to_vec(),
-                    ..self.fty.sig.0.clone()
+                let sig = ty::Binder::new(ty::FnSig {
+                    inputs: self.fty.sig.skip_binder().inputs[1..].to_vec(),
+                    ..self.fty.sig.skip_binder().clone()
                 });
                 let s = match s {
                     ty::ExplicitSelfCategory::ByValue => SelfValue,
                     ty::ExplicitSelfCategory::ByReference(..) => {
-                        match self.fty.sig.0.inputs[0].sty {
+                        match self.fty.sig.skip_binder().inputs[0].sty {
                             ty::TyRef(r, mt) => {
                                 SelfBorrowed(r.clean(cx), mt.mutbl.clean(cx))
                             }
@@ -1352,7 +1353,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                         }
                     }
                     ty::ExplicitSelfCategory::ByBox => {
-                        SelfExplicit(self.fty.sig.0.inputs[0].clean(cx))
+                        SelfExplicit(self.fty.sig.skip_binder().inputs[0].clean(cx))
                     }
                     ty::ExplicitSelfCategory::Static => unreachable!(),
                 };

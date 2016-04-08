@@ -108,7 +108,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let def_id = pick.item.def_id();
         let method_ty = pick.item.as_opt_method().unwrap();
         let fty = self.tcx().mk_fn_def(def_id, all_substs, ty::BareFnTy {
-            sig: ty::Binder(method_sig),
+            sig: ty::Binder::new(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),
         });
@@ -463,7 +463,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             _ => return,
         };
 
-        match sig.0.inputs[0].sty {
+        match sig.skip_binder().inputs[0].sty {
             ty::TyRef(_, ty::TypeAndMut {
                 ty: _,
                 mutbl: hir::MutMutable,

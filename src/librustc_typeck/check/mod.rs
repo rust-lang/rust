@@ -1165,23 +1165,24 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     {
         let def = self.tcx().type_parameter_def(node_id);
         let r = self.inh.infcx.parameter_environment
-                                  .caller_bounds
-                                  .iter()
-                                  .filter_map(|predicate| {
-                                      match *predicate {
-                                          ty::Predicate::Trait(ref data) => {
-                                              if data.0.self_ty().is_param(def.space, def.index) {
-                                                  Some(data.to_poly_trait_ref())
-                                              } else {
-                                                  None
-                                              }
-                                          }
-                                          _ => {
+                              .caller_bounds
+                              .iter()
+                              .filter_map(|predicate| {
+                                  match *predicate {
+                                      ty::Predicate::Trait(ref data) => {
+                                          let self_ty = data.skip_binder().self_ty();
+                                          if self_ty.is_param(def.space, def.index) {
+                                              Some(data.to_poly_trait_ref())
+                                          } else {
                                               None
                                           }
                                       }
-                                  })
-                                  .collect();
+                                      _ => {
+                                          None
+                                      }
+                                  }
+                              })
+                              .collect();
         Ok(r)
     }
 
@@ -2367,19 +2368,22 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         match method_fn_ty.sty {
             ty::TyFnDef(_, _, ref fty) => {
                 // HACK(eddyb) ignore self in the definition (see above).
-                let expected_arg_tys = expected_types_for_fn_args(fcx,
-                                                                  sp,
-                                                                  expected,
-                                                                  fty.sig.0.output,
-                                                                  &fty.sig.0.inputs[1..]);
+                let fty_sig =
+                    fcx.tcx().no_late_bound_regions(&fty.sig).unwrap();
+                let expected_arg_tys =
+                    expected_types_for_fn_args(fcx,
+                                               sp,
+                                               expected,
+                                               fty_sig.output,
+                                               &fty_sig.inputs[1..]);
                 check_argument_types(fcx,
                                      sp,
-                                     &fty.sig.0.inputs[1..],
+                                     &fty_sig.inputs[1..],
                                      &expected_arg_tys[..],
                                      args_no_rcvr,
-                                     fty.sig.0.variadic,
+                                     fty_sig.variadic,
                                      tuple_arguments);
-                fty.sig.0.output
+                fty_sig.output
             }
             _ => {
                 span_bug!(callee_expr.span, "method without bare fn type");

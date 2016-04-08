@@ -84,7 +84,7 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
         ty::TyTrait(box ty::TraitTy { ref principal, ref bounds }) => {
             push_reversed(stack, principal.substs().types.as_slice());
             push_reversed(stack, &bounds.projection_bounds.iter().map(|pred| {
-                pred.0.ty
+                pred.skip_binder().ty // walk ignores LBR
             }).collect::<Vec<_>>());
         }
         ty::TyEnum(_, ref substs) |
@@ -109,11 +109,11 @@ fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
 }
 
 fn push_sig_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, sig: &ty::PolyFnSig<'tcx>) {
-    match sig.0.output {
+    match sig.skip_binder().output {
         ty::FnConverging(output) => { stack.push(output); }
         ty::FnDiverging => { }
     }
-    push_reversed(stack, &sig.0.inputs);
+    push_reversed(stack, &sig.skip_binder().inputs);
 }
 
 fn push_reversed<'tcx>(stack: &mut Vec<Ty<'tcx>>, tys: &[Ty<'tcx>]) {

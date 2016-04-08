@@ -239,8 +239,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IntrinsicCheckingVisitor<'a, 'tcx> {
                     let typ = self.tcx.node_id_to_type(expr.id);
                     match typ.sty {
                         ty::TyFnDef(_, _, ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
-                            if let ty::FnConverging(to) = bare_fn_ty.sig.0.output {
-                                let from = bare_fn_ty.sig.0.inputs[0];
+                            let output =
+                                self.tcx.erase_late_bound_regions(
+                                    &bare_fn_ty.sig.output());
+
+                            if let ty::FnConverging(to) = output {
+                                let from =
+                                    self.tcx.erase_late_bound_regions(
+                                        &bare_fn_ty.sig.input(0));
                                 self.check_transmute(expr.span, from, to, expr.id);
                             }
                         }

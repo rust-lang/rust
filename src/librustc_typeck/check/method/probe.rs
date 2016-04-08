@@ -479,7 +479,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             .filter_map(|predicate| {
                 match *predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
-                        match trait_predicate.0.trait_ref.self_ty().sty {
+                        match trait_predicate.skip_binder().trait_ref.self_ty().sty {
                             ty::TyParam(ref p) if *p == param_ty => {
                                 Some(trait_predicate.to_poly_trait_ref())
                             }
@@ -1097,7 +1097,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 if !selcx.evaluate_obligation(o) {
                     all_true = false;
                     if let &ty::Predicate::Trait(ref pred) = &o.predicate {
-                        possibly_unsatisfied_predicates.push(pred.0.trait_ref);
+                        possibly_unsatisfied_predicates.push(
+                            pred.skip_binder().trait_ref);
                     }
                 }
             }
@@ -1200,7 +1201,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     {
         debug!("xform_self_ty(impl_ty={:?}, self_ty={:?}, substs={:?})",
                impl_ty,
-               method.fty.sig.0.inputs.get(0),
+               method.fty.sig.skip_binder().inputs.get(0),
                substs);
 
         assert!(!substs.has_escaping_regions());

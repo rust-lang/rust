@@ -778,7 +778,7 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
                                         trait_def_id,
                                         self_ty,
                                         trait_segment);
-    let poly_trait_ref = ty::Binder(ty::TraitRef::new(trait_def_id, substs));
+    let poly_trait_ref = ty::Binder::new(ty::TraitRef::new(trait_def_id, substs));
 
     {
         let converted_bindings =
@@ -909,12 +909,14 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
 
     // Simple case: X is defined in the current trait.
     if this.trait_defines_associated_type_named(trait_ref.def_id(), binding.item_name) {
-        return Ok(ty::Binder(ty::ProjectionPredicate {      // <-------------------+
-            projection_ty: ty::ProjectionTy {               //                     |
-                trait_ref: trait_ref.skip_binder().clone(), // Binder moved here --+
-                item_name: binding.item_name,
-            },
-            ty: binding.ty,
+        return Ok(trait_ref.map_bound(|trait_ref| {
+            ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy {
+                    trait_ref: trait_ref,
+                    item_name: binding.item_name,
+                },
+                ty: binding.ty,
+            }
         }));
     }
 
@@ -928,11 +930,13 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
 
     let dummy_self_ty = tcx.mk_infer(ty::FreshTy(0));
     if self_ty.is_none() { // if converting for an object type
-        let mut dummy_substs = trait_ref.skip_binder().substs.clone(); // binder moved here -+
-        assert!(dummy_substs.self_ty().is_none());                     //                    |
-        dummy_substs.types.push(SelfSpace, dummy_self_ty);             //                    |
-        trait_ref = ty::Binder(ty::TraitRef::new(trait_ref.def_id(),   // <------------+
-                                                 tcx.mk_substs(dummy_substs)));
+        trait_ref = trait_ref.map_bound(|trait_ref| {
+            let mut dummy_substs = trait_ref.substs.clone();
+            assert!(dummy_substs.self_ty().is_none());
+            dummy_substs.types.push(SelfSpace, dummy_self_ty);
+            ty::TraitRef::new(trait_ref.def_id,
+                              tcx.mk_substs(dummy_substs))
+        });
     }
 
     this.ensure_super_predicates(binding.span, trait_ref.def_id())?;
@@ -946,11 +950,12 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
     // Yuckety yuck.
     if self_ty.is_none() {
         for candidate in &mut candidates {
-            let mut dummy_substs = candidate.0.substs.clone();
-            assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
-            dummy_substs.types.pop(SelfSpace);
-            *candidate = ty::Binder(ty::TraitRef::new(candidate.def_id(),
-                                                      tcx.mk_substs(dummy_substs)));
+            *candidate = candidate.map_bound_ref(|candidate| {
+                let mut dummy_substs = candidate.substs.clone();
+                assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
+                dummy_substs.types.pop(SelfSpace);
+                ty::TraitRef::new(candidate.def_id, tcx.mk_substs(dummy_substs))
+            });
         }
     }
 
@@ -960,12 +965,14 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
                                              &binding.item_name.as_str(),
                                              binding.span)?;
 
-    Ok(ty::Binder(ty::ProjectionPredicate {             // <-------------------------+
-        projection_ty: ty::ProjectionTy {               //                           |
-            trait_ref: candidate.skip_binder().clone(), // binder is moved up here --+
-            item_name: binding.item_name,
-        },
-        ty: binding.ty,
+    Ok(candidate.map_bound_ref(|candidate| {
+        ty::ProjectionPredicate {
+            projection_ty: ty::ProjectionTy {
+                trait_ref: candidate.clone(),
+                item_name: binding.item_name,
+            },
+            ty: binding.ty,
+        }
     }))
 }
 
@@ -1154,8 +1161,8 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
         .collect();
 
     for projection_bound in &object.bounds.projection_bounds {
-        let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
-                    projection_bound.0.projection_ty.item_name);
+        let pair = (projection_bound.skip_binder().projection_ty.trait_ref.def_id,
+                    projection_bound.skip_binder().projection_ty.item_name);
         associated_types.remove(&pair);
     }
 
@@ -1294,7 +1301,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             }
 
             let candidates: Vec<ty::PolyTraitRef> =
-                traits::supertraits(tcx, ty::Binder(trait_ref))
+                traits::supertraits(tcx, ty::Binder::new(trait_ref))
                 .filter(|r| this.trait_defines_associated_type_named(r.def_id(),
                                                                      assoc_name))
                 .collect();
@@ -1340,7 +1347,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
     };
 
-    let trait_did = bound.0.def_id;
+    let trait_did = bound.def_id();
     let ty = this.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
 
     let item_did = if let Some(trait_id) = tcx.map.as_local_node_id(trait_did) {
@@ -1819,7 +1826,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     (ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
-        sig: ty::Binder(ty::FnSig {
+        sig: ty::Binder::new(ty::FnSig {
             inputs: self_ty.into_iter().chain(arg_tys).collect(),
             output: output_ty,
             variadic: decl.variadic
@@ -1971,9 +1978,9 @@ pub fn ty_of_closure<'tcx>(
     ty::ClosureTy {
         unsafety: unsafety,
         abi: abi,
-        sig: ty::Binder(ty::FnSig {inputs: input_tys,
-                                   output: output_ty,
-                                   variadic: decl.variadic}),
+        sig: ty::Binder::new(ty::FnSig {inputs: input_tys,
+                                        output: output_ty,
+                                        variadic: decl.variadic}),
     }
 }
 
@@ -2266,7 +2273,9 @@ impl<'tcx> Bounds<'tcx> {
             // account for the binder being introduced below; no need to shift `param_ty`
             // because, at present at least, it can only refer to early-bound regions
             let region_bound = ty::fold::shift_region(region_bound, 1);
-            vec.push(ty::Binder(ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
+            vec.push(
+                ty::Binder::new(
+                    ty::OutlivesPredicate(param_ty, region_bound)).to_predicate());
         }
 
         for bound_trait_ref in &self.trait_bounds {

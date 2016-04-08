@@ -329,7 +329,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             'x' => {
                 assert_eq!(self.next(), '[');
-                let trait_ref = ty::Binder(self.parse_trait_ref());
+                let trait_ref = ty::Binder::new(self.parse_trait_ref());
                 let bounds = self.parse_existential_bounds();
                 assert_eq!(self.next(), ']');
                 return tcx.mk_trait(trait_ref, bounds);
@@ -532,21 +532,21 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
             }
             _ => ty::FnConverging(self.parse_ty())
         };
-        ty::Binder(ty::FnSig {inputs: inputs,
-                              output: output,
-                              variadic: variadic})
+        ty::Binder::new(ty::FnSig {inputs: inputs,
+                                   output: output,
+                                   variadic: variadic})
     }
 
     pub fn parse_predicate(&mut self) -> ty::Predicate<'tcx> {
         match self.next() {
-            't' => ty::Binder(self.parse_trait_ref()).to_predicate(),
-            'e' => ty::Binder(ty::EquatePredicate(self.parse_ty(),
-                                                  self.parse_ty())).to_predicate(),
-            'r' => ty::Binder(ty::OutlivesPredicate(self.parse_region(),
-                                                    self.parse_region())).to_predicate(),
-            'o' => ty::Binder(ty::OutlivesPredicate(self.parse_ty(),
-                                                    self.parse_region())).to_predicate(),
-            'p' => ty::Binder(self.parse_projection_predicate()).to_predicate(),
+            't' => ty::Binder::new(self.parse_trait_ref()).to_predicate(),
+            'e' => ty::Binder::new(ty::EquatePredicate(self.parse_ty(),
+                                                       self.parse_ty())).to_predicate(),
+            'r' => ty::Binder::new(ty::OutlivesPredicate(self.parse_region(),
+                                                         self.parse_region())).to_predicate(),
+            'o' => ty::Binder::new(ty::OutlivesPredicate(self.parse_ty(),
+                                                         self.parse_region())).to_predicate(),
+            'p' => ty::Binder::new(self.parse_projection_predicate()).to_predicate(),
             'w' => ty::Predicate::WellFormed(self.parse_ty()),
             'O' => {
                 let def_id = self.parse_def();
@@ -636,7 +636,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         loop {
             match self.next() {
                 'P' => {
-                    projection_bounds.push(ty::Binder(self.parse_projection_predicate()));
+                    projection_bounds.push(ty::Binder::new(self.parse_projection_predicate()));
                 }
                 '.' => { break; }
                 c => {

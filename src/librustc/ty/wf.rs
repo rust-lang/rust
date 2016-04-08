@@ -339,7 +339,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                             traits::Obligation::new(
                                 cause,
                                 ty::Predicate::TypeOutlives(
-                                    ty::Binder(
+                                    ty::Binder::new(
                                         ty::OutlivesPredicate(mt.ty, *r)))));
                     }
                 }
@@ -473,7 +473,9 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ReferenceOutlivesReferent(ty));
-                let outlives = ty::Binder(ty::OutlivesPredicate(explicit_bound, implicit_bound));
+                let outlives =
+                    ty::Binder::new(ty::OutlivesPredicate(explicit_bound,
+                                                          implicit_bound));
                 self.out.push(traits::Obligation::new(cause, outlives.to_predicate()));
             }
         }
@@ -497,10 +499,12 @@ pub fn object_region_bounds<'tcx>(
     // a skolemized type.
     let open_ty = tcx.mk_infer(ty::FreshTy(0));
 
-    // Note that we preserve the overall binding levels here.
     assert!(!open_ty.has_escaping_regions());
-    let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
-    let trait_refs = vec!(ty::Binder(ty::TraitRef::new(principal.0.def_id, substs)));
+    let trait_ref = principal.map_bound_ref(|principal| {
+        let substs = tcx.mk_substs(principal.substs.with_self_ty(open_ty));
+        ty::TraitRef::new(principal.def_id, substs)
+    });
+    let trait_refs = vec!(trait_ref);
 
     let mut predicates = others.to_predicates(tcx, open_ty);
     predicates.extend(trait_refs.iter().map(|t| t.to_predicate()));

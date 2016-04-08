@@ -404,12 +404,16 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_region(generics, data.bounds.region_bound, contra);
 
                 // Ignore the SelfSpace, it is erased.
-                self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
+                self.add_constraints_from_trait_ref(generics,
+                                                    *poly_trait_ref.skip_binder(),
+                                                    variance);
 
                 let projections = data.projection_bounds_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
                 for projection in &projections {
-                    self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
+                    self.add_constraints_from_ty(generics,
+                                                 projection.skip_binder().ty,
+                                                 self.invariant);
                 }
             }
 
@@ -487,10 +491,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                 sig: &ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in &sig.0.inputs {
+        for &input in &sig.skip_binder().inputs {
             self.add_constraints_from_ty(generics, input, contra);
         }
-        if let ty::FnConverging(result_type) = sig.0.output {
+        if let ty::FnConverging(result_type) = sig.skip_binder().output {
             self.add_constraints_from_ty(generics, result_type, variance);
         }
     }

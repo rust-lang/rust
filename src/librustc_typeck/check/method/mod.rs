@@ -236,7 +236,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let transformed_self_ty = fn_sig.inputs[0];
     let def_id = method_item.def_id();
     let fty = tcx.mk_fn_def(def_id, trait_ref.substs, ty::BareFnTy {
-        sig: ty::Binder(fn_sig),
+        sig: ty::Binder::new(fn_sig),
         unsafety: method_ty.fty.unsafety,
         abi: method_ty.fty.abi.clone(),
     });

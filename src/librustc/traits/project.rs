@@ -261,12 +261,14 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
         ty::TyClosure(closure_def_id, ref substs) => {
             let closure_typer = selcx.closure_typer();
             let closure_type = closure_typer.closure_type(closure_def_id, substs);
-            let ty::Binder((_, ret_type)) =
+            let ret_type =
                 util::closure_trait_ref_and_return_type(infcx.tcx,
                                                         def_id,
                                                         self_ty,
                                                         &closure_type.sig,
-                                                        util::TupleArgumentsFlag::No);
+                                                        util::TupleArgumentsFlag::No)
+                .map_bound(|(_, t)| t);
+
             // We don't have to normalize the return type here - this is only
             // reached for TyClosure: Fn inputs where the closure kind is
             // still unknown, which should only occur in typeck where the
@@ -275,7 +277,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
                 infcx.replace_late_bound_regions_with_fresh_var(
                     obligation.cause.span,
                     infer::AssocTypeProjection(obligation.predicate.projection_ty.item_name),
-                    &ty::Binder(ret_type));
+                    &ret_type);
 
             debug!("consider_unification_despite_ambiguity: ret_type={:?}",
                    ret_type);
@@ -438,7 +440,7 @@ pub fn normalize_projection_type<'a,'b,'tcx>(
             // information is available.
 
             let ty_var = selcx.infcx().next_ty_var();
-            let projection = ty::Binder(ty::ProjectionPredicate {
+            let projection = ty::Binder::new(ty::ProjectionPredicate {
                 projection_ty: projection_ty,
                 ty: ty_var
             });
@@ -1051,21 +1053,21 @@ fn confirm_callable_candidate<'cx,'tcx>(
     // the `Output` associated type is declared on `FnOnce`
     let fn_once_def_id = tcx.lang_items.fn_once_trait().unwrap();
 
-    // Note: we unwrap the binder here but re-create it below (1)
-    let ty::Binder((trait_ref, ret_type)) =
+    let predicate =
         util::closure_trait_ref_and_return_type(tcx,
                                                 fn_once_def_id,
                                                 obligation.predicate.trait_ref.self_ty(),
                                                 fn_sig,
-                                                flag);
-
-    let predicate = ty::Binder(ty::ProjectionPredicate { // (1) recreate binder here
-        projection_ty: ty::ProjectionTy {
-            trait_ref: trait_ref,
-            item_name: token::intern(FN_OUTPUT_NAME),
-        },
-        ty: ret_type
-    });
+                                                flag)
+        .map_bound(|(trait_ref, ret_type)| {
+            ty::ProjectionPredicate {
+                projection_ty: ty::ProjectionTy {
+                    trait_ref: trait_ref,
+                    item_name: token::intern(FN_OUTPUT_NAME),
+                },
+                ty: ret_type
+            }
+        });
 
     confirm_param_env_candidate(selcx, obligation, predicate)
 }

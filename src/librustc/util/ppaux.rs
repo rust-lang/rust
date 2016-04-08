@@ -244,7 +244,7 @@ fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
     let value = if let Some(v) = lifted {
         v
     } else {
-        return write!(f, "{}", original.0);
+        return write!(f, "{}", original.skip_binder());
     };
 
     let mut empty = true;
@@ -319,14 +319,16 @@ impl<'tcx> fmt::Display for ty::TraitTy<'tcx> {
 
         // Generate the main trait ref, including associated types.
         ty::tls::with(|tcx| {
-            let principal = tcx.lift(&self.principal.0)
+            let principal = tcx.lift(self.principal.skip_binder())
                                .expect("could not lift TraitRef for printing");
             let projections = tcx.lift(&bounds.projection_bounds[..])
                                  .expect("could not lift projections for printing");
-            let projections = projections.into_iter().map(|p| p.0).collect();
+            let projections = projections.into_iter()
+                                         .map(|p| p.skip_binder().clone())
+                                         .collect();
 
-            let tap = ty::Binder(TraitAndProjections(principal, projections));
-            in_binder(f, tcx, &ty::Binder(""), Some(tap))
+            let tap = ty::Binder::new(TraitAndProjections(principal, projections));
+            in_binder(f, tcx, &ty::Binder::new(""), Some(tap))
         })?;
 
         // Builtin bounds.
@@ -855,7 +857,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     write!(f, "extern {} ", bare_fn.abi)?;
                 }
 
-                write!(f, "{} {{", bare_fn.sig.0)?;
+                write!(f, "{} {{", bare_fn.sig.skip_binder())?;
                 parameterized(f, substs, def_id, Ns::Value, &[],
                               |tcx| tcx.lookup_item_type(def_id).generics)?;
                 write!(f, "}}")
@@ -869,7 +871,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                     write!(f, "extern {} ", bare_fn.abi)?;
                 }
 
-                write!(f, "{}", bare_fn.sig.0)
+                write!(f, "{}", bare_fn.sig.skip_binder())
             }
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),

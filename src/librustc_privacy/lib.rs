@@ -450,10 +450,13 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                 if let Def::Struct(..) = self.tcx.resolve_expr(expr) {
                     let expr_ty = self.tcx.expr_ty(expr);
                     let def = match expr_ty.sty {
-                        ty::TyFnDef(_, _, &ty::BareFnTy { sig: ty::Binder(ty::FnSig {
-                            output: ty::FnConverging(ty), ..
-                        }), ..}) => ty,
-                        _ => expr_ty
+                        ty::TyFnDef(_, _, &ty::BareFnTy { ref sig, .. }) =>
+                            match *sig.output().skip_binder() {
+                                ty::FnConverging(ty) => ty,
+                                ty::FnDiverging => expr_ty,
+                            },
+                        _ =>
+                            expr_ty,
                     }.ty_adt_def().unwrap();
                     let any_priv = def.struct_variant().fields.iter().any(|f| {
                         !f.vis.is_accessible_from(self.curitem, &self.tcx.map)

@@ -88,7 +88,8 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
     // Tuple up the arguments and insert the resulting function type into
     // the `closures` table.
-    fn_ty.sig.0.inputs = vec![fcx.tcx().mk_tup(fn_ty.sig.0.inputs)];
+    fn_ty.sig.skip_binder_mut().inputs =
+        vec![fcx.tcx().mk_tup(fn_ty.sig.skip_binder().inputs.clone())];
 
     debug!("closure for {:?} --> sig={:?} opt_kind={:?}",
            expr_def_id,
@@ -227,7 +228,7 @@ fn deduce_sig_from_projection<'a,'tcx>(
     };
     debug!("deduce_sig_from_projection: input_tys {:?}", input_tys);
 
-    let ret_param_ty = projection.0.ty;
+    let ret_param_ty = projection.skip_binder().ty;
     let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(&ret_param_ty);
     debug!("deduce_sig_from_projection: ret_param_ty {:?}", ret_param_ty);
 

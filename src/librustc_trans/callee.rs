@@ -155,7 +155,7 @@ impl<'tcx> Callee<'tcx> {
 
         let method_item = tcx.impl_or_trait_item(def_id);
         let trait_id = method_item.container().id();
-        let trait_ref = ty::Binder(substs.to_trait_ref(tcx, trait_id));
+        let trait_ref = ty::Binder::new(substs.to_trait_ref(tcx, trait_id));
         match common::fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
             traits::VtableImpl(vtable_impl) => {
                 let impl_did = vtable_impl.impl_def_id;
@@ -373,7 +373,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let tuple_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
         abi: Abi::RustCall,
-        sig: ty::Binder(sig)
+        sig: ty::Binder::new(sig)
     });
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
@@ -624,7 +624,7 @@ fn trans_call_inner<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let extra_args = match args {
         ArgExprs(args) if abi != Abi::RustCall => {
-            args[sig.0.inputs.len()..].iter().map(|expr| {
+            args[sig.inputs_len()..].iter().map(|expr| {
                 common::expr_ty_adjusted(bcx, expr)
             }).collect()
         }

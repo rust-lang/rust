@@ -163,7 +163,7 @@ fn get_or_create_closure_declaration<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let function_type = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
         abi: Abi::RustCall,
-        sig: ty::Binder(ty::FnSig {
+        sig: ty::Binder::new(ty::FnSig {
             inputs: Some(get_self_type(tcx, closure_id, closure_type))
                         .into_iter().chain(sig.inputs).collect(),
             output: sig.output,
@@ -355,7 +355,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Make a version with the type of by-ref closure.
     let ty::ClosureTy { unsafety, abi, mut sig } = infcx.closure_type(closure_def_id, &substs);
-    sig.0.inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
+    sig.skip_binder_mut().inputs.insert(0, ref_closure_ty); // sig has no self type as of yet
     let llref_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
@@ -368,7 +368,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
     assert_eq!(abi, Abi::RustCall);
-    sig.0.inputs[0] = closure_ty;
+    sig.skip_binder_mut().inputs[0] = closure_ty;
 
     let sig = tcx.erase_late_bound_regions(&sig);
     let sig = infer::normalize_associated_type(ccx.tcx(), &sig);
@@ -377,7 +377,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llonce_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
-        sig: ty::Binder(sig)
+        sig: ty::Binder::new(sig)
     });
 
     // Create the by-value helper.

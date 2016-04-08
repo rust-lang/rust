@@ -92,15 +92,15 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         return;
     }
 
-    if impl_m.fty.sig.0.inputs.len() != trait_m.fty.sig.0.inputs.len() {
+    if impl_m.fty.sig.inputs_len() != trait_m.fty.sig.inputs_len() {
         span_err!(tcx.sess, impl_m_span, E0050,
             "method `{}` has {} parameter{} \
              but the declaration in trait `{}` has {}",
             trait_m.name,
-            impl_m.fty.sig.0.inputs.len(),
-            if impl_m.fty.sig.0.inputs.len() == 1 {""} else {"s"},
+            impl_m.fty.sig.inputs_len(),
+            if impl_m.fty.sig.inputs_len() == 1 {""} else {"s"},
             tcx.item_path_str(trait_m.def_id),
-            trait_m.fty.sig.0.inputs.len());
+            trait_m.fty.sig.inputs_len());
         return;
     }
 
@@ -208,7 +208,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         infcx.replace_late_bound_regions_with_fresh_var(
             impl_m_span,
             infer::HigherRankedType,
-            &ty::Binder(impl_bounds));
+            &ty::Binder::new(impl_bounds));
     debug!("compare_impl_method: impl_bounds={:?}",
            impl_bounds);
 
@@ -299,7 +299,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         let impl_fty = tcx.mk_fn_ptr(ty::BareFnTy {
             unsafety: impl_m.fty.unsafety,
             abi: impl_m.fty.abi,
-            sig: ty::Binder(impl_sig)
+            sig: ty::Binder::new(impl_sig)
         });
         debug!("compare_impl_method: impl_fty={:?}",
                impl_fty);
@@ -317,7 +317,7 @@ pub fn compare_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
         let trait_fty = tcx.mk_fn_ptr(ty::BareFnTy {
             unsafety: trait_m.fty.unsafety,
             abi: trait_m.fty.abi,
-            sig: ty::Binder(trait_sig)
+            sig: ty::Binder::new(trait_sig)
         });
 
         debug!("compare_impl_method: trait_fty={:?}",

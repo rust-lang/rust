@@ -495,14 +495,16 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     tuple_arguments: TupleArgumentsFlag)
     -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)>
 {
-    let arguments_tuple = match tuple_arguments {
-        TupleArgumentsFlag::No => sig.0.inputs[0],
-        TupleArgumentsFlag::Yes => tcx.mk_tup(sig.0.inputs.to_vec()),
-    };
-    let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
-    let trait_ref = ty::TraitRef {
-        def_id: fn_trait_def_id,
-        substs: tcx.mk_substs(trait_substs),
-    };
-    ty::Binder((trait_ref, sig.0.output.unwrap_or(tcx.mk_nil())))
+    sig.map_bound_ref(|sig| {
+        let arguments_tuple = match tuple_arguments {
+            TupleArgumentsFlag::No => sig.inputs[0],
+            TupleArgumentsFlag::Yes => tcx.mk_tup(sig.inputs.to_vec()),
+        };
+        let trait_substs = Substs::new_trait(vec![arguments_tuple], vec![], self_ty);
+        let trait_ref = ty::TraitRef {
+            def_id: fn_trait_def_id,
+            substs: tcx.mk_substs(trait_substs),
+        };
+        (trait_ref, sig.output.unwrap_or(tcx.mk_nil()))
+    })
 }

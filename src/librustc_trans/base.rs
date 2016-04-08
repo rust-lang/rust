@@ -564,11 +564,13 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
         }
         (_, &ty::TyTrait(box ty::TraitTy { ref principal, .. })) => {
             // Note that we preserve binding levels here:
-            let substs = principal.0.substs.with_self_ty(source).erase_regions();
-            let substs = ccx.tcx().mk_substs(substs);
-            let trait_ref = ty::Binder(ty::TraitRef {
-                def_id: principal.def_id(),
-                substs: substs,
+            let trait_ref = principal.map_bound_ref(|p| {
+                let substs = p.substs.with_self_ty(source).erase_regions();
+                let substs = ccx.tcx().mk_substs(substs);
+                ty::TraitRef {
+                    def_id: principal.def_id(),
+                    substs: substs,
+                }
             });
             consts::ptrcast(meth::get_vtable(ccx, trait_ref),
                             Type::vtable_ptr(ccx))
@@ -674,7 +676,7 @@ pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                                                 Vec::new()),
                                    subst::VecPerParamSpace::empty());
 
-    let trait_ref = ty::Binder(ty::TraitRef {
+    let trait_ref = ty::Binder::new(ty::TraitRef {
         def_id: ccx.tcx().lang_items.coerce_unsized_trait().unwrap(),
         substs: ccx.tcx().mk_substs(trait_substs)
     });

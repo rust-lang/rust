@@ -97,7 +97,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             debug!("higher_ranked_sub: OK result={:?}",
                    result);
 
-            Ok(ty::Binder(result))
+            Ok(ty::Binder::new(result))
         });
     }
 
@@ -138,7 +138,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(ty::Binder::new(result1))
         });
 
         fn generalize_region(infcx: &InferCtxt,
@@ -233,7 +233,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
                    b,
                    result1);
 
-            Ok(ty::Binder(result1))
+            Ok(ty::Binder::new(result1))
         });
 
         fn generalize_region(infcx: &InferCtxt,
