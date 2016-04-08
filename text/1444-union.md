@@ -1,7 +1,7 @@
 - Feature Name: `union`
 - Start Date: 2015-12-29
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pulls/1444
+- Rust Issue: https://github.com/rust-lang/rust/issues/32836
 
 # Summary
 [summary]: #summary
