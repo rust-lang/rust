@@ -412,6 +412,10 @@ impl<T> Binder<T> {
         &self.bound
     }
 
+    pub fn into_skip_binder(self) -> T {
+        self.bound
+    }
+
     pub fn skip_binder_mut(&mut self) -> &mut T {
         &mut self.bound
     }

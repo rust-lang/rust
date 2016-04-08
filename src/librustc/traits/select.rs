@@ -1689,12 +1689,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                      obligation: &TraitObligation<'tcx>)
                      -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
     {
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
+        self.builtin_bound_for_self_ty(bound, self_ty)
+    }
+
+    fn builtin_bound_for_self_ty(&mut self,
+                                 bound: ty::BuiltinBound,
+                                 self_ty: Ty<'tcx>)
+                                 -> Result<BuiltinBoundConditions<'tcx>,
+                                           SelectionError<'tcx>>
+    {
         // Note: these tests operate on types that may contain bound
         // regions. To be proper, we ought to skolemize here, but we
         // forego the skolemization and defer it until the
         // confirmation step.
 
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.skip_binder().self_ty());
         return match self_ty.sty {
             ty::TyInfer(ty::IntVar(_)) |
             ty::TyInfer(ty::FloatVar(_)) |
@@ -1706,14 +1715,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyFnPtr(_) |
             ty::TyChar => {
                 // safe for everything
-                ok_if(Vec::new())
+                self.builtin_bound_ok_if(bound, vec![])
             }
 
             ty::TyBox(_) => {  // Box<T>
                 match bound {
                     ty::BoundCopy => Err(Unimplemented),
 
-                    ty::BoundSized => ok_if(Vec::new()),
+                    ty::BoundSized => self.builtin_bound_ok_if(bound, vec![]),
 
                     ty::BoundSync | ty::BoundSend => {
                         bug!("Send/Sync shouldn't occur in builtin_bounds()");
@@ -1723,7 +1732,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::TyRawPtr(..) => {     // *const T, *mut T
                 match bound {
-                    ty::BoundCopy | ty::BoundSized => ok_if(Vec::new()),
+                    ty::BoundCopy | ty::BoundSized => self.builtin_bound_ok_if(bound, vec![]),
 
                     ty::BoundSync | ty::BoundSend => {
                         bug!("Send/Sync shouldn't occur in builtin_bounds()");
@@ -1736,17 +1745,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundSized => Err(Unimplemented),
                     ty::BoundCopy => {
                         if data.bounds.builtin_bounds.contains(&bound) {
-                            ok_if(Vec::new())
+                            self.builtin_bound_ok_if(bound, vec![])
                         } else {
                             // Recursively check all supertraits to find out if any further
                             // bounds are required and thus we must fulfill.
                             let principal =
                                 data.principal_trait_ref_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
-                            let copy_def_id = obligation.predicate.def_id();
+                            let copy_def_id = self.tcx().lang_items.copy_trait()
+                                                                   .unwrap();
                             for tr in util::supertraits(self.tcx(), principal) {
                                 if tr.def_id() == copy_def_id {
-                                    return ok_if(Vec::new())
+                                    return self.builtin_bound_ok_if(bound, vec![])
                                 }
                             }
 
@@ -1768,11 +1778,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             hir::MutMutable => Err(Unimplemented),
 
                             // &T is always copyable
-                            hir::MutImmutable => ok_if(Vec::new()),
+                            hir::MutImmutable => self.builtin_bound_ok_if(bound, vec![]),
                         }
                     }
 
-                    ty::BoundSized => ok_if(Vec::new()),
+                    ty::BoundSized => self.builtin_bound_ok_if(bound, vec![]),
 
                     ty::BoundSync | ty::BoundSend => {
                         bug!("Send/Sync shouldn't occur in builtin_bounds()");
@@ -1783,8 +1793,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyArray(element_ty, _) => {
                 // [T; n]
                 match bound {
-                    ty::BoundCopy => ok_if(vec![element_ty]),
-                    ty::BoundSized => ok_if(Vec::new()),
+                    ty::BoundCopy => self.builtin_bound_ok_if(bound, vec![element_ty]),
+                    ty::BoundSized => self.builtin_bound_ok_if(bound, vec![]),
                     ty::BoundSync | ty::BoundSend => {
                         bug!("Send/Sync shouldn't occur in builtin_bounds()");
                     }
@@ -1802,7 +1812,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            ty::TyTuple(ref tys) => ok_if(tys.clone()),
+            ty::TyTuple(ref tys) => self.builtin_bound_ok_if(bound, tys.clone()),
 
             ty::TyClosure(_, ref substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
@@ -1826,17 +1836,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // unsized, so the closure struct as a whole must be
                 // Sized.
                 if bound == ty::BoundSized {
-                    return ok_if(Vec::new());
+                    return self.builtin_bound_ok_if(bound, vec![]);
                 }
 
-                ok_if(substs.upvar_tys.clone())
+                self.builtin_bound_ok_if(bound, substs.upvar_tys.clone())
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                 let types: Vec<Ty> = def.all_fields().map(|f| {
                     f.ty(self.tcx(), substs)
                 }).collect();
-                nominal(bound, types)
+                self.builtin_bound_nominal(bound, types)
             }
 
             ty::TyProjection(_) | ty::TyParam(_) => {
@@ -1855,7 +1865,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(AmbiguousBuiltin)
             }
 
-            ty::TyError => ok_if(Vec::new()),
+            ty::TyError => self.builtin_bound_ok_if(bound, vec![]),
 
             ty::TyInfer(ty::FreshTy(_))
             | ty::TyInfer(ty::FreshIntTy(_))
@@ -1864,27 +1874,129 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                      self_ty);
             }
         };
+    }
 
-        fn ok_if<'tcx>(v: Vec<Ty<'tcx>>)
-                       -> Result<BuiltinBoundConditions<'tcx>, SelectionError<'tcx>> {
-            Ok(If(ty::Binder::new(v)))
+    fn builtin_bound_ok_if(&mut self, bound: ty::BuiltinBound, v: Vec<Ty<'tcx>>)
+                           -> Result<BuiltinBoundConditions<'tcx>,
+                                     SelectionError<'tcx>>
+    {
+        match bound {
+            ty::BoundCopy | ty::BoundSized => { /* see code below */ }
+            _ => {
+                // these really ought not to be builtin, but just auto
+                // trait; we can't apply the logic below because there
+                // are impls (negative ones) for *mut T etc.
+                return Ok(If(ty::Binder::new(v)));
+            }
         }
 
-        fn nominal<'cx, 'tcx>(bound: ty::BuiltinBound,
-                              types: Vec<Ty<'tcx>>)
-                              -> Result<BuiltinBoundConditions<'tcx>, SelectionError<'tcx>>
-        {
-            // First check for markers and other nonsense.
-            match bound {
-                // Fallback to whatever user-defined impls exist in this case.
-                ty::BoundCopy => Ok(ParameterBuiltin),
+        // FIXME(lazy normalization): It turns out that lazy
+        // normalization is actually more expressive than the eager
+        // normalization we do now. In particular, if you have structs
+        // like this (from #31299):
+        //
+        // ```
+        // trait Front {
+        //     type Back;
+        // }
+        //
+        // impl<T> Front for Vec<T> {
+        //     type Back = Vec<T>;
+        // }
+        //
+        // struct PtrBack<T: Front>(*mut T::Back);
+        //
+        // struct M(PtrBack<Vec<M>>);
+        // ```
+        //
+        // If we try to validate that `M: Sized`, and you are doing
+        // eager normalization, you will wind up with a new obligation
+        // `PtrBack<Vec<M>>: Sized`, and then from there `*mut <Vec<M>
+        // as Front>::Back: Sized`, which we will then try to
+        // normalize. This requires us normalizing `*mut <Vec<M> as
+        // Front>::Back`, and hence `<Vec<M> as Front>::Back`. But to
+        // normalize, we must apply the impl of `Front`, and that impl
+        // requires that `M: Sized`. So now we have a cycle, leading
+        // to overflow.
+        //
+        // But with lazy normalization, we could defer doing that
+        // normalization. Then we would see the inference rule:
+        //
+        //     -------------
+        //     *mut T: Sized
+        //
+        // which, notably, has no condition on `T`, and hence we never
+        // need to normalize at all.
+        //
+        // In order to fix #31299, this code does a little bit of
+        // "pre-expansion" to sidestep this deficit for eager
+        // normalization. The idea is that we take the types we would
+        // otherwise convert into new obligations and try to eagerly
+        // expand them. So if we see `M: Sized`, we will expand to
+        // `PtrBack<Vec<M>>: Sized` as before. But then
+        // `PtrBack<Vec<M>>: Sized` will expand to `*mut <Vec<M> as
+        // Front>::Back`. This is where we go differently: instead of
+        // generating an obligation from that, we will immediately
+        // recurse and observe that `*mut X: Sized` for any `X`, so we
+        // never wind up normalizing.
+        //
+        // We only recurse in the case of a structural type, since
+        // that ensures that we can never loop.
+        let v =
+            v.iter()
+             .flat_map(|&ty| {
+                 match ty.sty {
+                     ty::TyInfer(ty::IntVar(..)) |
+                     ty::TyInfer(ty::FloatVar(..)) |
+                     ty::TyUint(..) |
+                     ty::TyInt(..) |
+                     ty::TyBool |
+                     ty::TyFloat(..) |
+                     ty::TyFnDef(..) |
+                     ty::TyFnPtr(..) |
+                     ty::TyChar |
+                     ty::TyBox(..) |
+                     ty::TyRawPtr(..) |
+                     ty::TyRef(..) |
+                     ty::TyArray(..) |
+                     ty::TyStr |
+                     ty::TySlice(..) |
+                     ty::TyTuple(..) =>
+                         match self.builtin_bound_for_self_ty(bound, ty) {
+                             Ok(If(subtypes)) => subtypes.into_skip_binder(),
+                             _ => vec![ty],
+                         },
 
-                // Sized if all the component types are sized.
-                ty::BoundSized => ok_if(types),
+                     ty::TyTrait(..) |
+                     ty::TyClosure(..) |
+                     ty::TyStruct(..) |
+                     ty::TyEnum(..) |
+                     ty::TyProjection(..) |
+                     ty::TyParam(..) |
+                     ty::TyInfer(..) |
+                     ty::TyError =>
+                         vec![ty],
+                 }
+             })
+             .collect();
+        Ok(If(ty::Binder::new(v)))
+    }
 
-                // Shouldn't be coming through here.
-                ty::BoundSend | ty::BoundSync => bug!(),
-            }
+    fn builtin_bound_nominal(&mut self,
+                             bound: ty::BuiltinBound,
+                             types: Vec<Ty<'tcx>>)
+                             -> Result<BuiltinBoundConditions<'tcx>, SelectionError<'tcx>>
+    {
+        // First check for markers and other nonsense.
+        match bound {
+            // Fallback to whatever user-defined impls exist in this case.
+            ty::BoundCopy => Ok(ParameterBuiltin),
+
+            // Sized if all the component types are sized.
+            ty::BoundSized => self.builtin_bound_ok_if(bound, types),
+
+            // Shouldn't be coming through here.
+            ty::BoundSend | ty::BoundSync => bug!(),
         }
     }
 
