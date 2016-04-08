@@ -15,7 +15,7 @@ use std::process::Command;
 
 use build_helper::output;
 
-use build::util::{exe, staticlib, libdir, mtime, is_dylib};
+use build::util::{exe, staticlib, libdir, mtime, is_dylib, copy};
 use build::{Build, Compiler, Mode};
 
 /// Build the standard library.
@@ -32,8 +32,8 @@ pub fn std<'a>(build: &'a Build, target: &str, compiler: &Compiler<'a>) {
     let libdir = build.sysroot_libdir(compiler, target);
     let _ = fs::remove_dir_all(&libdir);
     t!(fs::create_dir_all(&libdir));
-    t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
-                     libdir.join(staticlib("compiler-rt", target))));
+    copy(&build.compiler_rt_built.borrow()[target],
+         &libdir.join(staticlib("compiler-rt", target)));
 
     build_startup_objects(build, target, &libdir);
 
@@ -77,8 +77,8 @@ pub fn std_link(build: &Build,
     if host != compiler.host {
         let _ = fs::remove_dir_all(&libdir);
         t!(fs::create_dir_all(&libdir));
-        t!(fs::hard_link(&build.compiler_rt_built.borrow()[target],
-                         libdir.join(staticlib("compiler-rt", target))));
+        copy(&build.compiler_rt_built.borrow()[target],
+             &libdir.join(staticlib("compiler-rt", target)));
     }
     add_to_sysroot(&out_dir, &libdir);
 
@@ -93,7 +93,7 @@ pub fn std_link(build: &Build,
 /// Only required for musl targets that statically link to libc
 fn copy_third_party_objects(build: &Build, target: &str, into: &Path) {
     for &obj in &["crt1.o", "crti.o", "crtn.o"] {
-        t!(fs::copy(compiler_file(build.cc(target), obj), into.join(obj)));
+        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
     }
 }
 
@@ -119,7 +119,7 @@ fn build_startup_objects(build: &Build, target: &str, into: &Path) {
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
-        t!(fs::copy(compiler_file(build.cc(target), obj), into.join(obj)));
+        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
     }
 }
 
@@ -240,9 +240,10 @@ fn libtest_shim(build: &Build, compiler: &Compiler, target: &str) -> PathBuf {
     build.cargo_out(compiler, Mode::Libtest, target).join("libtest_shim.rlib")
 }
 
-fn compiler_file(compiler: &Path, file: &str) -> String {
-    output(Command::new(compiler)
-                   .arg(format!("-print-file-name={}", file))).trim().to_string()
+fn compiler_file(compiler: &Path, file: &str) -> PathBuf {
+    let out = output(Command::new(compiler)
+                            .arg(format!("-print-file-name={}", file)));
+    PathBuf::from(out.trim())
 }
 
 /// Prepare a new compiler from the artifacts in `stage`
@@ -270,7 +271,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     for f in t!(fs::read_dir(&src_libdir)).map(|f| t!(f)) {
         let filename = f.file_name().into_string().unwrap();
         if is_dylib(&filename) {
-            t!(fs::hard_link(&f.path(), sysroot_libdir.join(&filename)));
+            copy(&f.path(), &sysroot_libdir.join(&filename));
         }
     }
 
@@ -282,7 +283,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     t!(fs::create_dir_all(&bindir));
     let compiler = build.compiler_path(&Compiler::new(stage, host));
     let _ = fs::remove_file(&compiler);
-    t!(fs::hard_link(rustc, compiler));
+    copy(&rustc, &compiler);
 
     // See if rustdoc exists to link it into place
     let rustdoc = exe("rustdoc", host);
@@ -290,7 +291,7 @@ pub fn assemble_rustc(build: &Build, stage: u32, host: &str) {
     let rustdoc_dst = bindir.join(&rustdoc);
     if fs::metadata(&rustdoc_src).is_ok() {
         let _ = fs::remove_file(&rustdoc_dst);
-        t!(fs::hard_link(&rustdoc_src, &rustdoc_dst));
+        copy(&rustdoc_src, &rustdoc_dst);
     }
 }
 
@@ -329,8 +330,7 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
         let (_, path) = paths.iter().map(|path| {
             (mtime(&path).seconds(), path)
         }).max().unwrap();
-        t!(fs::hard_link(&path,
-                         sysroot_dst.join(path.file_name().unwrap())));
+        copy(&path, &sysroot_dst.join(path.file_name().unwrap()));
     }
 }
 
