@@ -390,7 +390,7 @@ endif
 # This 'function' will determine which debugger scripts to copy based on a
 # target triple. See debuggers.mk for more information.
 TRIPLE_TO_DEBUGGER_SCRIPT_SETTING=\
- $(if $(findstring windows,$(1)),none,$(if $(findstring darwin,$(1)),lldb,gdb))
+ $(if $(findstring windows-msvc,$(1)),none,all)
 
 STAGES = 0 1 2 3
 
