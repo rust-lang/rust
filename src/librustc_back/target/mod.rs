@@ -44,7 +44,8 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
-use serialize::json::Json;
+use serialize::json::{Json, ToJson};
+use std::collections::BTreeMap;
 use std::default::Default;
 use std::io::prelude::*;
 use syntax::abi::Abi;
@@ -364,7 +365,12 @@ impl Target {
 
     /// Load a target descriptor from a JSON object.
     pub fn from_json(obj: Json) -> Target {
-        // this is 1. ugly, 2. error prone.
+        // While ugly, this code must remain this way to retain
+        // compatibility with existing JSON fields and the internal
+        // expected naming of the Target and TargetOptions structs.
+        // To ensure compatibility is retained, the built-in targets
+        // are round-tripped through this code to catch cases where
+        // the JSON parser is not updated to match the structs.
 
         let get_req_field = |name: &str| {
             match obj.find(name)
@@ -532,6 +538,94 @@ impl Target {
         }
 
         Err(format!("Could not find specification for target {:?}", target))
+    }
+}
+
+impl ToJson for Target {
+    fn to_json(&self) -> Json {
+        let mut d = BTreeMap::new();
+        let default: TargetOptions = Default::default();
+
+        macro_rules! target_val {
+            ($attr:ident) => ( {
+                let name = (stringify!($attr)).replace("_", "-");
+                d.insert(name.to_string(), self.$attr.to_json());
+            } );
+            ($attr:ident, $key_name:expr) => ( {
+                let name = $key_name;
+                d.insert(name.to_string(), self.$attr.to_json());
+            } );
+        }
+
+        macro_rules! target_option_val {
+            ($attr:ident) => ( {
+                let name = (stringify!($attr)).replace("_", "-");
+                if default.$attr != self.options.$attr {
+                    d.insert(name.to_string(), self.options.$attr.to_json());
+                }
+            } );
+            ($attr:ident, $key_name:expr) => ( {
+                let name = $key_name;
+                if default.$attr != self.options.$attr {
+                    d.insert(name.to_string(), self.options.$attr.to_json());
+                }
+            } );
+        }
+
+        target_val!(llvm_target);
+        target_val!(target_endian);
+        target_val!(target_pointer_width);
+        target_val!(arch);
+        target_val!(target_os, "os");
+        target_val!(target_env, "env");
+        target_val!(target_vendor, "vendor");
+        target_val!(arch);
+        target_val!(data_layout);
+
+        target_option_val!(is_builtin);
+        target_option_val!(linker);
+        target_option_val!(ar);
+        target_option_val!(pre_link_args);
+        target_option_val!(pre_link_objects_exe);
+        target_option_val!(pre_link_objects_dll);
+        target_option_val!(late_link_args);
+        target_option_val!(post_link_objects);
+        target_option_val!(post_link_args);
+        target_option_val!(cpu);
+        target_option_val!(features);
+        target_option_val!(dynamic_linking);
+        target_option_val!(executables);
+        target_option_val!(relocation_model);
+        target_option_val!(code_model);
+        target_option_val!(disable_redzone);
+        target_option_val!(eliminate_frame_pointer);
+        target_option_val!(function_sections);
+        target_option_val!(dll_prefix);
+        target_option_val!(dll_suffix);
+        target_option_val!(exe_suffix);
+        target_option_val!(staticlib_prefix);
+        target_option_val!(staticlib_suffix);
+        target_option_val!(target_family);
+        target_option_val!(is_like_osx);
+        target_option_val!(is_like_solaris);
+        target_option_val!(is_like_windows);
+        target_option_val!(is_like_msvc);
+        target_option_val!(is_like_android);
+        target_option_val!(linker_is_gnu);
+        target_option_val!(has_rpath);
+        target_option_val!(no_compiler_rt);
+        target_option_val!(no_default_libraries);
+        target_option_val!(position_independent_executables);
+        target_option_val!(archive_format);
+        target_option_val!(allow_asm);
+        target_option_val!(custom_unwind_resume);
+        target_option_val!(lib_allocation_crate);
+        target_option_val!(exe_allocation_crate);
+        target_option_val!(has_elf_tls);
+        target_option_val!(obj_is_bitcode);
+        target_option_val!(max_atomic_width);
+
+        Json::Object(d)
     }
 }
 
