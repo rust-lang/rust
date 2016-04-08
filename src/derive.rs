@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc::ty::subst::Subst;
 use rustc::ty::TypeVariants;
-use rustc::ty::fast_reject::simplify_type;
 use rustc::ty;
 use rustc::hir::*;
 use syntax::ast::{Attribute, MetaItemKind};
@@ -87,52 +86,44 @@ impl LateLintPass for Derive {
 }
 
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
-fn check_hash_peq(cx: &LateContext, span: Span, trait_ref: &TraitRef, ty: ty::Ty, hash_is_automatically_derived: bool) {
+fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>, hash_is_automatically_derived: bool) {
     if_let_chain! {[
         match_path(&trait_ref.path, &HASH_PATH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
     ], {
         let peq_trait_def = cx.tcx.lookup_trait_def(peq_trait_def_id);
 
-        cx.tcx.populate_implementations_for_trait_if_necessary(peq_trait_def.trait_ref.def_id);
-        let peq_impls = peq_trait_def.borrow_impl_lists(cx.tcx).1;
-
         // Look for the PartialEq implementations for `ty`
-        if_let_chain! {[
-            let Some(simpl_ty) = simplify_type(cx.tcx, ty, false),
-            let Some(impl_ids) = peq_impls.get(&simpl_ty)
-        ], {
-            for &impl_id in impl_ids {
-                let peq_is_automatically_derived = cx.tcx.get_attrs(impl_id).iter().any(is_automatically_derived);
+        peq_trait_def.for_each_relevant_impl(&cx.tcx, ty, |impl_id| {
+            let peq_is_automatically_derived = cx.tcx.get_attrs(impl_id).iter().any(is_automatically_derived);
 
-                if peq_is_automatically_derived == hash_is_automatically_derived {
-                    return;
-                }
-
-                let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
-
-                // Only care about `impl PartialEq<Foo> for Foo`
-                if trait_ref.input_types()[0] == ty {
-                    let mess = if peq_is_automatically_derived {
-                        "you are implementing `Hash` explicitly but have derived `PartialEq`"
-                    } else {
-                        "you are deriving `Hash` but have implemented `PartialEq` explicitly"
-                    };
-
-                    span_lint_and_then(
-                        cx, DERIVE_HASH_XOR_EQ, span,
-                        mess,
-                        |db| {
-                        if let Some(node_id) = cx.tcx.map.as_local_node_id(impl_id) {
-                            db.span_note(
-                                cx.tcx.map.span(node_id),
-                                "`PartialEq` implemented here"
-                            );
-                        }
-                    });
-                }
+            if peq_is_automatically_derived == hash_is_automatically_derived {
+                return;
             }
-        }}
+
+            let trait_ref = cx.tcx.impl_trait_ref(impl_id).expect("must be a trait implementation");
+
+            // Only care about `impl PartialEq<Foo> for Foo`
+            if trait_ref.input_types()[0] == ty {
+                let mess = if peq_is_automatically_derived {
+                    "you are implementing `Hash` explicitly but have derived `PartialEq`"
+                } else {
+                    "you are deriving `Hash` but have implemented `PartialEq` explicitly"
+                };
+
+                span_lint_and_then(
+                    cx, DERIVE_HASH_XOR_EQ, span,
+                    mess,
+                    |db| {
+                    if let Some(node_id) = cx.tcx.map.as_local_node_id(impl_id) {
+                        db.span_note(
+                            cx.tcx.map.span(node_id),
+                            "`PartialEq` implemented here"
+                        );
+                    }
+                });
+            }
+        });
     }}
 }
 
