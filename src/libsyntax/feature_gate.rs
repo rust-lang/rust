@@ -218,10 +218,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
     ("naked_functions", "1.9.0", Some(32408), Active),
 
     // allow empty structs and enum variants with braces
-    ("braced_empty_structs", "1.5.0", Some(29720), Accepted),
+    ("braced_empty_structs", "1.8.0", Some(29720), Accepted),
 
     // allow overloading augmented assignment operations like `a += b`
-    ("augmented_assignments", "1.5.0", Some(28235), Accepted),
+    ("augmented_assignments", "1.8.0", Some(28235), Accepted),
 
     // allow `#[no_debug]`
     ("no_debug", "1.5.0", Some(29721), Active),
