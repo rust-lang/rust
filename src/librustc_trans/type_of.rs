@@ -182,7 +182,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
     debug!("type_of {:?}", t);
 
-    assert!(!t.has_escaping_regions());
+    assert!(!t.has_escaping_regions(), "{:?} has escaping regions", t);
 
     // Replace any typedef'd types with their equivalent non-typedef
     // type. This ensures that all LLVM nominal types that contain

@@ -16,7 +16,7 @@ use adt;
 use base;
 use build;
 use callee::{Callee, CalleeData, Fn, Intrinsic, NamedTupleConstructor, Virtual};
-use common::{self, Block, BlockAndBuilder, C_undef};
+use common::{self, type_is_fat_ptr, Block, BlockAndBuilder, C_undef};
 use debuginfo::DebugLoc;
 use Disr;
 use machine::{llalign_of_min, llbitsize_of_real};
@@ -169,6 +169,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
+                let sig = bcx.tcx().erase_late_bound_regions(sig);
+
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {
                     (&ty::TyFnDef(def_id, _, _), &Intrinsic) => {
@@ -200,7 +202,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return;
                 }
 
-                let extra_args = &args[sig.0.inputs.len()..];
+                let extra_args = &args[sig.inputs.len()..];
                 let extra_args = extra_args.iter().map(|op_arg| {
                     self.mir.operand_ty(bcx.tcx(), op_arg)
                 }).collect::<Vec<_>>();
@@ -263,28 +265,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         };
 
                         bcx.with_block(|bcx| {
-                            let res = trans_intrinsic_call(bcx, callee.ty, &fn_ty,
+                            trans_intrinsic_call(bcx, callee.ty, &fn_ty,
                                                            ArgVals(llargs), dest,
                                                            DebugLoc::None);
-                            let bcx = res.bcx.build();
-                            if let Some((_, target)) = *destination {
-                                for op in args {
-                                    self.set_operand_dropped(&bcx, op);
-                                }
-                                funclet_br(bcx, self.llblock(target));
-                            } else {
-                                // trans_intrinsic_call already used Unreachable.
-                                // bcx.unreachable();
-                            }
                         });
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
                             let op = OperandRef {
                                 val: OperandValue::Ref(dst),
-                                ty: sig.0.output.unwrap()
+                                ty: sig.output.unwrap()
                             };
                             self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+                        }
+
+                        if let Some((_, target)) = *destination {
+                            for op in args {
+                                self.set_operand_dropped(&bcx, op);
+                            }
+                            funclet_br(bcx, self.llblock(target));
+                        } else {
+                            // trans_intrinsic_call already used Unreachable.
+                            // bcx.unreachable();
                         }
 
                         return;
@@ -318,7 +320,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         ret_bcx.at_start(|ret_bcx| {
                             let op = OperandRef {
                                 val: OperandValue::Immediate(invokeret),
-                                ty: sig.0.output.unwrap()
+                                ty: sig.output.unwrap()
                             };
                             self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
                             for op in args {
@@ -332,7 +334,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     if let Some((_, target)) = *destination {
                         let op = OperandRef {
                             val: OperandValue::Immediate(llret),
-                            ty: sig.0.output.unwrap()
+                            ty: sig.output.unwrap()
                         };
                         self.store_return(&bcx, ret_dest, fn_ty.ret, op);
                         for op in args {
@@ -554,6 +556,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let dest = match *dest {
             mir::Lvalue::Temp(idx) => {
                 let lvalue_ty = self.mir.lvalue_ty(bcx.tcx(), dest);
+                let lvalue_ty = bcx.monomorphize(&lvalue_ty);
                 let ret_ty = lvalue_ty.to_ty(bcx.tcx());
                 match self.temps[idx as usize] {
                     TempRef::Lvalue(dest) => dest,
@@ -633,6 +636,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
             }
             DirectOperand(idx) => {
+                let op = if type_is_fat_ptr(bcx.tcx(), op.ty) {
+                    let llval = op.immediate();
+                    let ptr = bcx.extract_value(llval, 0);
+                    let meta = bcx.extract_value(llval, 1);
+
+                    OperandRef {
+                        val: OperandValue::FatPtr(ptr, meta),
+                        ty: op.ty
+                    }
+                } else {
+                    op
+                };
                 self.temps[idx as usize] = TempRef::Operand(Some(op));
             }
         }
