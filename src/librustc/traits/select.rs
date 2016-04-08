@@ -1984,7 +1984,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn builtin_bound_nominal(&mut self,
                              bound: ty::BuiltinBound,
-                             types: Vec<Ty<'tcx>>)
+                             mut types: Vec<Ty<'tcx>>)
                              -> Result<BuiltinBoundConditions<'tcx>, SelectionError<'tcx>>
     {
         // First check for markers and other nonsense.
@@ -1992,8 +1992,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Fallback to whatever user-defined impls exist in this case.
             ty::BoundCopy => Ok(ParameterBuiltin),
 
-            // Sized if all the component types are sized.
-            ty::BoundSized => self.builtin_bound_ok_if(bound, types),
+            // Sized if all the component types are sized. The WF
+            // rules require that all the field types except the last
+            // one (if any) are sized. If there are no fields, then it
+            // is also sized.
+            ty::BoundSized => {
+                let last_ty = types.pop(); // just keep the last type
+                types.clear();
+                types.extend(last_ty);
+                self.builtin_bound_ok_if(bound, types)
+            }
 
             // Shouldn't be coming through here.
             ty::BoundSend | ty::BoundSync => bug!(),
