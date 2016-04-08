@@ -1,3 +1,211 @@
+Version 1.8.0 (2016-04-14)
+==========================
+
+Language
+--------
+
+* Rust supports overloading of compound assignment statements like
+  `+=` by implementing the [`AddAssign`], [`SubAssign`],
+  [`MulAssign`], [`DivAssign`], [`RemAssign`], [`BitAndAssign`],
+  [`BitOrAssign`], [`BitXorAssign`], [`ShlAssign`], or [`ShrAssign`]
+  traits. [RFC 953].
+* Empty structs can be defined with braces, as in `struct Foo { }`, in
+  addition to the non-braced form, `struct Foo;`. [RFC 218].
+
+Libraries
+---------
+
+* Stabilized APIs:
+  * [`str::encode_utf16`][] (renamed from `utf16_units`)
+  * [`str::EncodeUtf16`][] (renamed from `Utf16Units`)
+  * [`Ref::map`]
+  * [`RefMut::map`]
+  * [`ptr::drop_in_place`]
+  * [`time::Instant`]
+  * [`time::SystemTime`]
+  * [`Instant::now`]
+  * [`Instant::duration_since`][] (renamed from `duration_from_earlier`)
+  * [`Instant::elapsed`]
+  * [`SystemTime::now`]
+  * [`SystemTime::duration_since`][] (renamed from `duration_from_earlier`)
+  * [`SystemTime::elapsed`]
+  * Various `Add`/`Sub` impls for `Time` and `SystemTime`
+  * [`SystemTimeError`]
+  * [`SystemTimeError::duration`]
+  * Various impls for `SystemTimeError`
+  * [`UNIX_EPOCH`]
+  * [`AddAssign`], [`SubAssign`], [`MulAssign`], [`DivAssign`],
+    [`RemAssign`], [`BitAndAssign`], [`BitOrAssign`],
+    [`BitXorAssign`], [`ShlAssign`], [`ShrAssign`].
+* [The `write!` and `writeln!` macros correctly emit errors if any of
+  their arguments can't be formatted][1.8w].
+* [Various I/O functions support large files on 32-bit Linux][1.8l].
+* [The Unix-specific `raw` modules, which contain a number of
+  redefined C types are deprecated][1.8r], including `os::raw::unix`,
+  `os::raw::macos`, and `os::raw::linux`. These modules defined types
+  such as `ino_t` and `dev_t`. The inconsistency of these definitions
+  across platforms was making it difficult to implement `std`
+  correctly. Those that need these definitions should use the `libc`
+  crate. [RFC 1415].
+* The Unix-specific `MetadataExt` traits, including
+  `os::unix::fs::MetadataExt`, which expose values such as inode
+  numbers [no longer return platform-specific types][1.8r], but
+  instead return widened integers. [RFC 1415].
+* [`btree_set::{IntoIter, Iter, Range}` are covariant][1.8cv].
+* [Atomic loads and stores are not volatile][1.8a].
+* [All types in `sync::mpsc` implement `fmt::Debug`][1.8mp].
+
+Performance
+-----------
+
+* [Inlining hash functions lead to a 3% compile-time improvement in
+  some workloads][1.8h].
+* When using jemalloc, its symbols are [unprefixed so that it
+  overrides the libc malloc implementation][1.8h]. This means that for
+  rustc, LLVM is now using jemalloc, which results in a 6%
+  compile-time improvement on a specific workload.
+* [Avoid quadratic growth in function size due to cleanups][1.8cu].
+
+Misc
+----
+
+* [32-bit MSVC builds finally implement unwinding][1.8ms].
+  i686-pc-windows-msvc is now considered a tier-1 platform.
+* [The `--print targets` flag prints a list of supported targets][1.8t].
+* [The `--print cfg` flag prints the `cfg`s defined for the current
+  target][1.8cf].
+* [`rustc` can be built with an new Cargo-based build system, written
+  in Rust][1.8b].  It will eventually replace Rust's Makefile-based
+  build system. To enable it configure with `configure --rustbuild`.
+* [Errors for non-exhaustive `match` patterns now list up to 3 missing
+  variants while also indicating the total number of missing variants
+  if more than 3][1.8m].
+* [Executable stacks are disabled on Linux and BSD][1.8nx].
+* The Rust Project now publishes binary releases of the standard
+  library for a number of tier-2 targets:
+  `armv7-unknown-linux-gnueabihf`, `powerpc-unknown-linux-gnu`,
+  `powerpc64-unknown-linux-gnu`, `powerpc64le-unknown-linux-gnu`
+  `x86_64-rumprun-netbsd`. These can be installed with
+  tools such as [multirust][1.8mr].
+
+Cargo
+-----
+
+* [`cargo init` creates a new Cargo project in the current
+  directory][1.8ci].  It is otherwise like `cargo new`.
+* [Cargo has configuration keys for `-v` and
+  `--color`][1.8cc]. `verbose` and `color`, respectively, go in the
+  `[term]` section of `.cargo/config`.
+* [Configuration keys that evaluate to strings or integers can be set
+  via environment variables][1.8ce]. For example the `build.jobs` key
+  can be set via `CARGO_BUILD_JOBS`. Environment variables take
+  precedence over config files.
+* [Target-specific dependencies support Rust `cfg` syntax for
+  describing targets][1.8cfg] so that dependencies for multiple
+  targets can be specified together. [RFC 1361].
+* [The environment variables `CARGO_TARGET_ROOT`, `RUSTC`, and
+  `RUSTDOC` take precedence over the `build.target-dir`,
+  `build.rustc`, and `build.rustdoc` configuration values][1.8cv].
+* [The child process tree is killed on Windows when Cargo is
+  killed][1.8ck].
+* [The `build.target` configuration value sets the target platform,
+  like `--target`][1.8ct].
+
+Compatibility Notes
+-------------------
+
+* [Unstable compiler flags have been further restricted][1.8u]. Since
+  1.0 `-Z` flags have been considered unstable, and other flags that
+  were considered unstable additionally required passing `-Z
+  unstable-options` to access. Unlike unstable language and library
+  features though, these options have been accessible on the stable
+  release channel. Going forward, *new unstable flags will not be
+  available on the stable release channel*, and old unstable flags
+  will warn about their usage. In the future, all unstable flags will
+  be unavailable on the stable release channel.
+* [It is no longer possible to `match` on empty enum variants using
+  the `Variant(..)` syntax][1.8v]. This has been a warning since 1.6.
+* The Unix-specific `MetadataExt` traits, including
+  `os::unix::fs::MetadataExt`, which expose values such as inode
+  numbers [no longer return platform-specific types][1.8r], but
+  instead return widened integers. [RFC 1415].
+* [Modules sourced from the filesystem cannot appear within arbitrary
+  blocks, but only within other modules][1.8m].
+* [`--cfg` compiler flags are parsed strictly as identifiers][1.8c].
+* On Unix, [stack overflow triggers a runtime abort instead of a
+  SIGSEGV][1.8so].
+* [`Command::spawn` and its equivalents return an error if any of
+  its command-line arguments contain interior `NUL`s][1.8n].
+* [Tuple and unit enum variants from other crates are in the type
+  namespace][1.8tn].
+* [On Windows `rustc` emits `.lib` files for the `staticlib` library
+  type instead of `.a` files][1.8st]. Additionally, for the MSVC
+  toolchain, `rustc` emits import libraries named `foo.dll.lib`
+  instead of `foo.lib`.
+
+
+[1.8a]: https://github.com/rust-lang/rust/pull/30962
+[1.8b]: https://github.com/rust-lang/rust/pull/31123
+[1.8c]: https://github.com/rust-lang/rust/pull/31530
+[1.8cc]: https://github.com/rust-lang/cargo/pull/2397
+[1.8ce]: https://github.com/rust-lang/cargo/pull/2398
+[1.8cf]: https://github.com/rust-lang/rust/pull/31278
+[1.8cfg]: https://github.com/rust-lang/cargo/pull/2328
+[1.8ci]: https://github.com/rust-lang/cargo/pull/2081
+[1.8ck]: https://github.com/rust-lang/cargo/pull/2370
+[1.8ct]: https://github.com/rust-lang/cargo/pull/2335
+[1.8cu]: https://github.com/rust-lang/rust/pull/31390
+[1.8cv]: https://github.com/rust-lang/cargo/issues/2365
+[1.8cv]: https://github.com/rust-lang/rust/pull/30998
+[1.8h]: https://github.com/rust-lang/rust/pull/31460
+[1.8l]: https://github.com/rust-lang/rust/pull/31668
+[1.8m]: https://github.com/rust-lang/rust/pull/31020
+[1.8m]: https://github.com/rust-lang/rust/pull/31534
+[1.8mp]: https://github.com/rust-lang/rust/pull/30894
+[1.8mr]: https://users.rust-lang.org/t/multirust-0-8-with-cross-std-installation/4901
+[1.8ms]: https://github.com/rust-lang/rust/pull/30448
+[1.8n]: https://github.com/rust-lang/rust/pull/31056
+[1.8nx]: https://github.com/rust-lang/rust/pull/30859
+[1.8r]: https://github.com/rust-lang/rust/pull/31551
+[1.8so]: https://github.com/rust-lang/rust/pull/31333
+[1.8st]: https://github.com/rust-lang/rust/pull/29520
+[1.8t]: https://github.com/rust-lang/rust/pull/31358
+[1.8tn]: https://github.com/rust-lang/rust/pull/30882
+[1.8u]: https://github.com/rust-lang/rust/pull/31793
+[1.8v]: https://github.com/rust-lang/rust/pull/31757
+[1.8w]: https://github.com/rust-lang/rust/pull/31904
+[RFC 1361]: https://github.com/rust-lang/rfcs/blob/master/text/1361-cargo-cfg-dependencies.md
+[RFC 1415]: https://github.com/rust-lang/rfcs/blob/master/text/1415-trim-std-os.md
+[RFC 218]: https://github.com/rust-lang/rfcs/blob/master/text/0218-empty-struct-with-braces.md
+[RFC 953]: https://github.com/rust-lang/rfcs/blob/master/text/0953-op-assign.md
+[`AddAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.AddAssign.html
+[`BitAndAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.BitAndAssign.html
+[`BitOrAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.BitOrAssign.html
+[`BitXorAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.BitXorAssign.html
+[`DivAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.DivAssign.html
+[`Instant::duration_since`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html#method.duration_since
+[`Instant::elapsed`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html#method.elapsed
+[`Instant::now`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html#method.now
+[`MulAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.MulAssign.html
+[`Ref::map`]: http://doc.rust-lang.org/nightly/std/cell/struct.Ref.html#method.map
+[`RefMut::map`]: http://doc.rust-lang.org/nightly/std/cell/struct.RefMut.html#method.map
+[`RemAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.RemAssign.html
+[`ShlAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.ShlAssign.html
+[`ShrAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.ShrAssign.html
+[`SubAssign`]: http://doc.rust-lang.org/nightly/std/ops/trait.SubAssign.html
+[`SystemTime::duration_since`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html#method.duration_since
+[`SystemTime::elapsed`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html#method.elapsed
+[`SystemTime::now`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html#method.now
+[`SystemTimeError::duration`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTimeError.html#method.duration
+[`SystemTimeError`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTimeError.html
+[`UNIX_EPOCH`]: http://doc.rust-lang.org/nightly/std/time/constant.UNIX_EPOCH.html
+[`ptr::drop_in_place`]: http://doc.rust-lang.org/nightly/std/ptr/fn.drop_in_place.html
+[`str::EncodeUtf16`]: http://doc.rust-lang.org/nightly/std/str/struct.EncodeUtf16.html
+[`str::encode_utf16`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.encode_utf16
+[`time::Instant`]: http://doc.rust-lang.org/nightly/std/time/struct.Instant.html
+[`time::SystemTime`]: http://doc.rust-lang.org/nightly/std/time/struct.SystemTime.html
+
+
 Version 1.7.0 (2016-03-03)
 ==========================
 
