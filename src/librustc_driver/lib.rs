@@ -129,7 +129,8 @@ pub fn abort_on_err<T>(result: Result<T, usize>, sess: &Session) -> T {
 }
 
 pub fn run(args: Vec<String>) -> isize {
-    monitor(move || {
+    // args is moved to a child thread (cfg.spawn()) whose lifetime is unknown to Rust
+    monitor(&args.clone(), move || {
         let (result, session) = run_compiler(&args, &mut RustcDefaultCalls);
         if let Err(err_count) = result {
             if err_count > 0 {
@@ -618,7 +619,11 @@ impl RustcDefaultCalls {
     }
 }
 
-/// Returns a version string such as "0.12.0-dev".
+// These three functions were originally intended to provide some reflectional
+// information on the compiler version, but they are no longer very useful since
+// librustc_driver was market as "private",
+
+/// Returns a version string such as "1.9.0-dev".
 pub fn release_str() -> Option<&'static str> {
     option_env!("CFG_RELEASE")
 }
@@ -969,7 +974,7 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
+pub fn monitor<F: FnOnce() + Send + 'static>(args: &[String], f: F) {
     const STACK_SIZE: usize = 8 * 1024 * 1024; // 8MB
 
     struct Sink(Arc<Mutex<Vec<u8>>>);
@@ -1009,8 +1014,12 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
                 emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
             }
 
-            let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
-                      format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
+            let xs = [format!("the compiler unexpectedly panicked. this is a bug."),
+                      format!("we would appreciate a bug report:"),
+                      format!("  {}", BUG_REPORT_URL),
+                      format!("version: {}", option_env!("CFG_VERSION").unwrap_or("unknown")),
+                      format!("host: {}", config::host_triple()),
+                      format!("arguments: {:?}", args)];
             for note in &xs {
                 emitter.emit(None, &note[..], None, errors::Level::Note)
             }
