@@ -221,9 +221,8 @@ fn issue355() {
 fn issue280() {
     {
         match x {
-            CompressionMode::DiscardNewline | CompressionMode::CompressWhitespaceNewline => {
-                ch == '\n'
-            }
+            CompressionMode::DiscardNewline |
+            CompressionMode::CompressWhitespaceNewline => ch == '\n',
             ast::ItemConst(ref typ, ref expr) => {
                 self.process_static_or_const_item(item, &typ, &expr)
             }
@@ -260,7 +259,8 @@ fn issue496() {
         {
             {
                 match def {
-                    def::DefConst(def_id) | def::DefAssociatedConst(def_id) => {
+                    def::DefConst(def_id) |
+                    def::DefAssociatedConst(def_id) => {
                         match const_eval::lookup_const_by_id(cx.tcx, def_id, Some(self.pat.id)) {
                             Some(const_expr) => x,
                         }
@@ -274,7 +274,8 @@ fn issue496() {
 fn issue494() {
     {
         match stmt.node {
-            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) => {
+            hir::StmtExpr(ref expr, id) |
+            hir::StmtSemi(ref expr, id) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
                     span: stmt.span,
                     kind: StmtKind::Expr {
@@ -284,5 +285,13 @@ fn issue494() {
                 })))
             }
         }
+    }
+}
+
+fn issue386() {
+    match foo {
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => true,
+        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem | BiBitXor | BiBitAnd | BiBitOr |
+        BiShl | BiShr => false,
     }
 }

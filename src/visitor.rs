@@ -46,7 +46,8 @@ impl<'a> FmtVisitor<'a> {
                     self.push_rewrite(stmt.span, rewrite);
                 }
             }
-            ast::StmtKind::Expr(..) | ast::StmtKind::Semi(..) => {
+            ast::StmtKind::Expr(..) |
+            ast::StmtKind::Semi(..) => {
                 let rewrite = stmt.rewrite(&self.get_context(),
                                            self.config.max_width - self.block_indent.width(),
                                            self.block_indent);
