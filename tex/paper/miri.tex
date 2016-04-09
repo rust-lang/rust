@@ -2,10 +2,14 @@
 
 \documentclass[twocolumn]{article}
 \usepackage{blindtext}
+\usepackage[hypcap]{caption}
 \usepackage{fontspec}
 \usepackage[colorlinks, urlcolor={blue!80!black}]{hyperref}
+\usepackage[outputdir=out]{minted}
 \usepackage{relsize}
 \usepackage{xcolor}
+
+\newcommand{\rust}[1]{\mintinline{rust}{#1}}
 
 \begin{document}
 
@@ -33,11 +37,84 @@ intermediate representation, or MIR for short. As it turns out, writing an inter
 surprisingly effective approach for supporting a large proportion of Rust's features in compile-time
 execution.
 
-\section{Motivation}
+\section{Background}
 
-\blindtext
+The Rust compiler (\texttt{rustc}) generates an instance of \rust{Mir} [\autoref{fig:mir}] for each
+function. Each \rust{Mir} structure represents a control-flow graph for a given function, and
+contains a list of ``basic blocks'' which in turn contain a list of statements followed by a single
+terminator. Each statement is of the form \rust{lvalue = rvalue}. An \rust{Lvalue} is used for
+referencing variables and calculating addresses such as when dereferencing pointers, accessing
+fields, or indexing arrays. An \rust{Rvalue} represents the core set of operations possible in MIR,
+including reading a value from an lvalue, performing math operations, creating new pointers,
+structs, and arrays, and so on. Finally, a terminator decides where control will flow next,
+optionally based on a boolean or some other condition.
+
+\begin{figure}[ht]
+  \begin{minted}[autogobble]{rust}
+    struct Mir {
+      basic_blocks: Vec<BasicBlockData>,
+      // ...
+    }
+    struct BasicBlockData {
+      statements: Vec<Statement>,
+      terminator: Terminator,
+      // ...
+    }
+    struct Statement {
+      lvalue: Lvalue,
+      rvalue: Rvalue
+    }
+    enum Terminator {
+      Goto { target: BasicBlock },
+      If {
+        cond: Operand,
+        targets: [BasicBlock; 2]
+      },
+      // ...
+    }
+  \end{minted}
+  \caption{MIR (simplified)}
+  \label{fig:mir}
+\end{figure}
 
 \section{First implementation}
+
+\subsection{Basic operation}
+
+Initially, I wrote a simple version of Miri that was quite capable despite its flaws. The structure
+of the interpreter essentially mirrors the structure of MIR itself. Miri starts executing a function
+by iterating the list of statements in the starting basic block, matching over the lvalue to produce
+a pointer and matching over the rvalue to decide what to write into that pointer. Evaluating the
+rvalue may generally involve reads (such as for the left and right hand side of a binary operation)
+or construction of new values. Upon reaching the terminator, a similar matching is done and a new
+basic block is selected. Finally, Miri returns to the top of the main interpreter loop and this
+entire process repeats, reading statements from the new block.
+
+\subsection{Function calls}
+
+To handle function call terminators\footnote{Calls occur only as terminators, never as rvalues.},
+Miri is required to store some information in a virtual call stack so that it may pick up where it
+left off when the callee returns. Each stack frame stores a reference to the \rust{Mir} for the
+function being executed, its local variables, its return value location\footnote{Return value
+pointers are passed in by callers.}, and the basic block where execution should resume. To
+facilitate returning, there is a \rust{Return} terminator which causes Miri to pop a stack frame and
+resume the previous function. The entire execution of a program completes when the first function
+that Miri called returns, rendering the call stack empty.
+
+It should be noted that Miri does not itself recurse when a function is called; it merely pushes a
+virtual stack frame and jumps to the top of the interpreter loop. This property implies that Miri
+can interpret deeply recursive programs without crashing. Alternately, Miri could set a stack
+depth limit and return an error when a program exceeds it.
+
+\subsection{Flaws}
+
+% TODO(tsion): Incorporate this text from the slides.
+% At first I wrote a naive version with a number of downsides:
+%  * I represented values in a traditional dynamic language format,
+% where every value was the same size.
+%  * I didn’t work well for aggregates (structs, enums, arrays, etc.).
+%  *I made unsafe programming tricks that make assumptions
+% about low-level value layout essentially impossible
 
 % TODO(tsion): Find a place for this text.
 Making Miri work was primarily an implementation problem. Writing an interpreter which models values
@@ -46,10 +123,29 @@ unconventional techniques compared to many interpreters. Miri's execution remain
 simulating execution of unsafe code, which allows it to detect when unsafe code does something
 invalid.
 
-\blindtext[2]
+\blindtext
 
 \section{Data layout}
 
 \blindtext
+
+\section{Future work}
+
+Other possible uses for Miri include:
+
+\begin{itemize}
+  \item A graphical or text-mode debugger that steps through MIR execution one statement at a time,
+    for figuring out why some compile-time execution is raising an error or simply learning how Rust
+    works at a low level.
+  \item An read-eval-print-loop (REPL) for Rust may be easier to implement on top of Miri than the
+    usual LLVM back-end.
+  \item An extended version of Miri could be developed apart from the purpose of compile-time
+    execution that is able to run foreign functions from C/C++ and generally have full access to the
+    operating system. Such a version of Miri could be used to more quickly prototype changes to the
+    Rust language that would otherwise require changes to the LLVM back-end.
+  \item Miri might be useful for unit-testing the compiler by comparing the results of Miri's
+    execution against the results of LLVM-compiled machine code's execution. This would help to
+    guarantee that compile-time execution works the same as runtime execution.
+\end{itemize}
 
 \end{document}
