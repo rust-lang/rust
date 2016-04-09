@@ -14,11 +14,11 @@
 
 use ffi::{OsString, OsStr};
 use sys::os_str::Buf;
-use sys_common::wtf8::Wtf8Buf;
+use sys::wtf8::Wtf8Buf;
 use sys_common::{FromInner, AsInner};
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use sys_common::wtf8::EncodeWide;
+pub use sys::wtf8::EncodeWide;
 
 /// Windows-specific extensions to `OsString`.
 #[stable(feature = "rust1", since = "1.0.0")]
