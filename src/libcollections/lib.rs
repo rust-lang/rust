@@ -133,3 +133,10 @@ pub enum Bound<T> {
     /// An infinite endpoint. Indicates that there is no bound in this direction.
     Unbounded,
 }
+
+/// An intermediate trait for specialization of `Extend`.
+#[doc(hidden)]
+trait SpecExtend<I: IntoIterator> {
+    /// Extends `self` with the contents of the given iterator.
+    fn spec_extend(&mut self, iter: I);
+}
