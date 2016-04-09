@@ -10,10 +10,10 @@
 
 mod foo {
     use self::{self};
-    //~^ ERROR unresolved import `self`. There is no `self` in `???`
+    //~^ ERROR unresolved import `self`. There is no `self` in the crate root
 
     use super::{self};
-    //~^ ERROR unresolved import `super`. There is no `super` in `???`
+    //~^ ERROR unresolved import `super`. There is no `super` in the crate root
 }
 
 fn main() {}
