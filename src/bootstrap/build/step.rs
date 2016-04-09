@@ -325,7 +325,7 @@ impl<'a> Step<'a> {
                 vec![self.librustc(self.compiler(stage))]
             }
             Source::ToolCargoTest { stage } => {
-                vec![self.libstd(self.compiler(stage))]
+                vec![self.librustc(self.compiler(stage))]
             }
 
             Source::DistDocs { stage } => vec![self.doc(stage)],
