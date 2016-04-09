@@ -55,6 +55,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::pat_bindings;
+use rustc::ty;
 use rustc::ty::subst::{ParamSpace, FnSpace, TypeSpace};
 use rustc::hir::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
@@ -820,7 +821,7 @@ enum ParentLink<'a> {
 pub struct ModuleS<'a> {
     parent_link: ParentLink<'a>,
     def: Option<Def>,
-    is_public: bool,
+    vis: ty::Visibility,
 
     // If the module is an extern crate, `def` is root of the external crate and `extern_crate_id`
     // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
@@ -864,12 +865,12 @@ impl<'a> ModuleS<'a> {
     fn new(parent_link: ParentLink<'a>,
            def: Option<Def>,
            external: bool,
-           is_public: bool,
+           vis: ty::Visibility,
            arenas: &'a ResolverArenas<'a>) -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
-            is_public: is_public,
+            vis: vis,
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
@@ -892,9 +893,10 @@ impl<'a> ModuleS<'a> {
         self.def.as_ref().map(Def::def_id)
     }
 
+    // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
         match self.def {
-            Some(Def::Mod(_)) | Some(Def::ForeignMod(_)) => true,
+            Some(Def::Mod(_)) => true,
             _ => false,
         }
     }
@@ -918,23 +920,13 @@ impl<'a> ModuleS<'a> {
 
 impl<'a> fmt::Debug for ModuleS<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f,
-               "{:?}, {}",
-               self.def,
-               if self.is_public {
-                   "public"
-               } else {
-                   "private"
-               })
+        write!(f, "{:?}, {:?}", self.def, self.vis)
     }
 }
 
 bitflags! {
     #[derive(Debug)]
     flags DefModifiers: u8 {
-        // Enum variants are always considered `PUBLIC`, this is needed for `use Enum::Variant`
-        // or `use Enum::*` to work on private enums.
-        const PUBLIC     = 1 << 0,
         const IMPORTABLE = 1 << 1,
         // Variants are considered `PUBLIC`, but some of them live in private enums.
         // We need to track them to prohibit reexports like `pub use PrivEnum::Variant`.
@@ -949,6 +941,9 @@ pub struct NameBinding<'a> {
     modifiers: DefModifiers,
     kind: NameBindingKind<'a>,
     span: Option<Span>,
+    // Enum variants are always considered `PUBLIC`, this is needed for `use Enum::Variant`
+    // or `use Enum::*` to work on private enums.
+    vis: ty::Visibility,
 }
 
 #[derive(Clone, Debug)]
@@ -968,13 +963,12 @@ struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
 
 impl<'a> NameBinding<'a> {
     fn create_from_module(module: Module<'a>, span: Option<Span>) -> Self {
-        let modifiers = if module.is_public {
-            DefModifiers::PUBLIC
-        } else {
-            DefModifiers::empty()
-        } | DefModifiers::IMPORTABLE;
-
-        NameBinding { modifiers: modifiers, kind: NameBindingKind::Module(module), span: span }
+        NameBinding {
+            modifiers: DefModifiers::IMPORTABLE,
+            kind: NameBindingKind::Module(module),
+            span: span,
+            vis: module.vis,
+        }
     }
 
     fn module(&self) -> Option<Module<'a>> {
@@ -998,7 +992,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn is_public(&self) -> bool {
-        self.defined_with(DefModifiers::PUBLIC)
+        self.vis == ty::Visibility::Public
     }
 
     fn is_extern_crate(&self) -> bool {
@@ -1148,8 +1142,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
            arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a, 'tcx> {
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
+        let vis = ty::Visibility::Public;
         let graph_root =
-            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, true, arenas);
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, vis, arenas);
         let graph_root = arenas.alloc_module(graph_root);
 
         Resolver {
@@ -1209,17 +1204,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                   parent_link: ParentLink<'a>,
                   def: Option<Def>,
                   external: bool,
-                  is_public: bool) -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, is_public, self.arenas))
+                  vis: ty::Visibility) -> Module<'a> {
+        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, vis, self.arenas))
     }
 
     fn new_extern_crate_module(&self,
                                parent_link: ParentLink<'a>,
                                def: Def,
-                               is_public: bool,
+                               vis: ty::Visibility,
                                local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, is_public, self.arenas);
+        let mut module = ModuleS::new(parent_link, Some(def), false, vis, self.arenas);
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }
@@ -1617,7 +1612,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_crate(&mut self, krate: &hir::Crate) {
         debug!("(resolving crate) starting");
-
+        self.current_module = self.graph_root;
         intravisit::walk_crate(self, krate);
     }
 
@@ -1980,6 +1975,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 this.with_self_rib(Def::SelfTy(trait_id, Some((item_id, self_type.id))), |this| {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
+                            this.resolve_visibility(&impl_item.vis);
                             match impl_item.node {
                                 hir::ImplItemKind::Const(..) => {
                                     // If this is a trait impl, ensure the const
@@ -3377,6 +3373,43 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               ResolutionError::CannotUseRefBindingModeWith(descr));
             }
         }
+    }
+
+    fn resolve_visibility(&mut self, vis: &hir::Visibility) -> ty::Visibility {
+        let (path, id) = match *vis {
+            hir::Public => return ty::Visibility::Public,
+            hir::Visibility::Crate => return ty::Visibility::Restricted(ast::CRATE_NODE_ID),
+            hir::Visibility::Restricted { ref path, id } => (path, id),
+            hir::Inherited => {
+                let current_module =
+                    self.get_nearest_normal_module_parent_or_self(self.current_module);
+                let id = self.ast_map.as_local_node_id(current_module.def_id().unwrap()).unwrap();
+                return ty::Visibility::Restricted(id);
+            }
+        };
+
+        let segments: Vec<_> = path.segments.iter().map(|seg| seg.identifier.name).collect();
+        let vis = match self.resolve_module_path(&segments, DontUseLexicalScope, path.span) {
+            Success(module) => {
+                let def = module.def.unwrap();
+                let path_resolution = PathResolution { base_def: def, depth: 0 };
+                self.def_map.borrow_mut().insert(id, path_resolution);
+                ty::Visibility::Restricted(self.ast_map.as_local_node_id(def.def_id()).unwrap())
+            }
+            Failed(Some((span, msg))) => {
+                self.session.span_err(span, &format!("failed to resolve module path. {}", msg));
+                ty::Visibility::Public
+            }
+            _ => {
+                self.session.span_err(path.span, "unresolved module path");
+                ty::Visibility::Public
+            }
+        };
+        if !self.is_accessible(vis) {
+            let msg = format!("visibilities can only be restricted to ancestor modules");
+            self.session.span_err(path.span, &msg);
+        }
+        vis
     }
 
     fn is_visible(&self, binding: &'a NameBinding<'a>, parent: Module<'a>) -> bool {
