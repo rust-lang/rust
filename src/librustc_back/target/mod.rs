@@ -27,8 +27,7 @@
 //! rustc will search each directory in the environment variable
 //! `RUST_TARGET_PATH` for a file named `TRIPLE.json`. The first one found will
 //! be loaded. If no file is found in any of those directories, a fatal error
-//! will be given.  `RUST_TARGET_PATH` includes `/etc/rustc` as its last entry,
-//! to be searched by default.
+//! will be given.
 //!
 //! Projects defining their own targets should use
 //! `--target=path/to/my-awesome-platform.json` instead of adding to
