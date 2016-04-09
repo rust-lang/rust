@@ -539,6 +539,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             (&Failed(_), &Failed(_)) => {
                 let resolutions = target_module.resolutions.borrow();
                 let names = resolutions.iter().filter_map(|(&(ref name, _), resolution)| {
+                    if *name == source { return None; } // Never suggest the same name
                     match *resolution.borrow() {
                         NameResolution { binding: Some(_), .. } => Some(name),
                         NameResolution { single_imports: SingleImports::None, .. } => None,
@@ -549,9 +550,12 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     Some(name) => format!(". Did you mean to use `{}`?", name),
                     None => "".to_owned(),
                 };
-                let msg = format!("There is no `{}` in `{}`{}",
-                                  source,
-                                  module_to_string(target_module), lev_suggestion);
+                let module_str = module_to_string(target_module);
+                let msg = if &module_str == "???" {
+                    format!("There is no `{}` in the crate root{}", source, lev_suggestion)
+                } else {
+                    format!("There is no `{}` in `{}`{}", source, module_str, lev_suggestion)
+                };
                 return Failed(Some((directive.span, msg)));
             }
             _ => (),
