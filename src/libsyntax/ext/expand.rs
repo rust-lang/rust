@@ -83,10 +83,12 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
         ast::ExprKind::InPlace(placer, value_expr) => {
             // Ensure feature-gate is enabled
-            feature_gate::check_for_placement_in(
-                fld.cx.ecfg.features,
-                &fld.cx.parse_sess.span_diagnostic,
-                expr_span);
+            if !fld.cx.ecfg.features.unwrap().placement_in_syntax {
+                feature_gate::emit_feature_err(
+                    &fld.cx.parse_sess.span_diagnostic, "placement_in_syntax", expr_span,
+                    feature_gate::GateIssue::Language, feature_gate::EXPLAIN_PLACEMENT_IN
+                );
+            }
 
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);

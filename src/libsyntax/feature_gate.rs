@@ -654,39 +654,6 @@ impl GatedCfg {
     }
 }
 
-const EXPLAIN_BOX_SYNTAX: &'static str =
-    "box expression syntax is experimental; you can call `Box::new` instead.";
-
-const EXPLAIN_PLACEMENT_IN: &'static str =
-    "placement-in expression syntax is experimental and subject to change.";
-
-const EXPLAIN_PUSHPOP_UNSAFE: &'static str =
-    "push/pop_unsafe macros are experimental and subject to change.";
-
-const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
-    "attributes on non-item statements and expressions are experimental.";
-
-pub fn check_for_box_syntax(f: Option<&Features>, diag: &Handler, span: Span) {
-    if let Some(&Features { box_syntax: true, .. }) = f {
-        return;
-    }
-    emit_feature_err(diag, "box_syntax", span, GateIssue::Language, EXPLAIN_BOX_SYNTAX);
-}
-
-pub fn check_for_placement_in(f: Option<&Features>, diag: &Handler, span: Span) {
-    if let Some(&Features { placement_in_syntax: true, .. }) = f {
-        return;
-    }
-    emit_feature_err(diag, "placement_in_syntax", span, GateIssue::Language, EXPLAIN_PLACEMENT_IN);
-}
-
-pub fn check_for_pushpop_syntax(f: Option<&Features>, diag: &Handler, span: Span) {
-    if let Some(&Features { pushpop_unsafe: true, .. }) = f {
-        return;
-    }
-    emit_feature_err(diag, "pushpop_unsafe", span, GateIssue::Language, EXPLAIN_PUSHPOP_UNSAFE);
-}
-
 struct Context<'a> {
     features: &'a Features,
     span_handler: &'a Handler,
@@ -809,6 +776,12 @@ pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIs
     err.emit();
 }
 
+const EXPLAIN_BOX_SYNTAX: &'static str =
+    "box expression syntax is experimental; you can call `Box::new` instead.";
+
+const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
+    "attributes on non-item statements and expressions are experimental.";
+
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
 
@@ -828,6 +801,9 @@ pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
 
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
+
+pub const EXPLAIN_PLACEMENT_IN: &'static str =
+    "placement-in expression syntax is experimental and subject to change.";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
