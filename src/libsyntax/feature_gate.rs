@@ -256,6 +256,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // impl specialization (RFC 1210)
     ("specialization", "1.7.0", Some(31844), Active),
+
+    // pub(restricted) visibilities (RFC 1422)
+    ("pub_restricted", "1.9.0", Some(32409), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -608,6 +611,7 @@ pub struct Features {
     pub deprecated: bool,
     pub question_mark: bool,
     pub specialization: bool,
+    pub pub_restricted: bool,
 }
 
 impl Features {
@@ -644,6 +648,7 @@ impl Features {
             deprecated: false,
             question_mark: false,
             specialization: false,
+            pub_restricted: false,
         }
     }
 }
@@ -1159,6 +1164,15 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
         visit::walk_impl_item(self, ii);
     }
+
+    fn visit_vis(&mut self, vis: &'v ast::Visibility) {
+        let span = match *vis {
+            ast::Visibility::Crate(span) => span,
+            ast::Visibility::Restricted { ref path, .. } => path.span,
+            _ => return,
+        };
+        self.gate_feature("pub_restricted", span, "`pub(restricted)` syntax is experimental");
+    }
 }
 
 fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
@@ -1256,6 +1270,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &Handler,
         deprecated: cx.has_feature("deprecated"),
         question_mark: cx.has_feature("question_mark"),
         specialization: cx.has_feature("specialization"),
+        pub_restricted: cx.has_feature("pub_restricted"),
     }
 }
 
