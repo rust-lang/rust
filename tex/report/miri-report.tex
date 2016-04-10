@@ -137,7 +137,7 @@ it contains.} in the interpreter:
       Bool(bool),
       Int(i64),
       Pointer(Pointer), // index into stack
-      Adt { variant: usize, data_ptr: Pointer },
+      Adt { variant: usize, data: Pointer },
       // ...
   }
 \end{minted}
@@ -224,7 +224,7 @@ comparatively trivial.
 
 See \autoref{fig:undef} for an example undefined byte, represented by underscores. Note that there
 would still be a value for the second byte in the byte array, but we don't care what it is. The
-bitmask would be $10_2$ i.e. \rust{[true, false]}.
+bitmask would be $10_2$, i.e. \rust{[true, false]}.
 
 \begin{figure}[hb]
   \begin{minted}[autogobble]{rust}
@@ -286,7 +286,7 @@ Other possible uses for Miri include:
   \item A graphical or text-mode debugger that steps through MIR execution one statement at a time,
     for figuring out why some compile-time execution is raising an error or simply learning how Rust
     works at a low level.
-  \item An read-eval-print-loop (REPL) for Rust may be easier to implement on top of Miri than the
+  \item A read-eval-print-loop (REPL) for Rust may be easier to implement on top of Miri than the
     usual LLVM back-end.
   \item An extended version of Miri could be developed apart from the purpose of compile-time
     execution that is able to run foreign functions from C/C++ and generally have full access to the
