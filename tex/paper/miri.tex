@@ -244,9 +244,37 @@ bitmask would be $10_2$ i.e. \rust{[true, false]}.
 % simulating execution of unsafe code, which allows it to detect when unsafe code does something
 % invalid.
 
-\blindtext
+\begin{figure}[t]
+  \begin{minted}[autogobble]{rust}
+    struct Vec<T> {
+        data: *mut T,    // 4 byte pointer
+        capacity: usize, // 4 byte integer
+        length: usize,   // 4 byte integer
+    }
 
-\section{Data layout}
+    let mut v: Vec<u8> =
+        Vec::with_capacity(2);
+    // A: 00 00 00 00 02 00 00 00 00 00 00 00
+    //    └───(B)───┘
+    // B: __ __
+
+    v.push(1);
+    // A: 00 00 00 00 02 00 00 00 01 00 00 00
+    //    └───(B)───┘
+    // B: 01 __
+
+    v.push(2);
+    // A: 00 00 00 00 02 00 00 00 02 00 00 00
+    //    └───(B)───┘
+    // B: 01 02
+
+    v.push(3);
+    // A: 00 00 00 00 04 00 00 00 03 00 00 00
+    //    └───(B)───┘
+    // B: 01 02 03 __
+  \end{minted}
+  \caption{\rust{Vec} example on 32-bit little-endian}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
