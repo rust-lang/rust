@@ -1,7 +1,7 @@
 use byteorder::{ByteOrder, NativeEndian, ReadBytesExt, WriteBytesExt};
 use std::collections::Bound::{Included, Excluded};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque};
-use std::{iter, mem, ptr};
+use std::{fmt, iter, mem, ptr};
 
 use error::{EvalError, EvalResult};
 use primval::PrimVal;
@@ -58,8 +58,14 @@ impl Repr {
 // Allocations and pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
 pub struct AllocId(u64);
+
+impl fmt::Display for AllocId {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug)]
 pub struct Allocation {
@@ -85,8 +91,8 @@ impl Pointer {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Memory {
-    alloc_map: HashMap<u64, Allocation>,
-    next_id: u64,
+    alloc_map: HashMap<AllocId, Allocation>,
+    next_id: AllocId,
     pub pointer_size: usize,
 }
 
@@ -94,7 +100,7 @@ impl Memory {
     pub fn new() -> Self {
         Memory {
             alloc_map: HashMap::new(),
-            next_id: 0,
+            next_id: AllocId(0),
 
             // TODO(tsion): Should this be host's or target's usize?
             pointer_size: mem::size_of::<usize>(),
@@ -102,14 +108,14 @@ impl Memory {
     }
 
     pub fn allocate(&mut self, size: usize) -> Pointer {
-        let id = AllocId(self.next_id);
         let alloc = Allocation {
             bytes: vec![0; size],
             relocations: BTreeMap::new(),
             undef_mask: UndefMask::new(size),
         };
-        self.alloc_map.insert(self.next_id, alloc);
-        self.next_id += 1;
+        let id = self.next_id;
+        self.next_id.0 += 1;
+        self.alloc_map.insert(id, alloc);
         Pointer {
             alloc_id: id,
             offset: 0,
@@ -147,7 +153,7 @@ impl Memory {
             panic!()
         }
 
-        if self.alloc_map.remove(&ptr.alloc_id.0).is_none() {
+        if self.alloc_map.remove(&ptr.alloc_id).is_none() {
             // TODO(tsion): Report error about erroneous free. This is blocked on properly tracking
             // already-dropped state since this if-statement is entered even in safe code without
             // it.
@@ -161,11 +167,11 @@ impl Memory {
     ////////////////////////////////////////////////////////////////////////////////
 
     pub fn get(&self, id: AllocId) -> EvalResult<&Allocation> {
-        self.alloc_map.get(&id.0).ok_or(EvalError::DanglingPointerDeref)
+        self.alloc_map.get(&id).ok_or(EvalError::DanglingPointerDeref)
     }
 
     pub fn get_mut(&mut self, id: AllocId) -> EvalResult<&mut Allocation> {
-        self.alloc_map.get_mut(&id.0).ok_or(EvalError::DanglingPointerDeref)
+        self.alloc_map.get_mut(&id).ok_or(EvalError::DanglingPointerDeref)
     }
 
     /// Print an allocation and all allocations it points to, recursively.
@@ -175,12 +181,12 @@ impl Memory {
         allocs_to_print.push_back(id);
 
         while let Some(id) = allocs_to_print.pop_front() {
-            allocs_seen.insert(id.0);
-            let prefix = format!("Alloc {:<5} ", format!("{}:", id.0));
+            allocs_seen.insert(id);
+            let prefix = format!("Alloc {:<5} ", format!("{}:", id));
             print!("{}", prefix);
             let mut relocations = vec![];
 
-            let alloc = match self.alloc_map.get(&id.0) {
+            let alloc = match self.alloc_map.get(&id) {
                 Some(a) => a,
                 None => {
                     println!("(deallocated)");
@@ -190,12 +196,12 @@ impl Memory {
 
             for i in 0..alloc.bytes.len() {
                 if let Some(&target_id) = alloc.relocations.get(&i) {
-                    if !allocs_seen.contains(&target_id.0) {
+                    if !allocs_seen.contains(&target_id) {
                         allocs_to_print.push_back(target_id);
                     }
-                    relocations.push((i, target_id.0));
+                    relocations.push((i, target_id));
                 }
-                if alloc.undef_mask.is_range_defined(i, i+1) {
+                if alloc.undef_mask.is_range_defined(i, i + 1) {
                     print!("{:02x} ", alloc.bytes[i]);
                 } else {
                     print!("__ ");
