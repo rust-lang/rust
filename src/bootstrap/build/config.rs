@@ -205,7 +205,6 @@ impl Config {
             set(&mut config.ninja, llvm.ninja);
             set(&mut config.llvm_assertions, llvm.assertions);
             set(&mut config.llvm_optimize, llvm.optimize);
-            set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
         }
