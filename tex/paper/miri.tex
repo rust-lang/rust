@@ -123,20 +123,126 @@ error when a program exceeds it.
 
 \subsection{Flaws}
 
-% TODO(tsion): Incorporate this text from the slides.
-% At first I wrote a naive version with a number of downsides:
-%  * I represented values in a traditional dynamic language format,
-% where every value was the same size.
-%  * I didn’t work well for aggregates (structs, enums, arrays, etc.).
-%  *I made unsafe programming tricks that make assumptions
-% about low-level value layout essentially impossible
+This version of Miri was surprisingly easy to write and already supported quite a bit of the Rust
+language, including booleans, integers, if-conditions, while-loops, structs, enums, arrays, tuples,
+pointers, and function calls, all in about 400 lines of Rust code. However, it had a particularly
+naive value representation with a number of downsides. It resembled the data layout of a dynamic
+language like Ruby or Python, where every value has the same size\footnote{A Rust \rust{enum} is a
+discriminated union with a tag and data the size of the largest variant, regardless of which variant
+it contains.} in the interpreter:
+
+\begin{minted}[autogobble]{rust}
+  enum Value {
+      Uninitialized,
+      Bool(bool),
+      Int(i64),
+      Pointer(Pointer), // index into stack
+      Adt { variant: usize, data_ptr: Pointer },
+      // ...
+  }
+\end{minted}
+
+This representation did not work well for \rust{Adt}s\footnote{Algebraic data types: structs, enums,
+arrays, and tuples.} and required strange hacks to support them. Their contained values were
+allocated elsewhere on the stack and pointed to by the \rust{Adt} value. When it came to copying
+\rust{Adt} values from place to place, this made it more complicated.
+
+Moreover, while the \rust{Adt} issues could be worked around, this value representation made common
+\rust{unsafe} programming tricks (which make assumptions about the low-level value layout)
+fundamentally impossible.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Current implementation}
+
+Roughly halfway through my time working on Miri, Rust compiler team member Eduard
+Burtescu\footnote{\href{https://www.rust-lang.org/team.html\#Compiler}{The Rust compiler team}} made
+a post on Rust's internal
+forums\footnote{\href{https://internals.rust-lang.org/t/mir-constant-evaluation/3143/31}{Burtescu's
+``Rust Abstract Machine'' forum post}} about a ``Rust Abstract Machine'' specification which could
+be used to implement more powerful compile-time function execution, similar to what is supported by
+C++14's \mintinline{cpp}{constexpr} feature. After clarifying some of the details of the abstract
+machine's data layout with Burtescu via IRC, I started implementing it in Miri.
+
+\subsection{Raw value representation}
+
+The main difference in the new value representation was to represent values by ``abstract
+allocations'' containing arrays of raw bytes with different sizes depending on the types of the
+values. This closely mimics how Rust values are represented when compiled for traditional machines.
+In addition to the raw bytes, allocations carry information about pointers and undefined bytes.
+
+\begin{minted}[autogobble]{rust}
+  struct Memory {
+      map: HashMap<AllocId, Allocation>,
+      next_id: AllocId,
+  }
+
+  struct Allocation {
+      bytes: Vec<u8>,
+      relocations: BTreeMap<usize, AllocId>,
+      undef_mask: UndefMask,
+  }
+\end{minted}
+
+\subsubsection{Relocations}
+
+The abstract machine represents pointers through ``relocations'', which are analogous to relocations
+in linkers\footnote{\href{https://en.wikipedia.org/wiki/Relocation_(computing)}{Relocation
+(computing) - Wikipedia}}. Instead of storing a global memory address in the raw byte representation
+like a traditional machine, we store an offset from the start of the target allocation and add an
+entry to the relocation table. The entry maps the index of the start of the offset bytes to the
+\rust{AllocId} of the target allocation.
+
+\begin{figure}[ht]
+  \begin{minted}[autogobble]{rust}
+    let a: [i16; 3] = [2, 4, 6];
+    let b = &a[1];
+    // A: 02 00 04 00 06 00 (6 bytes)
+    // B: 02 00 00 00 (4 bytes)
+    //    └───(A)───┘
+  \end{minted}
+  \caption{Example relocation on 32-bit little-endian}
+  \label{fig:reloc}
+\end{figure}
+
+In effect, the abstract machine treats each allocation as a separate address space and represents
+pointers as \rust{(address_space, offset)} pairs. This makes it easy to detect when pointer accesses
+go out of bounds.
+
+See \autoref{fig:reloc} for an example of a relocation. Variable \rust{b} points to the second
+16-bit integer in \rust{a}, so it contains a relocation with offset 2 and target allocation
+\rust{A}.
+
+\subsubsection{Undefined byte mask}
+
+The final piece of an abstract allocation is the undefined byte mask. Logically, we store a boolean
+for the definedness of every byte in the allocation, but there are multiple ways to make the storage
+more compact. I tried two implementations: one based on the endpoints of alternating ranges of
+defined and undefined bytes and the other based on a simple bitmask. The former is more compact but
+I found it surprisingly difficult to update cleanly. I currently use the bitmask system, which is
+comparatively trivial.
+
+See \autoref{fig:undef} for an example undefined byte, represented by underscores. Note that there
+would still be a value for the second byte in the byte array, but we don't care what it is. The
+bitmask would be $10_2$ i.e. \rust{[true, false]}.
+
+\begin{figure}[hb]
+  \begin{minted}[autogobble]{rust}
+    let a: [u8; 2] = unsafe {
+        [1, std::mem::uninitialized()]
+    };
+    // A: 01 __ (2 bytes)
+  \end{minted}
+  \caption{Example undefined byte}
+  \label{fig:undef}
+\end{figure}
 
 % TODO(tsion): Find a place for this text.
-Making Miri work was primarily an implementation problem. Writing an interpreter which models values
-of varying sizes, stack and heap allocation, unsafe memory operations, and more requires some
-unconventional techniques compared to many interpreters. Miri's execution remains safe even while
-simulating execution of unsafe code, which allows it to detect when unsafe code does something
-invalid.
+% Making Miri work was primarily an implementation problem. Writing an interpreter which models values
+% of varying sizes, stack and heap allocation, unsafe memory operations, and more requires some
+% unconventional techniques compared to many interpreters. Miri's execution remains safe even while
+% simulating execution of unsafe code, which allows it to detect when unsafe code does something
+% invalid.
 
 \blindtext
 
