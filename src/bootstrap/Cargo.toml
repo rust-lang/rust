@@ -21,7 +21,7 @@ path = "rustdoc.rs"
 
 [dependencies]
 build_helper = { path = "../build_helper" }
-cmake = "0.1.10"
+cmake = "0.1.17"
 filetime = "0.1"
 num_cpus = "0.2"
 toml = "0.1"
