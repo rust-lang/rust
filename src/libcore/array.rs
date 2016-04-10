@@ -21,14 +21,16 @@
 
 use borrow::{Borrow, BorrowMut};
 use clone::Clone;
-use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering, self};
 use convert::{AsRef, AsMut};
 use default::Default;
 use fmt;
 use hash::{Hash, self};
-use iter::IntoIterator;
-use marker::{Copy, Sized, Unsize};
-use option::Option;
+use iter::{IntoIterator, Iterator, DoubleEndedIterator, ExactSizeIterator};
+use marker::{Copy, Sized, Unsize, PhantomData};
+use ops::Drop;
+use option::Option::{Some, None, self};
+use ptr;
 use slice::{Iter, IterMut, SliceExt};
 
 /// Utility trait implemented only on arrays of fixed size
@@ -59,6 +61,111 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
     #[inline]
     fn as_mut_slice(&mut self) -> &mut [T] {
         self
+    }
+}
+
+/// An iterator that moves out of an array.
+#[derive(Debug)]
+pub struct IntoIter<T, A: FixedSizeArray<T>> {
+    // Invariants: index <= index_back <= array.len()
+    // Only values in array[index..index_back] are alive at any given time.
+    // Values from array[..index] and array[index_back..] are already moved/dropped.
+    array: Option<A>,
+    index: usize,
+    index_back: usize,
+    _marker: PhantomData<T>,
+}
+
+impl<T, A: FixedSizeArray<T>> Drop for IntoIter<T, A> {
+    #[inline]
+    fn drop(&mut self) {
+        // Drop values that are still alive.
+        if let Some(array) = self.array.as_mut() {
+            let slice = array.as_mut_slice();
+            for p in &mut slice[self.index..self.index_back] {
+                unsafe { ptr::drop_in_place(p); }
+            }
+        }
+
+        // Prevent the array as a whole from dropping.
+        unsafe { ptr::write(&mut self.array, None); }
+    }
+}
+
+impl<T, A: FixedSizeArray<T>> Iterator for IntoIter<T, A> {
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        if self.len() > 0 {
+            if let Some(array) = self.array.as_ref() {
+                let slice = array.as_slice();
+                let p = unsafe { slice.get_unchecked(self.index) };
+                self.index += 1;
+                return Some(unsafe { ptr::read(p) })
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<T> {
+        let len = self.len();
+        if len > 0 {
+            // Drop values prior to the nth.
+            if let Some(array) = self.array.as_mut() {
+                let ndrop = cmp::min(n, len);
+                let slice = array.as_mut_slice();
+                for p in &mut slice[self.index..self.index + ndrop] {
+                    unsafe { ptr::drop_in_place(p); }
+                }
+                self.index += ndrop;
+            }
+        }
+        self.next()
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<T> {
+        let len = self.len();
+        if len > 0 {
+            self.nth(len - 1)
+        } else {
+            None
+        }
+    }
+}
+
+impl<T, A: FixedSizeArray<T>> DoubleEndedIterator for IntoIter<T, A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        if self.len() > 0 {
+            if let Some(array) = self.array.as_mut() {
+                self.index_back -= 1;
+                let slice = array.as_slice();
+                let p = unsafe { slice.get_unchecked(self.index_back) };
+                return Some(unsafe { ptr::read(p) })
+            }
+        }
+        None
+    }
+}
+
+impl<T, A: FixedSizeArray<T>> ExactSizeIterator for IntoIter<T, A> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.index_back - self.index
     }
 }
 
@@ -164,6 +271,20 @@ macro_rules! array_impls {
 
                 fn into_iter(self) -> IterMut<'a, T> {
                     self.iter_mut()
+                }
+            }
+
+            impl<T> IntoIterator for [T; $N] {
+                type Item = T;
+                type IntoIter = IntoIter<T, Self>;
+
+                fn into_iter(self) -> IntoIter<T, Self> {
+                    IntoIter {
+                        array: Some(self),
+                        index: 0,
+                        index_back: $N,
+                        _marker: PhantomData,
+                    }
                 }
             }
 
