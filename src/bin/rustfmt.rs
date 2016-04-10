@@ -18,6 +18,7 @@ extern crate env_logger;
 extern crate getopts;
 
 use rustfmt::{run, Input, Summary};
+use rustfmt::file_lines::FileLines;
 use rustfmt::config::{Config, WriteMode};
 
 use std::{env, error};
@@ -57,6 +58,7 @@ struct CliOptions {
     skip_children: bool,
     verbose: bool,
     write_mode: Option<WriteMode>,
+    file_lines: FileLines, // Default is all lines in all files.
 }
 
 impl CliOptions {
@@ -73,12 +75,17 @@ impl CliOptions {
             }
         }
 
+        if let Some(ref file_lines) = matches.opt_str("file-lines") {
+            options.file_lines = try!(file_lines.parse());
+        }
+
         Ok(options)
     }
 
-    fn apply_to(&self, config: &mut Config) {
+    fn apply_to(self, config: &mut Config) {
         config.skip_children = self.skip_children;
         config.verbose = self.verbose;
+        config.file_lines = self.file_lines;
         if let Some(write_mode) = self.write_mode {
             config.write_mode = write_mode;
         }
@@ -168,6 +175,10 @@ fn make_opts() -> Options {
                 "Recursively searches the given path for the rustfmt.toml config file. If not \
                  found reverts to the input file path",
                 "[Path for the configuration file]");
+    opts.optopt("",
+                "file-lines",
+                "Format specified line ranges. See README for more detail on the JSON format.",
+                "JSON");
 
     opts
 }
@@ -198,8 +209,12 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             Ok(run(Input::Text(input), &config))
         }
-        Operation::Format { files, config_path } => {
+        Operation::Format { mut files, config_path } => {
             let options = try!(CliOptions::from_matches(&matches));
+
+            // Add any additional files that were specified via `--file-lines`.
+            files.extend(options.file_lines.files().cloned().map(PathBuf::from));
+
             let mut config = Config::default();
             let mut path = None;
             // Load the config path file if provided
@@ -227,7 +242,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                     config = config_tmp;
                 }
 
-                options.apply_to(&mut config);
+                options.clone().apply_to(&mut config);
                 error_summary.add(run(Input::File(file), &config));
             }
             Ok(error_summary)
@@ -306,8 +321,8 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
             Some(dir)
         });
 
-    // if no file argument is supplied, read from stdin
-    if matches.free.is_empty() {
+    // if no file argument is supplied and `--file-lines` is not specified, read from stdin
+    if matches.free.is_empty() && !matches.opt_present("file-lines") {
 
         let mut buffer = String::new();
         try!(io::stdin().read_to_string(&mut buffer));
@@ -318,6 +333,7 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         });
     }
 
+    // We append files from `--file-lines` later in `execute()`.
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
     Ok(Operation::Format {
