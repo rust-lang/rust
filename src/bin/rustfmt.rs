@@ -134,7 +134,7 @@ fn update_config(config: &mut Config, matches: &Matches) -> Result<(), String> {
     }
 }
 
-fn execute() -> i32 {
+fn make_opts() -> Options {
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this message");
     opts.optflag("V", "version", "show version information");
@@ -153,6 +153,12 @@ fn execute() -> i32 {
                 "Recursively searches the given path for the rustfmt.toml config file. If not \
                  found reverts to the input file path",
                 "[Path for the configuration file]");
+
+    opts
+}
+
+fn execute() -> i32 {
+    let opts = make_opts();
 
     let matches = match opts.parse(env::args().skip(1)) {
         Ok(m) => m,
