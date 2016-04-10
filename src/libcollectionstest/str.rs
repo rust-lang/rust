@@ -346,6 +346,22 @@ fn test_slice_fail() {
     &"中华Việt Nam"[0..2];
 }
 
+
+#[test]
+fn test_is_char_boundary() {
+    let s = "ศไทย中华Việt Nam β-release 🐱123";
+    assert!(s.is_char_boundary(0));
+    assert!(s.is_char_boundary(s.len()));
+    assert!(!s.is_char_boundary(s.len() + 1));
+    for (i, ch) in s.char_indices() {
+        // ensure character locations are boundaries and continuation bytes are not
+        assert!(s.is_char_boundary(i), "{} is a char boundary in {:?}", i, s);
+        for j in 1..ch.len_utf8() {
+            assert!(!s.is_char_boundary(i + j),
+                    "{} should not be a char boundary in {:?}", i + j, s);
+        }
+    }
+}
 const LOREM_PARAGRAPH: &'static str = "\
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse quis lorem sit amet dolor \
 ultricies condimentum. Praesent iaculis purus elit, ac malesuada quam malesuada in. Duis sed orci \
