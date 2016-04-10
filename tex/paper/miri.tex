@@ -9,6 +9,12 @@
 \usepackage{relsize}
 \usepackage{xcolor}
 
+\setmonofont{Source Code Pro}[
+  BoldFont={* Medium},
+  BoldItalicFont={* Medium Italic},
+  Scale=MatchLowercase,
+]
+
 \newcommand{\rust}[1]{\mintinline{rust}{#1}}
 
 \begin{document}
@@ -19,6 +25,8 @@
   \smaller{Supervised by Christopher Dutchyn}}
 \date{April 8th, 2016}
 \maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Abstract}
 
@@ -37,58 +45,65 @@ intermediate representation, or MIR for short. As it turns out, writing an inter
 surprisingly effective approach for supporting a large proportion of Rust's features in compile-time
 execution.
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{Background}
 
-The Rust compiler (\texttt{rustc}) generates an instance of \rust{Mir} [\autoref{fig:mir}] for each
-function. Each \rust{Mir} structure represents a control-flow graph for a given function, and
-contains a list of ``basic blocks'' which in turn contain a list of statements followed by a single
-terminator. Each statement is of the form \rust{lvalue = rvalue}. An \rust{Lvalue} is used for
-referencing variables and calculating addresses such as when dereferencing pointers, accessing
-fields, or indexing arrays. An \rust{Rvalue} represents the core set of operations possible in MIR,
-including reading a value from an lvalue, performing math operations, creating new pointers,
-structs, and arrays, and so on. Finally, a terminator decides where control will flow next,
-optionally based on a boolean or some other condition.
+The Rust compiler generates an instance of \rust{Mir} for each function [\autoref{fig:mir}]. Each
+\rust{Mir} structure represents a control-flow graph for a given function, and contains a list of
+``basic blocks'' which in turn contain a list of statements followed by a single terminator. Each
+statement is of the form \rust{lvalue = rvalue}. An \rust{Lvalue} is used for referencing variables
+and calculating addresses such as when dereferencing pointers, accessing fields, or indexing arrays.
+An \rust{Rvalue} represents the core set of operations possible in MIR, including reading a value
+from an lvalue, performing math operations, creating new pointers, structs, and arrays, and so on.
+Finally, a terminator decides where control will flow next, optionally based on a boolean or some
+other condition.
 
 \begin{figure}[ht]
   \begin{minted}[autogobble]{rust}
     struct Mir {
-      basic_blocks: Vec<BasicBlockData>,
-      // ...
+        basic_blocks: Vec<BasicBlockData>,
+        // ...
     }
+
     struct BasicBlockData {
-      statements: Vec<Statement>,
-      terminator: Terminator,
-      // ...
+        statements: Vec<Statement>,
+        terminator: Terminator,
+        // ...
     }
+
     struct Statement {
-      lvalue: Lvalue,
-      rvalue: Rvalue
+        lvalue: Lvalue,
+        rvalue: Rvalue
     }
+
     enum Terminator {
-      Goto { target: BasicBlock },
-      If {
-        cond: Operand,
-        targets: [BasicBlock; 2]
-      },
-      // ...
+        Goto { target: BasicBlock },
+        If {
+            cond: Operand,
+            targets: [BasicBlock; 2]
+        },
+        // ...
     }
   \end{minted}
   \caption{MIR (simplified)}
   \label{fig:mir}
 \end{figure}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \section{First implementation}
 
 \subsection{Basic operation}
 
-Initially, I wrote a simple version of Miri that was quite capable despite its flaws. The structure
-of the interpreter essentially mirrors the structure of MIR itself. Miri starts executing a function
-by iterating the list of statements in the starting basic block, matching over the lvalue to produce
-a pointer and matching over the rvalue to decide what to write into that pointer. Evaluating the
-rvalue may generally involve reads (such as for the left and right hand side of a binary operation)
-or construction of new values. Upon reaching the terminator, a similar matching is done and a new
-basic block is selected. Finally, Miri returns to the top of the main interpreter loop and this
-entire process repeats, reading statements from the new block.
+Initially, I wrote a simple version of Miri\footnote{\url{https://github.com/tsion/miri}} that was
+quite capable despite its flaws. The structure of the interpreter closely mirrors the structure of
+MIR itself. It starts executing a function by iterating the statement list in the starting basic
+block, matching over the lvalue to produce a pointer and matching over the rvalue to decide what to
+write into that pointer. Evaluating the rvalue may involve reads (such as for the two sides of a
+binary operation) or construction of new values. Upon reaching the terminator, a similar matching is
+done and a new basic block is selected. Finally, Miri returns to the top of the main interpreter
+loop and this entire process repeats, reading statements from the new block.
 
 \subsection{Function calls}
 
@@ -102,9 +117,9 @@ resume the previous function. The entire execution of a program completes when t
 that Miri called returns, rendering the call stack empty.
 
 It should be noted that Miri does not itself recurse when a function is called; it merely pushes a
-virtual stack frame and jumps to the top of the interpreter loop. This property implies that Miri
-can interpret deeply recursive programs without crashing. Alternately, Miri could set a stack
-depth limit and return an error when a program exceeds it.
+virtual stack frame and jumps to the top of the interpreter loop. Consequently, Miri can interpret
+deeply recursive programs without crashing. It could also set a stack depth limit and report an
+error when a program exceeds it.
 
 \subsection{Flaws}
 
@@ -127,7 +142,7 @@ invalid.
 
 \section{Data layout}
 
-\blindtext
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Future work}
 
