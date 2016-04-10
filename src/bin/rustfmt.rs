@@ -65,19 +65,17 @@ fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
     loop {
         let config_file = current.join("rustfmt.toml");
         match fs::metadata(&config_file) {
-            Ok(md) => {
-                // Properly handle unlikely situation of a directory named `rustfmt.toml`.
-                if md.is_file() {
-                    return Ok(Some(config_file));
-                }
-            }
-            // If it's not found, we continue searching; otherwise something went wrong and we
-            // return the error.
+            // Only return if it's a file to handle the unlikely situation of a directory named
+            // `rustfmt.toml`.
+            Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
+            // Return the error if it's something other than `NotFound`; otherwise we didn't find
+            // the project file yet, and continue searching.
             Err(e) => {
                 if e.kind() != ErrorKind::NotFound {
                     return Err(FmtError::from(e));
                 }
             }
+            _ => {}
         }
 
         // If the current directory has no parent, we're done searching.
