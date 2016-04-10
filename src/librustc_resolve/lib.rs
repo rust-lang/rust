@@ -907,15 +907,6 @@ impl<'a> ModuleS<'a> {
             _ => false,
         }
     }
-
-    fn is_ancestor_of(&self, module: Module<'a>) -> bool {
-        if self.def_id() == module.def_id() { return true }
-        match module.parent_link {
-            ParentLink::BlockParentLink(parent, _) |
-            ParentLink::ModuleParentLink(parent, _) => self.is_ancestor_of(parent),
-            _ => false,
-        }
-    }
 }
 
 impl<'a> fmt::Debug for ModuleS<'a> {
@@ -1330,7 +1321,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
                     if let Some(module_def) = binding.module() {
-                        self.check_privacy(search_module, name, binding, span);
+                        self.check_privacy(name, binding, span);
                         search_module = module_def;
                     } else {
                         let msg = format!("Not a module `{}`", name);
@@ -1461,7 +1452,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     /// Returns the nearest normal module parent of the given module.
-    fn get_nearest_normal_module_parent(&mut self, module_: Module<'a>) -> Option<Module<'a>> {
+    fn get_nearest_normal_module_parent(&self, module_: Module<'a>) -> Option<Module<'a>> {
         let mut module_ = module_;
         loop {
             match module_.parent_link {
@@ -1480,7 +1471,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     /// Returns the nearest normal module parent of the given module, or the
     /// module itself if it is a normal module.
-    fn get_nearest_normal_module_parent_or_self(&mut self, module_: Module<'a>) -> Module<'a> {
+    fn get_nearest_normal_module_parent_or_self(&self, module_: Module<'a>) -> Module<'a> {
         if module_.is_normal() {
             return module_;
         }
@@ -2768,7 +2759,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let name = segments.last().unwrap().identifier.name;
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         result.success().map(|binding| {
-            self.check_privacy(containing_module, name, binding, span);
+            self.check_privacy(name, binding, span);
             binding.def().unwrap()
         }).ok_or(false)
     }
@@ -2818,7 +2809,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let name = segments.last().unwrap().identifier.name;
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         result.success().map(|binding| {
-            self.check_privacy(containing_module, name, binding, span);
+            self.check_privacy(name, binding, span);
             binding.def().unwrap()
         }).ok_or(false)
     }
@@ -3412,16 +3403,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         vis
     }
 
-    fn is_visible(&self, binding: &'a NameBinding<'a>, parent: Module<'a>) -> bool {
-        binding.is_public() || parent.is_ancestor_of(self.current_module)
+    fn is_accessible(&self, vis: ty::Visibility) -> bool {
+        let current_module = self.get_nearest_normal_module_parent_or_self(self.current_module);
+        let node_id = self.ast_map.as_local_node_id(current_module.def_id().unwrap()).unwrap();
+        vis.is_accessible_from(node_id, &self.ast_map)
     }
 
-    fn check_privacy(&mut self,
-                     module: Module<'a>,
-                     name: Name,
-                     binding: &'a NameBinding<'a>,
-                     span: Span) {
-        if !self.is_visible(binding, module) {
+    fn check_privacy(&mut self, name: Name, binding: &'a NameBinding<'a>, span: Span) {
+        if !self.is_accessible(binding.vis) {
             self.privacy_errors.push(PrivacyError(span, name, binding));
         }
     }

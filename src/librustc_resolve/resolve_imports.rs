@@ -521,7 +521,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
                 }
 
-                let privacy_error = if !self.resolver.is_visible(binding, target_module) {
+                let privacy_error = if !self.resolver.is_accessible(binding.vis) {
                     Some(Box::new(PrivacyError(directive.span, source, binding)))
                 } else {
                     None
@@ -567,10 +567,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             _ => (),
         }
 
+        let ast_map = self.resolver.ast_map;
         match (&value_result, &type_result) {
-            (&Success(name_binding), _) if !name_binding.is_import() &&
-                                           directive.vis == ty::Visibility::Public &&
-                                           !name_binding.is_public() => {
+            (&Success(binding), _) if !binding.vis.is_at_least(directive.vis, ast_map) &&
+                                      self.resolver.is_accessible(binding.vis) => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
                 let note_msg = format!("consider marking `{}` as `pub` in the imported module",
                                         source);
@@ -579,10 +579,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     .emit();
             }
 
-            (_, &Success(name_binding)) if !name_binding.is_import() &&
-                                           directive.vis == ty::Visibility::Public &&
-                                           !name_binding.is_public() => {
-                if name_binding.is_extern_crate() {
+            (_, &Success(binding)) if !binding.vis.is_at_least(directive.vis, ast_map) &&
+                                      self.resolver.is_accessible(binding.vis) => {
+                if binding.is_extern_crate() {
                     let msg = format!("extern crate `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring with `pub`",
                                        source);
