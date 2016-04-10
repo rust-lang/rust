@@ -892,7 +892,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::multi_s("L", "",   "Add a directory to the library search path",
                    "[KIND=]PATH"),
         opt::multi_s("l", "",   "Link the generated crate(s) to the specified native
-                             library NAME. The optional KIND can be one of,
+                             library NAME. The optional KIND can be one of
                              static, dylib, or framework. If omitted, dylib is
                              assumed.", "[KIND=]NAME"),
         opt::multi_s("", "crate-type", "Comma separated list of types of crates
