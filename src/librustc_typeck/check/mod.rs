@@ -2578,22 +2578,31 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 ty::TyFloat(ast::FloatTy::F32) => {
                     fcx.type_error_message(arg.span,
                                            |t| {
-                        format!("can't pass an {} to variadic \
-                                 function, cast to c_double", t)
+                        format!("can't pass an `{}` to variadic \
+                                 function, cast to `c_double`", t)
                     }, arg_ty, None);
                 }
                 ty::TyInt(ast::IntTy::I8) | ty::TyInt(ast::IntTy::I16) | ty::TyBool => {
                     fcx.type_error_message(arg.span, |t| {
-                        format!("can't pass {} to variadic \
-                                 function, cast to c_int",
+                        format!("can't pass `{}` to variadic \
+                                 function, cast to `c_int`",
                                        t)
                     }, arg_ty, None);
                 }
                 ty::TyUint(ast::UintTy::U8) | ty::TyUint(ast::UintTy::U16) => {
                     fcx.type_error_message(arg.span, |t| {
-                        format!("can't pass {} to variadic \
-                                 function, cast to c_uint",
+                        format!("can't pass `{}` to variadic \
+                                 function, cast to `c_uint`",
                                        t)
+                    }, arg_ty, None);
+                }
+                ty::TyFnDef(_, _, f) => {
+                    let ptr_ty = fcx.tcx().mk_ty(ty::TyFnPtr(f));
+                    let ptr_ty = fcx.infcx().resolve_type_vars_if_possible(&ptr_ty);
+                    fcx.type_error_message(arg.span,
+                                           |t| {
+                        format!("can't pass `{}` to variadic \
+                                 function, cast to `{}`", t, ptr_ty)
                     }, arg_ty, None);
                 }
                 _ => {}
