@@ -158,3 +158,6 @@ struct Issue677 {
     pub ptr: *const libc::c_void,
     pub trace: fn(obj: *const libc::c_void, tracer: *mut JSTracer),
 }
+
+struct Foo {}
+struct Foo();

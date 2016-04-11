@@ -786,7 +786,7 @@ fn format_struct_struct(context: &RewriteContext,
     };
     result.push_str(&generics_str);
 
-    // FIXME: properly format empty structs and their comments.
+    // FIXME(#919): properly format empty structs and their comments.
     if fields.is_empty() {
         result.push_str(&context.snippet(mk_sp(body_lo, span.hi)));
         return Some(result);
@@ -838,13 +838,17 @@ fn format_tuple_struct(context: &RewriteContext,
                        span: Span,
                        offset: Indent)
                        -> Option<String> {
-    assert!(!fields.is_empty(), "Tuple struct with no fields?");
     let mut result = String::with_capacity(1024);
 
     let header_str = format_header(item_name, ident, vis);
     result.push_str(&header_str);
 
-    let body_lo = fields[0].span.lo;
+    // FIXME(#919): don't lose comments on empty tuple structs.
+    let body_lo = if fields.is_empty() {
+        span.hi
+    } else {
+        fields[0].span.lo
+    };
 
     let where_clause_str = match generics {
         Some(ref generics) => {

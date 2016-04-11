@@ -1390,7 +1390,6 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                           offset: Indent)
                           -> Option<String> {
     debug!("rewrite_struct_lit: width {}, offset {:?}", width, offset);
-    assert!(!fields.is_empty() || base.is_some());
 
     enum StructLitField<'a> {
         Regular(&'a ast::Field),
@@ -1501,6 +1500,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         config: context.config,
     };
     let fields_str = try_opt!(write_list(&item_vec, &fmt));
+
+    if fields_str.is_empty() {
+        return Some(format!("{} {{}}", path_str));
+    }
 
     let format_on_newline = || {
         let inner_indent = context.block_indent

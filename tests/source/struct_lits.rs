@@ -123,3 +123,12 @@ fn issue698() {
         ffffffffffffffffffffffffffields: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
     }
 }
+
+fn issue835() {
+    MyStruct {};
+    MyStruct { /* a comment */ };
+    MyStruct {
+        // Another comment
+    };
+    MyStruct {}
+}

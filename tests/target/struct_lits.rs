@@ -159,3 +159,12 @@ fn issue698() {
             aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
     }
 }
+
+fn issue835() {
+    MyStruct {};
+    MyStruct { /* a comment */ };
+    MyStruct {
+        // Another comment
+    };
+    MyStruct {}
+}
