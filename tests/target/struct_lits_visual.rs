@@ -16,24 +16,10 @@ fn main() {
 
     Fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { a: f(), b: b() };
 
-    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Commen
-                                                                                        // t
-                                                                                        a: foo(), /* C
-                                                                                                   * o
-                                                                                                   * m
-                                                                                                   * m
-                                                                                                   * e
-                                                                                                   * n
-                                                                                                   * t */
-                                                                                        // Commen
-                                                                                        // t
-                                                                                        b: bar(), /* C
-                                                                                                   * o
-                                                                                                   * m
-                                                                                                   * m
-                                                                                                   * e
-                                                                                                   * n
-                                                                                                   * t */ };
+    Foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo { // Comment
+                                                                                        a: foo(), /* Comment */
+                                                                                        // Comment
+                                                                                        b: bar(), /* Comment */ };
 
     Foo { a: Bar, b: f() };
 

@@ -39,6 +39,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let indent = fmt.offset.to_string(fmt.config);
     let punctuation = ":,;.";
 
+    // `cur_start` is the position in `orig` of the start of the current line.
     let mut cur_start = 0;
     let mut result = String::with_capacity(stripped_str.len()
                                                        .checked_next_power_of_two()
@@ -50,30 +51,43 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     // succeed.
     let max_chars = try_opt!(fmt.width.checked_sub(fmt.opener.len() + ender_length + 1)) + 1;
 
-    loop {
+    // Snip a line at a time from `orig` until it is used up. Push the snippet
+    // onto result.
+    'outer: loop {
+        // `cur_end` will be where we break the line, as an offset into `orig`.
+        // Initialised to the maximum it could be (which may be beyond `orig`).
         let mut cur_end = cur_start + max_chars;
 
+        // We can fit the rest of the string on this line, so we're done.
         if cur_end >= graphemes.len() {
             let line = &graphemes[cur_start..].join("");
             result.push_str(line);
-            break;
+            break 'outer;
         }
 
-        // Push cur_end left until we reach whitespace.
+        // Push cur_end left until we reach whitespace (or the line is too small).
         while !graphemes[cur_end - 1].trim().is_empty() {
             cur_end -= 1;
-            if cur_end - cur_start < MIN_STRING {
+            if cur_end < cur_start + MIN_STRING {
+                // We couldn't find whitespace before the string got too small.
+                // So start again at the max length and look for punctuation.
                 cur_end = cur_start + max_chars;
-                // Look for punctuation to break on.
-                while (!punctuation.contains(graphemes[cur_end - 1])) && cur_end > 1 {
+                while !punctuation.contains(graphemes[cur_end - 1]) {
                     cur_end -= 1;
-                }
-                // We can't break at whitespace or punctuation, fall back to splitting
-                // anywhere that doesn't break an escape sequence.
-                if cur_end < cur_start + MIN_STRING {
-                    cur_end = cur_start + max_chars;
-                    while graphemes[cur_end - 1] == "\\" && cur_end > 1 {
-                        cur_end -= 1;
+
+                    // If we can't break at whitespace or punctuation, grow the string instead.
+                    if cur_end < cur_start + MIN_STRING {
+                        cur_end = cur_start + max_chars;
+                        while !(punctuation.contains(graphemes[cur_end - 1]) ||
+                                graphemes[cur_end - 1].trim().is_empty()) {
+                            if cur_end >= graphemes.len() {
+                                let line = &graphemes[cur_start..].join("");
+                                result.push_str(line);
+                                break 'outer;
+                            }
+                            cur_end += 1;
+                        }
+                        break;
                     }
                 }
                 break;
@@ -83,12 +97,13 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
         while cur_end < stripped_str.len() && graphemes[cur_end].trim().is_empty() {
             cur_end += 1;
         }
+
+        // Make the current line and add it on to result.
         let raw_line = graphemes[cur_start..cur_end].join("");
         let line = if fmt.trim_end {
             raw_line.trim()
         } else {
-            // FIXME: use as_str once it's stable.
-            &*raw_line
+            raw_line.as_str()
         };
 
         result.push_str(line);
@@ -97,10 +112,11 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
         result.push_str(&indent);
         result.push_str(fmt.line_start);
 
+        // The next line starts where the current line ends.
         cur_start = cur_end;
     }
-    result.push_str(fmt.closer);
 
+    result.push_str(fmt.closer);
     Some(result)
 }
 

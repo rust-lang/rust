@@ -51,8 +51,7 @@ enum X {
     CreateWebGLPaintTask(Size2D<i32>,
                          GLContextAttributes,
                          IpcSender<Result<(IpcSender<CanvasMsg>, usize), String>>), /* This is
-                                                                                     * a post c
-                                                                                     * omment */
+                                                                                     * a post comment */
 }
 
 pub enum EnumWithAttributes {
@@ -68,8 +67,7 @@ pub enum EnumWithAttributes {
     ItemStruct {
         x: usize,
         y: usize,
-    }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        * AAAAAAAAAAAAAAAAAAA */
+    }, /* Comment AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
     // And another
     ForcedPreflight, /* AAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
                       * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
@@ -79,8 +77,7 @@ pub enum SingleTuple {
     // Pre Comment AAAAAAAAAAAAAAAAAAAAAAA AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
     Match(usize, usize, String), /* Post-comment
-                                  * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-                                  * A */
+                                  * AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA */
 }
 
 pub enum SingleStruct {

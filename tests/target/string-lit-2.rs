@@ -10,6 +10,5 @@ fn main() -> &'static str {
     // Crappy formatting :-(
     let change_me = "sssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssssss
                      \
-                     jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj\
-                     j";
+                     jjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj";
 }

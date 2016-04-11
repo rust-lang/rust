@@ -102,7 +102,7 @@ pub fn rewrite_comment(orig: &str,
         }
 
         if config.wrap_comments && line.len() > max_chars {
-            let rewrite = try_opt!(rewrite_string(line, &fmt));
+            let rewrite = rewrite_string(line, &fmt).unwrap_or(line.to_owned());
             result.push_str(&rewrite);
         } else {
             if line.len() == 0 {
@@ -672,27 +672,36 @@ mod test {
     fn format_comments() {
         let mut config: ::config::Config = Default::default();
         config.wrap_comments = true;
-        assert_eq!("/* test */", rewrite_comment(" //test", true, 100, Indent::new(0, 100),
-                                                 &config).unwrap());
-        assert_eq!("// comment\n// on a", rewrite_comment("// comment on a", false, 10,
-                                                          Indent::empty(), &config).unwrap());
 
-        assert_eq!("//  A multi line comment\n            // between args.",
-                   rewrite_comment("//  A multi line comment\n             // between args.",
-                                   false,
-                                   60,
-                                   Indent::new(0, 12),
-                                   &config).unwrap());
+        let comment = rewrite_comment(" //test", true, 100, Indent::new(0, 100), &config).unwrap();
+        assert_eq!("/* test */", comment);
+
+        let comment = rewrite_comment("// comment on a",
+                                      false,
+                                      10,
+                                      Indent::empty(),
+                                      &config).unwrap();
+        assert_eq!("// comment\n// on a", comment);
+
+        let comment = rewrite_comment("//  A multi line comment\n             // between args.",
+                                      false,
+                                      60,
+                                      Indent::new(0, 12),
+                                      &config).unwrap();
+        assert_eq!("//  A multi line comment\n            // between args.", comment);
 
         let input = "// comment";
         let expected =
-            "/* com\n                                                                      \
-             * men\n                                                                      \
-             * t */";
-        assert_eq!(expected, rewrite_comment(input, true, 9, Indent::new(0, 69), &config).unwrap());
+            "/* comment */";
+        let comment = rewrite_comment(input, true, 9, Indent::new(0, 69), &config).unwrap();
+        assert_eq!(expected, comment);
 
-        assert_eq!("/* trimmed */", rewrite_comment("/*   trimmed    */", true, 100,
-                                                    Indent::new(0, 100), &config).unwrap());
+        let comment = rewrite_comment("/*   trimmed    */",
+                                      true,
+                                      100,
+                                      Indent::new(0, 100),
+                                      &config).unwrap();
+        assert_eq!("/* trimmed */", comment);
     }
 
     // This is probably intended to be a non-test fn, but it is not used. I'm
