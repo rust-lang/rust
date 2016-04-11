@@ -981,7 +981,7 @@ impl Rewrite for ast::Arm {
                                     .collect::<Option<Vec<_>>>());
 
         let all_simple = pat_strs.iter().all(|p| pat_is_simple(&p));
-        let items: Vec<_> = pat_strs.into_iter().map(|s| ListItem::from_str(s)).collect();
+        let items: Vec<_> = pat_strs.into_iter().map(ListItem::from_str).collect();
         let fmt = ListFormatting {
             tactic: if all_simple {
                 DefinitiveListTactic::Mixed

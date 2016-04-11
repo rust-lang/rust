@@ -220,6 +220,7 @@ fn rewrite_segment(expr_context: bool,
             };
             try_opt!(format_function_type(data.inputs.iter().map(|x| &**x),
                                           &output,
+                                          false,
                                           data.span,
                                           context,
                                           width,
@@ -233,6 +234,7 @@ fn rewrite_segment(expr_context: bool,
 
 fn format_function_type<'a, I>(inputs: I,
                                output: &FunctionRetTy,
+                               variadic: bool,
                                span: Span,
                                context: &RewriteContext,
                                width: usize,
@@ -242,17 +244,54 @@ fn format_function_type<'a, I>(inputs: I,
           <I as Iterator>::Item: Deref,
           <I::Item as Deref>::Target: Rewrite + Spanned + 'a
 {
+    // Code for handling variadics is somewhat duplicated for items, but they
+    // are different enough to need some serious refactoring to share code.
+    enum ArgumentKind<T>
+        where T: Deref,
+              <T as Deref>::Target: Rewrite + Spanned
+    {
+        Regular(Box<T>),
+        Variadic(BytePos),
+    }
+
+    let variadic_arg = if variadic {
+        let variadic_start = context.codemap.span_before(span, "...");
+        Some(ArgumentKind::Variadic(variadic_start))
+    } else {
+        None
+    };
+
     // 2 for ()
     let budget = try_opt!(width.checked_sub(2));
     // 1 for (
     let offset = offset + 1;
     let list_lo = context.codemap.span_after(span, "(");
     let items = itemize_list(context.codemap,
-                             inputs,
+                             // FIXME Would be nice to avoid this allocation,
+                             // but I couldn't get the types to work out.
+                             inputs.map(|i| ArgumentKind::Regular(Box::new(i)))
+                                   .chain(variadic_arg),
                              ")",
-                             |ty| ty.span().lo,
-                             |ty| ty.span().hi,
-                             |ty| ty.rewrite(context, budget, offset),
+                             |arg| {
+                                 match *arg {
+                                     ArgumentKind::Regular(ref ty) => ty.span().lo,
+                                     ArgumentKind::Variadic(start) => start,
+                                 }
+                             },
+                             |arg| {
+                                 match *arg {
+                                     ArgumentKind::Regular(ref ty) => ty.span().hi,
+                                     ArgumentKind::Variadic(start) => start + BytePos(3),
+                                 }
+                             },
+                             |arg| {
+                                 match *arg {
+                                     ArgumentKind::Regular(ref ty) => {
+                                         ty.rewrite(context, budget, offset)
+                                     }
+                                     ArgumentKind::Variadic(_) => Some("...".to_owned()),
+                                 }
+                             },
                              list_lo,
                              span.hi);
 
@@ -579,6 +618,7 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
 
     let rewrite = try_opt!(format_function_type(bare_fn.decl.inputs.iter(),
                                                 &bare_fn.decl.output,
+                                                bare_fn.decl.variadic,
                                                 span,
                                                 context,
                                                 budget,
