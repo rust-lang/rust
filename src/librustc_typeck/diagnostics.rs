@@ -3645,26 +3645,29 @@ fn main() {
 "##,
 
 E0520: r##"
-A non-default implementation was already made on this type
-implementation so it cannot be specialized afterward. Erroneous
-code example:
+A non-default implementation was already made on this type so it cannot be
+specialized further. Erroneous code example:
 
 ```compile_fail
 #![feature(specialization)]
 
-trait SpaceLama {
+trait SpaceLlama {
     fn fly(&self);
 }
 
-impl<T> SpaceLama for T {
+// applies to all T
+impl<T> SpaceLlama for T {
     default fn fly(&self) {}
 }
 
-impl<T: Clone> SpaceLama for T {
+// non-default impl
+// applies to all `Clone` T and overrides the previous impl
+impl<T: Clone> SpaceLlama for T {
     fn fly(&self) {}
 }
 
-impl SpaceLama for i32 {
+// since `i32` is clone, this conflicts with the previous implementation
+impl SpaceLlama for i32 {
     default fn fly(&self) {}
     // error: item `fly` is provided by an `impl` that specializes
     //        another, but the item in the parent `impl` is not marked
@@ -3672,28 +3675,33 @@ impl SpaceLama for i32 {
 }
 ```
 
-To fix this error, you need to specialize the implementation on the
-parent(s) implementation first. Example:
+Specialization only allows you to override `default` functions in
+implementations.
 
-```compile_fail
+To fix this error, you need to mark all the parent implementations as default.
+Example:
+
+```
 #![feature(specialization)]
 
-trait SpaceLama {
+trait SpaceLlama {
     fn fly(&self);
 }
 
-impl<T> SpaceLama for T {
+// applies to all T
+impl<T> SpaceLlama for T {
     default fn fly(&self) {} // This is a parent implementation.
 }
 
-impl<T: Clone> SpaceLama for T {
-    default fn fly(&self) {} // This is a parent implementation but not
-                             // a default one so you need to add default
-                             // keyword.
+// applies to all `Clone` T; overrides the previous impl
+impl<T: Clone> SpaceLlama for T {
+    default fn fly(&self) {} // This is a parent implementation but was
+                             // previously not a default one, causing the error
 }
 
-impl SpaceLama for i32 {
-    default fn fly(&self) {} // And now that's ok!
+// applies to i32, overrides the previous two impls
+impl SpaceLlama for i32 {
+    fn fly(&self) {} // And now that's ok!
 }
 ```
 "##,
