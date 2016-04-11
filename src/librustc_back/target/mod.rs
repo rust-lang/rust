@@ -436,6 +436,7 @@ impl Target {
         key!(target_family, optional);
         key!(is_like_osx, bool);
         key!(is_like_windows, bool);
+        key!(is_like_msvc, bool);
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);

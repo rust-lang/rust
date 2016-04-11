@@ -1940,7 +1940,8 @@ impl StrExt for str {
         if index == 0 || index == self.len() { return true; }
         match self.as_bytes().get(index) {
             None => false,
-            Some(&b) => b < 128 || b >= 192,
+            // This is bit magic equivalent to: b < 128 || b >= 192
+            Some(&b) => (b as i8) >= -0x40,
         }
     }
 
