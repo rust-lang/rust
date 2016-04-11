@@ -466,7 +466,7 @@ enum State {
     Done = 3,
 }
 
-/// A Windows path prefix, e.g. `C:` or `\server\share`.
+/// A Windows path prefix, e.g. `C:` or `\\server\share`.
 ///
 /// Does not occur on Unix.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -528,7 +528,7 @@ impl<'a> Hash for PrefixComponent<'a> {
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
-    /// A Windows path prefix, e.g. `C:` or `\server\share`.
+    /// A Windows path prefix, e.g. `C:` or `\\server\share`.
     ///
     /// Does not occur on Unix.
     #[stable(feature = "rust1", since = "1.0.0")]
