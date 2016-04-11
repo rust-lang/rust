@@ -29,6 +29,7 @@ use rustc::ty::cast::{CastKind};
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, compare_lit_exprs};
 use rustc_const_eval::{eval_const_expr_partial, lookup_const_by_id};
 use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal};
+use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -114,6 +115,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
             match err.kind {
                 UnimplementedConstVal(_) => {},
                 IndexOpFeatureGated => {},
+                ErroneousReferencedConstant(_) => {},
                 _ => self.tcx.sess.add_lint(CONST_ERR, expr.id, expr.span,
                                          format!("constant evaluation error: {}. This will \
                                                  become a HARD ERROR in the future",

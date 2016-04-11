@@ -68,7 +68,8 @@ use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
 use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
+use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
 use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPerParamSpace};
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
@@ -1061,6 +1062,9 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
                 print_err(tcx, e.span, ty_hint, cv);
                 None
             },
+            // enum variant evaluation happens before the global constant check
+            // so we need to report the real error
+            Err(ConstEvalErr { kind: ErroneousReferencedConstant(box err), ..}) |
             Err(err) => {
                 let mut diag = struct_span_err!(tcx.sess, err.span, E0080,
                                                 "constant evaluation error: {}",

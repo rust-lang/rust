@@ -364,7 +364,7 @@ pub struct ConstEvalErr {
     pub kind: ErrKind,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub enum ErrKind {
     CannotCast,
     CannotCastTo(&'static str),
@@ -414,6 +414,7 @@ pub enum ErrKind {
     /// Expected, Got
     TypeMismatch(String, ConstInt),
     BadType(ConstVal),
+    ErroneousReferencedConstant(Box<ConstEvalErr>),
 }
 
 impl From<ConstMathErr> for ErrKind {
@@ -480,6 +481,7 @@ impl ConstEvalErr {
                         expected, got.description()).into_cow()
             },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
+            ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
         }
     }
 }
@@ -696,6 +698,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
 
         let val = match eval_const_expr_partial(tcx, &base, base_hint, fn_args) {
             Ok(val) => val,
+            Err(ConstEvalErr { kind: ErroneousReferencedConstant(
+                box ConstEvalErr { kind: TypeMismatch(_, val), .. }), .. }) |
             Err(ConstEvalErr { kind: TypeMismatch(_, val), .. }) => {
                 // Something like `5i8 as usize` doesn't need a type hint for the base
                 // instead take the type hint from the inner value
@@ -737,19 +741,31 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
                   } else {
                       None
                   };
-                  if let Some((e, ty)) = lookup_const_by_id(tcx, def_id, substs) {
+                  if let Some((expr, ty)) = lookup_const_by_id(tcx, def_id, substs) {
                       let item_hint = match ty {
                           Some(ty) => ty_hint.checked_or(ty),
                           None => ty_hint,
                       };
-                      eval_const_expr_partial(tcx, e, item_hint, None)?
+                      match eval_const_expr_partial(tcx, expr, item_hint, None) {
+                          Ok(val) => val,
+                          Err(err) => {
+                              debug!("bad reference: {:?}, {:?}", err.description(), err.span);
+                              signal!(e, ErroneousReferencedConstant(box err))
+                          },
+                      }
                   } else {
                       signal!(e, NonConstPath);
                   }
               },
               Def::Variant(enum_def, variant_def) => {
                   if let Some(const_expr) = lookup_variant_by_id(tcx, enum_def, variant_def) {
-                      eval_const_expr_partial(tcx, const_expr, ty_hint, None)?
+                      match eval_const_expr_partial(tcx, const_expr, ty_hint, None) {
+                          Ok(val) => val,
+                          Err(err) => {
+                              debug!("bad reference: {:?}, {:?}", err.description(), err.span);
+                              signal!(e, ErroneousReferencedConstant(box err))
+                          },
+                      }
                   } else {
                       signal!(e, UnimplementedConstVal("enum variants"));
                   }
