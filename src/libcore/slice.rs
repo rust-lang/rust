@@ -871,6 +871,20 @@ macro_rules! make_mut_slice {
 }
 
 /// Immutable slice iterator
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// // First, we declare a type which has `iter` method to get the `Iter` struct (&[usize here]):
+/// let slice = &[1, 2, 3];
+///
+/// // Then, we iterate over it:
+/// for element in slice.iter() {
+///     println!("{}", element);
+/// }
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: *const T,
@@ -897,6 +911,26 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // First, we declare a type which has the `iter` method to get the `Iter`
+    /// // struct (&[usize here]):
+    /// let slice = &[1, 2, 3];
+    ///
+    /// // Then, we get the iterator:
+    /// let mut iter = slice.iter();
+    /// // So if we print what `as_slice` method returns here, we have "[1, 2, 3]":
+    /// println!("{:?}", iter.as_slice());
+    ///
+    /// // Next, we move to the second element of the slice:
+    /// iter.next();
+    /// // Now `as_slice` returns "[2, 3]":
+    /// println!("{:?}", iter.as_slice());
+    /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(self.ptr, self.end)
@@ -928,6 +962,24 @@ impl<'a, T> Clone for Iter<'a, T> {
 }
 
 /// Mutable slice iterator.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// // First, we declare a type which has `iter_mut` method to get the `IterMut`
+/// // struct (&[usize here]):
+/// let mut slice = &mut [1, 2, 3];
+///
+/// // Then, we iterate over it and increment each element value:
+/// for element in slice.iter_mut() {
+///     *element += 1;
+/// }
+///
+/// // We now have "[2, 3, 4]":
+/// println!("{:?}", slice);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
@@ -956,6 +1008,35 @@ impl<'a, T> IterMut<'a, T> {
     /// to consume the iterator. Consider using the `Slice` and
     /// `SliceMut` implementations for obtaining slices with more
     /// restricted lifetimes that do not consume the iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// // First, we declare a type which has `iter_mut` method to get the `IterMut`
+    /// // struct (&[usize here]):
+    /// let mut slice = &mut [1, 2, 3];
+    ///
+    /// {
+    ///     // Then, we get the iterator:
+    ///     let mut iter = slice.iter_mut();
+    ///     // We move to next element:
+    ///     iter.next();
+    ///     // So if we print what `into_slice` method returns here, we have "[2, 3]":
+    ///     println!("{:?}", iter.into_slice());
+    /// }
+    ///
+    /// // Now let's modify a value of the slice:
+    /// {
+    ///     // First we get back the iterator:
+    ///     let mut iter = slice.iter_mut();
+    ///     // We change the value of the first element of the slice returned by the `next` method:
+    ///     *iter.next().unwrap() += 1;
+    /// }
+    /// // Now slice is "[2, 2, 3]":
+    /// println!("{:?}", slice);
+    /// ```
     #[stable(feature = "iter_to_slice", since = "1.4.0")]
     pub fn into_slice(self) -> &'a mut [T] {
         make_mut_slice!(self.ptr, self.end)
