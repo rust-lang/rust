@@ -30,5 +30,14 @@ fn f() {
     mod core {} // Check that private crates are not glob imported
 }
 
+mod bar {
+    pub extern crate core;
+}
+
+mod baz {
+    pub use bar::*;
+    use self::core::cell; // Check that public extern crates are glob imported
+}
+
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful
