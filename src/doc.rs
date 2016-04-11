@@ -84,7 +84,32 @@ fn collect_doc(attrs: &[ast::Attribute]) -> (Cow<str>, Option<Span>) {
 pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [ast::Attribute], default_span: Span) {
     let (doc, span) = collect_doc(attrs);
     let span = span.unwrap_or(default_span);
+    check_doc(cx, valid_idents, &doc, span);
+}
 
+macro_rules! jump_to {
+    // Get the next character’s first byte UTF-8 friendlyly.
+    (@next_char, $chars: expr, $len: expr) => {{
+        if let Some(&(pos, _)) = $chars.peek() {
+            pos
+        } else {
+            $len
+        }
+    }};
+
+    // Jump to the next `$c`. If no such character is found, give up.
+    ($chars: expr, $c: expr, $len: expr) => {{
+        if $chars.find(|&(_, c)| c == $c).is_some() {
+            jump_to!(@next_char, $chars, $len)
+        }
+        else {
+            return;
+        }
+    }};
+}
+
+#[allow(while_let_loop)] // #362
+pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Span) {
     // In markdown, `_` can be used to emphasize something, or, is a raw `_` depending on context.
     // There really is no markdown specification that would disambiguate this properly. This is
     // what GitHub and Rustdoc do:
@@ -96,19 +121,68 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
     // (_baz_)             → (<em>baz</em>)
     // foo _ bar _ baz     → foo _ bar _ baz
 
-    let mut in_ticks = false;
-    for word in doc.split_whitespace() {
-        let ticks = word.bytes().filter(|&b| b == b'`').count();
-
-        if ticks == 2 { // likely to be “`foo`”
-            continue;
-        } else if ticks % 2 == 1 {
-            in_ticks = !in_ticks;
-            continue; // let’s assume no one will ever write something like “`foo`_bar”
+    /// Character that can appear in a word
+    fn is_word_char(c: char) -> bool {
+        match c {
+            t if t.is_alphanumeric() => true,
+            ':' | '_' => true,
+            _ => false,
         }
+    }
 
-        if !in_ticks {
-            check_word(cx, valid_idents, word, span);
+    let len = doc.len();
+    let mut chars = doc.char_indices().peekable();
+    let mut current_word_begin = 0;
+    loop {
+        match chars.next() {
+            Some((_, c)) => {
+                match c {
+                    c if c.is_whitespace() => {
+                        current_word_begin = jump_to!(@next_char, chars, len);
+                    }
+                    '`' => {
+                        current_word_begin = jump_to!(chars, '`', len);
+                    },
+                    '[' => {
+                        let end = jump_to!(chars, ']', len);
+                        let link_text = &doc[current_word_begin+1..end];
+
+                        match chars.peek() {
+                            Some(&(_, c)) => {
+                                // Trying to parse a link. Let’s ignore the link.
+
+                                // FIXME: how does markdown handles such link?
+                                // https://en.wikipedia.org/w/index.php?title=)
+                                match c {
+                                    '(' => { // inline link
+                                        current_word_begin = jump_to!(chars, ')', len);
+                                        check_doc(cx, valid_idents, link_text, span);
+                                    }
+                                    '[' => { // reference link
+                                        current_word_begin = jump_to!(chars, ']', len);
+                                        check_doc(cx, valid_idents, link_text, span);
+                                    }
+                                    ':' => { // reference link
+                                        current_word_begin = jump_to!(chars, '\n', len);
+                                    }
+                                    _ => continue,
+                                }
+                            }
+                            None => return,
+                        }
+                    }
+                    _ => {
+                        let end = match chars.find(|&(_, c)| !is_word_char(c)) {
+                            Some((end, _)) => end,
+                            None => len,
+                        };
+
+                        check_word(cx, valid_idents, &doc[current_word_begin..end], span);
+                        current_word_begin = jump_to!(@next_char, chars, len);
+                    }
+                }
+            }
+            None => break,
         }
     }
 }
@@ -134,11 +208,6 @@ fn check_word(cx: &EarlyContext, valid_idents: &[String], word: &str, span: Span
 
     fn has_underscore(s: &str) -> bool {
         s != "_" && !s.contains("\\_") && s.contains('_')
-    }
-
-    // Something with a `/` might be a link, don’t warn (see #823):
-    if word.contains('/') {
-        return;
     }
 
     // Trim punctuation as in `some comment (see foo::bar).`
