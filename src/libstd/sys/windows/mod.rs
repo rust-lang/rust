@@ -41,6 +41,7 @@ pub mod thread;
 pub mod thread_local;
 pub mod time;
 pub mod stdio;
+pub mod wtf8;
 
 #[cfg(not(test))]
 pub fn init() {

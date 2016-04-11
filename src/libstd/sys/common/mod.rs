@@ -43,7 +43,6 @@ pub mod thread_info;
 pub mod thread_local;
 pub mod unwind;
 pub mod util;
-pub mod wtf8;
 
 #[cfg(any(all(unix, not(any(target_os = "macos", target_os = "ios", target_os = "emscripten"))),
           all(windows, target_env = "gnu")))]
