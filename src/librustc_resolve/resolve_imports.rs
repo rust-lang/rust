@@ -184,7 +184,7 @@ impl<'a> NameResolution<'a> {
                 // the name, and (3) no public glob has defined the name, the resolution depends
                 // on whether more globs can define the name.
                 if !allow_private_imports && directive.vis != ty::Visibility::Public &&
-                   !self.binding.map(NameBinding::is_public).unwrap_or(false) {
+                   !self.binding.map(NameBinding::is_pseudo_public).unwrap_or(false) {
                     return None;
                 }
 
@@ -242,7 +242,8 @@ impl<'a> ::ModuleS<'a> {
         if let Some(result) = resolution.try_result(ns, allow_private_imports) {
             // If the resolution doesn't depend on glob definability, check privacy and return.
             return result.and_then(|binding| {
-                let allowed = allow_private_imports || !binding.is_import() || binding.is_public();
+                let allowed = allow_private_imports || !binding.is_import() ||
+                                                       binding.is_pseudo_public();
                 if allowed { Success(binding) } else { Failed(None) }
             });
         }
@@ -336,7 +337,7 @@ impl<'a> ::ModuleS<'a> {
     }
 
     fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
-        if !binding.defined_with(DefModifiers::IMPORTABLE) || !binding.is_public() { return }
+        if !binding.defined_with(DefModifiers::IMPORTABLE) || !binding.is_pseudo_public() { return }
         for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
             let _ = importer.try_define_child(name, ns, directive.import(binding, None));
         }
@@ -569,7 +570,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         let ast_map = self.resolver.ast_map;
         match (&value_result, &type_result) {
-            (&Success(binding), _) if !binding.vis.is_at_least(directive.vis, ast_map) &&
+            (&Success(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis, ast_map) &&
                                       self.resolver.is_accessible(binding.vis) => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
                 let note_msg = format!("consider marking `{}` as `pub` in the imported module",
@@ -579,7 +580,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     .emit();
             }
 
-            (_, &Success(binding)) if !binding.vis.is_at_least(directive.vis, ast_map) &&
+            (_, &Success(binding)) if !binding.pseudo_vis().is_at_least(directive.vis, ast_map) &&
                                       self.resolver.is_accessible(binding.vis) => {
                 if binding.is_extern_crate() {
                     let msg = format!("extern crate `{}` is private, and cannot be reexported \
@@ -661,7 +662,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
-            if binding.defined_with(DefModifiers::IMPORTABLE) && binding.is_public() {
+            if binding.defined_with(DefModifiers::IMPORTABLE) && binding.is_pseudo_public() {
                 let _ = module_.try_define_child(name, ns, directive.import(binding, None));
             }
         }
@@ -697,15 +698,16 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 None => continue,
             };
 
-            if binding.is_public() && (binding.is_import() || binding.is_extern_crate()) {
+            if binding.vis == ty::Visibility::Public &&
+               (binding.is_import() || binding.is_extern_crate()) {
                 if let Some(def) = binding.def() {
                     reexports.push(Export { name: name, def_id: def.def_id() });
                 }
             }
 
             if let NameBindingKind::Import { binding: orig_binding, id, .. } = binding.kind {
-                if ns == TypeNS && binding.is_public() &&
-                   orig_binding.defined_with(DefModifiers::PRIVATE_VARIANT) {
+                if ns == TypeNS && orig_binding.is_variant() &&
+                   !orig_binding.vis.is_at_least(binding.vis, &self.resolver.ast_map) {
                     let msg = format!("variant `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring its enum as `pub`",
                                       name);

@@ -291,14 +291,9 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 let module = self.new_module(parent_link, Some(def), false, vis);
                 self.define(parent, name, TypeNS, (module, sp));
 
-                let variant_modifiers = match vis {
-                    ty::Visibility::Public => DefModifiers::empty(),
-                    _ => DefModifiers::PRIVATE_VARIANT,
-                };
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
-                    self.build_reduced_graph_for_variant(variant, item_def_id,
-                                                         module, variant_modifiers);
+                    self.build_reduced_graph_for_variant(variant, item_def_id, module);
                 }
             }
 
@@ -358,8 +353,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        item_id: DefId,
-                                       parent: Module<'b>,
-                                       variant_modifiers: DefModifiers) {
+                                       parent: Module<'b>) {
         let name = variant.node.name;
         if variant.node.data.is_struct() {
             // Not adding fields for variants as they are not accessed with a self receiver
@@ -369,12 +363,11 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
 
         // Variants are always treated as importable to allow them to be glob used.
         // All variants are defined in both type and value namespaces as future-proofing.
-        let modifiers = DefModifiers::IMPORTABLE | variant_modifiers;
+        let modifiers = DefModifiers::IMPORTABLE;
         let def = Def::Variant(item_id, self.ast_map.local_def_id(variant.node.data.id()));
-        let vis = ty::Visibility::Public;
 
-        self.define(parent, name, ValueNS, (def, variant.span, modifiers, vis));
-        self.define(parent, name, TypeNS, (def, variant.span, modifiers, vis));
+        self.define(parent, name, ValueNS, (def, variant.span, modifiers, parent.vis));
+        self.define(parent, name, TypeNS, (def, variant.span, modifiers, parent.vis));
     }
 
     /// Constructs the reduced graph for one foreign item.

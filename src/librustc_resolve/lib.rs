@@ -919,9 +919,6 @@ bitflags! {
     #[derive(Debug)]
     flags DefModifiers: u8 {
         const IMPORTABLE = 1 << 1,
-        // Variants are considered `PUBLIC`, but some of them live in private enums.
-        // We need to track them to prohibit reexports like `pub use PrivEnum::Variant`.
-        const PRIVATE_VARIANT = 1 << 2,
         const GLOB_IMPORTED = 1 << 3,
     }
 }
@@ -932,8 +929,6 @@ pub struct NameBinding<'a> {
     modifiers: DefModifiers,
     kind: NameBindingKind<'a>,
     span: Option<Span>,
-    // Enum variants are always considered `PUBLIC`, this is needed for `use Enum::Variant`
-    // or `use Enum::*` to work on private enums.
     vis: ty::Visibility,
 }
 
@@ -982,8 +977,20 @@ impl<'a> NameBinding<'a> {
         self.modifiers.contains(modifiers)
     }
 
-    fn is_public(&self) -> bool {
-        self.vis == ty::Visibility::Public
+    fn is_pseudo_public(&self) -> bool {
+        self.pseudo_vis() == ty::Visibility::Public
+    }
+
+    // We sometimes need to treat variants as `pub` for backwards compatibility
+    fn pseudo_vis(&self) -> ty::Visibility {
+        if self.is_variant() { ty::Visibility::Public } else { self.vis }
+    }
+
+    fn is_variant(&self) -> bool {
+        match self.kind {
+            NameBindingKind::Def(Def::Variant(..)) => true,
+            _ => false,
+        }
     }
 
     fn is_extern_crate(&self) -> bool {
@@ -3301,7 +3308,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // only if both the module is public and the entity is
                         // declared as public (due to pruning, we don't explore
                         // outside crate private modules => no need to check this)
-                        if !in_module_is_extern || name_binding.is_public() {
+                        if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                             lookup_results.push(path);
                         }
                     }
@@ -3326,7 +3333,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         _ => bug!(),
                     };
 
-                    if !in_module_is_extern || name_binding.is_public() {
+                    if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
                         let is_extern = in_module_is_extern || name_binding.is_extern_crate();
                         worklist.push((module, path_segments, is_extern));
