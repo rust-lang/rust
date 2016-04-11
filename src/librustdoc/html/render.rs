@@ -1408,7 +1408,8 @@ impl Context {
         match it.inner {
             clean::StrippedItem(..) => true,
             clean::ModuleItem(ref m) => {
-                it.doc_value().is_none() && m.items.is_empty() && it.visibility != Some(hir::Public)
+                it.doc_value().is_none() && m.items.is_empty()
+                                         && it.visibility != Some(clean::Public)
             },
             _ => false,
         }
