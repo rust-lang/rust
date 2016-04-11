@@ -139,6 +139,14 @@ fn self_tests() {
             warnings);
 }
 
+#[test]
+fn stdin_formatting_smoke_test() {
+    let input = Input::Text("fn main () {}".to_owned());
+    let config = Config::default();
+    let (file_map, _report) = format_input(input, &config);
+    assert_eq!(file_map["stdin"].to_string(), "fn main() {}\n")
+}
+
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
 fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
