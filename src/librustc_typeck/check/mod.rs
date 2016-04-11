@@ -1076,64 +1076,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                         span: Span,
-                                         t_span: Span,
-                                         e_span: Span,
-                                         t_cast: Ty<'tcx>,
-                                         t_expr: Ty<'tcx>,
-                                         id: ast::NodeId) {
-    if t_cast.references_error() || t_expr.references_error() {
-        return;
-    }
-    let tstr = fcx.infcx().ty_to_string(t_cast);
-    let mut err = fcx.type_error_struct(span, |actual| {
-        format!("cast to unsized type: `{}` as `{}`", actual, tstr)
-    }, t_expr, None);
-    match t_expr.sty {
-        ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
-            let mtstr = match mt {
-                hir::MutMutable => "mut ",
-                hir::MutImmutable => ""
-            };
-            if t_cast.is_trait() {
-                match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
-                    Ok(s) => {
-                        err.span_suggestion(t_span,
-                                            "try casting to a reference instead:",
-                                            format!("&{}{}", mtstr, s));
-                    },
-                    Err(_) =>
-                        span_help!(err, t_span,
-                                   "did you mean `&{}{}`?", mtstr, tstr),
-                }
-            } else {
-                span_help!(err, span,
-                           "consider using an implicit coercion to `&{}{}` instead",
-                           mtstr, tstr);
-            }
-        }
-        ty::TyBox(..) => {
-            match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
-                Ok(s) => {
-                    err.span_suggestion(t_span,
-                                        "try casting to a `Box` instead:",
-                                        format!("Box<{}>", s));
-                },
-                Err(_) =>
-                    span_help!(err, t_span, "did you mean `Box<{}>`?", tstr),
-            }
-        }
-        _ => {
-            span_help!(err, e_span,
-                       "consider using a box or reference as appropriate");
-        }
-    }
-    err.emit();
-    fcx.write_error(id);
-}
-
-
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &TyCtxt<'tcx> { self.ccx.tcx }
 
@@ -1526,17 +1468,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         code: traits::ObligationCauseCode<'tcx>)
     {
         self.require_type_is_sized(self.expr_ty(expr), expr.span, code);
-    }
-
-    pub fn type_is_known_to_be_sized(&self,
-                                     ty: Ty<'tcx>,
-                                     span: Span)
-                                     -> bool
-    {
-        traits::type_known_to_meet_builtin_bound(self.infcx(),
-                                                 ty,
-                                                 ty::BoundSized,
-                                                 span)
     }
 
     pub fn register_builtin_bound(&self,
@@ -3595,8 +3526,6 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
             fcx.write_error(id);
-        } else if !fcx.type_is_known_to_be_sized(t_cast, expr.span) {
-            report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_cast, t_expr, id);
         } else {
             // Write a type for the whole expression, assuming everything is going
             // to work out Ok.
@@ -3604,8 +3533,14 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = fcx.inh.deferred_cast_checks.borrow_mut();
-            let cast_check = cast::CastCheck::new(e, t_expr, t_cast, expr.span);
-            deferred_cast_checks.push(cast_check);
+            match cast::CastCheck::new(fcx, e, t_expr, t_cast, t.span, expr.span) {
+                Ok(cast_check) => {
+                    deferred_cast_checks.push(cast_check);
+                }
+                Err(ErrorReported) => {
+                    fcx.write_error(id);
+                }
+            }
         }
       }
       hir::ExprType(ref e, ref t) => {
