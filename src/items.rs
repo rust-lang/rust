@@ -19,7 +19,7 @@ use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs};
 use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, StructLitStyle};
+use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, FnArgLayoutStyle};
 
 use syntax::{ast, abi, ptr, codemap};
 use syntax::codemap::{Span, BytePos, mk_sp};
@@ -651,8 +651,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let where_density = if (context.config.where_density == Density::Compressed &&
                                 (!result.contains('\n') ||
-                                 context.config.fn_args_layout == StructLitStyle::Block)) ||
-                               (context.config.fn_args_layout == StructLitStyle::Block &&
+                                 context.config.fn_args_layout == FnArgLayoutStyle::Block)) ||
+                               (context.config.fn_args_layout == FnArgLayoutStyle::Block &&
                                 result.is_empty()) ||
                                (context.config.where_density == Density::CompressedIfEmpty &&
                                 !has_body &&
@@ -1294,8 +1294,14 @@ fn rewrite_fn_base(context: &RewriteContext,
     };
 
     // Args.
-    let (mut one_line_budget, multi_line_budget, mut arg_indent) =
+    let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
         compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace);
+
+    if context.config.fn_args_layout == FnArgLayoutStyle::Block ||
+       context.config.fn_args_layout == FnArgLayoutStyle::BlockAlways {
+        arg_indent = indent.block_indent(context.config);
+        multi_line_budget = context.config.max_width - arg_indent.width();
+    }
 
     debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
            one_line_budget,
@@ -1313,10 +1319,6 @@ fn rewrite_fn_base(context: &RewriteContext,
             result.push_str("(\n");
             result.push_str(&arg_indent.to_string(context.config));
         }
-    } else if context.config.fn_args_layout == StructLitStyle::Block {
-        arg_indent = indent.block_indent(context.config);
-        result.push_str("(\n");
-        result.push_str(&arg_indent.to_string(context.config));
     } else {
         result.push('(');
     }
@@ -1340,23 +1342,42 @@ fn rewrite_fn_base(context: &RewriteContext,
                                         arg_indent,
                                         args_span,
                                         fd.variadic));
-    result.push_str(&arg_str);
-    if context.config.fn_args_layout == StructLitStyle::Block {
+
+    let multi_line_arg_str = arg_str.contains('\n');
+
+    let put_args_in_block = match context.config.fn_args_layout {
+        FnArgLayoutStyle::Block => multi_line_arg_str,
+        FnArgLayoutStyle::BlockAlways => true,
+        _ => false,
+    } && fd.inputs.len() > 0;
+
+    if put_args_in_block {
+        arg_indent = indent.block_indent(context.config);
+        result.push('\n');
+        result.push_str(&arg_indent.to_string(context.config));
+        result.push_str(&arg_str);
         result.push('\n');
         result.push_str(&indent.to_string(context.config));
+        result.push(')');
+    } else {
+        result.push_str(&arg_str);
+        result.push(')');
     }
-    result.push(')');
 
     // Return type.
     if !ret_str.is_empty() {
-        // If we've already gone multi-line, or the return type would push
-        // over the max width, then put the return type on a new line.
-        // Unless we are formatting args like a block, in which case there
-        // should always be room for the return type.
-        let ret_indent = if (result.contains("\n") || multi_line_ret_str ||
-                             result.len() + indent.width() + ret_str_len >
-                             context.config.max_width) &&
-                            context.config.fn_args_layout != StructLitStyle::Block {
+        let ret_should_indent = match context.config.fn_args_layout {
+            // If our args are block layout then we surely must have space.
+            FnArgLayoutStyle::Block if put_args_in_block => false,
+            FnArgLayoutStyle::BlockAlways => false,
+            _ => {
+                // If we've already gone multi-line, or the return type would push
+                // over the max width, then put the return type on a new line.
+                result.contains("\n") || multi_line_ret_str ||
+                result.len() + indent.width() + ret_str_len > context.config.max_width
+            }
+        };
+        let ret_indent = if ret_should_indent {
             let indent = match context.config.fn_return_indent {
                 ReturnIndent::WithWhereClause => indent + 4,
                 // Aligning with non-existent args looks silly.
@@ -1407,13 +1428,13 @@ fn rewrite_fn_base(context: &RewriteContext,
         }
     }
 
-    let where_density = if (context.config.where_density == Density::Compressed &&
-                            (!result.contains('\n') ||
-                             context.config.fn_args_layout == StructLitStyle::Block)) ||
-                           (context.config.fn_args_layout == StructLitStyle::Block &&
-                            ret_str.is_empty()) ||
-                           (context.config.where_density == Density::CompressedIfEmpty &&
-                            !has_body && !result.contains('\n')) {
+    let should_compress_where = match context.config.where_density {
+        Density::Compressed => !result.contains('\n') || put_args_in_block,
+        Density::CompressedIfEmpty => !has_body && !result.contains('\n'),
+        _ => false,
+    } || (put_args_in_block && ret_str.is_empty());
+
+    let where_density = if should_compress_where {
         Density::Compressed
     } else {
         Density::Tall
@@ -1554,8 +1575,10 @@ fn rewrite_args(context: &RewriteContext,
         _ => multi_line_budget,
     };
 
+    debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
+
     let end_with_newline = match context.config.fn_args_layout {
-        StructLitStyle::Block => true,
+        FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => true,
         _ => false,
     };
 

@@ -56,6 +56,17 @@ configuration_option_enum! { StructLitStyle:
     // FIXME Maybe we should also have an option to align types.
 }
 
+// How to style fn args.
+configuration_option_enum! { FnArgLayoutStyle:
+    // First line on the same line as the opening brace, all lines aligned with
+    // the first line.
+    Visual,
+    // Put args on one line if they fit, or start a new line with block indent.
+    Block,
+    // First line is on a new line and all lines align with block indent.
+    BlockAlways,
+}
+
 configuration_option_enum! { BlockIndentStyle:
     // Same level as parent.
     Inherit,
@@ -309,7 +320,7 @@ create_config! {
         "Location of return type in function declaration";
     fn_args_paren_newline: bool, true, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, "Argument density in functions";
-    fn_args_layout: StructLitStyle, StructLitStyle::Visual, "Layout of function arguments";
+    fn_args_layout: FnArgLayoutStyle, FnArgLayoutStyle::Visual, "Layout of function arguments";
     fn_arg_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on function arguments";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";

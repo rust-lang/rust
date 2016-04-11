@@ -1,4 +1,4 @@
-// rustfmt-fn_args_layout: BlockAlways
+// rustfmt-fn_args_layout: Block
 // rustfmt-where_indent: Inherit
 // rustfmt-fn_brace_style: PreferSameLine
 // Test different indents.
@@ -36,7 +36,15 @@ fn bar(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb, c: Cccccccccccccccccc, d: Ddddddddd
 }
 
 trait Test {
-    fn foo(a: u8) {}
+    fn foo(
+        a: u8) {
 
-    fn bar(a: u8) -> String {}
+    }
+
+    fn bar(a: u8)
+    -> String {
+
+    }
+
+    fn bar(a: u8) -> String where Foo: foooo, Bar: barrr {}
 }
