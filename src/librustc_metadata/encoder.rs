@@ -17,6 +17,7 @@ use astencode::encode_inlined_item;
 use common::*;
 use cstore;
 use decoder;
+use def_key;
 use tyencode;
 use index::{self, IndexData};
 
@@ -35,7 +36,7 @@ use rustc::mir::mir_map::MirMap;
 use rustc::session::config;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 
-use serialize::Encodable;
+use rustc_serialize::Encodable;
 use std::cell::RefCell;
 use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
@@ -53,6 +54,7 @@ use rbml::writer::Encoder;
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit::Visitor;
 use rustc::hir::intravisit;
+use rustc::hir::map::DefKey;
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
@@ -101,6 +103,13 @@ fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
     rbml_w.wr_tagged_u64(tag_def_id, def_to_u64(id));
 }
 
+fn encode_def_key(rbml_w: &mut Encoder, key: DefKey) {
+    let simple_key = def_key::simplify_def_key(key);
+    rbml_w.start_tag(tag_def_key);
+    simple_key.encode(rbml_w);
+    rbml_w.end_tag();
+}
+
 /// For every DefId that we create a metadata item for, we include a
 /// serialized copy of its DefKey, which allows us to recreate a path.
 fn encode_def_id_and_key(ecx: &EncodeContext,
@@ -108,17 +117,8 @@ fn encode_def_id_and_key(ecx: &EncodeContext,
                          def_id: DefId)
 {
     encode_def_id(rbml_w, def_id);
-    encode_def_key(ecx, rbml_w, def_id);
-}
-
-fn encode_def_key(ecx: &EncodeContext,
-                  rbml_w: &mut Encoder,
-                  def_id: DefId)
-{
-    rbml_w.start_tag(tag_def_key);
     let def_key = ecx.tcx.map.def_key(def_id);
-    def_key.encode(rbml_w);
-    rbml_w.end_tag();
+    encode_def_key(rbml_w, def_key);
 }
 
 fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
