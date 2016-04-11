@@ -552,7 +552,8 @@ impl Rewrite for ast::Ty {
             ast::TyKind::BareFn(ref bare_fn) => {
                 rewrite_bare_fn(bare_fn, self.span, context, width, offset)
             }
-            ast::TyKind::Mac(..) | ast::TyKind::Typeof(..) => unreachable!(),
+            ast::TyKind::Mac(..) |
+            ast::TyKind::Typeof(..) => unreachable!(),
         }
     }
 }

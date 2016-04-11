@@ -274,3 +274,23 @@ fn issue494() {
         }
     }
 }
+
+fn issue386() {
+    match foo {
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe =>
+                    true,
+        BiAnd | BiOr | BiAdd | BiSub | BiMul | BiDiv | BiRem |
+        BiBitXor | BiBitAnd | BiBitOr | BiShl | BiShr =>
+            false,
+    }
+}
+
+fn guards() {
+    match foo {
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo && barrrrrrrrrrrr => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo && barrrrrrrrrrrr => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            if fooooooooooooooooooooo &&
+               (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {}
+    }
+}

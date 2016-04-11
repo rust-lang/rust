@@ -98,7 +98,8 @@ impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {
             Density::Compressed => ListTactic::Mixed,
-            Density::Tall | Density::CompressedIfEmpty => ListTactic::HorizontalVertical,
+            Density::Tall |
+            Density::CompressedIfEmpty => ListTactic::HorizontalVertical,
             Density::Vertical => ListTactic::Vertical,
         }
     }

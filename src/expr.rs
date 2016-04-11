@@ -21,7 +21,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
             DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
 use string::{StringFormat, rewrite_string};
 use utils::{CodeMapSpanUtils, extra_offset, last_line_width, wrap_str, binary_search,
-            first_line_width, semicolon_for_stmt};
+            first_line_width, semicolon_for_stmt, trimmed_last_line_width};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -497,7 +497,8 @@ impl Rewrite for ast::Stmt {
                     None
                 }
             }
-            ast::StmtKind::Expr(ref ex, _) | ast::StmtKind::Semi(ref ex, _) => {
+            ast::StmtKind::Expr(ref ex, _) |
+            ast::StmtKind::Semi(ref ex, _) => {
                 let suffix = if semicolon_for_stmt(self) {
                     ";"
                 } else {
@@ -953,7 +954,6 @@ fn arm_comma(config: &Config, arm: &ast::Arm, body: &ast::Expr) -> &'static str 
 impl Rewrite for ast::Arm {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
         let &ast::Arm { ref attrs, ref pats, ref guard, ref body } = self;
-        let indent_str = offset.to_string(context.config);
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
         // treatment of attributes.
@@ -980,38 +980,34 @@ impl Rewrite for ast::Arm {
                                     .map(|p| p.rewrite(context, pat_budget, offset))
                                     .collect::<Option<Vec<_>>>());
 
-        let mut total_width = pat_strs.iter().fold(0, |a, p| a + p.len());
-        // Add ` | `.len().
-        total_width += (pat_strs.len() - 1) * 3;
+        let all_simple = pat_strs.iter().all(|p| pat_is_simple(&p));
+        let items: Vec<_> = pat_strs.into_iter().map(|s| ListItem::from_str(s)).collect();
+        let fmt = ListFormatting {
+            tactic: if all_simple {
+                DefinitiveListTactic::Mixed
+            } else {
+                DefinitiveListTactic::Vertical
+            },
+            separator: " |",
+            trailing_separator: SeparatorTactic::Never,
+            indent: offset,
+            width: pat_budget,
+            ends_with_newline: false,
+            config: context.config,
+        };
+        let pats_str = try_opt!(write_list(items, &fmt));
 
-        let mut vertical = total_width > pat_budget || pat_strs.iter().any(|p| p.contains('\n'));
-        if !vertical && context.config.take_source_hints {
-            // If the patterns were previously stacked, keep them stacked.
-            let pat_span = mk_sp(pats[0].span.lo, pats[pats.len() - 1].span.hi);
-            let pat_str = context.snippet(pat_span);
-            vertical = pat_str.contains('\n');
-        }
-
-        let pats_width = if vertical {
-            pat_strs.last().unwrap().len()
+        let budget = if pats_str.contains('\n') {
+            context.config.max_width - offset.width()
         } else {
-            total_width
+            width
         };
 
-        let mut pats_str = String::new();
-        for p in pat_strs {
-            if !pats_str.is_empty() {
-                if vertical {
-                    pats_str.push_str(" |\n");
-                    pats_str.push_str(&indent_str);
-                } else {
-                    pats_str.push_str(" | ");
-                }
-            }
-            pats_str.push_str(&p);
-        }
-
-        let guard_str = try_opt!(rewrite_guard(context, guard, width, offset, pats_width));
+        let guard_str = try_opt!(rewrite_guard(context,
+                                               guard,
+                                               budget,
+                                               offset,
+                                               trimmed_last_line_width(&pats_str)));
 
         let pats_str = format!("{}{}", pats_str, guard_str);
         // Where the next text can start.
@@ -1023,7 +1019,7 @@ impl Rewrite for ast::Arm {
         let body = match **body {
             ast::Expr { node: ast::ExprKind::Block(ref block), .. }
                 if !is_unsafe_block(block) && is_simple_block(block, context.codemap) &&
-                context.config.wrap_match_arms => block.expr.as_ref().map(|e| &**e).unwrap(),
+                   context.config.wrap_match_arms => block.expr.as_ref().map(|e| &**e).unwrap(),
             ref x => x,
         };
 
@@ -1085,6 +1081,13 @@ impl Rewrite for ast::Arm {
     }
 }
 
+// A pattern is simple if it is very short or it is short-ish and just a path.
+// E.g. `Foo::Bar` is simple, but `Foo(..)` is not.
+fn pat_is_simple(pat_str: &str) -> bool {
+    pat_str.len() <= 16 ||
+    (pat_str.len() <= 24 && pat_str.chars().all(|c| c.is_alphabetic() || c == ':'))
+}
+
 // The `if ...` guard on a match arm.
 fn rewrite_guard(context: &RewriteContext,
                  guard: &Option<ptr::P<ast::Expr>>,
@@ -1106,11 +1109,12 @@ fn rewrite_guard(context: &RewriteContext,
         }
 
         // Not enough space to put the guard after the pattern, try a newline.
-        let overhead = context.config.tab_spaces + 4 + 5;
+        let overhead = offset.block_indent(context.config).width() + 4 + 5;
         if overhead < width {
             let cond_str = guard.rewrite(context,
                                          width - overhead,
-                                         offset.block_indent(context.config));
+                                         // 3 == `if `
+                                         offset.block_indent(context.config) + 3);
             if let Some(cond_str) = cond_str {
                 return Some(format!("\n{}if {}",
                                     offset.block_indent(context.config).to_string(context.config),
