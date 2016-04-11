@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    use self::{self};
-    //~^ ERROR unresolved import `self`. There is no `self` in the crate root
-
-    use super::{self};
-    //~^ ERROR unresolved import `super`. There is no `super` in the crate root
+use bar::Foo; //~ ERROR There is no `Foo` in `bar` [E0432]
+mod bar {
+    use Foo; //~ ERROR There is no `Foo` in the crate root [E0432]
 }
 
 fn main() {}
