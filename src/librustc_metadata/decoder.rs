@@ -17,6 +17,7 @@ use self::Family::*;
 use astencode::decode_inlined_item;
 use cstore::{self, crate_metadata};
 use common::*;
+use def_key;
 use encoder::def_to_u64;
 use index;
 use tls_context;
@@ -49,7 +50,7 @@ use std::str;
 
 use rbml::reader;
 use rbml;
-use serialize::Decodable;
+use rustc_serialize::Decodable;
 use syntax::attr;
 use syntax::parse::token::{self, IdentInterner};
 use syntax::ast;
@@ -1739,7 +1740,11 @@ pub fn def_key(cdata: Cmd, id: DefIndex) -> hir_map::DefKey {
     match reader::maybe_get_doc(item_doc, tag_def_key) {
         Some(def_key_doc) => {
             let mut decoder = reader::Decoder::new(def_key_doc);
-            hir_map::DefKey::decode(&mut decoder).unwrap()
+            let simple_key = def_key::DefKey::decode(&mut decoder).unwrap();
+            let name = reader::maybe_get_doc(item_doc, tag_paths_data_name).map(|name| {
+                token::intern(name.as_str_slice())
+            });
+            def_key::recover_def_key(simple_key, name)
         }
         None => {
             bug!("failed to find block with tag {:?} for item with family {:?}",
