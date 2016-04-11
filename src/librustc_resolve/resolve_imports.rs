@@ -317,6 +317,8 @@ impl<'a> ::ModuleS<'a> {
     fn update_resolution<T, F>(&self, name: Name, ns: Namespace, update: F) -> T
         where F: FnOnce(&mut NameResolution<'a>) -> T
     {
+        // Ensure that `resolution` isn't borrowed during `define_in_glob_importers`,
+        // where it might end up getting re-defined via a glob cycle.
         let (new_binding, t) = {
             let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
             let was_known = resolution.binding().is_some();
@@ -650,6 +652,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // Add to target_module's glob_importers
         target_module.glob_importers.borrow_mut().push((module_, directive));
 
+        // Ensure that `resolutions` isn't borrowed during `try_define_child`,
+        // since it might get updated via a glob cycle.
         let bindings = target_module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
