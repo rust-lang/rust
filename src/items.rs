@@ -1578,7 +1578,8 @@ fn rewrite_args(context: &RewriteContext,
     debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
 
     let end_with_newline = match context.config.fn_args_layout {
-        FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => true,
+        FnArgLayoutStyle::Block |
+        FnArgLayoutStyle::BlockAlways => true,
         _ => false,
     };
 
