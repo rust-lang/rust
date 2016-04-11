@@ -3675,7 +3675,7 @@ impl SpaceLama for i32 {
 To fix this error, you need to specialize the implementation on the
 parent(s) implementation first. Example:
 
-```compile_fail
+```
 #![feature(specialization)]
 
 trait SpaceLama {
