@@ -70,6 +70,7 @@ bitflags! {
         const RESTRICTION_STMT_EXPR         = 1 << 0,
         const RESTRICTION_NO_STRUCT_LITERAL = 1 << 1,
         const NO_NONINLINE_MOD  = 1 << 2,
+        const ALLOW_MODULE_PATHS = 1 << 3,
     }
 }
 
@@ -560,7 +561,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
-        self.check_strict_keywords();
+        if !self.restrictions.contains(Restrictions::ALLOW_MODULE_PATHS) {
+            self.check_strict_keywords();
+        }
         self.check_reserved_keywords();
         match self.token {
             token::Ident(i, _) => {
@@ -4938,7 +4941,7 @@ impl<'a> Parser<'a> {
 
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility()?;
+        let vis = self.parse_visibility(true)?;
         let defaultness = self.parse_defaultness()?;
         let (name, node) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
@@ -5250,7 +5253,7 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let vis = p.parse_visibility()?;
+                let vis = p.parse_visibility(false)?;
                 let ty = p.parse_ty_sum()?;
                 Ok(StructField {
                     span: mk_sp(lo, p.span.hi),
@@ -5290,20 +5293,26 @@ impl<'a> Parser<'a> {
 
     /// Parse an element of a struct definition
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
-
         let attrs = self.parse_outer_attributes()?;
-
-        if self.eat_keyword(keywords::Pub) {
-            return self.parse_single_struct_field(Visibility::Public, attrs);
-        }
-
-        return self.parse_single_struct_field(Visibility::Inherited, attrs);
+        let vis = self.parse_visibility(true)?;
+        self.parse_single_struct_field(vis, attrs)
     }
 
-    /// Parse visibility: PUB or nothing
-    fn parse_visibility(&mut self) -> PResult<'a, Visibility> {
-        if self.eat_keyword(keywords::Pub) { Ok(Visibility::Public) }
-        else { Ok(Visibility::Inherited) }
+    fn parse_visibility(&mut self, allow_restricted: bool) -> PResult<'a, Visibility> {
+        if !self.eat_keyword(keywords::Pub) {
+            Ok(Visibility::Inherited)
+        } else if !allow_restricted || !self.eat(&token::OpenDelim(token::Paren)) {
+            Ok(Visibility::Public)
+        } else if self.eat_keyword(keywords::Crate) {
+            let span = self.last_span;
+            self.expect(&token::CloseDelim(token::Paren))?;
+            Ok(Visibility::Crate(span))
+        } else {
+            let path = self.with_res(Restrictions::ALLOW_MODULE_PATHS,
+                                     |this| this.parse_path(NoTypesAllowed))?;
+            self.expect(&token::CloseDelim(token::Paren))?;
+            Ok(Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID })
+        }
     }
 
     /// Parse defaultness: DEFAULT or nothing
@@ -5765,7 +5774,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let visibility = self.parse_visibility()?;
+        let visibility = self.parse_visibility(true)?;
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
@@ -6015,7 +6024,7 @@ impl<'a> Parser<'a> {
     fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let visibility = self.parse_visibility()?;
+        let visibility = self.parse_visibility(true)?;
 
         if self.check_keyword(keywords::Static) {
             // FOREIGN STATIC ITEM
