@@ -3644,6 +3644,60 @@ fn main() {
 ```
 "##,
 
+E0520: r##"
+A non-default implementation was already made on this type
+implementation so it cannot be specialized afterward. Erroneous
+code example:
+
+```compile_fail
+#![feature(specialization)]
+
+trait SpaceLama {
+    fn fly(&self);
+}
+
+impl<T> SpaceLama for T {
+    default fn fly(&self) {}
+}
+
+impl<T: Clone> SpaceLama for T {
+    fn fly(&self) {}
+}
+
+impl SpaceLama for i32 {
+    default fn fly(&self) {}
+    // error: item `fly` is provided by an `impl` that specializes
+    //        another, but the item in the parent `impl` is not marked
+    //        `default` and so it cannot be specialized.
+}
+```
+
+To fix this error, you need to specialize the implementation on the
+parent(s) implementation first. Example:
+
+```compile_fail
+#![feature(specialization)]
+
+trait SpaceLama {
+    fn fly(&self);
+}
+
+impl<T> SpaceLama for T {
+    default fn fly(&self) {} // This is a parent implementation.
+}
+
+impl<T: Clone> SpaceLama for T {
+    default fn fly(&self) {} // This is a parent implementation but not
+                             // a default one so you need to add default
+                             // keyword.
+}
+
+impl SpaceLama for i32 {
+    default fn fly(&self) {} // And now that's ok!
+}
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -3720,6 +3774,5 @@ register_diagnostics! {
            // type `{}` was overridden
     E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
-    E0520, // cannot specialize non-default item
     E0521  // redundant default implementations of trait
 }
