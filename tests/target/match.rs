@@ -295,3 +295,17 @@ fn issue386() {
         BiShl | BiShr => false,
     }
 }
+
+fn guards() {
+    match foo {
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo &&
+                                                                      barrrrrrrrrrrr => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa if foooooooooooooo &&
+                                                                      barrrrrrrrrrrr => {}
+        aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            if fooooooooooooooooooooo &&
+               (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb ||
+                cccccccccccccccccccccccccccccccccccccccc) => {}
+    }
+}

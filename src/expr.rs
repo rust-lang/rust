@@ -21,7 +21,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
             DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
 use string::{StringFormat, rewrite_string};
 use utils::{CodeMapSpanUtils, extra_offset, last_line_width, wrap_str, binary_search,
-            first_line_width, semicolon_for_stmt};
+            first_line_width, semicolon_for_stmt, trimmed_last_line_width};
 use visitor::FmtVisitor;
 use config::{Config, StructLitStyle, MultilineStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -998,7 +998,7 @@ impl Rewrite for ast::Arm {
         let pats_str = try_opt!(write_list(items, &fmt));
 
         let budget = if pats_str.contains('\n') {
-            context.config.max_width
+            context.config.max_width - offset.width()
         } else {
             width
         };
@@ -1007,7 +1007,7 @@ impl Rewrite for ast::Arm {
                                                guard,
                                                budget,
                                                offset,
-                                               last_line_width(&pats_str)));
+                                               trimmed_last_line_width(&pats_str)));
 
         let pats_str = format!("{}{}", pats_str, guard_str);
         // Where the next text can start.
@@ -1019,7 +1019,7 @@ impl Rewrite for ast::Arm {
         let body = match **body {
             ast::Expr { node: ast::ExprKind::Block(ref block), .. }
                 if !is_unsafe_block(block) && is_simple_block(block, context.codemap) &&
-                context.config.wrap_match_arms => block.expr.as_ref().map(|e| &**e).unwrap(),
+                   context.config.wrap_match_arms => block.expr.as_ref().map(|e| &**e).unwrap(),
             ref x => x,
         };
 
@@ -1081,6 +1081,8 @@ impl Rewrite for ast::Arm {
     }
 }
 
+// A pattern is simple if it is very short or it is short-ish and just a path.
+// E.g. `Foo::Bar` is simple, but `Foo(..)` is not.
 fn pat_is_simple(pat_str: &str) -> bool {
     pat_str.len() <= 16 ||
     (pat_str.len() <= 24 && pat_str.chars().all(|c| c.is_alphabetic() || c == ':'))
@@ -1107,11 +1109,12 @@ fn rewrite_guard(context: &RewriteContext,
         }
 
         // Not enough space to put the guard after the pattern, try a newline.
-        let overhead = context.config.tab_spaces + 4 + 5;
+        let overhead = offset.block_indent(context.config).width() + 4 + 5;
         if overhead < width {
             let cond_str = guard.rewrite(context,
                                          width - overhead,
-                                         offset.block_indent(context.config));
+                                         // 3 == `if `
+                                         offset.block_indent(context.config) + 3);
             if let Some(cond_str) = cond_str {
                 return Some(format!("\n{}if {}",
                                     offset.block_indent(context.config).to_string(context.config),

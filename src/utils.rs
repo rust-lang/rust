@@ -113,6 +113,13 @@ pub fn last_line_width(s: &str) -> usize {
         None => s.len(),
     }
 }
+#[inline]
+pub fn trimmed_last_line_width(s: &str) -> usize {
+    match s.rfind('\n') {
+        Some(n) => s[(n + 1)..].trim().len(),
+        None => s.trim().len(),
+    }
+}
 
 #[inline]
 fn is_skip(meta_item: &MetaItem) -> bool {
