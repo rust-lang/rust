@@ -27,7 +27,7 @@ extern crate term;
 
 use syntax::ast;
 use syntax::codemap::{mk_sp, CodeMap, Span};
-use syntax::errors::Handler;
+use syntax::errors::{Handler, DiagnosticBuilder};
 use syntax::errors::emitter::{ColorConfig, EmitterWriter};
 use syntax::parse::{self, ParseSess};
 
@@ -263,11 +263,11 @@ impl fmt::Display for FormatReport {
 }
 
 // Formatting which depends on the AST.
-fn fmt_ast(krate: &ast::Crate,
-           parse_session: &ParseSess,
-           main_file: &Path,
-           config: &Config)
-           -> FileMap {
+fn format_ast(krate: &ast::Crate,
+              parse_session: &ParseSess,
+              main_file: &Path,
+              config: &Config)
+              -> FileMap {
     let mut file_map = FileMap::new();
     for (path, module) in modules::list_files(krate, parse_session.codemap()) {
         if config.skip_children && path.as_path() != main_file {
@@ -367,43 +367,18 @@ fn format_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-fn format_string(input: String, config: &Config) -> FileMap {
-    let path = "stdin";
-    let codemap = Rc::new(CodeMap::new());
+fn parse_input(input: Input, parse_session: &ParseSess) -> Result<ast::Crate, DiagnosticBuilder> {
+    let krate = match input {
+        Input::File(file) => parse::parse_crate_from_file(&file, Vec::new(), &parse_session),
+        Input::Text(text) => {
+            parse::parse_crate_from_source_str("stdin".to_owned(), text, Vec::new(), &parse_session)
+        }
+    };
 
-    let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
-                                                None,
-                                                true,
-                                                false,
-                                                codemap.clone());
-    let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
-
-    let krate = parse::parse_crate_from_source_str(path.to_owned(),
-                                                   input,
-                                                   Vec::new(),
-                                                   &parse_session)
-                    .unwrap();
-
-    // Suppress error output after parsing.
-    let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
-    parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
-
-    // FIXME: we still use a FileMap even though we only have
-    // one file, because fmt_lines requires a FileMap
-    let mut file_map = FileMap::new();
-
-    // do the actual formatting
-    let mut visitor = FmtVisitor::from_codemap(&parse_session, config);
-    visitor.format_separate_mod(&krate.module);
-
-    // append final newline
-    visitor.buffer.push_str("\n");
-    file_map.insert(path.to_owned(), visitor.buffer);
-
-    file_map
+    krate
 }
 
-fn format_file(file: &Path, config: &Config) -> FileMap {
+pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
     let codemap = Rc::new(CodeMap::new());
 
     let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
@@ -413,26 +388,28 @@ fn format_file(file: &Path, config: &Config) -> FileMap {
                                                 codemap.clone());
     let mut parse_session = ParseSess::with_span_handler(tty_handler, codemap.clone());
 
-    let krate = parse::parse_crate_from_file(file, Vec::new(), &parse_session).unwrap();
+    let main_file = match input {
+        Input::File(ref file) => file.clone(),
+        Input::Text(..) => PathBuf::from("stdin"),
+    };
+
+    let krate = match parse_input(input, &parse_session) {
+        Ok(krate) => krate,
+        Err(mut diagnostic) => {
+            diagnostic.emit();
+            panic!("Unrecoverable parse error");
+        }
+    };
 
     // Suppress error output after parsing.
     let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
     parse_session.span_diagnostic = Handler::with_emitter(true, false, silent_emitter);
 
-    let mut file_map = fmt_ast(&krate, &parse_session, file, config);
+    let mut file_map = format_ast(&krate, &parse_session, &main_file, config);
 
     // For some reason, the codemap does not include terminating
     // newlines so we must add one on for each file. This is sad.
     filemap::append_newlines(&mut file_map);
-
-    file_map
-}
-
-pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
-    let mut file_map = match input {
-        Input::File(ref file) => format_file(file, config),
-        Input::Text(text) => format_string(text, config),
-    };
 
     let report = format_lines(&mut file_map, config);
     (file_map, report)
@@ -455,8 +432,6 @@ pub fn run(input: Input, config: &Config) {
     let write_result = filemap::write_all_files(&file_map, &mut out, config);
 
     if let Err(msg) = write_result {
-        if !ignore_errors {
-            msg!("Error writing files: {}", msg);
-        }
+        msg!("Error writing files: {}", msg);
     }
 }
