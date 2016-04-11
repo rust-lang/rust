@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    use self::{self};
-    //~^ ERROR unresolved import `self`. There is no `self` in the crate root
+// compile-flags: -Z parse-only -Z continue-parse-after-error
 
-    use super::{self};
-    //~^ ERROR unresolved import `super`. There is no `super` in the crate root
+pub fn test() {
+    foo(|_|) //~ ERROR unexpected token: `)`
 }
 
-fn main() {}
+fn main() { }
