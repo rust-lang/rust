@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use prelude::v1::*;
-use io::prelude::*;
 use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, OsStr};
