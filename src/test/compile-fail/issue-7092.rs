@@ -19,7 +19,7 @@ fn foo(x: Whatever) {
 //~| found `std::option::Option<_>`
 //~| expected enum `Whatever`
 //~| found enum `std::option::Option`
-            field.access(), //~ ERROR the type of this value must be known in this context
+            field.access(),
     }
 }
 
