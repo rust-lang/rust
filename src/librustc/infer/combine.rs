@@ -44,8 +44,8 @@ use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
 use ty::error::TypeError;
-use ty::fold::{TypeFolder, TypeFoldable};
-use ty::relate::{Relate, RelateResult, TypeRelation};
+use ty::fold::TypeFoldable;
+use ty::relate::{RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 use syntax::ast;

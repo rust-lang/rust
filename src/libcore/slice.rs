@@ -41,7 +41,7 @@ use default::Default;
 use fmt;
 use intrinsics::assume;
 use iter::*;
-use ops::{FnMut, self, Index};
+use ops::{FnMut, self};
 use ops::RangeFull;
 use option::Option;
 use option::Option::{None, Some};

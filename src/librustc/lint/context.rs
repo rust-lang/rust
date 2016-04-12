@@ -30,7 +30,7 @@ use middle::privacy::AccessLevels;
 use ty::TyCtxt;
 use session::{config, early_error, Session};
 use lint::{Level, LevelSource, Lint, LintId, LintArray, LintPass};
-use lint::{EarlyLintPass, EarlyLintPassObject, LateLintPass, LateLintPassObject};
+use lint::{EarlyLintPassObject, LateLintPass, LateLintPassObject};
 use lint::{Default, CommandLine, Node, Allow, Warn, Deny, Forbid};
 use lint::builtin;
 use util::nodemap::FnvHashMap;

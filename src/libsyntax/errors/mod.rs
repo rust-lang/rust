@@ -19,7 +19,6 @@ use errors::emitter::{Emitter, EmitterWriter};
 
 use std::cell::{RefCell, Cell};
 use std::{error, fmt};
-use std::io::prelude::*;
 use std::rc::Rc;
 use term;
 
@@ -653,8 +652,6 @@ pub enum Level {
 
 impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::Display;
-
         self.to_str().fmt(f)
     }
 }

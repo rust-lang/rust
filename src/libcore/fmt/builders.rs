@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use prelude::v1::*;
-use fmt::{self, Write, FlagV1};
+use fmt::{self, FlagV1};
 
 struct PadAdapter<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,

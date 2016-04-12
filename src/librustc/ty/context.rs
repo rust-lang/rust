@@ -15,7 +15,7 @@ use hir::map as ast_map;
 use session::Session;
 use lint;
 use middle;
-use middle::cstore::{CrateStore, LOCAL_CRATE};
+use middle::cstore::LOCAL_CRATE;
 use hir::def::DefMap;
 use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
