@@ -2578,7 +2578,7 @@ impl<'a> Parser<'a> {
         loop {
             // expr?
             while self.eat(&token::Question) {
-                let hi = self.span.hi;
+                let hi = self.last_span.hi;
                 e = self.mk_expr(lo, hi, ExprKind::Try(e), None);
             }
 
