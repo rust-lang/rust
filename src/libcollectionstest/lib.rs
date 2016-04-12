@@ -10,13 +10,11 @@
 
 #![deny(warnings)]
 
-#![feature(ascii)]
 #![feature(binary_heap_extras)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
 #![feature(collections)]
 #![feature(collections_bound)]
-#![feature(copy_from_slice)]
 #![feature(const_fn)]
 #![feature(fn_traits)]
 #![feature(enumset)]
@@ -25,7 +23,6 @@
 #![feature(map_values_mut)]
 #![feature(pattern)]
 #![feature(rand)]
-#![feature(set_recovery)]
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(str_escape)]

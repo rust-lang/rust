@@ -620,8 +620,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// Returns a reference to the map's hasher.
-    #[unstable(feature = "hashmap_public_hasher", reason = "don't want to make insta-stable",
-               issue = "31262")]
+    #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
     }

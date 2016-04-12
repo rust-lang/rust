@@ -50,10 +50,12 @@ use result::Result::{Ok, Err};
 use ptr;
 use mem;
 use marker::{Copy, Send, Sync, self};
-use raw::Repr;
-// Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
-use raw::Slice as RawSlice;
 
+#[repr(C)]
+struct Repr<T> {
+    pub data: *const T,
+    pub len: usize,
+}
 
 //
 // Extension traits
@@ -152,8 +154,8 @@ pub trait SliceExt {
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
-    fn clone_from_slice(&mut self, &[Self::Item]) where Self::Item: Clone;
-    #[unstable(feature = "copy_from_slice", issue = "31755")]
+    fn clone_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Clone;
+    #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
 }
 
@@ -317,7 +319,11 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn len(&self) -> usize { self.repr().len }
+    fn len(&self) -> usize {
+        unsafe {
+            mem::transmute::<&[T], Repr<T>>(self).len
+        }
+    }
 
     #[inline]
     fn get_mut(&mut self, index: usize) -> Option<&mut T> {
@@ -1695,7 +1701,7 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
-    mem::transmute(RawSlice { data: p, len: len })
+    mem::transmute(Repr { data: p, len: len })
 }
 
 /// Performs the same functionality as `from_raw_parts`, except that a mutable
@@ -1707,7 +1713,7 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: usize) -> &'a [T] {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
-    mem::transmute(RawSlice { data: p, len: len })
+    mem::transmute(Repr { data: p, len: len })
 }
 
 //

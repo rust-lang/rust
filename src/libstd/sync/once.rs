@@ -425,13 +425,13 @@ mod tests {
         static O: Once = Once::new();
 
         // poison the once
-        let t = panic::recover(|| {
+        let t = panic::catch_unwind(|| {
             O.call_once(|| panic!());
         });
         assert!(t.is_err());
 
         // poisoning propagates
-        let t = panic::recover(|| {
+        let t = panic::catch_unwind(|| {
             O.call_once(|| {});
         });
         assert!(t.is_err());
@@ -453,7 +453,7 @@ mod tests {
         static O: Once = Once::new();
 
         // poison the once
-        let t = panic::recover(|| {
+        let t = panic::catch_unwind(|| {
             O.call_once(|| panic!());
         });
         assert!(t.is_err());

@@ -32,7 +32,6 @@
 
 #![feature(box_syntax)]
 #![feature(const_fn)]
-#![feature(copy_from_slice)]
 #![feature(libc)]
 #![feature(rand)]
 #![feature(rustc_private)]

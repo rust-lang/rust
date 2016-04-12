@@ -45,6 +45,8 @@ pub trait CommandExt {
     /// (the daemon) in the same session.
     #[unstable(feature = "process_session_leader", reason = "recently added",
                issue = "27811")]
+    #[rustc_deprecated(reason = "use `before_exec` instead",
+                       since = "1.9.0")]
     fn session_leader(&mut self, on: bool) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
@@ -94,7 +96,7 @@ pub trait CommandExt {
     /// file descriptors may have changed. If a "transactional spawn" is
     /// required to gracefully handle errors it is recommended to use the
     /// cross-platform `spawn` instead.
-    #[unstable(feature = "process_exec", issue = "31398")]
+    #[stable(feature = "process_exec2", since = "1.9.0")]
     fn exec(&mut self) -> io::Error;
 }
 

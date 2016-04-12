@@ -194,8 +194,7 @@ impl<T, S> HashSet<T, S>
     }
 
     /// Returns a reference to the set's hasher.
-    #[unstable(feature = "hashmap_public_hasher", reason = "don't want to make insta-stable",
-               issue = "31262")]
+    #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
@@ -459,7 +458,7 @@ impl<T, S> HashSet<T, S>
     /// The value may be any borrowed form of the set's value type, but
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
         where T: Borrow<Q>, Q: Hash + Eq
     {
@@ -556,7 +555,7 @@ impl<T, S> HashSet<T, S>
 
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
         Recover::replace(&mut self.map, value)
     }
@@ -591,7 +590,7 @@ impl<T, S> HashSet<T, S>
     /// The value may be any borrowed form of the set's value type, but
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
-    #[unstable(feature = "set_recovery", issue = "28050")]
+    #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
         where T: Borrow<Q>, Q: Hash + Eq
     {

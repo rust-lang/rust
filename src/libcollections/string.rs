@@ -1037,14 +1037,13 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<char> {
-        let len = self.len();
-        if len == 0 {
-            return None;
-        }
-
-        let ch = self.char_at_reverse(len);
+        let ch = match self.chars().rev().next() {
+            Some(ch) => ch,
+            None => return None,
+        };
+        let newlen = self.len() - ch.len_utf8();
         unsafe {
-            self.vec.set_len(len - ch.len_utf8());
+            self.vec.set_len(newlen);
         }
         Some(ch)
     }
@@ -1075,11 +1074,13 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, idx: usize) -> char {
-        let len = self.len();
-        assert!(idx < len);
+        let ch = match self[idx..].chars().next() {
+            Some(ch) => ch,
+            None => panic!("cannot remove a char from the end of a string"),
+        };
 
-        let ch = self.char_at(idx);
         let next = idx + ch.len_utf8();
+        let len = self.len();
         unsafe {
             ptr::copy(self.vec.as_ptr().offset(next as isize),
                       self.vec.as_mut_ptr().offset(idx as isize),

@@ -86,13 +86,14 @@ impl OsString {
         self.inner.push_slice(&s.as_ref().inner)
     }
 
-    /// Creates a new `OsString` with the given capacity. The string will be
-    /// able to hold exactly `capacity` bytes without reallocating. If
-    /// `capacity` is 0, the string will not allocate.
+    /// Creates a new `OsString` with the given capacity.
+    ///
+    /// The string will be able to hold exactly `capacity` lenth units of other
+    /// OS strings without reallocating. If `capacity` is 0, the string will not
+    /// allocate.
     ///
     /// See main `OsString` documentation information about encoding.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn with_capacity(capacity: usize) -> OsString {
         OsString {
             inner: Buf::with_capacity(capacity)
@@ -100,40 +101,36 @@ impl OsString {
     }
 
     /// Truncates the `OsString` to zero length.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn clear(&mut self) {
         self.inner.clear()
     }
 
-    /// Returns the number of bytes this `OsString` can hold without
-    /// reallocating.
+    /// Returns the capacity this `OsString` can hold without reallocating.
     ///
     /// See `OsString` introduction for information about encoding.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn capacity(&self) -> usize {
         self.inner.capacity()
     }
 
-    /// Reserves capacity for at least `additional` more bytes to be inserted
-    /// in the given `OsString`. The collection may reserve more space to avoid
-    /// frequent reallocations.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    /// Reserves capacity for at least `additional` more capacity to be inserted
+    /// in the given `OsString`.
+    ///
+    /// The collection may reserve more space to avoid frequent reallocations.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more bytes to be
-    /// inserted in the given `OsString`. Does nothing if the capacity is
+    /// Reserves the minimum capacity for exactly `additional` more capacity to
+    /// be inserted in the given `OsString`. Does nothing if the capacity is
     /// already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore capacity can not be relied upon to be precisely
     /// minimal. Prefer reserve if future insertions are expected.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
@@ -286,17 +283,20 @@ impl OsStr {
     }
 
     /// Checks whether the `OsStr` is empty.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn is_empty(&self) -> bool {
         self.inner.inner.is_empty()
     }
 
-    /// Returns the number of bytes in this `OsStr`.
+    /// Returns the length of this `OsStr`.
     ///
-    /// See `OsStr` introduction for information about encoding.
-    #[unstable(feature = "osstring_simple_functions",
-               reason = "recently added", issue = "29453")]
+    /// Note that this does **not** return the number of bytes in this string
+    /// as, for example, OS strings on Windows are encoded as a list of `u16`
+    /// rather than a list of bytes. This number is simply useful for passing to
+    /// other methods like `OsString::with_capacity` to avoid reallocations.
+    ///
+    /// See `OsStr` introduction for more information about encoding.
+    #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn len(&self) -> usize {
         self.inner.inner.len()
     }

@@ -13,7 +13,6 @@
 #![feature(box_syntax)]
 #![feature(libc)]
 #![feature(rustc_private)]
-#![feature(str_char)]
 #![feature(test)]
 #![feature(question_mark)]
 
@@ -412,16 +411,26 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
 
             // used to be a regex "(^|[^0-9])([0-9]\.[0-9]+)"
             for (pos, c) in full_version_line.char_indices() {
-                if !c.is_digit(10) { continue }
-                if pos + 2 >= full_version_line.len() { continue }
-                if full_version_line.char_at(pos + 1) != '.' { continue }
-                if !full_version_line.char_at(pos + 2).is_digit(10) { continue }
-                if pos > 0 && full_version_line.char_at_reverse(pos).is_digit(10) {
+                if !c.is_digit(10) {
+                    continue
+                }
+                if pos + 2 >= full_version_line.len() {
+                    continue
+                }
+                if full_version_line[pos + 1..].chars().next().unwrap() != '.' {
+                    continue
+                }
+                if !full_version_line[pos + 2..].chars().next().unwrap().is_digit(10) {
+                    continue
+                }
+                if pos > 0 && full_version_line[..pos].chars().next_back()
+                                                      .unwrap().is_digit(10) {
                     continue
                 }
                 let mut end = pos + 3;
                 while end < full_version_line.len() &&
-                      full_version_line.char_at(end).is_digit(10) {
+                      full_version_line[end..].chars().next()
+                                              .unwrap().is_digit(10) {
                     end += 1;
                 }
                 return Some(full_version_line[pos..end].to_owned());
@@ -453,13 +462,13 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
             for (pos, l) in full_version_line.char_indices() {
                 if l != 'l' && l != 'L' { continue }
                 if pos + 5 >= full_version_line.len() { continue }
-                let l = full_version_line.char_at(pos + 1);
+                let l = full_version_line[pos + 1..].chars().next().unwrap();
                 if l != 'l' && l != 'L' { continue }
-                let d = full_version_line.char_at(pos + 2);
+                let d = full_version_line[pos + 2..].chars().next().unwrap();
                 if d != 'd' && d != 'D' { continue }
-                let b = full_version_line.char_at(pos + 3);
+                let b = full_version_line[pos + 3..].chars().next().unwrap();
                 if b != 'b' && b != 'B' { continue }
-                let dash = full_version_line.char_at(pos + 4);
+                let dash = full_version_line[pos + 4..].chars().next().unwrap();
                 if dash != '-' { continue }
 
                 let vers = full_version_line[pos + 5..].chars().take_while(|c| {

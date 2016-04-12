@@ -351,11 +351,11 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
             return None
     }
     let first = msg.match_indices("expected").filter(|s| {
-        s.0 > 0 && (msg.char_at_reverse(s.0) == ' ' ||
-                    msg.char_at_reverse(s.0) == '(')
+        let last = msg[..s.0].chars().rev().next();
+        last == Some(' ') || last == Some('(')
     }).map(|(a, b)| (a - 1, a + b.len()));
     let second = msg.match_indices("found").filter(|s| {
-        msg.char_at_reverse(s.0) == ' '
+        msg[..s.0].chars().rev().next() == Some(' ')
     }).map(|(a, b)| (a - 1, a + b.len()));
 
     let mut new_msg = String::new();

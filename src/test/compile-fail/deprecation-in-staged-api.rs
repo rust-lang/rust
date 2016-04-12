@@ -10,7 +10,7 @@
 
 // #[deprecated] can't be used in staged api
 
-#![feature(deprecated, staged_api)]
+#![feature(staged_api)]
 
 #![stable(feature = "test_feature", since = "1.0.0")]
 
