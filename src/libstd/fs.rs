@@ -965,7 +965,8 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::lstat(path.as_ref()).map(Metadata)
 }
 
-/// Rename a file or directory to a new name.
+/// Rename a file or directory to a new name, replacing the original file if
+/// `to` already exists.
 ///
 /// This will not work if the new name is on a different mount point.
 ///
@@ -973,6 +974,12 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// This function currently corresponds to the `rename` function on Unix
 /// and the `MoveFileEx` function with the `MOVEFILE_REPLACE_EXISTING` flag on Windows.
+///
+/// Because of this, the behavior when both `from` and `to` exist differs. On
+/// Unix, if `from` is a directory, `to` must also be an (empty) directory. If
+/// `from` is not a directory, `to` must also be not a directory. In contrast,
+/// on Windows, `from` can be anything, but `to` must *not* be a directory.
+///
 /// Note that, this [may change in the future][changes].
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
