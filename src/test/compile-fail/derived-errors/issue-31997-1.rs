@@ -29,7 +29,6 @@ fn main() {
 
     let mut map = HashMap::new();
     //~^ ERROR E0433
-    //~| ERROR E0425
 
     for line in input.lines() {
         let line = line.unwrap();

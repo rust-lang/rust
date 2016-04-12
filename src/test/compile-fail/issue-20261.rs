@@ -11,6 +11,5 @@
 fn main() {
     for (ref i,) in [].iter() { //~ ERROR mismatched types
         i.clone();
-        //~^ ERROR: the type of this value must be known in this context
     }
 }

@@ -30,7 +30,7 @@ macro_rules! write {
 }
 
 macro_rules! cast {
-    ($x:expr) => ($x as ())
+    ($x:expr) => ($x as ()) //~ ERROR non-scalar cast
 }
 
 fn main() {
@@ -39,4 +39,5 @@ fn main() {
     //~^ NOTE in this expansion of write!
 
     cast!(2);
+    //~^ NOTE in this expansion of cast!
 }
