@@ -33,3 +33,10 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
               .env("PATH", newpath)
               .arg(&build.cargo));
 }
+
+pub fn tidy(build: &Build, stage: u32, host: &str) {
+    println!("tidy check stage{} ({})", stage, host);
+    let compiler = Compiler::new(stage, host);
+    build.run(build.tool_cmd(&compiler, "tidy")
+                   .arg(build.src.join("src")));
+}

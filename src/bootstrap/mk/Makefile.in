@@ -42,5 +42,7 @@ check-cargotest:
 	$(Q)$(BOOTSTRAP) --step check-cargotest
 dist:
 	$(Q)$(BOOTSTRAP) --step dist
+tidy:
+	$(Q)$(BOOTSTRAP) --step check-tidy --stage 0
 
 .PHONY: dist

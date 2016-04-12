@@ -9,3 +9,7 @@
 // except according to those terms.
 
 // See comments in Cargo.toml for why this exists
+
+#![feature(test)]
+
+extern crate test;

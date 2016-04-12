@@ -197,6 +197,9 @@ impl Build {
                 ToolCargoTest { stage } => {
                     compile::tool(self, stage, target.target, "cargotest");
                 }
+                ToolTidy { stage } => {
+                    compile::tool(self, stage, target.target, "tidy");
+                }
                 DocBook { stage } => {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
                 }
@@ -229,6 +232,9 @@ impl Build {
                 }
                 CheckCargoTest { stage } => {
                     check::cargotest(self, stage, target.target);
+                }
+                CheckTidy { stage } => {
+                    check::tidy(self, stage, target.target);
                 }
 
                 DistDocs { stage } => dist::docs(self, stage, target.target),
