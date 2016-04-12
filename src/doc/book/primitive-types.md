@@ -98,10 +98,9 @@ and `i64` is a signed, 64-bit integer.
 ## Variable sized types
 
 Rust also provides types whose particular size depends on the underlying machine
-architecture. Their range is sufficient to express sizes of collections and they
-are used to address items in a vector, for example. These types have ‘size’ as
-the category, and come in signed and unsigned varieties. This makes for two types:
-`isize` and `usize`.
+architecture. Their range is sufficient to express the size of any collection, so
+these types have ‘size’ as the category. They come in signed and unsigned varieties
+which makes for two types: `isize` and `usize`.
 
 ## Floating-point types
 
