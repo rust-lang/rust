@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::env;
 use std::fs::{self, File};
 use std::io::prelude::*;
-use std::path::Path;
 use std::process::Command;
 
 use build_helper::output;
+use md5;
 
 use build::Build;
-use build::util::mtime;
 
 pub fn collect(build: &mut Build) {
     let mut main_mk = String::new();
@@ -80,7 +80,8 @@ pub fn collect(build: &mut Build) {
         build.short_ver_hash = Some(short_ver_hash);
     }
 
-    build.bootstrap_key = mtime(Path::new("config.toml")).seconds()
-                                                        .to_string();
+    let key = md5::compute(build.release.as_bytes());
+    build.bootstrap_key = format!("{:02x}{:02x}{:02x}{:02x}",
+                                  key[0], key[1], key[2], key[3]);
+    env::set_var("RUSTC_BOOTSTRAP_KEY", &build.bootstrap_key);
 }
-
