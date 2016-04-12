@@ -4077,6 +4077,17 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
     }
 }
 
+/// An iterator that always continues to yield `None` when exhausted.
+///
+/// Calling next on a fused iterator that has returned `None` once is guaranteed
+/// to return `None` again. This trait is should be implemented by all iterators
+/// that behave this way because it allows for some significant optimizations.
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+pub trait FusedIterator: Iterator {}
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///
@@ -4093,12 +4104,15 @@ pub struct Fuse<I> {
     done: bool
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Fuse<I> where I: Iterator {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I> where I: Iterator {
     type Item = <I as Iterator>::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<<I as Iterator>::Item> {
+    default fn next(&mut self) -> Option<<I as Iterator>::Item> {
         if self.done {
             None
         } else {
@@ -4109,7 +4123,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn nth(&mut self, n: usize) -> Option<I::Item> {
+    default fn nth(&mut self, n: usize) -> Option<I::Item> {
         if self.done {
             None
         } else {
@@ -4120,7 +4134,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn last(self) -> Option<I::Item> {
+    default fn last(self) -> Option<I::Item> {
         if self.done {
             None
         } else {
@@ -4129,7 +4143,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn count(self) -> usize {
+    default fn count(self) -> usize {
         if self.done {
             0
         } else {
@@ -4138,7 +4152,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
+    default fn size_hint(&self) -> (usize, Option<usize>) {
         if self.done {
             (0, Some(0))
         } else {
@@ -4150,7 +4164,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
     #[inline]
-    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+    default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
         if self.done {
             None
         } else {
@@ -4163,6 +4177,44 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> Iterator for Fuse<I> where I: FusedIterator {
+    #[inline]
+    fn next(&mut self) -> Option<<I as Iterator>::Item> {
+        self.iter.next()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        self.iter.nth(n)
+    }
+
+    #[inline]
+    fn last(self) -> Option<I::Item> {
+        self.iter.last()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> DoubleEndedIterator for Fuse<I>
+    where I: DoubleEndedIterator + FusedIterator
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+        self.iter.next_back()
+    }
+}
 
 /// An iterator that calls a function with a reference to each element before
 /// yielding it.
