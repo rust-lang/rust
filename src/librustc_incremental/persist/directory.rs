@@ -18,8 +18,7 @@ use rustc::hir::map::DefPath;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc::util::nodemap::DefIdMap;
-use rustc_serialize::{Decoder as RustcDecoder,
-                      Encodable as RustcEncodable, Encoder as RustcEncoder};
+use rustc_serialize::{Decoder as RustcDecoder, Encoder as RustcEncoder};
 use std::fmt::{self, Debug};
 
 /// Index into the DefIdDirectory
