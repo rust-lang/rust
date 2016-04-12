@@ -51,6 +51,7 @@ macro_rules! targets {
             (tool_rustbook, ToolRustbook { stage: u32 }),
             (tool_error_index, ToolErrorIndex { stage: u32 }),
             (tool_cargotest, ToolCargoTest { stage: u32 }),
+            (tool_tidy, ToolTidy { stage: u32 }),
 
             // Steps for long-running native builds. Ideally these wouldn't
             // actually exist and would be part of build scripts, but for now
@@ -79,6 +80,7 @@ macro_rules! targets {
             (check, Check { stage: u32, compiler: Compiler<'a> }),
             (check_linkcheck, CheckLinkcheck { stage: u32 }),
             (check_cargotest, CheckCargoTest { stage: u32 }),
+            (check_tidy, CheckTidy { stage: u32 }),
 
             // Distribution targets, creating tarballs
             (dist, Dist { stage: u32 }),
@@ -316,8 +318,12 @@ impl<'a> Step<'a> {
             Source::CheckCargoTest { stage } => {
                 vec![self.tool_cargotest(stage)]
             }
+            Source::CheckTidy { stage } => {
+                vec![self.tool_tidy(stage)]
+            }
 
-            Source::ToolLinkchecker { stage } => {
+            Source::ToolLinkchecker { stage } |
+            Source::ToolTidy { stage } => {
                 vec![self.libstd(self.compiler(stage))]
             }
             Source::ToolErrorIndex { stage } |

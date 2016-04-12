@@ -240,52 +240,16 @@ cleantestlibs:
 # Tidy
 ######################################################################
 
-ifdef CFG_NOTIDY
 .PHONY: tidy
-tidy:
-else
+tidy: $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD))
+	$(TARGET_RPATH_VAR0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $< $(S)src
 
-# Run the tidy script in multiple parts to avoid huge 'echo' commands
-.PHONY: tidy
-tidy: tidy-basic tidy-binaries tidy-errors tidy-features
-
-endif
-
-.PHONY: tidy-basic
-tidy-basic:
-		@$(call E, check: formatting)
-		$(Q) $(CFG_PYTHON) $(S)src/etc/tidy.py $(S)src/
-
-.PHONY: tidy-binaries
-tidy-binaries:
-		@$(call E, check: binaries)
-		$(Q)find $(S)src -type f \
-		    \( -perm -u+x -or -perm -g+x -or -perm -o+x \) \
-		    -not -name '*.rs' -and -not -name '*.py' \
-		    -and -not -name '*.sh' -and -not -name '*.pp' \
-		| grep '^$(S)src/jemalloc' -v \
-		| grep '^$(S)src/libuv' -v \
-		| grep '^$(S)src/llvm' -v \
-		| grep '^$(S)src/rt/hoedown' -v \
-		| grep '^$(S)src/gyp' -v \
-		| grep '^$(S)src/etc' -v \
-		| grep '^$(S)src/doc' -v \
-		| grep '^$(S)src/compiler-rt' -v \
-		| grep '^$(S)src/libbacktrace' -v \
-		| grep '^$(S)src/rust-installer' -v \
-		| grep '^$(S)src/liblibc' -v \
-		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
-
-.PHONY: tidy-errors
-tidy-errors:
-		@$(call E, check: extended errors)
-		$(Q) $(CFG_PYTHON) $(S)src/etc/errorck.py $(S)src/
-
-.PHONY: tidy-features
-tidy-features:
-		@$(call E, check: feature sanity)
-		$(Q) $(CFG_PYTHON) $(S)src/etc/featureck.py $(S)src/
-
+$(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)): \
+		$(TSREQ0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
+		$(TLIB0_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.std \
+		$(call rwildcard,$(S)src/tools/tidy/src,*.rs)
+	$(STAGE0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(S)src/tools/tidy/src/main.rs \
+		--out-dir $(@D) --crate-name tidy
 
 ######################################################################
 # Sets of tests
