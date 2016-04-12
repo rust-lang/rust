@@ -805,7 +805,7 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     None
 }
 
-/// This checks whether a given type is known to implement Debug.
+/// This checks whether a given type is known to implement `Debug`.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     match cx.tcx.lang_items.debug_trait() {
         Some(debug) => implements_trait(cx, ty, debug, Vec::new()),

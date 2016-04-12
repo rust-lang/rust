@@ -41,14 +41,19 @@ fn test_emphasis() {
 fn test_units() {
 }
 
-/// This test has [a link with underscores][chunked-example] inside it. See #823.
-/// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues).
+/// This test has [a link_with_underscores][chunked-example] inside it. See #823.
+/// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues). And here is another [inline link][inline_link].
 ///
-/// [chunked-example]: http://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
+/// [chunked-example]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
+/// [inline_link]: https://foobar
 
 /// The `main` function is the entry point of the program. Here it only calls the `foo_bar` and
 /// `multiline_ticks` functions.
+///
+/// expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
+/// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
 fn main() {
+//~^ ERROR: you should put `link_with_underscores` between ticks
     foo_bar();
     multiline_ticks();
     test_emphasis();
