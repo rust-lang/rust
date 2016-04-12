@@ -131,11 +131,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     // It's the opposite of '=&' which means that the memory
                     // cannot be shared with any other operand (usually when
                     // a register is clobbered early.)
-                    let output = match constraint.slice_shift_char() {
-                        Some(('=', _)) => None,
-                        Some(('+', operand)) => {
+                    let mut ch = constraint.chars();
+                    let output = match ch.next() {
+                        Some('=') => None,
+                        Some('+') => {
                             Some(token::intern_and_get_ident(&format!(
-                                        "={}", operand)))
+                                        "={}", ch.as_str())))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");
@@ -146,7 +147,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     let is_rw = output.is_some();
                     let is_indirect = constraint.contains("*");
                     outputs.push(ast::InlineAsmOutput {
-                        constraint: output.unwrap_or(constraint),
+                        constraint: output.unwrap_or(constraint.clone()),
                         expr: out,
                         is_rw: is_rw,
                         is_indirect: is_indirect,

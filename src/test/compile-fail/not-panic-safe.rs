@@ -11,10 +11,10 @@
 #![allow(dead_code)]
 #![feature(recover)]
 
-use std::panic::RecoverSafe;
+use std::panic::UnwindSafe;
 
-fn assert<T: RecoverSafe + ?Sized>() {}
+fn assert<T: UnwindSafe + ?Sized>() {}
 
 fn main() {
-    assert::<&mut i32>(); //~ ERROR: RecoverSafe` is not satisfied
+    assert::<&mut i32>(); //~ ERROR: UnwindSafe` is not satisfied
 }

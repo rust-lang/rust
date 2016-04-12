@@ -166,9 +166,16 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 ///
 /// Volatile operations are intended to act on I/O memory, and are guaranteed
 /// to not be elided or reordered by the compiler across other volatile
-/// operations. See the LLVM documentation on [[volatile]].
+/// operations.
 ///
-/// [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+/// # Notes
+///
+/// Rust does not currently have a rigorously and formally defined memory model,
+/// so the precise semantics of what "volatile" means here is subject to change
+/// over time. That being said, the semantics will almost always end up pretty
+/// similar to [C11's definition of volatile][c11].
+///
+/// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 ///
 /// # Safety
 ///
@@ -179,7 +186,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 #[inline]
-#[unstable(feature = "volatile", reason = "recently added", issue = "31756")]
+#[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
     intrinsics::volatile_load(src)
 }
@@ -189,9 +196,16 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// Volatile operations are intended to act on I/O memory, and are guaranteed
 /// to not be elided or reordered by the compiler across other volatile
-/// operations. See the LLVM documentation on [[volatile]].
+/// operations.
 ///
-/// [volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+/// # Notes
+///
+/// Rust does not currently have a rigorously and formally defined memory model,
+/// so the precise semantics of what "volatile" means here is subject to change
+/// over time. That being said, the semantics will almost always end up pretty
+/// similar to [C11's definition of volatile][c11].
+///
+/// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
 ///
 /// # Safety
 ///
@@ -204,7 +218,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
 #[inline]
-#[unstable(feature = "volatile", reason = "recently added", issue = "31756")]
+#[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     intrinsics::volatile_store(dst, src);
 }
@@ -238,6 +252,9 @@ impl<T: ?Sized> *const T {
     /// operation because the returned value could be pointing to invalid
     /// memory.
     ///
+    /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
+    /// not necessarily reflect the actual lifetime of the data.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -251,17 +268,13 @@ impl<T: ?Sized> *const T {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "ptr_as_ref",
-               reason = "Option is not clearly the right return type, and we \
-                         may want to tie the return lifetime to a borrow of \
-                         the raw pointer",
-               issue = "27780")]
+    #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(&self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
         if self.is_null() {
             None
         } else {
-            Some(&**self)
+            Some(&*self)
         }
     }
 
@@ -324,6 +337,9 @@ impl<T: ?Sized> *mut T {
     /// operation because the returned value could be pointing to invalid
     /// memory.
     ///
+    /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
+    /// not necessarily reflect the actual lifetime of the data.
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -337,17 +353,13 @@ impl<T: ?Sized> *mut T {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "ptr_as_ref",
-               reason = "Option is not clearly the right return type, and we \
-                         may want to tie the return lifetime to a borrow of \
-                         the raw pointer",
-               issue = "27780")]
+    #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_ref<'a>(&self) -> Option<&'a T> where T: Sized {
+    pub unsafe fn as_ref<'a>(self) -> Option<&'a T> where T: Sized {
         if self.is_null() {
             None
         } else {
-            Some(&**self)
+            Some(&*self)
         }
     }
 
@@ -385,7 +397,8 @@ impl<T: ?Sized> *mut T {
     /// # Safety
     ///
     /// As with `as_ref`, this is unsafe because it cannot verify the validity
-    /// of the returned pointer.
+    /// of the returned pointer, nor can it ensure that the lifetime `'a`
+    /// returned is indeed a valid lifetime for the contained data.
     ///
     /// # Examples
     ///
@@ -395,16 +408,13 @@ impl<T: ?Sized> *mut T {
     /// let mut s = [1, 2, 3];
     /// let ptr: *mut u32 = s.as_mut_ptr();
     /// ```
-    #[unstable(feature = "ptr_as_ref",
-               reason = "return value does not necessarily convey all possible \
-                         information",
-               issue = "27780")]
+    #[stable(feature = "ptr_as_ref", since = "1.9.0")]
     #[inline]
-    pub unsafe fn as_mut<'a>(&self) -> Option<&'a mut T> where T: Sized {
+    pub unsafe fn as_mut<'a>(self) -> Option<&'a mut T> where T: Sized {
         if self.is_null() {
             None
         } else {
-            Some(&mut **self)
+            Some(&mut *self)
         }
     }
 }

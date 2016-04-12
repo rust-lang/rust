@@ -131,7 +131,7 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
                 first = false;
             }
             let mut rest = inner;
-            while rest.char_at(0).is_numeric() {
+            while rest.chars().next().unwrap().is_numeric() {
                 rest = &rest[1..];
             }
             let i: usize = inner[.. (inner.len() - rest.len())].parse().unwrap();

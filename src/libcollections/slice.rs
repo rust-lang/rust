@@ -845,14 +845,13 @@ impl<T> [T] {
     /// # Example
     ///
     /// ```rust
-    /// #![feature(copy_from_slice)]
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2, 3];
     ///
     /// dst.copy_from_slice(&src);
     /// assert_eq!(src, dst);
     /// ```
-    #[unstable(feature = "copy_from_slice", issue = "31755")]
+    #[stable(feature = "copy_from_slice", since = "1.9.0")]
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
     }

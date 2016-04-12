@@ -122,7 +122,6 @@
        test(attr(deny(warnings))))]
 #![cfg_attr(not(stage0), deny(warnings))]
 
-#![feature(copy_from_slice)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(question_mark)]

@@ -68,7 +68,7 @@ impl SocketAddr {
     }
 
     /// Change the IP address associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_ip(&mut self, new_ip: IpAddr) {
         // `match (*self, new_ip)` would have us mutate a copy of self only to throw it away.
         match (self, new_ip) {
@@ -88,7 +88,7 @@ impl SocketAddr {
     }
 
     /// Change the port number associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_port(&mut self, new_port: u16) {
         match *self {
             SocketAddr::V4(ref mut a) => a.set_port(new_port),
@@ -120,16 +120,22 @@ impl SocketAddrV4 {
     }
 
     /// Change the IP address associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
-    pub fn set_ip(&mut self, new_ip: Ipv4Addr) { self.inner.sin_addr = *new_ip.as_inner() }
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
+    pub fn set_ip(&mut self, new_ip: Ipv4Addr) {
+        self.inner.sin_addr = *new_ip.as_inner()
+    }
 
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn port(&self) -> u16 { ntoh(self.inner.sin_port) }
+    pub fn port(&self) -> u16 {
+        ntoh(self.inner.sin_port)
+    }
 
     /// Change the port number associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
-    pub fn set_port(&mut self, new_port: u16) { self.inner.sin_port = hton(new_port) }
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
+    pub fn set_port(&mut self, new_port: u16) {
+        self.inner.sin_port = hton(new_port);
+    }
 }
 
 impl SocketAddrV6 {
@@ -159,24 +165,32 @@ impl SocketAddrV6 {
     }
 
     /// Change the IP address associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
-    pub fn set_ip(&mut self, new_ip: Ipv6Addr) { self.inner.sin6_addr = *new_ip.as_inner() }
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
+    pub fn set_ip(&mut self, new_ip: Ipv6Addr) {
+        self.inner.sin6_addr = *new_ip.as_inner()
+    }
 
     /// Returns the port number associated with this socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn port(&self) -> u16 { ntoh(self.inner.sin6_port) }
+    pub fn port(&self) -> u16 {
+        ntoh(self.inner.sin6_port)
+    }
 
     /// Change the port number associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
-    pub fn set_port(&mut self, new_port: u16) { self.inner.sin6_port = hton(new_port) }
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
+    pub fn set_port(&mut self, new_port: u16) {
+        self.inner.sin6_port = hton(new_port);
+    }
 
     /// Returns the flow information associated with this address,
     /// corresponding to the `sin6_flowinfo` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn flowinfo(&self) -> u32 { self.inner.sin6_flowinfo }
+    pub fn flowinfo(&self) -> u32 {
+        self.inner.sin6_flowinfo
+    }
 
     /// Change the flow information associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_flowinfo(&mut self, new_flowinfo: u32) {
         self.inner.sin6_flowinfo = new_flowinfo;
     }
@@ -184,10 +198,12 @@ impl SocketAddrV6 {
     /// Returns the scope ID associated with this address,
     /// corresponding to the `sin6_scope_id` field in C.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn scope_id(&self) -> u32 { self.inner.sin6_scope_id }
+    pub fn scope_id(&self) -> u32 {
+        self.inner.sin6_scope_id
+    }
 
     /// Change the scope ID associated with this socket address.
-    #[unstable(feature = "sockaddr_setters", reason = "recent addition", issue = "31572")]
+    #[stable(feature = "sockaddr_setters", since = "1.9.0")]
     pub fn set_scope_id(&mut self, new_scope_id: u32) {
         self.inner.sin6_scope_id = new_scope_id;
     }
