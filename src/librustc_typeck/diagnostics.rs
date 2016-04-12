@@ -632,7 +632,7 @@ recursion limit (which can be set via the `recursion_limit` attribute).
 
 For a somewhat artificial example:
 
-```compile_fail
+```compile_fail,ignore
 #![recursion_limit="2"]
 
 struct Foo;

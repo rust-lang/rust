@@ -194,7 +194,7 @@ pub fn compile_input(sess: &Session,
                 (control.after_analysis.callback)(state);
 
                 if control.after_analysis.stop == Compilation::Stop {
-                    return Err(0usize);
+                    return result.and_then(|_| Err(0usize));
                 }
             }
 
