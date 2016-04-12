@@ -100,7 +100,7 @@ and `i64` is a signed, 64-bit integer.
 Rust also provides types whose particular size depends on the underlying machine
 architecture. Their range is sufficient to express the size of any collection, so
 these types have ‘size’ as the category. They come in signed and unsigned varieties
-which makes for two types: `isize` and `usize`.
+which account for two types: `isize` and `usize`.
 
 ## Floating-point types
 
