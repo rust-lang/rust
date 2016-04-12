@@ -49,13 +49,11 @@
 
 use any::TypeId;
 use boxed::Box;
-use convert::From;
+use char;
 use fmt::{self, Debug, Display};
 use marker::{Send, Sync, Reflect};
 use mem::transmute;
 use num;
-use option::Option::{self, Some, None};
-use result::Result::{self, Ok, Err};
 use raw::TraitObject;
 use str;
 use string::{self, String};
@@ -186,6 +184,13 @@ impl Error for string::FromUtf16Error {
 impl Error for string::ParseError {
     fn description(&self) -> &str {
         match *self {}
+    }
+}
+
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+impl Error for char::DecodeUtf16Error {
+    fn description(&self) -> &str {
+        "unpaired surrogate found"
     }
 }
 
