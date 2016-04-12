@@ -18,3 +18,4 @@ pub fn trace_option(option: Option<isize>) { //~ HELP did you mean to close this
                           //~^ ERROR: expected one of
 } //~ ERROR: incorrect close delimiter
 //~^ ERROR: unexpected token
+//~ ERROR: un-closed delimiter
