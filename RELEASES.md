@@ -79,7 +79,7 @@ Misc
   build system. To enable it configure with `configure --rustbuild`.
 * [Errors for non-exhaustive `match` patterns now list up to 3 missing
   variants while also indicating the total number of missing variants
-  if more than 3][1.8m].
+  if more than 3][1.8mm].
 * [Executable stacks are disabled on Linux and BSD][1.8nx].
 * The Rust Project now publishes binary releases of the standard
   library for a number of tier-2 targets:
@@ -159,7 +159,7 @@ Compatibility Notes
 [1.8cv]: https://github.com/rust-lang/rust/pull/30998
 [1.8h]: https://github.com/rust-lang/rust/pull/31460
 [1.8l]: https://github.com/rust-lang/rust/pull/31668
-[1.8m]: https://github.com/rust-lang/rust/pull/31020
+[1.8mm]: https://github.com/rust-lang/rust/pull/31020
 [1.8m]: https://github.com/rust-lang/rust/pull/31534
 [1.8mp]: https://github.com/rust-lang/rust/pull/30894
 [1.8mr]: https://users.rust-lang.org/t/multirust-0-8-with-cross-std-installation/4901
