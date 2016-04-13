@@ -634,9 +634,9 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = "Per Martin-Löf";
+    /// let mut s = "Per Martin-Löf".to_string();
     ///
-    /// let (first, last) = s.split_at(3);
+    /// let (first, last) = s.split_at_mut(3);
     ///
     /// assert_eq!("Per", first);
     /// assert_eq!(" Martin-Löf", last);
