@@ -652,6 +652,21 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             }
         }
 
+        ty::Predicate::ClosureKind(closure_def_id, kind) => {
+            match selcx.infcx().closure_kind(closure_def_id) {
+                Some(closure_kind) => {
+                    if closure_kind.extends(kind) {
+                        Ok(Some(vec![]))
+                    } else {
+                        Err(CodeSelectionError(Unimplemented))
+                    }
+                }
+                None => {
+                    Ok(None)
+                }
+            }
+        }
+
         ty::Predicate::WellFormed(ty) => {
             match ty::wf::obligations(selcx.infcx(), obligation.cause.body_id,
                                       ty, obligation.cause.span) {

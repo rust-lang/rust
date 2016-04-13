@@ -467,6 +467,9 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
             ty::Predicate::ObjectSafe(trait_def_id) => {
                 write!(f, "ObjectSafe({:?})", trait_def_id)
             }
+            ty::Predicate::ClosureKind(closure_def_id, kind) => {
+                write!(f, "ClosureKind({:?}, {:?})", closure_def_id, kind)
+            }
         }
     }
 }
@@ -1039,6 +1042,16 @@ impl<'tcx> fmt::Display for ty::ProjectionTy<'tcx> {
     }
 }
 
+impl fmt::Display for ty::ClosureKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ty::ClosureKind::Fn => write!(f, "Fn"),
+            ty::ClosureKind::FnMut => write!(f, "FnMut"),
+            ty::ClosureKind::FnOnce => write!(f, "FnOnce"),
+        }
+    }
+}
+
 impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -1051,6 +1064,11 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
             ty::Predicate::ObjectSafe(trait_def_id) =>
                 ty::tls::with(|tcx| {
                     write!(f, "the trait `{}` is object-safe", tcx.item_path_str(trait_def_id))
+                }),
+            ty::Predicate::ClosureKind(closure_def_id, kind) =>
+                ty::tls::with(|tcx| {
+                    write!(f, "the closure `{}` implements the trait `{}`",
+                           tcx.item_path_str(closure_def_id), kind)
                 }),
         }
     }

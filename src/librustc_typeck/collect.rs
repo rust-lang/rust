@@ -449,6 +449,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ty::GenericPredicates<'tcx> {
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
+                    ty::Predicate::ClosureKind(..) |
                     ty::Predicate::Projection(..) => {
                         false
                     }

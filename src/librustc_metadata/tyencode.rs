@@ -479,6 +479,14 @@ pub fn enc_predicate<'a, 'tcx>(w: &mut Cursor<Vec<u8>>,
         ty::Predicate::ObjectSafe(trait_def_id) => {
             write!(w, "O{}|", (cx.ds)(cx.tcx, trait_def_id));
         }
+        ty::Predicate::ClosureKind(closure_def_id, kind) => {
+            let kind_char = match kind {
+                ty::ClosureKind::Fn => 'f',
+                ty::ClosureKind::FnMut => 'm',
+                ty::ClosureKind::FnOnce => 'o',
+            };
+            write!(w, "c{}|{}|", (cx.ds)(cx.tcx, closure_def_id), kind_char);
+        }
     }
 }
 
