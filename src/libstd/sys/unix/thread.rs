@@ -164,6 +164,7 @@ impl Drop for Thread {
 }
 
 #[cfg(all(not(all(target_os = "linux", not(target_env = "musl"))),
+          not(target_os = "freebsd"),
           not(target_os = "macos"),
           not(target_os = "bitrig"),
           not(all(target_os = "netbsd", not(target_vendor = "rumprun"))),
@@ -177,6 +178,7 @@ pub mod guard {
 
 
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")),
+          target_os = "freebsd",
           target_os = "macos",
           target_os = "bitrig",
           all(target_os = "netbsd", not(target_vendor = "rumprun")),
@@ -199,12 +201,17 @@ pub mod guard {
         current().map(|s| s as *mut libc::c_void)
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
+    #[cfg(any(target_os = "android", target_os = "freebsd",
+              target_os = "linux", target_os = "netbsd"))]
     unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = ::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
-        if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
+        #[cfg(target_os = "freebsd")]
+            let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
+        #[cfg(not(target_os = "freebsd"))]
+            let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
+        if e == 0 {
             let mut stackaddr = ::ptr::null_mut();
             let mut stacksize = 0;
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
@@ -248,7 +255,11 @@ pub mod guard {
             panic!("failed to allocate a guard page");
         }
 
-        let offset = if cfg!(target_os = "linux") {2} else {1};
+        let offset = if cfg!(any(target_os = "linux", target_os = "freebsd")) {
+            2
+        } else {
+            1
+        };
 
         Some(stackaddr as usize + offset * psize)
     }
@@ -282,12 +293,17 @@ pub mod guard {
         })
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "netbsd"))]
+    #[cfg(any(target_os = "android", target_os = "freebsd",
+              target_os = "linux", target_os = "netbsd"))]
     pub unsafe fn current() -> Option<usize> {
         let mut ret = None;
         let mut attr: libc::pthread_attr_t = ::mem::zeroed();
         assert_eq!(libc::pthread_attr_init(&mut attr), 0);
-        if libc::pthread_getattr_np(libc::pthread_self(), &mut attr) == 0 {
+        #[cfg(target_os = "freebsd")]
+            let e = libc::pthread_attr_get_np(libc::pthread_self(), &mut attr);
+        #[cfg(not(target_os = "freebsd"))]
+            let e = libc::pthread_getattr_np(libc::pthread_self(), &mut attr);
+        if e == 0 {
             let mut guardsize = 0;
             assert_eq!(libc::pthread_attr_getguardsize(&attr, &mut guardsize), 0);
             if guardsize == 0 {
@@ -298,7 +314,9 @@ pub mod guard {
             assert_eq!(libc::pthread_attr_getstack(&attr, &mut stackaddr,
                                                    &mut size), 0);
 
-            ret = if cfg!(target_os = "netbsd") {
+            ret = if cfg!(target_os = "freebsd") {
+                Some(stackaddr as usize - guardsize as usize)
+            } else if cfg!(target_os = "netbsd") {
                 Some(stackaddr as usize)
             } else {
                 Some(stackaddr as usize + guardsize as usize)
