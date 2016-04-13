@@ -242,7 +242,11 @@ fn write_mir_intro(tcx: &TyCtxt, nid: NodeId, mir: &Mir, w: &mut Write)
         if var.mutability == Mutability::Mut {
             write!(w, "mut ")?;
         }
-        writeln!(w, "{:?}: {}; // {}", Lvalue::Var(i as u32), var.ty, var.name)?;
+        writeln!(w, "{:?}: {}; // {} in {}",
+                 Lvalue::Var(i as u32),
+                 var.ty,
+                 var.name,
+                 comment(tcx, var.scope, var.span))?;
     }
 
     // Compiler-introduced temporary types.

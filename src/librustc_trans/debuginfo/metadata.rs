@@ -16,7 +16,7 @@ use self::EnumDiscriminantInfo::*;
 use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
                    get_namespace_and_span_for_item, create_DIArray,
                    fn_should_be_ignored, is_node_local_to_unit};
-use super::namespace::namespace_for_item;
+use super::namespace::mangled_name_of_item;
 use super::type_names::{compute_debuginfo_type_name, push_debuginfo_type_name};
 use super::{declare_local, VariableKind, VariableAccess};
 
@@ -68,8 +68,8 @@ pub const UNKNOWN_LINE_NUMBER: c_uint = 0;
 pub const UNKNOWN_COLUMN_NUMBER: c_uint = 0;
 
 // ptr::null() doesn't work :(
-const NO_FILE_METADATA: DIFile = (0 as DIFile);
-const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
+pub const NO_FILE_METADATA: DIFile = (0 as DIFile);
+pub const NO_SCOPE_METADATA: DIScope = (0 as DIScope);
 
 const FLAGS_NONE: c_uint = 0;
 
@@ -1846,28 +1846,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         return;
     }
 
-    let var_item = cx.tcx().map.get(node_id);
-
-    let (name, span) = match var_item {
-        hir_map::NodeItem(item) => {
-            match item.node {
-                hir::ItemStatic(..) => (item.name, item.span),
-                hir::ItemConst(..) => (item.name, item.span),
-                _ => {
-                    span_bug!(item.span,
-                              "debuginfo::\
-                               create_global_var_metadata() -
-                               Captured var-id refers to \
-                               unexpected ast_item variant: {:?}",
-                              var_item)
-                }
-            }
-        },
-        _ => bug!("debuginfo::create_global_var_metadata() \
-                   - Captured var-id refers to unexpected \
-                   hir_map variant: {:?}",
-                  var_item)
-    };
+    let node_def_id = cx.tcx().map.local_def_id(node_id);
+    let (var_scope, span) = get_namespace_and_span_for_item(cx, node_def_id);
 
     let (file_metadata, line_number) = if span != codemap::DUMMY_SP {
         let loc = span_start(cx, span);
@@ -1879,12 +1859,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
     let variable_type = cx.tcx().node_id_to_type(node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
-    let node_def_id = cx.tcx().map.local_def_id(node_id);
-    let namespace_node = namespace_for_item(cx, node_def_id);
-    let var_name = name.to_string();
-    let linkage_name =
-        namespace_node.mangled_name_of_contained_item(&var_name[..]);
-    let var_scope = namespace_node.scope;
+    let var_name = cx.tcx().item_name(node_def_id).to_string();
+    let linkage_name = mangled_name_of_item(cx, node_def_id, "");
 
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();

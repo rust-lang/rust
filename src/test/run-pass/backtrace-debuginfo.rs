@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // We disable tail merging here because it can't preserve debuginfo and thus
 // potentially breaks the backtraces. Also, subtle changes can decide whether
 // tail merging suceeds, so the test might work today but fail tomorrow due to a
@@ -74,7 +72,6 @@ fn dump_filelines(filelines: &[Pos]) {
 }
 
 #[inline(never)]
-#[rustc_no_mir] // FIXME #31005 MIR missing debuginfo currently.
 fn inner(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     check!(counter; main_pos, outer_pos);
     check!(counter; main_pos, outer_pos);
@@ -91,7 +88,6 @@ fn inner(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
 // this case.
 #[cfg_attr(not(target_env = "msvc"), inline(always))]
 #[cfg_attr(target_env = "msvc", inline(never))]
-#[rustc_no_mir] // FIXME #31005 MIR missing debuginfo currently.
 fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     check!(counter; main_pos, outer_pos);
     check!(counter; main_pos, outer_pos);
@@ -117,7 +113,6 @@ fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
 }
 
 #[inline(never)]
-#[rustc_no_mir] // FIXME #31005 MIR missing debuginfo currently.
 fn outer(mut counter: i32, main_pos: Pos) {
     inner(&mut counter, main_pos, pos!());
     inner_inlined(&mut counter, main_pos, pos!());
@@ -162,7 +157,6 @@ fn run_test(me: &str) {
 }
 
 #[inline(never)]
-#[rustc_no_mir] // FIXME #31005 MIR missing debuginfo currently.
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 {

@@ -247,10 +247,11 @@
 // lldb-command:continue
 
 #![allow(dead_code, unused_assignments, unused_variables)]
-#![feature(omit_gdb_pretty_printer_section)]
+#![feature(omit_gdb_pretty_printer_section, rustc_attrs)]
 #![omit_gdb_pretty_printer_section]
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn immediate_args(a: isize, b: bool, c: f64) {
     println!("");
 }
@@ -267,43 +268,51 @@ struct BigStruct {
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn non_immediate_args(a: BigStruct, b: BigStruct) {
     println!("");
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn binding(a: i64, b: u64, c: f64) {
     let x = 0;
     println!("");
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn assignment(mut a: u64, b: u64, c: f64) {
     a = b;
     println!("");
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn function_call(x: u64, y: u64, z: f64) {
     println!("Hi!")
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn identifier(x: u64, y: u64, z: f64) -> u64 {
     x
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn return_expr(x: u64, y: u64, z: f64) -> u64 {
     return x;
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn arithmetic_expr(x: u64, y: u64, z: f64) -> u64 {
     x + y
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn if_expr(x: u64, y: u64, z: f64) -> u64 {
     if x + y < 1000 {
         x
@@ -313,6 +322,7 @@ fn if_expr(x: u64, y: u64, z: f64) -> u64 {
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn while_expr(mut x: u64, y: u64, z: u64) -> u64 {
     while x + y < 1000 {
         x += z
@@ -321,6 +331,7 @@ fn while_expr(mut x: u64, y: u64, z: u64) -> u64 {
 }
 
 #[no_stack_check]
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing argument names.
 fn loop_expr(mut x: u64, y: u64, z: u64) -> u64 {
     loop {
         x += z;

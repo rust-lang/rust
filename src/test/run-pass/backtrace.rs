@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
 // no-pretty-expanded FIXME #15189
 // ignore-android FIXME #17520
 // compile-flags:-g
@@ -18,8 +16,6 @@ use std::env;
 use std::process::{Command, Stdio};
 use std::str;
 
-// FIXME #31005 MIR missing debuginfo currently.
-#[cfg_attr(target_env = "msvc", rustc_no_mir)]
 #[inline(never)]
 fn foo() {
     let _v = vec![1, 2, 3];
@@ -28,8 +24,6 @@ fn foo() {
     }
 }
 
-// FIXME #31005 MIR missing debuginfo currently.
-#[cfg_attr(target_env = "msvc", rustc_no_mir)]
 #[inline(never)]
 fn double() {
     struct Double;

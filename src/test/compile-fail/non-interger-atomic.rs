@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core_intrinsics, rustc_attrs)]
+#![feature(core_intrinsics)]
 #![allow(warnings)]
 
 use std::intrinsics;
@@ -18,97 +18,81 @@ struct Foo(i64);
 type Bar = &'static Fn();
 type Quux = [u8; 100];
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_bool_load(p: &mut bool, v: bool) {
     intrinsics::atomic_load(p);
     //~^ ERROR `atomic_load` intrinsic: expected basic integer type, found `bool`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_bool_store(p: &mut bool, v: bool) {
     intrinsics::atomic_store(p, v);
     //~^ ERROR `atomic_store` intrinsic: expected basic integer type, found `bool`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_bool_xchg(p: &mut bool, v: bool) {
     intrinsics::atomic_xchg(p, v);
     //~^ ERROR `atomic_xchg` intrinsic: expected basic integer type, found `bool`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_bool_cxchg(p: &mut bool, v: bool) {
     intrinsics::atomic_cxchg(p, v, v);
     //~^ ERROR `atomic_cxchg` intrinsic: expected basic integer type, found `bool`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Foo_load(p: &mut Foo, v: Foo) {
     intrinsics::atomic_load(p);
     //~^ ERROR `atomic_load` intrinsic: expected basic integer type, found `Foo`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Foo_store(p: &mut Foo, v: Foo) {
     intrinsics::atomic_store(p, v);
     //~^ ERROR `atomic_store` intrinsic: expected basic integer type, found `Foo`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Foo_xchg(p: &mut Foo, v: Foo) {
     intrinsics::atomic_xchg(p, v);
     //~^ ERROR `atomic_xchg` intrinsic: expected basic integer type, found `Foo`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Foo_cxchg(p: &mut Foo, v: Foo) {
     intrinsics::atomic_cxchg(p, v, v);
     //~^ ERROR `atomic_cxchg` intrinsic: expected basic integer type, found `Foo`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Bar_load(p: &mut Bar, v: Bar) {
     intrinsics::atomic_load(p);
     //~^ ERROR expected basic integer type, found `&'static std::ops::Fn() + 'static`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Bar_store(p: &mut Bar, v: Bar) {
     intrinsics::atomic_store(p, v);
     //~^ ERROR expected basic integer type, found `&'static std::ops::Fn() + 'static`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Bar_xchg(p: &mut Bar, v: Bar) {
     intrinsics::atomic_xchg(p, v);
     //~^ ERROR expected basic integer type, found `&'static std::ops::Fn() + 'static`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Bar_cxchg(p: &mut Bar, v: Bar) {
     intrinsics::atomic_cxchg(p, v, v);
     //~^ ERROR expected basic integer type, found `&'static std::ops::Fn() + 'static`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Quux_load(p: &mut Quux, v: Quux) {
     intrinsics::atomic_load(p);
     //~^ ERROR `atomic_load` intrinsic: expected basic integer type, found `[u8; 100]`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Quux_store(p: &mut Quux, v: Quux) {
     intrinsics::atomic_store(p, v);
     //~^ ERROR `atomic_store` intrinsic: expected basic integer type, found `[u8; 100]`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Quux_xchg(p: &mut Quux, v: Quux) {
     intrinsics::atomic_xchg(p, v);
     //~^ ERROR `atomic_xchg` intrinsic: expected basic integer type, found `[u8; 100]`
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 unsafe fn test_Quux_cxchg(p: &mut Quux, v: Quux) {
     intrinsics::atomic_cxchg(p, v, v);
     //~^ ERROR `atomic_cxchg` intrinsic: expected basic integer type, found `[u8; 100]`
