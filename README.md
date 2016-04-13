@@ -23,7 +23,7 @@ multirust run nightly-2016-04-05 cargo build
 
 ```sh
 multirust run nightly-2016-04-05 cargo run -- \
-  --sysroot $HOME/.multirust/toolchains/nightly-2016-04-05
+  --sysroot $HOME/.multirust/toolchains/nightly-2016-04-05 \
   test/filename.rs
 ```
 
