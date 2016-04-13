@@ -19,25 +19,28 @@ use std::iter::repeat;
 use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 use syntax::codemap::Span;
 
-/// A Visitor that walks over an AST and collects Node's into an AST
-/// Map.
+/// A Visitor that walks over the HIR and collects Node's into a HIR map.
 pub struct NodeCollector<'ast> {
     pub krate: &'ast Crate,
     pub map: Vec<MapEntry<'ast>>,
-    pub definitions: Definitions,
     pub parent_node: NodeId,
 }
 
-impl<'ast> NodeCollector<'ast> {
-    pub fn root(krate: &'ast Crate) -> NodeCollector<'ast> {
-        let mut collector = NodeCollector {
-            krate: krate,
-            map: vec![],
-            definitions: Definitions::new(),
-            parent_node: CRATE_NODE_ID,
-        };
-        collector.insert_entry(CRATE_NODE_ID, RootCrate);
+pub struct DefCollector<'ast> {
+    pub krate: &'ast Crate,
+    pub map: &'ast [MapEntry<'ast>],
+    pub definitions: Definitions,
+    pub parent_def: Option<DefIndex>,
+}
 
+impl<'ast> DefCollector<'ast> {
+    pub fn root(krate: &'ast Crate, map: &'ast [MapEntry<'ast>]) -> DefCollector<'ast> {
+        let mut collector = DefCollector {
+            krate: krate,
+            map: map,
+            definitions: Definitions::new(),
+            parent_def: None,
+        };
         let result = collector.create_def_with_parent(None, CRATE_NODE_ID, DefPathData::CrateRoot);
         assert_eq!(result, CRATE_DEF_INDEX);
 
@@ -47,17 +50,16 @@ impl<'ast> NodeCollector<'ast> {
     }
 
     pub fn extend(krate: &'ast Crate,
-                  parent: &'ast InlinedItem,
                   parent_node: NodeId,
                   parent_def_path: DefPath,
                   parent_def_id: DefId,
-                  map: Vec<MapEntry<'ast>>,
+                  map: &'ast [MapEntry<'ast>],
                   definitions: Definitions)
-                  -> NodeCollector<'ast> {
-        let mut collector = NodeCollector {
+                  -> DefCollector<'ast> {
+        let mut collector = DefCollector {
             krate: krate,
             map: map,
-            parent_node: parent_node,
+            parent_def: None,
             definitions: definitions,
         };
 
@@ -67,21 +69,14 @@ impl<'ast> NodeCollector<'ast> {
             def_id: parent_def_id,
         });
 
-        collector.insert_entry(parent_node, RootInlinedParent(parent));
-        collector.create_def(parent_node, DefPathData::InlinedRoot(root_path));
+        let def = collector.create_def(parent_node, DefPathData::InlinedRoot(root_path));
+        collector.parent_def = Some(def);
 
         collector
     }
 
     fn parent_def(&self) -> Option<DefIndex> {
-        let mut parent_node = Some(self.parent_node);
-        while let Some(p) = parent_node {
-            if let Some(q) = self.definitions.opt_def_index(p) {
-                return Some(q);
-            }
-            parent_node = self.map[p as usize].parent_node();
-        }
-        None
+        self.parent_def
     }
 
     fn create_def(&mut self, node_id: NodeId, data: DefPathData) -> DefIndex {
@@ -97,28 +92,9 @@ impl<'ast> NodeCollector<'ast> {
                               -> DefIndex {
         self.definitions.create_def_with_parent(parent, node_id, data)
     }
-
-    fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
-        debug!("ast_map: {:?} => {:?}", id, entry);
-        let len = self.map.len();
-        if id as usize >= len {
-            self.map.extend(repeat(NotPresent).take(id as usize - len + 1));
-        }
-        self.map[id as usize] = entry;
-    }
-
-    fn insert_def(&mut self, id: NodeId, node: Node<'ast>, data: DefPathData) -> DefIndex {
-        self.insert(id, node);
-        self.create_def(id, data)
-    }
-
-    fn insert(&mut self, id: NodeId, node: Node<'ast>) {
-        let entry = MapEntry::from_node(self.parent_node, node);
-        self.insert_entry(id, entry);
-    }
 }
 
-impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
+impl<'ast> Visitor<'ast> for DefCollector<'ast> {
     /// Because we want to track parent items and so forth, enable
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
@@ -146,18 +122,16 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 DefPathData::Misc,
         };
 
-        self.insert_def(i.id, NodeItem(i), def_data);
+        let def = self.create_def(i.id, def_data);
 
-        let parent_node = self.parent_node;
-        self.parent_node = i.id;
+        let parent_def = self.parent_def;
+        self.parent_def = Some(def);
 
         match i.node {
-            ItemImpl(..) => {}
             ItemEnum(ref enum_definition, _) => {
                 for v in &enum_definition.variants {
                     let variant_def_index =
-                        self.insert_def(v.node.data.id(),
-                                        NodeVariant(v),
+                        self.create_def(v.node.data.id(),
                                         DefPathData::EnumVariant(v.node.name));
 
                     for field in v.node.data.fields() {
@@ -168,18 +142,205 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     }
                 }
             }
-            ItemForeignMod(..) => {
-            }
             ItemStruct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
                 if !struct_def.is_struct() {
-                    self.insert_def(struct_def.id(),
-                                    NodeStructCtor(struct_def),
+                    self.create_def(struct_def.id(),
                                     DefPathData::StructCtor);
                 }
 
                 for field in struct_def.fields() {
                     self.create_def(field.id, DefPathData::Field(field.name));
+                }
+            }
+            _ => {}
+        }
+        intravisit::walk_item(self, i);
+        self.parent_def = parent_def;
+    }
+
+    fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
+        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.name));
+
+        let parent_def = self.parent_def;
+        self.parent_def = Some(def);
+        intravisit::walk_foreign_item(self, foreign_item);
+        self.parent_def = parent_def;
+    }
+
+    fn visit_generics(&mut self, generics: &'ast Generics) {
+        for ty_param in generics.ty_params.iter() {
+            self.create_def(ty_param.id,
+                            DefPathData::TypeParam(ty_param.name));
+        }
+
+        intravisit::walk_generics(self, generics);
+    }
+
+    fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
+        let def_data = match ti.node {
+            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::ValueNs(ti.name),
+            TypeTraitItem(..) => DefPathData::TypeNs(ti.name),
+        };
+
+        let def = self.create_def(ti.id, def_data);
+
+        let parent_def = self.parent_def;
+        self.parent_def = Some(def);
+
+        match ti.node {
+            ConstTraitItem(_, Some(ref expr)) => {
+                self.create_def(expr.id, DefPathData::Initializer);
+            }
+            _ => { }
+        }
+
+        intravisit::walk_trait_item(self, ti);
+
+        self.parent_def = parent_def;
+    }
+
+    fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
+        let def_data = match ii.node {
+            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::ValueNs(ii.name),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name),
+        };
+
+        let def = self.create_def(ii.id, def_data);
+
+        let parent_def = self.parent_def;
+        self.parent_def = Some(def);
+
+        match ii.node {
+            ImplItemKind::Const(_, ref expr) => {
+                self.create_def(expr.id, DefPathData::Initializer);
+            }
+            _ => { }
+        }
+
+        intravisit::walk_impl_item(self, ii);
+
+        self.parent_def = parent_def;
+    }
+
+    fn visit_pat(&mut self, pat: &'ast Pat) {
+        let maybe_binding = match pat.node {
+            PatKind::Ident(_, id, _) => Some(id.node),
+            _ => None
+        };
+
+        let parent_def = self.parent_def;
+        if let Some(id) = maybe_binding {
+            let def = self.create_def(pat.id, DefPathData::Binding(id.name));
+            self.parent_def = Some(def);
+        }
+
+        intravisit::walk_pat(self, pat);
+        self.parent_def = parent_def;
+    }
+
+    fn visit_expr(&mut self, expr: &'ast Expr) {
+        let parent_def = self.parent_def;
+
+        if let ExprClosure(..) = expr.node {
+            let def = self.create_def(expr.id, DefPathData::ClosureExpr);
+            self.parent_def = Some(def);
+        }
+
+        intravisit::walk_expr(self, expr);
+        self.parent_def = parent_def;
+    }
+
+    fn visit_stmt(&mut self, stmt: &'ast Stmt) {
+        intravisit::walk_stmt(self, stmt);
+    }
+
+    fn visit_block(&mut self, block: &'ast Block) {
+        intravisit::walk_block(self, block);
+    }
+
+    fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
+        self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name));
+    }
+
+    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
+        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.name));
+    }
+}
+
+impl<'ast> NodeCollector<'ast> {
+    pub fn root(krate: &'ast Crate) -> NodeCollector<'ast> {
+        let mut collector = NodeCollector {
+            krate: krate,
+            map: vec![],
+            parent_node: CRATE_NODE_ID,
+        };
+        collector.insert_entry(CRATE_NODE_ID, RootCrate);
+
+        collector
+    }
+
+    pub fn extend(krate: &'ast Crate,
+                  parent: &'ast InlinedItem,
+                  parent_node: NodeId,
+                  parent_def_path: DefPath,
+                  parent_def_id: DefId,
+                  map: Vec<MapEntry<'ast>>)
+                  -> NodeCollector<'ast> {
+        let mut collector = NodeCollector {
+            krate: krate,
+            map: map,
+            parent_node: parent_node,
+        };
+
+        assert_eq!(parent_def_path.krate, parent_def_id.krate);
+        collector.insert_entry(parent_node, RootInlinedParent(parent));
+
+        collector
+    }
+
+    fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
+        debug!("ast_map: {:?} => {:?}", id, entry);
+        let len = self.map.len();
+        if id as usize >= len {
+            self.map.extend(repeat(NotPresent).take(id as usize - len + 1));
+        }
+        self.map[id as usize] = entry;
+    }
+
+    fn insert(&mut self, id: NodeId, node: Node<'ast>) {
+        let entry = MapEntry::from_node(self.parent_node, node);
+        self.insert_entry(id, entry);
+    }
+}
+
+impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
+    /// Because we want to track parent items and so forth, enable
+    /// deep walking so that we walk nested items in the context of
+    /// their outer items.
+    fn visit_nested_item(&mut self, item: ItemId) {
+        debug!("visit_nested_item: {:?}", item);
+        self.visit_item(self.krate.item(item.id))
+    }
+
+    fn visit_item(&mut self, i: &'ast Item) {
+        debug!("visit_item: {:?}", i);
+
+        self.insert(i.id, NodeItem(i));
+
+        let parent_node = self.parent_node;
+        self.parent_node = i.id;
+
+        match i.node {
+            ItemEnum(ref enum_definition, _) => {
+                for v in &enum_definition.variants {
+                    self.insert(v.node.data.id(), NodeVariant(v));
+                }
+            }
+            ItemStruct(ref struct_def, _) => {
+                // If this is a tuple-like struct, register the constructor.
+                if !struct_def.is_struct() {
+                    self.insert(struct_def.id(), NodeStructCtor(struct_def));
                 }
             }
             ItemTrait(_, _, ref bounds, _) => {
@@ -206,9 +367,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
-        self.insert_def(foreign_item.id,
-                        NodeForeignItem(foreign_item),
-                        DefPathData::ValueNs(foreign_item.name));
+        self.insert(foreign_item.id, NodeForeignItem(foreign_item));
 
         let parent_node = self.parent_node;
         self.parent_node = foreign_item.id;
@@ -218,32 +377,17 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
         for ty_param in generics.ty_params.iter() {
-            self.insert_def(ty_param.id,
-                            NodeTyParam(ty_param),
-                            DefPathData::TypeParam(ty_param.name));
+            self.insert(ty_param.id, NodeTyParam(ty_param));
         }
 
         intravisit::walk_generics(self, generics);
     }
 
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
-        let def_data = match ti.node {
-            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::ValueNs(ti.name),
-            TypeTraitItem(..) => DefPathData::TypeNs(ti.name),
-        };
-
         self.insert(ti.id, NodeTraitItem(ti));
-        self.create_def(ti.id, def_data);
 
         let parent_node = self.parent_node;
         self.parent_node = ti.id;
-
-        match ti.node {
-            ConstTraitItem(_, Some(ref expr)) => {
-                self.create_def(expr.id, DefPathData::Initializer);
-            }
-            _ => { }
-        }
 
         intravisit::walk_trait_item(self, ti);
 
@@ -251,22 +395,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
-        let def_data = match ii.node {
-            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::ValueNs(ii.name),
-            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name),
-        };
-
-        self.insert_def(ii.id, NodeImplItem(ii), def_data);
+        self.insert(ii.id, NodeImplItem(ii));
 
         let parent_node = self.parent_node;
         self.parent_node = ii.id;
-
-        match ii.node {
-            ImplItemKind::Const(_, ref expr) => {
-                self.create_def(expr.id, DefPathData::Initializer);
-            }
-            _ => { }
-        }
 
         intravisit::walk_impl_item(self, ii);
 
@@ -274,16 +406,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
-        let maybe_binding = match pat.node {
-            PatKind::Ident(_, id, _) => Some(id.node),
-            _ => None
-        };
-
-        if let Some(id) = maybe_binding {
-            self.insert_def(pat.id, NodeLocal(pat), DefPathData::Binding(id.name));
-        } else {
-            self.insert(pat.id, NodePat(pat));
-        }
+        self.insert(pat.id, NodeLocal(pat));
 
         let parent_node = self.parent_node;
         self.parent_node = pat.id;
@@ -293,11 +416,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.insert(expr.id, NodeExpr(expr));
-
-        match expr.node {
-            ExprClosure(..) => { self.create_def(expr.id, DefPathData::ClosureExpr); }
-            _ => { }
-        }
 
         let parent_node = self.parent_node;
         self.parent_node = expr.id;
@@ -330,14 +448,5 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
         self.insert(lifetime.id, NodeLifetime(lifetime));
-    }
-
-    fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
-        self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name));
-        self.visit_lifetime(&def.lifetime);
-    }
-
-    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
-        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.name));
     }
 }
