@@ -1380,7 +1380,6 @@ unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-#[cfg(any(not(stage0), cargobuild))]
 unsafe fn atomic_compare_exchange<T>(dst: *mut T,
                                      old: T,
                                      new: T,
@@ -1401,29 +1400,6 @@ unsafe fn atomic_compare_exchange<T>(dst: *mut T,
         _ => panic!("a failure ordering can't be stronger than a success ordering"),
     };
     if ok {
-        Ok(val)
-    } else {
-        Err(val)
-    }
-}
-
-#[inline]
-#[cfg(all(stage0, not(cargobuild)))]
-unsafe fn atomic_compare_exchange<T>(dst: *mut T,
-                                     old: T,
-                                     new: T,
-                                     success: Ordering,
-                                     _: Ordering) -> Result<T, T>
-    where T: ::cmp::Eq + ::marker::Copy
-{
-    let val = match success {
-        Acquire => intrinsics::atomic_cxchg_acq(dst, old, new),
-        Release => intrinsics::atomic_cxchg_rel(dst, old, new),
-        AcqRel  => intrinsics::atomic_cxchg_acqrel(dst, old, new),
-        Relaxed => intrinsics::atomic_cxchg_relaxed(dst, old, new),
-        SeqCst  => intrinsics::atomic_cxchg(dst, old, new),
-    };
-    if val == old {
         Ok(val)
     } else {
         Err(val)

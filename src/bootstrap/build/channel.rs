@@ -84,4 +84,12 @@ pub fn collect(build: &mut Build) {
     build.bootstrap_key = format!("{:02x}{:02x}{:02x}{:02x}",
                                   key[0], key[1], key[2], key[3]);
     env::set_var("RUSTC_BOOTSTRAP_KEY", &build.bootstrap_key);
+
+    let mut s = String::new();
+    t!(t!(File::open(build.src.join("src/stage0.txt"))).read_to_string(&mut s));
+    if let Some(line) = s.lines().find(|l| l.starts_with("rustc_key")) {
+        if let Some(key) = line.split(": ").nth(1) {
+            build.bootstrap_key_stage0 = key.to_string();
+        }
+    }
 }

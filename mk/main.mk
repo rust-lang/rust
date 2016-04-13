@@ -34,6 +34,7 @@ CFG_FILENAME_EXTRA=$(shell printf '%s' $(CFG_RELEASE)$(CFG_EXTRA_FILENAME) | $(C
 # intentionally not "secure" by any definition, this is largely just a deterrent
 # from users enabling unstable features on the stable compiler.
 CFG_BOOTSTRAP_KEY=$(CFG_FILENAME_EXTRA)
+CFG_BOOTSTRAP_KEY_STAGE0=$(shell grep 'rustc_key' $(S)src/stage0.txt | sed 's/rustc_key: '//)
 
 ifeq ($(CFG_RELEASE_CHANNEL),stable)
 # This is the normal semver version string, e.g. "0.12.0", "0.12.0-nightly"

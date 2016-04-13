@@ -79,6 +79,7 @@ pub struct Build {
     version: String,
     package_vers: String,
     bootstrap_key: String,
+    bootstrap_key_stage0: String,
 
     // Probed tools at runtime
     gdb_version: Option<String>,
@@ -129,6 +130,7 @@ impl Build {
             ver_date: None,
             version: String::new(),
             bootstrap_key: String::new(),
+            bootstrap_key_stage0: String::new(),
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
@@ -401,6 +403,17 @@ impl Build {
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
+
+        // Set the bootstrap key depending on which stage compiler we're using.
+        // In stage0 we're using a previously released stable compiler, so we
+        // use the stage0 bootstrap key. Otherwise we use our own build's
+        // bootstrap key.
+        let bootstrap_key = if compiler.is_snapshot(self) {
+            &self.bootstrap_key_stage0
+        } else {
+            &self.bootstrap_key
+        };
+        cargo.env("RUSTC_BOOTSTRAP_KEY", bootstrap_key);
 
         // Specify some various options for build scripts used throughout
         // the build.

@@ -79,11 +79,22 @@ def run(args, verbose=False):
             raise RuntimeError(err)
         sys.exit(err)
 
+def stage0_data(rust_root):
+    nightlies = os.path.join(rust_root, "src/stage0.txt")
+    with open(nightlies, 'r') as nightlies:
+        data = {}
+        for line in nightlies.read().split("\n"):
+            if line.startswith("#") or line == '':
+                continue
+            a, b = line.split(": ", 1)
+            data[a] = b
+        return data
+
 class RustBuild:
-    def download_rust_nightly(self):
+    def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
-        rustc_cache = os.path.join(cache_dst, self.snap_rustc_date())
-        cargo_cache = os.path.join(cache_dst, self.snap_cargo_date())
+        rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
+        cargo_cache = os.path.join(cache_dst, self.stage0_cargo_date())
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
         if not os.path.exists(cargo_cache):
@@ -93,8 +104,9 @@ class RustBuild:
            (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
-            filename = "rust-std-nightly-" + self.build + ".tar.gz"
-            url = "https://static.rust-lang.org/dist/" + self.snap_rustc_date()
+            channel = self.stage0_rustc_channel()
+            filename = "rust-std-" + channel + "-" + self.build + ".tar.gz"
+            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get(url + "/" + filename, tarball, verbose=self.verbose)
@@ -102,31 +114,38 @@ class RustBuild:
                    match="rust-std-" + self.build,
                    verbose=self.verbose)
 
-            filename = "rustc-nightly-" + self.build + ".tar.gz"
-            url = "https://static.rust-lang.org/dist/" + self.snap_rustc_date()
+            filename = "rustc-" + channel + "-" + self.build + ".tar.gz"
+            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get(url + "/" + filename, tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="rustc", verbose=self.verbose)
             with open(self.rustc_stamp(), 'w') as f:
-                f.write(self.snap_rustc_date())
+                f.write(self.stage0_rustc_date())
 
         if self.cargo().startswith(self.bin_root()) and \
            (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
-            filename = "cargo-nightly-" + self.build + ".tar.gz"
-            url = "https://static.rust-lang.org/cargo-dist/" + self.snap_cargo_date()
+            channel = self.stage0_cargo_channel()
+            filename = "cargo-" + channel + "-" + self.build + ".tar.gz"
+            url = "https://static.rust-lang.org/cargo-dist/" + self.stage0_cargo_date()
             tarball = os.path.join(cargo_cache, filename)
             if not os.path.exists(tarball):
                 get(url + "/" + filename, tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
             with open(self.cargo_stamp(), 'w') as f:
-                f.write(self.snap_cargo_date())
+                f.write(self.stage0_cargo_date())
 
-    def snap_cargo_date(self):
+    def stage0_cargo_date(self):
         return self._cargo_date
 
-    def snap_rustc_date(self):
+    def stage0_cargo_channel(self):
+        return self._cargo_channel
+
+    def stage0_rustc_date(self):
         return self._rustc_date
+
+    def stage0_rustc_channel(self):
+        return self._rustc_channel
 
     def rustc_stamp(self):
         return os.path.join(self.bin_root(), '.rustc-stamp')
@@ -138,13 +157,13 @@ class RustBuild:
         if not os.path.exists(self.rustc_stamp()):
             return True
         with open(self.rustc_stamp(), 'r') as f:
-            return self.snap_rustc_date() != f.read()
+            return self.stage0_rustc_date() != f.read()
 
     def cargo_out_of_date(self):
         if not os.path.exists(self.cargo_stamp()):
             return True
         with open(self.cargo_stamp(), 'r') as f:
-            return self.snap_cargo_date() != f.read()
+            return self.stage0_cargo_date() != f.read()
 
     def bin_root(self):
         return os.path.join(self.build_dir, self.build, "stage0")
@@ -186,15 +205,6 @@ class RustBuild:
             return '.exe'
         else:
             return ''
-
-    def parse_nightly_dates(self):
-        nightlies = os.path.join(self.rust_root, "src/nightlies.txt")
-        with open(nightlies, 'r') as nightlies:
-            rustc, cargo = nightlies.read().split("\n")[:2]
-            assert rustc.startswith("rustc: ")
-            assert cargo.startswith("cargo: ")
-            self._rustc_date = rustc[len("rustc: "):]
-            self._cargo_date = cargo[len("cargo: "):]
 
     def build_bootstrap(self):
         env = os.environ.copy()
@@ -300,46 +310,53 @@ class RustBuild:
 
         return cputype + '-' + ostype
 
-parser = argparse.ArgumentParser(description='Build rust')
-parser.add_argument('--config')
-parser.add_argument('-v', '--verbose', action='store_true')
+def main():
+    parser = argparse.ArgumentParser(description='Build rust')
+    parser.add_argument('--config')
+    parser.add_argument('-v', '--verbose', action='store_true')
 
-args = [a for a in sys.argv if a != '-h']
-args, _ = parser.parse_known_args(args)
+    args = [a for a in sys.argv if a != '-h']
+    args, _ = parser.parse_known_args(args)
 
-# Configure initial bootstrap
-rb = RustBuild()
-rb.config_toml = ''
-rb.config_mk = ''
-rb.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-rb.build_dir = os.path.join(os.getcwd(), "build")
-rb.verbose = args.verbose
+    # Configure initial bootstrap
+    rb = RustBuild()
+    rb.config_toml = ''
+    rb.config_mk = ''
+    rb.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+    rb.build_dir = os.path.join(os.getcwd(), "build")
+    rb.verbose = args.verbose
 
-try:
-    with open(args.config or 'config.toml') as config:
-        rb.config_toml = config.read()
-except:
-    pass
-try:
-    rb.config_mk = open('config.mk').read()
-except:
-    pass
+    try:
+        with open(args.config or 'config.toml') as config:
+            rb.config_toml = config.read()
+    except:
+        pass
+    try:
+        rb.config_mk = open('config.mk').read()
+    except:
+        pass
 
-# Fetch/build the bootstrap
-rb.build = rb.build_triple()
-rb.parse_nightly_dates()
-rb.download_rust_nightly()
-sys.stdout.flush()
-rb.build_bootstrap()
-sys.stdout.flush()
+    data = stage0_data(rb.rust_root)
+    rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
+    rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)
 
-# Run the bootstrap
-args = [os.path.join(rb.build_dir, "bootstrap/debug/bootstrap")]
-args.append('--src')
-args.append(rb.rust_root)
-args.append('--build')
-args.append(rb.build)
-args.extend(sys.argv[1:])
-env = os.environ.copy()
-env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
-rb.run(args, env)
+    # Fetch/build the bootstrap
+    rb.build = rb.build_triple()
+    rb.download_stage0()
+    sys.stdout.flush()
+    rb.build_bootstrap()
+    sys.stdout.flush()
+
+    # Run the bootstrap
+    args = [os.path.join(rb.build_dir, "bootstrap/debug/bootstrap")]
+    args.append('--src')
+    args.append(rb.rust_root)
+    args.append('--build')
+    args.append(rb.build)
+    args.extend(sys.argv[1:])
+    env = os.environ.copy()
+    env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
+    rb.run(args, env)
+
+if __name__ == '__main__':
+    main()
