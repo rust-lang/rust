@@ -20,7 +20,7 @@ extern crate getopts;
 use rustfmt::{run, Input};
 use rustfmt::config::{Config, WriteMode};
 
-use std::env;
+use std::{env, error};
 use std::fs::{self, File};
 use std::io::{self, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
@@ -28,6 +28,8 @@ use std::str::FromStr;
 
 use getopts::{Matches, Options};
 
+type FmtError = Box<error::Error + Send + Sync>;
+type FmtResult<T> = std::result::Result<T, FmtError>;
 
 /// Rustfmt operations.
 enum Operation {
@@ -42,10 +44,6 @@ enum Operation {
     Version,
     /// Print detailed configuration help.
     ConfigHelp,
-    /// Invalid program input.
-    InvalidInput {
-        reason: String,
-    },
     /// No file specified, read from stdin
     Stdin {
         input: String,
@@ -55,7 +53,7 @@ enum Operation {
 
 /// Try to find a project file in the given directory and its parents. Returns the path of a the
 /// nearest project file if one exists, or `None` if no project file was found.
-fn lookup_project_file(dir: &Path) -> io::Result<Option<PathBuf>> {
+fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
     let mut current = if dir.is_relative() {
         try!(env::current_dir()).join(dir)
     } else {
@@ -67,19 +65,17 @@ fn lookup_project_file(dir: &Path) -> io::Result<Option<PathBuf>> {
     loop {
         let config_file = current.join("rustfmt.toml");
         match fs::metadata(&config_file) {
-            Ok(md) => {
-                // Properly handle unlikely situation of a directory named `rustfmt.toml`.
-                if md.is_file() {
-                    return Ok(Some(config_file));
-                }
-            }
-            // If it's not found, we continue searching; otherwise something went wrong and we
-            // return the error.
+            // Only return if it's a file to handle the unlikely situation of a directory named
+            // `rustfmt.toml`.
+            Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
+            // Return the error if it's something other than `NotFound`; otherwise we didn't find
+            // the project file yet, and continue searching.
             Err(e) => {
                 if e.kind() != ErrorKind::NotFound {
-                    return Err(e);
+                    return Err(FmtError::from(e));
                 }
             }
+            _ => {}
         }
 
         // If the current directory has no parent, we're done searching.
@@ -93,7 +89,7 @@ fn lookup_project_file(dir: &Path) -> io::Result<Option<PathBuf>> {
 ///
 /// Returns the `Config` to use, and the path of the project file if there was
 /// one.
-fn resolve_config(dir: &Path) -> io::Result<(Config, Option<PathBuf>)> {
+fn resolve_config(dir: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
     let path = try!(lookup_project_file(dir));
     if path.is_none() {
         return Ok((Config::default(), None));
@@ -108,7 +104,7 @@ fn resolve_config(dir: &Path) -> io::Result<(Config, Option<PathBuf>)> {
 /// read the given config file path recursively if present else read the project file path
 fn match_cli_path_or_file(config_path: Option<PathBuf>,
                           input_file: &Path)
-                          -> io::Result<(Config, Option<PathBuf>)> {
+                          -> FmtResult<(Config, Option<PathBuf>)> {
 
     if let Some(config_file) = config_path {
         let (toml, path) = try!(resolve_config(config_file.as_ref()));
@@ -119,7 +115,7 @@ fn match_cli_path_or_file(config_path: Option<PathBuf>,
     resolve_config(input_file)
 }
 
-fn update_config(config: &mut Config, matches: &Matches) -> Result<(), String> {
+fn update_config(config: &mut Config, matches: &Matches) -> FmtResult<()> {
     config.verbose = matches.opt_present("verbose");
     config.skip_children = matches.opt_present("skip-children");
 
@@ -130,11 +126,14 @@ fn update_config(config: &mut Config, matches: &Matches) -> Result<(), String> {
             config.write_mode = write_mode;
             Ok(())
         }
-        Some(Err(_)) => Err(format!("Invalid write-mode: {}", write_mode.expect("cannot happen"))),
+        Some(Err(_)) => {
+            Err(FmtError::from(format!("Invalid write-mode: {}",
+                                       write_mode.expect("cannot happen"))))
+        }
     }
 }
 
-fn execute() -> i32 {
+fn make_opts() -> Options {
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this message");
     opts.optflag("V", "version", "show version information");
@@ -154,32 +153,21 @@ fn execute() -> i32 {
                  found reverts to the input file path",
                 "[Path for the configuration file]");
 
-    let matches = match opts.parse(env::args().skip(1)) {
-        Ok(m) => m,
-        Err(e) => {
-            print_usage(&opts, &e.to_string());
-            return 1;
-        }
-    };
+    opts
+}
 
-    let operation = determine_operation(&matches);
+fn execute(opts: &Options) -> FmtResult<()> {
+    let matches = try!(opts.parse(env::args().skip(1)));
 
-    match operation {
-        Operation::InvalidInput { reason } => {
-            print_usage(&opts, &reason);
-            1
-        }
+    match try!(determine_operation(&matches)) {
         Operation::Help => {
             print_usage(&opts, "");
-            0
         }
         Operation::Version => {
             print_version();
-            0
         }
         Operation::ConfigHelp => {
             Config::print_docs();
-            0
         }
         Operation::Stdin { input, config_path } => {
             // try to read config from local directory
@@ -190,7 +178,6 @@ fn execute() -> i32 {
             config.write_mode = WriteMode::Plain;
 
             run(Input::Text(input), &config);
-            0
         }
         Operation::Format { files, config_path } => {
             let mut config = Config::default();
@@ -221,21 +208,26 @@ fn execute() -> i32 {
                     config = config_tmp;
                 }
 
-                if let Err(e) = update_config(&mut config, &matches) {
-                    print_usage(&opts, &e);
-                    return 1;
-                }
+                try!(update_config(&mut config, &matches));
                 run(Input::File(file), &config);
             }
-            0
         }
     }
+    Ok(())
 }
 
 fn main() {
     let _ = env_logger::init();
-    let exit_code = execute();
 
+    let opts = make_opts();
+
+    let exit_code = match execute(&opts) {
+        Ok(..) => 0,
+        Err(e) => {
+            print_usage(&opts, &e.to_string());
+            1
+        }
+    };
     // Make sure standard output is flushed before we exit.
     std::io::stdout().flush().unwrap();
 
@@ -261,17 +253,17 @@ fn print_version() {
              option_env!("CARGO_PKG_VERSION_PRE").unwrap_or(""));
 }
 
-fn determine_operation(matches: &Matches) -> Operation {
+fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     if matches.opt_present("h") {
-        return Operation::Help;
+        return Ok(Operation::Help);
     }
 
     if matches.opt_present("config-help") {
-        return Operation::ConfigHelp;
+        return Ok(Operation::ConfigHelp);
     }
 
     if matches.opt_present("version") {
-        return Operation::Version;
+        return Ok(Operation::Version);
     }
 
     // Read the config_path and convert to parent dir if a file is provided.
@@ -288,21 +280,18 @@ fn determine_operation(matches: &Matches) -> Operation {
     if matches.free.is_empty() {
 
         let mut buffer = String::new();
-        match io::stdin().read_to_string(&mut buffer) {
-            Ok(..) => (),
-            Err(e) => return Operation::InvalidInput { reason: e.to_string() },
-        }
+        try!(io::stdin().read_to_string(&mut buffer));
 
-        return Operation::Stdin {
+        return Ok(Operation::Stdin {
             input: buffer,
             config_path: config_path,
-        };
+        });
     }
 
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
-    Operation::Format {
+    Ok(Operation::Format {
         files: files,
         config_path: config_path,
-    }
+    })
 }
