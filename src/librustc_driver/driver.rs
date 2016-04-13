@@ -120,6 +120,27 @@ pub fn compile_input(sess: &Session,
                                 Ok(()));
 
         let expanded_crate = assign_node_ids(sess, expanded_crate);
+        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+        
+        // TODO
+        // time(sess.time_passes(),
+        //      "external crate/lib resolution",
+        //      || LocalCrateReader::new(sess, &cstore, &defs, &id).read_crates());
+
+        // TODO
+        panic!();
+
+        // TODO CrateMap result
+        // let resolve::CrateMap {
+        //     def_map,
+        //     freevars,
+        //     export_map,
+        //     trait_map,
+        //     glob_map,
+        // } = time(sess.time_passes(),
+        //          "name resolution",
+        //          || resolve::resolve_crate(sess, &hir_map, control.make_glob_map));
+
         // Lower ast -> hir.
         let lcx = LoweringContext::new(sess, Some(&expanded_crate));
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
@@ -175,7 +196,6 @@ pub fn compile_input(sess: &Session,
                                     hir_map,
                                     &arenas,
                                     &id,
-                                    control.make_glob_map,
                                     |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -743,7 +763,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                hir_map: hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
-                                               make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> Result<R, usize>
     where F: FnOnce(&TyCtxt<'tcx>, Option<MirMap<'tcx>>, ty::CrateAnalysis, CompileResult) -> R
@@ -761,20 +780,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     }
 
     let time_passes = sess.time_passes();
-
-    time(time_passes,
-         "external crate/lib resolution",
-         || LocalCrateReader::new(sess, cstore, &hir_map, name).read_crates());
-
-    let resolve::CrateMap {
-        def_map,
-        freevars,
-        export_map,
-        trait_map,
-        glob_map,
-    } = time(time_passes,
-             "name resolution",
-             || resolve::resolve_crate(sess, &hir_map, make_glob_map));
 
     let lang_items = time(time_passes, "language item collection", || {
         sess.track_errors(|| {

@@ -10,7 +10,7 @@
 
 pub use self::Node::*;
 use self::MapEntry::*;
-use self::collector::NodeCollector;
+use self::collector::{NodeCollector, DefCollector};
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, InlinedRootPath};
 
@@ -784,7 +784,14 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
     let (map, definitions) = {
         let mut collector = NodeCollector::root(&forest.krate);
         intravisit::walk_crate(&mut collector, &forest.krate);
-        (collector.map, collector.definitions)
+
+        let definitions = {
+            let mut def_collector = DefCollector::root(&forest.krate, &collector.map);
+            intravisit::walk_crate(&mut def_collector, &forest.krate);
+            def_collector.definitions
+        };
+
+        (collector.map, definitions)
     };
 
     if log_enabled!(::log::DEBUG) {
@@ -836,19 +843,26 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     let ii = map.forest.inlined_items.alloc(ii);
 
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
-    let mut collector =
-        NodeCollector::extend(
-            map.krate(),
-            ii,
-            ii_parent_id,
-            parent_def_path,
-            parent_def_id,
-            mem::replace(&mut *map.map.borrow_mut(), vec![]),
-            mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
+    let mut collector = NodeCollector::extend(map.krate(),
+                                              ii,
+                                              ii_parent_id,
+                                              parent_def_path.clone(),
+                                              parent_def_id,
+                                              mem::replace(&mut *map.map.borrow_mut(), vec![]));
     ii.visit(&mut collector);
 
+    {
+        let mut def_collector = DefCollector::extend(map.krate(),
+                                                     ii_parent_id,
+                                                     parent_def_path,
+                                                     parent_def_id,
+                                                     &collector.map,
+                                                     mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
+        ii.visit(&mut def_collector);
+        *map.definitions.borrow_mut() = def_collector.definitions;
+    }
+
     *map.map.borrow_mut() = collector.map;
-    *map.definitions.borrow_mut() = collector.definitions;
 
     ii
 }
