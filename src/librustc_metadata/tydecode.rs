@@ -553,6 +553,18 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
                 assert_eq!(self.next(), '|');
                 ty::Predicate::ObjectSafe(def_id)
             }
+            'c' => {
+                let def_id = self.parse_def();
+                assert_eq!(self.next(), '|');
+                let kind = match self.next() {
+                    'f' => ty::ClosureKind::Fn,
+                    'm' => ty::ClosureKind::FnMut,
+                    'o' => ty::ClosureKind::FnOnce,
+                    c => bug!("Encountered invalid character in metadata: {}", c)
+                };
+                assert_eq!(self.next(), '|');
+                ty::Predicate::ClosureKind(def_id, kind)
+            }
             c => bug!("Encountered invalid character in metadata: {}", c)
         }
     }

@@ -491,6 +491,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::WellFormed(..) |
                     ty::Predicate::ObjectSafe(..) |
+                    ty::Predicate::ClosureKind(..) |
                     ty::Predicate::TypeOutlives(..) => {
                         None
                     }

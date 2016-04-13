@@ -179,6 +179,16 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
                 ty::Predicate::TypeOutlives(..) => None,
                 ty::Predicate::WellFormed(..) => None,
                 ty::Predicate::ObjectSafe(..) => None,
+
+                // NB: This predicate is created by breaking down a
+                // `ClosureType: FnFoo()` predicate, where
+                // `ClosureType` represents some `TyClosure`. It can't
+                // possibly be referring to the current closure,
+                // because we haven't produced the `TyClosure` for
+                // this closure yet; this is exactly why the other
+                // code is looking for a self type of a unresolved
+                // inference variable.
+                ty::Predicate::ClosureKind(..) => None,
             };
             opt_trait_ref
                 .and_then(|trait_ref| self_type_matches_expected_vid(fcx, trait_ref, expected_vid))

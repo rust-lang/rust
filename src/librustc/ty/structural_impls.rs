@@ -644,6 +644,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
                 ty::Predicate::Projection(binder.fold_with(folder)),
             ty::Predicate::WellFormed(data) =>
                 ty::Predicate::WellFormed(data.fold_with(folder)),
+            ty::Predicate::ClosureKind(closure_def_id, kind) =>
+                ty::Predicate::ClosureKind(closure_def_id, kind),
             ty::Predicate::ObjectSafe(trait_def_id) =>
                 ty::Predicate::ObjectSafe(trait_def_id),
         }
@@ -657,6 +659,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
             ty::Predicate::TypeOutlives(ref binder) => binder.visit_with(visitor),
             ty::Predicate::Projection(ref binder) => binder.visit_with(visitor),
             ty::Predicate::WellFormed(data) => data.visit_with(visitor),
+            ty::Predicate::ClosureKind(_closure_def_id, _kind) => false,
             ty::Predicate::ObjectSafe(_trait_def_id) => false,
         }
     }

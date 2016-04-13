@@ -60,6 +60,9 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
 
             ty::Predicate::ObjectSafe(data) =>
                 ty::Predicate::ObjectSafe(data),
+
+            ty::Predicate::ClosureKind(closure_def_id, kind) =>
+                ty::Predicate::ClosureKind(closure_def_id, kind)
         };
         self.set.insert(normalized_pred)
     }
@@ -155,6 +158,9 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
             }
             ty::Predicate::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.
+            }
+            ty::Predicate::ClosureKind(..) => {
+                // Nothing to elaborate when waiting for a closure's kind to be inferred.
             }
             ty::Predicate::RegionOutlives(..) |
             ty::Predicate::TypeOutlives(..) => {

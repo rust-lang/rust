@@ -495,6 +495,21 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         err.emit();
                     }
 
+                    ty::Predicate::ClosureKind(closure_def_id, kind) => {
+                        let found_kind = infcx.closure_kind(closure_def_id).unwrap();
+                        let closure_span = infcx.tcx.map.span_if_local(closure_def_id).unwrap();
+                        let mut err = struct_span_err!(
+                            infcx.tcx.sess, closure_span, E0524,
+                            "expected a closure that implements the `{}` trait, but this closure \
+                             only implements `{}`",
+                            kind,
+                            found_kind);
+                        err.span_note(
+                            obligation.cause.span,
+                            &format!("the requirement to implement `{}` derives from here", kind));
+                        err.emit();
+                    }
+
                     ty::Predicate::WellFormed(ty) => {
                         // WF predicates cannot themselves make
                         // errors. They can only block due to

@@ -1543,4 +1543,5 @@ register_diagnostics! {
     E0490, // a value of type `..` is borrowed for too long
     E0491, // in type `..`, reference has a longer lifetime than the data it...
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
+    E0524, // expected a closure that implements `..` but this closure only implements `..`
 }
