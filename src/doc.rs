@@ -165,7 +165,10 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                                     ':' => { // reference link
                                         current_word_begin = jump_to!(chars, '\n', len);
                                     }
-                                    _ => continue,
+                                    _ => { // automatic reference link
+                                        current_word_begin = jump_to!(@next_char, chars, len);
+                                        check_doc(cx, valid_idents, link_text, span);
+                                    }
                                 }
                             }
                             None => return,

@@ -1,4 +1,4 @@
-#![feature(plugin, deprecated)]
+#![feature(plugin)]
 #![plugin(clippy)]
 
 #![deny(inline_always, deprecated_semver)]
