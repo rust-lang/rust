@@ -422,11 +422,7 @@ pub enum Input {
 
 pub fn run(input: Input, config: &Config) {
     let (file_map, report) = format_input(input, config);
-
-    let ignore_errors = config.write_mode == WriteMode::Plain;
-    if !ignore_errors {
-        msg!("{}", report);
-    }
+    msg!("{}", report);
 
     let mut out = stdout();
     let write_result = filemap::write_all_files(&file_map, &mut out, config);
