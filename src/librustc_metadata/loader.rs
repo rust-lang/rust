@@ -231,6 +231,7 @@ use rustc_back::target::Target;
 
 use std::cmp;
 use std::collections::HashMap;
+use std::fmt;
 use std::fs;
 use std::io::prelude::*;
 use std::io;
@@ -282,6 +283,21 @@ pub struct CratePaths {
 }
 
 pub const METADATA_FILENAME: &'static str = "rust.metadata.bin";
+
+#[derive(Copy, Clone, PartialEq)]
+enum CrateFlavor {
+    Rlib,
+    Dylib
+}
+
+impl fmt::Display for CrateFlavor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(match *self {
+            CrateFlavor::Rlib => "rlib",
+            CrateFlavor::Dylib => "dylib"
+        })
+    }
+}
 
 impl CratePaths {
     fn paths(&self) -> Vec<PathBuf> {
@@ -457,8 +473,8 @@ impl<'a> Context<'a> {
         let mut libraries = Vec::new();
         for (_hash, (rlibs, dylibs)) in candidates {
             let mut metadata = None;
-            let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
-            let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
+            let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut metadata);
+            let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut metadata);
             match metadata {
                 Some(metadata) => {
                     libraries.push(Library {
@@ -515,7 +531,7 @@ impl<'a> Context<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
-    fn extract_one(&mut self, m: HashMap<PathBuf, PathKind>, flavor: &str,
+    fn extract_one(&mut self, m: HashMap<PathBuf, PathKind>, flavor: CrateFlavor,
                    slot: &mut Option<MetadataBlob>) -> Option<(PathBuf, PathKind)> {
         let mut ret = None::<(PathBuf, PathKind)>;
         let mut error = 0;
@@ -535,7 +551,7 @@ impl<'a> Context<'a> {
         let mut err: Option<DiagnosticBuilder> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            let metadata = match get_metadata_section(self.target, &lib) {
+            let metadata = match get_metadata_section(self.target, flavor, &lib) {
                 Ok(blob) => {
                     if self.crate_matches(blob.as_slice(), &lib) {
                         blob
@@ -702,8 +718,8 @@ impl<'a> Context<'a> {
 
         // Extract the rlib/dylib pair.
         let mut metadata = None;
-        let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
-        let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
+        let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut metadata);
+        let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut metadata);
 
         if rlib.is_none() && dylib.is_none() { return None }
         match metadata {
@@ -746,21 +762,21 @@ impl ArchiveMetadata {
 }
 
 // Just a small wrapper to time how long reading metadata takes.
-fn get_metadata_section(target: &Target, filename: &Path)
+fn get_metadata_section(target: &Target, flavor: CrateFlavor, filename: &Path)
                         -> Result<MetadataBlob, String> {
     let start = Instant::now();
-    let ret = get_metadata_section_imp(target, filename);
+    let ret = get_metadata_section_imp(target, flavor, filename);
     info!("reading {:?} => {:?}", filename.file_name().unwrap(),
           start.elapsed());
     return ret
 }
 
-fn get_metadata_section_imp(target: &Target, filename: &Path)
+fn get_metadata_section_imp(target: &Target, flavor: CrateFlavor, filename: &Path)
                             -> Result<MetadataBlob, String> {
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
-    if filename.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
+    if flavor == CrateFlavor::Rlib {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.
@@ -864,7 +880,9 @@ pub fn read_meta_section_name(target: &Target) -> &'static str {
 // A diagnostic function for dumping crate metadata to an output stream
 pub fn list_file_metadata(target: &Target, path: &Path,
                           out: &mut io::Write) -> io::Result<()> {
-    match get_metadata_section(target, path) {
+    let filename = path.file_name().unwrap().to_str().unwrap();
+    let flavor = if filename.ends_with(".rlib") { CrateFlavor::Rlib } else { CrateFlavor::Dylib };
+    match get_metadata_section(target, flavor, path) {
         Ok(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
         Err(msg) => {
             write!(out, "{}\n", msg)
