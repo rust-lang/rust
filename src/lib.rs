@@ -425,7 +425,7 @@ pub fn run(input: Input, config: &Config) {
 
     let ignore_errors = config.write_mode == WriteMode::Plain;
     if !ignore_errors {
-        print!("{}", report);
+        msg!("{}", report);
     }
 
     let mut out = stdout();
