@@ -234,16 +234,14 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
         output: sig.output,
         variadic: false
     };
-    let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
 
     trans_closure(ccx,
                   decl,
                   body,
                   llfn,
-                  param_substs,
-                  closure_def_id,
+                  Instance::new(closure_def_id, param_substs),
                   id,
-                  fn_ty,
+                  &sig,
                   Abi::RustCall,
                   ClosureEnv::Closure(closure_def_id, id));
 
@@ -387,7 +385,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
-    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, substs.func_substs, &block_arena);
+    fcx = FunctionContext::new(ccx, lloncefn, fn_ty, None, &block_arena);
     let mut bcx = fcx.init(false, None);
 
 

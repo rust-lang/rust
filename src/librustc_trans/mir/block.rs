@@ -54,9 +54,14 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             bcx = self.trans_statement(bcx, statement);
         }
 
-        debug!("trans_block: terminator: {:?}", data.terminator());
+        let terminator = data.terminator();
+        debug!("trans_block: terminator: {:?}", terminator);
 
-        match data.terminator().kind {
+        let debug_loc = DebugLoc::ScopeAt(self.scopes[terminator.scope.index()],
+                                          terminator.span);
+        debug_loc.apply_to_bcx(&bcx);
+        debug_loc.apply(bcx.fcx());
+        match terminator.kind {
             mir::TerminatorKind::Resume => {
                 if let Some(cleanup_pad) = cleanup_pad {
                     bcx.cleanup_ret(cleanup_pad, None);
@@ -117,7 +122,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::TerminatorKind::Return => {
                 bcx.with_block(|bcx| {
-                    self.fcx.build_return_block(bcx, DebugLoc::None);
+                    self.fcx.build_return_block(bcx, debug_loc);
                 })
             }
 
@@ -144,7 +149,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                self.llblock(target),
                                unwind.llbb(),
                                cleanup_bundle.as_ref());
-                    self.bcx(target).at_start(|bcx| drop::drop_fill(bcx, lvalue.llval, ty));
+                    self.bcx(target).at_start(|bcx| {
+                        debug_loc.apply_to_bcx(bcx);
+                        drop::drop_fill(bcx, lvalue.llval, ty)
+                    });
                 } else {
                     bcx.call(drop_fn, &[llvalue], cleanup_bundle.as_ref());
                     drop::drop_fill(&bcx, lvalue.llval, ty);
@@ -267,7 +275,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                         bcx.with_block(|bcx| {
                             trans_intrinsic_call(bcx, callee.ty, &fn_ty,
                                                            ArgVals(llargs), dest,
-                                                           DebugLoc::None);
+                                                           debug_loc);
                         });
 
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
@@ -311,13 +319,17 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                cleanup_bundle.as_ref());
                     fn_ty.apply_attrs_callsite(invokeret);
 
-                    landingpad.at_start(|bcx| for op in args {
-                        self.set_operand_dropped(bcx, op);
+                    landingpad.at_start(|bcx| {
+                        debug_loc.apply_to_bcx(bcx);
+                        for op in args {
+                            self.set_operand_dropped(bcx, op);
+                        }
                     });
 
                     if destination.is_some() {
                         let ret_bcx = ret_bcx.build();
                         ret_bcx.at_start(|ret_bcx| {
+                            debug_loc.apply_to_bcx(ret_bcx);
                             let op = OperandRef {
                                 val: OperandValue::Immediate(invokeret),
                                 ty: sig.output.unwrap()
@@ -514,7 +526,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
         let use_funclets = base::wants_msvc_seh(bcx.sess()) && data.is_cleanup;
         let cleanup_pad = if use_funclets {
             bcx.set_personality_fn(self.fcx.eh_personality());
-            bcx.at_start(|bcx| Some(bcx.cleanup_pad(None, &[])))
+            bcx.at_start(|bcx| {
+                DebugLoc::None.apply_to_bcx(bcx);
+                Some(bcx.cleanup_pad(None, &[]))
+            })
         } else {
             None
         };

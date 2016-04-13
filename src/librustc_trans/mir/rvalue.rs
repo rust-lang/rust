@@ -38,7 +38,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_rvalue(&mut self,
                         bcx: BlockAndBuilder<'bcx, 'tcx>,
                         dest: LvalueRef<'tcx>,
-                        rvalue: &mir::Rvalue<'tcx>)
+                        rvalue: &mir::Rvalue<'tcx>,
+                        debug_loc: DebugLoc)
                         -> BlockAndBuilder<'bcx, 'tcx>
     {
         debug!("trans_rvalue(dest.llval={:?}, rvalue={:?})",
@@ -58,7 +59,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 if common::type_is_fat_ptr(bcx.tcx(), cast_ty) {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
-                    let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
+                    let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue, debug_loc);
                     self.store_operand(&bcx, dest.llval, temp);
                     return bcx;
                 }
@@ -217,7 +218,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             _ => {
                 assert!(rvalue_creates_operand(rvalue));
-                let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
+                let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue, debug_loc);
                 self.store_operand(&bcx, dest.llval, temp);
                 bcx
             }
@@ -226,7 +227,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
     pub fn trans_rvalue_operand(&mut self,
                                 bcx: BlockAndBuilder<'bcx, 'tcx>,
-                                rvalue: &mir::Rvalue<'tcx>)
+                                rvalue: &mir::Rvalue<'tcx>,
+                                debug_loc: DebugLoc)
                                 -> (BlockAndBuilder<'bcx, 'tcx>, OperandRef<'tcx>)
     {
         assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
@@ -419,7 +421,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                        lhs_addr, lhs_extra,
                                                        rhs_addr, rhs_extra,
                                                        lhs.ty, op.to_hir_binop(),
-                                                       DebugLoc::None)
+                                                       debug_loc)
                             })
                         }
                         _ => bug!()
@@ -470,7 +472,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                                    box_ty,
                                                                    llsize,
                                                                    llalign,
-                                                                   DebugLoc::None);
+                                                                   debug_loc);
                     llval = Some(val);
                     bcx
                 });

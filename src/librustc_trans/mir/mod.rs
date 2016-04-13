@@ -10,11 +10,19 @@
 
 use libc::c_uint;
 use llvm::{self, ValueRef};
+use llvm::debuginfo::DIScope;
 use rustc::ty;
 use rustc::mir::repr as mir;
 use rustc::mir::tcx::LvalueTy;
+use session::config::FullDebugInfo;
 use base;
 use common::{self, Block, BlockAndBuilder, FunctionContext};
+use debuginfo::{self, declare_local, DebugLoc, VariableAccess, VariableKind};
+use machine;
+use type_of;
+
+use syntax::codemap::DUMMY_SP;
+use syntax::parse::token;
 
 use std::ops::Deref;
 use std::rc::Rc;
@@ -43,8 +51,6 @@ impl<'mir, 'tcx: 'mir> Deref for CachedMir<'mir, 'tcx> {
         }
     }
 }
-
-// FIXME DebugLoc is always None right now
 
 /// Master context for translating MIR.
 pub struct MirContext<'bcx, 'tcx:'bcx> {
@@ -92,6 +98,9 @@ pub struct MirContext<'bcx, 'tcx:'bcx> {
     /// always indirect, though we try to avoid creating an alloca
     /// when we can (and just reuse the pointer the caller provided).
     args: Vec<LvalueRef<'tcx>>,
+
+    /// Debug information for MIR scopes.
+    scopes: Vec<DIScope>
 }
 
 enum TempRef<'tcx> {
@@ -113,11 +122,26 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
       analyze::lvalue_temps(bcx, &mir)
     });
 
+    // Compute debuginfo scopes from MIR scopes.
+    let scopes = debuginfo::create_mir_scopes(fcx);
+
     // Allocate variable and temp allocas
     let vars = mir.var_decls.iter()
-                            .map(|decl| (bcx.monomorphize(&decl.ty), decl.name))
-                            .map(|(mty, name)| LvalueRef::alloca(&bcx, mty, &name.as_str()))
-                            .collect();
+                            .map(|decl| (bcx.monomorphize(&decl.ty), decl))
+                            .map(|(mty, decl)| {
+        let lvalue = LvalueRef::alloca(&bcx, mty, &decl.name.as_str());
+
+        let scope = scopes[decl.scope.index()];
+        if !scope.is_null() && bcx.sess().opts.debuginfo == FullDebugInfo {
+            bcx.with_block(|bcx| {
+                declare_local(bcx, decl.name, mty, scope,
+                              VariableAccess::DirectVariable { alloca: lvalue.llval },
+                              VariableKind::LocalVariable, decl.span);
+            });
+        }
+
+        lvalue
+    }).collect();
     let temps = mir.temp_decls.iter()
                               .map(|decl| bcx.monomorphize(&decl.ty))
                               .enumerate()
@@ -132,7 +156,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                                   TempRef::Operand(None)
                               })
                               .collect();
-    let args = arg_value_refs(&bcx, &mir);
+    let args = arg_value_refs(&bcx, &mir, &scopes);
 
     // Allocate a `Block` for every basic block
     let block_bcxs: Vec<Block<'blk,'tcx>> =
@@ -152,6 +176,11 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let start_bcx = block_bcxs[mir::START_BLOCK.index()];
     bcx.br(start_bcx.llbb);
 
+    // Up until here, IR instructions for this function have explicitly not been annotated with
+    // source code location, so we don't step into call setup code. From here on, source location
+    // emitting should be enabled.
+    debuginfo::start_emitting_source_locations(fcx);
+
     let mut mircx = MirContext {
         mir: mir.clone(),
         fcx: fcx,
@@ -161,6 +190,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         vars: vars,
         temps: temps,
         args: args,
+        scopes: scopes
     };
 
     let mut visited = BitVector::new(mir_blocks.len());
@@ -185,6 +215,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
         }
     }
 
+    DebugLoc::None.apply(fcx);
     fcx.cleanup();
 }
 
@@ -192,12 +223,25 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
 /// argument's value. As arguments are lvalues, these are always
 /// indirect.
 fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
-                              mir: &mir::Mir<'tcx>)
+                              mir: &mir::Mir<'tcx>,
+                              scopes: &[DIScope])
                               -> Vec<LvalueRef<'tcx>> {
     let fcx = bcx.fcx();
     let tcx = bcx.tcx();
     let mut idx = 0;
     let mut llarg_idx = fcx.fn_ty.ret.is_indirect() as usize;
+
+    // Get the argument scope assuming ScopeId(0) has no parent.
+    let arg_scope = mir.scopes.get(0).and_then(|data| {
+        let scope = scopes[0];
+        if data.parent_scope.is_none() && !scope.is_null() &&
+           bcx.sess().opts.debuginfo == FullDebugInfo {
+            Some(scope)
+        } else {
+            None
+        }
+    });
+
     mir.arg_decls.iter().enumerate().map(|(arg_index, arg_decl)| {
         let arg_ty = bcx.monomorphize(&arg_decl.ty);
         if arg_decl.spread {
@@ -211,13 +255,14 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
+            let lltuplety = type_of::type_of(bcx.ccx(), arg_ty);
             let lltemp = bcx.with_block(|bcx| {
                 base::alloc_ty(bcx, arg_ty, &format!("arg{}", arg_index))
             });
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
                 let dst = bcx.struct_gep(lltemp, i);
                 let arg = &fcx.fn_ty.args[idx];
-                    idx += 1;
+                idx += 1;
                 if common::type_is_fat_ptr(tcx, tupled_arg_ty) {
                         // We pass fat pointers as two words, but inside the tuple
                         // they are the two sub-fields of a single aggregate field.
@@ -228,17 +273,37 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                 } else {
                     arg.store_fn_arg(bcx, &mut llarg_idx, dst);
                 }
+
+                bcx.with_block(|bcx| arg_scope.map(|scope| {
+                    let byte_offset_of_var_in_tuple =
+                        machine::llelement_offset(bcx.ccx(), lltuplety, i);
+
+                    let address_operations = unsafe {
+                        [llvm::LLVMDIBuilderCreateOpDeref(),
+                         llvm::LLVMDIBuilderCreateOpPlus(),
+                         byte_offset_of_var_in_tuple as i64]
+                    };
+
+                    let variable_access = VariableAccess::IndirectVariable {
+                        alloca: lltemp,
+                        address_operations: &address_operations
+                    };
+                    declare_local(bcx, token::special_idents::invalid.name,
+                                  tupled_arg_ty, scope, variable_access,
+                                  VariableKind::ArgumentVariable(arg_index + i + 1),
+                                  bcx.fcx().span.unwrap_or(DUMMY_SP));
+                }));
             }
             return LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty));
         }
 
         let arg = &fcx.fn_ty.args[idx];
         idx += 1;
-        let llval = if arg.is_indirect() {
+        let llval = if arg.is_indirect() && bcx.sess().opts.debuginfo != FullDebugInfo {
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up, unless
             // we emit extra-debug-info, which requires local allocas :(.
-            // FIXME: lifetimes, debug info
+            // FIXME: lifetimes
             let llarg = llvm::get_param(fcx.llfn, llarg_idx as c_uint);
             llarg_idx += 1;
             llarg
@@ -261,6 +326,12 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             }
             lltemp
         };
+        bcx.with_block(|bcx| arg_scope.map(|scope| {
+            declare_local(bcx, token::special_idents::invalid.name, arg_ty, scope,
+                          VariableAccess::DirectVariable { alloca: llval },
+                          VariableKind::ArgumentVariable(arg_index + 1),
+                          bcx.fcx().span.unwrap_or(DUMMY_SP));
+        }));
         LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
     }).collect()
 }

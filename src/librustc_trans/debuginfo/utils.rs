@@ -11,7 +11,7 @@
 // Utility Functions.
 
 use super::{FunctionDebugContext, CrateDebugContext};
-use super::namespace::namespace_for_item;
+use super::namespace::item_namespace;
 
 use rustc::hir::def_id::DefId;
 
@@ -42,16 +42,6 @@ pub fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
         llvm::LLVMDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
     };
-}
-
-pub fn contains_nodebug_attribute(attributes: &[ast::Attribute]) -> bool {
-    attributes.iter().any(|attr| {
-        let meta_item: &ast::MetaItem = &attr.node.value;
-        match meta_item.node {
-            ast::MetaItemKind::Word(ref value) => &value[..] == "no_debug",
-            _ => false
-        }
-    })
 }
 
 /// Return codemap::Loc corresponding to the beginning of the span
@@ -87,21 +77,19 @@ pub fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
     }
 }
 
-pub fn assert_type_for_node_id(cx: &CrateContext,
-                           node_id: ast::NodeId,
-                           error_reporting_span: Span) {
-    if !cx.tcx().node_types().contains_key(&node_id) {
-        span_bug!(error_reporting_span,
-                  "debuginfo: Could not find type for node id!");
-    }
-}
-
 pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
                                    -> (DIScope, Span) {
-    let containing_scope = namespace_for_item(cx, def_id).scope;
-    let definition_span = cx.tcx().map.def_id_span(def_id, codemap::DUMMY_SP /* (1) */ );
+    let containing_scope = item_namespace(cx, DefId {
+        krate: def_id.krate,
+        index: cx.tcx().def_key(def_id).parent
+                 .expect("get_namespace_and_span_for_item: missing parent?")
+    });
 
-    // (1) For external items there is no span information
+    // Try to get some span information, if we have an inlined item.
+    let definition_span = match cx.external().borrow().get(&def_id) {
+        Some(&Some(node_id)) => cx.tcx().map.span(node_id),
+        _ => cx.tcx().map.def_id_span(def_id, codemap::DUMMY_SP)
+    };
 
     (containing_scope, definition_span)
 }

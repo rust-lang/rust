@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(repr_simd, platform_intrinsics, rustc_attrs)]
+#![feature(repr_simd, platform_intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -35,7 +35,6 @@ extern "platform-intrinsic" {
     fn simd_cast<T, U>(x: T) -> U;
 }
 
-#[rustc_no_mir] // FIXME #27840 MIR doesn't provide precise spans for calls.
 fn main() {
     let x = i32x4(0, 0, 0, 0);
 

@@ -698,6 +698,7 @@ impl ScopeId {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ScopeData {
+    pub span: Span,
     pub parent_scope: Option<ScopeId>,
 }
 

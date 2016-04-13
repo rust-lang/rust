@@ -69,7 +69,7 @@
 // lldb-command:print *owned
 // lldb-check:[...]$9 = 6
 
-#![feature(unboxed_closures, box_syntax)]
+#![feature(unboxed_closures, box_syntax, rustc_attrs, stmt_expr_attributes)]
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
@@ -80,6 +80,7 @@ struct Struct {
     c: usize
 }
 
+#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing captures.
 fn main() {
     let mut variable = 1;
     let constant = 2;
@@ -94,7 +95,9 @@ fn main() {
     let owned: Box<_> = box 6;
 
     {
-        let mut first_closure = || {
+        let mut first_closure =
+        #[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing captures.
+        || {
             zzz(); // #break
             variable = constant + a_struct.a + struct_ref.a + *owned;
         };
@@ -103,7 +106,9 @@ fn main() {
     }
 
     {
-        let mut second_closure = || {
+        let mut second_closure =
+        #[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing captures.
+        || {
             zzz(); // #break
             variable = constant + a_struct.a + struct_ref.a + *owned;
         };
