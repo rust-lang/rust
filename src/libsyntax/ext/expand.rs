@@ -504,6 +504,13 @@ pub fn expand_item_mac(it: P<ast::Item>,
 
 /// Expand a stmt
 fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
+    // perform all pending renames
+    let stmt = {
+        let pending_renames = &mut fld.cx.syntax_env.info().pending_renames;
+        let mut rename_fld = IdentRenamer{renames:pending_renames};
+        rename_fld.fold_stmt(stmt).expect_one("rename_fold didn't return one value")
+    };
+
     let (mac, style, attrs) = match stmt.node {
         StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
@@ -717,14 +724,8 @@ pub fn expand_block(blk: P<Block>, fld: &mut MacroExpander) -> P<Block> {
 pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
     b.map(|Block {id, stmts, expr, rules, span}| {
         let new_stmts = stmts.into_iter().flat_map(|x| {
-            // perform all pending renames
-            let renamed_stmt = {
-                let pending_renames = &mut fld.cx.syntax_env.info().pending_renames;
-                let mut rename_fld = IdentRenamer{renames:pending_renames};
-                rename_fld.fold_stmt(x).expect_one("rename_fold didn't return one value")
-            };
-            // expand macros in the statement
-            fld.fold_stmt(renamed_stmt).into_iter()
+            // perform pending renames and expand macros in the statement
+            fld.fold_stmt(x).into_iter()
         }).collect();
         let new_expr = expr.map(|x| {
             let expr = {
