@@ -344,6 +344,12 @@ closures\footnote{Closures are essentially structs with a field for each variabl
 closure.}. Miri supports all common usage of all of these types. The main missing piece is to handle
 \texttt{\#[repr(..)]} annotations which adjust the layout of a \rust{struct} or \rust{enum}.
 
+\subsection{Lvalue projections}
+
+This category includes field accesses like \rust{foo.bar}, dereferencing, accessing data in an
+\rust{enum} variant, and indexing arrays. Miri supports all of these, including nested projections
+such as \rust{*foo.bar[2]}.
+
 \subsection{Control flow}
 
 All of Rust's standard control flow features, including \rust{loop}, \rust{while}, \rust{for},
@@ -351,7 +357,21 @@ All of Rust's standard control flow features, including \rust{loop}, \rust{while
 \rust{return} are supported. In fact, supporting these were quite easy since the Rust compiler
 reduces them all down to a comparatively smaller set of control-flow graph primitives in MIR.
 
-\subsection{Closures}
+\subsection{Function calls}
+
+As previously described, Miri supports arbitrary function calls without growing its own stack (only
+its virtual call stack). It is somewhat limited by the fact that cross-crate\footnote{A crate is a
+single Rust library (or executable).} calls only work for functions whose MIR is stored in crate
+metadata. This is currently true for \rust{const}, generic, and \texttt{\#[inline]} functions. A
+branch of the compiler could be made that stores MIR for all functions. This would be a non-issue
+for a compile-time evaluator based on Miri, since it would only call \rust{const fn}s.
+
+\subsubsection{Method calls}
+
+Trait method calls require a bit more machinery dealing with compiler internals than normal function
+calls, but Miri supports them.
+
+\subsubsection{Closures}
 
 Closures are like structs containing a field for each captured variable, but closures also have an
 associated function. Supporting closure function calls required some extra machinery to get the
@@ -359,7 +379,14 @@ necessary information from the compiler, but it is all supported except for one 
 list\footnote{The edge case is calling a closure that takes a reference to its captures via a
 closure interface that passes the captures by value.}.
 
-\subsection{Intrinsics}
+\subsubsection{Function pointers}
+
+Function pointers are not currently supported by Miri, but there is a relatively simple way they
+could be encoded using a relocation with a special reserved allocation identifier. The offset of the
+relocation would determine which function it points to in a special array of functions in the
+interpreter.
+
+\subsubsection{Intrinsics}
 
 To support unsafe code, and in particular the unsafe code used to implement Rust's standard library,
 it became clear that Miri would have to support calls to compiler
@@ -374,6 +401,25 @@ the type in question to the return value location. The Rust standard library use
 to implement various data structures, so this was a major step toward supporting them. So far, I've
 been implementing intrinsics on a case-by-case basis as I write test cases which require missing
 ones, so I haven't yet exhaustively implemented them all.
+
+\subsubsection{Generic function calls}
+
+Miri needs special support for generic function calls since Rust is a \emph{monomorphizing}
+compiler, meaning it generates a special version of each function for each distinct set of type
+parameters it gets called with. Since functions in MIR are still polymorphic, Miri has to do the
+same thing and substitute function type parameters into all types it encounters to get fully
+concrete, monomorphized types. For example, in\ldots
+
+\begin{minted}[autogobble]{rust}
+  fn some<T>(t: T) -> Option<T> { Some(t) }
+\end{minted}
+
+\ldots{} Miri needs to know how many bytes to copy from the argument to the return value, based on
+the size of \rust{T}. If we call \rust{some(10i32)} Miri will execute \rust{some} knowing that
+\rust{T = i32} and generate a representation for \rust{Option<i32>}.
+
+Miri currently does this monomorphization on-demand, or lazily, unlike the Rust back-end which does
+it all ahead of time.
 
 \subsection{Heap allocations}
 
@@ -400,16 +446,58 @@ reject reallocate or deallocate calls on stack allocations.
 
 \subsection{Destructors}
 
+When values go out of scope that ``own'' some resource, like a heap allocation or file handle, Rust
+inserts \emph{drop glue} that calls the user-defined destructor for the type if it exists, and then
+drops all of the subfields. Destructors for types like \rust{Box<T>} and \rust{Vec<T>} deallocate
+heap memory.
+
 Miri doesn't yet support calling user-defined destructors, but it has most of the machinery in place
 to do so already and it's next on my to-do list. There \emph{is} support for dropping \rust{Box<T>}
 types, including deallocating their associated allocations. This is enough to properly execute the
 dangling pointer example in \autoref{sec:deterministic}.
 
-\subsection{Standard library}
-\blindtext
+\subsection{Constants}
 
-\section{Unsupported}
-\blindtext
+Only basic integer, boolean, string, and byte-string literals are currently supported. Evaluating
+more complicated constant expressions in their current form would be a somewhat pointless exercise
+for Miri. Instead, we should lower constant expressions to MIR so Miri can run them directly. (This
+is precisely what would be done to use Miri as the actual constant evaluator.)
+
+\subsection{Static variables}
+
+While it would be invalid to write to static (i.e.\ global) variables in Miri executions, it would
+probably be fine to allow reads. However, Miri doesn't currently support them and they would need
+support similar to constants.
+
+\subsection{Standard library}
+
+Throughout the implementation of the above features, I often followed this process:
+
+\begin{enumerate}
+  \item Try using a feature from the standard library.
+  \item See where Miri runs into stuff it can't handle.
+  \item Fix the problem.
+  \item Go to 1.
+\end{enumerate}
+
+At present, Miri supports a number of major non-trivial features from the standard library along
+with tons of minor features. Smart pointer types such as \rust{Box}, \rust{Rc}\footnote{Reference
+counted shared pointer} and \rust{Arc}\footnote{Atomically reference-counted thread-safe shared
+pointer} all seem to work. I've also tested using the shared smart pointer types with \rust{Cell}
+and \rust{RefCell}\footnote{\href{https://doc.rust-lang.org/stable/std/cell/index.html}{Rust
+documentation for cell types}} for internal mutability, and that works as well, although
+\rust{RefCell} can't ever be borrowed twice until I implement destructor calls, since its destructor
+is what releases the borrow.
+
+But the standard library collection I spent the most time on was \rust{Vec}, the standard
+dynamically-growable array type, similar to C++'s \texttt{std::vector} or Java's
+\texttt{java.util.ArrayList}. In Rust, \rust{Vec} is an extremely pervasive collection, so
+supporting it is a big win for supporting a larger swath of Rust programs in Miri.
+
+See \autoref{fig:vec} for an example (working in Miri today) of initializing a \rust{Vec} with a
+small amount of space on the heap and then pushing enough elements to force it to reallocate its
+data array. This involves cross-crate generic function calls, unsafe code using raw pointers, heap
+allocation, handling of uninitialized memory, compiler intrinsics, and more.
 
 \begin{figure}[t]
   \begin{minted}[autogobble]{rust}
@@ -441,15 +529,57 @@ dangling pointer example in \autoref{sec:deterministic}.
     // B: 01 02 03 __
   \end{minted}
   \caption{\rust{Vec} example on 32-bit little-endian}
+  \label{fig:vec}
+\end{figure}
+
+You can even do unsafe things with \rust{Vec} like \rust{v.set_len(10)} or
+\rust{v.get_unchecked(2)}, but if you do these things carefully in a way that doesn't cause any
+undefined behaviour (just like when you write unsafe code for regular Rust), then Miri can handle it
+all. But if you do slip up, Miri will error out with an appropriate message (see
+\autoref{fig:vec-error}).
+
+\begin{figure}[t]
+  \begin{minted}[autogobble]{rust}
+    fn out_of_bounds() -> u8 {
+        let v = vec![1, 2];
+        let p = unsafe { v.get_unchecked(5) };
+        *p + 10
+    //  ~~ error: pointer offset outside
+    //       bounds of allocation
+    }
+
+    fn undefined_bytes() -> u8 {
+        let v = Vec::<u8>::with_capacity(10);
+        let p = unsafe { v.get_unchecked(5) };
+        *p + 10
+    //  ~~~~~~~ error: attempted to read
+    //            undefined bytes
+    }
+  \end{minted}
+  \caption{\rust{Vec} examples with undefined behaviour}
+  \label{fig:vec-error}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Future work}
+\section{Future directions}
 
 \subsection{Finishing the implementation}
 
-\blindtext
+There are a number of pressing items on my to-do list for Miri, including:
+
+\begin{itemize}
+  \item Destructors and \rust{__rust_deallocate}.
+  \item Non-trivial casts between primitive types like integers and pointers.
+  \item Handling statics and global memory.
+  \item Reporting errors for all undefined behaviour.\footnote{\href{https://doc.rust-lang.org/reference.html\#behavior-considered-undefined}{The Rust reference on what is considered undefined behaviour}}
+  \item Function pointers.
+  \item Accounting for target machine primitive type alignment and endianness.
+  \item Optimizing stuff (undefined byte masks, tail-calls).
+  \item Benchmarking Miri vs. unoptimized Rust.
+  \item Various \texttt{TODO}s and \texttt{FIXME}s left in the code.
+  \item Getting a version of Miri into rustc for real.
+\end{itemize}
 
 \subsection{Alternative applications}
 
@@ -459,32 +589,60 @@ Other possible uses for Miri include:
   \item A graphical or text-mode debugger that steps through MIR execution one statement at a time,
     for figuring out why some compile-time execution is raising an error or simply learning how Rust
     works at a low level.
-  \item A read-eval-print-loop (REPL) for Rust may be easier to implement on top of Miri than the
-    usual LLVM back-end.
-  \item An extended version of Miri could be developed apart from the purpose of compile-time
-    execution that is able to run foreign functions from C/C++ and generally have full access to the
-    operating system. Such a version of Miri could be used to more quickly prototype changes to the
-    Rust language that would otherwise require changes to the LLVM back-end.
-  \item Miri might be useful for unit-testing the compiler by comparing the results of Miri's
-    execution against the results of LLVM-compiled machine code's execution. This would help to
-    guarantee that compile-time execution works the same as runtime execution.
+  \item A read-eval-print-loop (REPL) for Rust, which may be easier to implement on top of Miri than
+    the usual LLVM back-end.
+  \item An extended version of Miri developed apart from the purpose of compile-time execution that
+    is able to run foreign functions from C/C++ and generally have full access to the operating
+    system. Such a version of Miri could be used to more quickly prototype changes to the Rust
+    language that would otherwise require changes to the LLVM back-end.
+  \item Unit-testing the compiler by comparing the results of Miri's execution against the results
+    of LLVM-compiled machine code's execution. This would help to guarantee that compile-time
+    execution works the same as runtime execution.
+  \item Some kind of symbolic evaluator that examines multiple possible code paths at once to
+    determine if undefined behaviour could be observed on any of them.
 \end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Final thoughts}
 
-% TODO(tsion): Reword this.
-Making Miri work was primarily an implementation problem. Writing an interpreter which models values
-of varying sizes, stack and heap allocation, unsafe memory operations, and more requires some
-unconventional techniques compared to many interpreters. Miri's execution remains safe even while
-simulating execution of unsafe code, which allows it to detect when unsafe code does something
-invalid.
+Writing an interpreter which models values of varying sizes, stack and heap allocation, unsafe
+memory operations, and more requires some unconventional techniques compared to typical
+interpreters. However, aside from the somewhat complicated abstract memory model, making Miri work
+was primarily a software engineering problem, and not a particularly tricky one. This is a testament
+to MIR's suitability as an intermediate representation for Rust---removing enough unnecessary
+abstraction to keep it simple. For example, Miri doesn't even need to know that there are different
+kind of loops, or how to match patterns in a \rust{match} expression.
+
+Another advantage to targeting MIR is that any new features at the syntax-level or type-level
+generally require little to no change in Miri. For example, when the new ``question mark'' syntax
+for error handling\footnote{
+  \href{https://github.com/rust-lang/rfcs/blob/master/text/0243-trait-based-exception-handling.md}
+    {Question mark syntax RFC}}
+was added to rustc, Miri also supported it the same day with no change. When specialization\footnote{
+  \href{https://github.com/rust-lang/rfcs/blob/master/text/1210-impl-specialization.md}
+    {Specialization RFC}}
+was added, Miri supported it with just minor changes to trait method lookup.
+
+Of course, Miri also has limitations. The inability to execute FFI and inline assembly reduces the
+amount of Rust programs Miri could ever execute. The good news is that in the constant evaluator,
+FFI can be stubbed out in cases where it makes sense, like I did with \rust{__rust_allocate}, and
+for Miri outside of the compiler it may be possible to use libffi to call C functions from the
+interpreter.
+
+In conclusion, Miri was a surprisingly effective project, and a lot of fun to implement. There were
+times where I ended up supporting Rust features I didn't even intend to while I was adding support
+for some other feature, due to the design of MIR collapsing features at the source level into fewer
+features at the MIR level. I am excited to work with the compiler team going forward to try to make
+Miri useful for constant evaluation in Rust.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Thanks}
 
-Eduard Burtescu, Niko Matsakis, and Christopher Dutchyn.
+A big thanks goes to Eduard Burtescu for writing the abstract machine specification and answering my
+incessant questions on IRC, to Niko Matsakis for coming up with the idea for Miri and supporting my
+desire to work with the Rust compiler, and to my research supervisor Christopher Dutchyn. Thanks
+also to everyone else on the compiler team and on Mozilla IRC who helped me figure stuff out.
 
 \end{document}
