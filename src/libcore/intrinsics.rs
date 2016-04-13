@@ -53,34 +53,14 @@ extern "rust-intrinsic" {
     // NB: These intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> T;
-    #[cfg(all(stage0, not(cargobuild)))]
-    pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> T;
-
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
-    #[cfg(any(not(stage0), cargobuild))]
     pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     pub fn atomic_cxchgweak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
@@ -548,27 +528,22 @@ extern "rust-intrinsic" {
 
     /// Float addition that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fadd_fast<T>(a: T, b: T) -> T;
 
     /// Float subtraction that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fsub_fast<T>(a: T, b: T) -> T;
 
     /// Float multiplication that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fmul_fast<T>(a: T, b: T) -> T;
 
     /// Float division that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn fdiv_fast<T>(a: T, b: T) -> T;
 
     /// Float remainder that allows optimizations based on algebraic rules.
     /// May assume inputs are finite.
-    #[cfg(not(stage0))]
     pub fn frem_fast<T>(a: T, b: T) -> T;
 
 

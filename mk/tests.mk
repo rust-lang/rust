@@ -241,13 +241,16 @@ cleantestlibs:
 ######################################################################
 
 .PHONY: tidy
-tidy: $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD))
+tidy: $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)) \
+		$(SNAPSHOT_RUSTC_POST_CLEANUP)
 	$(TARGET_RPATH_VAR0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $< $(S)src
 
 $(HBIN0_H_$(CFG_BUILD))/tidy$(X_$(CFG_BUILD)): \
 		$(TSREQ0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
 		$(TLIB0_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.std \
-		$(call rwildcard,$(S)src/tools/tidy/src,*.rs)
+		$(call rwildcard,$(S)src/tools/tidy/src,*.rs) \
+		$(SNAPSHOT_RUSTC_POST_CLEANUP) | \
+		$(TLIB0_T_$(CFG_BUILD)_H_$(CFG_BUILD))
 	$(STAGE0_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(S)src/tools/tidy/src/main.rs \
 		--out-dir $(@D) --crate-name tidy
 
