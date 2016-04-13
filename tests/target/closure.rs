@@ -26,12 +26,10 @@ fn main() {
         }
     };
 
-    let block_me = |field| {
-        if true_story() {
-            1
-        } else {
-            2
-        }
+    let block_me = |field| if true_story() {
+        1
+    } else {
+        2
     };
 
     let unblock_me = |trivial| closure();
@@ -76,4 +74,11 @@ fn issue311() {
     let func = |x| println!("{}", x);
 
     (func)(0.0);
+}
+
+fn issue863() {
+    let closure = |x| match x {
+        0 => true,
+        _ => false,
+    } == true;
 }

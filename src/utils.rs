@@ -334,3 +334,22 @@ fn bin_search_test() {
     assert_eq!(Some(()), binary_search(4, 125, &closure));
     assert_eq!(None, binary_search(6, 100, &closure));
 }
+
+pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
+    match e.node {
+        ast::ExprKind::InPlace(ref e, _) |
+        ast::ExprKind::Call(ref e, _) |
+        ast::ExprKind::Binary(_, ref e, _) |
+        ast::ExprKind::Cast(ref e, _) |
+        ast::ExprKind::Type(ref e, _) |
+        ast::ExprKind::Assign(ref e, _) |
+        ast::ExprKind::AssignOp(_, ref e, _) |
+        ast::ExprKind::Field(ref e, _) |
+        ast::ExprKind::TupField(ref e, _) |
+        ast::ExprKind::Index(ref e, _) |
+        ast::ExprKind::Range(Some(ref e), _, _) => left_most_sub_expr(e),
+        // FIXME needs Try in Syntex
+        // ast::ExprKind::Try(ref f) => left_most_sub_expr(e),
+        _ => e,
+    }
+}

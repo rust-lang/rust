@@ -50,3 +50,10 @@ fn issue311() {
 
     (func)(0.0);
 }
+
+fn issue863() {
+    let closure = |x| match x {
+        0 => true,
+        _ => false,
+    } == true;
+}
