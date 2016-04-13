@@ -47,7 +47,7 @@ set of scheduled drops up front, and so whenever we exit from the
 scope we only drop the values scheduled thus far. For example, consider
 the scope S corresponding to this loop:
 
-```
+```rust,ignore
 loop {
     let x = ...;
     if cond { break; }
