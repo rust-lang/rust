@@ -275,7 +275,6 @@ impl<'a> ::ModuleS<'a> {
     // Define the name or return the existing binding if there is a collision.
     pub fn try_define_child(&self, name: Name, ns: Namespace, binding: NameBinding<'a>)
                             -> Result<(), &'a NameBinding<'a>> {
-        if self.resolutions.borrow_state() != ::std::cell::BorrowState::Unused { return Ok(()); }
         self.update_resolution(name, ns, |resolution| {
             resolution.try_define(self.arenas.alloc_name_binding(binding))
         })
@@ -318,15 +317,22 @@ impl<'a> ::ModuleS<'a> {
     fn update_resolution<T, F>(&self, name: Name, ns: Namespace, update: F) -> T
         where F: FnOnce(&mut NameResolution<'a>) -> T
     {
-        let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
-        let was_known = resolution.binding().is_some();
+        // Ensure that `resolution` isn't borrowed during `define_in_glob_importers`,
+        // where it might end up getting re-defined via a glob cycle.
+        let (new_binding, t) = {
+            let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
+            let was_known = resolution.binding().is_some();
 
-        let t = update(resolution);
-        if !was_known {
-            if let Some(binding) = resolution.binding() {
-                self.define_in_glob_importers(name, ns, binding);
+            let t = update(resolution);
+
+            if was_known { return t; }
+            match resolution.binding() {
+                Some(binding) => (binding, t),
+                None => return t,
             }
-        }
+        };
+
+        self.define_in_glob_importers(name, ns, new_binding);
         t
     }
 
@@ -650,11 +656,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // Add to target_module's glob_importers
         target_module.glob_importers.borrow_mut().push((module_, directive));
 
-        for (&(name, ns), resolution) in target_module.resolutions.borrow().iter() {
-            if let Some(binding) = resolution.borrow().binding() {
-                if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
-                    let _ = module_.try_define_child(name, ns, directive.import(binding, None));
-                }
+        // Ensure that `resolutions` isn't borrowed during `try_define_child`,
+        // since it might get updated via a glob cycle.
+        let bindings = target_module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
+            resolution.borrow().binding().map(|binding| (*name, binding))
+        }).collect::<Vec<_>>();
+        for ((name, ns), binding) in bindings {
+            if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
+                let _ = module_.try_define_child(name, ns, directive.import(binding, None));
             }
         }
 
