@@ -346,9 +346,9 @@ impl<R, F: FnOnce() -> R> FnOnce<()> for AssertRecoverSafe<F> {
 /// It is **not** recommended to use this function for a general try/catch
 /// mechanism. The `Result` type is more appropriate to use for functions that
 /// can fail on a regular basis. Additionally, this function is not guaranteed
-/// to catch all panics, see the "Notes" sectino below.
+/// to catch all panics, see the "Notes" section below.
 ///
-/// The closure provided is required to adhere to the `UnwindSafe` to ensure
+/// The closure provided is required to adhere to the `UnwindSafe` trait to ensure
 /// that all captured variables are safe to cross this boundary. The purpose of
 /// this bound is to encode the concept of [exception safety][rfc] in the type
 /// system. Most usage of this function should not need to worry about this
