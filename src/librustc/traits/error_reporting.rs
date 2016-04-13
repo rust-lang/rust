@@ -471,9 +471,10 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         let closure_span = infcx.tcx.map.span_if_local(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
                             infcx.tcx.sess, closure_span, E0524,
-                            "the closure implements `{}` but not `{}`",
-                            found_kind,
-                            kind);
+                            "expected a closure that implements the `{}` trait, but this closure \
+                             only implements `{}`",
+                            kind,
+                            found_kind);
                         err.span_note(
                             obligation.cause.span,
                             &format!("the requirement to implement `{}` derives from here", kind));

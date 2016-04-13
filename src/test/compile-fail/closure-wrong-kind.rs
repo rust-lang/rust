@@ -17,7 +17,6 @@ fn bar<T: Fn(u32)>(_: T) {}
 
 fn main() {
     let x = X;
-    let closure = |_| foo(x);
-    //~^ ERROR the closure implements `FnOnce` but not `Fn`
+    let closure = |_| foo(x);  //~ ERROR E0524
     bar(closure);
 }
