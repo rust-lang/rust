@@ -20,10 +20,9 @@
 \begin{document}
 
 \title{Miri: \\ \smaller{An interpreter for Rust's mid-level intermediate representation}}
-% \subtitle{test}
 \author{Scott Olson\footnote{\href{mailto:scott@solson.me}{scott@solson.me}} \\
   \smaller{Supervised by Christopher Dutchyn}}
-\date{April 8th, 2016}
+\date{April 12th, 2016}
 \maketitle
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -155,14 +154,15 @@ fundamentally impossible.
 
 \section{Current implementation}
 
-Roughly halfway through my time working on Miri, Rust compiler team member Eduard
-Burtescu\footnote{\href{https://www.rust-lang.org/team.html\#Compiler}{The Rust compiler team}} made
-a post on Rust's internal
-forums\footnote{\href{https://internals.rust-lang.org/t/mir-constant-evaluation/3143/31}{Burtescu's
-``Rust Abstract Machine'' forum post}} about a ``Rust Abstract Machine'' specification which could
-be used to implement more powerful compile-time function execution, similar to what is supported by
-C++14's \mintinline{cpp}{constexpr} feature. After clarifying some of the details of the abstract
-machine's data layout with Burtescu via IRC, I started implementing it in Miri.
+Roughly halfway through my time working on Miri, Eduard
+Burtescu\footnote{\href{https://github.com/eddyb}{Eduard Burtescu on GitHub}} from the Rust compiler
+team\footnote{\href{https://www.rust-lang.org/team.html\#Compiler}{The Rust compiler team}} made a
+post on Rust's internal forums about a ``Rust Abstract Machine''
+specification\footnote{\href{https://internals.rust-lang.org/t/mir-constant-evaluation/3143/31}{Burtescu's
+``Rust Abstract Machine'' forum post}} which could be used to implement more powerful compile-time
+function execution, similar to what is supported by C++14's \mintinline{cpp}{constexpr} feature.
+After clarifying some of the details of the abstract machine's data layout with Burtescu via IRC, I
+started implementing it in Miri.
 
 \subsection{Raw value representation}
 
@@ -224,7 +224,7 @@ comparatively trivial.
 
 See \autoref{fig:undef} for an example undefined byte, represented by underscores. Note that there
 would still be a value for the second byte in the byte array, but we don't care what it is. The
-bitmask would be $10_2$, i.e. \rust{[true, false]}.
+bitmask would be $10_2$, i.e.\ \rust{[true, false]}.
 
 \begin{figure}[hb]
   \begin{minted}[autogobble]{rust}
@@ -237,12 +237,179 @@ bitmask would be $10_2$, i.e. \rust{[true, false]}.
   \label{fig:undef}
 \end{figure}
 
-% TODO(tsion): Find a place for this text.
-% Making Miri work was primarily an implementation problem. Writing an interpreter which models values
-% of varying sizes, stack and heap allocation, unsafe memory operations, and more requires some
-% unconventional techniques compared to many interpreters. Miri's execution remains safe even while
-% simulating execution of unsafe code, which allows it to detect when unsafe code does something
-% invalid.
+\subsection{Computing data layout}
+
+Currently, the Rust compiler's data layout computations used in translation from MIR to LLVM IR are
+hidden from Miri, so I do my own basic data layout computation which doesn't generally match what
+translation does. In the future, the Rust compiler may be modified so that Miri can use the exact
+same data layout.
+
+Miri's data layout calculation is a relatively simple transformation from Rust types to a basic
+structure with constant size values for primitives and sets of fields with offsets for aggregate
+types. These layouts are cached for performance.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Deterministic execution}
+\label{sec:deterministic}
+
+In order to be effective as a compile-time evaluator, Miri must have \emph{deterministic execution},
+as explained by Burtescu in the ``Rust Abstract Machine'' post. That is, given a function and
+arguments to that function, Miri should always produce identical results. This is important for
+coherence in the type checker when constant evaluations are involved in types, such as for sizes of
+array types:
+
+\begin{minted}[autogobble,mathescape]{rust}
+  const fn get_size() -> usize { /* $\ldots$ */ }
+  let array: [i32; get_size()];
+\end{minted}
+
+Since Miri allows execution of unsafe code\footnote{In fact, the distinction between safe and unsafe
+doesn't exist at the MIR level.}, it is specifically designed to remain safe while interpreting
+potentially unsafe code. When Miri encounters an unrecoverable error, it reports it via the Rust
+compiler's usual error reporting mechanism, pointing to the part of the original code where the
+error occurred. For example:
+
+\begin{minted}[autogobble]{rust}
+  let b = Box::new(42);
+  let p: *const i32 = &*b;
+  drop(b);
+  unsafe { *p }
+  //       ~~ error: dangling pointer
+  //            was dereferenced
+\end{minted}
+\label{dangling-pointer}
+
+There are more examples in Miri's
+repository.\footnote{\href{https://github.com/tsion/miri/blob/master/test/errors.rs}{Miri's error
+tests}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Language support}
+
+In its current state, Miri supports a large proportion of the Rust language, with a few major
+exceptions such as the lack of support for FFI\footnote{Foreign Function Interface, e.g.\ calling
+functions defined in Assembly, C, or C++.}, which eliminates possibilities like reading and writing
+files, user input, graphics, and more. The following is a tour of what is currently supported.
+
+\subsection{Primitives}
+
+Miri supports booleans and integers of various sizes and signed-ness (i.e.\ \rust{i8}, \rust{i16},
+\rust{i32}, \rust{i64}, \rust{isize}, \rust{u8}, \rust{u16}, \rust{u32}, \rust{u64}, \rust{usize}),
+as well as unary and boolean operations over these types. The \rust{isize} and \rust{usize} types
+will be sized according to the target machine's pointer size just like in compiled Rust. The
+\rust{char} and float types (\rust{f32}, \rust{f64}) are not supported yet, but there are no known
+barriers to doing so.
+
+When examining a boolean in an \rust{if} condition, Miri will report an error if it is not precisely
+0 or 1, since this is undefined behaviour in Rust. The \rust{char} type has similar restrictions to
+check for once it is implemented.
+
+\subsection{Pointers}
+
+Both references and raw pointers are supported, with essentially no difference between them in Miri.
+It is also possible to do basic pointer comparisons and math. However, a few operations are
+considered errors and a few require special support.
+
+Firstly, pointers into the same allocations may be compared for ordering, but pointers into
+different allocations are considered unordered and Miri will complain if you attempt this. The
+reasoning is that different allocations may have different orderings in the global address space at
+runtime, making this non-deterministic. However, pointers into different allocations \emph{may} be
+compared for direct equality (they are always, automatically unequal).
+
+Finally, for things like null pointer checks, abstract pointers (the kind represented using
+relocations) may be compared against pointers casted from integers (e.g.\ \rust{0 as *const i32}).
+To handle these cases, Miri has a concept of ``integer pointers'' which are always unequal to
+abstract pointers. Integer pointers can be compared and operated upon freely. However, note that it
+is impossible to go from an integer pointer to an abstract pointer backed by a relocation. It is not
+valid to dereference an integer pointer.
+
+\subsubsection{Slice pointers}
+
+Rust supports pointers to ``dynamically-sized types'' such as \rust{[T]} and \rust{str} which
+represent arrays of indeterminate size. Pointers to such types contain an address \emph{and} the
+length of the referenced array. Miri supports these fully.
+
+\subsubsection{Trait objects}
+
+Rust also supports pointers to ``trait objects'' which represent some type that implements a trait,
+with the specific type unknown at compile-time. These are implemented using virtual dispatch with a
+vtable, similar to virtual methods in C++. Miri does not currently support this at all.
+
+\subsection{Aggregates}
+
+Aggregates include types declared as \rust{struct} or \rust{enum} as well as tuples, arrays, and
+closures\footnote{Closures are essentially structs with a field for each variable captured by the
+closure.}. Miri supports all common usage of all of these types. The main missing piece is to handle
+\texttt{\#[repr(..)]} annotations which adjust the layout of a \rust{struct} or \rust{enum}.
+
+\subsection{Control flow}
+
+All of Rust's standard control flow features, including \rust{loop}, \rust{while}, \rust{for},
+\rust{if}, \rust{if let}, \rust{while let}, \rust{match}, \rust{break}, \rust{continue}, and
+\rust{return} are supported. In fact, supporting these were quite easy since the Rust compiler
+reduces them all down to a comparatively smaller set of control-flow graph primitives in MIR.
+
+\subsection{Closures}
+
+Closures are like structs containing a field for each captured variable, but closures also have an
+associated function. Supporting closure function calls required some extra machinery to get the
+necessary information from the compiler, but it is all supported except for one edge case on my todo
+list\footnote{The edge case is calling a closure that takes a reference to its captures via a
+closure interface that passes the captures by value.}.
+
+\subsection{Intrinsics}
+
+To support unsafe code, and in particular the unsafe code used to implement Rust's standard library,
+it became clear that Miri would have to support calls to compiler
+intrinsics\footnote{\href{https://doc.rust-lang.org/stable/std/intrinsics/index.html}{Rust
+intrinsics documentation}}. Intrinsics are function calls which cause the Rust compiler to produce
+special-purpose code instead of a regular function call. Miri simply recognizes intrinsic calls by
+their unique ABI\footnote{Application Binary Interface, which defines calling conventions. Includes
+``C'', ``Rust'', and ``rust-intrinsic''.} and name and runs special purpose code to handle them.
+
+An example of an important intrinsic is \rust{size_of} which will cause Miri to write the size of
+the type in question to the return value location. The Rust standard library uses intrinsics heavily
+to implement various data structures, so this was a major step toward supporting them. So far, I've
+been implementing intrinsics on a case-by-case basis as I write test cases which require missing
+ones, so I haven't yet exhaustively implemented them all.
+
+\subsection{Heap allocations}
+
+The next piece of the puzzle for supporting interesting programs (and the standard library) was heap
+allocations. There are two main interfaces for heap allocation in Rust, the built-in \rust{Box}
+rvalue in MIR and a set of C ABI foreign functions including \rust{__rust_allocate},
+\rust{__rust_reallocate}, and \rust{__rust_deallocate}. These correspond approximately to
+\mintinline{c}{malloc}, \mintinline{c}{realloc}, and \mintinline{c}{free} in C.
+
+The \rust{Box} rvalue allocates enough space for a single value of a given type. This was easy to
+support in Miri. It simply creates a new abstract allocation in the same manner as for
+stack-allocated values, since there's no major difference between them in Miri.
+
+The allocator functions, which are used to implement things like Rust's standard \rust{Vec<T>} type,
+were a bit trickier. Rust declares them as \rust{extern "C" fn} so that different allocator
+libraries can be linked in at the user's option. Since Miri doesn't actually support FFI and we want
+full control of allocations for safety, Miri ``cheats'' and recognizes these allocator function in
+essentially the same way it recognizes compiler intrinsics. Then, a call to \rust{__rust_allocate}
+simply creates another abstract allocation with the requested size and \rust{__rust_reallocate}
+grows one.
+
+In the future, Miri should also track which allocations came from \rust{__rust_allocate} so it can
+reject reallocate or deallocate calls on stack allocations.
+
+\subsection{Destructors}
+
+Miri doesn't yet support calling user-defined destructors, but it has most of the machinery in place
+to do so already and it's next on my to-do list. There \emph{is} support for dropping \rust{Box<T>}
+types, including deallocating their associated allocations. This is enough to properly execute the
+dangling pointer example in \autoref{sec:deterministic}.
+
+\subsection{Standard library}
+\blindtext
+
+\section{Unsupported}
+\blindtext
 
 \begin{figure}[t]
   \begin{minted}[autogobble]{rust}
@@ -280,6 +447,12 @@ bitmask would be $10_2$, i.e. \rust{[true, false]}.
 
 \section{Future work}
 
+\subsection{Finishing the implementation}
+
+\blindtext
+
+\subsection{Alternative applications}
+
 Other possible uses for Miri include:
 
 \begin{itemize}
@@ -296,6 +469,17 @@ Other possible uses for Miri include:
     execution against the results of LLVM-compiled machine code's execution. This would help to
     guarantee that compile-time execution works the same as runtime execution.
 \end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Final thoughts}
+
+% TODO(tsion): Reword this.
+Making Miri work was primarily an implementation problem. Writing an interpreter which models values
+of varying sizes, stack and heap allocation, unsafe memory operations, and more requires some
+unconventional techniques compared to many interpreters. Miri's execution remains safe even while
+simulating execution of unsafe code, which allows it to detect when unsafe code does something
+invalid.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
