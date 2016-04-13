@@ -9,20 +9,16 @@ fn main() {
                        .ddddddddddddddddddddddddddd
                        .eeeeeeee();
 
-    x().y(|| {
-           match cond() {
-               true => (),
-               false => (),
-           }
+    x().y(|| match cond() {
+           true => (),
+           false => (),
        });
 
     loong_func()
-        .quux(move || {
-            if true {
-                1
-            } else {
-                2
-            }
+        .quux(move || if true {
+            1
+        } else {
+            2
         });
 
     fffffffffffffffffffffffffffffffffff(a,
