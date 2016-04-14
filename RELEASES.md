@@ -1,3 +1,291 @@
+Version 1.9.0 (2016-05-26)
+==========================
+
+Language
+--------
+
+* The `#[deprecated]` attribute when applied to an API will generate
+  warnings when used. The warnings may be suppressed with
+  `#[allow(deprecated)]`. [RFC 1270].
+* [`fn` item types are zero sized, and each `fn` names a unique
+  type][1.9fn]. This will break code that transmutes `fn`s, so calling
+  `transmute` on a `fn` type will generate a warning for a few cycles,
+  then will be converted to an error.
+* [Field and method resolution understand visibility, so private
+  fields and methods cannot prevent the proper use of public fields
+  and methods][1.9fv].
+* [The parser considers unicode codepoints in the
+  `PATTERN_WHITE_SPACE` category to be whitespace][1.9ws].
+
+Stabilized APIs
+---------------
+
+* [`std::panic`]
+* [`std::panic::catch_unwind`][] (renamed from `recover`)
+* [`std::panic::resume_unwind`][] (renamed from `propagate`)
+* [`std::panic::AssertUnwindSafe`][] (renamed from `AssertRecoverSafe`)
+* [`std::panic::UnwindSafe`][] (renamed from `RecoverSafe`)
+* [`str::is_char_boundary`]
+* [`<*const T>::as_ref`]
+* [`<*mut T>::as_ref`]
+* [`<*mut T>::as_mut`]
+* [`AsciiExt::make_ascii_uppercase`]
+* [`AsciiExt::make_ascii_lowercase`]
+* [`char::decode_utf16`]
+* [`char::DecodeUtf16`]
+* [`char::DecodeUtf16Error`]
+* [`char::DecodeUtf16Error::unpaired_surrogate`]
+* [`BTreeSet::take`]
+* [`BTreeSet::replace`]
+* [`BTreeSet::get`]
+* [`HashSet::take`]
+* [`HashSet::replace`]
+* [`HashSet::get`]
+* [`OsString::with_capacity`]
+* [`OsString::clear`]
+* [`OsString::capacity`]
+* [`OsString::reserve`]
+* [`OsString::reserve_exact`]
+* [`OsStr::is_empty`]
+* [`OsStr::len`]
+* [`std::os::unix::thread`]
+* [`RawPthread`]
+* [`JoinHandleExt`]
+* [`JoinHandleExt::as_pthread_t`]
+* [`JoinHandleExt::into_pthread_t`]
+* [`HashSet::hasher`]
+* [`HashMap::hasher`]
+* [`CommandExt::exec`]
+* [`File::try_clone`]
+* [`SocketAddr::set_ip`]
+* [`SocketAddr::set_port`]
+* [`SocketAddrV4::set_ip`]
+* [`SocketAddrV4::set_port`]
+* [`SocketAddrV6::set_ip`]
+* [`SocketAddrV6::set_port`]
+* [`SocketAddrV6::set_flowinfo`]
+* [`SocketAddrV6::set_scope_id`]
+* [`slice::copy_from_slice`]
+* [`ptr::read_volatile`]
+* [`ptr::write_volatile`]
+* [`OpenOptions::create_new`]
+* [`TcpStream::set_nodelay`]
+* [`TcpStream::nodelay`]
+* [`TcpStream::set_ttl`]
+* [`TcpStream::ttl`]
+* [`TcpStream::set_only_v6`]
+* [`TcpStream::only_v6`]
+* [`TcpStream::take_error`]
+* [`TcpStream::set_nonblocking`]
+* [`TcpListener::set_ttl`]
+* [`TcpListener::ttl`]
+* [`TcpListener::set_only_v6`]
+* [`TcpListener::only_v6`]
+* [`TcpListener::take_error`]
+* [`TcpListener::set_nonblocking`]
+* [`UdpSocket::set_broadcast`]
+* [`UdpSocket::broadcast`]
+* [`UdpSocket::set_multicast_loop_v4`]
+* [`UdpSocket::multicast_loop_v4`]
+* [`UdpSocket::set_multicast_ttl_v4`]
+* [`UdpSocket::multicast_ttl_v4`]
+* [`UdpSocket::set_multicast_loop_v6`]
+* [`UdpSocket::multicast_loop_v6`]
+* [`UdpSocket::set_multicast_ttl_v6`]
+* [`UdpSocket::multicast_ttl_v6`]
+* [`UdpSocket::set_ttl`]
+* [`UdpSocket::ttl`]
+* [`UdpSocket::set_only_v6`]
+* [`UdpSocket::only_v6`]
+* [`UdpSocket::join_multicast_v4`]
+* [`UdpSocket::join_multicast_v6`]
+* [`UdpSocket::leave_multicast_v4`]
+* [`UdpSocket::leave_multicast_v6`]
+* [`UdpSocket::take_error`]
+* [`UdpSocket::connect`]
+* [`UdpSocket::send`]
+* [`UdpSocket::recv`]
+* [`UdpSocket::set_nonblocking`]
+
+Libraries
+---------
+
+* [`std::sync::Once` is poisoned if its initialization function
+  fails][1.9o].
+* [`cell::Ref` and `cell::RefMut` can contain unsized types][1.9cu].
+* [Most types implement `fmt::Debug`][1.9db].
+* [The default buffer size used by `BufReader` and `BufWriter` was
+  reduced to 8K, from 64K][1.9bf]. This is in line with the buffer size
+  used by other languages.
+* [`Instant`, `SystemTime` and `Duration` implement `+=` and `-=`.
+  `Duration` additionally implements `*=` and `/=`][1.9ta].
+* [`Skip` is a `DoubleEndedIterator`][1.9sk].
+* [`From<[u8; 4]>` is implemented for `Ipv4Addr`][1.9fi].
+* [`Chain` implements `BufRead`][1.9ch].
+* [`HashMap`, `HashSet` and iterators are covariant][1.9hc].
+
+Cargo
+-----
+
+* [Cargo can now run concurrently][1.9cc].
+* [Top-level overrides allow specific revisions of crates to be
+  overridden through the entire crate graph][1.9ct].  This is intended
+  to make upgrades easier for large projects, by allowing crates to be
+  forked temporarily until they've been upgraded and republished.
+* [Cargo exports a `CARGO_PKG_AUTHORS` environment variable][1.9cp].
+* [Cargo will pass the contents of the `RUSTFLAGS` variable to `rustc`
+  on the commandline][1.9cf]. `rustc` arguments can also be specified
+  in the `build.rustflags` configuration key.
+
+Performance
+-----------
+
+* [During type unification, the complexity of comparing variables for
+  equivalance was reduced from `O(n!)` to `O(n)`][1.9tu]. This leads
+  to major compile-time improvements in some scenarios.
+* [`ToString` is specialized for `str`, giving it the same performance
+  as `to_owned`][1.9ts].
+* [Spawning processes with `Command::output` no longer creates extra
+  threads][1.9sp].
+* [`#[derive(PartialEq)]` and `#[derive(PartialOrd)]` emit less code
+  for C-like enums][1.9cl].
+
+Misc
+----
+
+* [Passing the `--quiet` flag to a test runner will produce
+  much-abbreviated output][1.9q].
+* The Rust Project now publishes std binaries for the
+  `mips-unknown-linux-musl`, `mipsel-unknown-linux-musl`, and
+  `i586-pc-windows-msvc` targets.
+
+Compatibility Notes
+-------------------
+
+* [`std::sync::Once` is poisoned if its initialization function
+  fails][1.9o].
+* [It is illegal to define methods with the same name in overlapping
+  inherent `impl` blocks][1.9sn].
+* [`fn` item types are zero sized, and each `fn` names a unique
+  type][1.9fn]. This will break code that transmutes `fn`s, so calling
+  `transmute` on a `fn` type will generate a warning for a few cycles,
+  then will be converted to an error.
+* [Improvements to const evaluation may trigger new errors when integer
+  literals are out of range][1.9ce].
+
+
+[1.9bf]: https://github.com/rust-lang/rust/pull/32695
+[1.9cc]: https://github.com/rust-lang/cargo/pull/2486
+[1.9ce]: https://github.com/rust-lang/rust/pull/30587
+[1.9cf]: https://github.com/rust-lang/cargo/pull/2241
+[1.9ch]: https://github.com/rust-lang/rust/pull/32541
+[1.9cl]: https://github.com/rust-lang/rust/pull/31977
+[1.9cp]: https://github.com/rust-lang/cargo/pull/2465
+[1.9ct]: https://github.com/rust-lang/cargo/pull/2385
+[1.9cu]: https://github.com/rust-lang/rust/pull/32652
+[1.9db]: https://github.com/rust-lang/rust/pull/32054
+[1.9fi]: https://github.com/rust-lang/rust/pull/32050
+[1.9fn]: https://github.com/rust-lang/rust/pull/31710
+[1.9fv]: https://github.com/rust-lang/rust/pull/31938
+[1.9hc]: https://github.com/rust-lang/rust/pull/32635
+[1.9o]: https://github.com/rust-lang/rust/pull/32325
+[1.9q]: https://github.com/rust-lang/rust/pull/31887
+[1.9sk]: https://github.com/rust-lang/rust/pull/31700
+[1.9sn]: https://github.com/rust-lang/rust/pull/31925
+[1.9sp]: https://github.com/rust-lang/rust/pull/31618
+[1.9ta]: https://github.com/rust-lang/rust/pull/32448
+[1.9ts]: https://github.com/rust-lang/rust/pull/32586
+[1.9tu]: https://github.com/rust-lang/rust/pull/32062
+[1.9ws]: https://github.com/rust-lang/rust/pull/29734
+[RFC 1270]: https://github.com/rust-lang/rfcs/blob/master/text/1270-deprecation.md
+[`<*const T>::as_ref`]: http://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.as_ref
+[`<*mut T>::as_mut`]: http://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.as_mut
+[`<*mut T>::as_ref`]: http://doc.rust-lang.org/nightly/std/primitive.pointer.html#method.as_ref
+[`slice::copy_from_slice`]: http://doc.rust-lang.org/nightly/std/primitive.slice.html#method.copy_from_slice
+[`AsciiExt::make_ascii_lowercase`]: http://doc.rust-lang.org/nightly/std/ascii/trait.AsciiExt.html#tymethod.make_ascii_lowercase
+[`AsciiExt::make_ascii_uppercase`]: http://doc.rust-lang.org/nightly/std/ascii/trait.AsciiExt.html#tymethod.make_ascii_uppercase
+[`BTreeSet::get`]: http://doc.rust-lang.org/nightly/collections/btree/set/struct.BTreeSet.html#method.get
+[`BTreeSet::replace`]: http://doc.rust-lang.org/nightly/collections/btree/set/struct.BTreeSet.html#method.replace
+[`BTreeSet::take`]: http://doc.rust-lang.org/nightly/collections/btree/set/struct.BTreeSet.html#method.take
+[`CommandExt::exec`]: http://doc.rust-lang.org/nightly/std/os/unix/process/trait.CommandExt.html#tymethod.exec
+[`File::try_clone`]: http://doc.rust-lang.org/nightly/std/fs/struct.File.html#method.try_clone
+[`HashMap::hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashMap.html#method.hasher
+[`HashSet::get`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.get
+[`HashSet::hasher`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.hasher
+[`HashSet::replace`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.replace
+[`HashSet::take`]: http://doc.rust-lang.org/nightly/std/collections/struct.HashSet.html#method.take
+[`JoinHandleExt::as_pthread_t`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/trait.JoinHandleExt.html#tymethod.as_pthread_t
+[`JoinHandleExt::into_pthread_t`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/trait.JoinHandleExt.html#tymethod.into_pthread_t
+[`JoinHandleExt`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/trait.JoinHandleExt.html
+[`OpenOptions::create_new`]: http://doc.rust-lang.org/nightly/std/fs/struct.OpenOptions.html#method.create_new
+[`OsStr::is_empty`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsStr.html#method.is_empty
+[`OsStr::len`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsStr.html#method.len
+[`OsString::capacity`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.capacity
+[`OsString::clear`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.clear
+[`OsString::reserve_exact`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.reserve_exact
+[`OsString::reserve`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.reserve
+[`OsString::with_capacity`]: http://doc.rust-lang.org/nightly/std/ffi/struct.OsString.html#method.with_capacity
+[`RawPthread`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/type.RawPthread.html
+[`SocketAddr::set_ip`]: http://doc.rust-lang.org/nightly/std/net/enum.SocketAddr.html#method.set_ip
+[`SocketAddr::set_port`]: http://doc.rust-lang.org/nightly/std/net/enum.SocketAddr.html#method.set_port
+[`SocketAddrV4::set_ip`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV4.html#method.set_ip
+[`SocketAddrV4::set_port`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV4.html#method.set_port
+[`SocketAddrV6::set_flowinfo`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_flowinfo
+[`SocketAddrV6::set_ip`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_ip
+[`SocketAddrV6::set_port`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_port
+[`SocketAddrV6::set_scope_id`]: http://doc.rust-lang.org/nightly/std/net/struct.SocketAddrV6.html#method.set_scope_id
+[`TcpListener::only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.only_v6
+[`TcpListener::set_nonblocking`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_nonblocking
+[`TcpListener::set_only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_only_v6
+[`TcpListener::set_ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_ttl
+[`TcpListener::take_error`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.take_error
+[`TcpListener::ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.ttl
+[`TcpStream::nodelay`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.nodelay
+[`TcpStream::only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.only_v6
+[`TcpStream::set_nodelay`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_nodelay
+[`TcpStream::set_nonblocking`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_nonblocking
+[`TcpStream::set_only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_only_v6
+[`TcpStream::set_ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.set_ttl
+[`TcpStream::take_error`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.take_error
+[`TcpStream::ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.TcpStream.html#method.ttl
+[`UdpSocket::broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.broadcast
+[`UdpSocket::connect`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.connect
+[`UdpSocket::join_multicast_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.join_multicast_v4
+[`UdpSocket::join_multicast_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.join_multicast_v6
+[`UdpSocket::leave_multicast_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.leave_multicast_v4
+[`UdpSocket::leave_multicast_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.leave_multicast_v6
+[`UdpSocket::multicast_loop_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_loop_v4
+[`UdpSocket::multicast_loop_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_loop_v6
+[`UdpSocket::multicast_ttl_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_ttl_v4
+[`UdpSocket::multicast_ttl_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.multicast_ttl_v6
+[`UdpSocket::only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.only_v6
+[`UdpSocket::recv`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.recv
+[`UdpSocket::send`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.send
+[`UdpSocket::set_broadcast`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_broadcast
+[`UdpSocket::set_multicast_loop_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_loop_v4
+[`UdpSocket::set_multicast_loop_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_loop_v6
+[`UdpSocket::set_multicast_ttl_v4`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_ttl_v4
+[`UdpSocket::set_multicast_ttl_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_multicast_ttl_v6
+[`UdpSocket::set_nonblocking`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_nonblocking
+[`UdpSocket::set_only_v6`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_only_v6
+[`UdpSocket::set_ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.set_ttl
+[`UdpSocket::take_error`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.take_error
+[`UdpSocket::ttl`]: http://doc.rust-lang.org/nightly/std/net/struct.UdpSocket.html#method.ttl
+[`char::DecodeUtf16Error::unpaired_surrogate`]: http://doc.rust-lang.org/nightly/std/char/struct.DecodeUtf16Error.html#method.unpaired_surrogate
+[`char::DecodeUtf16Error`]: http://doc.rust-lang.org/nightly/std/char/struct.DecodeUtf16Error.html
+[`char::DecodeUtf16`]: http://doc.rust-lang.org/nightly/std/char/struct.DecodeUtf16.html
+[`char::decode_utf16`]: http://doc.rust-lang.org/nightly/std/char/fn.decode_utf16.html
+[`ptr::read_volatile`]: http://doc.rust-lang.org/nightly/std/ptr/fn.read_volatile.html
+[`ptr::write_volatile`]: http://doc.rust-lang.org/nightly/std/ptr/fn.write_volatile.html
+[`std::os::unix::thread`]: http://doc.rust-lang.org/nightly/std/os/unix/thread/index.html
+[`std::panic::AssertUnwindSafe`]: http://doc.rust-lang.org/nightly/std/panic/struct.AssertUnwindSafe.html
+[`std::panic::UnwindSafe`]: http://doc.rust-lang.org/nightly/std/panic/trait.UnwindSafe.html
+[`std::panic::catch_unwind`]: http://doc.rust-lang.org/nightly/std/panic/fn.catch_unwind.html
+[`std::panic::resume_unwind`]: http://doc.rust-lang.org/nightly/std/panic/fn.resume_unwind.html
+[`std::panic`]: http://doc.rust-lang.org/nightly/std/panic/index.html
+[`str::is_char_boundary`]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.is_char_boundary
+
+
 Version 1.8.0 (2016-04-14)
 ==========================
 
