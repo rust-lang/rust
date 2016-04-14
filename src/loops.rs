@@ -736,7 +736,7 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     let ty = cx.tcx.expr_ty(e);
     is_iterable_array(ty) ||
     match_type(cx, ty, &paths::VEC) ||
-    match_type(cx, ty, &paths::LL) ||
+    match_type(cx, ty, &paths::LINKED_LIST) ||
     match_type(cx, ty, &paths::HASHMAP) ||
     match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
     match_type(cx, ty, &["collections", "vec_deque", "VecDeque"]) ||

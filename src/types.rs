@@ -75,7 +75,7 @@ impl LateLintPass for TypePass {
                                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                         }
                     }
-                } else if match_def_path(cx, did.def_id(), &paths::LL) {
+                } else if match_def_path(cx, did.def_id(), &paths::LINKED_LIST) {
                     span_help_and_lint(cx,
                                        LINKEDLIST,
                                        ast_ty.span,
