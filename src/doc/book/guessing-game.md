@@ -988,8 +988,7 @@ fn main() {
 
 # Complete!
 
-At this point, you have successfully built the Guessing Game! Congratulations!
+This project showed you a lot: `let`, `match`, methods, associated
+functions, using external crates, and more.
 
-This first project showed you a lot: `let`, `match`, methods, associated
-functions, using external crates, and more. Our next project will show off
-even more.
+At this point, you have successfully built the Guessing Game! Congratulations!
