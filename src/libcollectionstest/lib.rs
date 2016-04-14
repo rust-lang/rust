@@ -11,6 +11,7 @@
 #![deny(warnings)]
 
 #![feature(binary_heap_extras)]
+#![feature(binary_heap_append)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
 #![feature(collections)]

@@ -242,3 +242,35 @@ fn test_extend_ref() {
     assert_eq!(a.len(), 5);
     assert_eq!(a.into_sorted_vec(), [1, 2, 3, 4, 5]);
 }
+
+#[test]
+fn test_append() {
+    let mut a = BinaryHeap::from(vec![-10, 1, 2, 3, 3]);
+    let mut b = BinaryHeap::from(vec![-20, 5, 43]);
+
+    a.append(&mut b);
+
+    assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
+    assert!(b.is_empty());
+}
+
+#[test]
+fn test_append_to_empty() {
+    let mut a = BinaryHeap::new();
+    let mut b = BinaryHeap::from(vec![-20, 5, 43]);
+
+    a.append(&mut b);
+
+    assert_eq!(a.into_sorted_vec(), [-20, 5, 43]);
+    assert!(b.is_empty());
+}
+
+#[test]
+fn test_extend_specialization() {
+    let mut a = BinaryHeap::from(vec![-10, 1, 2, 3, 3]);
+    let b = BinaryHeap::from(vec![-20, 5, 43]);
+
+    a.extend(b);
+
+    assert_eq!(a.into_sorted_vec(), [-20, -10, 1, 2, 3, 3, 5, 43]);
+}
