@@ -128,15 +128,18 @@ impl<'tcx> CastCheck<'tcx> {
             span: span,
         };
 
-        // For better error messages, we try to check whether the
-        // target type is known to be sized now (we will also check
-        // later, once inference is more complete done).
-        if !fcx.type_is_known_to_be_sized(cast_ty, span) {
-            check.report_cast_to_unsized_type(fcx);
-            return Err(ErrorReported);
+        // For better error messages, check for some obviously unsized
+        // cases now. We do a more thorough check at the end, once
+        // inference is more completely known.
+        match cast_ty.sty {
+            ty::TyTrait(..) | ty::TySlice(..) => {
+                check.report_cast_to_unsized_type(fcx);
+                Err(ErrorReported)
+            }
+            _ => {
+                Ok(check)
+            }
         }
-
-        Ok(check)
     }
 
     fn report_cast_error<'a>(&self,

@@ -3518,7 +3518,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Find the type of `e`. Supply hints based on the type we are casting to,
         // if appropriate.
         let t_cast = fcx.to_ty(t);
-        let t_cast = structurally_resolved_type(fcx, expr.span, t_cast);
+        let t_cast = fcx.infcx().resolve_type_vars_if_possible(&t_cast);
         check_expr_with_expectation(fcx, e, ExpectCastableToType(t_cast));
         let t_expr = fcx.expr_ty(e);
         let t_cast = fcx.infcx().resolve_type_vars_if_possible(&t_cast);
