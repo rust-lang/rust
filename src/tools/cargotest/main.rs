@@ -8,73 +8,90 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate tempdir;
-
-use tempdir::TempDir;
 use std::env;
 use std::process::Command;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::Write;
 
-const TEST_REPOS: &'static [(&'static str, &'static str, Option<&'static str>)] = &[
-    ("https://github.com/rust-lang/cargo",
-     "fae9c539388f1b7c70c31fd0a21b5dd9cd071177",
-     None),
-    ("https://github.com/iron/iron",
-     "16c858ec2901e2992fe5e529780f59fa8ed12903",
-     Some(include_str!("lockfiles/iron-Cargo.lock")))
+struct Test {
+    repo: &'static str,
+    name: &'static str,
+    sha: &'static str,
+    lock: Option<&'static str>,
+}
+
+const TEST_REPOS: &'static [Test] = &[
+    Test {
+        name: "cargo",
+        repo: "https://github.com/rust-lang/cargo",
+        sha: "fae9c539388f1b7c70c31fd0a21b5dd9cd071177",
+        lock: None,
+    },
+    Test {
+        name: "iron",
+        repo: "https://github.com/iron/iron",
+        sha: "16c858ec2901e2992fe5e529780f59fa8ed12903",
+        lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
+    },
 ];
 
 
 fn main() {
-    let ref cargo = env::args().collect::<Vec<_>>()[1];
+    let args = env::args().collect::<Vec<_>>();
+    let ref cargo = args[1];
+    let out_dir = Path::new(&args[2]);
     let ref cargo = Path::new(cargo);
 
-    for &(repo, sha, lockfile) in TEST_REPOS.iter().rev() {
-        test_repo(cargo, repo, sha, lockfile);
+    for test in TEST_REPOS.iter().rev() {
+        test_repo(cargo, out_dir, test);
     }
 }
 
-fn test_repo(cargo: &Path, repo: &str, sha: &str, lockfile: Option<&str>) {
-    println!("testing {}", repo);
-    let dir = clone_repo(repo, sha);
-    if let Some(lockfile) = lockfile {
-        File::create(&dir.path().join("Cargo.lock")).expect("")
+fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
+    println!("testing {}", test.repo);
+    let dir = clone_repo(test, out_dir);
+    if let Some(lockfile) = test.lock {
+        File::create(&dir.join("Cargo.lock")).expect("")
             .write_all(lockfile.as_bytes()).expect("");
     }
-    if !run_cargo_test(cargo, dir.path()) {
-        panic!("tests failed for {}", repo);
+    if !run_cargo_test(cargo, &dir) {
+        panic!("tests failed for {}", test.repo);
     }
 }
 
-fn clone_repo(repo: &str, sha: &str) -> TempDir {
-    let dir = TempDir::new("cargotest").expect("");
-    let status = Command::new("git")
-        .arg("init")
-        .arg(dir.path())
-        .status()
-        .expect("");
-    assert!(status.success());
+fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
+    let out_dir = out_dir.join(test.name);
 
-    // Try progressively deeper fetch depths to find the commit
-    let mut found = false;
-    for depth in &[1, 10, 100, 1000, 100000] {
+    if !out_dir.join(".git").is_dir() {
         let status = Command::new("git")
-            .arg("fetch")
-            .arg(repo)
-            .arg("master")
-            .arg(&format!("--depth={}", depth))
-            .current_dir(dir.path())
+            .arg("init")
+            .arg(&out_dir)
             .status()
             .expect("");
         assert!(status.success());
+    }
+
+    // Try progressively deeper fetch depths to find the commit
+    let mut found = false;
+    for depth in &[0, 1, 10, 100, 1000, 100000] {
+        if *depth > 0 {
+            let status = Command::new("git")
+                .arg("fetch")
+                .arg(test.repo)
+                .arg("master")
+                .arg(&format!("--depth={}", depth))
+                .current_dir(&out_dir)
+                .status()
+                .expect("");
+            assert!(status.success());
+        }
 
         let status = Command::new("git")
             .arg("reset")
-            .arg(sha)
+            .arg(test.sha)
             .arg("--hard")
-            .current_dir(dir.path())
+            .current_dir(&out_dir)
             .status()
             .expect("");
 
@@ -84,9 +101,18 @@ fn clone_repo(repo: &str, sha: &str) -> TempDir {
         }
     }
 
-    if !found { panic!("unable to find commit {}", sha) }
+    if !found {
+        panic!("unable to find commit {}", test.sha)
+    }
+    let status = Command::new("git")
+        .arg("clean")
+        .arg("-fdx")
+        .current_dir(&out_dir)
+        .status()
+        .unwrap();
+    assert!(status.success());
 
-    dir
+    out_dir
 }
 
 fn run_cargo_test(cargo_path: &Path, crate_path: &Path) -> bool {

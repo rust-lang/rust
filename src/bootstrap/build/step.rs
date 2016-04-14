@@ -318,7 +318,8 @@ impl<'a> Step<'a> {
                 vec![self.tool_linkchecker(stage), self.doc(stage)]
             }
             Source::CheckCargoTest { stage } => {
-                vec![self.tool_cargotest(stage)]
+                vec![self.tool_cargotest(stage),
+                     self.librustc(self.compiler(stage))]
             }
             Source::CheckTidy { stage } => {
                 vec![self.tool_tidy(stage)]
@@ -333,7 +334,7 @@ impl<'a> Step<'a> {
                 vec![self.librustc(self.compiler(stage))]
             }
             Source::ToolCargoTest { stage } => {
-                vec![self.librustc(self.compiler(stage))]
+                vec![self.libstd(self.compiler(stage))]
             }
 
             Source::DistDocs { stage } => vec![self.doc(stage)],
