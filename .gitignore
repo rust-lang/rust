@@ -78,6 +78,7 @@
 /stage3/
 /test/
 /tmp/
+/obj/
 TAGS
 TAGS.emacs
 TAGS.vi
