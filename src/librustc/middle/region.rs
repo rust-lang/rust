@@ -389,7 +389,7 @@ impl RegionMaps {
                            // but this isn't the only place
                 }
                 let idx = CodeExtent(self.code_extents.borrow().len() as u32);
-                info!("CodeExtent({}) = {:?} [parent={}]", idx.0, e, parent.0);
+                debug!("CodeExtent({}) = {:?} [parent={}]", idx.0, e, parent.0);
                 self.code_extents.borrow_mut().push(e);
                 self.scope_map.borrow_mut().push(parent);
                 *v.insert(idx)
