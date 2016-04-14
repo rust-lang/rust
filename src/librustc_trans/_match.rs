@@ -189,7 +189,7 @@ use self::Opt::*;
 use self::FailureHandler::*;
 
 use llvm::{ValueRef, BasicBlockRef};
-use rustc_const_eval::check_match::{self, StaticInliner};
+use rustc_const_eval::check_match::{self, Constructor, StaticInliner};
 use rustc_const_eval::{compare_lit_exprs, eval_const_expr};
 use rustc::hir::def::{Def, DefMap};
 use rustc::hir::def_id::DefId;
@@ -609,19 +609,19 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
     let _indenter = indenter();
 
     let ctor = match opt {
-        &ConstantValue(ConstantExpr(expr), _) => check_match::ConstantValue(
+        &ConstantValue(ConstantExpr(expr), _) => Constructor::ConstantValue(
             eval_const_expr(bcx.tcx(), &expr)
         ),
-        &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => check_match::ConstantRange(
+        &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => Constructor::ConstantRange(
             eval_const_expr(bcx.tcx(), &lo),
             eval_const_expr(bcx.tcx(), &hi)
         ),
         &SliceLengthEqual(n, _) =>
-            check_match::Slice(n),
+            Constructor::Slice(n),
         &SliceLengthGreaterOrEqual(before, after, _) =>
-            check_match::SliceWithSubslice(before, after),
+            Constructor::SliceWithSubslice(before, after),
         &Variant(_, _, def_id, _) =>
-            check_match::Constructor::Variant(def_id)
+            Constructor::Variant(def_id)
     };
 
     let param_env = bcx.tcx().empty_parameter_environment();
@@ -1229,7 +1229,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Some(field_vals) => {
             let pats = enter_match(bcx, dm, m, col, val, |pats|
                 check_match::specialize(&mcx, pats,
-                                        &check_match::Single, col,
+                                        &Constructor::Single, col,
                                         field_vals.len())
             );
             let mut vals: Vec<_> = field_vals.into_iter()

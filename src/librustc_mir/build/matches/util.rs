@@ -32,14 +32,18 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// this function converts the prefix (`x`, `y`) and suffix (`z`) into
     /// distinct match pairs:
     ///
+    /// ```rust,ignore
     ///     lv[0 of 3] @ x  // see ProjectionElem::ConstantIndex (and its Debug impl)
     ///     lv[1 of 3] @ y  // to explain the `[x of y]` notation
     ///     lv[-1 of 3] @ z
+    /// ```
     ///
     /// If a slice like `s` is present, then the function also creates
     /// a temporary like:
     ///
+    /// ```rust,ignore
     ///     tmp0 = lv[2..-1] // using the special Rvalue::Slice
+    /// ```
     ///
     /// and creates a match pair `tmp0 @ s`
     pub fn prefix_suffix_slice<'pat>(&mut self,

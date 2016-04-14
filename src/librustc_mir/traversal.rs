@@ -19,6 +19,8 @@ use rustc::mir::repr::*;
 /// Preorder traversal is when each node is visited before an of it's
 /// successors
 ///
+/// ```text
+///
 ///         A
 ///        / \
 ///       /   \
@@ -26,6 +28,7 @@ use rustc::mir::repr::*;
 ///       \   /
 ///        \ /
 ///         D
+/// ```
 ///
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
@@ -80,6 +83,9 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 /// Postorder traversal is when each node is visited after all of it's
 /// successors, except when the successor is only reachable by a back-edge
 ///
+///
+/// ```text
+///
 ///         A
 ///        / \
 ///       /   \
@@ -87,6 +93,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 ///       \   /
 ///        \ /
 ///         D
+/// ```
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx: 'a> {
@@ -215,6 +222,8 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 /// This is different to a preorder traversal and represents a natural
 /// linearisation of control-flow.
 ///
+/// ```text
+///
 ///         A
 ///        / \
 ///       /   \
@@ -222,6 +231,7 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 ///       \   /
 ///        \ /
 ///         D
+/// ```
 ///
 /// A reverse postorder traversal of this graph is either `A B C D` or `A C B D`
 /// Note that for a graph containing no loops (i.e. A DAG), this is equivalent to
