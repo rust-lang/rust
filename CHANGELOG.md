@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+* New lint: [`temporary_cstring_as_ptr`]
+
 ## 0.0.63 — 2016-04-08
 * Rustup to *rustc 1.9.0-nightly (7979dd608 2016-04-07)*
 
@@ -78,6 +81,7 @@ All notable changes to this project will be documented in this file.
 [`redundant_closure_call`]: https://github.com/Manishearth/rust-clippy/wiki#redundant_closure_call
 [`str_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#str_to_string
 [`string_to_string`]: https://github.com/Manishearth/rust-clippy/wiki#string_to_string
+[`temporary_cstring_as_ptr`]: https://github.com/Manishearth/rust-clippy/wiki#temporary_cstring_as_ptr
 [`unstable_as_mut_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice
 [`unstable_as_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice
 [`unused_label`]: https://github.com/Manishearth/rust-clippy/wiki#unused_label
