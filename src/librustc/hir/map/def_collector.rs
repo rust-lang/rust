@@ -10,10 +10,10 @@
 
 use super::*;
 
-use hir::*;
-use hir::intravisit::Visitor;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
-use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
+
+use syntax::ast::*;
+use syntax::visit;
 
 /// Creates def ids for nodes in the HIR.
 pub struct DefCollector<'ast> {
@@ -80,31 +80,23 @@ impl<'ast> DefCollector<'ast> {
     }
 }
 
-impl<'ast> Visitor<'ast> for DefCollector<'ast> {
-    /// Because we want to track parent items and so forth, enable
-    /// deep walking so that we walk nested items in the context of
-    /// their outer items.
-    fn visit_nested_item(&mut self, item: ItemId) {
-        debug!("visit_nested_item: {:?}", item);
-        self.visit_item(self.krate.item(item.id))
-    }
-
+impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_item(&mut self, i: &'ast Item) {
         debug!("visit_item: {:?}", i);
 
         // Pick the def data. This need not be unique, but the more
         // information we encapsulate into
         let def_data = match i.node {
-            ItemDefaultImpl(..) | ItemImpl(..) =>
+            ItemKind::DefaultImpl(..) | ItemKind::Impl(..) =>
                 DefPathData::Impl,
-            ItemEnum(..) | ItemStruct(..) | ItemTrait(..) |
-            ItemExternCrate(..) | ItemMod(..) | ItemForeignMod(..) |
-            ItemTy(..) =>
-                DefPathData::TypeNs(i.name),
-            ItemStatic(..) | ItemConst(..) | ItemFn(..) =>
-                DefPathData::ValueNs(i.name),
-            ItemUse(..) =>
-                DefPathData::Misc,
+            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Trait(..) |
+            ItemKind::ExternCrate(..) | ItemKind::Mod(..) | ItemKind::ForeignMod(..) |
+            ItemKind::Ty(..) =>
+                DefPathData::TypeNs(i.ident.name),
+            ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
+                DefPathData::ValueNs(i.ident.name),
+            ItemKind::Mac(..) => DefPathData::MacroDef(i.ident.name),
+            ItemKind::Use(..) => DefPathData::Misc,
         };
 
         let def = self.create_def(i.id, def_data);
@@ -113,21 +105,22 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
         self.parent_def = Some(def);
 
         match i.node {
-            ItemEnum(ref enum_definition, _) => {
+            ItemKind::Enum(ref enum_definition, _) => {
                 for v in &enum_definition.variants {
                     let variant_def_index =
                         self.create_def(v.node.data.id(),
-                                        DefPathData::EnumVariant(v.node.name));
+                                        DefPathData::EnumVariant(v.node.name.name));
 
                     for field in v.node.data.fields() {
-                        self.create_def_with_parent(
-                            Some(variant_def_index),
-                            field.id,
-                            DefPathData::Field(field.name));
+                        if let Some(ident) = field.ident {
+                            self.create_def_with_parent(Some(variant_def_index),
+                                                        field.id,
+                                                        DefPathData::Field(ident.name));
+                        }
                     }
                 }
             }
-            ItemStruct(ref struct_def, _) => {
+            ItemKind::Struct(ref struct_def, _) => {
                 // If this is a tuple-like struct, register the constructor.
                 if !struct_def.is_struct() {
                     self.create_def(struct_def.id(),
@@ -135,37 +128,40 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
                 }
 
                 for field in struct_def.fields() {
-                    self.create_def(field.id, DefPathData::Field(field.name));
+                    if let Some(ident) = field.ident {
+                        self.create_def(field.id, DefPathData::Field(ident.name));
+                    }
                 }
             }
             _ => {}
         }
-        intravisit::walk_item(self, i);
+        visit::walk_item(self, i);
         self.parent_def = parent_def;
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
-        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.name));
+        let def = self.create_def(foreign_item.id, DefPathData::ValueNs(foreign_item.ident.name));
 
         let parent_def = self.parent_def;
         self.parent_def = Some(def);
-        intravisit::walk_foreign_item(self, foreign_item);
+        visit::walk_foreign_item(self, foreign_item);
         self.parent_def = parent_def;
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
         for ty_param in generics.ty_params.iter() {
             self.create_def(ty_param.id,
-                            DefPathData::TypeParam(ty_param.name));
+                            DefPathData::TypeParam(ty_param.ident.name));
         }
 
-        intravisit::walk_generics(self, generics);
+        visit::walk_generics(self, generics);
     }
 
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
         let def_data = match ti.node {
-            MethodTraitItem(..) | ConstTraitItem(..) => DefPathData::ValueNs(ti.name),
-            TypeTraitItem(..) => DefPathData::TypeNs(ti.name),
+            TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
+                DefPathData::ValueNs(ti.ident.name),
+            TraitItemKind::Type(..) => DefPathData::TypeNs(ti.ident.name),
         };
 
         let def = self.create_def(ti.id, def_data);
@@ -174,21 +170,23 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
         self.parent_def = Some(def);
 
         match ti.node {
-            ConstTraitItem(_, Some(ref expr)) => {
+            TraitItemKind::Const(_, Some(ref expr)) => {
                 self.create_def(expr.id, DefPathData::Initializer);
             }
             _ => { }
         }
 
-        intravisit::walk_trait_item(self, ti);
+        visit::walk_trait_item(self, ti);
 
         self.parent_def = parent_def;
     }
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
         let def_data = match ii.node {
-            ImplItemKind::Method(..) | ImplItemKind::Const(..) => DefPathData::ValueNs(ii.name),
-            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.name),
+            ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
+                DefPathData::ValueNs(ii.ident.name),
+            ImplItemKind::Type(..) => DefPathData::TypeNs(ii.ident.name),
+            ImplItemKind::Macro(..) => DefPathData::MacroDef(ii.ident.name),
         };
 
         let def = self.create_def(ii.id, def_data);
@@ -203,7 +201,7 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
             _ => { }
         }
 
-        intravisit::walk_impl_item(self, ii);
+        visit::walk_impl_item(self, ii);
 
         self.parent_def = parent_def;
     }
@@ -220,28 +218,28 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
             self.parent_def = Some(def);
         }
 
-        intravisit::walk_pat(self, pat);
+        visit::walk_pat(self, pat);
         self.parent_def = parent_def;
     }
 
     fn visit_expr(&mut self, expr: &'ast Expr) {
         let parent_def = self.parent_def;
 
-        if let ExprClosure(..) = expr.node {
+        if let ExprKind::Closure(..) = expr.node {
             let def = self.create_def(expr.id, DefPathData::ClosureExpr);
             self.parent_def = Some(def);
         }
 
-        intravisit::walk_expr(self, expr);
+        visit::walk_expr(self, expr);
         self.parent_def = parent_def;
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
-        intravisit::walk_stmt(self, stmt);
+        visit::walk_stmt(self, stmt);
     }
 
     fn visit_block(&mut self, block: &'ast Block) {
-        intravisit::walk_block(self, block);
+        visit::walk_block(self, block);
     }
 
     fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
@@ -249,6 +247,6 @@ impl<'ast> Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
-        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.name));
+        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name));
     }
 }

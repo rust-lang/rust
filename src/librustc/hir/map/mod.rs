@@ -22,9 +22,10 @@ use middle::cstore::InlinedItem as II;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::abi::Abi;
-use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, };
 use syntax::attr::ThinAttributesExt;
 use syntax::codemap::{Span, Spanned};
+use syntax::visit;
 
 use hir::*;
 use hir::fold::Folder;
@@ -782,10 +783,10 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
     }
 }
 
-pub fn collect_definitions<'ast>(forest: &'ast mut Forest) -> Definitions {
-    let mut def_collector = DefCollector::root(&forest.krate);
-    intravisit::walk_crate(&mut def_collector, &forest.krate);
-    def_collector.definitions    
+pub fn collect_definitions<'ast>(krate: &'ast ast::Crate) -> Definitions {
+    let mut def_collector = DefCollector::root(krate);
+    visit::walk_crate(&mut def_collector, krate);
+    def_collector.definitions
 }
 
 pub fn map_crate<'ast>(forest: &'ast mut Forest, definitions: Definitions) -> Map<'ast> {
@@ -842,14 +843,15 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     let ii = map.forest.inlined_items.alloc(ii);
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
 
-    let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
-    let mut def_collector = DefCollector::extend(map.krate(),
-                                                 ii_parent_id,
-                                                 parent_def_path.clone(),
-                                                 parent_def_id,
-                                                 defs);
-    ii.visit(&mut def_collector);
-    *map.definitions.borrow_mut() = def_collector.definitions;
+    // TODO need to save defs in metadata :-(
+    // let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
+    // let mut def_collector = DefCollector::extend(map.krate(),
+    //                                              ii_parent_id,
+    //                                              parent_def_path.clone(),
+    //                                              parent_def_id,
+    //                                              defs);
+    // ii.visit(&mut def_collector);
+    // *map.definitions.borrow_mut() = def_collector.definitions;
 
     let mut collector = NodeCollector::extend(map.krate(),
                                               ii,
