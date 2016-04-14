@@ -314,6 +314,10 @@ impl Build {
                 CheckErrorIndex { compiler } => {
                     check::error_index(self, &compiler);
                 }
+                CheckRMake { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-make", "run-make")
+                }
 
                 DistDocs { stage } => dist::docs(self, stage, target.target),
                 DistMingw { _dummy } => dist::mingw(self, target.target),
