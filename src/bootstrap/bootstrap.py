@@ -57,9 +57,10 @@ def run(args, verbose=False):
     ret = subprocess.Popen(args)
     code = ret.wait()
     if code != 0:
-        if not verbose:
-            print("failed to run: " + ' '.join(args))
-        raise RuntimeError("failed to run command")
+        err = "failed to run: " + ' '.join(args)
+        if verbose:
+            raise RuntimeError(err)
+        sys.exit(err)
 
 class RustBuild:
     def download_rust_nightly(self):
@@ -210,7 +211,10 @@ class RustBuild:
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
             else:
-                raise
+                err = "uname not found"
+                if self.verbose:
+                    raise Exception(err)
+                sys.exit(err)
 
         # Darwin's `uname -s` lies and always returns i386. We have to use
         # sysctl instead.
@@ -253,7 +257,10 @@ class RustBuild:
                 cputype = 'x86_64'
             ostype = 'pc-windows-gnu'
         else:
-            raise ValueError("unknown OS type: " + ostype)
+            err = "unknown OS type: " + ostype
+            if self.verbose:
+                raise ValueError(err)
+            sys.exit(err)
 
         if cputype in {'i386', 'i486', 'i686', 'i786', 'x86'}:
             cputype = 'i686'
@@ -269,7 +276,10 @@ class RustBuild:
         elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
             cputype = 'x86_64'
         else:
-            raise ValueError("unknown cpu type: " + cputype)
+            err = "unknown cpu type: " + cputype
+            if self.verbose:
+                raise ValueError(err)
+            sys.exit(err)
 
         return cputype + '-' + ostype
 
