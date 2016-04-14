@@ -23,7 +23,7 @@ const INDENT: &'static str = "    ";
 /// If the session is properly configured, dumps a human-readable
 /// representation of the mir into:
 ///
-/// ```
+/// ```text
 /// rustc.node<node_id>.<pass_name>.<disambiguator>
 /// ```
 ///
