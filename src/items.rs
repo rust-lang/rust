@@ -499,7 +499,8 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
             result.push_str(&where_clause_str);
             if where_clause_str.contains('\n') {
-                result.push_str("\n{\n}");
+                let white_space = offset.to_string(context.config);
+                result.push_str(&format!("\n{}{{\n{}}}", &white_space, &white_space));
             } else {
                 result.push_str(" {}");
             }
@@ -519,9 +520,10 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
             BraceStyle::PreferSameLine => result.push(' '),
             BraceStyle::SameLineWhere => {
                 if !where_clause_str.is_empty() {
-                    result.push('\n')
+                    result.push('\n');
+                    result.push_str(&offset.to_string(context.config));
                 } else {
-                    result.push(' ')
+                    result.push(' ');
                 }
             }
         }

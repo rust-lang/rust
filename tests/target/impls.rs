@@ -112,3 +112,15 @@ pub impl<T, Z> Foo for Bar<T, Z>
           Z: Baz
 {
 }
+
+mod m {
+    impl<T> PartialEq for S<T>
+        where T: PartialEq
+    {
+        fn eq(&self, other: &Self) {
+            true
+        }
+    }
+
+    impl<T> PartialEq for S<T> where T: PartialEq {}
+}
