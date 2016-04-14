@@ -24,9 +24,15 @@ use libc::c_char;
 pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     let target_machine = create_target_machine(sess);
 
+    // WARNING: the features must be known to LLVM or the feature
+    // detection code will walk past the end of the feature array,
+    // leading to crashes.
+
     let arm_whitelist = [
         "neon\0",
-        "vfp\0",
+        "vfp2\0",
+        "vfp3\0",
+        "vfp4\0",
     ];
 
     let x86_whitelist = [
