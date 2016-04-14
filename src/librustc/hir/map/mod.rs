@@ -843,14 +843,13 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     let ii = map.forest.inlined_items.alloc(ii);
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
 
-    // TODO need to save defs in metadata :-(
-    // let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
-    // let mut def_collector = DefCollector::extend(ii_parent_id,
-    //                                              parent_def_path.clone(),
-    //                                              parent_def_id,
-    //                                              defs);
-    // ii.visit(&mut def_collector);
-    // *map.definitions.borrow_mut() = def_collector.definitions;
+    let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
+    let mut def_collector = DefCollector::extend(ii_parent_id,
+                                                 parent_def_path.clone(),
+                                                 parent_def_id,
+                                                 defs);
+    def_collector.walk_item(ii, map.krate());
+    *map.definitions.borrow_mut() = def_collector.definitions;
 
     let mut collector = NodeCollector::extend(map.krate(),
                                               ii,
