@@ -29,6 +29,7 @@ pub const RANGE_INCLUSIVE_NON_EMPTY: [&'static str; 4] = ["std", "ops", "RangeIn
 pub const RANGE: [&'static str; 3] = ["std", "ops", "Range"];
 pub const RANGE_TO_INCLUSIVE: [&'static str; 3] = ["std", "ops", "RangeToInclusive"];
 pub const RANGE_TO: [&'static str; 3] = ["std", "ops", "RangeTo"];
+pub const REGEX: [&'static str; 3] = ["regex", "re_unicode", "Regex"];
 pub const REGEX_NEW: [&'static str; 3] = ["regex", "Regex", "new"];
 pub const RESULT: [&'static str; 3] = ["core", "result", "Result"];
 pub const STRING: [&'static str; 3] = ["collections", "string", "String"];
