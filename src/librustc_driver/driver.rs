@@ -156,7 +156,16 @@ pub fn compile_input(sess: &Session,
         }
 
         let arenas = ty::CtxtArenas::new();
-        let hir_map = make_map(sess, &mut hir_forest);
+        // Collect defintions for def ids.
+        let defs = time(sess.time_passes(),
+                        "collecting defs",
+                        move || hir_map::collect_defs(hir_forest));
+
+        // Construct the HIR map
+        let hir_map = time(sess.time_passes(),
+                           "indexing hir",
+                           move || hir_map::map_crate(hir_forest, defs));
+
 
         write_out_deps(sess, &outputs, &id);
 
@@ -744,15 +753,6 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
     }
 
     krate
-}
-
-pub fn make_map<'ast>(sess: &Session,
-                      forest: &'ast mut hir_map::Forest)
-                      -> hir_map::Map<'ast> {
-    // Construct the HIR map
-    time(sess.time_passes(),
-         "indexing hir",
-         move || hir_map::map_crate(forest))
 }
 
 /// Run the resolution, typechecking, region checking and other

@@ -18,16 +18,14 @@ use syntax::ast::{NodeId, CRATE_NODE_ID, DUMMY_NODE_ID};
 /// Creates def ids for nodes in the HIR.
 pub struct DefCollector<'ast> {
     pub krate: &'ast Crate,
-    pub map: &'ast [MapEntry<'ast>],
     pub definitions: Definitions,
     pub parent_def: Option<DefIndex>,
 }
 
 impl<'ast> DefCollector<'ast> {
-    pub fn root(krate: &'ast Crate, map: &'ast [MapEntry<'ast>]) -> DefCollector<'ast> {
+    pub fn root(krate: &'ast Crate) -> DefCollector<'ast> {
         let mut collector = DefCollector {
             krate: krate,
-            map: map,
             definitions: Definitions::new(),
             parent_def: None,
         };
@@ -43,12 +41,10 @@ impl<'ast> DefCollector<'ast> {
                   parent_node: NodeId,
                   parent_def_path: DefPath,
                   parent_def_id: DefId,
-                  map: &'ast [MapEntry<'ast>],
                   definitions: Definitions)
                   -> DefCollector<'ast> {
         let mut collector = DefCollector {
             krate: krate,
-            map: map,
             parent_def: None,
             definitions: definitions,
         };
