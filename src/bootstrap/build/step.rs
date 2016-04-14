@@ -150,7 +150,9 @@ fn top_level(build: &Build) -> Vec<Step> {
             src: Source::Llvm { _dummy: () },
             target: &build.config.build,
         };
-        targets.push(t.doc(stage));
+        if build.config.docs {
+          targets.push(t.doc(stage));
+        }
         for host in build.config.host.iter() {
             if !build.flags.host.contains(host) {
                 continue
@@ -356,7 +358,9 @@ impl<'a> Step<'a> {
                     let compiler = self.compiler(stage);
                     for target in build.config.target.iter() {
                         let target = self.target(target);
-                        base.push(target.dist_docs(stage));
+                        if build.config.docs {
+                            base.push(target.dist_docs(stage));
+                        }
                         base.push(target.dist_std(compiler));
                     }
                 }
