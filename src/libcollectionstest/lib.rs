@@ -21,6 +21,7 @@
 #![feature(fn_traits)]
 #![feature(enumset)]
 #![feature(iter_arith)]
+#![feature(linked_list_contains)]
 #![feature(map_entry_keys)]
 #![feature(map_values_mut)]
 #![feature(pattern)]
@@ -32,6 +33,7 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
+#![feature(vec_deque_contains)]
 
 extern crate collections;
 extern crate test;
