@@ -10,7 +10,8 @@
 
 pub use self::Node::*;
 use self::MapEntry::*;
-use self::collector::{NodeCollector, DefCollector};
+use self::collector::NodeCollector;
+use self::def_collector::DefCollector;
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, InlinedRootPath};
 
@@ -36,6 +37,7 @@ use std::mem;
 
 pub mod blocks;
 mod collector;
+mod def_collector;
 pub mod definitions;
 
 #[derive(Copy, Clone, Debug)]
@@ -852,12 +854,13 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     ii.visit(&mut collector);
 
     {
+        let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
         let mut def_collector = DefCollector::extend(map.krate(),
                                                      ii_parent_id,
                                                      parent_def_path,
                                                      parent_def_id,
                                                      &collector.map,
-                                                     mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
+                                                     defs);
         ii.visit(&mut def_collector);
         *map.definitions.borrow_mut() = def_collector.definitions;
     }
