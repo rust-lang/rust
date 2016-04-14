@@ -117,3 +117,11 @@ options covering different styles. File an issue, or even better, submit a PR.
   directory or its parents to override the default settings of rustfmt.
 * After successful compilation, a `rustfmt` executable can be found in the
   target directory.
+
+
+## License
+
+Rustfmt is distributed under the terms of both the MIT license and the
+Apache License (Version 2.0).
+
+See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for details.
