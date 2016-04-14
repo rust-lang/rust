@@ -4,8 +4,8 @@
 [[report](https://solson.me/miri-report.pdf)]
 
 An experimental interpreter for [Rust][rust]'s [mid-level intermediate
-representation][mir] (MIR). This project began as a part of my course work for
-an undergraduate research course at the [University of Saskatchewan][usask].
+representation][mir] (MIR). This project began as part of my work for the
+undergraduate research course at the [University of Saskatchewan][usask].
 
 ## Download Rust nightly
 
