@@ -160,5 +160,7 @@ default_impl! { i16, 0 }
 default_impl! { i32, 0 }
 default_impl! { i64, 0 }
 
+#[cfg(any(stage0, target_has_floating_point))]
 default_impl! { f32, 0.0f32 }
+#[cfg(any(stage0, target_has_floating_point))]
 default_impl! { f64, 0.0f64 }

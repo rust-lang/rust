@@ -448,7 +448,10 @@ extern "rust-intrinsic" {
     pub fn volatile_load<T>(src: *const T) -> T;
     /// Perform a volatile store to the `dst` pointer.
     pub fn volatile_store<T>(dst: *mut T, val: T);
+}
 
+#[cfg(any(stage0, target_has_floating_point))]
+extern "rust-intrinsic" {
     /// Returns the square root of an `f32`
     pub fn sqrtf32(x: f32) -> f32;
     /// Returns the square root of an `f64`
@@ -570,8 +573,9 @@ extern "rust-intrinsic" {
     /// May assume inputs are finite.
     #[cfg(not(stage0))]
     pub fn frem_fast<T>(a: T, b: T) -> T;
+}
 
-
+extern "rust-intrinsic" {
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
 

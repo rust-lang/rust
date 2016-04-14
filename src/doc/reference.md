@@ -2087,6 +2087,7 @@ The following configurations must be defined by the implementation:
   64-bit pointers.
 * `target_vendor = "..."` - Vendor of the target, for example `apple`, `pc`, or
   simply `"unknown"`.
+* `target_has_floating_point` - Enabled if the target supports floating point operations.
 * `test` - Enabled when compiling the test harness (using the `--test` flag).
 * `unix` - See `target_family`.
 * `windows` - See `target_family`.
@@ -2286,6 +2287,9 @@ The currently implemented features of the reference compiler are:
 
 * `cfg_target_vendor` - Allows conditional compilation using the `target_vendor`
                         matcher which is subject to change.
+
+* `cfg_target_has_floating_point` - Allows conditional compilation using the
+                                   `target_has_floating_point` matcher which is subject to change.
 
 * `concat_idents` - Allows use of the `concat_idents` macro, which is in many
                     ways insufficient for concatenating identifiers, and may be

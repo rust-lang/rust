@@ -287,6 +287,9 @@ pub struct TargetOptions {
     // If we give emcc .o files that are actually .bc files it
     // will 'just work'.
     pub obj_is_bitcode: bool,
+
+    /// Flag indicating whether the target supports floating point instructions. Defaults to true.
+    pub has_floating_point: bool,
 }
 
 impl Default for TargetOptions {
@@ -335,6 +338,7 @@ impl Default for TargetOptions {
             allow_asm: true,
             has_elf_tls: false,
             obj_is_bitcode: false,
+            has_floating_point: true,
         }
     }
 }
@@ -446,6 +450,7 @@ impl Target {
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
+        key!(has_floating_point, bool);
 
         base
     }
