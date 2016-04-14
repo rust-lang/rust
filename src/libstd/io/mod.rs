@@ -1505,6 +1505,11 @@ impl<T: Read> Read for Take<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: BufRead> BufRead for Take<T> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
+        // Don't call into inner reader at all at EOF because it may still block
+        if self.limit == 0 {
+            return Ok(&[]);
+        }
+
         let buf = self.inner.fill_buf()?;
         let cap = cmp::min(buf.len() as u64, self.limit) as usize;
         Ok(&buf[..cap])
@@ -1860,9 +1865,16 @@ mod tests {
                 Err(io::Error::new(io::ErrorKind::Other, ""))
             }
         }
+        impl BufRead for R {
+            fn fill_buf(&mut self) -> io::Result<&[u8]> {
+                Err(io::Error::new(io::ErrorKind::Other, ""))
+            }
+            fn consume(&mut self, _amt: usize) { }
+        }
 
         let mut buf = [0; 1];
         assert_eq!(0, R.take(0).read(&mut buf).unwrap());
+        assert_eq!(b"", R.take(0).fill_buf().unwrap());
     }
 
     fn cmp_bufread<Br1: BufRead, Br2: BufRead>(mut br1: Br1, mut br2: Br2, exp: &[u8]) {
