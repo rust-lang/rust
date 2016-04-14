@@ -10,6 +10,7 @@
 
 import argparse
 import contextlib
+import hashlib
 import os
 import shutil
 import subprocess
@@ -18,13 +19,29 @@ import tarfile
 
 def get(url, path, verbose=False):
     print("downloading " + url)
-    # see http://serverfault.com/questions/301128/how-to-download
-    if sys.platform == 'win32':
-        run(["PowerShell.exe", "/nologo", "-Command",
-             "(New-Object System.Net.WebClient).DownloadFile('" + url +
-                "', '" + path + "')"], verbose=verbose)
-    else:
-        run(["curl", "-o", path, url], verbose=verbose)
+    sha_url = url + ".sha256"
+    sha_path = path + ".sha256"
+    for _url, _path in ((url, path), (sha_url, sha_path)):
+        # see http://serverfault.com/questions/301128/how-to-download
+        if sys.platform == 'win32':
+            run(["PowerShell.exe", "/nologo", "-Command",
+                 "(New-Object System.Net.WebClient)"
+                 ".DownloadFile('{}', '{}')".format(_url, _path)],
+                verbose=verbose)
+        else:
+            run(["curl", "-o", _path, _url], verbose=verbose)
+    print("verifying " + path)
+    with open(path, "rb") as f:
+        found = hashlib.sha256(f.read()).hexdigest()
+    with open(sha_path, "r") as f:
+        expected, _ = f.readline().split()
+    if found != expected:
+        err = ("invalid checksum:\n"
+               "    found:    {}\n"
+               "    expected: {}".format(found, expected))
+        if verbose:
+            raise RuntimeError(err)
+        sys.exit(err)
 
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
