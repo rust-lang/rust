@@ -1001,7 +1001,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             variants.push(fields);
         }
 
-        let discr_size = match variants.len() {
+        let discr_size = match variants.len() as u64 {
             n if n <= 1       => 0,
             n if n <= 1 << 8  => 1,
             n if n <= 1 << 16 => 2,
