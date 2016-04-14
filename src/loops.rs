@@ -14,8 +14,8 @@ use std::collections::HashMap;
 use syntax::ast;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
-            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then,
-            unsugar_range, walk_ptrs_ty, recover_for_loop};
+            span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, unsugar_range,
+            walk_ptrs_ty, recover_for_loop};
 use utils::paths;
 use utils::UnsugaredRange;
 
@@ -247,7 +247,8 @@ impl LateLintPass for LoopsPass {
                 if let ExprMatch(ref matchexpr, ref arms, ref source) = inner.node {
                     // ensure "if let" compatible match structure
                     match *source {
-                        MatchSource::Normal | MatchSource::IfLetDesugar{..} => {
+                        MatchSource::Normal |
+                        MatchSource::IfLetDesugar { .. } => {
                             if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
                                arms[1].pats.len() == 1 && arms[1].guard.is_none() &&
                                is_break_expr(&arms[1].body) {
@@ -779,7 +780,8 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
         Some(ref expr) => Some(expr),
         None if !block.stmts.is_empty() => {
             match block.stmts[0].node {
-                StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => Some(expr),
+                StmtExpr(ref expr, _) |
+                StmtSemi(ref expr, _) => Some(expr),
                 _ => None,
             }
         }

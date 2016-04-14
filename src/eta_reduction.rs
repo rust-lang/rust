@@ -60,9 +60,10 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 let fn_ty = cx.tcx.expr_ty(caller);
                 match fn_ty.sty {
                     // Is it an unsafe function? They don't implement the closure traits
-                    ty::TyFnDef(_, _, fn_ty) | ty::TyFnPtr(fn_ty) => {
+                    ty::TyFnDef(_, _, fn_ty) |
+                    ty::TyFnPtr(fn_ty) => {
                         if fn_ty.unsafety == Unsafety::Unsafe ||
-                            fn_ty.sig.skip_binder().output == ty::FnOutput::FnDiverging {
+                           fn_ty.sig.skip_binder().output == ty::FnOutput::FnDiverging {
                             return;
                         }
                     }

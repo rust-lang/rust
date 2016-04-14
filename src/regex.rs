@@ -167,14 +167,14 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
 
     match *s {
         Expr::Empty | Expr::StartText | Expr::EndText => Some("the regex is unlikely to be useful as it is"),
-        Expr::Literal {..} => Some("consider using `str::contains`"),
+        Expr::Literal { .. } => Some("consider using `str::contains`"),
         Expr::Concat(ref exprs) => {
             match exprs.len() {
                 2 => {
                     match (&exprs[0], &exprs[1]) {
                         (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
-                        (&Expr::StartText, &Expr::Literal {..}) => Some("consider using `str::starts_with`"),
-                        (&Expr::Literal {..}, &Expr::EndText) => Some("consider using `str::ends_with`"),
+                        (&Expr::StartText, &Expr::Literal { .. }) => Some("consider using `str::starts_with`"),
+                        (&Expr::Literal { .. }, &Expr::EndText) => Some("consider using `str::ends_with`"),
                         _ => None,
                     }
                 }

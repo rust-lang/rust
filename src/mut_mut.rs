@@ -52,7 +52,7 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
 
     unwrap_addr(expr).map_or((), |e| {
         unwrap_addr(e).map_or_else(|| {
-                                       if let TyRef(_, TypeAndMut{mutbl: MutMutable, ..}) = cx.tcx.expr_ty(e).sty {
+                                       if let TyRef(_, TypeAndMut { mutbl: MutMutable, .. }) = cx.tcx.expr_ty(e).sty {
                                            span_lint(cx,
                                                      MUT_MUT,
                                                      expr.span,
@@ -71,7 +71,7 @@ fn check_expr_mut(cx: &LateContext, expr: &Expr) {
 
 fn unwrap_mut(ty: &Ty) -> Option<&Ty> {
     match ty.node {
-        TyRptr(_, MutTy{ ty: ref pty, mutbl: MutMutable }) => Some(pty),
+        TyRptr(_, MutTy { ty: ref pty, mutbl: MutMutable }) => Some(pty),
         _ => None,
     }
 }

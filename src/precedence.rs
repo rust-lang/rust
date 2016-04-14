@@ -31,7 +31,7 @@ impl LintPass for Precedence {
 
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
-        if let ExprKind::Binary(Spanned { node: op, ..}, ref left, ref right) = expr.node {
+        if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
             if !is_bit_op(op) {
                 return;
             }
@@ -75,7 +75,9 @@ impl EarlyLintPass for Precedence {
                 if let Some(slf) = args.first() {
                     if let ExprKind::Lit(ref lit) = slf.node {
                         match lit.node {
-                            LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
+                            LitKind::Int(..) |
+                            LitKind::Float(..) |
+                            LitKind::FloatUnsuffixed(..) => {
                                 span_lint(cx,
                                           PRECEDENCE,
                                           expr.span,
@@ -94,7 +96,7 @@ impl EarlyLintPass for Precedence {
 
 fn is_arith_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprKind::Binary(Spanned { node: op, ..}, _, _) => is_arith_op(op),
+        ExprKind::Binary(Spanned { node: op, .. }, _, _) => is_arith_op(op),
         _ => false,
     }
 }

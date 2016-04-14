@@ -31,9 +31,7 @@ pub struct Functions {
 
 impl Functions {
     pub fn new(threshold: u64) -> Functions {
-        Functions {
-            threshold: threshold
-        }
+        Functions { threshold: threshold }
     }
 }
 
@@ -49,7 +47,8 @@ impl LateLintPass for Functions {
 
         if let Some(NodeItem(ref item)) = cx.tcx.map.find(cx.tcx.map.get_parent_node(nodeid)) {
             match item.node {
-                hir::ItemImpl(_, _, _, Some(_), _, _) | hir::ItemDefaultImpl(..) => return,
+                hir::ItemImpl(_, _, _, Some(_), _, _) |
+                hir::ItemDefaultImpl(..) => return,
                 _ => (),
             }
         }
@@ -68,7 +67,9 @@ impl Functions {
     fn check_arg_number(&self, cx: &LateContext, decl: &hir::FnDecl, span: Span) {
         let args = decl.inputs.len() as u64;
         if args > self.threshold {
-            span_lint(cx, TOO_MANY_ARGUMENTS, span,
+            span_lint(cx,
+                      TOO_MANY_ARGUMENTS,
+                      span,
                       &format!("this function has to many arguments ({}/{})", args, self.threshold));
         }
     }

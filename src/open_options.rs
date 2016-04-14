@@ -65,7 +65,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
 
             let argument_option = match arguments[1].node {
                 ExprLit(ref span) => {
-                    if let Spanned {node: LitKind::Bool(lit), ..} = **span {
+                    if let Spanned { node: LitKind::Bool(lit), .. } = **span {
                         if lit {
                             Argument::True
                         } else {
@@ -96,7 +96,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
                 "write" => {
                     options.push((OpenOption::Write, argument_option));
                 }
-                _ => {}
+                _ => (),
             }
 
             get_open_options(cx, &arguments[0], options);

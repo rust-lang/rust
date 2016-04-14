@@ -60,12 +60,7 @@ impl CyclomaticComplexity {
             tcx: &cx.tcx,
         };
         helper.visit_block(block);
-        let CCHelper {
-            match_arms,
-            divergence,
-            short_circuits,
-            ..
-        } = helper;
+        let CCHelper { match_arms, divergence, short_circuits, .. } = helper;
 
         if cc + divergence < match_arms + short_circuits {
             report_cc_bug(cx, cc, match_arms, divergence, short_circuits, span);
@@ -132,7 +127,8 @@ impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
                 walk_expr(self, e);
                 let ty = self.tcx.node_id_to_type(callee.id);
                 match ty.sty {
-                    ty::TyFnDef(_, _, ty) | ty::TyFnPtr(ty) if ty.sig.skip_binder().output.diverges() => {
+                    ty::TyFnDef(_, _, ty) |
+                    ty::TyFnPtr(ty) if ty.sig.skip_binder().output.diverges() => {
                         self.divergence += 1;
                     }
                     _ => (),
@@ -143,7 +139,7 @@ impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
                 walk_expr(self, e);
                 match op.node {
                     BiAnd | BiOr => self.short_circuits += 1,
-                    _ => {},
+                    _ => (),
                 }
             }
             _ => walk_expr(self, e),
@@ -156,10 +152,10 @@ fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, sp
     span_bug!(span,
               "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
                div = {}, shorts = {}. Please file a bug report.",
-               cc,
-               narms,
-               div,
-               shorts);
+              cc,
+              narms,
+              div,
+              shorts);
 }
 #[cfg(not(feature="debugging"))]
 fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {

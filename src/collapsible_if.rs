@@ -70,7 +70,7 @@ fn check_if(cx: &LateContext, e: &Expr) {
                     db.span_suggestion(block.span, "try", snippet_block(cx, else_.span, "..").into_owned());
                 });
             }}
-        } else if let Some(&Expr{ node: ExprIf(ref check_inner, ref content, None), span: sp, ..}) =
+        } else if let Some(&Expr { node: ExprIf(ref check_inner, ref content, None), span: sp, .. }) =
                single_stmt_of_block(then) {
             if e.span.expn_id != sp.expn_id {
                 return;
@@ -89,7 +89,7 @@ fn check_if(cx: &LateContext, e: &Expr) {
 
 fn requires_brackets(e: &Expr) -> bool {
     match e.node {
-        ExprBinary(Spanned {node: n, ..}, _, _) if n == BiEq => false,
+        ExprBinary(Spanned { node: n, .. }, _, _) if n == BiEq => false,
         _ => true,
     }
 }

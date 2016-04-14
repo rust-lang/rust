@@ -71,7 +71,7 @@ impl ReturnPass {
                     self.check_final_expr(cx, &arm.body);
                 }
             }
-            _ => {}
+            _ => (),
         }
     }
 

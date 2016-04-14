@@ -144,7 +144,8 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 /// Check if type is struct or enum type with given def path.
 pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
-        ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => match_def_path(cx, adt.did, path),
+        ty::TyEnum(ref adt, _) |
+        ty::TyStruct(ref adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
 }
@@ -304,9 +305,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
-        Some(Node::NodeItem(&Item{ ref name, .. })) |
-        Some(Node::NodeTraitItem(&TraitItem{ ref name, .. })) |
-        Some(Node::NodeImplItem(&ImplItem{ ref name, .. })) => Some(*name),
+        Some(Node::NodeItem(&Item { ref name, .. })) |
+        Some(Node::NodeTraitItem(&TraitItem { ref name, .. })) |
+        Some(Node::NodeImplItem(&ImplItem { ref name, .. })) => Some(*name),
         _ => None,
     }
 }
@@ -431,7 +432,7 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(ref block) => Some(block),
-            Node::NodeItem(&Item{ node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
+            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
             _ => None,
         }
     } else {
@@ -517,7 +518,8 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
 /// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     match ty.sty {
-        ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
+        ty::TyRef(_, ref tm) |
+        ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
         _ => ty,
     }
 }
@@ -526,7 +528,8 @@ pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
 pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
     fn inner(ty: ty::Ty, depth: usize) -> (ty::Ty, usize) {
         match ty.sty {
-            ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => inner(tm.ty, depth + 1),
+            ty::TyRef(_, ref tm) |
+            ty::TyRawPtr(ref tm) => inner(tm.ty, depth + 1),
             _ => (ty, depth),
         }
     }
@@ -730,22 +733,46 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
     match unwrap_unstable(&expr).node {
         ExprPath(None, ref path) => {
             if match_path(path, &paths::RANGE_FULL) {
-                Some(UnsugaredRange { start: None, end: None, limits: RangeLimits::HalfOpen })
+                Some(UnsugaredRange {
+                    start: None,
+                    end: None,
+                    limits: RangeLimits::HalfOpen,
+                })
             } else {
                 None
             }
         }
         ExprStruct(ref path, ref fields, None) => {
             if match_path(path, &paths::RANGE_FROM) {
-                Some(UnsugaredRange { start: get_field("start", fields), end: None, limits: RangeLimits::HalfOpen })
+                Some(UnsugaredRange {
+                    start: get_field("start", fields),
+                    end: None,
+                    limits: RangeLimits::HalfOpen,
+                })
             } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
-                Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::Closed })
+                Some(UnsugaredRange {
+                    start: get_field("start", fields),
+                    end: get_field("end", fields),
+                    limits: RangeLimits::Closed,
+                })
             } else if match_path(path, &paths::RANGE) {
-                Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+                Some(UnsugaredRange {
+                    start: get_field("start", fields),
+                    end: get_field("end", fields),
+                    limits: RangeLimits::HalfOpen,
+                })
             } else if match_path(path, &paths::RANGE_TO_INCLUSIVE) {
-                Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::Closed })
+                Some(UnsugaredRange {
+                    start: None,
+                    end: get_field("end", fields),
+                    limits: RangeLimits::Closed,
+                })
             } else if match_path(path, &paths::RANGE_TO) {
-                Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+                Some(UnsugaredRange {
+                    start: None,
+                    end: get_field("end", fields),
+                    limits: RangeLimits::HalfOpen,
+                })
             } else {
                 None
             }

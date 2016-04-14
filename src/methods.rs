@@ -436,7 +436,8 @@ impl LateLintPass for MethodsPass {
                     }
 
                     let ret_ty = return_ty(cx, implitem.id);
-                    if &name.as_str() == &"new" && !ret_ty.map_or(false, |ret_ty| ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id))) {
+                    if &name.as_str() == &"new" &&
+                       !ret_ty.map_or(false, |ret_ty| ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id))) {
                         span_lint(cx,
                                   NEW_RET_NO_SELF,
                                   sig.explicit_self.span,
@@ -946,7 +947,8 @@ impl SelfKind {
             (&SelfKind::Ref, &SelfRegion(_, Mutability::MutImmutable, _)) |
             (&SelfKind::RefMut, &SelfRegion(_, Mutability::MutMutable, _)) |
             (&SelfKind::No, &SelfStatic) => true,
-            (&SelfKind::Ref, &SelfValue(_)) | (&SelfKind::RefMut, &SelfValue(_)) => allow_value_for_ref,
+            (&SelfKind::Ref, &SelfValue(_)) |
+            (&SelfKind::RefMut, &SelfValue(_)) => allow_value_for_ref,
             (_, &SelfExplicit(ref ty, _)) => self.matches_explicit_type(ty, allow_value_for_ref),
             _ => false,
         }

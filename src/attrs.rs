@@ -115,7 +115,8 @@ fn is_relevant_block(block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
-            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => {
+            StmtExpr(ref expr, _) |
+            StmtSemi(ref expr, _) => {
                 return is_relevant_expr(expr);
             }
         }

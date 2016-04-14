@@ -74,7 +74,7 @@ impl LintPass for StringAdd {
 
 impl LateLintPass for StringAdd {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
-        if let ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) = e.node {
+        if let ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) = e.node {
             if is_string(cx, left) {
                 if let Allow = cx.current_level(STRING_ADD_ASSIGN) {
                     // the string_add_assign is allow, so no duplicates
@@ -112,7 +112,7 @@ fn is_string(cx: &LateContext, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprBinary(Spanned{ node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
+        ExprBinary(Spanned { node: BiAdd, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprBlock(ref block) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
         }
@@ -145,8 +145,7 @@ impl LateLintPass for StringLitAsBytes {
                                                e.span,
                                                "calling `as_bytes()` on a string literal",
                                                |db| {
-                                                   let sugg = format!("b{}",
-                                                                      snippet(cx, args[0].span, r#""foo""#));
+                                                   let sugg = format!("b{}", snippet(cx, args[0].span, r#""foo""#));
                                                    db.span_suggestion(e.span,
                                                                       "consider using a byte string literal instead",
                                                                       sugg);

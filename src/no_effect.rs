@@ -52,7 +52,8 @@ fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
             }
         }
         Expr_::ExprBlock(ref block) => {
-            block.stmts.is_empty() && if let Some(ref expr) = block.expr {
+            block.stmts.is_empty() &&
+            if let Some(ref expr) = block.expr {
                 has_no_effect(cx, expr)
             } else {
                 false

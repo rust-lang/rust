@@ -127,7 +127,7 @@ fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, fun
         match slf.node {
             SelfRegion(ref opt_lt, _, _) => input_visitor.record(opt_lt),
             SelfExplicit(ref ty, _) => walk_ty(&mut input_visitor, ty),
-            _ => {}
+            _ => (),
         }
     }
     // extract lifetimes in input argument types
@@ -243,7 +243,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
             if params.lifetimes.is_empty() {
                 if let Some(def) = self.cx.tcx.def_map.borrow().get(&ty.id).map(|r| r.full_def()) {
                     match def {
-                        Def::TyAlias(def_id) | Def::Struct(def_id) => {
+                        Def::TyAlias(def_id) |
+                        Def::Struct(def_id) => {
                             let type_scheme = self.cx.tcx.lookup_item_type(def_id);
                             for _ in type_scheme.generics.regions.as_slice() {
                                 self.record(&None);
@@ -255,7 +256,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
                                 self.record(&None);
                             }
                         }
-                        _ => {}
+                        _ => (),
                     }
                 }
             }
@@ -277,7 +278,7 @@ impl<'v, 't> Visitor<'v> for RefVisitor<'v, 't> {
             TyPath(_, ref path) => {
                 self.collect_anonymous_lifetimes(path, ty);
             }
-            _ => {}
+            _ => (),
         }
         walk_ty(self, ty);
     }
@@ -353,7 +354,7 @@ fn report_extra_lifetimes(cx: &LateContext, func: &FnDecl, generics: &Generics, 
         match slf.node {
             SelfRegion(Some(ref lt), _, _) => checker.visit_lifetime(lt),
             SelfExplicit(ref t, _) => walk_ty(&mut checker, t),
-            _ => {}
+            _ => (),
         }
     }
 

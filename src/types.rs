@@ -248,7 +248,8 @@ fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
 
 fn is_isize_or_usize(typ: &ty::TyS) -> bool {
     match typ.sty {
-        ty::TyInt(IntTy::Is) | ty::TyUint(UintTy::Us) => true,
+        ty::TyInt(IntTy::Is) |
+        ty::TyUint(UintTy::Us) => true,
         _ => false,
     }
 }
@@ -536,9 +537,7 @@ impl<'v> Visitor<'v> for TypeComplexityVisitor {
     fn visit_ty(&mut self, ty: &'v Ty) {
         let (add_score, sub_nest) = match ty.node {
             // _, &x and *x have only small overhead; don't mess with nesting level
-            TyInfer |
-            TyPtr(..) |
-            TyRptr(..) => (1, 0),
+            TyInfer | TyPtr(..) | TyRptr(..) => (1, 0),
 
             // the "normal" components of a type: named types, arrays/tuples
             TyPath(..) |
@@ -663,17 +662,17 @@ fn detect_absurd_comparison<'a>(cx: &LateContext, op: BinOp_, lhs: &'a Expr, rhs
     Some(match rel {
         Rel::Lt => {
             match (lx, rx) {
-                (Some(l @ Extr { which: Maximum, ..}), _) => (l, AlwaysFalse), // max < x
-                (_, Some(r @ Extr { which: Minimum, ..})) => (r, AlwaysFalse), // x < min
+                (Some(l @ Extr { which: Maximum, .. }), _) => (l, AlwaysFalse), // max < x
+                (_, Some(r @ Extr { which: Minimum, .. })) => (r, AlwaysFalse), // x < min
                 _ => return None,
             }
         }
         Rel::Le => {
             match (lx, rx) {
-                (Some(l @ Extr { which: Minimum, ..}), _) => (l, AlwaysTrue), // min <= x
-                (Some(l @ Extr { which: Maximum, ..}), _) => (l, InequalityImpossible), //max <= x
-                (_, Some(r @ Extr { which: Minimum, ..})) => (r, InequalityImpossible), // x <= min
-                (_, Some(r @ Extr { which: Maximum, ..})) => (r, AlwaysTrue), // x <= max
+                (Some(l @ Extr { which: Minimum, .. }), _) => (l, AlwaysTrue), // min <= x
+                (Some(l @ Extr { which: Maximum, .. }), _) => (l, InequalityImpossible), //max <= x
+                (_, Some(r @ Extr { which: Minimum, .. })) => (r, InequalityImpossible), // x <= min
+                (_, Some(r @ Extr { which: Maximum, .. })) => (r, AlwaysTrue), // x <= max
                 _ => return None,
             }
         }
@@ -702,14 +701,12 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
 
     let which = match (ty, cv) {
         (&ty::TyBool, Bool(false)) |
-
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MIN)))) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MIN)))) |
         (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MIN))) |
         (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MIN))) |
         (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MIN))) |
         (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MIN))) |
-
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MIN)))) |
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MIN)))) |
         (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MIN))) |
@@ -718,14 +715,12 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         (&ty::TyUint(UintTy::U64), Integral(U64(::std::u64::MIN))) => Minimum,
 
         (&ty::TyBool, Bool(true)) |
-
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is32(::std::i32::MAX)))) |
         (&ty::TyInt(IntTy::Is), Integral(Isize(Is64(::std::i64::MAX)))) |
         (&ty::TyInt(IntTy::I8), Integral(I8(::std::i8::MAX))) |
         (&ty::TyInt(IntTy::I16), Integral(I16(::std::i16::MAX))) |
         (&ty::TyInt(IntTy::I32), Integral(I32(::std::i32::MAX))) |
         (&ty::TyInt(IntTy::I64), Integral(I64(::std::i64::MAX))) |
-
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us32(::std::u32::MAX)))) |
         (&ty::TyUint(UintTy::Us), Integral(Usize(Us64(::std::u64::MAX)))) |
         (&ty::TyUint(UintTy::U8), Integral(U8(::std::u8::MAX))) |
@@ -845,22 +840,26 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     use syntax::ast::{IntTy, UintTy};
     use std::*;
 
-    if let ExprCast(ref cast_exp,_) = expr.node {
+    if let ExprCast(ref cast_exp, _) = expr.node {
         match cx.tcx.expr_ty(cast_exp).sty {
-            TyInt(int_ty) => Some(match int_ty {
-                IntTy::I8 => (FullInt::S(i8::min_value() as i64), FullInt::S(i8::max_value() as i64)),
-                IntTy::I16 => (FullInt::S(i16::min_value() as i64), FullInt::S(i16::max_value() as i64)),
-                IntTy::I32 => (FullInt::S(i32::min_value() as i64), FullInt::S(i32::max_value() as i64)),
-                IntTy::I64 => (FullInt::S(i64::min_value() as i64), FullInt::S(i64::max_value() as i64)),
-                IntTy::Is => (FullInt::S(isize::min_value() as i64), FullInt::S(isize::max_value() as i64)),
-            }),
-            TyUint(uint_ty) => Some(match uint_ty {
-                UintTy::U8 => (FullInt::U(u8::min_value() as u64), FullInt::U(u8::max_value() as u64)),
-                UintTy::U16 => (FullInt::U(u16::min_value() as u64), FullInt::U(u16::max_value() as u64)),
-                UintTy::U32 => (FullInt::U(u32::min_value() as u64), FullInt::U(u32::max_value() as u64)),
-                UintTy::U64 => (FullInt::U(u64::min_value() as u64), FullInt::U(u64::max_value() as u64)),
-                UintTy::Us => (FullInt::U(usize::min_value() as u64), FullInt::U(usize::max_value() as u64)),
-            }),
+            TyInt(int_ty) => {
+                Some(match int_ty {
+                    IntTy::I8 => (FullInt::S(i8::min_value() as i64), FullInt::S(i8::max_value() as i64)),
+                    IntTy::I16 => (FullInt::S(i16::min_value() as i64), FullInt::S(i16::max_value() as i64)),
+                    IntTy::I32 => (FullInt::S(i32::min_value() as i64), FullInt::S(i32::max_value() as i64)),
+                    IntTy::I64 => (FullInt::S(i64::min_value() as i64), FullInt::S(i64::max_value() as i64)),
+                    IntTy::Is => (FullInt::S(isize::min_value() as i64), FullInt::S(isize::max_value() as i64)),
+                })
+            }
+            TyUint(uint_ty) => {
+                Some(match uint_ty {
+                    UintTy::U8 => (FullInt::U(u8::min_value() as u64), FullInt::U(u8::max_value() as u64)),
+                    UintTy::U16 => (FullInt::U(u16::min_value() as u64), FullInt::U(u16::max_value() as u64)),
+                    UintTy::U32 => (FullInt::U(u32::min_value() as u64), FullInt::U(u32::max_value() as u64)),
+                    UintTy::U64 => (FullInt::U(u64::min_value() as u64), FullInt::U(u64::max_value() as u64)),
+                    UintTy::Us => (FullInt::U(usize::min_value() as u64), FullInt::U(usize::max_value() as u64)),
+                })
+            }
             _ => None,
         }
     } else {
@@ -885,29 +884,26 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
             } else {
                 None
             }
-        },
+        }
         Err(_) => None,
     }
 }
 
 fn err_upcast_comparison(cx: &LateContext, span: &Span, expr: &Expr, always: bool) {
     if let ExprCast(ref cast_val, _) = expr.node {
-        span_lint(
-            cx,
-            INVALID_UPCAST_COMPARISONS,
-            *span,
-            &format!(
+        span_lint(cx,
+                  INVALID_UPCAST_COMPARISONS,
+                  *span,
+                  &format!(
                 "because of the numeric bounds on `{}` prior to casting, this expression is always {}",
                 snippet(cx, cast_val.span, "the expression"),
                 if always { "true" } else { "false" },
-            )
-        );
+            ));
     }
 }
 
-fn upcast_comparison_bounds_err(
-        cx: &LateContext, span: &Span, rel: comparisons::Rel,
-        lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr, rhs: &Expr, invert: bool) {
+fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons::Rel,
+                                lhs_bounds: Option<(FullInt, FullInt)>, lhs: &Expr, rhs: &Expr, invert: bool) {
     use utils::comparisons::*;
 
     if let Some((lb, ub)) = lhs_bounds {
@@ -917,14 +913,38 @@ fn upcast_comparison_bounds_err(
                     err_upcast_comparison(cx, &span, lhs, rel == Rel::Ne);
                 }
             } else if match rel {
-                Rel::Lt => if invert { norm_rhs_val < lb } else { ub < norm_rhs_val },
-                Rel::Le => if invert { norm_rhs_val <= lb  } else { ub <= norm_rhs_val },
+                Rel::Lt => {
+                    if invert {
+                        norm_rhs_val < lb
+                    } else {
+                        ub < norm_rhs_val
+                    }
+                }
+                Rel::Le => {
+                    if invert {
+                        norm_rhs_val <= lb
+                    } else {
+                        ub <= norm_rhs_val
+                    }
+                }
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, &span, lhs, true)
             } else if match rel {
-                Rel::Lt => if invert { norm_rhs_val >= ub } else { lb >= norm_rhs_val },
-                Rel::Le => if invert { norm_rhs_val > ub } else { lb > norm_rhs_val },
+                Rel::Lt => {
+                    if invert {
+                        norm_rhs_val >= ub
+                    } else {
+                        lb >= norm_rhs_val
+                    }
+                }
+                Rel::Le => {
+                    if invert {
+                        norm_rhs_val > ub
+                    } else {
+                        lb > norm_rhs_val
+                    }
+                }
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
                 err_upcast_comparison(cx, &span, lhs, false)

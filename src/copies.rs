@@ -71,7 +71,7 @@ impl LateLintPass for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if !in_macro(cx, expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
-            if let Some(&Expr{node: ExprIf(_, _, Some(ref else_expr)), ..}) = get_parent_expr(cx, expr) {
+            if let Some(&Expr { node: ExprIf(_, _, Some(ref else_expr)), .. }) = get_parent_expr(cx, expr) {
                 if else_expr.id == expr.id {
                     return;
                 }
@@ -185,7 +185,8 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> HashMap<InternedString, ty::Ty<'tcx>> {
     fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut HashMap<InternedString, ty::Ty<'tcx>>) {
         match pat.node {
-            PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
+            PatKind::Box(ref pat) |
+            PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
             PatKind::TupleStruct(_, Some(ref pats)) => {
                 for pat in pats {
                     bindings_impl(cx, pat, map);

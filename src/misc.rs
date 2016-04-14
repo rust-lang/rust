@@ -226,7 +226,7 @@ impl LateLintPass for CmpOwned {
 
 fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: Span) {
     let (arg_ty, snip) = match expr.node {
-        ExprMethodCall(Spanned{node: ref name, ..}, _, ref args) if args.len() == 1 => {
+        ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) if args.len() == 1 => {
             if name.as_str() == "to_string" || name.as_str() == "to_owned" && is_str_arg(cx, args) {
                 (cx.tcx.expr_ty(&args[0]), snippet(cx, args[0].span, ".."))
             } else {
@@ -309,7 +309,7 @@ impl LintPass for ModuloOne {
 impl LateLintPass for ModuloOne {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprBinary(ref cmp, _, ref right) = expr.node {
-            if let Spanned {node: BinOp_::BiRem, ..} = *cmp {
+            if let Spanned { node: BinOp_::BiRem, .. } = *cmp {
                 if is_integer_literal(right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
@@ -422,7 +422,8 @@ impl LateLintPass for UsedUnderscoreBinding {
 fn is_used(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(ref parent) = get_parent_expr(cx, expr) {
         match parent.node {
-            ExprAssign(_, ref rhs) | ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
+            ExprAssign(_, ref rhs) |
+            ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
             _ => is_used(cx, &parent),
         }
     } else {

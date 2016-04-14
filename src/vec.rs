@@ -63,8 +63,7 @@ fn check_vec_macro(cx: &LateContext, expr: &Expr, vec: &Expr) {
                     };
 
                     format!("&[{}]", snippet(cx, span, "..")).into()
-                }
-                else {
+                } else {
                     "&[]".into()
                 }
             }
