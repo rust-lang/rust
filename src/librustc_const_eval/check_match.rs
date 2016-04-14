@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::Constructor::*;
+use self::Constructor::*;
 use self::Usefulness::*;
 use self::WitnessPreference::*;
 
