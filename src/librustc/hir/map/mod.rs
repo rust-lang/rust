@@ -784,7 +784,7 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
 }
 
 pub fn collect_definitions<'ast>(krate: &'ast ast::Crate) -> Definitions {
-    let mut def_collector = DefCollector::root(krate);
+    let mut def_collector = DefCollector::root();
     visit::walk_crate(&mut def_collector, krate);
     def_collector.definitions
 }
@@ -845,8 +845,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
 
     // TODO need to save defs in metadata :-(
     // let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
-    // let mut def_collector = DefCollector::extend(map.krate(),
-    //                                              ii_parent_id,
+    // let mut def_collector = DefCollector::extend(ii_parent_id,
     //                                              parent_def_path.clone(),
     //                                              parent_def_id,
     //                                              defs);

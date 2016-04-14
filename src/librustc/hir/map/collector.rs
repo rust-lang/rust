@@ -70,6 +70,13 @@ impl<'ast> NodeCollector<'ast> {
         let entry = MapEntry::from_node(self.parent_node, node);
         self.insert_entry(id, entry);
     }
+
+    fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_id: NodeId, f: F) {
+        let parent_node = self.parent_node;
+        self.parent_node = parent_id;
+        f(self);
+        self.parent_node = parent_node;
+    }
 }
 
 impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
@@ -86,51 +93,48 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
         self.insert(i.id, NodeItem(i));
 
-        let parent_node = self.parent_node;
-        self.parent_node = i.id;
-
-        match i.node {
-            ItemEnum(ref enum_definition, _) => {
-                for v in &enum_definition.variants {
-                    self.insert(v.node.data.id(), NodeVariant(v));
-                }
-            }
-            ItemStruct(ref struct_def, _) => {
-                // If this is a tuple-like struct, register the constructor.
-                if !struct_def.is_struct() {
-                    self.insert(struct_def.id(), NodeStructCtor(struct_def));
-                }
-            }
-            ItemTrait(_, _, ref bounds, _) => {
-                for b in bounds.iter() {
-                    if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
-                        self.insert(t.trait_ref.ref_id, NodeItem(i));
+        self.with_parent(i.id, |this| {
+            match i.node {
+                ItemEnum(ref enum_definition, _) => {
+                    for v in &enum_definition.variants {
+                        this.insert(v.node.data.id(), NodeVariant(v));
                     }
                 }
-            }
-            ItemUse(ref view_path) => {
-                match view_path.node {
-                    ViewPathList(_, ref paths) => {
-                        for path in paths {
-                            self.insert(path.node.id(), NodeItem(i));
+                ItemStruct(ref struct_def, _) => {
+                    // If this is a tuple-like struct, register the constructor.
+                    if !struct_def.is_struct() {
+                        this.insert(struct_def.id(), NodeStructCtor(struct_def));
+                    }
+                }
+                ItemTrait(_, _, ref bounds, _) => {
+                    for b in bounds.iter() {
+                        if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
+                            this.insert(t.trait_ref.ref_id, NodeItem(i));
                         }
                     }
-                    _ => ()
                 }
+                ItemUse(ref view_path) => {
+                    match view_path.node {
+                        ViewPathList(_, ref paths) => {
+                            for path in paths {
+                                this.insert(path.node.id(), NodeItem(i));
+                            }
+                        }
+                        _ => ()
+                    }
+                }
+                _ => {}
             }
-            _ => {}
-        }
-        intravisit::walk_item(self, i);
-        self.parent_node = parent_node;
+            intravisit::walk_item(this, i);
+        });
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &'ast ForeignItem) {
         self.insert(foreign_item.id, NodeForeignItem(foreign_item));
 
-        let parent_node = self.parent_node;
-        self.parent_node = foreign_item.id;
-        intravisit::walk_foreign_item(self, foreign_item);
-        self.parent_node = parent_node;
+        self.with_parent(foreign_item.id, |this| {
+            intravisit::walk_foreign_item(this, foreign_item);
+        });
     }
 
     fn visit_generics(&mut self, generics: &'ast Generics) {
@@ -144,50 +148,42 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
         self.insert(ti.id, NodeTraitItem(ti));
 
-        let parent_node = self.parent_node;
-        self.parent_node = ti.id;
-
-        intravisit::walk_trait_item(self, ti);
-
-        self.parent_node = parent_node;
+        self.with_parent(ti.id, |this| {
+            intravisit::walk_trait_item(this, ti);
+        });
     }
 
     fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
         self.insert(ii.id, NodeImplItem(ii));
 
-        let parent_node = self.parent_node;
-        self.parent_node = ii.id;
-
-        intravisit::walk_impl_item(self, ii);
-
-        self.parent_node = parent_node;
+        self.with_parent(ii.id, |this| {
+            intravisit::walk_impl_item(this, ii);
+        });
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
         self.insert(pat.id, NodeLocal(pat));
 
-        let parent_node = self.parent_node;
-        self.parent_node = pat.id;
-        intravisit::walk_pat(self, pat);
-        self.parent_node = parent_node;
+        self.with_parent(pat.id, |this| {
+            intravisit::walk_pat(this, pat);
+        });
     }
 
     fn visit_expr(&mut self, expr: &'ast Expr) {
         self.insert(expr.id, NodeExpr(expr));
 
-        let parent_node = self.parent_node;
-        self.parent_node = expr.id;
-        intravisit::walk_expr(self, expr);
-        self.parent_node = parent_node;
+        self.with_parent(expr.id, |this| {
+            intravisit::walk_expr(this, expr);
+        });
     }
 
     fn visit_stmt(&mut self, stmt: &'ast Stmt) {
         let id = stmt.node.id();
         self.insert(id, NodeStmt(stmt));
-        let parent_node = self.parent_node;
-        self.parent_node = id;
-        intravisit::walk_stmt(self, stmt);
-        self.parent_node = parent_node;
+
+        self.with_parent(id, |this| {
+            intravisit::walk_stmt(this, stmt);
+        });
     }
 
     fn visit_fn(&mut self, fk: intravisit::FnKind<'ast>, fd: &'ast FnDecl,
@@ -198,10 +194,9 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
 
     fn visit_block(&mut self, block: &'ast Block) {
         self.insert(block.id, NodeBlock(block));
-        let parent_node = self.parent_node;
-        self.parent_node = block.id;
-        intravisit::walk_block(self, block);
-        self.parent_node = parent_node;
+        self.with_parent(block.id, |this| {
+            intravisit::walk_block(this, block);
+        });
     }
 
     fn visit_lifetime(&mut self, lifetime: &'ast Lifetime) {
