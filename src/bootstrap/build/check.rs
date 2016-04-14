@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fs;
+
 use build::{Build, Compiler};
 
 pub fn linkcheck(build: &Build, stage: u32, host: &str) {
@@ -29,9 +31,16 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
     let sep = if cfg!(windows) { ";" } else {":" };
     let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
 
+    // Note that this is a short, cryptic, and not scoped directory name. This
+    // is currently to minimize the length of path on Windows where we otherwise
+    // quickly run into path name limit constraints.
+    let out_dir = build.out.join("ct");
+    t!(fs::create_dir_all(&out_dir));
+
     build.run(build.tool_cmd(compiler, "cargotest")
-              .env("PATH", newpath)
-              .arg(&build.cargo));
+                   .env("PATH", newpath)
+                   .arg(&build.cargo)
+                   .arg(&out_dir));
 }
 
 pub fn tidy(build: &Build, stage: u32, host: &str) {
