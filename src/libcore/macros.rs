@@ -182,7 +182,7 @@ macro_rules! debug_assert_eq {
 /// fn write_to_file_using_match() -> Result<(), io::Error> {
 ///     let mut file = try!(File::create("my_best_friends.txt"));
 ///     match file.write_all(b"This is a list of my best friends.") {
-///         Ok(_) => (),
+///         Ok(v) => v,
 ///         Err(e) => return Err(e),
 ///     }
 ///     println!("I wrote to the file");

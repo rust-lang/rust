@@ -434,7 +434,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     /// But there may also be candidates that the test just doesn't
     /// apply to. For example, consider the case of #29740:
     ///
-    /// ```rust
+    /// ```rust,ignore
     /// match x {
     ///     "foo" => ...,
     ///     "bar" => ...,
