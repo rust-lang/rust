@@ -738,7 +738,8 @@ pub fn pretty_print_input(sess: Session,
     let _ignore = dep_graph.in_ignore();
     let ast_map = if compute_ast_map {
         hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
-        let map = driver::make_map(&sess, &mut hir_forest);
+        let defs = hir_map::collect_defs(hir_forest);
+        let map = hir_map::map_crate(hir_forest, defs);
         Some(map)
     } else {
         None
