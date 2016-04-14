@@ -29,6 +29,8 @@
 #![feature(slice_patterns)]
 #![feature(iter_arith)]
 #![feature(question_mark)]
+#![feature(box_patterns)]
+#![feature(box_syntax)]
 
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate log;
