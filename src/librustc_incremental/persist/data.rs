@@ -11,8 +11,7 @@
 //! The data that we will serialize and deserialize.
 
 use rustc::dep_graph::DepNode;
-use rustc_serialize::{Decoder as RustcDecoder,
-                      Encodable as RustcEncodable, Encoder as RustcEncoder};
+use rustc_serialize::{Decoder as RustcDecoder, Encoder as RustcEncoder};
 
 use super::directory::DefPathIndex;
 
@@ -32,4 +31,3 @@ pub struct SerializedHash {
     /// the hash itself, computed by `calculate_item_hash`
     pub hash: u64,
 }
-
