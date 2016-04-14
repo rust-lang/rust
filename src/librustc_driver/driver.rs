@@ -122,32 +122,22 @@ pub fn compile_input(sess: &Session,
         let expanded_crate = assign_node_ids(sess, expanded_crate);
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
 
-        // TODO
-        // time(sess.time_passes(),
-        //      "external crate/lib resolution",
-        //      || LocalCrateReader::new(sess, &cstore, &defs, &id).read_crates());
+        // Collect defintions for def ids.
+        let defs = time(sess.time_passes(),
+                        "collecting defs",
+                        || hir_map::collect_definitions(&expanded_crate));
 
-        // TODO
-        panic!();
-
-        // TODO CrateMap result
-        // let resolve::CrateMap {
-        //     def_map,
-        //     freevars,
-        //     export_map,
-        //     trait_map,
-        //     glob_map,
-        // } = time(sess.time_passes(),
-        //          "name resolution",
-        //          || resolve::resolve_crate(sess, &hir_map, control.make_glob_map));
+        time(sess.time_passes(),
+             "external crate/lib resolution",
+             || LocalCrateReader::new(sess, &cstore, &defs, &expanded_crate, &id)
+                    .read_crates(&dep_graph));
 
         // Lower ast -> hir.
         let lcx = LoweringContext::new(sess, Some(&expanded_crate));
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
-        let mut hir_forest = time(sess.time_passes(),
-                                  "lowering ast -> hir",
-                                  || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),
-                                                          dep_graph));
+        let hir_forest = &mut time(sess.time_passes(),
+                                   "lowering ast -> hir",
+                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),
+                                                           dep_graph));
 
         // Discard MTWT tables that aren't required past lowering to HIR.
         if !sess.opts.debugging_opts.keep_mtwt_tables &&
@@ -156,10 +146,6 @@ pub fn compile_input(sess: &Session,
         }
 
         let arenas = ty::CtxtArenas::new();
-        // Collect defintions for def ids.
-        let defs = time(sess.time_passes(),
-                        "collecting defs",
-                        move || hir_map::collect_defs(hir_forest));
 
         // Construct the HIR map
         let hir_map = time(sess.time_passes(),
@@ -201,10 +187,10 @@ pub fn compile_input(sess: &Session,
         };
 
         phase_3_run_analysis_passes(sess,
-                                    &cstore,
                                     hir_map,
                                     &arenas,
                                     &id,
+                                    control.make_glob_map,
                                     |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -759,10 +745,10 @@ pub fn assign_node_ids(sess: &Session, krate: ast::Crate) -> ast::Crate {
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
-                                               cstore: &CStore,
                                                hir_map: hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
+                                               make_glob_map: resolve::MakeGlobMap,
                                                f: F)
                                                -> Result<R, usize>
     where F: FnOnce(&TyCtxt<'tcx>, Option<MirMap<'tcx>>, ty::CrateAnalysis, CompileResult) -> R
@@ -786,6 +772,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             middle::lang_items::collect_language_items(&sess, &hir_map)
         })
     })?;
+
+    let resolve::CrateMap {
+        def_map,
+        freevars,
+        export_map,
+        trait_map,
+        glob_map,
+    } = time(sess.time_passes(),
+             "name resolution",
+             || resolve::resolve_crate(sess, &hir_map, make_glob_map));
 
     let mut analysis = ty::CrateAnalysis {
         export_map: export_map,

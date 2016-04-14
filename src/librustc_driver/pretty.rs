@@ -179,7 +179,6 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: &'tcx Session,
-                                               cstore: &CStore,
                                                ast_map: &hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                id: &str,
@@ -206,7 +205,6 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
-                                                                 cstore,
                                                                  ast_map.clone(),
                                                                  arenas,
                                                                  id,
@@ -737,9 +735,9 @@ pub fn pretty_print_input(sess: Session,
     let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
     let ast_map = if compute_ast_map {
+        let defs = hir_map::collect_definitions(&krate);
         hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
-        let defs = hir_map::collect_defs(hir_forest);
-        let map = hir_map::map_crate(hir_forest, defs);
+        let map = hir_map::map_crate(&mut hir_forest, defs);
         Some(map)
     } else {
         None
@@ -778,7 +776,6 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(&sess,
-                                       cstore,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -800,7 +797,6 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), Some(uii)) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(&sess,
-                                       cstore,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -841,7 +837,6 @@ pub fn pretty_print_input(sess: Session,
                 None
             };
             abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                             &cstore,
                                                              ast_map,
                                                              &arenas,
                                                              &id,
@@ -888,7 +883,6 @@ pub fn pretty_print_input(sess: Session,
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
                     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                                     &cstore,
                                                                      ast_map,
                                                                      &arenas,
                                                                      &id,
