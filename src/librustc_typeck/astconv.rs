@@ -50,8 +50,9 @@
 
 use middle::astconv_util::{prim_ty_to_ty, prohibit_type_params, prohibit_projection};
 use middle::const_val::ConstVal;
-use rustc_const_eval::eval_const_expr_partial;
+use rustc_const_eval::{eval_const_expr_partial, ConstEvalErr};
 use rustc_const_eval::EvalHint::UncheckedExprHint;
+use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
 use hir::def::{self, Def};
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
@@ -1693,7 +1694,10 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                               "expected usize value for array length, got {}", val.description());
                     this.tcx().types.err
                 },
-                Err(ref r) => {
+                // array length errors happen before the global constant check
+                // so we need to report the real error
+                Err(ConstEvalErr { kind: ErroneousReferencedConstant(box r), ..}) |
+                Err(r) => {
                     let mut err = struct_span_err!(tcx.sess, r.span, E0250,
                                                    "array length constant evaluation error: {}",
                                                    r.description());
