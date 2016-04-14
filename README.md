@@ -1,5 +1,8 @@
 # Miri
 
+[[slides](https://solson.me/miri-slides.pdf)]
+[[report](https://solson.me/miri-report.pdf)]
+
 An experimental interpreter for [Rust][rust]'s [mid-level intermediate
 representation][mir] (MIR). This project began as a part of my course work for
 an undergraduate research course at the [University of Saskatchewan][usask].
