@@ -13,8 +13,8 @@ use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, snippet_opt, span_lint,
             span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
-use utils::{BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH, OPTION_PATH, RESULT_PATH,
-            VEC_PATH};
+use utils::{CSTRING_NEW_PATH, BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH,
+            OPTION_PATH, RESULT_PATH, VEC_PATH};
 use utils::MethodArgs;
 
 #[derive(Clone)]
@@ -286,6 +286,33 @@ declare_lint! {
      `_.split(\"x\")`"
 }
 
+/// **What it does:** This lint checks for getting the inner pointer of a temporary `CString`.
+///
+/// **Why is this bad?** The inner pointer of a `CString` is only valid as long as the `CString` is
+/// alive.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust,ignore
+/// let c_str = CString::new("foo").unwrap().as_ptr();
+/// unsafe {
+/// call_some_ffi_func(c_str);
+/// }
+/// ```
+/// Here `c_str` point to a freed address. The correct use would be:
+/// ```rust,ignore
+/// let c_str = CString::new("foo").unwrap();
+/// unsafe {
+/// call_some_ffi_func(c_str.as_ptr());
+/// }
+/// ```
+declare_lint! {
+    pub TEMPORARY_CSTRING_AS_PTR,
+    Warn,
+    "getting the inner pointer of a temporary `CString`"
+}
+
 impl LintPass for MethodsPass {
     fn get_lints(&self) -> LintArray {
         lint_array!(EXTEND_FROM_SLICE,
@@ -303,7 +330,8 @@ impl LintPass for MethodsPass {
                     CLONE_DOUBLE_REF,
                     NEW_RET_NO_SELF,
                     SINGLE_CHAR_PATTERN,
-                    SEARCH_IS_SOME)
+                    SEARCH_IS_SOME,
+                    TEMPORARY_CSTRING_AS_PTR)
     }
 }
 
@@ -334,7 +362,11 @@ impl LateLintPass for MethodsPass {
                     lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
                 } else if let Some(arglists) = method_chain_args(expr, &["extend"]) {
                     lint_extend(cx, expr, arglists[0]);
+                } else if let Some(arglists) = method_chain_args(expr, &["unwrap", "as_ptr"]) {
+                    lint_cstring_as_ptr(cx, expr, &arglists[0][0], &arglists[1][0]);
                 }
+
+
                 lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
                 if args.len() == 1 && name.node.as_str() == "clone" {
                     lint_clone_on_copy(cx, expr);
@@ -552,6 +584,22 @@ fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
                                      r,
                                      snippet(cx, span, "_")));
     }
+}
+
+fn lint_cstring_as_ptr(cx: &LateContext, expr: &Expr, new: &Expr, unwrap: &Expr) {
+    if_let_chain!{[
+        let ExprCall(ref fun, ref args) = new.node,
+        args.len() == 1,
+        let ExprPath(None, ref path) = fun.node,
+        match_path(path, &CSTRING_NEW_PATH),
+    ], {
+        span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
+                           "you are getting the inner pointer of a temporary `CString`",
+                           |db| {
+                               db.fileline_note(expr.span, "that pointer will be invalid outside this expression");
+                               db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
+                           });
+    }}
 }
 
 fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> Option<(Span, &'static str)> {

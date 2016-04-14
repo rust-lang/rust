@@ -28,11 +28,13 @@ pub type MethodArgs = HirVec<P<Expr>>;
 // module DefPaths for certain structs/enums we check for
 pub const BEGIN_UNWIND: [&'static str; 3] = ["std", "rt", "begin_unwind"];
 pub const BOX_NEW_PATH: [&'static str; 4] = ["std", "boxed", "Box", "new"];
+pub const BOX_PATH: [&'static str; 3] = ["std", "boxed", "Box"];
 pub const BTREEMAP_ENTRY_PATH: [&'static str; 4] = ["collections", "btree", "map", "Entry"];
 pub const BTREEMAP_PATH: [&'static str; 4] = ["collections", "btree", "map", "BTreeMap"];
 pub const CLONE_PATH: [&'static str; 3] = ["clone", "Clone", "clone"];
 pub const CLONE_TRAIT_PATH: [&'static str; 2] = ["clone", "Clone"];
 pub const COW_PATH: [&'static str; 3] = ["collections", "borrow", "Cow"];
+pub const CSTRING_NEW_PATH: [&'static str; 4] = ["std", "ffi", "CString", "new"];
 pub const DEBUG_FMT_METHOD_PATH: [&'static str; 4] = ["std", "fmt", "Debug", "fmt"];
 pub const DEFAULT_TRAIT_PATH: [&'static str; 3] = ["core", "default", "Default"];
 pub const DISPLAY_FMT_METHOD_PATH: [&'static str; 4] = ["std", "fmt", "Display", "fmt"];
@@ -59,7 +61,6 @@ pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
 pub const TRANSMUTE_PATH: [&'static str; 4] = ["core", "intrinsics", "", "transmute"];
 pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];
 pub const VEC_PATH: [&'static str; 3] = ["collections", "vec", "Vec"];
-pub const BOX_PATH: [&'static str; 3] = ["std", "boxed", "Box"];
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///

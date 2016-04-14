@@ -325,6 +325,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         methods::SEARCH_IS_SOME,
         methods::SHOULD_IMPLEMENT_TRAIT,
         methods::SINGLE_CHAR_PATTERN,
+        methods::TEMPORARY_CSTRING_AS_PTR,
         methods::WRONG_SELF_CONVENTION,
         minmax::MIN_MAX,
         misc::CMP_NAN,
