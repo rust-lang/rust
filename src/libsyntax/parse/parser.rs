@@ -1532,8 +1532,8 @@ impl<'a> Parser<'a> {
         } else {
             let span = self.last_span;
             self.span_err(span,
-                          "bare raw pointers are not allowed, use `*mut T` or \
-                           `*const T` as appropriate");
+                          "expected mut or const in raw pointer type (use \
+                           `*mut T` or `*const T` as appropriate)");
             Mutability::Immutable
         };
         let t = self.parse_ty()?;
