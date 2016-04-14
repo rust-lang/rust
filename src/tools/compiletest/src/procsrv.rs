@@ -14,16 +14,20 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use std::process::{ExitStatus, Command, Child, Output, Stdio};
 
-fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
-    // Need to be sure to put both the lib_path and the aux path in the dylib
-    // search path for the child.
-    let var = if cfg!(windows) {
+pub fn dylib_env_var() -> &'static str {
+    if cfg!(windows) {
         "PATH"
     } else if cfg!(target_os = "macos") {
         "DYLD_LIBRARY_PATH"
     } else {
         "LD_LIBRARY_PATH"
-    };
+    }
+}
+
+fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
+    // Need to be sure to put both the lib_path and the aux path in the dylib
+    // search path for the child.
+    let var = dylib_env_var();
     let mut path = env::split_paths(&env::var_os(var).unwrap_or(OsString::new()))
                        .collect::<Vec<_>>();
     if let Some(p) = aux_path {

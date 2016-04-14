@@ -12,6 +12,8 @@ use std::fs;
 use std::path::{PathBuf, Path};
 use std::process::Command;
 
+use build_helper::output;
+
 use build::{Build, Compiler};
 
 pub fn linkcheck(build: &Build, stage: u32, host: &str) {
@@ -110,6 +112,33 @@ pub fn compiletest(build: &Build,
 
     if build.config.verbose || build.flags.verbose {
         cmd.arg("--verbose");
+    }
+
+    if suite == "run-make" {
+        let llvm_config = build.llvm_config(target);
+        let llvm_components = output(Command::new(&llvm_config).arg("--components"));
+        let llvm_cxxflags = output(Command::new(&llvm_config).arg("--cxxflags"));
+        cmd.arg("--cc").arg(build.cc(target))
+           .arg("--cxx").arg(build.cxx(target))
+           .arg("--cflags").arg(build.cflags(target).join(" "))
+           .arg("--llvm-components").arg(llvm_components.trim())
+           .arg("--llvm-cxxflags").arg(llvm_cxxflags.trim());
+    } else {
+        cmd.arg("--cc").arg("")
+           .arg("--cxx").arg("")
+           .arg("--cflags").arg("")
+           .arg("--llvm-components").arg("")
+           .arg("--llvm-cxxflags").arg("");
+    }
+
+    // Running a C compiler on MSVC requires a few env vars to be set, to be
+    // sure to set them here.
+    if target.contains("msvc") {
+        for &(ref k, ref v) in build.cc[target].0.env() {
+            if k != "PATH" {
+                cmd.env(k, v);
+            }
+        }
     }
 
     build.run(&mut cmd);
