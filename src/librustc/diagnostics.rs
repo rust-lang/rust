@@ -292,7 +292,7 @@ E0072: r##"
 When defining a recursive struct or enum, any use of the type being defined
 from inside the definition must occur behind a pointer (like `Box` or `&`).
 This is because structs and enums must have a well-defined size, and without
-the pointer the size of the type would need to be unbounded.
+the pointer, the size of the type would need to be unbounded.
 
 Consider the following erroneous definition of a type for a list of bytes:
 
