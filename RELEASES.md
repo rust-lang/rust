@@ -418,7 +418,7 @@ Compatibility Notes
   numbers [no longer return platform-specific types][1.8r], but
   instead return widened integers. [RFC 1415].
 * [Modules sourced from the filesystem cannot appear within arbitrary
-  blocks, but only within other modules][1.8m].
+  blocks, but only within other modules][1.8mf].
 * [`--cfg` compiler flags are parsed strictly as identifiers][1.8c].
 * On Unix, [stack overflow triggers a runtime abort instead of a
   SIGSEGV][1.8so].
@@ -448,7 +448,7 @@ Compatibility Notes
 [1.8h]: https://github.com/rust-lang/rust/pull/31460
 [1.8l]: https://github.com/rust-lang/rust/pull/31668
 [1.8m]: https://github.com/rust-lang/rust/pull/31020
-[1.8m]: https://github.com/rust-lang/rust/pull/31534
+[1.8mf]: https://github.com/rust-lang/rust/pull/31534
 [1.8mp]: https://github.com/rust-lang/rust/pull/30894
 [1.8mr]: https://users.rust-lang.org/t/multirust-0-8-with-cross-std-installation/4901
 [1.8ms]: https://github.com/rust-lang/rust/pull/30448
