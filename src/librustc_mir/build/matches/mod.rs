@@ -37,25 +37,28 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                       -> BlockAnd<()> {
         let discriminant_lvalue = unpack!(block = self.as_lvalue(block, discriminant));
 
-        // Before we do anything, create uninitialized variables with
-        // suitable extent for all of the bindings in this match. It's
-        // easiest to do this up front because some of these arms may
-        // be unreachable or reachable multiple times.
-        let var_scope_id = self.innermost_scope_id();
-        for arm in &arms {
-            self.declare_bindings(var_scope_id, &arm.patterns[0]);
-        }
-
         let mut arm_blocks = ArmBlocks {
             blocks: arms.iter()
                         .map(|_| self.cfg.start_new_block())
                         .collect(),
         };
 
-        let arm_bodies: Vec<ExprRef<'tcx>> =
-            arms.iter()
-                .map(|arm| arm.body.clone())
-                .collect();
+        // Get the body expressions and their scopes, while declaring bindings.
+        let arm_bodies: Vec<_> = arms.iter().enumerate().map(|(i, arm)| {
+            // Assume that all expressions are wrapped in Scope.
+            let body = self.hir.mirror(arm.body.clone());
+            match body.kind {
+                ExprKind::Scope { extent, value } => {
+                    let scope_id = self.push_scope(extent, arm_blocks.blocks[i]);
+                    self.declare_bindings(scope_id, &arm.patterns[0]);
+                    (extent, self.scopes.pop().unwrap(), value)
+                }
+                _ => {
+                    span_bug!(body.span, "arm body is not wrapped in Scope {:?}",
+                              body.kind);
+                }
+            }
+        }).collect();
 
         // assemble a list of candidates: there is one candidate per
         // pattern, which means there may be more than one candidate
@@ -95,11 +98,15 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
 
-        for (arm_index, arm_body) in arm_bodies.into_iter().enumerate() {
+        let scope_id = self.innermost_scope_id();
+        for (arm_index, (extent, scope, body)) in arm_bodies.into_iter().enumerate() {
             let mut arm_block = arm_blocks.blocks[arm_index];
-            unpack!(arm_block = self.into(destination, arm_block, arm_body));
+            // Re-enter the scope we created the bindings in.
+            self.scopes.push(scope);
+            unpack!(arm_block = self.into(destination, arm_block, body));
+            unpack!(arm_block = self.pop_scope(extent, arm_block));
             self.cfg.terminate(arm_block,
-                               var_scope_id,
+                               scope_id,
                                span,
                                TerminatorKind::Goto { target: end_block });
         }
