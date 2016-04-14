@@ -121,7 +121,7 @@ pub fn compile_input(sess: &Session,
 
         let expanded_crate = assign_node_ids(sess, expanded_crate);
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
-        
+
         // TODO
         // time(sess.time_passes(),
         //      "external crate/lib resolution",
