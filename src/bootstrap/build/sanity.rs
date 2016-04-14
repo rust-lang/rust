@@ -48,6 +48,9 @@ pub fn check(build: &mut Build) {
             }
         }
         need_cmd("cmake".as_ref());
+        if build.config.ninja {
+            need_cmd("ninja".as_ref())
+        }
         break
     }
 
