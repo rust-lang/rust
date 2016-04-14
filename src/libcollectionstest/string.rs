@@ -248,10 +248,10 @@ fn test_str_truncate() {
 }
 
 #[test]
-#[should_panic]
 fn test_str_truncate_invalid_len() {
     let mut s = String::from("12345");
     s.truncate(6);
+    assert_eq!(s, "12345");
 }
 
 #[test]
