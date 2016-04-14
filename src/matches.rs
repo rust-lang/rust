@@ -8,7 +8,7 @@ use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
-use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
+use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice.
@@ -184,13 +184,13 @@ fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], 
 
 fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: ty::Ty, els: Option<&Expr>) {
     // list of candidate Enums we know will never get any more members
-    let candidates = &[(&COW_PATH, "Borrowed"),
-                       (&COW_PATH, "Cow::Borrowed"),
-                       (&COW_PATH, "Cow::Owned"),
-                       (&COW_PATH, "Owned"),
-                       (&OPTION_PATH, "None"),
-                       (&RESULT_PATH, "Err"),
-                       (&RESULT_PATH, "Ok")];
+    let candidates = &[(&paths::COW, "Borrowed"),
+                       (&paths::COW, "Cow::Borrowed"),
+                       (&paths::COW, "Cow::Owned"),
+                       (&paths::COW, "Owned"),
+                       (&paths::OPTION, "None"),
+                       (&paths::RESULT, "Err"),
+                       (&paths::RESULT, "Ok")];
 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, Some(ref inner)) => {

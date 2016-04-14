@@ -3,12 +3,11 @@
 //! Note that since we have two lints where one subsumes the other, we try to
 //! disable the subsumed lint unless it has a higher level
 
-use rustc::lint::*;
 use rustc::hir::*;
+use rustc::lint::*;
 use syntax::codemap::Spanned;
-use utils::STRING_PATH;
 use utils::SpanlessEq;
-use utils::{match_type, span_lint, span_lint_and_then, walk_ptrs_ty, get_parent_expr};
+use utils::{match_type, paths, span_lint, span_lint_and_then, walk_ptrs_ty, get_parent_expr};
 
 /// **What it does:** This lint matches code of the form `x = x + y` (without `let`!).
 ///
@@ -108,7 +107,7 @@ impl LateLintPass for StringAdd {
 }
 
 fn is_string(cx: &LateContext, e: &Expr) -> bool {
-    match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(e)), &STRING_PATH)
+    match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(e)), &paths::STRING)
 }
 
 fn is_add(cx: &LateContext, src: &Expr, target: &Expr) -> bool {

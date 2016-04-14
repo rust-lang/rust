@@ -13,9 +13,8 @@ use syntax::ptr::P;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, in_macro, match_path, match_trait_method,
             match_type, method_chain_args, return_ty, same_tys, snippet, snippet_opt, span_lint,
             span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
-use utils::{CSTRING_NEW_PATH, BTREEMAP_ENTRY_PATH, DEFAULT_TRAIT_PATH, HASHMAP_ENTRY_PATH,
-            OPTION_PATH, RESULT_PATH, VEC_PATH};
 use utils::MethodArgs;
+use utils::paths;
 
 #[derive(Clone)]
 pub struct MethodsPass;
@@ -470,7 +469,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tcx.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH) {
+                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT) {
                         default_trait_id
                     } else {
                         return false;
@@ -497,13 +496,13 @@ fn lint_or_fun_call(cx: &LateContext, expr: &Expr, name: &str, args: &[P<Expr>])
     fn check_general_case(cx: &LateContext, name: &str, fun: &Expr, self_expr: &Expr, arg: &Expr, or_has_args: bool,
                           span: Span) {
         // (path, fn_has_argument, methods)
-        let know_types: &[(&[_], _, &[_], _)] = &[(&BTREEMAP_ENTRY_PATH, false, &["or_insert"], "with"),
-                                                  (&HASHMAP_ENTRY_PATH, false, &["or_insert"], "with"),
-                                                  (&OPTION_PATH,
+        let know_types: &[(&[_], _, &[_], _)] = &[(&paths::BTREEMAP_ENTRY, false, &["or_insert"], "with"),
+                                                  (&paths::HASHMAP_ENTRY, false, &["or_insert"], "with"),
+                                                  (&paths::OPTION,
                                                    false,
                                                    &["map_or", "ok_or", "or", "unwrap_or"],
                                                    "else"),
-                                                  (&RESULT_PATH, true, &["or", "unwrap_or"], "else")];
+                                                  (&paths::RESULT, true, &["or", "unwrap_or"], "else")];
 
         let self_ty = cx.tcx.expr_ty(self_expr);
 
@@ -571,7 +570,7 @@ fn lint_clone_double_ref(cx: &LateContext, expr: &Expr, arg: &Expr) {
 
 fn lint_extend(cx: &LateContext, expr: &Expr, args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&args[0]));
-    if !match_type(cx, obj_ty, &VEC_PATH) {
+    if !match_type(cx, obj_ty, &paths::VEC) {
         return;
     }
     let arg_ty = cx.tcx.expr_ty(&args[1]);
@@ -591,7 +590,7 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &Expr, new: &Expr, unwrap: &Expr)
         let ExprCall(ref fun, ref args) = new.node,
         args.len() == 1,
         let ExprPath(None, ref path) = fun.node,
-        match_path(path, &CSTRING_NEW_PATH),
+        match_path(path, &paths::CSTRING_NEW),
     ], {
         span_lint_and_then(cx, TEMPORARY_CSTRING_AS_PTR, expr.span,
                            "you are getting the inner pointer of a temporary `CString`",
@@ -606,7 +605,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> Option<(Span, 
     fn may_slice(cx: &LateContext, ty: &ty::Ty) -> bool {
         match ty.sty {
             ty::TySlice(_) => true,
-            ty::TyStruct(..) => match_type(cx, ty, &VEC_PATH),
+            ty::TyStruct(..) => match_type(cx, ty, &paths::VEC),
             ty::TyArray(_, size) => size < 32,
             ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) |
             ty::TyBox(ref inner) => may_slice(cx, inner),
@@ -641,9 +640,9 @@ fn derefs_to_slice(cx: &LateContext, expr: &Expr, ty: &ty::Ty) -> Option<(Span, 
 fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
     let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&unwrap_args[0]));
 
-    let mess = if match_type(cx, obj_ty, &OPTION_PATH) {
+    let mess = if match_type(cx, obj_ty, &paths::OPTION) {
         Some((OPTION_UNWRAP_USED, "an Option", "None"))
-    } else if match_type(cx, obj_ty, &RESULT_PATH) {
+    } else if match_type(cx, obj_ty, &paths::RESULT) {
         Some((RESULT_UNWRAP_USED, "a Result", "Err"))
     } else {
         None
@@ -666,7 +665,7 @@ fn lint_unwrap(cx: &LateContext, expr: &Expr, unwrap_args: &MethodArgs) {
 /// lint use of `ok().expect()` for `Result`s
 fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
     // lint if the caller of `ok()` is a `Result`
-    if match_type(cx, cx.tcx.expr_ty(&ok_args[0]), &RESULT_PATH) {
+    if match_type(cx, cx.tcx.expr_ty(&ok_args[0]), &paths::RESULT) {
         let result_type = cx.tcx.expr_ty(&ok_args[0]);
         if let Some(error_type) = get_error_type(cx, result_type) {
             if has_debug_impl(error_type, cx) {
@@ -684,7 +683,7 @@ fn lint_ok_expect(cx: &LateContext, expr: &Expr, ok_args: &MethodArgs) {
 /// lint use of `map().unwrap_or()` for `Option`s
 fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs, unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
-    if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
+    if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &paths::OPTION) {
         // lint message
         let msg = "called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling \
                    `map_or(a, f)` instead";
@@ -715,7 +714,7 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &Expr, map_args: &MethodArgs, unwr
 /// lint use of `map().unwrap_or_else()` for `Option`s
 fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs, unwrap_args: &MethodArgs) {
     // lint if the caller of `map()` is an `Option`
-    if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &OPTION_PATH) {
+    if match_type(cx, cx.tcx.expr_ty(&map_args[0]), &paths::OPTION) {
         // lint message
         let msg = "called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling \
                    `map_or_else(g, f)` instead";
@@ -842,7 +841,7 @@ fn lint_single_char_pattern(cx: &LateContext, expr: &Expr, arg: &Expr) {
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
-    if !match_type(cx, ty, &RESULT_PATH) {
+    if !match_type(cx, ty, &paths::RESULT) {
         return None;
     }
     if let ty::TyEnum(_, substs) = ty.sty {
@@ -853,7 +852,7 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
     None
 }
 
-/// This checks whether a given type is known to implement `Debug`.
+/// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     match cx.tcx.lang_items.debug_trait() {
         Some(debug) => implements_trait(cx, ty, debug, Vec::new()),

@@ -1,8 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{CLONE_PATH, OPTION_PATH};
-use utils::{is_adjusted, match_path, match_trait_method, match_type, snippet, span_help_and_lint, walk_ptrs_ty,
-            walk_ptrs_ty_depth};
+use utils::{is_adjusted, match_path, match_trait_method, match_type, paths, snippet,
+            span_help_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth};
 
 /// **What it does:** This lint checks for mapping clone() over an iterator.
 ///
@@ -65,7 +64,7 @@ impl LateLintPass for MapClonePass {
                         }
                     }
                     ExprPath(_, ref path) => {
-                        if match_path(path, &CLONE_PATH) {
+                        if match_path(path, &paths::CLONE) {
                             let type_name = get_type_name(cx, expr, &args[0]).unwrap_or("_");
                             span_help_and_lint(cx,
                                                MAP_CLONE,
@@ -99,7 +98,7 @@ fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
 fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static str> {
     if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
         Some("iterator")
-    } else if match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(arg)), &OPTION_PATH) {
+    } else if match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(arg)), &paths::OPTION) {
         Some("Option")
     } else {
         None

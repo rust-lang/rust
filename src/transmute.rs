@@ -2,8 +2,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
-use utils::TRANSMUTE_PATH;
-use utils::{match_def_path, snippet_opt, span_lint, span_lint_and_then};
+use utils::{match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
 
 /// **What it does:** This lint checks for transmutes to the original type of the object.
 ///
@@ -67,7 +66,7 @@ impl LateLintPass for Transmute {
             if let ExprPath(None, _) = path_expr.node {
                 let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
 
-                if match_def_path(cx, def_id, &TRANSMUTE_PATH) {
+                if match_def_path(cx, def_id, &paths::TRANSMUTE) {
                     let from_ty = cx.tcx.expr_ty(&args[0]);
                     let to_ty = cx.tcx.expr_ty(e);
 

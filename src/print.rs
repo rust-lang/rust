@@ -1,7 +1,7 @@
+use rustc::hir::*;
 use rustc::hir::map::Node::{NodeItem, NodeImplItem};
 use rustc::lint::*;
-use rustc::hir::*;
-use utils::{FMT_ARGUMENTV1_NEW_PATH, DEBUG_FMT_METHOD_PATH, IO_PRINT_PATH};
+use utils::paths;
 use utils::{is_expn_of, match_path, span_lint};
 
 /// **What it does:** This lint warns whenever you print on *stdout*. The purpose of this lint is to catch debugging remnants.
@@ -45,7 +45,7 @@ impl LateLintPass for PrintLint {
             if let ExprPath(_, ref path) = fun.node {
                 // Search for `std::io::_print(..)` which is unique in a
                 // `print!` expansion.
-                if match_path(path, &IO_PRINT_PATH) {
+                if match_path(path, &paths::IO_PRINT) {
                     if let Some(span) = is_expn_of(cx, expr.span, "print") {
                         // `println!` uses `print!`.
                         let (span, name) = match is_expn_of(cx, span, "println") {
@@ -58,9 +58,9 @@ impl LateLintPass for PrintLint {
                 }
                 // Search for something like
                 // `::std::fmt::ArgumentV1::new(__arg0, ::std::fmt::Debug::fmt)`
-                else if args.len() == 2 && match_path(path, &FMT_ARGUMENTV1_NEW_PATH) {
+                else if args.len() == 2 && match_path(path, &paths::FMT_ARGUMENTV1_NEW) {
                     if let ExprPath(None, ref path) = args[1].node {
-                        if match_path(path, &DEBUG_FMT_METHOD_PATH) && !is_in_debug_impl(cx, expr) &&
+                        if match_path(path, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
                            is_expn_of(cx, expr.span, "panic").is_none() {
                             span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                         }

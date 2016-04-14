@@ -1,10 +1,9 @@
-use rustc::lint::*;
 use rustc::hir::*;
 use rustc::hir::intravisit::{Visitor, walk_expr, walk_block};
+use rustc::lint::*;
 use syntax::codemap::Span;
 use utils::SpanlessEq;
-use utils::{BTREEMAP_PATH, HASHMAP_PATH};
-use utils::{get_item_name, match_type, snippet, span_lint_and_then, walk_ptrs_ty};
+use utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
 
 /// **What it does:** This lint checks for uses of `contains_key` + `insert` on `HashMap` or
 /// `BTreeMap`.
@@ -89,10 +88,10 @@ fn check_cond<'a, 'tcx, 'b>(cx: &'a LateContext<'a, 'tcx>, check: &'b Expr) -> O
         let map = &params[0];
         let obj_ty = walk_ptrs_ty(cx.tcx.expr_ty(map));
 
-        return if match_type(cx, obj_ty, &BTREEMAP_PATH) {
+        return if match_type(cx, obj_ty, &paths::BTREEMAP) {
             Some(("BTreeMap", map, key))
         }
-        else if match_type(cx, obj_ty, &HASHMAP_PATH) {
+        else if match_type(cx, obj_ty, &paths::HASHMAP) {
             Some(("HashMap", map, key))
         }
         else {

@@ -1,9 +1,9 @@
+use rustc::hir::*;
 use rustc::hir::map::Node::NodeItem;
 use rustc::lint::*;
 use rustc::ty::TypeVariants;
-use rustc::hir::*;
 use syntax::ast::LitKind;
-use utils::{DISPLAY_FMT_METHOD_PATH, FMT_ARGUMENTS_NEWV1_PATH, STRING_PATH};
+use utils::paths;
 use utils::{is_expn_of, match_path, match_type, span_lint, walk_ptrs_ty};
 
 /// **What it does:** This lints about use of `format!("string literal with no argument")` and
@@ -40,7 +40,7 @@ impl LateLintPass for FormatMacLint {
                     if_let_chain!{[
                         let ExprPath(_, ref path) = fun.node,
                         args.len() == 2,
-                        match_path(path, &FMT_ARGUMENTS_NEWV1_PATH),
+                        match_path(path, &paths::FMT_ARGUMENTS_NEWV1),
                         // ensure the format string is `"{..}"` with only one argument and no text
                         check_static_str(cx, &args[0]),
                         // ensure the format argument is `{}` ie. Display with no fancy option
@@ -108,11 +108,11 @@ fn check_arg_is_display(cx: &LateContext, expr: &Expr) -> bool {
         let ExprCall(_, ref args) = exprs[0].node,
         args.len() == 2,
         let ExprPath(None, ref path) = args[1].node,
-        match_path(path, &DISPLAY_FMT_METHOD_PATH)
+        match_path(path, &paths::DISPLAY_FMT_METHOD)
     ], {
         let ty = walk_ptrs_ty(cx.tcx.pat_ty(&pat[0]));
 
-        return ty.sty == TypeVariants::TyStr || match_type(cx, ty, &STRING_PATH);
+        return ty.sty == TypeVariants::TyStr || match_type(cx, ty, &paths::STRING);
     }}
 
     false

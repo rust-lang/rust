@@ -6,7 +6,9 @@ use rustc::ty;
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::codemap::Span;
-use utils::*;
+use utils::{comparisons, in_external_macro, in_macro, is_from_for_desugar, match_def_path, snippet,
+            span_help_and_lint, span_lint};
+use utils::paths;
 
 /// Handles all the linting of funky types
 #[allow(missing_copy_implementations)]
@@ -63,7 +65,7 @@ impl LateLintPass for TypePass {
                             let Some(ref vec) = ag.types.get(0),
                             let Some(did) = cx.tcx.def_map.borrow().get(&vec.id),
                             let def::Def::Struct(..) = did.full_def(),
-                            match_def_path(cx, did.def_id(), &VEC_PATH),
+                            match_def_path(cx, did.def_id(), &paths::VEC),
                         ],
                         {
                             span_help_and_lint(cx,
@@ -73,7 +75,7 @@ impl LateLintPass for TypePass {
                                                "`Vec<T>` is already on the heap, `Box<Vec<T>>` makes an extra allocation.");
                         }
                     }
-                } else if match_def_path(cx, did.def_id(), &LL_PATH) {
+                } else if match_def_path(cx, did.def_id(), &paths::LL) {
                     span_help_and_lint(cx,
                                        LINKEDLIST,
                                        ast_ty.span,

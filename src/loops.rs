@@ -16,7 +16,7 @@ use syntax::ast;
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, in_external_macro,
             span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then,
             unsugar_range, walk_ptrs_ty, recover_for_loop};
-use utils::{BTREEMAP_PATH, HASHMAP_PATH, LL_PATH, OPTION_PATH, RESULT_PATH, VEC_PATH};
+use utils::paths;
 use utils::UnsugaredRange;
 
 /// **What it does:** This lint checks for looping over the range of `0..len` of some collection just to get the values by index.
@@ -505,7 +505,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
 /// Check for `for` loops over `Option`s and `Results`
 fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
     let ty = cx.tcx.expr_ty(arg);
-    if match_type(cx, ty, &OPTION_PATH) {
+    if match_type(cx, ty, &paths::OPTION) {
         span_help_and_lint(cx,
                            FOR_LOOP_OVER_OPTION,
                            arg.span,
@@ -515,7 +515,7 @@ fn check_arg_type(cx: &LateContext, pat: &Pat, arg: &Expr) {
                            &format!("consider replacing `for {0} in {1}` with `if let Some({0}) = {1}`",
                                     snippet(cx, pat.span, "_"),
                                     snippet(cx, arg.span, "_")));
-    } else if match_type(cx, ty, &RESULT_PATH) {
+    } else if match_type(cx, ty, &paths::RESULT) {
         span_help_and_lint(cx,
                            FOR_LOOP_OVER_RESULT,
                            arg.span,
@@ -589,7 +589,7 @@ fn check_for_loop_over_map_kv(cx: &LateContext, pat: &Pat, arg: &Expr, body: &Ex
             };
 
             let ty = walk_ptrs_ty(cx.tcx.expr_ty(arg));
-            if match_type(cx, ty, &HASHMAP_PATH) || match_type(cx, ty, &BTREEMAP_PATH) {
+            if match_type(cx, ty, &paths::HASHMAP) || match_type(cx, ty, &paths::BTREEMAP) {
                 span_lint_and_then(cx,
                                    FOR_KV_MAP,
                                    expr.span,
@@ -735,13 +735,13 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     // will allow further borrows afterwards
     let ty = cx.tcx.expr_ty(e);
     is_iterable_array(ty) ||
-    match_type(cx, ty, &VEC_PATH) ||
-    match_type(cx, ty, &LL_PATH) ||
-    match_type(cx, ty, &HASHMAP_PATH) ||
+    match_type(cx, ty, &paths::VEC) ||
+    match_type(cx, ty, &paths::LL) ||
+    match_type(cx, ty, &paths::HASHMAP) ||
     match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
     match_type(cx, ty, &["collections", "vec_deque", "VecDeque"]) ||
     match_type(cx, ty, &["collections", "binary_heap", "BinaryHeap"]) ||
-    match_type(cx, ty, &BTREEMAP_PATH) ||
+    match_type(cx, ty, &paths::BTREEMAP) ||
     match_type(cx, ty, &["collections", "btree", "set", "BTreeSet"])
 }
 

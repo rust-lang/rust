@@ -2,8 +2,7 @@ use rustc::lint::*;
 use rustc::ty;
 use rustc::hir::*;
 use syntax::codemap::Span;
-use utils::DROP_PATH;
-use utils::{match_def_path, span_note_and_lint};
+use utils::{match_def_path, paths, span_note_and_lint};
 
 /// **What it does:** This lint checks for calls to `std::mem::drop` with a reference instead of an owned value.
 ///
@@ -37,7 +36,7 @@ impl LateLintPass for DropRefPass {
         if let ExprCall(ref path, ref args) = expr.node {
             if let ExprPath(None, _) = path.node {
                 let def_id = cx.tcx.def_map.borrow()[&path.id].def_id();
-                if match_def_path(cx, def_id, &DROP_PATH) {
+                if match_def_path(cx, def_id, &paths::DROP) {
                     if args.len() != 1 {
                         return;
                     }

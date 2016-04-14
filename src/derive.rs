@@ -5,7 +5,7 @@ use rustc::ty;
 use rustc::hir::*;
 use syntax::ast::{Attribute, MetaItemKind};
 use syntax::codemap::Span;
-use utils::{CLONE_TRAIT_PATH, HASH_PATH};
+use utils::paths;
 use utils::{match_path, span_lint_and_then};
 
 /// **What it does:** This lint warns about deriving `Hash` but implementing `PartialEq`
@@ -88,7 +88,7 @@ impl LateLintPass for Derive {
 /// Implementation of the `DERIVE_HASH_XOR_EQ` lint.
 fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &TraitRef, ty: ty::Ty<'tcx>, hash_is_automatically_derived: bool) {
     if_let_chain! {[
-        match_path(&trait_ref.path, &HASH_PATH),
+        match_path(&trait_ref.path, &paths::HASH),
         let Some(peq_trait_def_id) = cx.tcx.lang_items.eq_trait()
     ], {
         let peq_trait_def = cx.tcx.lookup_trait_def(peq_trait_def_id);
@@ -129,7 +129,7 @@ fn check_hash_peq<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, span: Span, trait_ref: &
 
 /// Implementation of the `EXPL_IMPL_CLONE_ON_COPY` lint.
 fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref: &TraitRef, ty: ty::Ty<'tcx>) {
-    if match_path(&trait_ref.path, &CLONE_TRAIT_PATH) {
+    if match_path(&trait_ref.path, &paths::CLONE_TRAIT) {
         let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, item.id);
         let subst_ty = ty.subst(cx.tcx, &parameter_environment.free_substs);
 

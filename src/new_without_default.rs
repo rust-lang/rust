@@ -1,10 +1,10 @@
-use rustc::lint::*;
-use rustc::hir;
 use rustc::hir::intravisit::FnKind;
+use rustc::hir;
+use rustc::lint::*;
 use syntax::ast;
 use syntax::codemap::Span;
-use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint,
-            DEFAULT_TRAIT_PATH};
+use utils::paths;
+use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint};
 
 /// **What it does:** This lints about type with a `fn new() -> Self` method and no `Default`
 /// implementation.
@@ -54,7 +54,7 @@ impl LateLintPass for NewWithoutDefault {
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
                     let Some(ret_ty) = return_ty(cx, id),
                     same_tys(cx, self_ty, ret_ty, id),
-                    let Some(default_trait_id) = get_trait_def_id(cx, &DEFAULT_TRAIT_PATH),
+                    let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
                     !implements_trait(cx, self_ty, default_trait_id, Vec::new())
                 ], {
                     span_lint(cx, NEW_WITHOUT_DEFAULT, span,

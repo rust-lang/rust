@@ -1,7 +1,7 @@
-use rustc::lint::*;
 use rustc::hir::*;
+use rustc::lint::*;
 use syntax::ast::LitKind;
-use utils::{span_lint, is_direct_expn_of, match_path, BEGIN_UNWIND};
+use utils::{is_direct_expn_of, match_path, paths, span_lint};
 
 /// **What it does:** This lint checks for missing parameters in `panic!`.
 ///
@@ -33,7 +33,7 @@ impl LateLintPass for PanicPass {
             let ExprCall(ref fun, ref params) = ex.node,
             params.len() == 2,
             let ExprPath(None, ref path) = fun.node,
-            match_path(path, &BEGIN_UNWIND),
+            match_path(path, &paths::BEGIN_UNWIND),
             let ExprLit(ref lit) = params[0].node,
             is_direct_expn_of(cx, params[0].span, "panic").is_some(),
             let LitKind::Str(ref string, _) = lit.node,

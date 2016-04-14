@@ -9,7 +9,8 @@ use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
-use utils::{is_expn_of, match_path, match_type, REGEX_NEW_PATH, span_lint, span_help_and_lint};
+use utils::paths;
+use utils::{is_expn_of, match_path, match_type, span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
 ///
@@ -97,7 +98,7 @@ impl LateLintPass for RegexPass {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
             let ExprPath(_, ref path) = fun.node,
-            match_path(path, &REGEX_NEW_PATH) && args.len() == 1
+            match_path(path, &paths::REGEX_NEW) && args.len() == 1
         ], {
             if let ExprLit(ref lit) = args[0].node {
                 if let LitKind::Str(ref r, _) = lit.node {
