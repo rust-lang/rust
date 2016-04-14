@@ -3,7 +3,7 @@ extern crate compiletest_rs as compiletest;
 use std::path::PathBuf;
 use std::env::var;
 
-fn run_mode(mode: &'static str) {
+fn run_mode(dir: &'static str, mode: &'static str) {
     let mut config = compiletest::default_config();
 
     let cfg_mode = mode.parse().ok().expect("Invalid mode");
@@ -14,7 +14,7 @@ fn run_mode(mode: &'static str) {
     }
 
     config.mode = cfg_mode;
-    config.src_base = PathBuf::from(format!("tests/{}", mode));
+    config.src_base = PathBuf::from(format!("tests/{}", dir));
 
     compiletest::run_tests(&config);
 }
@@ -22,13 +22,13 @@ fn run_mode(mode: &'static str) {
 #[test]
 #[cfg(not(feature = "test-regex_macros"))]
 fn compile_test() {
-    run_mode("run-pass");
-    run_mode("compile-fail");
+    run_mode("run-pass", "run-pass");
+    run_mode("compile-fail", "compile-fail");
 }
 
 #[test]
 #[cfg(feature = "test-regex_macros")]
 fn compile_test() {
-    run_mode("run-pass-regex_macros");
-    run_mode("compile-fail-regex_macros");
+    run_mode("run-pass-regex_macros", "run-pass");
+    run_mode("compile-fail-regex_macros", "compile-fail");
 }
