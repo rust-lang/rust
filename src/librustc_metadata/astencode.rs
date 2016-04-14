@@ -49,9 +49,9 @@ use std::fmt::Debug;
 use rbml::reader;
 use rbml::writer::Encoder;
 use rbml;
-use serialize;
-use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
-use serialize::EncoderHelpers;
+use rustc_serialize as serialize;
+use rustc_serialize::{Decodable, Decoder, DecoderHelpers};
+use rustc_serialize::{Encodable, EncoderHelpers};
 
 #[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
@@ -445,7 +445,7 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
                                   autoderef: u32,
                                   method: &ty::MethodCallee<'tcx>) {
-    use serialize::Encoder;
+    use rustc_serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
         rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
@@ -561,7 +561,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_upvar_capture(&mut self, ecx: &e::EncodeContext, capture: &ty::UpvarCapture) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("UpvarCapture", |this| {
             match *capture {
@@ -589,7 +589,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_auto_adjustment<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                 adj: &adjustment::AutoAdjustment<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
@@ -621,7 +621,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                         autoref: &adjustment::AutoRef<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
             match autoref {
@@ -643,7 +643,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_auto_deref_ref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                auto_deref_ref: &adjustment::AutoDerefRef<'tcx>) {
-        use serialize::Encoder;
+        use rustc_serialize::Encoder;
 
         self.emit_struct("AutoDerefRef", 2, |this| {
             this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));

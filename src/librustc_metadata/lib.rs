@@ -31,7 +31,7 @@
 
 extern crate flate;
 extern crate rbml;
-extern crate serialize;
+extern crate serialize as rustc_serialize; // used by deriving
 
 #[macro_use]
 extern crate rustc;
@@ -48,6 +48,7 @@ pub mod diagnostics;
 
 pub mod astencode;
 pub mod common;
+pub mod def_key;
 pub mod tyencode;
 pub mod tydecode;
 pub mod encoder;
