@@ -1,7 +1,7 @@
 use arena::TypedArena;
 use rustc::infer;
 use rustc::middle::const_val;
-use rustc::middle::def_id::DefId;
+use rustc::hir::def_id::DefId;
 use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::traits::{self, ProjectionMode};
