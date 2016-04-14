@@ -2540,11 +2540,10 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 
-        match link {
-            AssocItemLink::Anchor if !is_static || render_static => {
-                document(w, cx, item)
-            },
-            _ => Ok(()),
+        if !is_static || render_static {
+            document(w, cx, item)
+        } else {
+            Ok(())
         }
     }
 
