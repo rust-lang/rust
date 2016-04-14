@@ -31,6 +31,7 @@ use toml::{Parser, Decoder, Value};
 #[derive(Default)]
 pub struct Config {
     pub ccache: bool,
+    pub ninja: bool,
     pub verbose: bool,
     pub submodules: bool,
     pub compiler_docs: bool,
@@ -107,6 +108,7 @@ struct Build {
 #[derive(RustcDecodable, Default)]
 struct Llvm {
     ccache: Option<bool>,
+    ninja: Option<bool>,
     assertions: Option<bool>,
     optimize: Option<bool>,
     version_check: Option<bool>,
@@ -200,8 +202,8 @@ impl Config {
 
         if let Some(ref llvm) = toml.llvm {
             set(&mut config.ccache, llvm.ccache);
+            set(&mut config.ninja, llvm.ninja);
             set(&mut config.llvm_assertions, llvm.assertions);
-            set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_optimize, llvm.optimize);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);

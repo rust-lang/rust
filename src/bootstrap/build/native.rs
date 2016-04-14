@@ -43,6 +43,9 @@ pub fn llvm(build: &Build, target: &str) {
 
     // http://llvm.org/docs/CMake.html
     let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
+    if build.config.ninja {
+        cfg.generator("Ninja");
+    }
     cfg.target(target)
        .host(&build.config.build)
        .out_dir(&dst)
