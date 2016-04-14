@@ -1,7 +1,7 @@
-- Feature Name: integer_atomics
+- Feature Name: `integer_atomics`
 - Start Date: 2016-03-14
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1543](https://github.com/rust-lang/rfcs/pull/1543)
+- Rust Issue: [rust-lang/rust#32976](https://github.com/rust-lang/rust/issues/32976)
 
 # Summary
 [summary]: #summary
