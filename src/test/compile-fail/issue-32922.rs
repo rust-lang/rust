@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![allow(warnings)]
 
 macro_rules! foo { () => {
     let x = 1;
@@ -16,5 +17,15 @@ macro_rules! foo { () => {
     let _ = bar!();
 }}
 
+macro_rules! bar { // test issue #31856
+    ($n:ident) => (
+        let a = 1;
+        let $n = a;
+    )
+}
+
 #[rustc_error]
-fn main() { foo! {}; } //~ ERROR compilation successful
+fn main() { //~ ERROR compilation successful
+    foo! {};
+    bar! {};
+}
