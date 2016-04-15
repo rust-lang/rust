@@ -34,7 +34,7 @@ use rustc_data_structures::bitvec::BitVector;
 use self::lvalue::{LvalueRef, get_dataptr, get_meta};
 use rustc_mir::traversal;
 
-use self::operand::OperandRef;
+use self::operand::{OperandRef, OperandValue};
 
 #[derive(Clone)]
 pub enum CachedMir<'mir, 'tcx: 'mir> {
@@ -150,6 +150,15 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                                   TempRef::Lvalue(LvalueRef::alloca(&bcx,
                                                                     mty,
                                                                     &format!("temp{:?}", i)))
+                              } else if common::type_is_zero_size(bcx.ccx(), mty) {
+                                  // Zero-size temporaries aren't always initialized, which
+                                  // doesn't matter because they don't contain data, but
+                                  // we need something in the operand.
+                                  let op = OperandRef {
+                                      val: OperandValue::Immediate(common::C_nil(bcx.ccx())),
+                                      ty: mty
+                                  };
+                                  TempRef::Operand(Some(op))
                               } else {
                                   // If this is an immediate temp, we do not create an
                                   // alloca in advance. Instead we wait until we see the
