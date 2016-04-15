@@ -12,7 +12,11 @@ before_script:
 script:
 - |
   travis-cargo build &&
-  env RUST_SYSROOT=$HOME/rust RUST_TEST_NOCAPTURE=1 travis-cargo test
+  env RUST_SYSROOT=$HOME/rust travis-cargo test
 notifications:
   email:
     on_success: never
+env:
+  global:
+  - RUST_TEST_NOCAPTURE=1
+  - TRAVIS_CARGO_NIGHTLY_FEATURE=""
