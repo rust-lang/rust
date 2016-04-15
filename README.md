@@ -34,7 +34,7 @@ If you are using [rustup][rustup] (the name of the multirust rewrite in Rust),
 the `sysroot` path will also include your build target (e.g.
 `$HOME/.multirust/toolchains/nightly-2016-04-11-x86_64-apple-darwin`). You can
 see the current toolchain's directory by running `rustup which cargo` (ignoring
-the trailing `/bin/cargo).
+the trailing `/bin/cargo`).
 
 If you installed without using multirust or rustup, you'll need to adjust the
 command to run your cargo and set the `sysroot` to the directory where your
