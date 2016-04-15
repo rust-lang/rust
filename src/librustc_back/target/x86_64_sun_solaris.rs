@@ -14,6 +14,7 @@ pub fn target() -> Target {
     let mut base = super::solaris_base::opts();
     base.pre_link_args.push("-m64".to_string());
     base.cpu = "x86-64".to_string();
+    base.max_atomic_width = 64;
 
     Target {
         llvm_target: "x86_64-pc-solaris".to_string(),

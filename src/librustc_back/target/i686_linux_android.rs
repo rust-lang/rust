@@ -13,6 +13,7 @@ use target::Target;
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
     base.cpu = "pentium4".to_string();
+    base.max_atomic_width = 64;
 
     Target {
         llvm_target: "i686-linux-android".to_string(),

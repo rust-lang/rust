@@ -268,8 +268,11 @@ declare_features! (
     // pub(restricted) visibilities (RFC 1422)
     (active, pub_restricted, "1.9.0", Some(32409)),
 
-     // Allow Drop types in statics/const functions (RFC 1440)
-    (active, drop_types_in_const, "1.9.0", Some(33156))
+    // Allow Drop types in statics/const functions (RFC 1440)
+    (active, drop_types_in_const, "1.9.0", Some(33156)),
+
+    // Allows cfg(target_has_atomic = "...").
+    (active, cfg_target_has_atomic, "1.9.0", Some(32976))
 );
 
 declare_features! (
@@ -577,6 +580,7 @@ const GATED_CFGS: &'static [(&'static str, &'static str, fn(&Features) -> bool)]
     ("target_feature", "cfg_target_feature", cfg_fn!(cfg_target_feature)),
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
     ("target_thread_local", "cfg_target_thread_local", cfg_fn!(cfg_target_thread_local)),
+    ("target_has_atomic", "cfg_target_has_atomic", cfg_fn!(cfg_target_has_atomic)),
 ];
 
 #[derive(Debug, Eq, PartialEq)]

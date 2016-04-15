@@ -25,6 +25,7 @@ pub fn target() -> Target {
         no_compiler_rt: false,
         linker_is_gnu: true,
         allow_asm: false,
+        max_atomic_width: 32,
         .. Default::default()
     };
     Target {
