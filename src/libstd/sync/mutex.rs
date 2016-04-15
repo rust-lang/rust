@@ -310,6 +310,13 @@ impl<T: ?Sized> Drop for Mutex<T> {
     }
 }
 
+#[stable(feature = "mutex_default", since = "1.9.0")]
+impl<T: ?Sized + Default> Default for Mutex<T> {
+    fn default() -> Mutex<T> {
+        Mutex::new(Default::default())
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
