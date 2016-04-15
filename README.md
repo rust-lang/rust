@@ -7,6 +7,8 @@ An experimental interpreter for [Rust][rust]'s [mid-level intermediate
 representation][mir] (MIR). This project began as part of my work for the
 undergraduate research course at the [University of Saskatchewan][usask].
 
+[![Build Status](https://travis-ci.org/tsion/miri.svg?branch=master)](https://travis-ci.org/tsion/miri)
+
 ## Download Rust nightly
 
 I currently recommend that you install [multirust][multirust] and then use it to
