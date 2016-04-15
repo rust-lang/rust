@@ -4,7 +4,7 @@
 
 Prefer
 
-```rust
+```rust,ignore
 fn use_mutex(m: sync::mutex::Mutex<i32>) {
     let guard = m.lock();
     do_work(guard);
@@ -15,7 +15,7 @@ fn use_mutex(m: sync::mutex::Mutex<i32>) {
 
 over
 
-```rust
+```rust,ignore
 fn use_mutex(m: sync::mutex::Mutex<i32>) {
     do_work(m.lock());
     // do other work
@@ -32,7 +32,7 @@ explicitly `let`-bound to make the lifetime clear. Consider using an explicit
 
 Prefer
 
-```rust
+```rust,ignore
 let foo = match bar {
     Baz => 0,
     Quux => 1
@@ -41,7 +41,7 @@ let foo = match bar {
 
 over
 
-```rust
+```rust,ignore
 let foo;
 match bar {
     Baz => {
@@ -60,14 +60,14 @@ conditional expression.
 
 Prefer
 
-```rust
+```rust,ignore
 let v = s.iter().map(|x| x * 2)
                 .collect::<Vec<_>>();
 ```
 
 over
 
-```rust
+```rust,ignore
 let v: Vec<_> = s.iter().map(|x| x * 2)
                         .collect();
 ```
@@ -87,7 +87,7 @@ the type by explicit generics instantiation, which is usually more clear.
 
 Use `mut` bindings to signal the span during which a value is mutated:
 
-```rust
+```rust,ignore
 let mut v = Vec::new();
 // push things onto v
 let v = v;

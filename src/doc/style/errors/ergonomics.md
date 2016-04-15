@@ -9,7 +9,7 @@ pattern.
 
 Prefer
 
-```rust
+```rust,ignore
 use std::io::{File, Open, Write, IoError};
 
 struct Info {
@@ -31,7 +31,7 @@ fn write_info(info: &Info) -> Result<(), IoError> {
 
 over
 
-```rust
+```rust,ignore
 use std::io::{File, Open, Write, IoError};
 
 struct Info {
