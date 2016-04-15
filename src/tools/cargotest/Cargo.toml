@@ -3,9 +3,6 @@ name = "cargotest"
 version = "0.1.0"
 authors = ["Brian Anderson <banderson@mozilla.com>"]
 
-[dependencies]
-tempdir = "0.3.4"
-
 [[bin]]
 name = "cargotest"
 path = "main.rs"
