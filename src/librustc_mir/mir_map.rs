@@ -28,11 +28,9 @@ use rustc::mir::mir_map::MirMap;
 use rustc::infer;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::common::ErrorReported;
 use rustc::util::nodemap::NodeMap;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor};
-use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -58,6 +56,24 @@ struct BuildMir<'a, 'tcx: 'a> {
     map: &'a mut MirMap<'tcx>,
 }
 
+impl<'a, 'tcx> BuildMir<'a, 'tcx> {
+    fn build<F>(&mut self, id: ast::NodeId, f: F)
+        where F: for<'b> FnOnce(Cx<'b, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
+    {
+        let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
+        let infcx = infer::new_infer_ctxt(self.tcx,
+                                          &self.tcx.tables,
+                                          Some(param_env),
+                                          ProjectionMode::AnyFinal);
+
+        let (mir, scope_auxiliary) = f(Cx::new(&infcx));
+
+        pretty::dump_mir(self.tcx, "mir_map", &0, id, &mir, Some(&scope_auxiliary));
+
+        assert!(self.map.map.insert(id, mir).is_none())
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     fn visit_fn(&mut self,
                 fk: intravisit::FnKind<'tcx>,
@@ -65,80 +81,36 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
                 body: &'tcx hir::Block,
                 span: Span,
                 id: ast::NodeId) {
-        let implicit_arg_tys = if let intravisit::FnKind::Closure(..) = fk {
-            vec![closure_self_ty(&self.tcx, id, body.id)]
-        } else {
-            vec![]
+        // fetch the fully liberated fn signature (that is, all bound
+        // types/lifetimes replaced)
+        let fn_sig = match self.tcx.tables.borrow().liberated_fn_sigs.get(&id) {
+            Some(f) => f.clone(),
+            None => {
+                span_bug!(span, "no liberated fn sig for {:?}", id);
+            }
         };
 
-        let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
-        let infcx = infer::new_infer_ctxt(self.tcx,
-                                          &self.tcx.tables,
-                                          Some(param_env),
-                                          ProjectionMode::AnyFinal);
+        let implicit_argument = if let intravisit::FnKind::Closure(..) = fk {
+            Some((closure_self_ty(&self.tcx, id, body.id), None))
+        } else {
+            None
+        };
 
-        match build_mir(Cx::new(&infcx), implicit_arg_tys, id, span, decl, body) {
-            Ok(mir) => assert!(self.map.map.insert(id, mir).is_none()),
-            Err(ErrorReported) => {}
-        }
+        let explicit_arguments =
+            decl.inputs
+                .iter()
+                .enumerate()
+                .map(|(index, arg)| {
+                    (fn_sig.inputs[index], Some(&*arg.pat))
+                });
+
+        self.build(id, |cx| {
+            let arguments = implicit_argument.into_iter().chain(explicit_arguments);
+            build::construct_fn(cx, id, arguments, fn_sig.output, body)
+        });
 
         intravisit::walk_fn(self, fk, decl, body, span);
     }
-}
-
-fn build_mir<'a,'tcx:'a>(cx: Cx<'a,'tcx>,
-                         implicit_arg_tys: Vec<Ty<'tcx>>,
-                         fn_id: ast::NodeId,
-                         span: Span,
-                         decl: &'tcx hir::FnDecl,
-                         body: &'tcx hir::Block)
-                         -> Result<Mir<'tcx>, ErrorReported> {
-    // fetch the fully liberated fn signature (that is, all bound
-    // types/lifetimes replaced)
-    let fn_sig = match cx.tcx().tables.borrow().liberated_fn_sigs.get(&fn_id) {
-        Some(f) => f.clone(),
-        None => {
-            span_bug!(span, "no liberated fn sig for {:?}", fn_id);
-        }
-    };
-
-    let arguments =
-        decl.inputs
-            .iter()
-            .enumerate()
-            .map(|(index, arg)| {
-                (fn_sig.inputs[index], &*arg.pat)
-            })
-            .collect();
-
-    let (mut mir, scope_auxiliary) =
-        build::construct(cx,
-                         span,
-                         fn_id,
-                         body.id,
-                         implicit_arg_tys,
-                         arguments,
-                         fn_sig.output,
-                         body);
-
-    match cx.tcx().node_id_to_type(fn_id).sty {
-        ty::TyFnDef(_, _, f) if f.abi == Abi::RustCall => {
-            // RustCall pseudo-ABI untuples the last argument.
-            if let Some(arg_decl) = mir.arg_decls.last_mut() {
-                arg_decl.spread = true;
-            }
-        }
-        _ => {}
-    }
-
-    pretty::dump_mir(cx.tcx(),
-                     "mir_map",
-                     &0,
-                     fn_id,
-                     &mir,
-                     Some(&scope_auxiliary));
-
-    Ok(mir)
 }
 
 fn closure_self_ty<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
