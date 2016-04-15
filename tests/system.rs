@@ -143,8 +143,18 @@ fn self_tests() {
 fn stdin_formatting_smoke_test() {
     let input = Input::Text("fn main () {}".to_owned());
     let config = Config::default();
-    let (file_map, _report) = format_input(input, &config);
+    let (error_summary, file_map, _report) = format_input(input, &config);
+    assert!(error_summary.has_no_errors());
     assert_eq!(file_map["stdin"].to_string(), "fn main() {}\n")
+}
+
+#[test]
+fn format_lines_errors_are_reported() {
+    let long_identifier = String::from_utf8(vec![b'a'; 239]).unwrap();
+    let input = Input::Text(format!("fn {}() {{}}", long_identifier));
+    let config = Config::default();
+    let (error_summary, _file_map, _report) = format_input(input, &config);
+    assert!(error_summary.has_formatting_errors());
 }
 
 // For each file, run rustfmt and collect the output.
@@ -202,7 +212,8 @@ fn read_config(filename: &str) -> Config {
 
 fn format_file<P: Into<PathBuf>>(filename: P, config: &Config) -> (FileMap, FormatReport) {
     let input = Input::File(filename.into());
-    format_input(input, &config)
+    let (_error_summary, file_map, report) = format_input(input, &config);
+    return (file_map, report);
 }
 
 pub fn idempotent_check(filename: String) -> Result<FormatReport, HashMap<String, Vec<Mismatch>>> {

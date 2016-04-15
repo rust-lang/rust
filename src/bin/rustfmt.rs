@@ -17,7 +17,7 @@ extern crate toml;
 extern crate env_logger;
 extern crate getopts;
 
-use rustfmt::{run, Input};
+use rustfmt::{run, Input, Summary};
 use rustfmt::config::{Config, WriteMode};
 
 use std::{env, error};
@@ -156,18 +156,21 @@ fn make_opts() -> Options {
     opts
 }
 
-fn execute(opts: &Options) -> FmtResult<()> {
+fn execute(opts: &Options) -> FmtResult<Summary> {
     let matches = try!(opts.parse(env::args().skip(1)));
 
     match try!(determine_operation(&matches)) {
         Operation::Help => {
             print_usage(&opts, "");
+            Ok(Summary::new())
         }
         Operation::Version => {
             print_version();
+            Ok(Summary::new())
         }
         Operation::ConfigHelp => {
             Config::print_docs();
+            Ok(Summary::new())
         }
         Operation::Stdin { input, config_path } => {
             // try to read config from local directory
@@ -177,7 +180,7 @@ fn execute(opts: &Options) -> FmtResult<()> {
             // write_mode is always Plain for Stdin.
             config.write_mode = WriteMode::Plain;
 
-            run(Input::Text(input), &config);
+            Ok(run(Input::Text(input), &config))
         }
         Operation::Format { files, config_path } => {
             let mut config = Config::default();
@@ -193,6 +196,8 @@ fn execute(opts: &Options) -> FmtResult<()> {
             if let Some(path) = path.as_ref() {
                 println!("Using rustfmt config file {}", path.display());
             }
+
+            let mut error_summary = Summary::new();
             for file in files {
                 // Check the file directory if the config-path could not be read or not provided
                 if path.is_none() {
@@ -209,11 +214,11 @@ fn execute(opts: &Options) -> FmtResult<()> {
                 }
 
                 try!(update_config(&mut config, &matches));
-                run(Input::File(file), &config);
+                error_summary.add(run(Input::File(file), &config));
             }
+            Ok(error_summary)
         }
     }
-    Ok(())
 }
 
 fn main() {
@@ -222,7 +227,18 @@ fn main() {
     let opts = make_opts();
 
     let exit_code = match execute(&opts) {
-        Ok(..) => 0,
+        Ok(summary) => {
+            if summary.has_operational_errors() {
+                1
+            } else if summary.has_parsing_errors() {
+                2
+            } else if summary.has_formatting_errors() {
+                3
+            } else {
+                assert!(summary.has_no_errors());
+                0
+            }
+        }
         Err(e) => {
             print_usage(&opts, &e.to_string());
             1

@@ -41,7 +41,9 @@ use std::fmt;
 use issues::{BadIssueSeeker, Issue};
 use filemap::FileMap;
 use visitor::FmtVisitor;
-use config::{Config, WriteMode};
+use config::Config;
+
+pub use self::summary::Summary;
 
 #[macro_use]
 mod utils;
@@ -64,6 +66,7 @@ pub mod rustfmt_diff;
 mod chains;
 mod macros;
 mod patterns;
+mod summary;
 
 const MIN_STRING: usize = 10;
 // When we get scoped annotations, we should have rustfmt::skip.
@@ -239,8 +242,16 @@ pub struct FormatReport {
 }
 
 impl FormatReport {
+    fn new() -> FormatReport {
+        FormatReport { file_error_map: HashMap::new() }
+    }
+
     pub fn warning_count(&self) -> usize {
         self.file_error_map.iter().map(|(_, ref errors)| errors.len()).fold(0, |acc, x| acc + x)
+    }
+
+    pub fn has_warnings(&self) -> bool {
+        self.warning_count() > 0
     }
 }
 
@@ -289,7 +300,7 @@ fn format_ast(krate: &ast::Crate,
 // TODO(#20) other stuff for parity with make tidy
 fn format_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     let mut truncate_todo = Vec::new();
-    let mut report = FormatReport { file_error_map: HashMap::new() };
+    let mut report = FormatReport::new();
 
     // Iterate over the chars in the file map.
     for (f, text) in file_map.iter() {
@@ -368,17 +379,16 @@ fn format_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
 }
 
 fn parse_input(input: Input, parse_session: &ParseSess) -> Result<ast::Crate, DiagnosticBuilder> {
-    let krate = match input {
+    match input {
         Input::File(file) => parse::parse_crate_from_file(&file, Vec::new(), &parse_session),
         Input::Text(text) => {
             parse::parse_crate_from_source_str("stdin".to_owned(), text, Vec::new(), &parse_session)
         }
-    };
-
-    krate
+    }
 }
 
-pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
+pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatReport) {
+    let mut summary = Summary::new();
     let codemap = Rc::new(CodeMap::new());
 
     let tty_handler = Handler::with_tty_emitter(ColorConfig::Auto,
@@ -397,9 +407,14 @@ pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
         Ok(krate) => krate,
         Err(mut diagnostic) => {
             diagnostic.emit();
-            panic!("Unrecoverable parse error");
+            summary.add_parsing_error();
+            return (summary, FileMap::new(), FormatReport::new());
         }
     };
+
+    if parse_session.span_diagnostic.has_errors() {
+        summary.add_parsing_error();
+    }
 
     // Suppress error output after parsing.
     let silent_emitter = Box::new(EmitterWriter::new(Box::new(Vec::new()), None, codemap.clone()));
@@ -412,7 +427,10 @@ pub fn format_input(input: Input, config: &Config) -> (FileMap, FormatReport) {
     filemap::append_newlines(&mut file_map);
 
     let report = format_lines(&mut file_map, config);
-    (file_map, report)
+    if report.has_warnings() {
+        summary.add_formatting_error();
+    }
+    (summary, file_map, report)
 }
 
 pub enum Input {
@@ -420,8 +438,8 @@ pub enum Input {
     Text(String),
 }
 
-pub fn run(input: Input, config: &Config) {
-    let (file_map, report) = format_input(input, config);
+pub fn run(input: Input, config: &Config) -> Summary {
+    let (mut summary, file_map, report) = format_input(input, config);
     msg!("{}", report);
 
     let mut out = stdout();
@@ -429,5 +447,8 @@ pub fn run(input: Input, config: &Config) {
 
     if let Err(msg) = write_result {
         msg!("Error writing files: {}", msg);
+        summary.add_operational_error();
     }
+
+    summary
 }
