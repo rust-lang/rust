@@ -10,7 +10,7 @@ Add a marker trait `FusedIterator` to `std::iter` and implement it on `Fuse<I>` 
 applicable iterators and adapters. By implementing `FusedIterator`, an iterator
 promises to behave as if `Iterator::fuse()` had been called on it (i.e. return
 `None` forever after returning `None` once). Then, specialize `Fuse<I>` to be a
-no-op iff `I` implements `FusedIterator`.
+no-op if `I` implements `FusedIterator`.
 
 # Motivation
 [motivation]: #motivation
@@ -22,7 +22,7 @@ implementing some algorithms/adapters easier. Therefore, `Fused` and
 noticeable overhead. Furthermore, many iterators (most if not all iterators in
 std) already act as if they were fused (this is considered to be the "polite"
 behavior). Therefore, it would be nice to be able to pay the `Fused` overhead
-iff necessary.
+only when necessary.
 
 Microbenchmarks:
 
