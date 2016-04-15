@@ -78,7 +78,6 @@ pub struct Build {
     ver_date: Option<String>,
     version: String,
     package_vers: String,
-    bootstrap_key: String,
 
     // Runtime state filled in later on
     cc: HashMap<String, (gcc::Tool, PathBuf)>,
@@ -123,7 +122,6 @@ impl Build {
             short_ver_hash: None,
             ver_date: None,
             version: String::new(),
-            bootstrap_key: String::new(),
             package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),

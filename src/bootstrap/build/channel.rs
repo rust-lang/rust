@@ -10,13 +10,11 @@
 
 use std::fs::{self, File};
 use std::io::prelude::*;
-use std::path::Path;
 use std::process::Command;
 
 use build_helper::output;
 
 use build::Build;
-use build::util::mtime;
 
 pub fn collect(build: &mut Build) {
     let mut main_mk = String::new();
@@ -79,8 +77,4 @@ pub fn collect(build: &mut Build) {
         build.ver_hash = Some(ver_hash);
         build.short_ver_hash = Some(short_ver_hash);
     }
-
-    build.bootstrap_key = mtime(Path::new("config.toml")).seconds()
-                                                        .to_string();
 }
-
