@@ -9,9 +9,12 @@
 // except according to those terms.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
+use build::scope::LoopScope;
 use hair::*;
+use rustc::middle::region::CodeExtent;
 use rustc::mir::repr::*;
 use rustc::hir;
+use syntax::codemap::Span;
 
 impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn ast_block(&mut self,
@@ -44,11 +47,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     StmtKind::Expr { scope, expr } => {
                         unpack!(block = this.in_scope(scope, block, |this, _| {
                             let expr = this.hir.mirror(expr);
-                            let expr_span = expr.span;
-                            let temp = this.temp(expr.ty.clone());
-                            unpack!(block = this.into(&temp, block, expr));
-                            unpack!(block = this.build_drop(block, expr_span, temp));
-                            block.unit()
+                            this.stmt_expr(block, expr)
                         }));
                     }
                     StmtKind::Let { remainder_scope, init_scope, pattern, initializer } => {
@@ -82,5 +81,119 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             }
             block.unit()
         })
+    }
+
+    pub fn stmt_expr(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<()> {
+        let this = self;
+        let expr_span = expr.span;
+        let scope_id = this.innermost_scope_id();
+        // Handle a number of expressions that don't need a destination at all. This
+        // avoids needing a mountain of temporary `()` variables.
+        match expr.kind {
+            ExprKind::Scope { extent, value } => {
+                let value = this.hir.mirror(value);
+                this.in_scope(extent, block, |this, _| this.stmt_expr(block, value))
+            }
+            ExprKind::Assign { lhs, rhs } => {
+                let lhs = this.hir.mirror(lhs);
+                let scope_id = this.innermost_scope_id();
+                let lhs_span = lhs.span;
+                let lhs_ty = lhs.ty;
+
+                let lhs_needs_drop = this.hir.needs_drop(lhs_ty);
+
+                // Note: we evaluate assignments right-to-left. This
+                // is better for borrowck interaction with overloaded
+                // operators like x[j] = x[i].
+
+                // Generate better code for things that don't need to be
+                // dropped. We need the temporary as_operand generates
+                // so we can clean up the data if evaluating the LHS unwinds,
+                // but if the LHS (and therefore the RHS) doesn't need
+                // unwinding, we just translate directly to an rvalue instead.
+                let rhs = if lhs_needs_drop {
+                    let op = unpack!(block = this.as_operand(block, rhs));
+                    Rvalue::Use(op)
+                } else {
+                    unpack!(block = this.as_rvalue(block, rhs))
+                };
+
+                let lhs = unpack!(block = this.as_lvalue(block, lhs));
+                unpack!(block = this.build_drop(block, lhs_span, lhs.clone(), lhs_ty));
+                this.cfg.push_assign(block, scope_id, expr_span, &lhs, rhs);
+                block.unit()
+            }
+            ExprKind::AssignOp { op, lhs, rhs } => {
+                // FIXME(#28160) there is an interesting semantics
+                // question raised here -- should we "freeze" the
+                // value of the lhs here?  I'm inclined to think not,
+                // since it seems closer to the semantics of the
+                // overloaded version, which takes `&mut self`.  This
+                // only affects weird things like `x += {x += 1; x}`
+                // -- is that equal to `x + (x + 1)` or `2*(x+1)`?
+
+                // As above, RTL.
+                let rhs = unpack!(block = this.as_operand(block, rhs));
+                let lhs = unpack!(block = this.as_lvalue(block, lhs));
+
+                // we don't have to drop prior contents or anything
+                // because AssignOp is only legal for Copy types
+                // (overloaded ops should be desugared into a call).
+                this.cfg.push_assign(block, scope_id, expr_span, &lhs,
+                                     Rvalue::BinaryOp(op,
+                                                      Operand::Consume(lhs.clone()),
+                                                      rhs));
+
+                block.unit()
+            }
+            ExprKind::Continue { label } => {
+                this.break_or_continue(expr_span, label, block,
+                                       |loop_scope| loop_scope.continue_block)
+            }
+            ExprKind::Break { label } => {
+                this.break_or_continue(expr_span, label, block, |loop_scope| {
+                    loop_scope.might_break = true;
+                    loop_scope.break_block
+                })
+            }
+            ExprKind::Return { value } => {
+                block = match value {
+                    Some(value) => unpack!(this.into(&Lvalue::ReturnPointer, block, value)),
+                    None => {
+                        this.cfg.push_assign_unit(block, scope_id,
+                                                  expr_span, &Lvalue::ReturnPointer);
+                        block
+                    }
+                };
+                let extent = this.extent_of_return_scope();
+                let return_block = this.return_block();
+                this.exit_scope(expr_span, extent, block, return_block);
+                this.cfg.start_new_block().unit()
+            }
+            _ => {
+                let expr_span = expr.span;
+                let expr_ty = expr.ty;
+                let temp = this.temp(expr.ty.clone());
+                unpack!(block = this.into(&temp, block, expr));
+                unpack!(block = this.build_drop(block, expr_span, temp, expr_ty));
+                block.unit()
+            }
+        }
+    }
+
+    fn break_or_continue<F>(&mut self,
+                            span: Span,
+                            label: Option<CodeExtent>,
+                            block: BasicBlock,
+                            exit_selector: F)
+                            -> BlockAnd<()>
+        where F: FnOnce(&mut LoopScope) -> BasicBlock
+    {
+        let (exit_block, extent) = {
+            let loop_scope = self.find_loop_scope(span, label);
+            (exit_selector(loop_scope), loop_scope.extent)
+        };
+        self.exit_scope(span, extent, block, exit_block);
+        self.cfg.start_new_block().unit()
     }
 }
