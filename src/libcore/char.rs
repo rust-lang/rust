@@ -15,7 +15,7 @@
 #![allow(non_snake_case)]
 #![stable(feature = "core_char", since = "1.2.0")]
 
-use iter::Iterator;
+use iter::{Iterator, FusedIterator};
 use mem::transmute;
 use option::Option::{None, Some};
 use option::Option;
@@ -461,6 +461,9 @@ impl Iterator for EscapeUnicode {
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl FusedIterator for EscapeUnicode {}
+
 /// An iterator that yields the literal escape code of a `char`.
 ///
 /// This `struct` is created by the [`escape_default()`] method on [`char`]. See
@@ -556,6 +559,9 @@ impl Iterator for EscapeDefault {
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl FusedIterator for EscapeDefault {}
+
 /// An iterator over `u8` entries represending the UTF-8 encoding of a `char`
 /// value.
 ///
@@ -593,6 +599,9 @@ impl Iterator for EncodeUtf8 {
         self.as_slice().iter().size_hint()
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl FusedIterator for EncodeUtf8 {}
 
 /// An iterator over `u16` entries represending the UTF-16 encoding of a `char`
 /// value.
@@ -632,3 +641,6 @@ impl Iterator for EncodeUtf16 {
         self.as_slice().iter().size_hint()
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl FusedIterator for EncodeUtf16 {}
