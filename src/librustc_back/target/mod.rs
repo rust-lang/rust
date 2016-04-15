@@ -169,6 +169,7 @@ pub struct Target {
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
+/// Fields added here must be added to `Target::from_json()`
 #[derive(Clone, Debug)]
 pub struct TargetOptions {
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
