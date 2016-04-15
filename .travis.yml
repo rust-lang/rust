@@ -1,0 +1,18 @@
+language: rust
+rust:
+- nightly-2016-04-11
+- nightly
+matrix:
+  allow_failures:
+  - rust: nightly
+before_script:
+- |
+  pip install 'travis-cargo<0.2' --user &&
+  export PATH=$HOME/.local/bin:$PATH
+script:
+- |
+  travis-cargo build &&
+  env RUST_SYSROOT=$HOME/rust RUST_TEST_NOCAPTURE=1 travis-cargo test
+notifications:
+  email:
+    on_success: never
