@@ -470,20 +470,17 @@ impl<'a> Context<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
-        let mut libraries = Vec::new();
+        let mut libraries = HashMap::new();
         for (_hash, (rlibs, dylibs)) in candidates {
-            let mut metadata = None;
-            let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut metadata);
-            let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut metadata);
-            match metadata {
-                Some(metadata) => {
-                    libraries.push(Library {
-                        dylib: dylib,
-                        rlib: rlib,
-                        metadata: metadata,
-                    })
-                }
-                None => {}
+            let mut slot = None;
+            let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
+            let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot);
+            if let Some((h, m)) = slot {
+                libraries.insert(h, Library {
+                    dylib: dylib,
+                    rlib: rlib,
+                    metadata: m,
+                });
             }
         }
 
@@ -492,13 +489,13 @@ impl<'a> Context<'a> {
         // libraries or not.
         match libraries.len() {
             0 => None,
-            1 => Some(libraries.into_iter().next().unwrap()),
+            1 => Some(libraries.into_iter().next().unwrap().1),
             _ => {
                 let mut err = struct_span_err!(self.sess, self.span, E0464,
                                                "multiple matching crates for `{}`",
                                                self.crate_name);
                 err.note("candidates:");
-                for lib in &libraries {
+                for (_, lib) in libraries {
                     match lib.dylib {
                         Some((ref p, _)) => {
                             err.note(&format!("path: {}",
@@ -532,13 +529,13 @@ impl<'a> Context<'a> {
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
     fn extract_one(&mut self, m: HashMap<PathBuf, PathKind>, flavor: CrateFlavor,
-                   slot: &mut Option<MetadataBlob>) -> Option<(PathBuf, PathKind)> {
-        let mut ret = None::<(PathBuf, PathKind)>;
+                   slot: &mut Option<(Svh, MetadataBlob)>) -> Option<(PathBuf, PathKind)> {
+        let mut ret: Option<(PathBuf, PathKind)> = None;
         let mut error = 0;
 
         if slot.is_some() {
             // FIXME(#10786): for an optimization, we only read one of the
-            //                library's metadata sections. In theory we should
+            //                libraries' metadata sections. In theory we should
             //                read both, but reading dylib metadata is quite
             //                slow.
             if m.is_empty() {
@@ -551,10 +548,10 @@ impl<'a> Context<'a> {
         let mut err: Option<DiagnosticBuilder> = None;
         for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
-            let metadata = match get_metadata_section(self.target, flavor, &lib) {
+            let (hash, metadata) = match get_metadata_section(self.target, flavor, &lib) {
                 Ok(blob) => {
-                    if self.crate_matches(blob.as_slice(), &lib) {
-                        blob
+                    if let Some(h) = self.crate_matches(blob.as_slice(), &lib) {
+                        (h, blob)
                     } else {
                         info!("metadata mismatch");
                         continue
@@ -565,12 +562,8 @@ impl<'a> Context<'a> {
                     continue
                 }
             };
-            // If we've already found a candidate and we're not matching hashes,
-            // emit an error about duplicate candidates found. If we're matching
-            // based on a hash, however, then if we've gotten this far both
-            // candidates have the same hash, so they're not actually
-            // duplicates that we should warn about.
-            if ret.is_some() && self.hash.is_none() {
+            // If we see multiple hashes, emit an error about duplicate candidates.
+            if slot.as_ref().map_or(false, |s| s.0 != hash) {
                 let mut e = struct_span_err!(self.sess, self.span, E0465,
                                              "multiple {} candidates for `{}` found",
                                              flavor, self.crate_name);
@@ -583,7 +576,7 @@ impl<'a> Context<'a> {
                 }
                 err = Some(e);
                 error = 1;
-                ret = None;
+                *slot = None;
             }
             if error > 0 {
                 error += 1;
@@ -592,7 +585,7 @@ impl<'a> Context<'a> {
                                                          lib.display()));
                 continue
             }
-            *slot = Some(metadata);
+            *slot = Some((hash, metadata));
             ret = Some((lib, kind));
         }
 
@@ -604,22 +597,20 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> bool {
+    fn crate_matches(&mut self, crate_data: &[u8], libpath: &Path) -> Option<Svh> {
         if self.should_match_name {
             match decoder::maybe_get_crate_name(crate_data) {
                 Some(ref name) if self.crate_name == *name => {}
-                _ => { info!("Rejecting via crate name"); return false }
+                _ => { info!("Rejecting via crate name"); return None }
             }
         }
         let hash = match decoder::maybe_get_crate_hash(crate_data) {
-            Some(hash) => hash, None => {
-                info!("Rejecting via lack of crate hash");
-                return false;
-            }
+            None => { info!("Rejecting via lack of crate hash"); return None; }
+            Some(h) => h,
         };
 
         let triple = match decoder::get_crate_triple(crate_data) {
-            None => { debug!("triple not present"); return false }
+            None => { debug!("triple not present"); return None }
             Some(t) => t,
         };
         if triple != self.triple {
@@ -628,24 +619,21 @@ impl<'a> Context<'a> {
                 path: libpath.to_path_buf(),
                 got: triple.to_string()
             });
-            return false;
+            return None;
         }
 
-        match self.hash {
-            None => true,
-            Some(myhash) => {
-                if *myhash != hash {
-                    info!("Rejecting via hash: expected {} got {}", *myhash, hash);
-                    self.rejected_via_hash.push(CrateMismatch {
-                        path: libpath.to_path_buf(),
-                        got: myhash.as_str().to_string()
-                    });
-                    false
-                } else {
-                    true
-                }
+        if let Some(myhash) = self.hash {
+            if *myhash != hash {
+                info!("Rejecting via hash: expected {} got {}", *myhash, hash);
+                self.rejected_via_hash.push(CrateMismatch {
+                    path: libpath.to_path_buf(),
+                    got: myhash.as_str().to_string()
+                });
+                return None;
             }
         }
+
+        Some(hash)
     }
 
 
@@ -717,13 +705,13 @@ impl<'a> Context<'a> {
         };
 
         // Extract the rlib/dylib pair.
-        let mut metadata = None;
-        let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut metadata);
-        let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut metadata);
+        let mut slot = None;
+        let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
+        let dylib = self.extract_one(dylibs, CrateFlavor::Dylib, &mut slot);
 
         if rlib.is_none() && dylib.is_none() { return None }
-        match metadata {
-            Some(metadata) => Some(Library {
+        match slot {
+            Some((_, metadata)) => Some(Library {
                 dylib: dylib,
                 rlib: rlib,
                 metadata: metadata,
