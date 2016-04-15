@@ -140,9 +140,9 @@ Cargo
 Performance
 -----------
 
-* [During type unification, the complexity of comparing variables for
-  equivalance was reduced from `O(n!)` to `O(n)`][1.9tu]. This leads
-  to major compile-time improvements in some scenarios.
+* [The complexity of comparing variables for equivalence during type 
+  unification is reduced from O(n!) to O(n)[1.9tu]. This leads
+  to major compilation time improvement in some scenarios.
 * [`ToString` is specialized for `str`, giving it the same performance
   as `to_owned`][1.9ts].
 * [Spawning processes with `Command::output` no longer creates extra
