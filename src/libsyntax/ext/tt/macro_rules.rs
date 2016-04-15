@@ -1014,6 +1014,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                 match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
+                    MatchNt(_, ref frag, _, _) if frag.name.as_str() == "block" => Ok(true),
                     Ident(i, _) if (i.name.as_str() == "as" ||
                                     i.name.as_str() == "where") => Ok(true),
                     _ => Ok(false)
