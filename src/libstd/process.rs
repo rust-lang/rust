@@ -38,10 +38,10 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// let mut child = Command::new("/bin/cat")
 ///                         .arg("file.txt")
 ///                         .spawn()
-///                         .unwrap_or_else(|e| { panic!("failed to execute child: {}", e) });
+///                         .expect("failed to execute child");
 ///
 /// let ecode = child.wait()
-///                  .unwrap_or_else(|e| { panic!("failed to wait on child: {}", e) });
+///                  .expect("failed to wait on child");
 ///
 /// assert!(ecode.success());
 /// ```
@@ -195,7 +195,8 @@ impl FromInner<AnonPipe> for ChildStderr {
 ///                      .arg("-c")
 ///                      .arg("echo hello")
 ///                      .output()
-///                      .unwrap_or_else(|e| { panic!("failed to execute process: {}", e) });
+///                      .expect("failed to execute proces");
+///
 /// let hello = output.stdout;
 /// ```
 #[stable(feature = "process", since = "1.0.0")]
@@ -305,15 +306,16 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```should_panic
     /// use std::process::Command;
-    /// let output = Command::new("cat").arg("foo.txt").output().unwrap_or_else(|e| {
-    ///     panic!("failed to execute process: {}", e)
-    /// });
+    /// let output = Command::new("/bin/cat").arg("file.txt").output()
+    ///     .expect("failed to execute process");
     ///
     /// println!("status: {}", output.status);
     /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
     /// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    ///
+    /// assert!(output.status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
@@ -328,14 +330,15 @@ impl Command {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```should_panic
     /// use std::process::Command;
     ///
-    /// let status = Command::new("ls").status().unwrap_or_else(|e| {
-    ///     panic!("failed to execute process: {}", e)
-    /// });
+    /// let status = Command::new("/bin/cat").arg("file.txt").status()
+    ///     .expect("failed to execute process");
     ///
     /// println!("process exited with: {}", status);
+    ///
+    /// assert!(status.success());
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
@@ -499,6 +502,29 @@ impl Child {
     /// before waiting. This helps avoid deadlock: it ensures that the
     /// child does not block waiting for input from the parent, while
     /// the parent waits for the child to exit.
+    ///
+    /// By default, stdin, stdout and stderr are inherited from the parent.
+    /// In order to capture the output into this `Result<Output>` it is
+    /// necessary to create new pipes between parent and child. Use
+    /// `stdout(Stdio::piped())` or `stderr(Stdio::piped())`, respectively.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// use std::process::{Command, Stdio};
+    ///
+    /// let mut child = Command::new("/bin/cat")
+    ///                         .arg("file.txt")
+    ///                         .stdout(Stdio::piped())
+    ///                         .spawn()
+    ///                         .expect("failed to execute child");
+    ///
+    /// let ecode = child.wait_with_output()
+    ///                  .expect("failed to wait on child");
+    ///
+    /// assert!(ecode.status.success());
+    /// ```
+    ///
     #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
