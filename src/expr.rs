@@ -313,6 +313,9 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
 //   * the body of a closure is represented by an ast::Block, but that does not
 //     imply there are `{}` (unless the block is empty) (see rust issue #27872),
 //   * if there is a return type, then there must be braces,
+//   * given a closure with braces, whether that is parsed to give an inner block
+//     or not depends on if there is a return type and if there are statements
+//     in that block,
 //   * if the first expression in the body ends with a block (i.e., is a
 //     statement without needing a semi-colon), then adding or removing braces
 //     can change whether it is treated as an expression or statement.
@@ -379,11 +382,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
         prefix.push_str(&ret_str);
     }
 
-    assert!(body.stmts.is_empty(),
-            "unexpected statements in closure: `{}`",
-            context.snippet(span));
-
-    if body.expr.is_none() {
+    if body.expr.is_none() && body.stmts.is_empty() {
         return Some(format!("{} {{}}", prefix));
     }
 
@@ -392,15 +391,17 @@ fn rewrite_closure(capture: ast::CaptureBy,
     let budget = try_opt!(width.checked_sub(extra_offset));
 
     // This is where we figure out whether to use braces or not.
-    let mut had_braces = false;
+    let mut had_braces = true;
     let mut inner_block = body;
-    if let ast::ExprKind::Block(ref inner) = inner_block.expr.as_ref().unwrap().node {
-        had_braces = true;
-        inner_block = inner;
-    };
-    assert!(!force_block || !had_braces,
-            "Closure requires braces, but they weren't present. How did this parse? `{}`",
-            context.snippet(span));
+
+    // If there is an inner block and we can ignore it, do so.
+    if body.stmts.is_empty() {
+        if let ast::ExprKind::Block(ref inner) = inner_block.expr.as_ref().unwrap().node {
+            inner_block = inner;
+        } else if !force_block {
+            had_braces = false;
+        }
+    }
 
     let try_single_line = is_simple_block(inner_block, context.codemap) &&
                           inner_block.rules == ast::BlockCheckMode::Default;
@@ -439,7 +440,9 @@ fn rewrite_closure(capture: ast::CaptureBy,
     if try_single_line && !prefix.contains('\n') {
         let inner_expr = inner_block.expr.as_ref().unwrap();
         // 4 = braces and spaces.
-        let mut rewrite = inner_expr.rewrite(context, budget - 4, offset + extra_offset);
+        let mut rewrite = inner_expr.rewrite(context,
+                                             try_opt!(budget.checked_sub(4)),
+                                             offset + extra_offset);
 
         // Checks if rewrite succeeded and fits on a single line.
         rewrite = and_one_line(rewrite);
