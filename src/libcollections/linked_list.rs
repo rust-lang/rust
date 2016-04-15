@@ -30,6 +30,8 @@ use core::mem;
 use core::ops::{BoxPlace, InPlace, Place, Placer};
 use core::ptr::{self, Shared};
 
+use super::SpecExtend;
+
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
@@ -969,9 +971,21 @@ impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for LinkedList<A> {
     fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T) {
+        <Self as SpecExtend<T>>::spec_extend(self, iter);
+    }
+}
+
+impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
+    default fn spec_extend(&mut self, iter: I) {
         for elt in iter {
             self.push_back(elt);
         }
+    }
+}
+
+impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
+    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {
+        self.append(other);
     }
 }
 
