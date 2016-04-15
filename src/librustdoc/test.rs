@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cell::{RefCell, Cell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -111,6 +111,7 @@ pub fn run(input: &str,
         external_traits: RefCell::new(HashMap::new()),
         all_crate_impls: RefCell::new(HashMap::new()),
         deref_trait_did: Cell::new(None),
+        analyzed_crates: RefCell::new(HashSet::new()),
         access_levels: Default::default(),
         renderinfo: Default::default(),
     };
