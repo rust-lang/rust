@@ -8,41 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// calling pin_thread and that's having weird side-effects.
+// aux-build:foreign_lib.rs
 
-#![feature(libc)]
+// Check that we can still call duplicated extern (imported) functions
+// which were declared in another crate. See issues #32740 and #32783.
 
-mod rustrt1 {
-    extern crate libc;
 
-    #[link(name = "rust_test_helpers")]
-    extern {
-        pub fn rust_get_test_int() -> libc::intptr_t;
-    }
-}
-
-mod rustrt2 {
-    extern crate libc;
-
-    extern {
-        pub fn rust_get_test_int() -> libc::intptr_t;
-    }
-}
-
-mod rustrt3 {
-    // Different type, but same ABI (on all supported platforms).
-    // Ensures that we don't ICE or trigger LLVM asserts when
-    // importing the same symbol under different types.
-    // See https://github.com/rust-lang/rust/issues/32740.
-    extern {
-        pub fn rust_get_test_int() -> *const u8;
-    }
-}
+extern crate foreign_lib;
 
 pub fn main() {
     unsafe {
-        let x = rustrt1::rust_get_test_int();
-        assert_eq!(x, rustrt2::rust_get_test_int());
-        assert_eq!(x as *const _, rustrt3::rust_get_test_int());
+        let x = foreign_lib::rustrt::rust_get_test_int();
+        assert_eq!(x, foreign_lib::rustrt2::rust_get_test_int());
+        assert_eq!(x as *const _, foreign_lib::rustrt3::rust_get_test_int());
     }
 }
