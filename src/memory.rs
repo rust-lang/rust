@@ -102,8 +102,9 @@ impl Memory {
             alloc_map: HashMap::new(),
             next_id: AllocId(0),
 
-            // TODO(tsion): Should this be host's or target's usize?
-            pointer_size: mem::size_of::<usize>(),
+            // FIXME(tsion): This should work for both 4 and 8, but it currently breaks some things
+            // when set to 4.
+            pointer_size: 8,
         }
     }
 
