@@ -440,7 +440,9 @@ pub enum Input {
 
 pub fn run(input: Input, config: &Config) -> Summary {
     let (mut summary, file_map, report) = format_input(input, config);
-    msg!("{}", report);
+    if report.has_warnings() {
+        msg!("{}", report);
+    }
 
     let mut out = stdout();
     let write_result = filemap::write_all_files(&file_map, &mut out, config);
