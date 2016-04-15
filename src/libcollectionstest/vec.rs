@@ -93,6 +93,9 @@ fn test_extend() {
     for i in 3..10 { w.push(i) }
 
     assert_eq!(v, w);
+
+    v.extend(w.clone()); // specializes to `append`
+    assert!(v.iter().eq(w.iter().chain(w.iter())));
 }
 
 #[test]
