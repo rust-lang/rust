@@ -45,8 +45,8 @@ use std::cmp;
 // The version numbers here correspond to the version in which the current status
 // was set. This is most important for knowing when a particular feature became
 // stable (active).
-// NB: The featureck.py script parses this information directly out of the source
-// so take care when modifying it.
+// NB: The tidy tool parses this information directly out of the source so take
+// care when modifying it.
 const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status)] = &[
     ("globs", "1.0.0", None, Accepted),
     ("macro_rules", "1.0.0", None, Accepted),
