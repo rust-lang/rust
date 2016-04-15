@@ -197,7 +197,7 @@ impl<I> Iterator for Fuse<I> where I: FusedIterator {
 
 Just pay the overhead on the rare occasions when fused is actually used.
 
-## Associated Type
+## IntoFused
 
 Use an associated type (and set it to `Self` for iterators that already provide
 the fused guarantee) and an `IntoFused` trait:
@@ -239,6 +239,30 @@ complexity, needs to be implemented as a separate trait (because adding
 associated types is a breaking change), and can't be used to optimize the
 iterators returned from `Iterator::fuse` (users would *have* to call
 `IntoFused::into_fused`).
+
+## Associated Type
+
+If we add the ability to condition associated types on `Self: Sized`, I believe
+we can add them without it being a breaking change (associated types only need
+to be fully specified on DSTs). If so (after fixing the bug in specialization
+noted above), we could do the following:
+
+```rust
+trait Iterator {
+    type Item;
+    type Fuse: Iterator<Item=Self::Item> where Self: Sized = Fuse<Self>;
+    fn fuse(self) -> Self::Fuse where Self: Sized {
+        Fuse {
+            done: false,
+            iter: self,
+        }
+    }
+    // ...
+}
+```
+
+However, changing an iterator to take advantage of this would be a breaking
+change.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
