@@ -12,7 +12,7 @@
 //! up to a certain length. Eventually we should able to generalize
 //! to all lengths.
 //!
-//! *[See also the array primitive type](../primitive.array.html).*
+//! *[See also the array primitive type](../../std/primitive.array.html).*
 
 #![unstable(feature = "fixed_size_array",
             reason = "traits and impls are better expressed through generic \
