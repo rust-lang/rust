@@ -24,8 +24,18 @@ macro_rules! bar { // test issue #31856
     )
 }
 
+macro_rules! baz {
+    ($i:ident) => {
+        let mut $i = 2;
+        $i = $i + 1;
+    }
+}
+
 #[rustc_error]
 fn main() { //~ ERROR compilation successful
     foo! {};
     bar! {};
+
+    let mut a = true;
+    baz!(a);
 }
