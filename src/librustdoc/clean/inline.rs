@@ -28,7 +28,7 @@ use rustc_const_eval::lookup_const_by_id;
 
 use core::DocContext;
 use doctree;
-use clean::{self, Attributes, GetDefId};
+use clean::{self, GetDefId};
 
 use super::{Clean, ToSource};
 
@@ -227,6 +227,15 @@ fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
     }, false)
 }
 
+fn is_item_doc_reachable(cx: &DocContext, did: DefId) -> bool {
+    use ::visit_lib::LibEmbargoVisitor;
+
+    if cx.analyzed_crates.borrow_mut().insert(did.krate) {
+        LibEmbargoVisitor::new(cx).visit_lib(did.krate);
+    }
+    cx.access_levels.borrow().is_public(did)
+}
+
 pub fn build_impls(cx: &DocContext,
                    tcx: &TyCtxt,
                    did: DefId) -> Vec<clean::Item> {
@@ -260,11 +269,6 @@ pub fn build_impls(cx: &DocContext,
             match def {
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
-                    // Don't recurse if this is a #[doc(hidden)] module
-                    if load_attrs(cx, tcx, did).list("doc").has_word("hidden") {
-                        return;
-                    }
-
                     for item in tcx.sess.cstore.item_children(did) {
                         populate_impls(cx, tcx, item.def, impls)
                     }
@@ -301,10 +305,11 @@ pub fn build_impl(cx: &DocContext,
 
     let attrs = load_attrs(cx, tcx, did);
     let associated_trait = tcx.impl_trait_ref(did);
-    if let Some(ref t) = associated_trait {
-        // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
-        let trait_attrs = load_attrs(cx, tcx, t.def_id);
-        if trait_attrs.list("doc").has_word("hidden") {
+
+    // Only inline impl if the implemented trait is
+    // reachable in rustdoc generated documentation
+    if let Some(traitref) = associated_trait {
+        if !is_item_doc_reachable(cx, traitref.def_id) {
             return
         }
     }
@@ -328,6 +333,17 @@ pub fn build_impl(cx: &DocContext,
             deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
             def_id: did,
         });
+    }
+
+    let ty = tcx.lookup_item_type(did);
+    let for_ = ty.ty.clean(cx);
+
+    // Only inline impl if the implementing type is
+    // reachable in rustdoc generated documentation
+    if let Some(did) = for_.def_id() {
+        if !is_item_doc_reachable(cx, did) {
+            return
+        }
     }
 
     let predicates = tcx.lookup_predicates(did);
@@ -412,7 +428,6 @@ pub fn build_impl(cx: &DocContext,
         }
     }).collect::<Vec<_>>();
     let polarity = tcx.trait_impl_polarity(did);
-    let ty = tcx.lookup_item_type(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
             clean::TraitBound(polyt, _) => polyt.trait_,
@@ -436,7 +451,7 @@ pub fn build_impl(cx: &DocContext,
             derived: clean::detect_derived(&attrs),
             provided_trait_methods: provided,
             trait_: trait_,
-            for_: ty.ty.clean(cx),
+            for_: for_,
             generics: (&ty.generics, &predicates, subst::TypeSpace).clean(cx),
             items: trait_items,
             polarity: polarity.map(|p| { p.clean(cx) }),

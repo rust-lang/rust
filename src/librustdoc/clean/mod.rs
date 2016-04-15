@@ -57,7 +57,7 @@ use doctree;
 use visit_ast;
 use html::item_type::ItemType;
 
-mod inline;
+pub mod inline;
 mod simplify;
 
 // extract the stability index for a node from tcx, if possible

@@ -80,6 +80,7 @@ pub mod markdown;
 pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
+pub mod visit_lib;
 pub mod test;
 mod flock;
 

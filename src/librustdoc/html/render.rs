@@ -253,6 +253,9 @@ pub struct Cache {
     parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
     stripped_mod: bool,
+    // Note that external items for which `doc(hidden)` applies to are shown as
+    // non-reachable while local items aren't. This is because we're reusing
+    // the access levels from crateanalysis.
     access_levels: Arc<AccessLevels<DefId>>,
     deref_trait_did: Option<DefId>,
 

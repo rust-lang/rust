@@ -14,6 +14,7 @@ use rustc_driver::{driver, target_features, abort_on_err};
 use rustc::dep_graph::DepGraph;
 use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
+use rustc::middle::cstore::LOCAL_CRATE;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt};
 use rustc::hir::map as hir_map;
@@ -29,7 +30,7 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
 
 use std::cell::{RefCell, Cell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use visit_ast::RustdocVisitor;
@@ -53,12 +54,17 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub maybe_typed: MaybeTyped<'a, 'tcx>,
     pub input: Input,
     pub all_crate_impls: RefCell<HashMap<ast::CrateNum, Vec<clean::Item>>>,
-    // Later on moved into `clean::Crate`
-    pub access_levels: RefCell<AccessLevels<DefId>>,
-    // Later on moved into `html::render::CACHE_KEY`
-    pub renderinfo: RefCell<RenderInfo>,
     pub deref_trait_did: Cell<Option<DefId>>,
-    // Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
+    /// Crates which have already been processed for `Self.access_levels`
+    pub analyzed_crates: RefCell<HashSet<ast::CrateNum>>,
+    // Note that external items for which `doc(hidden)` applies to are shown as
+    // non-reachable while local items aren't. This is because we're reusing
+    // the access levels from crateanalysis.
+    /// Later on moved into `clean::Crate`
+    pub access_levels: RefCell<AccessLevels<DefId>>,
+    /// Later on moved into `html::render::CACHE_KEY`
+    pub renderinfo: RefCell<RenderInfo>,
+    /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
     pub external_traits: RefCell<HashMap<DefId, clean::Trait>>,
 }
 
@@ -166,6 +172,8 @@ pub fn run_core(search_paths: SearchPaths,
                                   .map(|(k, v)| (tcx.map.local_def_id(k), v))
                                   .collect()
         };
+        let mut analyzed_crates = HashSet::new();
+        analyzed_crates.insert(LOCAL_CRATE);
 
         let ctxt = DocContext {
             map: &tcx.map,
@@ -173,6 +181,7 @@ pub fn run_core(search_paths: SearchPaths,
             input: input,
             all_crate_impls: RefCell::new(HashMap::new()),
             deref_trait_did: Cell::new(None),
+            analyzed_crates: RefCell::new(analyzed_crates),
             access_levels: RefCell::new(access_levels),
             external_traits: RefCell::new(HashMap::new()),
             renderinfo: RefCell::new(Default::default()),

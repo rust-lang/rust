@@ -113,6 +113,7 @@ pub enum InlinedItemRef<'a> {
 /// LOCAL_CRATE in their DefId.
 pub const LOCAL_CRATE: ast::CrateNum = 0;
 
+#[derive(Copy, Clone)]
 pub struct ChildItem {
     pub def: DefLike,
     pub name: ast::Name,
