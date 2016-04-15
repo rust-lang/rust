@@ -770,7 +770,7 @@ impl<T> [T] {
     /// let r = s.binary_search_by_key(&1, |&(a,b)| b);
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
-    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "0")]
+    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "33018")]
     #[inline]
     pub fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
         where F: FnMut(&T) -> B,
