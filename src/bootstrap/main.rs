@@ -20,6 +20,7 @@ extern crate libc;
 extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
+extern crate md5;
 
 use std::env;
 
