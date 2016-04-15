@@ -7,6 +7,8 @@ An experimental interpreter for [Rust][rust]'s [mid-level intermediate
 representation][mir] (MIR). This project began as part of my work for the
 undergraduate research course at the [University of Saskatchewan][usask].
 
+[![Build Status](https://travis-ci.org/tsion/miri.svg?branch=master)](https://travis-ci.org/tsion/miri)
+
 ## Download Rust nightly
 
 I currently recommend that you install [multirust][multirust] and then use it to
@@ -34,7 +36,7 @@ If you are using [rustup][rustup] (the name of the multirust rewrite in Rust),
 the `sysroot` path will also include your build target (e.g.
 `$HOME/.multirust/toolchains/nightly-2016-04-11-x86_64-apple-darwin`). You can
 see the current toolchain's directory by running `rustup which cargo` (ignoring
-the trailing `/bin/cargo).
+the trailing `/bin/cargo`).
 
 If you installed without using multirust or rustup, you'll need to adjust the
 command to run your cargo and set the `sysroot` to the directory where your
