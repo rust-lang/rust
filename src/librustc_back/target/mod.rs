@@ -434,35 +434,47 @@ impl Target {
             } );
         }
 
-        key!(cpu);
-        key!(ar);
+        key!(is_builtin, bool);
         key!(linker);
+        key!(ar);
+        key!(pre_link_args, list);
+        key!(pre_link_objects_exe, list);
+        key!(pre_link_objects_dll, list);
+        key!(late_link_args, list);
+        key!(post_link_objects, list);
+        key!(post_link_args, list);
+        key!(cpu);
+        key!(features);
+        key!(dynamic_linking, bool);
+        key!(executables, bool);
         key!(relocation_model);
         key!(code_model);
+        key!(disable_redzone, bool);
+        key!(eliminate_frame_pointer, bool);
+        key!(function_sections, bool);
         key!(dll_prefix);
         key!(dll_suffix);
         key!(exe_suffix);
         key!(staticlib_prefix);
         key!(staticlib_suffix);
-        key!(features);
-        key!(dynamic_linking, bool);
-        key!(executables, bool);
-        key!(disable_redzone, bool);
-        key!(eliminate_frame_pointer, bool);
-        key!(function_sections, bool);
         key!(target_family, optional);
         key!(is_like_osx, bool);
+        key!(is_like_solaris, bool);
         key!(is_like_windows, bool);
         key!(is_like_msvc, bool);
+        key!(is_like_android, bool);
         key!(linker_is_gnu, bool);
         key!(has_rpath, bool);
         key!(no_compiler_rt, bool);
         key!(no_default_libraries, bool);
-        key!(pre_link_args, list);
-        key!(post_link_args, list);
+        key!(position_independent_executables, bool);
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
+        key!(lib_allocation_crate);
+        key!(exe_allocation_crate);
+        key!(has_elf_tls, bool);
+        key!(obj_is_bitcode, bool);
         key!(max_atomic_width, u64);
 
         base
