@@ -284,6 +284,10 @@ impl Memory {
         Ok(())
     }
 
+    pub fn read_bytes(&self, ptr: Pointer, size: usize) -> EvalResult<&[u8]> {
+        self.get_bytes(ptr, size)
+    }
+
     pub fn write_bytes(&mut self, ptr: Pointer, src: &[u8]) -> EvalResult<()> {
         let bytes = try!(self.get_bytes_mut(ptr, src.len()));
         bytes.clone_from_slice(src);

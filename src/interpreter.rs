@@ -393,8 +393,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                         try!(self.memory.deallocate(contents_ptr));
                     }
                     Err(EvalError::ReadBytesAsPointer) => {
-                        let possible_drop_fill = try!(self.memory.read_usize(ptr));
-                        if possible_drop_fill == mem::POST_DROP_U64 {
+                        let size = self.memory.pointer_size;
+                        let possible_drop_fill = try!(self.memory.read_bytes(ptr, size));
+                        if possible_drop_fill.iter().all(|&b| b == mem::POST_DROP_U8) {
                             return Ok(());
                         } else {
                             return Err(EvalError::ReadBytesAsPointer);
