@@ -69,7 +69,7 @@ Names of items within a module should not be prefixed with that module's name:
 
 Prefer
 
-``` rust
+```rust,ignore
 mod foo {
     pub struct Error { ... }
 }
@@ -77,7 +77,7 @@ mod foo {
 
 over
 
-``` rust
+```rust,ignore
 mod foo {
     pub struct FooError { ... }
 }

@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
+use std::process::Command;
 
 use build::{Build, Compiler};
 
@@ -100,5 +101,44 @@ pub fn compiletest(build: &Build,
         cmd.arg("--verbose");
     }
 
+    build.run(&mut cmd);
+}
+
+pub fn docs(build: &Build, compiler: &Compiler) {
+    let mut stack = vec![build.src.join("src/doc")];
+
+    while let Some(p) = stack.pop() {
+        if p.is_dir() {
+            stack.extend(t!(p.read_dir()).map(|p| t!(p).path()));
+            continue
+        }
+
+        if p.extension().and_then(|s| s.to_str()) != Some("md") {
+            continue
+        }
+
+        println!("doc tests for: {}", p.display());
+        markdown_test(build, compiler, &p);
+    }
+}
+
+pub fn error_index(build: &Build, compiler: &Compiler) {
+    println!("Testing error-index stage{}", compiler.stage);
+
+    let output = testdir(build, compiler.host).join("error-index.md");
+    build.run(build.tool_cmd(compiler, "error_index_generator")
+                   .arg("markdown")
+                   .arg(&output)
+                   .env("CFG_BUILD", &build.config.build));
+
+    markdown_test(build, compiler, &output);
+}
+
+fn markdown_test(build: &Build, compiler: &Compiler, markdown: &Path) {
+    let mut cmd = Command::new(build.rustdoc(compiler));
+    build.add_rustc_lib_path(compiler, &mut cmd);
+    cmd.arg("--test");
+    cmd.arg(markdown);
+    cmd.arg("--test-args").arg(build.flags.args.join(" "));
     build.run(&mut cmd);
 }

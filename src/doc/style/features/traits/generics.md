@@ -4,7 +4,7 @@ The most widespread use of traits is for writing generic functions or types. For
 example, the following signature describes a function for consuming any iterator
 yielding items of type `A` to produce a collection of `A`:
 
-```rust
+```rust,ignore
 fn from_iter<T: Iterator<A>>(iterator: T) -> SomeCollection<A>
 ```
 
@@ -32,7 +32,7 @@ explicitly implement to be used by this generic function.
   implementing a trait, it is possible to be precise about places where that
   exact type is required or produced. For example, a function
 
-  ```rust
+  ```rust,ignore
   fn binary<T: Trait>(x: T, y: T) -> T
   ```
 
