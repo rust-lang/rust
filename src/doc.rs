@@ -142,10 +142,10 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                     }
                     '`' => {
                         current_word_begin = jump_to!(chars, '`', len);
-                    },
+                    }
                     '[' => {
                         let end = jump_to!(chars, ']', len);
-                        let link_text = &doc[current_word_begin+1..end];
+                        let link_text = &doc[current_word_begin + 1..end];
 
                         match chars.peek() {
                             Some(&(_, c)) => {
@@ -199,7 +199,7 @@ fn check_word(cx: &EarlyContext, valid_idents: &[String], word: &str, span: Span
         }
 
         let s = if s.ends_with('s') {
-            &s[..s.len()-1]
+            &s[..s.len() - 1]
         } else {
             s
         };
@@ -223,6 +223,9 @@ fn check_word(cx: &EarlyContext, valid_idents: &[String], word: &str, span: Span
     }
 
     if has_underscore(word) || word.contains("::") || is_camel_case(word) {
-        span_lint(cx, DOC_MARKDOWN, span, &format!("you should put `{}` between ticks in the documentation", word));
+        span_lint(cx,
+                  DOC_MARKDOWN,
+                  span,
+                  &format!("you should put `{}` between ticks in the documentation", word));
     }
 }

@@ -3,8 +3,7 @@ use rustc::ty::TypeVariants;
 use rustc::hir::*;
 use syntax::codemap::Span;
 use syntax::ptr::P;
-use utils::VEC_FROM_ELEM_PATH;
-use utils::{is_expn_of, match_path, recover_for_loop, snippet, span_lint_and_then};
+use utils::{is_expn_of, match_path, paths, recover_for_loop, snippet, span_lint_and_then};
 
 /// **What it does:** This lint warns about using `&vec![..]` when using `&[..]` would be possible.
 ///
@@ -64,8 +63,7 @@ fn check_vec_macro(cx: &LateContext, expr: &Expr, vec: &Expr) {
                     };
 
                     format!("&[{}]", snippet(cx, span, "..")).into()
-                }
-                else {
+                } else {
                     "&[]".into()
                 }
             }
@@ -92,7 +90,7 @@ pub fn unexpand_vec<'e>(cx: &LateContext, expr: &'e Expr) -> Option<VecArgs<'e>>
         let ExprPath(_, ref path) = fun.node,
         is_expn_of(cx, fun.span, "vec").is_some()
     ], {
-        return if match_path(path, &VEC_FROM_ELEM_PATH) && args.len() == 2 {
+        return if match_path(path, &paths::VEC_FROM_ELEM) && args.len() == 2 {
             // `vec![elem; size]` case
             Some(VecArgs::Repeat(&args[0], &args[1]))
         }

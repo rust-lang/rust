@@ -45,7 +45,7 @@ struct ExistingName {
     interned: InternedString,
     span: Span,
     len: usize,
-    whitelist: &'static[&'static str],
+    whitelist: &'static [&'static str],
 }
 
 struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
@@ -57,6 +57,7 @@ struct SimilarNamesLocalVisitor<'a, 'b: 'a> {
 
 // this list contains lists of names that are allowed to be similar
 // the assumption is that no name is ever contained in multiple lists.
+#[cfg_attr(rustfmt, rustfmt_skip)]
 const WHITELIST: &'static [&'static [&'static str]] = &[
     &["parsed", "parser"],
     &["lhs", "rhs"],
@@ -75,7 +76,7 @@ impl<'v, 'a, 'b, 'c> visit::Visitor<'v> for SimilarNamesNameVisitor<'a, 'b, 'c> 
     }
 }
 
-fn get_whitelist(interned_name: &str) -> Option<&'static[&'static str]> {
+fn get_whitelist(interned_name: &str) -> Option<&'static [&'static str]> {
     for &allow in WHITELIST {
         if whitelisted(interned_name, allow) {
             return Some(allow);
@@ -112,8 +113,7 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
             span_lint(self.0.cx,
                       MANY_SINGLE_CHAR_NAMES,
                       span,
-                      &format!("{}th binding whose name is just one char",
-                               self.0.single_char_names.len()));
+                      &format!("{}th binding whose name is just one char", self.0.single_char_names.len()));
         }
     }
     fn check_name(&mut self, span: Span, name: Name) {
@@ -162,7 +162,8 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                     } else {
                         let second_last_i = interned_chars.next_back().expect("we know we have at least three chars");
                         let second_last_e = existing_chars.next_back().expect("we know we have at least three chars");
-                        if !eq_or_numeric(second_last_i, second_last_e) || second_last_i == '_' || !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
+                        if !eq_or_numeric(second_last_i, second_last_e) || second_last_i == '_' ||
+                           !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
                             // allowed similarity foo_x, foo_y
                             // or too many chars differ (foo_x, boo_y) or (foox, booy)
                             continue;
@@ -172,7 +173,8 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                 } else {
                     let second_i = interned_chars.next().expect("we know we have at least two chars");
                     let second_e = existing_chars.next().expect("we know we have at least two chars");
-                    if !eq_or_numeric(second_i, second_e) || second_i == '_' || !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
+                    if !eq_or_numeric(second_i, second_e) || second_i == '_' ||
+                       !interned_chars.zip(existing_chars).all(|(i, e)| eq_or_numeric(i, e)) {
                         // allowed similarity x_foo, y_foo
                         // or too many chars differ (x_foo, y_boo) or (xfoo, yboo)
                         continue;
@@ -187,10 +189,11 @@ impl<'a, 'b, 'c> SimilarNamesNameVisitor<'a, 'b, 'c> {
                                |diag| {
                                    diag.span_note(existing_name.span, "existing binding defined here");
                                    if let Some(split) = split_at {
-                                       diag.span_help(span, &format!("separate the discriminating character \
-                                                                      by an underscore like: `{}_{}`",
-                                                                     &interned_name[..split],
-                                                                     &interned_name[split..]));
+                                       diag.span_help(span,
+                                                      &format!("separate the discriminating character by an \
+                                                                underscore like: `{}_{}`",
+                                                               &interned_name[..split],
+                                                               &interned_name[split..]));
                                    }
                                });
             return;

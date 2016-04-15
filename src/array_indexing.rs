@@ -78,17 +78,16 @@ impl LateLintPass for ArrayIndexing {
 
                 // Index is a constant range
                 if let Some(range) = utils::unsugar_range(index) {
-                    let start = range.start.map(|start|
-                        eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None)).map(|v| v.ok());
-                    let end = range.end.map(|end|
-                        eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None)).map(|v| v.ok());
+                    let start = range.start
+                                     .map(|start| eval_const_expr_partial(cx.tcx, start, ExprTypeChecked, None))
+                                     .map(|v| v.ok());
+                    let end = range.end
+                                   .map(|end| eval_const_expr_partial(cx.tcx, end, ExprTypeChecked, None))
+                                   .map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(start, end, range.limits, size) {
                         if start > size || end > size {
-                            utils::span_lint(cx,
-                                             OUT_OF_BOUNDS_INDEXING,
-                                             e.span,
-                                             "range is out of bounds");
+                            utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "range is out of bounds");
                         }
                         return;
                     }
@@ -111,11 +110,9 @@ impl LateLintPass for ArrayIndexing {
 }
 
 /// Returns an option containing a tuple with the start and end (exclusive) of the range.
-fn to_const_range(start: Option<Option<ConstVal>>,
-                  end: Option<Option<ConstVal>>,
-                  limits: RangeLimits,
+fn to_const_range(start: Option<Option<ConstVal>>, end: Option<Option<ConstVal>>, limits: RangeLimits,
                   array_size: ConstInt)
-                    -> Option<(ConstInt, ConstInt)> {
+                  -> Option<(ConstInt, ConstInt)> {
     let start = match start {
         Some(Some(ConstVal::Integral(x))) => x,
         Some(_) => return None,
@@ -131,7 +128,7 @@ fn to_const_range(start: Option<Option<ConstVal>>,
             }
         }
         Some(_) => return None,
-        None => array_size
+        None => array_size,
     };
 
     Some((start, end))

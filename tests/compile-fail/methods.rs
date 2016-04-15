@@ -470,3 +470,15 @@ fn single_char_pattern() {
     //~| HELP try using a char instead:
     //~| SUGGESTION x.trim_right_matches('x');
 }
+
+#[allow(result_unwrap_used)]
+fn temporary_cstring() {
+    use std::ffi::CString;
+
+    ( // extra parenthesis to better test spans
+    //~^ ERROR you are getting the inner pointer of a temporary `CString`
+    //~| NOTE that pointer will be invalid outside this expression
+        CString::new("foo").unwrap()
+        //~^ HELP assign the `CString` to a variable to extend its lifetime
+    ).as_ptr();
+}

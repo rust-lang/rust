@@ -64,7 +64,7 @@ impl LateLintPass for LenZero {
             return;
         }
 
-        if let ExprBinary(Spanned{node: cmp, ..}, ref left, ref right) = expr.node {
+        if let ExprBinary(Spanned { node: cmp, .. }, ref left, ref right) = expr.node {
             match cmp {
                 BiEq => check_cmp(cx, expr.span, left, right, ""),
                 BiGt | BiNe => check_cmp(cx, expr.span, left, right, "!"),
@@ -155,7 +155,7 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 }
 
 fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[P<Expr>], lit: &Lit, op: &str) {
-    if let Spanned{node: LitKind::Int(0, _), ..} = *lit {
+    if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
         if name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_then(cx, LEN_ZERO, span, "length comparison to zero", |db| {
                 db.span_suggestion(span,
@@ -199,7 +199,8 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
               .map_or(false, |ids| ids.iter().any(|i| is_is_empty(cx, i)))
         }
         ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, &id)),
-        ty::TyEnum(ref id, _) | ty::TyStruct(ref id, _) => has_is_empty_impl(cx, &id.did),
+        ty::TyEnum(ref id, _) |
+        ty::TyStruct(ref id, _) => has_is_empty_impl(cx, &id.did),
         ty::TyArray(..) | ty::TyStr => true,
         _ => false,
     }

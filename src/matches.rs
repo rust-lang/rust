@@ -8,7 +8,7 @@ use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
-use utils::{COW_PATH, OPTION_PATH, RESULT_PATH};
+use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
 
 /// **What it does:** This lint checks for matches with a single arm where an `if let` will usually suffice.
@@ -184,13 +184,13 @@ fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], 
 
 fn check_single_match_opt_like(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, ty: ty::Ty, els: Option<&Expr>) {
     // list of candidate Enums we know will never get any more members
-    let candidates = &[(&COW_PATH, "Borrowed"),
-                       (&COW_PATH, "Cow::Borrowed"),
-                       (&COW_PATH, "Cow::Owned"),
-                       (&COW_PATH, "Owned"),
-                       (&OPTION_PATH, "None"),
-                       (&RESULT_PATH, "Err"),
-                       (&RESULT_PATH, "Ok")];
+    let candidates = &[(&paths::COW, "Borrowed"),
+                       (&paths::COW, "Cow::Borrowed"),
+                       (&paths::COW, "Cow::Owned"),
+                       (&paths::COW, "Owned"),
+                       (&paths::OPTION, "None"),
+                       (&paths::RESULT, "Err"),
+                       (&paths::RESULT, "Ok")];
 
     let path = match arms[1].pats[0].node {
         PatKind::TupleStruct(ref path, Some(ref inner)) => {
@@ -252,19 +252,20 @@ fn check_match_bool(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 
             if let Some((ref true_expr, ref false_expr)) = exprs {
                 match (is_unit_expr(true_expr), is_unit_expr(false_expr)) {
-                    (false, false) =>
+                    (false, false) => {
                         Some(format!("if {} {} else {}",
                                      snippet(cx, ex.span, "b"),
                                      expr_block(cx, true_expr, None, ".."),
-                                     expr_block(cx, false_expr, None, ".."))),
-                    (false, true) =>
-                        Some(format!("if {} {}",
-                                     snippet(cx, ex.span, "b"),
-                                     expr_block(cx, true_expr, None, ".."))),
-                    (true, false) =>
+                                     expr_block(cx, false_expr, None, "..")))
+                    }
+                    (false, true) => {
+                        Some(format!("if {} {}", snippet(cx, ex.span, "b"), expr_block(cx, true_expr, None, "..")))
+                    }
+                    (true, false) => {
                         Some(format!("try\nif !{} {}",
                                      snippet(cx, ex.span, "b"),
-                                     expr_block(cx, false_expr, None, ".."))),
+                                     expr_block(cx, false_expr, None, "..")))
+                    }
                     (true, true) => None,
                 }
             } else {
@@ -312,9 +313,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
                                expr.span,
                                "you don't need to add `&` to both the expression and the patterns",
                                |db| {
-                                   db.span_suggestion(expr.span,
-                                                      "try",
-                                                      template);
+                                   db.span_suggestion(expr.span, "try", template);
                                });
         } else {
             let template = match_template(cx, expr.span, source, "*", ex);
@@ -324,7 +323,8 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
                                "you don't need to add `&` to all patterns",
                                |db| {
                                    db.span_suggestion(expr.span,
-                                                      "instead of prefixing all patterns with `&`, you can dereference the expression",
+                                                      "instead of prefixing all patterns with `&`, you can \
+                                                       dereference the expression",
                                                       template);
                                });
         }
@@ -373,17 +373,18 @@ type TypedRanges = Vec<SpannedRange<ConstInt>>;
 /// Get all `Int` ranges or all `Uint` ranges. Mixed types are an error anyway and other types than
 /// `Uint` and `Int` probably don't make sense.
 fn type_ranges(ranges: &[SpannedRange<ConstVal>]) -> TypedRanges {
-    ranges.iter().filter_map(|range| {
-        if let (ConstVal::Integral(start), ConstVal::Integral(end)) = range.node {
-            Some(SpannedRange {
-                span: range.span,
-                node: (start, end),
-            })
-        } else {
-            None
-        }
-    })
-    .collect()
+    ranges.iter()
+          .filter_map(|range| {
+              if let (ConstVal::Integral(start), ConstVal::Integral(end)) = range.node {
+                  Some(SpannedRange {
+                      span: range.span,
+                      node: (start, end),
+                  })
+              } else {
+                  None
+              }
+          })
+          .collect()
 }
 
 fn is_unit_expr(expr: &Expr) -> bool {
@@ -416,7 +417,7 @@ fn match_template(cx: &LateContext, span: Span, source: MatchSource, op: &str, e
         MatchSource::IfLetDesugar { .. } => format!("if let .. = {}{} {{ .. }}", op, expr_snippet),
         MatchSource::WhileLetDesugar => format!("while let .. = {}{} {{ .. }}", op, expr_snippet),
         MatchSource::ForLoopDesugar => span_bug!(span, "for loop desugared to match with &-patterns!"),
-        MatchSource::TryDesugar => span_bug!(span, "`?` operator desugared to match with &-patterns!")
+        MatchSource::TryDesugar => span_bug!(span, "`?` operator desugared to match with &-patterns!"),
     }
 }
 
@@ -432,13 +433,15 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
     impl<'a, T: Copy> Kind<'a, T> {
         fn range(&self) -> &'a SpannedRange<T> {
             match *self {
-                Kind::Start(_, r) | Kind::End(_, r) => r,
+                Kind::Start(_, r) |
+                Kind::End(_, r) => r,
             }
         }
 
         fn value(self) -> T {
             match self {
-                Kind::Start(t, _) | Kind::End(t, _) => t,
+                Kind::Start(t, _) |
+                Kind::End(t, _) => t,
             }
         }
     }

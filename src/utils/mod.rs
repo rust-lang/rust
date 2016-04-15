@@ -22,44 +22,10 @@ use syntax::ptr::P;
 pub mod comparisons;
 pub mod conf;
 mod hir;
+pub mod paths;
 pub use self::hir::{SpanlessEq, SpanlessHash};
-pub type MethodArgs = HirVec<P<Expr>>;
 
-// module DefPaths for certain structs/enums we check for
-pub const BEGIN_UNWIND: [&'static str; 3] = ["std", "rt", "begin_unwind"];
-pub const BOX_NEW_PATH: [&'static str; 4] = ["std", "boxed", "Box", "new"];
-pub const BTREEMAP_ENTRY_PATH: [&'static str; 4] = ["collections", "btree", "map", "Entry"];
-pub const BTREEMAP_PATH: [&'static str; 4] = ["collections", "btree", "map", "BTreeMap"];
-pub const CLONE_PATH: [&'static str; 3] = ["clone", "Clone", "clone"];
-pub const CLONE_TRAIT_PATH: [&'static str; 2] = ["clone", "Clone"];
-pub const COW_PATH: [&'static str; 3] = ["collections", "borrow", "Cow"];
-pub const DEBUG_FMT_METHOD_PATH: [&'static str; 4] = ["std", "fmt", "Debug", "fmt"];
-pub const DEFAULT_TRAIT_PATH: [&'static str; 3] = ["core", "default", "Default"];
-pub const DISPLAY_FMT_METHOD_PATH: [&'static str; 4] = ["std", "fmt", "Display", "fmt"];
-pub const DROP_PATH: [&'static str; 3] = ["core", "mem", "drop"];
-pub const FMT_ARGUMENTS_NEWV1_PATH: [&'static str; 4] = ["std", "fmt", "Arguments", "new_v1"];
-pub const FMT_ARGUMENTV1_NEW_PATH: [&'static str; 4] = ["std", "fmt", "ArgumentV1", "new"];
-pub const HASHMAP_ENTRY_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "Entry"];
-pub const HASHMAP_PATH: [&'static str; 5] = ["std", "collections", "hash", "map", "HashMap"];
-pub const HASH_PATH: [&'static str; 2] = ["hash", "Hash"];
-pub const IO_PRINT_PATH: [&'static str; 3] = ["std", "io", "_print"];
-pub const LL_PATH: [&'static str; 3] = ["collections", "linked_list", "LinkedList"];
-pub const MUTEX_PATH: [&'static str; 4] = ["std", "sync", "mutex", "Mutex"];
-pub const OPEN_OPTIONS_PATH: [&'static str; 3] = ["std", "fs", "OpenOptions"];
-pub const OPTION_PATH: [&'static str; 3] = ["core", "option", "Option"];
-pub const RANGE_FROM_PATH: [&'static str; 3] = ["std", "ops", "RangeFrom"];
-pub const RANGE_FULL_PATH: [&'static str; 3] = ["std", "ops", "RangeFull"];
-pub const RANGE_INCLUSIVE_NON_EMPTY_PATH: [&'static str; 4] = ["std", "ops", "RangeInclusive", "NonEmpty"];
-pub const RANGE_PATH: [&'static str; 3] = ["std", "ops", "Range"];
-pub const RANGE_TO_INCLUSIVE_PATH: [&'static str; 3] = ["std", "ops", "RangeToInclusive"];
-pub const RANGE_TO_PATH: [&'static str; 3] = ["std", "ops", "RangeTo"];
-pub const REGEX_NEW_PATH: [&'static str; 3] = ["regex", "Regex", "new"];
-pub const RESULT_PATH: [&'static str; 3] = ["core", "result", "Result"];
-pub const STRING_PATH: [&'static str; 3] = ["collections", "string", "String"];
-pub const TRANSMUTE_PATH: [&'static str; 4] = ["core", "intrinsics", "", "transmute"];
-pub const VEC_FROM_ELEM_PATH: [&'static str; 3] = ["std", "vec", "from_elem"];
-pub const VEC_PATH: [&'static str; 3] = ["collections", "vec", "Vec"];
-pub const BOX_PATH: [&'static str; 3] = ["std", "boxed", "Box"];
+pub type MethodArgs = HirVec<P<Expr>>;
 
 /// Produce a nested chain of if-lets and ifs from the patterns:
 ///
@@ -178,7 +144,8 @@ pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
 /// Check if type is struct or enum type with given def path.
 pub fn match_type(cx: &LateContext, ty: ty::Ty, path: &[&str]) -> bool {
     match ty.sty {
-        ty::TyEnum(ref adt, _) | ty::TyStruct(ref adt, _) => match_def_path(cx, adt.did, path),
+        ty::TyEnum(ref adt, _) |
+        ty::TyStruct(ref adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
 }
@@ -338,9 +305,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
 pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.map.get_parent(expr.id);
     match cx.tcx.map.find(parent_id) {
-        Some(Node::NodeItem(&Item{ ref name, .. })) |
-        Some(Node::NodeTraitItem(&TraitItem{ ref name, .. })) |
-        Some(Node::NodeImplItem(&ImplItem{ ref name, .. })) => Some(*name),
+        Some(Node::NodeItem(&Item { ref name, .. })) |
+        Some(Node::NodeTraitItem(&TraitItem { ref name, .. })) |
+        Some(Node::NodeImplItem(&ImplItem { ref name, .. })) => Some(*name),
         _ => None,
     }
 }
@@ -465,7 +432,7 @@ pub fn get_enclosing_block<'c>(cx: &'c LateContext, node: NodeId) -> Option<&'c 
     if let Some(node) = enclosing_node {
         match node {
             Node::NodeBlock(ref block) => Some(block),
-            Node::NodeItem(&Item{ node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
+            Node::NodeItem(&Item { node: ItemFn(_, _, _, _, _, ref block), .. }) => Some(block),
             _ => None,
         }
     } else {
@@ -551,7 +518,8 @@ pub fn span_lint_and_then<'a, T: LintContext, F>(cx: &'a T, lint: &'static Lint,
 /// Return the base type for references and raw pointers.
 pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
     match ty.sty {
-        ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
+        ty::TyRef(_, ref tm) |
+        ty::TyRawPtr(ref tm) => walk_ptrs_ty(tm.ty),
         _ => ty,
     }
 }
@@ -560,7 +528,8 @@ pub fn walk_ptrs_ty(ty: ty::Ty) -> ty::Ty {
 pub fn walk_ptrs_ty_depth(ty: ty::Ty) -> (ty::Ty, usize) {
     fn inner(ty: ty::Ty, depth: usize) -> (ty::Ty, usize) {
         match ty.sty {
-            ty::TyRef(_, ref tm) | ty::TyRawPtr(ref tm) => inner(tm.ty, depth + 1),
+            ty::TyRef(_, ref tm) |
+            ty::TyRawPtr(ref tm) => inner(tm.ty, depth + 1),
             _ => (ty, depth),
         }
     }
@@ -763,23 +732,47 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
 
     match unwrap_unstable(&expr).node {
         ExprPath(None, ref path) => {
-            if match_path(path, &RANGE_FULL_PATH) {
-                Some(UnsugaredRange { start: None, end: None, limits: RangeLimits::HalfOpen })
+            if match_path(path, &paths::RANGE_FULL) {
+                Some(UnsugaredRange {
+                    start: None,
+                    end: None,
+                    limits: RangeLimits::HalfOpen,
+                })
             } else {
                 None
             }
         }
         ExprStruct(ref path, ref fields, None) => {
-            if match_path(path, &RANGE_FROM_PATH) {
-                Some(UnsugaredRange { start: get_field("start", fields), end: None, limits: RangeLimits::HalfOpen })
-            } else if match_path(path, &RANGE_INCLUSIVE_NON_EMPTY_PATH) {
-                Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::Closed })
-            } else if match_path(path, &RANGE_PATH) {
-                Some(UnsugaredRange { start: get_field("start", fields), end: get_field("end", fields), limits: RangeLimits::HalfOpen })
-            } else if match_path(path, &RANGE_TO_INCLUSIVE_PATH) {
-                Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::Closed })
-            } else if match_path(path, &RANGE_TO_PATH) {
-                Some(UnsugaredRange { start: None, end: get_field("end", fields), limits: RangeLimits::HalfOpen })
+            if match_path(path, &paths::RANGE_FROM) {
+                Some(UnsugaredRange {
+                    start: get_field("start", fields),
+                    end: None,
+                    limits: RangeLimits::HalfOpen,
+                })
+            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
+                Some(UnsugaredRange {
+                    start: get_field("start", fields),
+                    end: get_field("end", fields),
+                    limits: RangeLimits::Closed,
+                })
+            } else if match_path(path, &paths::RANGE) {
+                Some(UnsugaredRange {
+                    start: get_field("start", fields),
+                    end: get_field("end", fields),
+                    limits: RangeLimits::HalfOpen,
+                })
+            } else if match_path(path, &paths::RANGE_TO_INCLUSIVE) {
+                Some(UnsugaredRange {
+                    start: None,
+                    end: get_field("end", fields),
+                    limits: RangeLimits::Closed,
+                })
+            } else if match_path(path, &paths::RANGE_TO) {
+                Some(UnsugaredRange {
+                    start: None,
+                    end: get_field("end", fields),
+                    limits: RangeLimits::HalfOpen,
+                })
             } else {
                 None
             }

@@ -13,11 +13,15 @@ script:
  - rm -rf target/ Cargo.lock
  - cargo test --features debugging
 
- # only test regex_macros if it compiles
- - if [[ "$(cargo build --features 'debugging test-regex_macros')" = 101 ]]; then cargo test --features 'debugging test-regex_macros'; fi
-
-# trigger rebuild of the clippy-service, to keep it up to date with clippy itself
 after_success:
+# only test regex_macros if it compiles
+- |
+    #!/bin/bash
+    cargo test --no-run --features 'debugging test-regex_macros'
+    if [ "$?" != 101 ]; then
+        cargo test --features 'debugging test-regex_macros' compile_test
+    fi
+# trigger rebuild of the clippy-service, to keep it up to date with clippy itself
 - |
     #!/bin/bash
     set -e

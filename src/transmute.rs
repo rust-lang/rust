@@ -2,8 +2,7 @@ use rustc::lint::*;
 use rustc::ty::TypeVariants::{TyRawPtr, TyRef};
 use rustc::ty;
 use rustc::hir::*;
-use utils::TRANSMUTE_PATH;
-use utils::{match_def_path, snippet_opt, span_lint, span_lint_and_then};
+use utils::{match_def_path, paths, snippet_opt, span_lint, span_lint_and_then};
 
 /// **What it does:** This lint checks for transmutes to the original type of the object.
 ///
@@ -53,11 +52,7 @@ pub struct Transmute;
 
 impl LintPass for Transmute {
     fn get_lints(&self) -> LintArray {
-        lint_array! [
-            CROSSPOINTER_TRANSMUTE,
-            TRANSMUTE_PTR_TO_REF,
-            USELESS_TRANSMUTE
-        ]
+        lint_array![CROSSPOINTER_TRANSMUTE, TRANSMUTE_PTR_TO_REF, USELESS_TRANSMUTE]
     }
 }
 
@@ -67,7 +62,7 @@ impl LateLintPass for Transmute {
             if let ExprPath(None, _) = path_expr.node {
                 let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
 
-                if match_def_path(cx, def_id, &TRANSMUTE_PATH) {
+                if match_def_path(cx, def_id, &paths::TRANSMUTE) {
                     let from_ty = cx.tcx.expr_ty(&args[0]);
                     let to_ty = cx.tcx.expr_ty(e);
 
@@ -80,12 +75,16 @@ impl LateLintPass for Transmute {
                         span_lint(cx,
                                   CROSSPOINTER_TRANSMUTE,
                                   e.span,
-                                  &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)", from_ty, to_ty));
+                                  &format!("transmute from a type (`{}`) to a pointer to that type (`{}`)",
+                                           from_ty,
+                                           to_ty));
                     } else if is_ptr_to(from_ty, to_ty) {
                         span_lint(cx,
                                   CROSSPOINTER_TRANSMUTE,
                                   e.span,
-                                  &format!("transmute from a type (`{}`) to the type that it points to (`{}`)", from_ty, to_ty));
+                                  &format!("transmute from a type (`{}`) to the type that it points to (`{}`)",
+                                           from_ty,
+                                           to_ty));
                     } else {
                         check_ptr_to_ref(cx, from_ty, to_ty, e, &args[0]);
                     }
@@ -103,10 +102,7 @@ fn is_ptr_to(from: ty::Ty, to: ty::Ty) -> bool {
     }
 }
 
-fn check_ptr_to_ref<'tcx>(cx: &LateContext,
-                          from_ty: ty::Ty<'tcx>,
-                          to_ty: ty::Ty<'tcx>,
-                          e: &Expr, arg: &Expr) {
+fn check_ptr_to_ref<'tcx>(cx: &LateContext, from_ty: ty::Ty<'tcx>, to_ty: ty::Ty<'tcx>, e: &Expr, arg: &Expr) {
     if let TyRawPtr(ref from_pty) = from_ty.sty {
         if let TyRef(_, ref to_rty) = to_ty.sty {
             let mess = format!("transmute from a pointer type (`{}`) to a reference type (`{}`)",
@@ -123,8 +119,7 @@ fn check_ptr_to_ref<'tcx>(cx: &LateContext,
 
                     let sugg = if from_pty.ty == to_rty.ty {
                         format!("{}{}", deref, arg)
-                    }
-                    else {
+                    } else {
                         format!("{}({} as {} {})", deref, arg, cast, to_rty.ty)
                     };
 

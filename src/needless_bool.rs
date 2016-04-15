@@ -57,9 +57,10 @@ impl LateLintPass for NeedlessBool {
                 span_lint_and_then(cx,
                                    NEEDLESS_BOOL,
                                    e.span,
-                                   "this if-then-else expression returns a bool literal", |db| {
-                    db.span_suggestion(e.span, "you can reduce it to", hint);
-                });
+                                   "this if-then-else expression returns a bool literal",
+                                   |db| {
+                                       db.span_suggestion(e.span, "you can reduce it to", hint);
+                                   });
             };
             match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
                 (RetBool(true), RetBool(true)) |
@@ -98,7 +99,7 @@ impl LintPass for BoolComparison {
 impl LateLintPass for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         use self::Expression::*;
-        if let ExprBinary(Spanned{ node: BiEq, .. }, ref left_side, ref right_side) = e.node {
+        if let ExprBinary(Spanned { node: BiEq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Bool(true), Other) => {
                     let hint = snippet(cx, right_side.span, "..").into_owned();
@@ -155,15 +156,17 @@ enum Expression {
 fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         ([], Some(e)) => fetch_bool_expr(&**e),
-        ([ref e], None) => if let StmtSemi(ref e, _) = e.node {
-            if let ExprRet(_) = e.node {
-                fetch_bool_expr(&**e)
+        ([ref e], None) => {
+            if let StmtSemi(ref e, _) = e.node {
+                if let ExprRet(_) = e.node {
+                    fetch_bool_expr(&**e)
+                } else {
+                    Expression::Other
+                }
             } else {
                 Expression::Other
             }
-        } else {
-            Expression::Other
-        },
+        }
         _ => Expression::Other,
     }
 }
@@ -177,11 +180,13 @@ fn fetch_bool_expr(expr: &Expr) -> Expression {
             } else {
                 Expression::Other
             }
-        },
-        ExprRet(Some(ref expr)) => match fetch_bool_expr(expr) {
-            Expression::Bool(value) => Expression::RetBool(value),
-            _ => Expression::Other,
-        },
+        }
+        ExprRet(Some(ref expr)) => {
+            match fetch_bool_expr(expr) {
+                Expression::Bool(value) => Expression::RetBool(value),
+                _ => Expression::Other,
+            }
+        }
         _ => Expression::Other,
     }
 }

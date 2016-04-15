@@ -171,6 +171,17 @@ fn bar() { //~ ERROR: the function has a cyclomatic complexity of 2
     }
 }
 
+#[test]
+#[cyclomatic_complexity = "0"]
+/// Tests are usually complex but simple at the same time. `cyclomatic_complexity` used to give
+/// lots of false-positives in tests.
+fn dont_warn_on_tests() {
+    match 99 {
+        0 => println!("hi"),
+        _ => println!("bye"),
+    }
+}
+
 #[cyclomatic_complexity = "0"]
 fn barr() { //~ ERROR: the function has a cyclomatic complexity of 2
     match 99 {

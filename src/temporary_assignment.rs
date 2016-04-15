@@ -18,8 +18,7 @@ declare_lint! {
 
 fn is_temporary(expr: &Expr) -> bool {
     match expr.node {
-        ExprStruct(..) |
-        ExprTup(..) => true,
+        ExprStruct(..) | ExprTup(..) => true,
         _ => false,
     }
 }
@@ -37,7 +36,8 @@ impl LateLintPass for TemporaryAssignmentPass {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprAssign(ref target, _) = expr.node {
             match target.node {
-                ExprField(ref base, _) | ExprTupField(ref base, _) => {
+                ExprField(ref base, _) |
+                ExprTupField(ref base, _) => {
                     if is_temporary(base) && !is_adjusted(cx, base) {
                         span_lint(cx, TEMPORARY_ASSIGNMENT, expr.span, "assignment to temporary");
                     }

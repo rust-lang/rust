@@ -8,7 +8,8 @@ use toml;
 pub fn conf_file(args: &[ptr::P<ast::MetaItem>]) -> Result<Option<token::InternedString>, (&'static str, codemap::Span)> {
     for arg in args {
         match arg.node {
-            ast::MetaItemKind::Word(ref name) | ast::MetaItemKind::List(ref name, _) => {
+            ast::MetaItemKind::Word(ref name) |
+            ast::MetaItemKind::List(ref name, _) => {
                 if name == &"conf_file" {
                     return Err(("`conf_file` must be a named value", arg.span));
                 }

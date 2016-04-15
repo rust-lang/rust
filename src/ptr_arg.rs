@@ -1,12 +1,11 @@
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
+use rustc::hir::*;
 use rustc::hir::map::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
-use rustc::hir::*;
 use syntax::ast::NodeId;
-use utils::{STRING_PATH, VEC_PATH};
-use utils::{span_lint, match_type};
+use utils::{match_type, paths, span_lint};
 
 /// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless the references are mutable.
 ///
@@ -61,13 +60,13 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
 
     for (arg, ty) in decl.inputs.iter().zip(&fn_ty.inputs) {
         if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {
-            if match_type(cx, ty, &VEC_PATH) {
+            if match_type(cx, ty, &paths::VEC) {
                 span_lint(cx,
                           PTR_ARG,
                           arg.ty.span,
                           "writing `&Vec<_>` instead of `&[_]` involves one more reference and cannot be used \
                            with non-Vec-based slices. Consider changing the type to `&[...]`");
-            } else if match_type(cx, ty, &STRING_PATH) {
+            } else if match_type(cx, ty, &paths::STRING) {
                 span_lint(cx,
                           PTR_ARG,
                           arg.ty.span,

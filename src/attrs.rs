@@ -7,7 +7,8 @@ use semver::Version;
 use syntax::ast::{Attribute, Lit, LitKind, MetaItemKind};
 use syntax::attr::*;
 use syntax::codemap::Span;
-use utils::{in_macro, match_path, span_lint, BEGIN_UNWIND};
+use utils::{in_macro, match_path, span_lint};
+use utils::paths;
 
 /// **What it does:** This lint checks for items annotated with `#[inline(always)]`, unless the annotated function is empty or simply panics.
 ///
@@ -114,7 +115,8 @@ fn is_relevant_block(block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(_, _) => return true,
-            StmtExpr(ref expr, _) | StmtSemi(ref expr, _) => {
+            StmtExpr(ref expr, _) |
+            StmtSemi(ref expr, _) => {
                 return is_relevant_expr(expr);
             }
         }
@@ -129,7 +131,7 @@ fn is_relevant_expr(expr: &Expr) -> bool {
         ExprRet(None) | ExprBreak(_) => false,
         ExprCall(ref path_expr, _) => {
             if let ExprPath(_, ref path) = path_expr.node {
-                !match_path(path, &BEGIN_UNWIND)
+                !match_path(path, &paths::BEGIN_UNWIND)
             } else {
                 true
             }

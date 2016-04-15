@@ -34,7 +34,9 @@ impl LateLintPass for MinMaxPass {
                     return;
                 }
                 match (outer_max, outer_c.partial_cmp(&inner_c)) {
-                    (_, None) | (MinMax::Max, Some(Ordering::Less)) | (MinMax::Min, Some(Ordering::Greater)) => (),
+                    (_, None) |
+                    (MinMax::Max, Some(Ordering::Less)) |
+                    (MinMax::Min, Some(Ordering::Greater)) => (),
                     _ => {
                         span_lint(cx, MIN_MAX, expr.span, "this min/max combination leads to constant result");
                     }

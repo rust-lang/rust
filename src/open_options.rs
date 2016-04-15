@@ -1,8 +1,8 @@
-use rustc::lint::*;
 use rustc::hir::{Expr, ExprMethodCall, ExprLit};
+use rustc::lint::*;
 use syntax::ast::LitKind;
 use syntax::codemap::{Span, Spanned};
-use utils::{walk_ptrs_ty_depth, match_type, span_lint, OPEN_OPTIONS_PATH};
+use utils::{match_type, paths, span_lint, walk_ptrs_ty_depth};
 
 /// **What it does:** This lint checks for duplicate open options as well as combinations that make no sense.
 ///
@@ -31,7 +31,7 @@ impl LateLintPass for NonSensicalOpenOptions {
     fn check_expr(&mut self, cx: &LateContext, e: &Expr) {
         if let ExprMethodCall(ref name, _, ref arguments) = e.node {
             let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&arguments[0]));
-            if name.node.as_str() == "open" && match_type(cx, obj_ty, &OPEN_OPTIONS_PATH) {
+            if name.node.as_str() == "open" && match_type(cx, obj_ty, &paths::OPEN_OPTIONS) {
                 let mut options = Vec::new();
                 get_open_options(cx, &arguments[0], &mut options);
                 check_open_options(cx, &options, e.span);
@@ -61,11 +61,11 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
         let (obj_ty, _) = walk_ptrs_ty_depth(cx.tcx.expr_ty(&arguments[0]));
 
         // Only proceed if this is a call on some object of type std::fs::OpenOptions
-        if match_type(cx, obj_ty, &OPEN_OPTIONS_PATH) && arguments.len() >= 2 {
+        if match_type(cx, obj_ty, &paths::OPEN_OPTIONS) && arguments.len() >= 2 {
 
             let argument_option = match arguments[1].node {
                 ExprLit(ref span) => {
-                    if let Spanned {node: LitKind::Bool(lit), ..} = **span {
+                    if let Spanned { node: LitKind::Bool(lit), .. } = **span {
                         if lit {
                             Argument::True
                         } else {
@@ -96,7 +96,7 @@ fn get_open_options(cx: &LateContext, argument: &Expr, options: &mut Vec<(OpenOp
                 "write" => {
                     options.push((OpenOption::Write, argument_option));
                 }
-                _ => {}
+                _ => (),
             }
 
             get_open_options(cx, &arguments[0], options);

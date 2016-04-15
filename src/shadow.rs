@@ -77,7 +77,8 @@ fn check_block(cx: &LateContext, block: &Block, bindings: &mut Vec<(Name, Span)>
     for stmt in &block.stmts {
         match stmt.node {
             StmtDecl(ref decl, _) => check_decl(cx, decl, bindings),
-            StmtExpr(ref e, _) | StmtSemi(ref e, _) => check_expr(cx, e, bindings),
+            StmtExpr(ref e, _) |
+            StmtSemi(ref e, _) => check_expr(cx, e, bindings),
         }
     }
     if let Some(ref o) = block.expr {
@@ -94,7 +95,7 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
         return;
     }
     if let DeclLocal(ref local) = decl.node {
-        let Local{ ref pat, ref ty, ref init, span, .. } = **local;
+        let Local { ref pat, ref ty, ref init, span, .. } = **local;
         if let Some(ref t) = *ty {
             check_ty(cx, t, bindings)
         }
@@ -109,7 +110,8 @@ fn check_decl(cx: &LateContext, decl: &Decl, bindings: &mut Vec<(Name, Span)>) {
 
 fn is_binding(cx: &LateContext, pat: &Pat) -> bool {
     match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
-        Some(Def::Variant(..)) | Some(Def::Struct(..)) => false,
+        Some(Def::Variant(..)) |
+        Some(Def::Struct(..)) => false,
         _ => true,
     }
 }
@@ -251,7 +253,8 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
         ExprTupField(ref e, _) |
         ExprAddrOf(_, ref e) |
         ExprBox(ref e) => check_expr(cx, e, bindings),
-        ExprBlock(ref block) | ExprLoop(ref block, _) => check_block(cx, block, bindings),
+        ExprBlock(ref block) |
+        ExprLoop(ref block, _) => check_block(cx, block, bindings),
         // ExprCall
         // ExprMethodCall
         ExprVec(ref v) | ExprTup(ref v) => {
@@ -297,8 +300,8 @@ fn check_ty(cx: &LateContext, ty: &Ty, bindings: &mut Vec<(Name, Span)>) {
             check_ty(cx, fty, bindings);
             check_expr(cx, expr, bindings);
         }
-        TyPtr(MutTy{ ty: ref mty, .. }) |
-        TyRptr(_, MutTy{ ty: ref mty, .. }) => check_ty(cx, mty, bindings),
+        TyPtr(MutTy { ty: ref mty, .. }) |
+        TyRptr(_, MutTy { ty: ref mty, .. }) => check_ty(cx, mty, bindings),
         TyTup(ref tup) => {
             for ref t in tup {
                 check_ty(cx, t, bindings)

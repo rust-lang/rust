@@ -9,7 +9,7 @@ use std::error::Error;
 use syntax::ast::{LitKind, NodeId};
 use syntax::codemap::{Span, BytePos};
 use syntax::parse::token::InternedString;
-use utils::{is_expn_of, match_path, match_type, REGEX_NEW_PATH, span_lint, span_help_and_lint};
+use utils::{is_expn_of, match_path, match_type, paths, span_lint, span_help_and_lint};
 
 /// **What it does:** This lint checks `Regex::new(_)` invocations for correct regex syntax.
 ///
@@ -72,8 +72,8 @@ impl LateLintPass for RegexPass {
         if_let_chain!{[
             self.last.is_none(),
             let Some(ref expr) = block.expr,
-            match_type(cx, cx.tcx.expr_ty(expr), &["regex", "re", "Regex"]),
-            let Some(span) = is_expn_of(cx, expr.span, "regex")
+            match_type(cx, cx.tcx.expr_ty(expr), &paths::REGEX),
+            let Some(span) = is_expn_of(cx, expr.span, "regex"),
         ], {
             if !self.spans.contains(&span) {
                 span_lint(cx,
@@ -97,7 +97,7 @@ impl LateLintPass for RegexPass {
         if_let_chain!{[
             let ExprCall(ref fun, ref args) = expr.node,
             let ExprPath(_, ref path) = fun.node,
-            match_path(path, &REGEX_NEW_PATH) && args.len() == 1
+            match_path(path, &paths::REGEX_NEW) && args.len() == 1
         ], {
             if let ExprLit(ref lit) = args[0].node {
                 if let LitKind::Str(ref r, _) = lit.node {
@@ -166,14 +166,14 @@ fn is_trivial_regex(s: &regex_syntax::Expr) -> Option<&'static str> {
 
     match *s {
         Expr::Empty | Expr::StartText | Expr::EndText => Some("the regex is unlikely to be useful as it is"),
-        Expr::Literal {..} => Some("consider using `str::contains`"),
+        Expr::Literal { .. } => Some("consider using `str::contains`"),
         Expr::Concat(ref exprs) => {
             match exprs.len() {
                 2 => {
                     match (&exprs[0], &exprs[1]) {
                         (&Expr::StartText, &Expr::EndText) => Some("consider using `str::is_empty`"),
-                        (&Expr::StartText, &Expr::Literal {..}) => Some("consider using `str::starts_with`"),
-                        (&Expr::Literal {..}, &Expr::EndText) => Some("consider using `str::ends_with`"),
+                        (&Expr::StartText, &Expr::Literal { .. }) => Some("consider using `str::starts_with`"),
+                        (&Expr::Literal { .. }, &Expr::EndText) => Some("consider using `str::ends_with`"),
                         _ => None,
                     }
                 }

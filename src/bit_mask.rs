@@ -264,7 +264,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u64> {
                 // borrowing.
                 let def_map = cx.tcx.def_map.borrow();
                 match def_map.get(&lit.id) {
-                    Some(&PathResolution { base_def: Def::Const(def_id), ..}) => Some(def_id),
+                    Some(&PathResolution { base_def: Def::Const(def_id), .. }) => Some(def_id),
                     _ => None,
                 }
             }

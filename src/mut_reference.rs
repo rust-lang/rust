@@ -47,19 +47,20 @@ impl LateLintPass for UnnecessaryMutPassed {
                 let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
                 check_arguments(cx, &arguments, method_type.ty, &name.node.as_str())
             }
-            _ => {}
+            _ => (),
         }
     }
 }
 
 fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &TyS, name: &str) {
     match type_definition.sty {
-        TypeVariants::TyFnDef(_, _, ref fn_type) | TypeVariants::TyFnPtr(ref fn_type) => {
+        TypeVariants::TyFnDef(_, _, ref fn_type) |
+        TypeVariants::TyFnPtr(ref fn_type) => {
             let parameters = &fn_type.sig.skip_binder().inputs;
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.sty {
-                    TypeVariants::TyRef(_, TypeAndMut {mutbl: MutImmutable, ..}) |
-                    TypeVariants::TyRawPtr(TypeAndMut {mutbl: MutImmutable, ..}) => {
+                    TypeVariants::TyRef(_, TypeAndMut { mutbl: MutImmutable, .. }) |
+                    TypeVariants::TyRawPtr(TypeAndMut { mutbl: MutImmutable, .. }) => {
                         if let ExprAddrOf(MutMutable, _) = argument.node {
                             span_lint(cx,
                                       UNNECESSARY_MUT_PASSED,
@@ -67,7 +68,7 @@ fn check_arguments(cx: &LateContext, arguments: &[P<Expr>], type_definition: &Ty
                                       &format!("The function/method \"{}\" doesn't need a mutable reference", name));
                         }
                     }
-                    _ => {}
+                    _ => (),
                 }
             }
         }

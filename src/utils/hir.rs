@@ -76,7 +76,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprBlock(ref l), &ExprBlock(ref r)) => self.eq_block(l, r),
             (&ExprBinary(l_op, ref ll, ref lr), &ExprBinary(r_op, ref rl, ref rr)) => {
                 l_op.node == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr) ||
-                swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr))
+                swap_binop(l_op.node, ll, lr).map_or(false, |(l_op, ll, lr)| {
+                    l_op == r_op.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+                })
             }
             (&ExprBreak(li), &ExprBreak(ri)) => both(&li, &ri, |l, r| l.node.name.as_str() == r.node.name.as_str()),
             (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
@@ -114,9 +116,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 both(l_qself, r_qself, |l, r| self.eq_qself(l, r)) && self.eq_path(l_subpath, r_subpath)
             }
             (&ExprStruct(ref l_path, ref lf, ref lo), &ExprStruct(ref r_path, ref rf, ref ro)) => {
-                self.eq_path(l_path, r_path) &&
-                    both(lo, ro, |l, r| self.eq_expr(l, r)) &&
-                    over(lf, rf, |l, r| self.eq_field(l, r))
+                self.eq_path(l_path, r_path) && both(lo, ro, |l, r| self.eq_expr(l, r)) &&
+                over(lf, rf, |l, r| self.eq_field(l, r))
             }
             (&ExprTup(ref l_tup), &ExprTup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprTupField(ref le, li), &ExprTupField(ref re, ri)) => li.node == ri.node && self.eq_expr(le, re),
