@@ -575,7 +575,11 @@ look something like this:
 name = "hello_world"
 version = "0.1.0"
 authors = ["Your Name <you@example.com>"]
+
+[dependencies]
 ```
+
+Do not worry about the `[dependencies]` line, we will come back to it later.
 
 Cargo has populated *Cargo.toml* with reasonable defaults based on the arguments
 you gave it and your `git` global configuration. You may notice that Cargo has

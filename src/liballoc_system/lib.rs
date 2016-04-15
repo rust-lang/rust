@@ -96,8 +96,10 @@ mod imp {
             libc::realloc(ptr as *mut libc::c_void, size as libc::size_t) as *mut u8
         } else {
             let new_ptr = allocate(size, align);
-            ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
-            deallocate(ptr, old_size, align);
+            if !new_ptr.is_null() {
+                ptr::copy(ptr, new_ptr, cmp::min(size, old_size));
+                deallocate(ptr, old_size, align);
+            }
             new_ptr
         }
     }

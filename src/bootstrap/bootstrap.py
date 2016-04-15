@@ -10,6 +10,7 @@
 
 import argparse
 import contextlib
+import hashlib
 import os
 import shutil
 import subprocess
@@ -18,13 +19,29 @@ import tarfile
 
 def get(url, path, verbose=False):
     print("downloading " + url)
-    # see http://serverfault.com/questions/301128/how-to-download
-    if sys.platform == 'win32':
-        run(["PowerShell.exe", "/nologo", "-Command",
-             "(New-Object System.Net.WebClient).DownloadFile('" + url +
-                "', '" + path + "')"], verbose=verbose)
-    else:
-        run(["curl", "-o", path, url], verbose=verbose)
+    sha_url = url + ".sha256"
+    sha_path = path + ".sha256"
+    for _url, _path in ((url, path), (sha_url, sha_path)):
+        # see http://serverfault.com/questions/301128/how-to-download
+        if sys.platform == 'win32':
+            run(["PowerShell.exe", "/nologo", "-Command",
+                 "(New-Object System.Net.WebClient)"
+                 ".DownloadFile('{}', '{}')".format(_url, _path)],
+                verbose=verbose)
+        else:
+            run(["curl", "-o", _path, _url], verbose=verbose)
+    print("verifying " + path)
+    with open(path, "rb") as f:
+        found = hashlib.sha256(f.read()).hexdigest()
+    with open(sha_path, "r") as f:
+        expected, _ = f.readline().split()
+    if found != expected:
+        err = ("invalid checksum:\n"
+               "    found:    {}\n"
+               "    expected: {}".format(found, expected))
+        if verbose:
+            raise RuntimeError(err)
+        sys.exit(err)
 
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
@@ -57,9 +74,10 @@ def run(args, verbose=False):
     ret = subprocess.Popen(args)
     code = ret.wait()
     if code != 0:
-        if not verbose:
-            print("failed to run: " + ' '.join(args))
-        raise RuntimeError("failed to run command")
+        err = "failed to run: " + ' '.join(args)
+        if verbose:
+            raise RuntimeError(err)
+        sys.exit(err)
 
 class RustBuild:
     def download_rust_nightly(self):
@@ -210,7 +228,10 @@ class RustBuild:
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
             else:
-                raise
+                err = "uname not found"
+                if self.verbose:
+                    raise Exception(err)
+                sys.exit(err)
 
         # Darwin's `uname -s` lies and always returns i386. We have to use
         # sysctl instead.
@@ -253,7 +274,10 @@ class RustBuild:
                 cputype = 'x86_64'
             ostype = 'pc-windows-gnu'
         else:
-            raise ValueError("unknown OS type: " + ostype)
+            err = "unknown OS type: " + ostype
+            if self.verbose:
+                raise ValueError(err)
+            sys.exit(err)
 
         if cputype in {'i386', 'i486', 'i686', 'i786', 'x86'}:
             cputype = 'i686'
@@ -269,7 +293,10 @@ class RustBuild:
         elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
             cputype = 'x86_64'
         else:
-            raise ValueError("unknown cpu type: " + cputype)
+            err = "unknown cpu type: " + cputype
+            if self.verbose:
+                raise ValueError(err)
+            sys.exit(err)
 
         return cputype + '-' + ostype
 
