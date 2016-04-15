@@ -2489,7 +2489,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
-                    link: AssocItemLink, render_static: bool,
+                    link: AssocItemLink, render_static: bool, is_default_item: bool,
                     outer_version: Option<&str>) -> fmt::Result {
         let shortty = shortty(item);
         let name = item.name.as_ref().unwrap();
@@ -2540,7 +2540,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 
-        if !is_static || render_static {
+        if !is_default_item && (!is_static || render_static) {
             document(w, cx, item)
         } else {
             Ok(())
@@ -2549,7 +2549,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.impl_.items {
-        doctraititem(w, cx, trait_item, link, render_header, outer_version)?;
+        doctraititem(w, cx, trait_item, link, render_header, false, outer_version)?;
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
@@ -2566,7 +2566,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let did = i.trait_.as_ref().unwrap().def_id().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
-            doctraititem(w, cx, trait_item, assoc_link, render_static,
+            doctraititem(w, cx, trait_item, assoc_link, render_static, true,
                          outer_version)?;
         }
         Ok(())

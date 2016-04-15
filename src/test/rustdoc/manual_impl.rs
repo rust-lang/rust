@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// @has manual_impl/trait.T.html
+// @has  - '//*[@class="docblock"]' 'Docs associated with the trait definition.'
+// @has  - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
+// @has  - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
 /// Docs associated with the trait definition.
 pub trait T {
     /// Docs associated with the trait a_method definition.
