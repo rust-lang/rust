@@ -23,7 +23,7 @@ use string::{StringFormat, rewrite_string};
 use utils::{CodeMapSpanUtils, extra_offset, last_line_width, wrap_str, binary_search,
             first_line_width, semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr};
 use visitor::FmtVisitor;
-use config::{Config, StructLitStyle, MultilineStyle};
+use config::{Config, StructLitStyle, MultilineStyle, ElseIfBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::rewrite_path;
 use items::{span_lo_for_arg, span_hi_for_arg};
@@ -701,12 +701,16 @@ fn rewrite_if_else(context: &RewriteContext,
                    allow_single_line: bool)
                    -> Option<String> {
     // 3 = "if ", 2 = " {"
+    let pat_penalty = match context.config.else_if_brace_style {
+        ElseIfBraceStyle::AlwaysNextLine => 3,
+        _ => 3 + 2,
+    };
     let pat_expr_string = try_opt!(rewrite_pat_expr(context,
                                                     pat,
                                                     cond,
                                                     "let ",
                                                     " =",
-                                                    try_opt!(width.checked_sub(3 + 2)),
+                                                    try_opt!(width.checked_sub(pat_penalty)),
                                                     offset + 3));
 
     // Try to format if-else on single line.
@@ -731,13 +735,19 @@ fn rewrite_if_else(context: &RewriteContext,
                                              offset,
                                              width);
 
+    let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
+    let after_sep = match context.config.else_if_brace_style {
+        ElseIfBraceStyle::AlwaysNextLine => alt_block_sep.as_str(),
+        _ => " ",
+    };
     let mut result = format!("if{}{}{}{}",
                              between_if_cond_comment.as_ref().map_or(" ", |str| &**str),
                              pat_expr_string,
-                             after_cond_comment.as_ref().map_or(" ", |str| &**str),
+                             after_cond_comment.as_ref().map_or(after_sep, |str| &**str),
                              if_block_string);
 
     if let Some(else_block) = else_block_opt {
+        let mut last_in_chain = false;
         let rewrite = match else_block.node {
             // If the else expression is another if-else expression, prevent it
             // from being formatted on a single line.
@@ -763,7 +773,10 @@ fn rewrite_if_else(context: &RewriteContext,
                                 offset,
                                 false)
             }
-            _ => else_block.rewrite(context, width, offset),
+            _ => {
+                last_in_chain = true;
+                else_block.rewrite(context, width, offset)
+            }
         };
 
         let between_if_else_block = mk_sp(if_block.span.hi,
@@ -781,10 +794,20 @@ fn rewrite_if_else(context: &RewriteContext,
                                else_block.span.lo);
         let after_else_comment = extract_comment(after_else, &context, offset, width);
 
+        let between_sep = match context.config.else_if_brace_style {
+            ElseIfBraceStyle::AlwaysNextLine |
+            ElseIfBraceStyle::ClosingNextLine => alt_block_sep.as_str(),
+            ElseIfBraceStyle::AlwaysSameLine => " ",
+        };
+        let after_sep = match context.config.else_if_brace_style {
+            ElseIfBraceStyle::AlwaysNextLine if last_in_chain => alt_block_sep.as_str(),
+            _ => " ",
+        };
         try_opt!(write!(&mut result,
                         "{}else{}",
-                        between_if_else_block_comment.as_ref().map_or(" ", |str| &**str),
-                        after_else_comment.as_ref().map_or(" ", |str| &**str))
+                        between_if_else_block_comment.as_ref()
+                                                     .map_or(between_sep, |str| &**str),
+                        after_else_comment.as_ref().map_or(after_sep, |str| &**str))
                      .ok());
         result.push_str(&&try_opt!(rewrite));
     }
