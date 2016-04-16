@@ -1206,8 +1206,7 @@ impl TokenTree {
                 TokenTree::Delimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
-                    tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"),
-                                                                token::Plain)),
+                    tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"))),
                               TokenTree::Token(sp, token::Eq),
                               TokenTree::Token(sp, token::Literal(
                                   token::StrRaw(token::intern(&stripped), num_of_hashes), None))],
@@ -1225,14 +1224,13 @@ impl TokenTree {
             }
             (&TokenTree::Token(sp, token::SpecialVarNt(var)), _) => {
                 let v = [TokenTree::Token(sp, token::Dollar),
-                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str()),
-                                                  token::Plain))];
+                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str())))];
                 v[index].clone()
             }
-            (&TokenTree::Token(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
-                let v = [TokenTree::Token(sp, token::SubstNt(name, name_st)),
+            (&TokenTree::Token(sp, token::MatchNt(name, kind)), _) => {
+                let v = [TokenTree::Token(sp, token::SubstNt(name)),
                          TokenTree::Token(sp, token::Colon),
-                         TokenTree::Token(sp, token::Ident(kind, kind_st))];
+                         TokenTree::Token(sp, token::Ident(kind))];
                 v[index].clone()
             }
             (&TokenTree::Sequence(_, ref seq), _) => {

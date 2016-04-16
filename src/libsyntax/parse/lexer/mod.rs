@@ -1039,11 +1039,7 @@ impl<'a> StringReader<'a> {
                     token::Underscore
                 } else {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    if self.curr_is(':') && self.nextch_is(':') {
-                        token::Ident(str_to_ident(string), token::ModName)
-                    } else {
-                        token::Ident(str_to_ident(string), token::Plain)
-                    }
+                    token::Ident(str_to_ident(string))
                 }
             });
         }
@@ -1231,8 +1227,7 @@ impl<'a> StringReader<'a> {
                     let keyword_checking_ident = self.with_str_from(start, |lifetime_name| {
                         str_to_ident(lifetime_name)
                     });
-                    let keyword_checking_token = &token::Ident(keyword_checking_ident,
-                                                               token::Plain);
+                    let keyword_checking_token = &token::Ident(keyword_checking_ident);
                     let last_bpos = self.last_pos;
                     if keyword_checking_token.is_keyword(token::keywords::SelfValue) {
                         self.err_span_(start,
@@ -1687,7 +1682,7 @@ mod tests {
         assert_eq!(string_reader.next_token().tok, token::Whitespace);
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan {
-            tok: token::Ident(id, token::Plain),
+            tok: token::Ident(id),
             sp: Span {
                 lo: BytePos(21),
                 hi: BytePos(23),
@@ -1701,7 +1696,7 @@ mod tests {
         // read another token:
         let tok3 = string_reader.next_token();
         let tok4 = TokenAndSpan {
-            tok: token::Ident(str_to_ident("main"), token::Plain),
+            tok: token::Ident(str_to_ident("main")),
             sp: Span {
                 lo: BytePos(24),
                 hi: BytePos(28),
@@ -1722,8 +1717,8 @@ mod tests {
     }
 
     // make the identifier by looking up the string in the interner
-    fn mk_ident(id: &str, style: token::IdentStyle) -> token::Token {
-        token::Ident(str_to_ident(id), style)
+    fn mk_ident(id: &str) -> token::Token {
+        token::Ident(str_to_ident(id))
     }
 
     #[test]
@@ -1731,9 +1726,7 @@ mod tests {
         let cm = Rc::new(CodeMap::new());
         let sh = mk_sh(cm.clone());
         check_tokenization(setup(&cm, &sh, "a b".to_string()),
-                           vec![mk_ident("a", token::Plain),
-                                token::Whitespace,
-                                mk_ident("b", token::Plain)]);
+                           vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
     }
 
     #[test]
@@ -1741,9 +1734,7 @@ mod tests {
         let cm = Rc::new(CodeMap::new());
         let sh = mk_sh(cm.clone());
         check_tokenization(setup(&cm, &sh, "a::b".to_string()),
-                           vec![mk_ident("a", token::ModName),
-                                token::ModSep,
-                                mk_ident("b", token::Plain)]);
+                           vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
     }
 
     #[test]
@@ -1751,10 +1742,7 @@ mod tests {
         let cm = Rc::new(CodeMap::new());
         let sh = mk_sh(cm.clone());
         check_tokenization(setup(&cm, &sh, "a ::b".to_string()),
-                           vec![mk_ident("a", token::Plain),
-                                token::Whitespace,
-                                token::ModSep,
-                                mk_ident("b", token::Plain)]);
+                           vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
     }
 
     #[test]
@@ -1762,10 +1750,7 @@ mod tests {
         let cm = Rc::new(CodeMap::new());
         let sh = mk_sh(cm.clone());
         check_tokenization(setup(&cm, &sh, "a:: b".to_string()),
-                           vec![mk_ident("a", token::ModName),
-                                token::ModSep,
-                                token::Whitespace,
-                                mk_ident("b", token::Plain)]);
+                           vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
     }
 
     #[test]

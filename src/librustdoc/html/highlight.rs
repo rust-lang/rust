@@ -147,7 +147,7 @@ fn write_source(sess: &parse::ParseSess,
             }
 
             // keywords are also included in the identifier set
-            token::Ident(ident, _is_mod_sep) => {
+            token::Ident(ident) => {
                 match &*ident.name.as_str() {
                     "ref" | "mut" => "kw-2",
 

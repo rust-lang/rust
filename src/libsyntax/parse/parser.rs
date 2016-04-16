@@ -567,7 +567,7 @@ impl<'a> Parser<'a> {
         }
         self.check_reserved_keywords();
         match self.token {
-            token::Ident(i, _) => {
+            token::Ident(i) => {
                 self.bump();
                 Ok(i)
             }
@@ -629,9 +629,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn check_contextual_keyword(&mut self, ident: Ident) -> bool {
-        let tok = token::Ident(ident, token::Plain);
-        self.expected_tokens.push(TokenType::Token(tok));
-        if let token::Ident(ref cur_ident, _) = self.token {
+        self.expected_tokens.push(TokenType::Token(token::Ident(ident)));
+        if let token::Ident(ref cur_ident) = self.token {
             cur_ident.name == ident.name
         } else {
             false
@@ -1699,7 +1698,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_path_segment_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(sid, _) if self.token.is_path_segment_keyword() => {
+            token::Ident(sid) if self.token.is_path_segment_keyword() => {
                 self.bump();
                 Ok(sid)
             }
@@ -2564,7 +2563,7 @@ impl<'a> Parser<'a> {
             // expr.f
             if self.eat(&token::Dot) {
                 match self.token {
-                  token::Ident(i, _) => {
+                  token::Ident(i) => {
                     let dot_pos = self.last_span.hi;
                     hi = self.span.hi;
                     self.bump();
@@ -2661,7 +2660,7 @@ impl<'a> Parser<'a> {
     // Parse unquoted tokens after a `$` in a token tree
     fn parse_unquoted(&mut self) -> PResult<'a, TokenTree> {
         let mut sp = self.span;
-        let (name, namep) = match self.token {
+        let name = match self.token {
             token::Dollar => {
                 self.bump();
 
@@ -2686,14 +2685,12 @@ impl<'a> Parser<'a> {
                     return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
                 } else {
                     sp = mk_sp(sp.lo, self.span.hi);
-                    let namep = match self.token { token::Ident(_, p) => p, _ => token::Plain };
-                    let name = self.parse_ident()?;
-                    (name, namep)
+                    self.parse_ident()?
                 }
             }
-            token::SubstNt(name, namep) => {
+            token::SubstNt(name) => {
                 self.bump();
-                (name, namep)
+                name
             }
             _ => unreachable!()
         };
@@ -2703,18 +2700,17 @@ impl<'a> Parser<'a> {
                                                                 !t.is_reserved_keyword()) {
             self.bump();
             sp = mk_sp(sp.lo, self.span.hi);
-            let kindp = match self.token { token::Ident(_, p) => p, _ => token::Plain };
             let nt_kind = self.parse_ident()?;
-            Ok(TokenTree::Token(sp, MatchNt(name, nt_kind, namep, kindp)))
+            Ok(TokenTree::Token(sp, MatchNt(name, nt_kind)))
         } else {
-            Ok(TokenTree::Token(sp, SubstNt(name, namep)))
+            Ok(TokenTree::Token(sp, SubstNt(name)))
         }
     }
 
     pub fn check_unknown_macro_variable(&mut self) {
         if self.quote_depth == 0 {
             match self.token {
-                token::SubstNt(name, _) =>
+                token::SubstNt(name) =>
                     self.fatal(&format!("unknown macro variable `{}`", name)).emit(),
                 _ => {}
             }
@@ -4614,7 +4610,7 @@ impl<'a> Parser<'a> {
 
     fn expect_self_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(id, _) if id.name == special_idents::self_.name => {
+            token::Ident(id) if id.name == special_idents::self_.name => {
                 self.bump();
                 Ok(id)
             },
@@ -4927,7 +4923,7 @@ impl<'a> Parser<'a> {
             Visibility::Inherited => (),
             _ => {
                 let is_macro_rules: bool = match self.token {
-                    token::Ident(sid, _) => sid.name == intern("macro_rules"),
+                    token::Ident(sid) => sid.name == intern("macro_rules"),
                     _ => false,
                 };
                 if is_macro_rules {
