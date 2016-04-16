@@ -220,6 +220,13 @@ impl Condvar {
     pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
 }
 
+#[stable(feature = "condvar_default", since = "1.9.0")]
+impl Default for Condvar {
+    fn default() -> Condvar {
+        Condvar::new()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Drop for Condvar {
     fn drop(&mut self) {

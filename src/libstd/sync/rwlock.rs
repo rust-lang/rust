@@ -346,6 +346,13 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
     }
 }
 
+#[stable(feature = "rw_lock_default", since = "1.9.0")]
+impl<T: Default> Default for RwLock<T> {
+    fn default() -> RwLock<T> {
+        RwLock::new(Default::default())
+    }
+}
+
 struct Dummy(UnsafeCell<()>);
 unsafe impl Sync for Dummy {}
 static DUMMY: Dummy = Dummy(UnsafeCell::new(()));

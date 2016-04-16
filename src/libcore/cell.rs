@@ -859,3 +859,10 @@ impl<T: ?Sized> UnsafeCell<T> {
         &self.value as *const T as *mut T
     }
 }
+
+#[stable(feature = "unsafe_cell_default", since = "1.9.0")]
+impl<T: Default> Default for UnsafeCell<T> {
+    fn default() -> UnsafeCell<T> {
+        UnsafeCell::new(Default::default())
+    }
+}
