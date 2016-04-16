@@ -72,7 +72,7 @@ pub mod rt {
 
     impl ToTokens for ast::Ident {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, token::Ident(*self, token::Plain))]
+            vec![TokenTree::Token(DUMMY_SP, token::Ident(*self))]
         }
     }
 
@@ -646,14 +646,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                            cx.expr_usize(sp, n))
         }
 
-        token::Ident(ident, style) => {
+        token::Ident(ident) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "Ident"),
-                                vec![mk_ident(cx, sp, ident),
-                                     match style {
-                                        ModName => mk_token_path(cx, sp, "ModName"),
-                                        Plain   => mk_token_path(cx, sp, "Plain"),
-                                     }]);
+                                vec![mk_ident(cx, sp, ident)]);
         }
 
         token::Lifetime(ident) => {
@@ -668,19 +664,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec!(mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident))));
         }
 
-        token::MatchNt(name, kind, namep, kindp) => {
+        token::MatchNt(name, kind) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "MatchNt"),
-                                vec!(mk_ident(cx, sp, name),
-                                     mk_ident(cx, sp, kind),
-                                     match namep {
-                                        ModName => mk_token_path(cx, sp, "ModName"),
-                                        Plain   => mk_token_path(cx, sp, "Plain"),
-                                     },
-                                     match kindp {
-                                        ModName => mk_token_path(cx, sp, "ModName"),
-                                        Plain   => mk_token_path(cx, sp, "Plain"),
-                                     }));
+                                vec![mk_ident(cx, sp, name), mk_ident(cx, sp, kind)]);
         }
 
         token::Interpolated(_) => panic!("quote! with interpolated token"),
@@ -722,7 +709,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
 fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stmt> {
     match *tt {
-        TokenTree::Token(sp, SubstNt(ident, _)) => {
+        TokenTree::Token(sp, SubstNt(ident)) => {
             // tt.extend($ident.to_tokens(ext_cx))
 
             let e_to_toks =

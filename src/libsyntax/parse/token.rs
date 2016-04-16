@@ -11,7 +11,6 @@
 pub use self::BinOpToken::*;
 pub use self::Nonterminal::*;
 pub use self::DelimToken::*;
-pub use self::IdentStyle::*;
 pub use self::Lit::*;
 pub use self::Token::*;
 
@@ -49,13 +48,6 @@ pub enum DelimToken {
     Bracket,
     /// A curly brace: `{` or `}`
     Brace,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
-pub enum IdentStyle {
-    /// `::` follows the identifier with no whitespace in-between.
-    ModName,
-    Plain,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
@@ -139,7 +131,7 @@ pub enum Token {
     Literal(Lit, Option<ast::Name>),
 
     /* Name components */
-    Ident(ast::Ident, IdentStyle),
+    Ident(ast::Ident),
     Underscore,
     Lifetime(ast::Ident),
 
@@ -150,10 +142,10 @@ pub enum Token {
     DocComment(ast::Name),
     // In left-hand-sides of MBE macros:
     /// Parse a nonterminal (name to bind, name of NT, styles of their idents)
-    MatchNt(ast::Ident, ast::Ident, IdentStyle, IdentStyle),
+    MatchNt(ast::Ident, ast::Ident),
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
-    SubstNt(ast::Ident, IdentStyle),
+    SubstNt(ast::Ident),
     /// A macro variable with special meaning.
     SpecialVarNt(SpecialMacroVar),
 
@@ -279,16 +271,16 @@ impl Token {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
         match *self {
-            Ident(id, _) => id.name == kw.to_name(),
+            Ident(id) => id.name == kw.to_name(),
             _ => false,
         }
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
         match *self {
-            Ident(id, _) => id.name == SUPER_KEYWORD_NAME ||
-                            id.name == SELF_KEYWORD_NAME ||
-                            id.name == SELF_TYPE_KEYWORD_NAME,
+            Ident(id) => id.name == SUPER_KEYWORD_NAME ||
+                         id.name == SELF_KEYWORD_NAME ||
+                         id.name == SELF_TYPE_KEYWORD_NAME,
             _ => false,
         }
     }
@@ -296,12 +288,12 @@ impl Token {
     /// Returns `true` if the token is either a strict or reserved keyword.
     pub fn is_any_keyword(&self) -> bool {
         match *self {
-            Ident(id, _) => id.name == SELF_KEYWORD_NAME ||
-                            id.name == STATIC_KEYWORD_NAME ||
-                            id.name == SUPER_KEYWORD_NAME ||
-                            id.name == SELF_TYPE_KEYWORD_NAME ||
-                            id.name >= STRICT_KEYWORD_START &&
-                            id.name <= RESERVED_KEYWORD_FINAL,
+            Ident(id) => id.name == SELF_KEYWORD_NAME ||
+                         id.name == STATIC_KEYWORD_NAME ||
+                         id.name == SUPER_KEYWORD_NAME ||
+                         id.name == SELF_TYPE_KEYWORD_NAME ||
+                         id.name >= STRICT_KEYWORD_START &&
+                         id.name <= RESERVED_KEYWORD_FINAL,
             _ => false
         }
     }
@@ -309,12 +301,12 @@ impl Token {
     /// Returns `true` if the token is either a strict keyword.
     pub fn is_strict_keyword(&self) -> bool {
         match *self {
-            Ident(id, _) => id.name == SELF_KEYWORD_NAME ||
-                            id.name == STATIC_KEYWORD_NAME ||
-                            id.name == SUPER_KEYWORD_NAME ||
-                            id.name == SELF_TYPE_KEYWORD_NAME ||
-                            id.name >= STRICT_KEYWORD_START &&
-                            id.name <= STRICT_KEYWORD_FINAL,
+            Ident(id) => id.name == SELF_KEYWORD_NAME ||
+                         id.name == STATIC_KEYWORD_NAME ||
+                         id.name == SUPER_KEYWORD_NAME ||
+                         id.name == SELF_TYPE_KEYWORD_NAME ||
+                         id.name >= STRICT_KEYWORD_START &&
+                         id.name <= STRICT_KEYWORD_FINAL,
             _ => false,
         }
     }
@@ -322,8 +314,8 @@ impl Token {
     /// Returns `true` if the token is either a keyword reserved for possible future use.
     pub fn is_reserved_keyword(&self) -> bool {
         match *self {
-            Ident(id, _) => id.name >= RESERVED_KEYWORD_START &&
-                            id.name <= RESERVED_KEYWORD_FINAL,
+            Ident(id) => id.name >= RESERVED_KEYWORD_START &&
+                         id.name <= RESERVED_KEYWORD_FINAL,
             _ => false,
         }
     }
@@ -333,7 +325,7 @@ impl Token {
     /// See `styntax::ext::mtwt`.
     pub fn mtwt_eq(&self, other : &Token) -> bool {
         match (self, other) {
-            (&Ident(id1,_), &Ident(id2,_)) | (&Lifetime(id1), &Lifetime(id2)) =>
+            (&Ident(id1), &Ident(id2)) | (&Lifetime(id1), &Lifetime(id2)) =>
                 mtwt::resolve(id1) == mtwt::resolve(id2),
             _ => *self == *other
         }
@@ -349,7 +341,7 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Box<ast::SpannedIdent>, IdentStyle),
+    NtIdent(Box<ast::SpannedIdent>),
     /// Stuff inside brackets for attributes
     NtMeta(P<ast::MetaItem>),
     NtPath(Box<ast::Path>),
@@ -743,6 +735,6 @@ mod tests {
         assert!(Gt.mtwt_eq(&Gt));
         let a = str_to_ident("bac");
         let a1 = mark_ident(a,92);
-        assert!(Ident(a, ModName).mtwt_eq(&Ident(a1, Plain)));
+        assert!(Ident(a).mtwt_eq(&Ident(a1)));
     }
 }

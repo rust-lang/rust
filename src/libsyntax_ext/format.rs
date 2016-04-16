@@ -106,7 +106,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
             named = true;
             let ident = match p.token {
-                token::Ident(i, _) => {
+                token::Ident(i) => {
                     p.bump();
                     i
                 }
