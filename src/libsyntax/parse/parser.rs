@@ -583,6 +583,11 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_ident_into_path(&mut self) -> PResult<'a, ast::Path> {
+        let ident = self.parse_ident()?;
+        Ok(ast::Path::from_ident(self.last_span, ident))
+    }
+
     /// Check if the next token is `tok`, and return `true` if so.
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
@@ -1462,7 +1467,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_lt() {
 
             let (qself, path) =
-                 self.parse_qualified_path(NoTypesAllowed)?;
+                 self.parse_qualified_path(LifetimeAndTypesWithoutColons)?;
 
             TyKind::Path(Some(qself), path)
         } else if self.is_path_start() {
@@ -3573,7 +3578,7 @@ impl<'a> Parser<'a> {
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
                 let (qself, path) =
-                    self.parse_qualified_path(NoTypesAllowed)?;
+                    self.parse_qualified_path(LifetimeAndTypesWithColons)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
@@ -3651,9 +3656,7 @@ impl<'a> Parser<'a> {
                     // Plain idents have some extra abilities here compared to general paths
                     if self.look_ahead(1, |t| *t == token::Not) {
                         // Parse macro invocation
-                        let ident = self.parse_ident()?;
-                        let ident_span = self.last_span;
-                        let path = ast::Path::from_ident(ident_span, ident);
+                        let path = self.parse_ident_into_path()?;
                         self.bump();
                         let delim = self.expect_open_delim()?;
                         let tts = self.parse_seq_to_end(
@@ -3673,7 +3676,7 @@ impl<'a> Parser<'a> {
                     let (qself, path) = if self.eat_lt() {
                         // Parse a qualified path
                         let (qself, path) =
-                            self.parse_qualified_path(NoTypesAllowed)?;
+                            self.parse_qualified_path(LifetimeAndTypesWithColons)?;
                         (Some(qself), path)
                     } else {
                         // Parse an unqualified path
@@ -3936,7 +3939,7 @@ impl<'a> Parser<'a> {
 
             // Potential trouble: if we allow macros with paths instead of
             // idents, we'd need to look ahead past the whole path here...
-            let pth = self.parse_path(NoTypesAllowed)?;
+            let pth = self.parse_ident_into_path()?;
             self.bump();
 
             let id = match self.token {
@@ -4956,7 +4959,7 @@ impl<'a> Parser<'a> {
             self.complain_if_pub_macro(&vis, last_span);
 
             let lo = self.span.lo;
-            let pth = self.parse_path(NoTypesAllowed)?;
+            let pth = self.parse_ident_into_path()?;
             self.expect(&token::Not)?;
 
             // eat a matched-delimiter token tree:
@@ -6009,7 +6012,7 @@ impl<'a> Parser<'a> {
             let mac_lo = self.span.lo;
 
             // item macro.
-            let pth = self.parse_path(NoTypesAllowed)?;
+            let pth = self.parse_ident_into_path()?;
             self.expect(&token::Not)?;
 
             // a 'special' identifier (like what `macro_rules!` uses)
