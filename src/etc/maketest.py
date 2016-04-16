@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -84,13 +85,13 @@ out, err = proc.communicate()
 i = proc.wait()
 
 if i != 0:
-    print """\
+    print("""\
 ----- %s --------------------
 ------ stdout ---------------------------------------------
 %s
 ------ stderr ---------------------------------------------
 %s
 ------        ---------------------------------------------
-""" % (sys.argv[1], out, err)
+""" % (sys.argv[1], out, err))
 
     sys.exit(i)
