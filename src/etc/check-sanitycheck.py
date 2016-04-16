@@ -10,12 +10,13 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+import functools
 import os
 import subprocess
 import sys
-import functools
 
 STATUS = 0
+
 
 def error_unless_permitted(env_var, message):
     global STATUS
@@ -23,14 +24,18 @@ def error_unless_permitted(env_var, message):
         sys.stderr.write(message)
         STATUS = 1
 
+
 def only_on(platforms):
     def decorator(func):
         @functools.wraps(func)
         def inner():
             if any(map(lambda x: sys.platform.startswith(x), platforms)):
                 func()
+
         return inner
+
     return decorator
+
 
 @only_on(['linux', 'darwin', 'freebsd', 'openbsd'])
 def check_rlimit_core():
@@ -41,7 +46,8 @@ def check_rlimit_core():
 RLIMIT_CORE is set to a nonzero value (%d). During debuginfo, the test suite
 will segfault many rustc's, creating many potentially large core files.
 set ALLOW_NONZERO_RLIMIT_CORE to ignore this warning
-""" % (soft))
+""" % soft)
+
 
 @only_on(['win32'])
 def check_console_code_page():
@@ -49,9 +55,11 @@ def check_console_code_page():
         sys.stderr.write('Warning: the console output code page is not UTF-8, \
 some tests may fail. Use `cmd /c "chcp 65001"` to setup UTF-8 code page.\n')
 
+
 def main():
     check_console_code_page()
     check_rlimit_core()
+
 
 if __name__ == '__main__':
     main()

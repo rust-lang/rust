@@ -17,11 +17,10 @@
 # it sugarises all .rs/.rc files underneath the working directory
 #
 
-import sys
-import os
 import fnmatch
+import os
 import re
-
+import sys
 
 DOC_PATTERN = '^(?P<indent>[\\t ]*)#\\[(\\s*)doc(\\s*)=' + \
               '(\\s*)"(?P<text>(\\"|[^"])*?)"(\\s*)\\]' + \
@@ -50,11 +49,11 @@ def block_trim(s):
         lns = lns[:-1]
 
     # remove leading horizontal whitespace
-    n = sys.maxint
+    n = sys.maxsize
     for ln in lns:
         if ln.strip():
             n = min(n, len(re.search('^\s*', ln).group()))
-    if n != sys.maxint:
+    if n != sys.maxsize:
         lns = [ln[n:] for ln in lns]
 
     # strip trailing whitespace
@@ -87,6 +86,7 @@ def sugarise_file(path):
 
     if s != ns:
         open(path, 'w').write(ns)
+
 
 for (dirpath, dirnames, filenames) in os.walk('.'):
     for name in fnmatch.filter(filenames, '*.r[sc]'):

@@ -14,10 +14,10 @@
 #     argv[3] = target triple
 # The first two correspond to the two installable components defined in the setup script.
 
-import sys
 import os
 import shutil
 import subprocess
+import sys
 
 
 def find_files(files, path):
@@ -57,44 +57,44 @@ def make_win_dist(rust_root, plat_root, target_triple):
     else:
         rustc_dlls.append("libgcc_s_seh-1.dll")
 
-    target_libs = [ # MinGW libs
-                    "libgcc.a",
-                    "libgcc_eh.a",
-                    "libgcc_s.a",
-                    "libm.a",
-                    "libmingw32.a",
-                    "libmingwex.a",
-                    "libstdc++.a",
-                    "libiconv.a",
-                    "libmoldname.a",
-                    # Windows import libs
-                    "libadvapi32.a",
-                    "libbcrypt.a",
-                    "libcomctl32.a",
-                    "libcomdlg32.a",
-                    "libcrypt32.a",
-                    "libgdi32.a",
-                    "libimagehlp.a",
-                    "libiphlpapi.a",
-                    "libkernel32.a",
-                    "libmsvcrt.a",
-                    "libodbc32.a",
-                    "libole32.a",
-                    "liboleaut32.a",
-                    "libopengl32.a",
-                    "libpsapi.a",
-                    "librpcrt4.a",
-                    "libsetupapi.a",
-                    "libshell32.a",
-                    "libuser32.a",
-                    "libuserenv.a",
-                    "libuuid.a",
-                    "libwinhttp.a",
-                    "libwinmm.a",
-                    "libwinspool.a",
-                    "libws2_32.a",
-                    "libwsock32.a",
-                    ]
+    target_libs = [  # MinGW libs
+        "libgcc.a",
+        "libgcc_eh.a",
+        "libgcc_s.a",
+        "libm.a",
+        "libmingw32.a",
+        "libmingwex.a",
+        "libstdc++.a",
+        "libiconv.a",
+        "libmoldname.a",
+        # Windows import libs
+        "libadvapi32.a",
+        "libbcrypt.a",
+        "libcomctl32.a",
+        "libcomdlg32.a",
+        "libcrypt32.a",
+        "libgdi32.a",
+        "libimagehlp.a",
+        "libiphlpapi.a",
+        "libkernel32.a",
+        "libmsvcrt.a",
+        "libodbc32.a",
+        "libole32.a",
+        "liboleaut32.a",
+        "libopengl32.a",
+        "libpsapi.a",
+        "librpcrt4.a",
+        "libsetupapi.a",
+        "libshell32.a",
+        "libuser32.a",
+        "libuserenv.a",
+        "libuuid.a",
+        "libwinhttp.a",
+        "libwinmm.a",
+        "libwinspool.a",
+        "libws2_32.a",
+        "libwsock32.a",
+    ]
 
     # Find mingw artifacts we want to bundle
     target_tools = find_files(target_tools, bin_path)
@@ -119,6 +119,7 @@ def make_win_dist(rust_root, plat_root, target_triple):
         os.makedirs(target_lib_dir)
     for src in target_libs:
         shutil.copy(src, target_lib_dir)
+
 
 if __name__ == "__main__":
     make_win_dist(sys.argv[1], sys.argv[2], sys.argv[3])

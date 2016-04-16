@@ -18,11 +18,10 @@ Test for https://github.com/rust-lang/rust/issues/2275
 sample usage: src/etc/generate-keyword-tests.py as break
 """
 
-import sys
-import os
 import datetime
+import os
 import stat
-
+import sys
 
 template = """// Copyright %d The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -48,12 +47,12 @@ test_dir = os.path.abspath(
 for kw in sys.argv[1:]:
     test_file = os.path.join(test_dir, 'keyword-%s-as-identifier.rs' % kw)
 
-    # set write permission if file exists, so it can be changed
+    # Set write permission if file exists, so it can be changed.
     if os.path.exists(test_file):
         os.chmod(test_file, stat.S_IWUSR)
 
     with open(test_file, 'wt') as f:
         f.write(template % (datetime.datetime.now().year, kw, kw))
 
-    # mark file read-only
+    # Mark file read-only.
     os.chmod(test_file, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)

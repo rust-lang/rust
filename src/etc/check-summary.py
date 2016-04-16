@@ -10,11 +10,14 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+from __future__ import print_function
+
 import glob
 import sys
 
 if __name__ == '__main__':
     summaries = []
+
 
     def summarise(fname):
         summary = {}
@@ -33,8 +36,10 @@ if __name__ == '__main__':
                 summary[status].append(test)
             summaries.append((fname, summary))
 
+
     def count(t):
         return sum(map(lambda f: len(f[1].get(t, [])), summaries))
+
 
     logfiles = sys.argv[1:]
     for files in map(glob.glob, logfiles):
@@ -52,6 +57,6 @@ if __name__ == '__main__':
         for f, s in summaries:
             failures = s.get('failed', [])
             if len(failures) > 0:
-                print("  %s:" % (f))
+                print("  %s:" % f)
             for test in failures:
-                print("    %s" % (test))
+                print("    %s" % test)

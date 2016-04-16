@@ -20,31 +20,31 @@ import re
 # For example structs, tuples, fat pointers, or enum variants will all have
 # DWARF_TYPE_CODE_STRUCT.
 DWARF_TYPE_CODE_STRUCT = 1
-DWARF_TYPE_CODE_UNION  = 2
-DWARF_TYPE_CODE_PTR    = 3
-DWARF_TYPE_CODE_ARRAY  = 4
-DWARF_TYPE_CODE_ENUM   = 5
+DWARF_TYPE_CODE_UNION = 2
+DWARF_TYPE_CODE_PTR = 3
+DWARF_TYPE_CODE_ARRAY = 4
+DWARF_TYPE_CODE_ENUM = 5
 
 # These constants specify the most specific kind of type that could be
 # determined for a given value.
-TYPE_KIND_UNKNOWN           = -1
-TYPE_KIND_EMPTY             = 0
-TYPE_KIND_SLICE             = 1
-TYPE_KIND_REGULAR_STRUCT    = 2
-TYPE_KIND_TUPLE             = 3
-TYPE_KIND_TUPLE_STRUCT      = 4
-TYPE_KIND_CSTYLE_VARIANT    = 5
-TYPE_KIND_TUPLE_VARIANT     = 6
-TYPE_KIND_STRUCT_VARIANT    = 7
-TYPE_KIND_STR_SLICE         = 8
-TYPE_KIND_STD_VEC           = 9
-TYPE_KIND_STD_STRING        = 10
-TYPE_KIND_REGULAR_ENUM      = 11
-TYPE_KIND_COMPRESSED_ENUM   = 12
-TYPE_KIND_SINGLETON_ENUM    = 13
-TYPE_KIND_CSTYLE_ENUM       = 14
-TYPE_KIND_PTR               = 15
-TYPE_KIND_FIXED_SIZE_VEC    = 16
+TYPE_KIND_UNKNOWN = -1
+TYPE_KIND_EMPTY = 0
+TYPE_KIND_SLICE = 1
+TYPE_KIND_REGULAR_STRUCT = 2
+TYPE_KIND_TUPLE = 3
+TYPE_KIND_TUPLE_STRUCT = 4
+TYPE_KIND_CSTYLE_VARIANT = 5
+TYPE_KIND_TUPLE_VARIANT = 6
+TYPE_KIND_STRUCT_VARIANT = 7
+TYPE_KIND_STR_SLICE = 8
+TYPE_KIND_STD_VEC = 9
+TYPE_KIND_STD_STRING = 10
+TYPE_KIND_REGULAR_ENUM = 11
+TYPE_KIND_COMPRESSED_ENUM = 12
+TYPE_KIND_SINGLETON_ENUM = 13
+TYPE_KIND_CSTYLE_ENUM = 14
+TYPE_KIND_PTR = 15
+TYPE_KIND_FIXED_SIZE_VEC = 16
 
 ENCODED_ENUM_PREFIX = "RUST$ENCODED$ENUM$"
 ENUM_DISR_FIELD_NAME = "RUST$ENUM$DISR"
@@ -101,8 +101,8 @@ class Type(object):
         objects represent the variants of the enum. Field-objects must have a
         `name` attribute that gives their name as specified in DWARF.
         """
-        assert ((self.get_dwarf_type_kind() == DWARF_TYPE_CODE_STRUCT) or
-                (self.get_dwarf_type_kind() == DWARF_TYPE_CODE_UNION))
+        assert (self.get_dwarf_type_kind() == DWARF_TYPE_CODE_STRUCT) or (
+            self.get_dwarf_type_kind() == DWARF_TYPE_CODE_UNION)
         raise NotImplementedError("Override this method")
 
     def get_wrapped_value(self):
@@ -140,8 +140,8 @@ class Type(object):
 
         # REGULAR SLICE
         if (unqualified_type_name.startswith("&[") and
-            unqualified_type_name.endswith("]") and
-            self.__conforms_to_field_layout(SLICE_FIELD_NAMES)):
+                unqualified_type_name.endswith("]") and
+                self.__conforms_to_field_layout(SLICE_FIELD_NAMES)):
             return TYPE_KIND_SLICE
 
         fields = self.get_fields()
@@ -153,12 +153,12 @@ class Type(object):
 
         # STD VEC
         if (unqualified_type_name.startswith("Vec<") and
-            self.__conforms_to_field_layout(STD_VEC_FIELD_NAMES)):
+                self.__conforms_to_field_layout(STD_VEC_FIELD_NAMES)):
             return TYPE_KIND_STD_VEC
 
         # STD STRING
         if (unqualified_type_name.startswith("String") and
-            self.__conforms_to_field_layout(STD_STRING_FIELD_NAMES)):
+                self.__conforms_to_field_layout(STD_STRING_FIELD_NAMES)):
             return TYPE_KIND_STD_STRING
 
         # ENUM VARIANTS
@@ -180,7 +180,6 @@ class Type(object):
         # REGULAR STRUCT
         return TYPE_KIND_REGULAR_STRUCT
 
-
     def __classify_union(self):
         assert self.get_dwarf_type_kind() == DWARF_TYPE_CODE_UNION
 
@@ -197,7 +196,6 @@ class Type(object):
                 return TYPE_KIND_COMPRESSED_ENUM
         else:
             return TYPE_KIND_REGULAR_ENUM
-
 
     def __conforms_to_field_layout(self, expected_fields):
         actual_fields = self.get_fields()
@@ -229,6 +227,7 @@ class Value(object):
     Sub-classes are supposed to wrap a debugger-specific value-object and
     provide implementations for the abstract methods in this class.
     """
+
     def __init__(self, ty):
         self.type = ty
 
@@ -310,11 +309,12 @@ def extract_length_ptr_and_cap_from_std_vec(vec_val):
     unique_ptr_val = vec_ptr_val.get_child_at_index(0)
     data_ptr = unique_ptr_val.get_child_at_index(0)
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
-    return (length, data_ptr, capacity)
+    return length, data_ptr, capacity
+
 
 def extract_length_and_ptr_from_slice(slice_val):
-    assert (slice_val.type.get_type_kind() == TYPE_KIND_SLICE or
-            slice_val.type.get_type_kind() == TYPE_KIND_STR_SLICE)
+    assert (slice_val.type.get_type_kind() == TYPE_KIND_SLICE) or (
+        slice_val.type.get_type_kind() == TYPE_KIND_STR_SLICE)
 
     length_field_index = SLICE_FIELD_NAMES.index(SLICE_FIELD_NAME_LENGTH)
     ptr_field_index = SLICE_FIELD_NAMES.index(SLICE_FIELD_NAME_DATA_PTR)
@@ -323,4 +323,4 @@ def extract_length_and_ptr_from_slice(slice_val):
     data_ptr = slice_val.get_child_at_index(ptr_field_index)
 
     assert data_ptr.type.get_dwarf_type_kind() == DWARF_TYPE_CODE_PTR
-    return (length, data_ptr)
+    return length, data_ptr

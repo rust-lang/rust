@@ -11,14 +11,13 @@
 # except according to those terms.
 
 import os
-import shutil
 import sys
-import tarfile
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../bootstrap"))
 sys.path.append(path)
 
 import bootstrap
+
 
 def main(argv):
     src_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -46,6 +45,7 @@ def main(argv):
     else:
         os.makedirs(stage0_dst)
     bootstrap.unpack(dst, stage0_dst, match='rustc', verbose=True)
+
 
 if __name__ == '__main__':
     main(sys.argv)

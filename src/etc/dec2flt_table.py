@@ -24,11 +24,10 @@ is used because (u64, i16) has a ton of padding which would make the table
 even larger, and it's already uncomfortably large (6 KiB).
 """
 from __future__ import print_function
-import sys
-from math import ceil, log
-from fractions import Fraction
-from collections import namedtuple
 
+from collections import namedtuple
+from fractions import Fraction
+from math import ceil, log
 
 N = 64  # Size of the significand field in bits
 MIN_SIG = 2 ** (N - 1)
@@ -92,6 +91,7 @@ def error(f, e, z):
     ulp_err = abs_err / Fraction(2) ** z.exp
     return float(ulp_err)
 
+
 HEADER = """
 // Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -121,7 +121,7 @@ def main():
 def print_proper_powers():
     MIN_E = -305
     MAX_E = 305
-    e_range = range(MIN_E, MAX_E+1)
+    e_range = range(MIN_E, MAX_E + 1)
     powers = []
     for e in e_range:
         z = algorithm_m(1, e)
@@ -142,7 +142,7 @@ def print_proper_powers():
 
 
 def print_short_powers(num_bits, significand_size):
-    max_sig = 2**significand_size - 1
+    max_sig = 2 ** significand_size - 1
     # The fast path bails out for exponents >= ceil(log5(max_sig))
     max_e = int(ceil(log(max_sig, 5)))
     e_range = range(max_e)

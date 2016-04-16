@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 #
 # Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
@@ -23,7 +23,11 @@
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the unicode.rs file into git.
 
-import fileinput, re, os, sys, operator
+import fileinput
+import operator
+import os
+import re
+import sys
 
 preamble = '''// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -57,6 +61,7 @@ expanded_categories = {
 # these are the surrogate codepoints, which are not valid rust characters
 surrogate_codepoints = (0xd800, 0xdfff)
 
+
 def fetch(f):
     if not os.path.exists(os.path.basename(f)):
         os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
@@ -66,8 +71,10 @@ def fetch(f):
         sys.stderr.write("cannot load %s" % f)
         exit(1)
 
+
 def is_surrogate(n):
     return surrogate_codepoints[0] <= n <= surrogate_codepoints[1]
+
 
 def load_unicode_data(f):
     fetch(f)
@@ -79,28 +86,28 @@ def load_unicode_data(f):
     canon_decomp = {}
     compat_decomp = {}
 
-    udict = {};
-    range_start = -1;
+    udict = {}
+    range_start = -1
     for line in fileinput.input(f):
-        data = line.split(';');
+        data = line.split(';')
         if len(data) != 15:
             continue
-        cp = int(data[0], 16);
+        cp = int(data[0], 16)
         if is_surrogate(cp):
             continue
         if range_start >= 0:
             for i in xrange(range_start, cp):
-                udict[i] = data;
-            range_start = -1;
+                udict[i] = data
+            range_start = -1
         if data[1].endswith(", First>"):
-            range_start = cp;
-            continue;
-        udict[cp] = data;
+            range_start = cp
+            continue
+        udict[cp] = data
 
     for code in udict:
         [code_org, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcase, titlecase ] = udict[code];
+         old, iso, upcase, lowcase, titlecase] = udict[code]
 
         # generate char to char direct common and simple conversions
         # uppercase to lowercase
@@ -143,13 +150,14 @@ def load_unicode_data(f):
     # generate Not_Assigned from Assigned
     gencats["Cn"] = gen_unassigned(gencats["Assigned"])
     # Assigned is not a real category
-    del(gencats["Assigned"])
+    del (gencats["Assigned"])
     # Other contains Not_Assigned
     gencats["C"].extend(gencats["Cn"])
     gencats = group_cats(gencats)
     combines = to_combines(group_cats(combines))
 
-    return (canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower, to_title)
+    return canon_decomp, compat_decomp, gencats, combines, to_upper, to_lower, to_title
+
 
 def load_special_casing(f, to_upper, to_lower, to_title):
     fetch(f)
@@ -176,11 +184,13 @@ def load_special_casing(f, to_upper, to_lower, to_title):
                 assert len(values) == 3
                 map_[key] = values
 
+
 def group_cats(cats):
     cats_out = {}
     for cat in cats:
         cats_out[cat] = group_cat(cats[cat])
     return cats_out
+
 
 def group_cat(cat):
     cat_out = []
@@ -198,6 +208,7 @@ def group_cat(cat):
     cat_out.append((cur_start, cur_end))
     return cat_out
 
+
 def ungroup_cat(cat):
     cat_out = []
     for (lo, hi) in cat:
@@ -206,10 +217,12 @@ def ungroup_cat(cat):
             lo += 1
     return cat_out
 
+
 def gen_unassigned(assigned):
     assigned = set(assigned)
     return ([i for i in range(0, 0xd800) if i not in assigned] +
             [i for i in range(0xe000, 0x110000) if i not in assigned])
+
 
 def to_combines(combs):
     combs_out = []
@@ -219,8 +232,9 @@ def to_combines(combs):
     combs_out.sort(key=lambda comb: comb[0])
     return combs_out
 
+
 def format_table_content(f, content, indent):
-    line = " "*indent
+    line = " " * indent
     first = True
     for chunk in content.split(","):
         if len(line) + len(chunk) < 98:
@@ -231,8 +245,9 @@ def format_table_content(f, content, indent):
             first = False
         else:
             f.write(line + ",\n")
-            line = " "*indent + chunk
+            line = " " * indent + chunk
     f.write(line)
+
 
 def load_properties(f, interestingprops):
     fetch(f)
@@ -271,8 +286,10 @@ def load_properties(f, interestingprops):
 
     return props
 
+
 def escape_char(c):
     return "'\\u{%x}'" % c if c != 0 else "'\\0'"
+
 
 def emit_bsearch_range_table(f):
     f.write("""
@@ -291,8 +308,9 @@ fn bsearch_range_table(c: char, r: &'static [(char, char)]) -> bool {
 }\n
 """)
 
-def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
-        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
+
+def emit_table(f, name, t_data, t_type="&'static [(char, char)]", is_pub=True,
+               pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
     pub_string = ""
     if is_pub:
         pub_string = "pub "
@@ -307,6 +325,7 @@ def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
+
 def emit_property_module(f, mod, tbl, emit):
     f.write("pub mod %s {\n" % mod)
     for cat in sorted(emit):
@@ -315,6 +334,7 @@ def emit_property_module(f, mod, tbl, emit):
         f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
     f.write("}\n\n")
+
 
 def emit_conversions_module(f, to_upper, to_lower, to_title):
     f.write("pub mod conversions {")
@@ -345,12 +365,13 @@ def emit_conversions_module(f, to_upper, to_lower, to_title):
     pfun = lambda x: "(%s,[%s,%s,%s])" % (
         escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2]))
     emit_table(f, "to_lowercase_table",
-        sorted(to_lower.iteritems(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
+               sorted(to_lower.iteritems(), key=operator.itemgetter(0)),
+               is_pub=False, t_type=t_type, pfun=pfun)
     emit_table(f, "to_uppercase_table",
-        sorted(to_upper.iteritems(), key=operator.itemgetter(0)),
-        is_pub=False, t_type = t_type, pfun=pfun)
+               sorted(to_upper.iteritems(), key=operator.itemgetter(0)),
+               is_pub=False, t_type=t_type, pfun=pfun)
     f.write("}\n\n")
+
 
 def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_keys = canon.keys()
@@ -362,15 +383,16 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_comp = {}
     comp_exclusions = norm_props["Full_Composition_Exclusion"]
     for char in canon_keys:
-        if True in map(lambda (lo, hi): lo <= char <= hi, comp_exclusions):
+        if True in map(lambda lo_hi: lo_hi[0] <= char <= lo_hi[1], comp_exclusions):
             continue
         decomp = canon[char]
         if len(decomp) == 2:
-            if not canon_comp.has_key(decomp[0]):
+            if decomp[0] not in canon_comp:
                 canon_comp[decomp[0]] = []
-            canon_comp[decomp[0]].append( (decomp[1], char) )
+            canon_comp[decomp[0]].append((decomp[1], char))
     canon_comp_keys = canon_comp.keys()
     canon_comp_keys.sort()
+
 
 if __name__ == "__main__":
     r = "tables.rs"
@@ -391,16 +413,16 @@ if __name__ == "__main__":
 pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
-                to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
+         to_upper, to_lower, to_title) = load_unicode_data("UnicodeData.txt")
         load_special_casing("SpecialCasing.txt", to_upper, to_lower, to_title)
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
                         "Cased", "Case_Ignorable"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
-                ["White_Space", "Join_Control", "Noncharacter_Code_Point", "Pattern_White_Space"])
+                                ["White_Space", "Join_Control", "Noncharacter_Code_Point", "Pattern_White_Space"])
         norm_props = load_properties("DerivedNormalizationProps.txt",
-                     ["Full_Composition_Exclusion"])
+                                     ["Full_Composition_Exclusion"])
 
         # bsearch_range_table is used in all the property modules below
         emit_bsearch_range_table(rf)

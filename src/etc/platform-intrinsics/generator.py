@@ -9,12 +9,13 @@
 # except according to those terms.
 
 from __future__ import division, print_function
-import json
+
 import argparse
-import sys
-import re
-import textwrap
 import itertools
+import json
+import re
+import sys
+import textwrap
 
 SPEC = re.compile(
     r'^(?:(?P<void>V)|(?P<id>[iusfIUSF])(?:\((?P<start>\d+)-(?P<end>\d+)\)|'
@@ -23,6 +24,7 @@ SPEC = re.compile(
     r'(?:(?P<pointer>Pm|Pc)(?P<llvm_pointer>/.*)?|(?P<bitcast>->.*))?$'
 )
 
+
 class PlatformInfo(object):
     def __init__(self, json):
         self._platform = json['platform']
@@ -30,6 +32,7 @@ class PlatformInfo(object):
 
     def intrinsic_prefix(self):
         return self._intrinsic_prefix
+
 
 class IntrinsicSet(object):
     def __init__(self, platform, json):
@@ -57,6 +60,7 @@ class IntrinsicSet(object):
     def number_type_info(self, value):
         data = self._type_info[value.__class__.__name__.lower()]
         bitwidth = value.bitwidth()
+
         def lookup(raw):
             if not isinstance(raw, dict):
                 return raw
@@ -64,13 +68,14 @@ class IntrinsicSet(object):
             try:
                 return raw[str(bitwidth)]
             except KeyError:
-                return raw['pattern'].format(bitwidth = bitwidth)
+                return raw['pattern'].format(bitwidth=bitwidth)
 
         return PlatformTypeInfo(value.llvm_name(),
                                 {k: lookup(v) for k, v in data.items()})
 
+
 class PlatformTypeInfo(object):
-    def __init__(self, llvm_name, properties, elems = None):
+    def __init__(self, llvm_name, properties, elems=None):
         if elems is None:
             self.properties = properties
             self.llvm_name = llvm_name
@@ -97,7 +102,9 @@ class PlatformTypeInfo(object):
         name = self.llvm_name if llvm_elem is None else llvm_elem.llvm_name
         return PlatformTypeInfo('p0{}'.format(name), self.properties)
 
+
 BITWIDTH_POINTER = '<pointer>'
+
 
 class Type(object):
     def __init__(self, bitwidth):
@@ -111,6 +118,7 @@ class Type(object):
 
     def __ne__(self, other):
         return not (self == other)
+
 
 class Void(Type):
     def __init__(self):
@@ -130,6 +138,7 @@ class Void(Type):
 
     def __eq__(self, other):
         return isinstance(other, Void)
+
 
 class Number(Type):
     def __init__(self, bitwidth):
@@ -158,11 +167,11 @@ class Number(Type):
         # print(self, other)
         return self.__class__ == other.__class__ and self.bitwidth() == other.bitwidth()
 
+
 class Signed(Number):
-    def __init__(self, bitwidth, llvm_bitwidth = None):
+    def __init__(self, bitwidth, llvm_bitwidth=None):
         Number.__init__(self, bitwidth)
         self._llvm_bitwidth = llvm_bitwidth
-
 
     def compiler_ctor(self):
         if self._llvm_bitwidth is None:
@@ -180,8 +189,9 @@ class Signed(Number):
     def rust_name(self):
         return 'i{}'.format(self.bitwidth())
 
+
 class Unsigned(Number):
-    def __init__(self, bitwidth, llvm_bitwidth = None):
+    def __init__(self, bitwidth, llvm_bitwidth=None):
         Number.__init__(self, bitwidth)
         self._llvm_bitwidth = llvm_bitwidth
 
@@ -201,6 +211,7 @@ class Unsigned(Number):
     def rust_name(self):
         return 'u{}'.format(self.bitwidth())
 
+
 class Float(Number):
     def __init__(self, bitwidth):
         assert bitwidth in (32, 64)
@@ -218,8 +229,9 @@ class Float(Number):
     def rust_name(self):
         return 'f{}'.format(self.bitwidth())
 
+
 class Vector(Type):
-    def __init__(self, elem, length, bitcast = None):
+    def __init__(self, elem, length, bitcast=None):
         assert isinstance(elem, Type) and not isinstance(elem, Vector)
         Type.__init__(self,
                       elem.bitwidth() * length)
@@ -255,12 +267,12 @@ class Vector(Type):
     def compiler_ctor(self):
         if self._bitcast is None:
             return '{}x{}'.format(self._elem.compiler_ctor(),
-                                     self._length)
+                                  self._length)
         else:
             return '{}x{}_{}'.format(self._elem.compiler_ctor(),
                                      self._length,
                                      self._bitcast.compiler_ctor()
-                                         .replace('::', ''))
+                                     .replace('::', ''))
 
     def compiler_ctor_ref(self):
         return '&' + self.compiler_ctor()
@@ -275,7 +287,8 @@ class Vector(Type):
 
     def __eq__(self, other):
         return isinstance(other, Vector) and self._length == other._length and \
-            self._elem == other._elem and self._bitcast == other._bitcast
+               self._elem == other._elem and self._bitcast == other._bitcast
+
 
 class Pointer(Type):
     def __init__(self, elem, llvm_elem, const):
@@ -306,7 +319,6 @@ class Pointer(Type):
     def compiler_ctor_ref(self):
         return "{{ static PTR: Type = {}; &PTR }}".format(self.compiler_ctor())
 
-
     def rust_name(self):
         return '*{} {}'.format('const' if self._const else 'mut',
                                self._elem.rust_name())
@@ -320,7 +332,8 @@ class Pointer(Type):
 
     def __eq__(self, other):
         return isinstance(other, Pointer) and self._const == other._const \
-            and self._elem == other._elem and self._llvm_elem == other._llvm_elem
+               and self._elem == other._elem and self._llvm_elem == other._llvm_elem
+
 
 class Aggregate(Type):
     def __init__(self, flatten, elems):
@@ -357,13 +370,14 @@ class Aggregate(Type):
 
     def __eq__(self, other):
         return isinstance(other, Aggregate) and self._flatten == other._flatten and \
-            self._elems == other._elems
+               self._elems == other._elems
 
 
 TYPE_ID_LOOKUP = {'i': [Signed, Unsigned],
                   's': [Signed],
                   'u': [Unsigned],
                   'f': [Float]}
+
 
 def ptrify(match, elem, width, previous):
     ptr = match.group('pointer')
@@ -380,6 +394,7 @@ def ptrify(match, elem, width, previous):
             llvm_elem = options[0]
         assert ptr in ('Pc', 'Pm')
         return Pointer(elem, llvm_elem, ptr == 'Pc')
+
 
 class TypeSpec(object):
     def __init__(self, spec):
@@ -486,6 +501,7 @@ class TypeSpec(object):
             else:
                 assert False, 'Failed to parse `{}`'.format(spec)
 
+
 class GenericIntrinsic(object):
     def __init__(self, platform, intrinsic, widths, llvm_name, ret, args):
         self._platform = platform
@@ -499,6 +515,7 @@ class GenericIntrinsic(object):
         for width in self.widths:
             # must be a power of two
             assert width & (width - 1) == 0
+
             def recur(processed, untouched):
                 if untouched == []:
                     ret = processed[0]
@@ -515,6 +532,7 @@ class GenericIntrinsic(object):
 
             for x in recur([], [self.ret] + self.args):
                 yield x
+
 
 class MonomorphicIntrinsic(object):
     def __init__(self, platform, intrinsic, width, llvm_name, ret, args):
@@ -536,7 +554,7 @@ class MonomorphicIntrinsic(object):
     def intrinsic_suffix(self):
         return self._intrinsic.format(self._ret,
                                       *self._args,
-                                      width = self._width)
+                                      width=self._width)
 
     def intrinsic_name(self):
         return self._platform.platform().intrinsic_prefix() + self.intrinsic_suffix()
@@ -556,11 +574,12 @@ class MonomorphicIntrinsic(object):
                                              for name, arg in zip(names, self._args_raw)),
                                    self._ret_raw.rust_name())
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
-        formatter_class = argparse.RawDescriptionHelpFormatter,
-        description = 'Render an intrinsic definition JSON to various formats.',
-        epilog = textwrap.dedent('''\
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description='Render an intrinsic definition JSON to various formats.',
+        epilog=textwrap.dedent('''\
         An intrinsic definition consists of a map with fields:
         - intrinsic: pattern for the name(s) of the vendor's C intrinsic(s)
         - llvm: pattern for the name(s) of the internal llvm intrinsic(s)
@@ -711,14 +730,14 @@ def parse_args():
         the LLVM intrinsic.
         '''))
     parser.add_argument('--format', choices=FORMATS, required=True,
-                        help = 'Output format.')
+                        help='Output format.')
     parser.add_argument('-o', '--out', type=argparse.FileType('w'), default=sys.stdout,
-                        help = 'File to output to (default stdout).')
+                        help='File to output to (default stdout).')
     parser.add_argument('-i', '--info', type=argparse.FileType('r'),
-                        help = 'File containing platform specific information to merge into '
-                                'the input files\' header.')
+                        help='File containing platform specific information to merge into '
+                             'the input files\' header.')
     parser.add_argument('in_', metavar="FILE", type=argparse.FileType('r'), nargs='+',
-                        help = 'JSON files to load')
+                        help='JSON files to load')
     return parser.parse_args()
 
 
@@ -735,6 +754,7 @@ class ExternBlock(object):
 
     def close(self):
         return '}'
+
 
 class CompilerDefs(object):
     def __init__(self):
@@ -785,6 +805,7 @@ pub fn find(name: &str) -> Option<Intrinsic> {{
     })
 }'''
 
+
 FORMATS = {
     'extern-block': ExternBlock(),
     'compiler-defs': CompilerDefs(),
@@ -824,6 +845,7 @@ def main():
                 print(out_format.render(mono), file=out)
 
     print(out_format.close(), file=out)
+
 
 if __name__ == '__main__':
     main()

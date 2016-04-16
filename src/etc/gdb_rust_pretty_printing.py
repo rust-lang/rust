@@ -9,15 +9,15 @@
 # except according to those terms.
 
 import gdb
-import re
+
 import debugger_pretty_printers_common as rustpp
 
-#===============================================================================
+
+# ===============================================================================
 # GDB Pretty Printing Module for Rust
-#===============================================================================
+# ===============================================================================
 
 class GdbType(rustpp.Type):
-
     def __init__(self, ty):
         super(GdbType, self).__init__()
         self.ty = ty
@@ -45,8 +45,8 @@ class GdbType(rustpp.Type):
             return rustpp.DWARF_TYPE_CODE_ENUM
 
     def get_fields(self):
-        assert ((self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT) or
-                (self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_UNION))
+        assert (self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT) or (
+            self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_UNION)
         if self.fields is None:
             self.fields = list(self.ty.fields())
         return self.fields
@@ -90,18 +90,17 @@ def rust_pretty_printer_lookup_function(gdb_val):
     val = GdbValue(gdb_val)
     type_kind = val.type.get_type_kind()
 
-    if (type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or
-        type_kind == rustpp.TYPE_KIND_EMPTY):
+    if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or type_kind == rustpp.TYPE_KIND_EMPTY:
         return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = False,
-                                 is_tuple_like = False)
+                                 omit_first_field=False,
+                                 omit_type_name=False,
+                                 is_tuple_like=False)
 
     if type_kind == rustpp.TYPE_KIND_STRUCT_VARIANT:
         return RustStructPrinter(val,
-                                 omit_first_field = True,
-                                 omit_type_name = False,
-                                 is_tuple_like = False)
+                                 omit_first_field=True,
+                                 omit_type_name=False,
+                                 is_tuple_like=False)
 
     if type_kind == rustpp.TYPE_KIND_SLICE:
         return RustSlicePrinter(val)
@@ -117,24 +116,24 @@ def rust_pretty_printer_lookup_function(gdb_val):
 
     if type_kind == rustpp.TYPE_KIND_TUPLE:
         return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = True,
-                                 is_tuple_like = True)
+                                 omit_first_field=False,
+                                 omit_type_name=True,
+                                 is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_TUPLE_STRUCT:
         return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = False,
-                                 is_tuple_like = True)
+                                 omit_first_field=False,
+                                 omit_type_name=False,
+                                 is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_CSTYLE_VARIANT:
         return RustCStyleVariantPrinter(val.get_child_at_index(0))
 
     if type_kind == rustpp.TYPE_KIND_TUPLE_VARIANT:
         return RustStructPrinter(val,
-                                 omit_first_field = True,
-                                 omit_type_name = False,
-                                 is_tuple_like = True)
+                                 omit_first_field=True,
+                                 omit_type_name=False,
+                                 is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_SINGLETON_ENUM:
         variant = get_field_at_index(gdb_val, 0)
@@ -158,9 +157,9 @@ def rust_pretty_printer_lookup_function(gdb_val):
     return None
 
 
-#=------------------------------------------------------------------------------
+# =------------------------------------------------------------------------------
 # Pretty Printer Classes
-#=------------------------------------------------------------------------------
+# =------------------------------------------------------------------------------
 class RustStructPrinter:
     def __init__(self, val, omit_first_field, omit_type_name, is_tuple_like):
         self.__val = val

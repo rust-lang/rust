@@ -8,13 +8,14 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import os
-import sys
+from __future__ import print_function
+
 import subprocess
+import sys
 
 f = open(sys.argv[1], 'wb')
 
-components = sys.argv[2].split() # splits on whitespace
+components = sys.argv[2].split()  # splits on whitespace
 enable_static = sys.argv[3]
 llvm_config = sys.argv[4]
 stdcpp_name = sys.argv[5]
@@ -45,20 +46,19 @@ def run(args):
         sys.exit(1)
     return out
 
-def runErr(args):
+
+def run_err(args):
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
-    if err:
-        return False, out
-    else:
-        return True, out
+    return bool(err), out
+
 
 f.write("\n")
 
 args = [llvm_config, '--shared-mode']
 args.extend(components)
-llvm_shared, out = runErr(args)
+llvm_shared, out = run_err(args)
 if llvm_shared:
     llvm_shared = 'shared' in out
 
@@ -91,7 +91,7 @@ for lib in out.strip().split(' '):
 # C++ runtime library
 out = run([llvm_config, '--cxxflags'])
 if enable_static == '1':
-    assert('stdlib=libc++' not in out)
+    assert 'stdlib=libc++' not in out
     f.write("#[link(name = \"" + stdcpp_name + "\", kind = \"static\")]\n")
 else:
     # Note that we use `cfg_attr` here because on MSVC the C++ standard library

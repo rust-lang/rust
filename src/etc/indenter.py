@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+
 import re
 import sys
 
@@ -13,7 +15,7 @@ while True:
     if more_re.match(line):
         indent += 1
 
-    print "%03d %s%s" % (indent, " " * indent, line.strip())
+    print("%03d %s%s" % (indent, " " * indent, line.strip()))
 
     if less_re.match(line):
         indent -= 1

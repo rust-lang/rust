@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+#
 # Copyright 2015-2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -8,6 +10,8 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+from __future__ import print_function
+
 import argparse
 import contextlib
 import hashlib
@@ -17,12 +21,13 @@ import subprocess
 import sys
 import tarfile
 
+
 def get(url, path, verbose=False):
     print("downloading " + url)
     sha_url = url + ".sha256"
     sha_path = path + ".sha256"
     for _url, _path in ((url, path), (sha_url, sha_path)):
-        # see http://serverfault.com/questions/301128/how-to-download
+        # See http://serverfault.com/questions/301128/how-to-download
         if sys.platform == 'win32':
             run(["PowerShell.exe", "/nologo", "-Command",
                  "(New-Object System.Net.WebClient)"
@@ -33,15 +38,16 @@ def get(url, path, verbose=False):
     print("verifying " + path)
     with open(path, "rb") as f:
         found = hashlib.sha256(f.read()).hexdigest()
-    with open(sha_path, "r") as f:
+    with open(sha_path) as f:
         expected, _ = f.readline().split()
     if found != expected:
         err = ("invalid checksum:\n"
                "    found:    {}\n"
-               "    expected: {}".format(found, expected))
+               "    expected: {}").format(found, expected)
         if verbose:
             raise RuntimeError(err)
         sys.exit(err)
+
 
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
@@ -65,11 +71,12 @@ def unpack(tarball, dst, verbose=False, match=None):
             shutil.move(tp, fp)
     shutil.rmtree(os.path.join(dst, fname))
 
+
 def run(args, verbose=False):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
-    # Use Popen here instead of call() as it apparently allows powershell on
+    # Use Popen here instead of call() as it apparently allows PowerShell on
     # Windows to not lock up waiting for input presumably.
     ret = subprocess.Popen(args)
     code = ret.wait()
@@ -78,6 +85,7 @@ def run(args, verbose=False):
         if verbose:
             raise RuntimeError(err)
         sys.exit(err)
+
 
 def stage0_data(rust_root):
     nightlies = os.path.join(rust_root, "src/stage0.txt")
@@ -90,7 +98,16 @@ def stage0_data(rust_root):
             data[a] = b
         return data
 
+
 class RustBuild:
+    def __init__(self, build_dir, rust_root, config_toml='', config_mk='',
+                 verbose=False):
+        self.build_dir = build_dir
+        self.config_mk = config_mk
+        self.config_toml = config_toml
+        self.rust_root = rust_root
+        self.verbose = verbose
+
     def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
@@ -100,13 +117,15 @@ class RustBuild:
         if not os.path.exists(cargo_cache):
             os.makedirs(cargo_cache)
 
-        if self.rustc().startswith(self.bin_root()) and \
-           (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
+        if self.rustc().startswith(self.bin_root()) and (
+                    not os.path.exists(
+                        self.rustc()) or self.rustc_out_of_date()):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             channel = self.stage0_rustc_channel()
             filename = "rust-std-" + channel + "-" + self.build + ".tar.gz"
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            url = "https://static.rust-lang.org/dist/" + \
+                  self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get(url + "/" + filename, tarball, verbose=self.verbose)
@@ -115,23 +134,28 @@ class RustBuild:
                    verbose=self.verbose)
 
             filename = "rustc-" + channel + "-" + self.build + ".tar.gz"
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            url = "https://static.rust-lang.org/dist/" + \
+                  self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get(url + "/" + filename, tarball, verbose=self.verbose)
-            unpack(tarball, self.bin_root(), match="rustc", verbose=self.verbose)
+            unpack(tarball, self.bin_root(), match="rustc",
+                   verbose=self.verbose)
             with open(self.rustc_stamp(), 'w') as f:
                 f.write(self.stage0_rustc_date())
 
-        if self.cargo().startswith(self.bin_root()) and \
-           (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
+        if self.cargo().startswith(self.bin_root()) and (
+                    not os.path.exists(
+                        self.cargo()) or self.cargo_out_of_date()):
             channel = self.stage0_cargo_channel()
             filename = "cargo-" + channel + "-" + self.build + ".tar.gz"
-            url = "https://static.rust-lang.org/cargo-dist/" + self.stage0_cargo_date()
+            url = "https://static.rust-lang.org/cargo-dist/" + \
+                  self.stage0_cargo_date()
             tarball = os.path.join(cargo_cache, filename)
             if not os.path.exists(tarball):
                 get(url + "/" + filename, tarball, verbose=self.verbose)
-            unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
+            unpack(tarball, self.bin_root(), match="cargo",
+                   verbose=self.verbose)
             with open(self.cargo_stamp(), 'w') as f:
                 f.write(self.stage0_cargo_date())
 
@@ -172,19 +196,17 @@ class RustBuild:
         for line in self.config_toml.splitlines():
             if line.startswith(key + ' ='):
                 return self.get_string(line)
-        return None
 
     def get_mk(self, key):
         for line in iter(self.config_mk.splitlines()):
             if line.startswith(key):
                 return line[line.find(':=') + 2:].strip()
-        return None
 
     def cargo(self):
         config = self.get_toml('cargo')
-        if config:
-            return config
-        return os.path.join(self.bin_root(), "bin/cargo" + self.exe_suffix())
+
+        return config or os.path.join(self.bin_root(),
+                                      "bin/cargo" + self.exe_suffix())
 
     def rustc(self):
         config = self.get_toml('rustc')
@@ -197,8 +219,8 @@ class RustBuild:
 
     def get_string(self, line):
         start = line.find('"')
-        end = start + 1 + line[start+1:].find('"')
-        return line[start+1:end]
+        end = start + 1 + line[start + 1:].find('"')
+        return line[start + 1:end]
 
     def exe_suffix(self):
         if sys.platform == 'win32':
@@ -212,14 +234,14 @@ class RustBuild:
         env["RUSTC"] = self.rustc()
         env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
         env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
-        env["PATH"] = os.path.join(self.bin_root(), "bin") + \
-                      os.pathsep + env["PATH"]
+        env["PATH"] = os.path.join(self.bin_root(), "bin") + os.pathsep + env[
+            "PATH"]
         self.run([self.cargo(), "build", "--manifest-path",
                   os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")],
                  env)
 
     def run(self, args, env):
-        proc = subprocess.Popen(args, env = env)
+        proc = subprocess.Popen(args, env=env)
         ret = proc.wait()
         if ret != 0:
             sys.exit(ret)
@@ -234,7 +256,7 @@ class RustBuild:
         try:
             ostype = subprocess.check_output(['uname', '-s']).strip()
             cputype = subprocess.check_output(['uname', '-m']).strip()
-        except FileNotFoundError:
+        except OSError:
             if sys.platform == 'win32':
                 return 'x86_64-pc-windows-msvc'
             else:
@@ -310,6 +332,7 @@ class RustBuild:
 
         return cputype + '-' + ostype
 
+
 def main():
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
@@ -318,45 +341,41 @@ def main():
     args = [a for a in sys.argv if a != '-h']
     args, _ = parser.parse_known_args(args)
 
-    # Configure initial bootstrap
-    rb = RustBuild()
-    rb.config_toml = ''
-    rb.config_mk = ''
-    rb.rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
-    rb.build_dir = os.path.join(os.getcwd(), "build")
-    rb.verbose = args.verbose
+    rust_root = os.path.abspath(os.path.join(__file__, '../../..'))
+    build_dir = os.path.join(os.getcwd(), "build")
 
     try:
         with open(args.config or 'config.toml') as config:
-            rb.config_toml = config.read()
-    except:
+            config_toml = config.read()
+        with open('config.mk') as config_mk_file:
+            config_mk = config_mk_file.read()
+    except OSError:
         pass
-    try:
-        rb.config_mk = open('config.mk').read()
-    except:
-        pass
+
+    # Configure initial bootstrap.
+    rb = RustBuild(build_dir=build_dir, rust_root=rust_root,
+                   config_toml=config_toml, config_mk=config_mk,
+                   verbose=args.verbose)
 
     data = stage0_data(rb.rust_root)
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
     rb._cargo_channel, rb._cargo_date = data['cargo'].split('-', 1)
 
-    # Fetch/build the bootstrap
+    # Fetch/build the bootstrap.
     rb.build = rb.build_triple()
     rb.download_stage0()
     sys.stdout.flush()
     rb.build_bootstrap()
     sys.stdout.flush()
 
-    # Run the bootstrap
+    # Run the bootstrap.
     args = [os.path.join(rb.build_dir, "bootstrap/debug/bootstrap")]
-    args.append('--src')
-    args.append(rb.rust_root)
-    args.append('--build')
-    args.append(rb.build)
+    args += ['--src', rb.rust_root, '--build', rb.build]
     args.extend(sys.argv[1:])
     env = os.environ.copy()
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     rb.run(args, env)
+
 
 if __name__ == '__main__':
     main()

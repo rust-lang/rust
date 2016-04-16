@@ -87,20 +87,22 @@ Windows) the worker processes are leaked and stick around forever.
 They're only a few megabytes each, but still, this script should not be run
 if you aren't prepared to manually kill a lot of orphaned processes.
 """
+
 from __future__ import print_function
-import sys
-import os.path
-import time
-import struct
-from fractions import Fraction
-from collections import namedtuple
-from subprocess import Popen, check_call, PIPE
-from glob import glob
-import multiprocessing
+
 import Queue
-import threading
-import ctypes
 import binascii
+import ctypes
+import multiprocessing
+import os.path
+import struct
+import sys
+import threading
+import time
+from collections import namedtuple
+from fractions import Fraction
+from glob import glob
+from subprocess import Popen, check_call, PIPE
 
 NUM_WORKERS = 2
 UPDATE_EVERY_N = 50000
@@ -112,6 +114,7 @@ STDOUT_LOCK = threading.Lock()
 test_name = None
 child_processes = []
 exit_status = 0
+
 
 def msg(*args):
     with STDOUT_LOCK:
@@ -152,9 +155,9 @@ def run(test):
     t0 = time.clock()
     msg("setting up supervisor")
     exe = test + '.exe'
-    proc = Popen(exe, bufsize=1<<20 , stdin=PIPE, stdout=PIPE, stderr=PIPE)
+    proc = Popen(exe, bufsize=1 << 20, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     done = multiprocessing.Value(ctypes.c_bool)
-    queue = multiprocessing.Queue(maxsize=5)#(maxsize=1024)
+    queue = multiprocessing.Queue(maxsize=5)  # (maxsize=1024)
     workers = []
     for n in range(NUM_WORKERS):
         worker = multiprocessing.Process(name='Worker-' + str(n + 1),
@@ -202,7 +205,7 @@ def interact(proc, queue):
 def main():
     global MAILBOX
     tests = [os.path.splitext(f)[0] for f in glob('*.rs')
-                                    if not f.startswith('_')]
+             if not f.startswith('_')]
     whitelist = sys.argv[1:]
     if whitelist:
         tests = [test for test in tests if test in whitelist]
@@ -228,8 +231,8 @@ def main():
 # ---- Worker thread code ----
 
 
-POW2 = { e: Fraction(2) ** e for e in range(-1100, 1100) }
-HALF_ULP = { e: (Fraction(2) ** e)/2 for e in range(-1100, 1100) }
+POW2 = {e: Fraction(2) ** e for e in range(-1100, 1100)}
+HALF_ULP = {e: (Fraction(2) ** e) / 2 for e in range(-1100, 1100)}
 DONE_FLAG = None
 
 
@@ -339,6 +342,7 @@ DOUBLE_INF_CUTOFF = MAX_DOUBLE + 2 ** (MAX_ULP_DOUBLE - 1)
 SINGLE_ZERO_CUTOFF = MIN_SUBNORMAL_SINGLE / 2
 SINGLE_INF_CUTOFF = MAX_SINGLE + 2 ** (MAX_ULP_SINGLE - 1)
 
+
 def validate(bin64, bin32, text):
     double = decode_binary64(bin64)
     single = decode_binary32(bin32)
@@ -372,6 +376,7 @@ def validate(bin64, bin32, text):
         validate_normal(text, real, sig, k, "f32")
     else:
         assert 0, "didn't handle binary32"
+
 
 def record_special_error(text, descr):
     send_error_to_supervisor(text.strip(), "wrongly rounded to", descr)

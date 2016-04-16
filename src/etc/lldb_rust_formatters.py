@@ -9,15 +9,15 @@
 # except according to those terms.
 
 import lldb
-import re
+
 import debugger_pretty_printers_common as rustpp
 
-#===============================================================================
+
+# ===============================================================================
 # LLDB Pretty Printing Module for Rust
-#===============================================================================
+# ===============================================================================
 
 class LldbType(rustpp.Type):
-
     def __init__(self, ty):
         super(LldbType, self).__init__()
         self.ty = ty
@@ -52,8 +52,8 @@ class LldbType(rustpp.Type):
         return None
 
     def get_fields(self):
-        assert ((self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT) or
-                (self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_UNION))
+        assert (self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT) or (
+            self.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_UNION)
         if self.fields is None:
             self.fields = list(self.ty.fields)
         return self.fields
@@ -89,20 +89,19 @@ def print_val(lldb_val, internal_dict):
     val = LldbValue(lldb_val)
     type_kind = val.type.get_type_kind()
 
-    if (type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or
-        type_kind == rustpp.TYPE_KIND_EMPTY):
+    if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT or type_kind == rustpp.TYPE_KIND_EMPTY:
         return print_struct_val(val,
                                 internal_dict,
-                                omit_first_field = False,
-                                omit_type_name = False,
-                                is_tuple_like = False)
+                                omit_first_field=False,
+                                omit_type_name=False,
+                                is_tuple_like=False)
 
     if type_kind == rustpp.TYPE_KIND_STRUCT_VARIANT:
         return print_struct_val(val,
                                 internal_dict,
-                                omit_first_field = True,
-                                omit_type_name = False,
-                                is_tuple_like = False)
+                                omit_first_field=True,
+                                omit_type_name=False,
+                                is_tuple_like=False)
 
     if type_kind == rustpp.TYPE_KIND_SLICE:
         return print_vec_slice_val(val, internal_dict)
@@ -119,16 +118,16 @@ def print_val(lldb_val, internal_dict):
     if type_kind == rustpp.TYPE_KIND_TUPLE:
         return print_struct_val(val,
                                 internal_dict,
-                                omit_first_field = False,
-                                omit_type_name = True,
-                                is_tuple_like = True)
+                                omit_first_field=False,
+                                omit_type_name=True,
+                                is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_TUPLE_STRUCT:
         return print_struct_val(val,
                                 internal_dict,
-                                omit_first_field = False,
-                                omit_type_name = False,
-                                is_tuple_like = True)
+                                omit_first_field=False,
+                                omit_type_name=False,
+                                is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_CSTYLE_VARIANT:
         return val.type.get_unqualified_type_name()
@@ -136,9 +135,9 @@ def print_val(lldb_val, internal_dict):
     if type_kind == rustpp.TYPE_KIND_TUPLE_VARIANT:
         return print_struct_val(val,
                                 internal_dict,
-                                omit_first_field = True,
-                                omit_type_name = False,
-                                is_tuple_like = True)
+                                omit_first_field=True,
+                                omit_type_name=False,
+                                is_tuple_like=True)
 
     if type_kind == rustpp.TYPE_KIND_SINGLETON_ENUM:
         return print_val(lldb_val.GetChildAtIndex(0), internal_dict)
@@ -166,15 +165,15 @@ def print_val(lldb_val, internal_dict):
     return lldb_val.GetValue()
 
 
-#=--------------------------------------------------------------------------------------------------
+# =--------------------------------------------------------------------------------------------------
 # Type-Specialized Printing Functions
-#=--------------------------------------------------------------------------------------------------
+# =--------------------------------------------------------------------------------------------------
 
 def print_struct_val(val, internal_dict, omit_first_field, omit_type_name, is_tuple_like):
-    '''
+    """
     Prints a struct, tuple, or tuple struct value with Rust syntax.
     Ignores any fields before field_start_index.
-    '''
+    """
     assert val.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_STRUCT
 
     if omit_type_name:
@@ -220,8 +219,9 @@ def print_struct_val(val, internal_dict, omit_first_field, omit_type_name, is_tu
     return template % {"type_name": type_name,
                        "body": body}
 
+
 def print_pointer_val(val, internal_dict):
-    '''Prints a pointer value with Rust syntax'''
+    """Prints a pointer value with Rust syntax"""
     assert val.type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_PTR
     sigil = "&"
     type_name = val.type.get_unqualified_type_name()
@@ -261,23 +261,27 @@ def print_std_vec_val(val, internal_dict):
                                               length,
                                               internal_dict)
 
+
 def print_str_slice_val(val, internal_dict):
     (length, data_ptr) = rustpp.extract_length_and_ptr_from_slice(val)
     return read_utf8_string(data_ptr, length)
+
 
 def print_std_string_val(val, internal_dict):
     vec = val.get_child_at_index(0)
     (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(vec)
     return read_utf8_string(data_ptr, length)
 
-#=--------------------------------------------------------------------------------------------------
+
+# =--------------------------------------------------------------------------------------------------
 # Helper Functions
-#=--------------------------------------------------------------------------------------------------
+# =--------------------------------------------------------------------------------------------------
 
 UNQUALIFIED_TYPE_MARKERS = frozenset(["(", "[", "&", "*"])
 
+
 def extract_type_name(qualified_type_name):
-    '''Extracts the type name from a fully qualified path'''
+    """Extracts the type name from a fully qualified path"""
     if qualified_type_name[0] in UNQUALIFIED_TYPE_MARKERS:
         return qualified_type_name
 
@@ -291,9 +295,10 @@ def extract_type_name(qualified_type_name):
     else:
         return qualified_type_name[index + 2:]
 
+
 def print_array_of_values(array_name, data_ptr_val, length, internal_dict):
-    '''Prints a contigous memory range, interpreting it as values of the
-       pointee-type of data_ptr_val.'''
+    """Prints a contigous memory range, interpreting it as values of the
+       pointee-type of data_ptr_val."""
 
     data_ptr_type = data_ptr_val.type
     assert data_ptr_type.get_dwarf_type_kind() == rustpp.DWARF_TYPE_CODE_PTR

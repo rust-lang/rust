@@ -24,27 +24,29 @@
 # fail. Using this Python script, the above will work as expected.
 
 from __future__ import print_function
-import lldb
+
 import os
-import sys
-import threading
-import thread
 import re
+import sys
+import thread
+import threading
 import time
+
+import lldb
 
 # Set this to True for additional output
 DEBUG_OUTPUT = False
 
 
 def print_debug(s):
-    "Print something if DEBUG_OUTPUT is True"
+    """Print something if DEBUG_OUTPUT is True"""
     global DEBUG_OUTPUT
     if DEBUG_OUTPUT:
         print("DEBUG: " + str(s))
 
 
 def normalize_whitespace(s):
-    "Replace newlines, tabs, multiple spaces, etc with exactly one space"
+    """Replace newlines, tabs, multiple spaces, etc with exactly one space"""
     return re.sub("\s+", " ", s)
 
 
@@ -71,7 +73,7 @@ registered_breakpoints = set()
 
 
 def execute_command(command_interpreter, command):
-    "Executes a single CLI command"
+    """Executes a single CLI command"""
     global new_breakpoints
     global registered_breakpoints
 
@@ -120,8 +122,8 @@ def start_breakpoint_listener(target):
             while True:
                 if listener.WaitForEvent(120, event):
                     if lldb.SBBreakpoint.EventIsBreakpointEvent(event) and \
-                            lldb.SBBreakpoint.GetBreakpointEventTypeFromEvent(event) == \
-                            lldb.eBreakpointEventTypeAdded:
+                                    lldb.SBBreakpoint.GetBreakpointEventTypeFromEvent(event) == \
+                                    lldb.eBreakpointEventTypeAdded:
                         global new_breakpoints
                         breakpoint = lldb.SBBreakpoint.GetBreakpointFromEvent(event)
                         print_debug("breakpoint added, id = " + str(breakpoint.id))
@@ -154,6 +156,7 @@ def start_watchdog():
     watchdog_thread = threading.Thread(target=watchdog)
     watchdog_thread.daemon = True
     watchdog_thread.start()
+
 
 ####################################################################################################
 # ~main
@@ -191,7 +194,6 @@ if not target:
     print("Could not create debugging target '" + target_path + "': " +
           str(target_error) + ". Aborting.", file=sys.stderr)
     sys.exit(1)
-
 
 # Register the breakpoint callback for every breakpoint
 start_breakpoint_listener(target)

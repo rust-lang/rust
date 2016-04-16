@@ -8,11 +8,14 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import subprocess
+from __future__ import print_function
+
 import os
+import subprocess
 import sys
 
 target_triple = sys.argv[14]
+
 
 def normalize_path(v):
     """msys1/msys2 automatically converts `/abs/path1:/abs/path2` into
@@ -41,6 +44,7 @@ def convert_path_spec(name, value):
     if os.name == 'nt' and name != 'PATH':
         value = ":".join(normalize_path(v) for v in value.split(";"))
     return value
+
 
 make = sys.argv[2]
 putenv('RUSTC', os.path.abspath(sys.argv[3]))
@@ -84,13 +88,13 @@ out, err = proc.communicate()
 i = proc.wait()
 
 if i != 0:
-    print """\
+    print("""\
 ----- %s --------------------
 ------ stdout ---------------------------------------------
 %s
 ------ stderr ---------------------------------------------
 %s
 ------        ---------------------------------------------
-""" % (sys.argv[1], out, err)
+""" % (sys.argv[1], out, err))
 
     sys.exit(i)

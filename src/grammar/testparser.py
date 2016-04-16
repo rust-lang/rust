@@ -12,11 +12,12 @@
 
 # ignore-tidy-linelength
 
-import sys
+from __future__ import print_function
 
+import argparse
 import os
 import subprocess
-import argparse
+import sys
 
 # usage: testparser.py [-h] [-p PARSER [PARSER ...]] -s SOURCE_DIR
 
@@ -69,7 +70,9 @@ print("\n")
 
 for parser in args.parser:
     filename = os.path.basename(parser) + '.bad'
-    print("writing {} files that did not yield the correct result with {} to {}".format(len(bad[parser]), parser, filename))
+    print("writing {} files that did not yield the correct result with {} to {}"
+          .format(len(bad[parser]), parser,
+                  filename))
     with open(filename, "w") as f:
         for p in bad[parser]:
             f.write(p)
