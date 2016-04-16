@@ -17,7 +17,7 @@ use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::parse;
 use parse::lexer::new_tt_reader;
 use parse::parser::{Parser, Restrictions};
-use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
+use parse::token::{self, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
 use ptr::P;
@@ -244,8 +244,8 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     // $( $lhs:tt => $rhs:tt );+
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
-    let match_lhs_tok = MatchNt(lhs_nm, special_idents::tt);
-    let match_rhs_tok = MatchNt(rhs_nm, special_idents::tt);
+    let match_lhs_tok = MatchNt(lhs_nm, token::str_to_ident("tt"));
+    let match_rhs_tok = MatchNt(rhs_nm, token::str_to_ident("tt"));
     let argument_gram = vec!(
         TokenTree::Sequence(DUMMY_SP,
                    Rc::new(ast::SequenceRepetition {

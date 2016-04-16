@@ -286,7 +286,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                         alloca: lltemp,
                         address_operations: &ops
                     };
-                    declare_local(bcx, token::special_idents::invalid.name,
+                    declare_local(bcx, token::special_idents::Invalid.name,
                                   tupled_arg_ty, scope, variable_access,
                                   VariableKind::ArgumentVariable(arg_index + i + 1),
                                   bcx.fcx().span.unwrap_or(DUMMY_SP));

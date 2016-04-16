@@ -31,7 +31,7 @@ use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap;
 use syntax::codemap::{DUMMY_SP, Pos, Spanned};
-use syntax::parse::token::{self, InternedString, special_idents};
+use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 
 use rustc_trans::back::link;
@@ -2666,7 +2666,7 @@ fn resolve_type(cx: &DocContext,
             hir::TyFloat(ast::FloatTy::F64) => return Primitive(F64),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
-            return Generic(special_idents::type_self.name.to_string());
+            return Generic(keywords::SelfType.ident.to_string());
         }
         Def::SelfTy(..) | Def::TyParam(..) => true,
         _ => false,

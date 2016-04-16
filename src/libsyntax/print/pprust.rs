@@ -2959,7 +2959,7 @@ impl<'a> State<'a> {
                 match input.pat.node {
                     PatKind::Ident(_, ref path1, _) if
                         path1.node.name ==
-                            parse::token::special_idents::invalid.name => {
+                            parse::token::special_idents::Invalid.name => {
                         // Do nothing.
                     }
                     _ => {
