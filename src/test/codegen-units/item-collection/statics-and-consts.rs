@@ -60,5 +60,3 @@ fn main() {
 //~ TRANS_ITEM static statics_and_consts::foo[0]::STATIC2[2]
 
 //~ TRANS_ITEM fn statics_and_consts::main[0]
-
-//~ TRANS_ITEM drop-glue i8
