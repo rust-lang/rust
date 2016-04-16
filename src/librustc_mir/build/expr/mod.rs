@@ -75,5 +75,6 @@ mod as_lvalue;
 mod as_rvalue;
 mod as_operand;
 mod as_temp;
-pub mod category;
+mod category;
 mod into;
+mod stmt;

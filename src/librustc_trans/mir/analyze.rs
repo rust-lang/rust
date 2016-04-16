@@ -14,13 +14,13 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc::mir::repr as mir;
 use rustc::mir::visit::{Visitor, LvalueContext};
-use common::{self, Block};
+use common::{self, Block, BlockAndBuilder};
 use super::rvalue;
 
 pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
-                               mir: &mir::Mir<'tcx>)
-                               -> BitVector {
-    let mut analyzer = TempAnalyzer::new(mir, bcx, mir.temp_decls.len());
+                               mir: &mir::Mir<'tcx>) -> BitVector {
+    let bcx = bcx.build();
+    let mut analyzer = TempAnalyzer::new(mir, &bcx, mir.temp_decls.len());
 
     analyzer.visit_mir(mir);
 
@@ -51,16 +51,16 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
     analyzer.lvalue_temps
 }
 
-struct TempAnalyzer<'mir, 'bcx, 'tcx: 'mir + 'bcx> {
+struct TempAnalyzer<'mir, 'bcx: 'mir, 'tcx: 'bcx> {
     mir: &'mir mir::Mir<'tcx>,
-    bcx: Block<'bcx, 'tcx>,
+    bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
     lvalue_temps: BitVector,
     seen_assigned: BitVector
 }
 
 impl<'mir, 'bcx, 'tcx> TempAnalyzer<'mir, 'bcx, 'tcx> {
     fn new(mir: &'mir mir::Mir<'tcx>,
-           bcx: Block<'bcx, 'tcx>,
+           bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
            temp_count: usize) -> TempAnalyzer<'mir, 'bcx, 'tcx> {
         TempAnalyzer {
             mir: mir,
