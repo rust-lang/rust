@@ -850,7 +850,7 @@ pub fn noop_fold_struct_field<T: Folder>(f: StructField, fld: &mut T) -> StructF
         span: fld.new_span(f.span),
         id: fld.new_id(f.id),
         ident: f.ident.map(|ident| fld.fold_ident(ident)),
-        vis: f.vis,
+        vis: fld.fold_vis(f.vis),
         ty: fld.fold_ty(f.ty),
         attrs: fold_attrs(f.attrs, fld),
     }

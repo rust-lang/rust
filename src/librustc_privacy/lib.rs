@@ -1023,7 +1023,8 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                             self.min_visibility = vis;
                         }
                         if !vis.is_at_least(self.required_visibility, &self.tcx.map) {
-                            if self.old_error_set.contains(&ty.id) {
+                            if self.tcx.sess.features.borrow().pub_restricted ||
+                               self.old_error_set.contains(&ty.id) {
                                 span_err!(self.tcx.sess, ty.span, E0446,
                                           "private type in public interface");
                             } else {
@@ -1053,7 +1054,8 @@ impl<'a, 'tcx: 'a, 'v> Visitor<'v> for SearchInterfaceForPrivateItemsVisitor<'a,
                 self.min_visibility = vis;
             }
             if !vis.is_at_least(self.required_visibility, &self.tcx.map) {
-                if self.old_error_set.contains(&trait_ref.ref_id) {
+                if self.tcx.sess.features.borrow().pub_restricted ||
+                   self.old_error_set.contains(&trait_ref.ref_id) {
                     span_err!(self.tcx.sess, trait_ref.path.span, E0445,
                               "private trait in public interface");
                 } else {

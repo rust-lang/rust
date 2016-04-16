@@ -30,7 +30,7 @@ pub use self::TyParamBound::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
-pub use self::Visibility::*;
+pub use self::Visibility::{Public, Inherited};
 pub use self::PathParameters::*;
 
 use hir::def::Def;
@@ -1434,6 +1434,8 @@ pub struct PolyTraitRef {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Visibility {
     Public,
+    Crate,
+    Restricted { path: P<Path>, id: NodeId },
     Inherited,
 }
 

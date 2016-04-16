@@ -22,6 +22,7 @@ pub use self::Attribute::*;
 pub use self::TyParamBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
+pub use self::Visibility::*;
 
 use syntax;
 use syntax::abi::Abi;
@@ -183,7 +184,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     source: Span::empty(),
                     name: Some(prim.to_url_str().to_string()),
                     attrs: child.attrs.clone(),
-                    visibility: Some(hir::Public),
+                    visibility: Some(Public),
                     stability: None,
                     deprecation: None,
                     def_id: DefId::local(prim.to_def_index()),
@@ -1391,7 +1392,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
 
         Item {
             name: Some(self.name.clean(cx)),
-            visibility: Some(hir::Inherited),
+            visibility: Some(Inherited),
             stability: get_stability(cx, self.def_id),
             deprecation: get_deprecation(cx, self.def_id),
             def_id: self.def_id,
@@ -1777,17 +1778,21 @@ impl<'tcx> Clean<Item> for ty::FieldDefData<'tcx, 'static> {
     }
 }
 
-pub type Visibility = hir::Visibility;
+#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug)]
+pub enum Visibility {
+    Public,
+    Inherited,
+}
 
 impl Clean<Option<Visibility>> for hir::Visibility {
     fn clean(&self, _: &DocContext) -> Option<Visibility> {
-        Some(self.clone())
+        Some(if *self == hir::Visibility::Public { Public } else { Inherited })
     }
 }
 
 impl Clean<Option<Visibility>> for ty::Visibility {
     fn clean(&self, _: &DocContext) -> Option<Visibility> {
-        Some(if *self == ty::Visibility::Public { hir::Public } else { hir::Inherited })
+        Some(if *self == ty::Visibility::Public { Public } else { Inherited })
     }
 }
 
@@ -1919,7 +1924,7 @@ impl<'tcx> Clean<Item> for ty::VariantDefData<'tcx, 'static> {
             name: Some(self.name.clean(cx)),
             attrs: inline::load_attrs(cx, cx.tcx(), self.did),
             source: Span::empty(),
-            visibility: Some(hir::Inherited),
+            visibility: Some(Inherited),
             def_id: self.did,
             inner: VariantItem(Variant { kind: kind }),
             stability: get_stability(cx, self.did),
@@ -2341,7 +2346,7 @@ impl Clean<Item> for doctree::DefaultImpl {
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
             def_id: cx.map.local_def_id(self.id),
-            visibility: Some(hir::Public),
+            visibility: Some(Public),
             stability: None,
             deprecation: None,
             inner: DefaultImplItem(DefaultImpl {
@@ -2700,7 +2705,7 @@ impl Clean<Item> for doctree::Macro {
             name: Some(name.clone()),
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            visibility: hir::Public.clean(cx),
+            visibility: Some(Public),
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
             def_id: cx.map.local_def_id(self.id),
