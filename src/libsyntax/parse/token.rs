@@ -26,7 +26,6 @@ use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 
-#[allow(non_camel_case_types)]
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
     Plus,
@@ -99,7 +98,6 @@ impl Lit {
     }
 }
 
-#[allow(non_camel_case_types)]
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
@@ -185,7 +183,7 @@ impl Token {
     pub fn can_begin_expr(&self) -> bool {
         match *self {
             OpenDelim(_)                => true,
-            Ident(_, _)                 => true,
+            Ident(..)                   => true,
             Underscore                  => true,
             Tilde                       => true,
             Literal(_, _)               => true,
@@ -218,7 +216,7 @@ impl Token {
     /// Returns `true` if the token is an identifier.
     pub fn is_ident(&self) -> bool {
         match *self {
-            Ident(_, _) => true,
+            Ident(..)   => true,
             _           => false,
         }
     }
@@ -236,16 +234,6 @@ impl Token {
         match *self {
             Interpolated(NtPath(..))    => true,
             _                           => false,
-        }
-    }
-
-    /// Returns `true` if the token is a path that is not followed by a `::`
-    /// token.
-    #[allow(non_upper_case_globals)]
-    pub fn is_plain_ident(&self) -> bool {
-        match *self {
-            Ident(_, Plain) => true,
-            _               => false,
         }
     }
 
@@ -289,77 +277,53 @@ impl Token {
     }
 
     /// Returns `true` if the token is a given keyword, `kw`.
-    #[allow(non_upper_case_globals)]
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
         match *self {
-            Ident(sid, Plain) => kw.to_name() == sid.name,
-            _                      => false,
-        }
-    }
-
-    pub fn is_keyword_allow_following_colon(&self, kw: keywords::Keyword) -> bool {
-        match *self {
-            Ident(sid, _) => { kw.to_name() == sid.name }
-            _ => { false }
-        }
-    }
-
-    /// Returns `true` if the token is either a special identifier, or a strict
-    /// or reserved keyword.
-    #[allow(non_upper_case_globals)]
-    pub fn is_any_keyword(&self) -> bool {
-        match *self {
-            Ident(sid, Plain) => {
-                let n = sid.name;
-
-                   n == SELF_KEYWORD_NAME
-                || n == STATIC_KEYWORD_NAME
-                || n == SUPER_KEYWORD_NAME
-                || n == SELF_TYPE_KEYWORD_NAME
-                || STRICT_KEYWORD_START <= n
-                && n <= RESERVED_KEYWORD_FINAL
-            },
-            _ => false
-        }
-    }
-
-    /// Returns `true` if the token may not appear as an identifier.
-    #[allow(non_upper_case_globals)]
-    pub fn is_strict_keyword(&self) -> bool {
-        match *self {
-            Ident(sid, Plain) => {
-                let n = sid.name;
-
-                   n == SELF_KEYWORD_NAME
-                || n == STATIC_KEYWORD_NAME
-                || n == SUPER_KEYWORD_NAME
-                || n == SELF_TYPE_KEYWORD_NAME
-                || STRICT_KEYWORD_START <= n
-                && n <= STRICT_KEYWORD_FINAL
-            },
-            Ident(sid, ModName) => {
-                let n = sid.name;
-
-                   n != SELF_KEYWORD_NAME
-                && n != SUPER_KEYWORD_NAME
-                && STRICT_KEYWORD_START <= n
-                && n <= STRICT_KEYWORD_FINAL
-            }
+            Ident(id, _) => id.name == kw.to_name(),
             _ => false,
         }
     }
 
-    /// Returns `true` if the token is a keyword that has been reserved for
-    /// possible future use.
-    #[allow(non_upper_case_globals)]
+    pub fn is_path_segment_keyword(&self) -> bool {
+        match *self {
+            Ident(id, _) => id.name == SUPER_KEYWORD_NAME ||
+                            id.name == SELF_KEYWORD_NAME ||
+                            id.name == SELF_TYPE_KEYWORD_NAME,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the token is either a strict or reserved keyword.
+    pub fn is_any_keyword(&self) -> bool {
+        match *self {
+            Ident(id, _) => id.name == SELF_KEYWORD_NAME ||
+                            id.name == STATIC_KEYWORD_NAME ||
+                            id.name == SUPER_KEYWORD_NAME ||
+                            id.name == SELF_TYPE_KEYWORD_NAME ||
+                            id.name >= STRICT_KEYWORD_START &&
+                            id.name <= RESERVED_KEYWORD_FINAL,
+            _ => false
+        }
+    }
+
+    /// Returns `true` if the token is either a strict keyword.
+    pub fn is_strict_keyword(&self) -> bool {
+        match *self {
+            Ident(id, _) => id.name == SELF_KEYWORD_NAME ||
+                            id.name == STATIC_KEYWORD_NAME ||
+                            id.name == SUPER_KEYWORD_NAME ||
+                            id.name == SELF_TYPE_KEYWORD_NAME ||
+                            id.name >= STRICT_KEYWORD_START &&
+                            id.name <= STRICT_KEYWORD_FINAL,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the token is either a keyword reserved for possible future use.
     pub fn is_reserved_keyword(&self) -> bool {
         match *self {
-            Ident(sid, Plain) => {
-                let n = sid.name;
-
-                   RESERVED_KEYWORD_START <= n
-                && n <= RESERVED_KEYWORD_FINAL
-            },
+            Ident(id, _) => id.name >= RESERVED_KEYWORD_START &&
+                            id.name <= RESERVED_KEYWORD_FINAL,
             _ => false,
         }
     }
