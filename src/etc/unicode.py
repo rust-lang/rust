@@ -362,11 +362,11 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_comp = {}
     comp_exclusions = norm_props["Full_Composition_Exclusion"]
     for char in canon_keys:
-        if True in map(lambda (lo, hi): lo <= char <= hi, comp_exclusions):
+        if True in map(lambda lo_hi: lo_hi[0] <= char <= lo_hi[1], comp_exclusions):
             continue
         decomp = canon[char]
         if len(decomp) == 2:
-            if not canon_comp.has_key(decomp[0]):
+            if decomp[0] not in canon_comp:
                 canon_comp[decomp[0]] = []
             canon_comp[decomp[0]].append( (decomp[1], char) )
     canon_comp_keys = canon_comp.keys()
