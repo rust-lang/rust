@@ -147,6 +147,7 @@ pub enum DefPathData {
     Impl,
     TypeNs(ast::Name), // something in the type NS
     ValueNs(ast::Name), // something in the value NS
+    Module(ast::Name),
     MacroDef(ast::Name),
     ClosureExpr,
 
@@ -288,6 +289,7 @@ impl DefPathData {
         match *self {
             TypeNs(name) |
             ValueNs(name) |
+            Module(name) |
             MacroDef(name) |
             TypeParam(name) |
             LifetimeDef(name) |
