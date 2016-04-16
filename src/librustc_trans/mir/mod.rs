@@ -108,6 +108,16 @@ enum TempRef<'tcx> {
     Operand(Option<OperandRef<'tcx>>),
 }
 
+impl<'tcx> TempRef<'tcx> {
+    fn new_operand(val: OperandValue, ty: ty::Ty<'tcx>) -> TempRef<'tcx> {
+        let op = OperandRef {
+            val: val,
+            ty: ty
+        };
+        TempRef::Operand(Some(op))
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 
 pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
@@ -154,11 +164,8 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                                   // Zero-size temporaries aren't always initialized, which
                                   // doesn't matter because they don't contain data, but
                                   // we need something in the operand.
-                                  let op = OperandRef {
-                                      val: OperandValue::Immediate(common::C_nil(bcx.ccx())),
-                                      ty: mty
-                                  };
-                                  TempRef::Operand(Some(op))
+                                  let val = OperandValue::Immediate(common::C_nil(bcx.ccx()));
+                                  TempRef::new_operand(val, mty)
                               } else {
                                   // If this is an immediate temp, we do not create an
                                   // alloca in advance. Instead we wait until we see the

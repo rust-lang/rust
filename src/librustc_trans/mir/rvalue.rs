@@ -18,7 +18,7 @@ use rustc::mir::repr as mir;
 use asm;
 use base;
 use callee::Callee;
-use common::{self, C_uint, Block, BlockAndBuilder, Result};
+use common::{self, C_uint, BlockAndBuilder, Result};
 use datum::{Datum, Lvalue};
 use debuginfo::DebugLoc;
 use declare;
@@ -218,9 +218,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             _ => {
-                bcx.with_block(|bcx| {
-                    assert!(rvalue_creates_operand(&self.mir, bcx, rvalue));
-                });
+                assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue, debug_loc);
                 self.store_operand(&bcx, dest.llval, temp);
                 bcx
@@ -234,10 +232,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 debug_loc: DebugLoc)
                                 -> (BlockAndBuilder<'bcx, 'tcx>, OperandRef<'tcx>)
     {
-        bcx.with_block(|bcx| {
-            assert!(rvalue_creates_operand(&self.mir, bcx, rvalue),
-                    "cannot trans {:?} to operand", rvalue);
-        });
+        assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue),
+                "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -608,7 +604,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 }
 
-pub fn rvalue_creates_operand<'bcx, 'tcx>(mir: &mir::Mir<'tcx>, bcx: Block<'bcx, 'tcx>,
+pub fn rvalue_creates_operand<'bcx, 'tcx>(mir: &mir::Mir<'tcx>,
+                                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
                                           rvalue: &mir::Rvalue<'tcx>) -> bool {
     match *rvalue {
         mir::Rvalue::Ref(..) |

@@ -52,9 +52,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 } else {
                                     // If the type is zero-sized, it's already been set here,
                                     // but we still need to make sure we translate the operand
-                                    let (bcx, _) = self.trans_rvalue_operand(bcx, rvalue,
-                                                                                   debug_loc);
-                                    bcx
+                                    self.trans_rvalue_operand(bcx, rvalue, debug_loc).0
                                 }
                             }
                         }
