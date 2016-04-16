@@ -137,14 +137,14 @@ impl Rewrite for ast::Expr {
                     Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
-                Some(format!("continue{}", id_str))
+                wrap_str(format!("continue{}", id_str), context.config.max_width, width, offset)
             }
             ast::ExprKind::Break(ref opt_ident) => {
                 let id_str = match *opt_ident {
                     Some(ident) => format!(" {}", ident.node),
                     None => String::new(),
                 };
-                Some(format!("break{}", id_str))
+                wrap_str(format!("break{}", id_str), context.config.max_width, width, offset)
             }
             ast::ExprKind::Closure(capture, ref fn_decl, ref body) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
