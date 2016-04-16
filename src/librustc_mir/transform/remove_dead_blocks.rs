@@ -43,9 +43,8 @@ pub struct RemoveDeadBlocks;
 impl<'tcx> MirPass<'tcx> for RemoveDeadBlocks {
     fn run_pass(&mut self, _: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
         let mut seen = BitVector::new(mir.basic_blocks.len());
-        // These blocks are always required.
+        // This block is always required.
         seen.insert(START_BLOCK.index());
-        seen.insert(END_BLOCK.index());
 
         let mut worklist = Vec::with_capacity(4);
         worklist.push(START_BLOCK);
