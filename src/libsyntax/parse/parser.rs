@@ -292,7 +292,7 @@ impl TokenType {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", Parser::token_to_string(t)),
             TokenType::Operator => "an operator".to_string(),
-            TokenType::Keyword(kw) => format!("`{}`", kw.to_name()),
+            TokenType::Keyword(kw) => format!("`{}`", kw.ident.name),
         }
     }
 }
@@ -562,9 +562,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ident(&mut self) -> PResult<'a, ast::Ident> {
-        if !self.restrictions.contains(Restrictions::ALLOW_MODULE_PATHS) {
-            self.check_strict_keywords();
-        }
+        self.check_used_keywords();
         self.check_reserved_keywords();
         match self.token {
             token::Ident(i) => {
@@ -658,8 +656,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Signal an error if the given string is a strict keyword
-    pub fn check_strict_keywords(&mut self) {
-        if self.token.is_strict_keyword() {
+    pub fn check_used_keywords(&mut self) {
+        if self.token.is_used_keyword() {
             let token_str = self.this_token_to_string();
             let span = self.span;
             self.span_err(span,
@@ -1553,7 +1551,7 @@ impl<'a> Parser<'a> {
         } else {
             debug!("parse_arg_general ident_to_pat");
             let sp = self.last_span;
-            let spanned = Spanned { span: sp, node: special_idents::invalid };
+            let spanned = Spanned { span: sp, node: special_idents::Invalid };
             P(Pat {
                 id: ast::DUMMY_NODE_ID,
                 node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable),
@@ -2335,7 +2333,7 @@ impl<'a> Parser<'a> {
                     }
                     hi = self.last_span.hi;
                 } else if self.token.is_keyword(keywords::Let) {
-                    // Catch this syntax error here, instead of in `check_strict_keywords`, so
+                    // Catch this syntax error here, instead of in `check_used_keywords`, so
                     // that we can explicitly mention that let is not to be used as an expression
                     let mut db = self.fatal("expected expression, found statement (`let`)");
                     db.note("variable declaration using `let` is a statement");
@@ -2618,7 +2616,7 @@ impl<'a> Parser<'a> {
                     self.span_err(self.span, &format!("unexpected token: `{}`", actual));
 
                     let dot_pos = self.last_span.hi;
-                    e = self.parse_dot_suffix(special_idents::invalid,
+                    e = self.parse_dot_suffix(special_idents::Invalid,
                                               mk_sp(dot_pos, dot_pos),
                                               e, lo)?;
                   }
@@ -2696,7 +2694,7 @@ impl<'a> Parser<'a> {
         };
         // continue by trying to parse the `:ident` after `$name`
         if self.token == token::Colon && self.look_ahead(1, |t| t.is_ident() &&
-                                                                !t.is_strict_keyword() &&
+                                                                !t.is_used_keyword() &&
                                                                 !t.is_reserved_keyword()) {
             self.bump();
             sp = mk_sp(sp.lo, self.span.hi);
@@ -3942,7 +3940,7 @@ impl<'a> Parser<'a> {
             self.bump();
 
             let id = match self.token {
-                token::OpenDelim(_) => token::special_idents::invalid, // no special identifier
+                token::OpenDelim(_) => token::special_idents::Invalid, // no special identifier
                 _ => self.parse_ident()?,
             };
 
@@ -3954,7 +3952,7 @@ impl<'a> Parser<'a> {
                 _ => {
                     // we only expect an ident if we didn't parse one
                     // above.
-                    let ident_str = if id.name == token::special_idents::invalid.name {
+                    let ident_str = if id.name == token::special_idents::Invalid.name {
                         "identifier, "
                     } else {
                         ""
@@ -3980,7 +3978,7 @@ impl<'a> Parser<'a> {
                 MacStmtStyle::NoBraces
             };
 
-            if id.name == token::special_idents::invalid.name {
+            if id.name == token::special_idents::Invalid.name {
                 let mac = P(spanned(lo, hi, Mac_ { path: pth, tts: tts, ctxt: EMPTY_CTXT }));
                 let stmt = StmtKind::Mac(mac, style, attrs.into_thin_attrs());
                 spanned(lo, hi, stmt)
@@ -4610,8 +4608,10 @@ impl<'a> Parser<'a> {
 
     fn expect_self_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(id) if id.name == special_idents::self_.name => {
+            token::Ident(id) if id.name == keywords::SelfValue.ident.name => {
                 self.bump();
+                // The hygiene context of `id` needs to be preserved here,
+                // so we can't just return `SelfValue.ident`.
                 Ok(id)
             },
             _ => {
@@ -4696,7 +4696,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                 }
                 // error case, making bogus self ident:
-                SelfKind::Value(special_idents::self_)
+                SelfKind::Value(keywords::SelfValue.ident)
             }
             token::Ident(..) => {
                 if self.token.is_keyword(keywords::SelfValue) {
@@ -4971,7 +4971,7 @@ impl<'a> Parser<'a> {
             if delim != token::Brace {
                 self.expect(&token::Semi)?
             }
-            Ok((token::special_idents::invalid, vec![], ast::ImplItemKind::Macro(m)))
+            Ok((token::special_idents::Invalid, vec![], ast::ImplItemKind::Macro(m)))
         } else {
             let (constness, unsafety, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
@@ -5066,7 +5066,7 @@ impl<'a> Parser<'a> {
 
             self.expect(&token::OpenDelim(token::Brace))?;
             self.expect(&token::CloseDelim(token::Brace))?;
-            Ok((special_idents::invalid,
+            Ok((special_idents::Invalid,
              ItemKind::DefaultImpl(unsafety, opt_trait.unwrap()), None))
         } else {
             if opt_trait.is_some() {
@@ -5082,7 +5082,7 @@ impl<'a> Parser<'a> {
                 impl_items.push(self.parse_impl_item()?);
             }
 
-            Ok((special_idents::invalid,
+            Ok((special_idents::Invalid,
              ItemKind::Impl(unsafety, polarity, generics, opt_trait, ty, impl_items),
              Some(attrs)))
         }
@@ -5260,7 +5260,7 @@ impl<'a> Parser<'a> {
 
     /// Parse defaultness: DEFAULT or nothing
     fn parse_defaultness(&mut self) -> PResult<'a, Defaultness> {
-        if self.eat_contextual_keyword(special_idents::DEFAULT) {
+        if self.eat_contextual_keyword(special_idents::Default) {
             Ok(Defaultness::Default)
         } else {
             Ok(Defaultness::Final)
@@ -5588,7 +5588,7 @@ impl<'a> Parser<'a> {
         };
         Ok(self.mk_item(lo,
                      last_span.hi,
-                     special_idents::invalid,
+                     special_idents::Invalid,
                      ItemKind::ForeignMod(m),
                      visibility,
                      attrs))
@@ -5727,7 +5727,7 @@ impl<'a> Parser<'a> {
             let last_span = self.last_span;
             let item = self.mk_item(lo,
                                     last_span.hi,
-                                    token::special_idents::invalid,
+                                    token::special_idents::Invalid,
                                     item_,
                                     visibility,
                                     attrs);
@@ -6018,7 +6018,7 @@ impl<'a> Parser<'a> {
             let id = if self.token.is_ident() {
                 self.parse_ident()?
             } else {
-                token::special_idents::invalid // no special identifier
+                token::special_idents::Invalid // no special identifier
             };
             // eat a matched-delimiter token tree:
             let delim = self.expect_open_delim()?;

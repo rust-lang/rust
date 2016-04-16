@@ -1015,7 +1015,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
     let config = folder.fold_meta_items(config);
 
     let mut items = folder.fold_item(P(ast::Item {
-        ident: token::special_idents::invalid,
+        ident: token::special_idents::Invalid,
         attrs: attrs,
         id: ast::DUMMY_NODE_ID,
         vis: ast::Visibility::Public,

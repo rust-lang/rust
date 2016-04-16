@@ -93,7 +93,7 @@ use syntax::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::parse::token::special_idents;
+use syntax::parse::token::keywords;
 use syntax::ptr::P;
 use rustc::hir::{self, PatKind};
 use rustc::hir::intravisit;
@@ -1655,7 +1655,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let def = ty::TypeParameterDef {
         space: SelfSpace,
         index: 0,
-        name: special_idents::type_self.name,
+        name: keywords::SelfType.ident.name,
         def_id: ccx.tcx.map.local_def_id(param_id),
         default_def_id: ccx.tcx.map.local_def_id(parent),
         default: None,

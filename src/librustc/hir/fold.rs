@@ -867,7 +867,7 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span,
     let config = folder.fold_meta_items(config);
 
     let crate_mod = folder.fold_item(hir::Item {
-        name: token::special_idents::invalid.name,
+        name: token::special_idents::Invalid.name,
         attrs: attrs,
         id: DUMMY_NODE_ID,
         vis: hir::Public,

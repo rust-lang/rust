@@ -202,7 +202,7 @@ use syntax::codemap::Span;
 use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
 use syntax::parse::token::{intern, InternedString};
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{keywords, special_idents};
 use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -635,7 +635,7 @@ impl<'a> TraitDef<'a> {
 
         cx.item(
             self.span,
-            special_idents::invalid,
+            special_idents::Invalid,
             a,
             ast::ItemKind::Impl(unsafety,
                                 ast::ImplPolarity::Positive,
@@ -866,7 +866,7 @@ impl<'a> MethodDef<'a> {
             // creating fresh self id
             _ => Some(ast::Arg::new_self(trait_.span,
                                          ast::Mutability::Immutable,
-                                         special_idents::self_))
+                                         keywords::SelfValue.ident))
         };
         let args = {
             let args = arg_types.into_iter().map(|(name, ty)| {

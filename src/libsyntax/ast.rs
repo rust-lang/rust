@@ -93,7 +93,7 @@ impl Ident {
     pub fn new(name: Name, ctxt: SyntaxContext) -> Ident {
         Ident {name: name, ctxt: ctxt}
     }
-    pub fn with_empty_ctxt(name: Name) -> Ident {
+    pub const fn with_empty_ctxt(name: Name) -> Ident {
         Ident {name: name, ctxt: EMPTY_CTXT}
     }
 }
