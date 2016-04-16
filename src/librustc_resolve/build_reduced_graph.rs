@@ -120,7 +120,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
         // prevent `self` or `super` at beginning of global path
         if path.global && path.segments.len() > 0 {
             let first = path.segments[0].identifier.name;
-            if first == keywords::Super.to_name() || first == keywords::SelfValue.to_name() {
+            if first == keywords::Super.ident.name || first == keywords::SelfValue.ident.name {
                 self.session.add_lint(
                     lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH, id, path.span,
                     format!("expected identifier, found keyword `{}`", first)
