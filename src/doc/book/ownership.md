@@ -173,11 +173,11 @@ For example if we truncated the vector to just two elements through `v2`:
 v2.truncate(2);
 ```
 
-and `v1` were still accessible we'd end up with an invalid vector since `v1`
+and `v` were still accessible we'd end up with an invalid vector since `v`
 would not know that the heap data has been truncated. Now, the part of the
-vector `v1` on the stack does not agree with the corresponding part on the
-heap. `v1` still thinks there are three elements in the vector and will
-happily let us access the non existent element `v1[2]` but as you might
+vector `v` on the stack does not agree with the corresponding part on the
+heap. `v` still thinks there are three elements in the vector and will
+happily let us access the non existent element `v[2]` but as you might
 already know this is a recipe for disaster. Especially because it might lead
 to a segmentation fault or worse allow an unauthorized user to read from
 memory to which they don't have access.
