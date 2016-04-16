@@ -9,13 +9,11 @@
 // except according to those terms.
 
 fn f() -> String {  //~ ERROR E0269
-                    //~^ HELP detailed explanation
     0u8;
     "bla".to_string();  //~ HELP consider removing this semicolon
 }
 
 fn g() -> String {  //~ ERROR E0269
-                    //~^ HELP detailed explanation
     "this won't work".to_string();
     "removeme".to_string(); //~ HELP consider removing this semicolon
 }

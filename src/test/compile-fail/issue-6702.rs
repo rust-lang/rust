@@ -16,5 +16,4 @@ struct Monster {
 fn main() {
     let _m = Monster(); //~ ERROR `Monster` is the name of a struct or
     //~^ HELP did you mean to write: `Monster { /* fields */ }`?
-    //~| HELP run `rustc --explain E0423` to see a detailed explanation
 }

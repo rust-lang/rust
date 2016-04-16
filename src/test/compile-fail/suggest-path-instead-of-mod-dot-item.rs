@@ -27,54 +27,46 @@ fn h1() -> i32 {
     a.I
         //~^ ERROR E0425
         //~| HELP To reference an item from the `a` module, use `a::I`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h2() -> i32 {
     a.g()
         //~^ ERROR E0425
         //~| HELP To call a function from the `a` module, use `a::g(..)`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h3() -> i32 {
     a.b.J
         //~^ ERROR E0425
         //~| HELP To reference an item from the `a` module, use `a::b`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h4() -> i32 {
     a::b.J
         //~^ ERROR E0425
         //~| HELP To reference an item from the `a::b` module, use `a::b::J`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h5() -> i32 {
     a.b.f()
         //~^ ERROR E0425
         //~| HELP To reference an item from the `a` module, use `a::b`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h6() -> i32 {
     a::b.f()
         //~^ ERROR E0425
         //~| HELP To call a function from the `a::b` module, use `a::b::f(..)`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h7() {
     a::b
         //~^ ERROR E0425
         //~| HELP Module `a::b` cannot be the value of an expression
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
 
 fn h8() -> i32 {
     a::b()
         //~^ ERROR E0425
         //~| HELP No function corresponds to `a::b(..)`
-        //~| HELP run `rustc --explain E0425` to see a detailed explanation
 }
