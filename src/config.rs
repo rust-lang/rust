@@ -153,26 +153,27 @@ configuration_option_enum! { WriteMode:
     Checkstyle,
 }
 
-// This trait and the following impl blocks are there so that we an use
-// UCFS inside the get_docs() function on types for configs.
-pub trait ConfigType {
-    fn get_variant_names() -> String;
+/// Trait for types that can be used in `Config`.
+pub trait ConfigType: Sized {
+    /// Returns hint text for use in `Config::print_docs()`. For enum types, this is a
+    /// pipe-separated list of variants; for other types it returns "<type>".
+    fn doc_hint() -> String;
 }
 
 impl ConfigType for bool {
-    fn get_variant_names() -> String {
+    fn doc_hint() -> String {
         String::from("<boolean>")
     }
 }
 
 impl ConfigType for usize {
-    fn get_variant_names() -> String {
+    fn doc_hint() -> String {
         String::from("<unsigned integer>")
     }
 }
 
 impl ConfigType for String {
-    fn get_variant_names() -> String {
+    fn doc_hint() -> String {
         String::from("<string>")
     }
 }
@@ -278,7 +279,7 @@ macro_rules! create_config {
                     name_out.push(' ');
                     println!("{}{} Default: {:?}",
                              name_out,
-                             <$ty>::get_variant_names(),
+                             <$ty>::doc_hint(),
                              $def);
                     $(
                         println!("{}{}", space_str, $dstring);
