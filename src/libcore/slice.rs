@@ -158,7 +158,7 @@ pub trait SliceExt {
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
 
-    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "0")]
+    #[unstable(feature = "slice_binary_search_by_key", reason = "recently added", issue = "33018")]
     fn binary_search_by_key<B, F>(&self, b: &B, f: F) -> Result<usize, usize>
         where F: FnMut(&Self::Item) -> B,
               B: Ord;
