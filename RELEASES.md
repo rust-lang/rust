@@ -140,7 +140,7 @@ Cargo
 Performance
 -----------
 
-* [The complexity of comparing variables for equivalence during type 
+* [The time complexity of comparing variables for equivalence during type 
   unification is reduced from _O_(_n_!) to _O_(_n_)][1.9tu]. This leads
   to major compilation time improvement in some scenarios.
 * [`ToString` is specialized for `str`, giving it the same performance
