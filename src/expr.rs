@@ -177,6 +177,9 @@ impl Rewrite for ast::Expr {
             ast::ExprKind::Cast(ref expr, ref ty) => {
                 rewrite_pair(&**expr, &**ty, "", " as ", "", context, width, offset)
             }
+            ast::ExprKind::Type(ref expr, ref ty) => {
+                rewrite_pair(&**expr, &**ty, "", ": ", "", context, width, offset)
+            }
             ast::ExprKind::Index(ref expr, ref index) => {
                 rewrite_pair(&**expr, &**index, "", "[", "]", context, width, offset)
             }
@@ -210,8 +213,6 @@ impl Rewrite for ast::Expr {
             // satisfy our width restrictions.
             ast::ExprKind::InPlace(..) |
             ast::ExprKind::InlineAsm(..) |
-            // TODO(#848): Handle type ascription
-            ast::ExprKind::Type(_, _) |
             // TODO(#867): Handle try shorthand
             ast::ExprKind::Try(_) => {
                 wrap_str(context.snippet(self.span),
