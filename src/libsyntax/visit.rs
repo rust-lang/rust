@@ -231,6 +231,7 @@ pub fn walk_trait_ref<'v,V>(visitor: &mut V,
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
+    visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.span, item.ident);
     match item.node {
         ItemKind::ExternCrate(opt_name) => {
@@ -470,6 +471,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
 
 pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V,
                                              foreign_item: &'v ForeignItem) {
+    visitor.visit_vis(&foreign_item.vis);
     visitor.visit_ident(foreign_item.span, foreign_item.ident);
 
     match foreign_item.node {
@@ -592,6 +594,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
 }
 
 pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
+    visitor.visit_vis(&impl_item.vis);
     visitor.visit_ident(impl_item.span, impl_item.ident);
     walk_list!(visitor, visit_attribute, &impl_item.attrs);
     match impl_item.node {
@@ -619,6 +622,7 @@ pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V,
 
 pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V,
                                              struct_field: &'v StructField) {
+    visitor.visit_vis(&struct_field.vis);
     walk_opt_ident(visitor, struct_field.span, struct_field.ident);
     visitor.visit_ty(&struct_field.ty);
     walk_list!(visitor, visit_attribute, &struct_field.attrs);
@@ -812,8 +816,7 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
 }
 
 pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {
-    match *vis {
-        Visibility::Restricted { ref path, id } => visitor.visit_path(path, id),
-        _ => {}
+    if let Visibility::Restricted { ref path, id } = *vis {
+        visitor.visit_path(path, id);
     }
 }

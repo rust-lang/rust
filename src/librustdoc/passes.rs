@@ -14,7 +14,6 @@ use rustc::util::nodemap::DefIdSet;
 use std::cmp;
 use std::string::String;
 use std::usize;
-use rustc::hir;
 
 use clean::{self, Attributes, GetDefId};
 use clean::Item;
@@ -133,13 +132,13 @@ impl<'a> fold::DocFolder for Stripper<'a> {
             }
 
             clean::StructFieldItem(..) => {
-                if i.visibility != Some(hir::Public) {
+                if i.visibility != Some(clean::Public) {
                     return Strip(i).fold();
                 }
             }
 
             clean::ModuleItem(..) => {
-                if i.def_id.is_local() && i.visibility != Some(hir::Public) {
+                if i.def_id.is_local() && i.visibility != Some(clean::Public) {
                     return Strip(self.fold_item_recur(i).unwrap()).fold()
                 }
             }
@@ -226,7 +225,7 @@ impl fold::DocFolder for ImportStripper {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             clean::ExternCrateItem(..) |
-            clean::ImportItem(..) if i.visibility != Some(hir::Public) => None,
+            clean::ImportItem(..) if i.visibility != Some(clean::Public) => None,
             _ => self.fold_item_recur(i)
         }
     }

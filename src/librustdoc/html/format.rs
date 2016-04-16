@@ -31,7 +31,7 @@ use html::render::{cache, CURRENT_LOCATION_KEY};
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
 #[derive(Copy, Clone)]
-pub struct VisSpace<'a>(pub &'a Option<hir::Visibility>);
+pub struct VisSpace<'a>(pub &'a Option<clean::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a function style with a
 /// space after it.
 #[derive(Copy, Clone)]
@@ -57,7 +57,7 @@ pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 
 impl<'a> VisSpace<'a> {
-    pub fn get(self) -> &'a Option<hir::Visibility> {
+    pub fn get(self) -> &'a Option<clean::Visibility> {
         let VisSpace(v) = self; v
     }
 }
@@ -639,8 +639,8 @@ impl<'a> fmt::Display for Method<'a> {
 impl<'a> fmt::Display for VisSpace<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self.get() {
-            Some(hir::Public) => write!(f, "pub "),
-            Some(hir::Inherited) | None => Ok(())
+            Some(clean::Public) => write!(f, "pub "),
+            Some(clean::Inherited) | None => Ok(())
         }
     }
 }
