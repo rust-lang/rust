@@ -297,8 +297,8 @@ impl TokenType {
     }
 }
 
-fn is_plain_ident_or_underscore(t: &token::Token) -> bool {
-    t.is_plain_ident() || *t == token::Underscore
+fn is_ident_or_underscore(t: &token::Token) -> bool {
+    t.is_ident() || *t == token::Underscore
 }
 
 /// Information about the path to a module.
@@ -582,14 +582,6 @@ impl<'a> Parser<'a> {
                 }
                 Err(err)
             }
-        }
-    }
-
-    pub fn parse_ident_or_self_type(&mut self) -> PResult<'a, ast::Ident> {
-        if self.is_self_type_ident() {
-            self.expect_self_type_ident()
-        } else {
-            self.parse_ident()
         }
     }
 
@@ -1476,9 +1468,7 @@ impl<'a> Parser<'a> {
                  self.parse_qualified_path(NoTypesAllowed)?;
 
             TyKind::Path(Some(qself), path)
-        } else if self.check(&token::ModSep) ||
-                  self.token.is_ident() ||
-                  self.token.is_path() {
+        } else if self.is_path_start() {
             let path = self.parse_path(LifetimeAndTypesWithoutColons)?;
             if self.check(&token::Not) {
                 // MACRO INVOCATION
@@ -1541,10 +1531,10 @@ impl<'a> Parser<'a> {
         debug!("parser is_named_argument offset:{}", offset);
 
         if offset == 0 {
-            is_plain_ident_or_underscore(&self.token)
+            is_ident_or_underscore(&self.token)
                 && self.look_ahead(1, |t| *t == token::Colon)
         } else {
-            self.look_ahead(offset, |t| is_plain_ident_or_underscore(t))
+            self.look_ahead(offset, |t| is_ident_or_underscore(t))
                 && self.look_ahead(offset + 1, |t| *t == token::Colon)
         }
     }
@@ -1707,6 +1697,16 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn parse_path_segment_ident(&mut self) -> PResult<'a, ast::Ident> {
+        match self.token {
+            token::Ident(sid, _) if self.token.is_path_segment_keyword() => {
+                self.bump();
+                Ok(sid)
+            }
+            _ => self.parse_ident(),
+         }
+     }
+
     /// Parses qualified path.
     ///
     /// Assumes that the leading `<` has been parsed already.
@@ -1813,7 +1813,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
-            let identifier = self.parse_ident_or_self_type()?;
+            let identifier = self.parse_path_segment_ident()?;
 
             // Parse types, optionally.
             let parameters = if self.eat_lt() {
@@ -1866,7 +1866,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
-            let identifier = self.parse_ident_or_self_type()?;
+            let identifier = self.parse_path_segment_ident()?;
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
@@ -1913,7 +1913,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
-            let identifier = self.parse_ident_or_self_type()?;
+            let identifier = self.parse_path_segment_ident()?;
 
             // Assemble and push the result.
             segments.push(ast::PathSegment {
@@ -2212,15 +2212,6 @@ impl<'a> Parser<'a> {
                 let lo = self.span.lo;
                 return self.parse_lambda_expr(lo, CaptureBy::Ref, attrs);
             },
-            token::Ident(id @ ast::Ident {
-                            name: token::SELF_KEYWORD_NAME,
-                            ctxt: _
-                         }, token::Plain) => {
-                self.bump();
-                let path = ast::Path::from_ident(mk_sp(lo, hi), id);
-                ex = ExprKind::Path(None, path);
-                hi = self.last_span.hi;
-            }
             token::OpenDelim(token::Bracket) => {
                 self.bump();
 
@@ -2350,12 +2341,8 @@ impl<'a> Parser<'a> {
                     let mut db = self.fatal("expected expression, found statement (`let`)");
                     db.note("variable declaration using `let` is a statement");
                     return Err(db);
-                } else if self.check(&token::ModSep) ||
-                        self.token.is_ident() &&
-                        !self.check_keyword(keywords::True) &&
-                        !self.check_keyword(keywords::False) {
-                    let pth =
-                        self.parse_path(LifetimeAndTypesWithColons)?;
+                } else if self.is_path_start() {
+                    let pth = self.parse_path(LifetimeAndTypesWithColons)?;
 
                     // `!`, as an operator, is prefix, so we know this isn't that
                     if self.check(&token::Not) {
@@ -2694,7 +2681,7 @@ impl<'a> Parser<'a> {
                                           op: repeat,
                                           num_captures: name_num
                                       })));
-                } else if self.token.is_keyword_allow_following_colon(keywords::Crate) {
+                } else if self.token.is_keyword(keywords::Crate) {
                     self.bump();
                     return Ok(TokenTree::Token(sp, SpecialVarNt(SpecialMacroVar::CrateMacroVar)));
                 } else {
@@ -3663,10 +3650,9 @@ impl<'a> Parser<'a> {
                 pat = PatKind::Box(subpat);
             } else if self.is_path_start() {
                 // Parse pattern starting with a path
-                if self.token.is_plain_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
+                if self.token.is_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
                         *t != token::OpenDelim(token::Brace) &&
                         *t != token::OpenDelim(token::Paren) &&
-                        // Contrary to its definition, a plain ident can be followed by :: in macros
                         *t != token::ModSep) {
                     // Plain idents have some extra abilities here compared to general paths
                     if self.look_ahead(1, |t| *t == token::Not) {
@@ -4626,43 +4612,15 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    fn is_self_ident(&mut self) -> bool {
-        match self.token {
-          token::Ident(id, token::Plain) => id.name == special_idents::self_.name,
-          _ => false
-        }
-    }
-
     fn expect_self_ident(&mut self) -> PResult<'a, ast::Ident> {
         match self.token {
-            token::Ident(id, token::Plain) if id.name == special_idents::self_.name => {
+            token::Ident(id, _) if id.name == special_idents::self_.name => {
                 self.bump();
                 Ok(id)
             },
             _ => {
                 let token_str = self.this_token_to_string();
                 return Err(self.fatal(&format!("expected `self`, found `{}`",
-                                   token_str)))
-            }
-        }
-    }
-
-    fn is_self_type_ident(&mut self) -> bool {
-        match self.token {
-          token::Ident(id, token::Plain) => id.name == special_idents::type_self.name,
-          _ => false
-        }
-    }
-
-    fn expect_self_type_ident(&mut self) -> PResult<'a, ast::Ident> {
-        match self.token {
-            token::Ident(id, token::Plain) if id.name == special_idents::type_self.name => {
-                self.bump();
-                Ok(id)
-            },
-            _ => {
-                let token_str = self.this_token_to_string();
-                Err(self.fatal(&format!("expected `Self`, found `{}`",
                                    token_str)))
             }
         }
@@ -4736,7 +4694,7 @@ impl<'a> Parser<'a> {
                 } else {
                     Mutability::Immutable
                 };
-                if self.is_self_ident() {
+                if self.token.is_keyword(keywords::SelfValue) {
                     let span = self.span;
                     self.span_err(span, "cannot pass self by raw pointer");
                     self.bump();
@@ -4745,7 +4703,7 @@ impl<'a> Parser<'a> {
                 SelfKind::Value(special_idents::self_)
             }
             token::Ident(..) => {
-                if self.is_self_ident() {
+                if self.token.is_keyword(keywords::SelfValue) {
                     let self_ident = self.expect_self_ident()?;
 
                     // Determine whether this is the fully explicit form, `self:
@@ -6044,7 +6002,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Option<P<Item>>> {
         if macros_allowed && !self.token.is_any_keyword()
                 && self.look_ahead(1, |t| *t == token::Not)
-                && (self.look_ahead(2, |t| t.is_plain_ident())
+                && (self.look_ahead(2, |t| t.is_ident())
                     || self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
                     || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
             // MACRO INVOCATION ITEM
@@ -6061,7 +6019,7 @@ impl<'a> Parser<'a> {
             // a 'special' identifier (like what `macro_rules!` uses)
             // is optional. We should eventually unify invoc syntax
             // and remove this.
-            let id = if self.token.is_plain_ident() {
+            let id = if self.token.is_ident() {
                 self.parse_ident()?
             } else {
                 token::special_idents::invalid // no special identifier
