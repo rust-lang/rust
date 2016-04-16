@@ -16,13 +16,11 @@ fn check<T: Iterator, U: ?Sized>() {
     // suggest a where-clause, if needed
     mem::size_of::<U>();
     //~^ ERROR `U: std::marker::Sized` is not satisfied
-    //~| HELP E0277
     //~| HELP consider adding a `where U: std::marker::Sized` bound
     //~| NOTE required by `std::mem::size_of`
 
     mem::size_of::<Misc<U>>();
     //~^ ERROR `U: std::marker::Sized` is not satisfied
-    //~| HELP E0277
     //~| HELP consider adding a `where U: std::marker::Sized` bound
     //~| NOTE required because it appears within the type `Misc<U>`
     //~| NOTE required by `std::mem::size_of`
@@ -31,13 +29,11 @@ fn check<T: Iterator, U: ?Sized>() {
 
     <u64 as From<T>>::from;
     //~^ ERROR `u64: std::convert::From<T>` is not satisfied
-    //~| HELP E0277
     //~| HELP consider adding a `where u64: std::convert::From<T>` bound
     //~| NOTE required by `std::convert::From::from`
 
     <u64 as From<<T as Iterator>::Item>>::from;
     //~^ ERROR `u64: std::convert::From<<T as std::iter::Iterator>::Item>` is not satisfied
-    //~| HELP E0277
     //~| HELP consider adding a `where u64:
     //~| NOTE required by `std::convert::From::from`
 
@@ -45,20 +41,17 @@ fn check<T: Iterator, U: ?Sized>() {
 
     <Misc<_> as From<T>>::from;
     //~^ ERROR `Misc<_>: std::convert::From<T>` is not satisfied
-    //~| HELP E0277
     //~| NOTE required by `std::convert::From::from`
 
     // ... and also not if the error is not related to the type
 
     mem::size_of::<[T]>();
     //~^ ERROR `[T]: std::marker::Sized` is not satisfied
-    //~| HELP E0277
     //~| NOTE `[T]` does not have a constant size
     //~| NOTE required by `std::mem::size_of`
 
     mem::size_of::<[&U]>();
     //~^ ERROR `[&U]: std::marker::Sized` is not satisfied
-    //~| HELP E0277
     //~| NOTE `[&U]` does not have a constant size
     //~| NOTE required by `std::mem::size_of`
 }

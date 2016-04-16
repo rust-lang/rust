@@ -11,10 +11,6 @@
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
         //~^ ERROR: mismatched types:
-        //~| expected `std::ops::Fn() -> u32 + 'static`,
-        //~| found closure
-        //~| (expected trait std::ops::Fn,
-        //~| found closure)
         0
     };
 }

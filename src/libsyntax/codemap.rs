@@ -1394,6 +1394,56 @@ impl CodeMap {
     pub fn count_lines(&self) -> usize {
         self.files.borrow().iter().fold(0, |a, f| a + f.count_lines())
     }
+
+    pub fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace> {
+        let mut last_span = DUMMY_SP;
+        let mut span = span;
+        let mut result = vec![];
+        loop {
+            let span_name_span = self.with_expn_info(span.expn_id, |expn_info| {
+                expn_info.map(|ei| {
+                    let (pre, post) = match ei.callee.format {
+                        MacroAttribute(..) => ("#[", "]"),
+                        MacroBang(..) => ("", "!"),
+                    };
+                    let macro_decl_name = format!("{}{}{}",
+                                                  pre,
+                                                  ei.callee.name(),
+                                                  post);
+                    let def_site_span = ei.callee.span;
+                    (ei.call_site, macro_decl_name, def_site_span)
+                })
+            });
+
+            match span_name_span {
+                None => break,
+                Some((call_site, macro_decl_name, def_site_span)) => {
+                    // Don't print recursive invocations
+                    if !call_site.source_equal(&last_span) {
+                        result.push(MacroBacktrace {
+                            call_site: call_site,
+                            macro_decl_name: macro_decl_name,
+                            def_site_span: def_site_span,
+                        });
+                    }
+                    last_span = span;
+                    span = call_site;
+                }
+            }
+        }
+        result
+    }
+}
+
+pub struct MacroBacktrace {
+    /// span where macro was applied to generate this code
+    pub call_site: Span,
+
+    /// name of macro that was applied (e.g., "foo!" or "#[derive(Eq)]")
+    pub macro_decl_name: String,
+
+    /// span where macro was defined (if known)
+    pub def_site_span: Option<Span>,
 }
 
 // _____________________________________________________________________________

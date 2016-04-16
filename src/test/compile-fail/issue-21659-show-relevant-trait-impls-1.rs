@@ -36,5 +36,4 @@ fn main() {
     //~| help: the following implementations were found:
     //~| help:   <Bar as Foo<i32>>
     //~| help:   <Bar as Foo<u8>>
-    //~| help: run `rustc --explain E0277`
 }

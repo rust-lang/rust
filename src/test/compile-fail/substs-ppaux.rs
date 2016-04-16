@@ -28,7 +28,7 @@ fn foo<'z>() where &'z (): Sized {
     //[verbose]~| found `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>}`
     //[normal]~^^^^ ERROR mismatched types
     //[normal]~| expected `()`
-    //[normal]~| found  `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+    //[normal]~| found `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 
 
     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;

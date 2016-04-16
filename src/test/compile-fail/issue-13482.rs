@@ -17,7 +17,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `[_; 2]`
     //~| found `[_; 0]`
-    //~| expected array with a fixed size of 2 elements
+    //~| expected an array with a fixed size of 2 elements
     [a,_] => Some(a)
   };
 }

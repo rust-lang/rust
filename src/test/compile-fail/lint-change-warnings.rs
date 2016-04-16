@@ -27,5 +27,5 @@ fn bar() {
 
 #[forbid(warnings)]
 fn baz() {
-    while true {} //~ ERROR: warnings
+    while true {} //~ ERROR: infinite
 }

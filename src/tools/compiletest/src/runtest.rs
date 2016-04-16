@@ -12,7 +12,8 @@ use common::Config;
 use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental};
-use errors::{self, ErrorKind};
+use errors::{self, ErrorKind, Error};
+use json;
 use header::TestProps;
 use header;
 use procsrv;
@@ -26,7 +27,7 @@ use std::fs::{self, File};
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::net::TcpStream;
-use std::path::{Path, PathBuf, Component};
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 
 pub fn run(config: Config, testpaths: &TestPaths) {
@@ -944,7 +945,7 @@ fn check_error_patterns(revision: Option<&str>,
                        testpaths.file.display()));
     }
     let mut next_err_idx = 0;
-    let mut next_err_pat = &props.error_patterns[next_err_idx];
+    let mut next_err_pat = props.error_patterns[next_err_idx].trim();
     let mut done = false;
     for line in output_to_check.lines() {
         if line.contains(next_err_pat) {
@@ -955,7 +956,7 @@ fn check_error_patterns(revision: Option<&str>,
                 done = true;
                 break;
             }
-            next_err_pat = &props.error_patterns[next_err_idx];
+            next_err_pat = props.error_patterns[next_err_idx].trim();
         }
     }
     if done { return; }
@@ -998,208 +999,110 @@ fn check_forbid_output(revision: Option<&str>,
 }
 
 fn check_expected_errors(revision: Option<&str>,
-                         expected_errors: Vec<errors::ExpectedError>,
+                         expected_errors: Vec<errors::Error>,
                          testpaths: &TestPaths,
                          proc_res: &ProcRes) {
-    // true if we found the error in question
-    let mut found_flags = vec![false; expected_errors.len()];
-
     if proc_res.status.success() {
         fatal_proc_rec(revision, "process did not return an error status", proc_res);
     }
 
-    let prefixes = expected_errors.iter().map(|ee| {
-        let expected = format!("{}:{}:", testpaths.file.display(), ee.line_num);
-        // On windows just translate all '\' path separators to '/'
-        expected.replace(r"\", "/")
-    }).collect::<Vec<String>>();
+    let file_name =
+        format!("{}", testpaths.file.display())
+        .replace(r"\", "/"); // on windows, translate all '\' path separators to '/'
 
     // If the testcase being checked contains at least one expected "help"
     // message, then we'll ensure that all "help" messages are expected.
     // Otherwise, all "help" messages reported by the compiler will be ignored.
     // This logic also applies to "note" messages.
-    let (expect_help, expect_note) =
-        expected_errors.iter()
-                        .fold((false, false),
-                              |(acc_help, acc_note), ee|
-                                  (acc_help || ee.kind == Some(ErrorKind::Help),
-                                   acc_note || ee.kind == Some(ErrorKind::Note)));
+    let expect_help = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Help));
+    let expect_note = expected_errors.iter().any(|ee| ee.kind == Some(ErrorKind::Note));
 
-    // Scan and extract our error/warning messages,
-    // which look like:
-    //    filename:line1:col1: line2:col2: *error:* msg
-    //    filename:line1:col1: line2:col2: *warning:* msg
-    // where line1:col1: is the starting point, line2:col2:
-    // is the ending point, and * represents ANSI color codes.
-    //
-    // This pattern is ambiguous on windows, because filename may contain
-    // a colon, so any path prefix must be detected and removed first.
+    // Parse the JSON output from the compiler and extract out the messages.
+    let actual_errors = json::parse_output(&file_name, &proc_res.stderr);
     let mut unexpected = 0;
     let mut not_found = 0;
-    for line in proc_res.stderr.lines() {
-        let mut was_expected = false;
-        let mut prev = 0;
-        for (i, ee) in expected_errors.iter().enumerate() {
-            if !found_flags[i] {
-                debug!("prefix={} ee.kind={:?} ee.msg={} line={}",
-                       prefixes[i],
-                       ee.kind,
-                       ee.msg,
-                       line);
-                // Suggestions have no line number in their output, so take on the line number of
-                // the previous expected error
-                if ee.kind == Some(ErrorKind::Suggestion) {
-                    assert!(expected_errors[prev].kind == Some(ErrorKind::Help),
-                            "SUGGESTIONs must be preceded by a HELP");
-                    if line.contains(&ee.msg) {
-                        found_flags[i] = true;
-                        was_expected = true;
-                        break;
-                    }
-                }
-                if
-                    (prefix_matches(line, &prefixes[i]) || continuation(line)) &&
-                    (ee.kind.is_none() || line.contains(&ee.kind.as_ref().unwrap().to_string())) &&
-                    line.contains(&ee.msg)
-                {
-                    found_flags[i] = true;
-                    was_expected = true;
-                    break;
+    let mut found = vec![false; expected_errors.len()];
+    for actual_error in &actual_errors {
+        let opt_index =
+            expected_errors
+            .iter()
+            .enumerate()
+            .position(|(index, expected_error)| {
+                !found[index] &&
+                    actual_error.line_num == expected_error.line_num &&
+                    (expected_error.kind.is_none() ||
+                     actual_error.kind == expected_error.kind) &&
+                    actual_error.msg.contains(&expected_error.msg)
+            });
+
+        match opt_index {
+            Some(index) => {
+                // found a match, everybody is happy
+                assert!(!found[index]);
+                found[index] = true;
+            }
+
+            None => {
+                if is_unexpected_compiler_message(actual_error,
+                                                  expect_help,
+                                                  expect_note) {
+                    error(revision,
+                          &format!("{}:{}: unexpected {:?}: '{}'",
+                                   file_name,
+                                   actual_error.line_num,
+                                   actual_error.kind.as_ref()
+                                                    .map_or(String::from("message"),
+                                                            |k| k.to_string()),
+                                   actual_error.msg));
+                    unexpected += 1;
                 }
             }
-            prev = i;
-        }
-
-        // ignore this msg which gets printed at the end
-        if line.contains("aborting due to") {
-            was_expected = true;
-        }
-
-        if !was_expected && is_unexpected_compiler_message(line, expect_help, expect_note) {
-            error(revision, &format!("unexpected compiler message: '{}'", line));
-            unexpected += 1;
         }
     }
 
-    for (i, &flag) in found_flags.iter().enumerate() {
-        if !flag {
-            let ee = &expected_errors[i];
-            error(revision, &format!("expected {} on line {} not found: {}",
-                                     ee.kind.as_ref()
-                                            .map_or("message".into(),
-                                                    |k| k.to_string()),
-                                     ee.line_num, ee.msg));
+    // anything not yet found is a problem
+    for (index, expected_error) in expected_errors.iter().enumerate() {
+        if !found[index] {
+            error(revision,
+                  &format!("{}:{}: expected {} not found: {}",
+                           file_name,
+                           expected_error.line_num,
+                           expected_error.kind.as_ref()
+                                              .map_or("message".into(),
+                                                      |k| k.to_string()),
+                           expected_error.msg));
             not_found += 1;
         }
     }
 
     if unexpected > 0 || not_found > 0 {
-        fatal_proc_rec(
-            revision,
-            &format!("{} unexpected errors found, {} expected errors not found",
-                     unexpected, not_found),
-            proc_res);
-    }
-
-    fn prefix_matches(line: &str, prefix: &str) -> bool {
-        use std::ascii::AsciiExt;
-        // On windows just translate all '\' path separators to '/'
-        let line = line.replace(r"\", "/");
-        if cfg!(windows) {
-            line.to_ascii_lowercase().starts_with(&prefix.to_ascii_lowercase())
-        } else {
-            line.starts_with(prefix)
-        }
-    }
-
-    // A multi-line error will have followup lines which start with a space
-    // or open paren.
-    fn continuation( line: &str) -> bool {
-        line.starts_with(" ") || line.starts_with("(")
+        error(revision,
+              &format!("{} unexpected errors found, {} expected errors not found",
+                       unexpected, not_found));
+        print!("status: {}\ncommand: {}\n",
+               proc_res.status, proc_res.cmdline);
+        println!("actual errors (from JSON output): {:#?}\n", actual_errors);
+        println!("expected errors (from test file): {:#?}\n", expected_errors);
+        panic!();
     }
 }
 
-fn is_unexpected_compiler_message(line: &str, expect_help: bool, expect_note: bool) -> bool {
-    let mut c = Path::new(line).components();
-    let line = match c.next() {
-        Some(Component::Prefix(_)) => c.as_path().to_str().unwrap(),
-        _ => line,
-    };
-
-    let mut i = 0;
-    return scan_until_char(line, ':', &mut i) &&
-        scan_char(line, ':', &mut i) &&
-        scan_integer(line, &mut i) &&
-        scan_char(line, ':', &mut i) &&
-        scan_integer(line, &mut i) &&
-        scan_char(line, ':', &mut i) &&
-        scan_char(line, ' ', &mut i) &&
-        scan_integer(line, &mut i) &&
-        scan_char(line, ':', &mut i) &&
-        scan_integer(line, &mut i) &&
-        scan_char(line, ' ', &mut i) &&
-        (scan_string(line, "error", &mut i) ||
-         scan_string(line, "warning", &mut i) ||
-         (expect_help && scan_string(line, "help", &mut i)) ||
-         (expect_note && scan_string(line, "note", &mut i))
-        );
-}
-
-fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
-    if *idx >= haystack.len() {
-        return false;
+/// Returns true if we should report an error about `actual_error`,
+/// which did not match any of the expected error. We always require
+/// errors/warnings to be explicitly listed, but only require
+/// helps/notes if there are explicit helps/notes given.
+fn is_unexpected_compiler_message(actual_error: &Error,
+                                  expect_help: bool,
+                                  expect_note: bool)
+                                  -> bool {
+    match actual_error.kind {
+        Some(ErrorKind::Help) => expect_help,
+        Some(ErrorKind::Note) => expect_note,
+        Some(ErrorKind::Error) => true,
+        Some(ErrorKind::Warning) => true,
+        Some(ErrorKind::Suggestion) => false,
+        None => false
     }
-    let opt = haystack[(*idx)..].find(needle);
-    if opt.is_none() {
-        return false;
-    }
-    *idx = opt.unwrap();
-    return true;
-}
-
-fn scan_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
-    if *idx >= haystack.len() {
-        return false;
-    }
-    let ch = haystack[*idx..].chars().next().unwrap();
-    if ch != needle {
-        return false;
-    }
-    *idx += ch.len_utf8();
-    return true;
-}
-
-fn scan_integer(haystack: &str, idx: &mut usize) -> bool {
-    let mut i = *idx;
-    while i < haystack.len() {
-        let ch = haystack[i..].chars().next().unwrap();
-        if ch < '0' || '9' < ch {
-            break;
-        }
-        i += ch.len_utf8();
-    }
-    if i == *idx {
-        return false;
-    }
-    *idx = i;
-    return true;
-}
-
-fn scan_string(haystack: &str, needle: &str, idx: &mut usize) -> bool {
-    let mut haystack_i = *idx;
-    let mut needle_i = 0;
-    while needle_i < needle.len() {
-        if haystack_i >= haystack.len() {
-            return false;
-        }
-        let ch = haystack[haystack_i..].chars().next().unwrap();
-        haystack_i += ch.len_utf8();
-        if !scan_char(needle, ch, &mut needle_i) {
-            return false;
-        }
-    }
-    *idx = haystack_i;
-    return true;
 }
 
 struct ProcArgs {
@@ -1444,6 +1347,37 @@ fn make_compile_args<F>(config: &Config,
                         "-L".to_owned(),
                         config.build_base.to_str().unwrap().to_owned(),
                         format!("--target={}", target));
+
+    match config.mode {
+        CompileFail |
+        ParseFail |
+        Incremental => {
+            // If we are extracting and matching errors in the new
+            // fashion, then you want JSON mode. Old-skool error
+            // patterns still match the raw compiler output.
+            if props.error_patterns.is_empty() {
+                args.extend(["--error-format",
+                             "json",
+                             "-Z",
+                             "unstable-options"]
+                            .iter()
+                            .map(|s| s.to_string()));
+            }
+        }
+
+        RunFail |
+        RunPass |
+        RunPassValgrind |
+        Pretty |
+        DebugInfoGdb |
+        DebugInfoLldb |
+        Codegen |
+        Rustdoc |
+        CodegenUnits => {
+            // do not use JSON output
+        }
+    }
+
     args.extend_from_slice(&extras);
     if !props.no_prefer_dynamic {
         args.push("-C".to_owned());

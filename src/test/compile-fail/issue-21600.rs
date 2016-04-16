@@ -23,8 +23,6 @@ fn main() {
         call_it(|| x.gen());
         call_it(|| x.gen_mut()); //~ ERROR cannot borrow data mutably in a captured outer
         //~^ ERROR cannot borrow data mutably in a captured outer
-        //~^^ HELP run `rustc --explain E0387` to see a detailed explanation
-        //~^^^ HELP run `rustc --explain E0387` to see a detailed explanation
-        //~^^^^ HELP consider changing this closure to take self by mutable reference
+        //~| HELP consider changing this closure to take self by mutable reference
     });
 }

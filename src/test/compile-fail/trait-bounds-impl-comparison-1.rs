@@ -74,7 +74,7 @@ trait Trait {
 
 impl Trait for usize {
     fn method<G: Getter<usize>>(&self) {}
-    //~^ G : Getter<usize>` appears on the impl method but not on the corresponding trait method
+    //~^ ERROR `G: Getter<usize>` appears on the impl method
 }
 
 fn main() {}
