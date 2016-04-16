@@ -41,8 +41,10 @@ mod imp {
         #[cfg(target_arch = "aarch64")]
         const NR_GETRANDOM: libc::c_long = 278;
 
+        const GRND_NONBLOCK: libc::c_uint = 0x0001;
+
         unsafe {
-            libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0)
+            libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)
         }
     }
 
@@ -63,6 +65,11 @@ mod imp {
                 let err = errno() as libc::c_int;
                 if err == libc::EINTR {
                     continue;
+                } else if err == libc::EAGAIN {
+                    let reader = File::open("/dev/urandom").expect("Unable to open /dev/urandom");
+                    let mut reader_rng = ReaderRng::new(reader);
+                    reader_rng.fill_bytes(& mut v[read..]);
+                    read += v.len() as usize;
                 } else {
                     panic!("unexpected getrandom error: {}", err);
                 }
