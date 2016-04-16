@@ -196,7 +196,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::{ExchangeFreeFnLangItem, ExchangeMallocFnLangItem};
 use rustc::traits;
 use rustc::ty::subst::{self, Substs, Subst};
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::mir::repr as mir;
 use rustc::mir::visit as mir_visit;
@@ -204,14 +204,15 @@ use rustc::mir::visit::Visitor as MirVisitor;
 
 use syntax::ast::{self, NodeId};
 use syntax::codemap::DUMMY_SP;
-use syntax::errors;
+use syntax::{attr, errors};
 use syntax::parse::token;
 
-use base::custom_coerce_unsize_info;
+use base::{custom_coerce_unsize_info, llvm_linkage_by_name};
 use context::CrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates,
                     type_is_sized};
 use glue;
+use llvm;
 use meth;
 use monomorphize::{self, Instance};
 use util::nodemap::{FnvHashSet, FnvHashMap, DefIdMap};
@@ -251,9 +252,12 @@ impl<'tcx> Hash for TransItem<'tcx> {
     }
 }
 
+pub type InliningMap<'tcx> = FnvHashMap<TransItem<'tcx>, FnvHashSet<TransItem<'tcx>>>;
+
 pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                  mode: TransItemCollectionMode)
-                                                 -> FnvHashSet<TransItem<'tcx>> {
+                                                 -> (FnvHashSet<TransItem<'tcx>>,
+                                                     InliningMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     ccx.tcx().dep_graph.with_ignore(|| {
@@ -262,12 +266,17 @@ pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FnvHashSet();
         let mut recursion_depths = DefIdMap();
+        let mut inlining_map = FnvHashMap();
 
         for root in roots {
-            collect_items_rec(ccx, root, &mut visited, &mut recursion_depths);
+            collect_items_rec(ccx,
+                              root,
+                              &mut visited,
+                              &mut recursion_depths,
+                              &mut inlining_map);
         }
 
-        visited
+        (visited, inlining_map)
     })
 }
 
@@ -297,7 +306,8 @@ fn collect_roots<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
                                    starting_point: TransItem<'tcx>,
                                    visited: &mut FnvHashSet<TransItem<'tcx>>,
-                                   recursion_depths: &mut DefIdMap<usize>) {
+                                   recursion_depths: &mut DefIdMap<usize>,
+                                   inlining_map: &mut InliningMap<'tcx>) {
     if !visited.insert(starting_point.clone()) {
         // We've been here already, no need to search again.
         return;
@@ -312,7 +322,11 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
             find_drop_glue_neighbors(ccx, t, &mut neighbors);
             recursion_depth_reset = None;
         }
-        TransItem::Static(_) => {
+        TransItem::Static(node_id) => {
+            let def_id = ccx.tcx().map.local_def_id(node_id);
+            let ty = ccx.tcx().lookup_item_type(def_id).ty;
+            let ty = glue::get_drop_glue_type(ccx, ty);
+            neighbors.push(TransItem::DropGlue(ty));
             recursion_depth_reset = None;
         }
         TransItem::Fn(instance) => {
@@ -338,7 +352,8 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     for neighbour in neighbors {
-        collect_items_rec(ccx, neighbour, visited, recursion_depths);
+        record_inlined_use(ccx, starting_point, neighbour, inlining_map);
+        collect_items_rec(ccx, neighbour, visited, recursion_depths, inlining_map);
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -346,6 +361,18 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     }
 
     debug!("END collect_items_rec({})", starting_point.to_string(ccx));
+}
+
+fn record_inlined_use<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                caller: TransItem<'tcx>,
+                                callee: TransItem<'tcx>,
+                                inlining_map: &mut InliningMap<'tcx>) {
+    if callee.is_from_extern_crate() ||
+       callee.requests_inline(ccx.tcx()) {
+        inlining_map.entry(caller)
+                    .or_insert_with(|| FnvHashSet())
+                    .insert(callee);
+    }
 }
 
 fn check_recursion_limit<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
@@ -1315,7 +1342,7 @@ fn push_instance_as_string<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     push_type_params(ccx, &instance.substs.types, &[], output);
 }
 
-fn def_id_to_string(ccx: &CrateContext, def_id: DefId) -> String {
+pub fn def_id_to_string(ccx: &CrateContext, def_id: DefId) -> String {
     let mut output = String::new();
     push_item_name(ccx, def_id, &mut output);
     output
@@ -1330,6 +1357,57 @@ fn type_to_string<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 impl<'tcx> TransItem<'tcx> {
+
+    pub fn requests_inline(&self, tcx: &TyCtxt<'tcx>) -> bool {
+        match *self {
+            TransItem::Fn(ref instance) => {
+                let attributes = tcx.get_attrs(instance.def);
+                attr::requests_inline(&attributes[..])
+            }
+            TransItem::DropGlue(..) => true,
+            TransItem::Static(..)   => false,
+        }
+    }
+
+    pub fn is_from_extern_crate(&self) -> bool {
+        match *self {
+            TransItem::Fn(ref instance) => !instance.def.is_local(),
+            TransItem::DropGlue(..) |
+            TransItem::Static(..)   => false,
+        }
+    }
+
+    pub fn is_lazily_instantiated(&self) -> bool {
+        match *self {
+            TransItem::Fn(ref instance) => !instance.substs.types.is_empty(),
+            TransItem::DropGlue(..) => true,
+            TransItem::Static(..)   => false,
+        }
+    }
+
+    pub fn explicit_linkage(&self, tcx: &TyCtxt<'tcx>) -> Option<llvm::Linkage> {
+        let def_id = match *self {
+            TransItem::Fn(ref instance) => instance.def,
+            TransItem::Static(node_id) => tcx.map.local_def_id(node_id),
+            TransItem::DropGlue(..) => return None,
+        };
+
+        let attributes = tcx.get_attrs(def_id);
+        if let Some(name) = attr::first_attr_value_str_by_name(&attributes, "linkage") {
+            if let Some(linkage) = llvm_linkage_by_name(&name) {
+                Some(linkage)
+            } else {
+                let span = tcx.map.span_if_local(def_id);
+                if let Some(span) = span {
+                    tcx.sess.span_fatal(span, "invalid linkage specified")
+                } else {
+                    tcx.sess.fatal(&format!("invalid linkage specified: {}", name))
+                }
+            }
+        } else {
+            None
+        }
+    }
 
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
         let hir_map = &ccx.tcx().map;
