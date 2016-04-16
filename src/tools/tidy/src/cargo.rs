@@ -20,7 +20,7 @@ use std::fs::File;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
-    for entry in t!(path.read_dir()).map(|e| t!(e)) {
+    for entry in t!(path.read_dir(), path).map(|e| t!(e)) {
         // Look for `Cargo.toml` with a sibling `src/lib.rs` or `lib.rs`
         if entry.file_name().to_str() == Some("Cargo.toml") {
             if path.join("src/lib.rs").is_file() {

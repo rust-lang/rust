@@ -35,7 +35,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             return
         }
 
-        let metadata = t!(fs::metadata(&file));
+        let metadata = t!(fs::metadata(&file), &file);
         if metadata.mode() & 0o111 != 0 {
             println!("binary checked into source: {}", file.display());
             *bad = true;
