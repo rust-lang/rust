@@ -262,7 +262,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     }
                 };
                 let extent = this.extent_of_return_scope();
-                this.exit_scope(expr_span, extent, block, END_BLOCK);
+                this.exit_scope(expr_span, extent, block, BasicBlock::end_block());
                 this.cfg.start_new_block().unit()
             }
             ExprKind::Call { ty, fun, args } => {

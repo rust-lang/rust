@@ -183,7 +183,8 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     };
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
-    assert_eq!(builder.cfg.start_new_block(), END_BLOCK);
+    let end_block = builder.cfg.start_new_block();
+    assert_eq!(end_block, BasicBlock::end_block());
 
 
     let mut arg_decls = None; // assigned to `Some` in closures below
@@ -205,11 +206,10 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         }));
 
         builder.cfg.terminate(block, call_site_scope_id, span,
-                              TerminatorKind::Goto { target: END_BLOCK });
-        builder.cfg.terminate(END_BLOCK, call_site_scope_id, span,
+                              TerminatorKind::Goto { target: end_block });
+        builder.cfg.terminate(end_block, call_site_scope_id, span,
                               TerminatorKind::Return);
-
-        END_BLOCK.unit()
+        end_block.unit()
     });
 
     assert!(
