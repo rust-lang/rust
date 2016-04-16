@@ -9,8 +9,10 @@
 // except according to those terms.
 
 use super::*;
+#[allow(unused_imports)]
 use super::MapEntry::*;
 
+#[allow(unused_imports)]
 use hir::*;
 use hir::intravisit::Visitor;
 use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};

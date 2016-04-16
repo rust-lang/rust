@@ -72,12 +72,15 @@ impl<'a> ImportDirective<'a> {
     // this returns the binding for the name this directive defines in that namespace.
     fn import(&self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
               -> NameBinding<'a> {
-        let mut modifiers = match self.is_public {
+        let mut modifiers = match self.is_public && binding.is_public() {
             true => DefModifiers::PUBLIC | DefModifiers::IMPORTABLE,
-            false => DefModifiers::empty(),
+            false => DefModifiers::IMPORTABLE,
         };
         if let GlobImport = self.subclass {
             modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
+        } else if self.is_public && binding.is_extern_crate() {
+            // `pub` single imports of private extern crates are public (see #31362).
+            modifiers = modifiers | DefModifiers::PUBLIC;
         }
 
         NameBinding {
@@ -143,10 +146,18 @@ impl<'a> NameResolution<'a> {
     fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
         if let Some(old_binding) = self.binding {
             if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                self.duplicate_globs.push(binding);
+                if binding.def().unwrap() != old_binding.def().unwrap() {
+                    self.duplicate_globs.push(binding);
+                } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) &&
+                          old_binding.is_public() < binding.is_public() {
+                    // We are glob-importing the same item but with greater visibility.
+                    self.binding = Some(binding);
+                }
             } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
-                self.duplicate_globs.push(old_binding);
                 self.binding = Some(binding);
+                if binding.def().unwrap() != old_binding.def().unwrap() {
+                    self.duplicate_globs.push(old_binding);
+                }
             } else {
                 return Err(old_binding);
             }
@@ -207,22 +218,15 @@ impl<'a> NameResolution<'a> {
         self.binding.map(Success)
     }
 
-    fn report_conflicts<F: FnMut(&NameBinding, &NameBinding)>(&self, mut report: F) {
+    fn report_conflicts<F: FnMut(&NameBinding, &NameBinding)>(&mut self, mut _report: F) {
         let binding = match self.binding {
             Some(binding) => binding,
             None => return,
         };
 
-        for duplicate_glob in self.duplicate_globs.iter() {
-            // FIXME #31337: We currently allow items to shadow glob-imported re-exports.
-            if !binding.is_import() {
-                if let NameBindingKind::Import { binding, .. } = duplicate_glob.kind {
-                    if binding.is_import() { continue }
-                }
-            }
-
-            report(duplicate_glob, binding);
-        }
+        if !binding.defined_with(DefModifiers::GLOB_IMPORTED) { return }
+        let binding = &mut self.binding;
+        self.duplicate_globs.iter().next().map(|_| *binding = None);
     }
 }
 
@@ -321,11 +325,7 @@ impl<'a> ::ModuleS<'a> {
         // where it might end up getting re-defined via a glob cycle.
         let (new_binding, t) = {
             let mut resolution = &mut *self.resolution(name, ns).borrow_mut();
-            let was_known = resolution.binding().is_some();
-
             let t = update(resolution);
-
-            if was_known { return t; }
             match resolution.binding() {
                 Some(binding) => (binding, t),
                 None => return t,
@@ -337,9 +337,11 @@ impl<'a> ::ModuleS<'a> {
     }
 
     fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
-        if !binding.defined_with(DefModifiers::PUBLIC | DefModifiers::IMPORTABLE) { return }
+        if !binding.defined_with(DefModifiers::IMPORTABLE) { return }
         for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
-            let _ = importer.try_define_child(name, ns, directive.import(binding, None));
+            if binding.is_public() || self.is_ancestor_of(importer) {
+                let _ = importer.try_define_child(name, ns, directive.import(binding, None));
+            }
         }
     }
 }
@@ -661,8 +663,10 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         let bindings = target_module.resolutions.borrow().iter().filter_map(|(name, resolution)| {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
+        let allow_private_names = target_module.is_ancestor_of(module_);
         for ((name, ns), binding) in bindings {
-            if binding.defined_with(DefModifiers::IMPORTABLE | DefModifiers::PUBLIC) {
+            if !binding.defined_with(DefModifiers::IMPORTABLE) { continue }
+            if allow_private_names || binding.is_public() {
                 let _ = module_.try_define_child(name, ns, directive.import(binding, None));
             }
         }
@@ -688,7 +692,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         let mut reexports = Vec::new();
         for (&(name, ns), resolution) in module.resolutions.borrow().iter() {
-            let resolution = resolution.borrow();
+            let mut resolution = resolution.borrow_mut();
             resolution.report_conflicts(|b1, b2| {
                 self.resolver.report_conflict(module, name, ns, b1, b2)
             });

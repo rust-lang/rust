@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub mod bar {
-    pub fn foo() {}
+    fn foo() {}
 }

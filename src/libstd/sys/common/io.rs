@@ -93,7 +93,9 @@ pub mod test {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use prelude::v1::*;
+    #[allow(unused_imports)]
     use io::prelude::*;
     use super::*;
     use io;

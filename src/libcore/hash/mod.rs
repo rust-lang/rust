@@ -249,6 +249,7 @@ impl<H> Default for BuildHasherDefault<H> {
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
+    #[allow(unused_imports)]
     use prelude::v1::*;
 
     use mem;

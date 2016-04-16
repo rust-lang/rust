@@ -454,6 +454,7 @@ impl fmt::Debug for TcpListener {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use prelude::v1::*;
 
     use io::ErrorKind;

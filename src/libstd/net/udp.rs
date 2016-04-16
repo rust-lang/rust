@@ -378,6 +378,7 @@ impl fmt::Debug for UdpSocket {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use prelude::v1::*;
 
     use io::ErrorKind;

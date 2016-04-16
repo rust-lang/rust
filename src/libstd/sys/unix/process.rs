@@ -598,6 +598,7 @@ impl Process {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(unused_imports)]
     use prelude::v1::*;
 
     use ffi::OsStr;

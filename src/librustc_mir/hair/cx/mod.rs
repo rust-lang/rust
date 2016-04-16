@@ -16,6 +16,7 @@
  */
 
 use hair::*;
+#[allow(unused_imports)]
 use rustc::mir::repr::*;
 
 use rustc::middle::const_val::ConstVal;
