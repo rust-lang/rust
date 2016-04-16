@@ -1721,6 +1721,17 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
 
     /// Returns a simpler type such that `Self: Sized` if and only
     /// if that type is Sized, or `TyErr` if this type is recursive.
+    ///
+    /// This is generally the `struct_tail` if this is a struct, or a
+    /// tuple of them if this is an enum.
+    ///
+    /// Oddly enough, checking that the sized-constraint is Sized is
+    /// actually more expressive than checking all members:
+    /// the Sized trait is inductive, so an associated type that references
+    /// Self would prevent its containing ADT from being Sized.
+    ///
+    /// Due to normalization being eager, this applies even if
+    /// the associated type is behind a pointer, e.g. issue #31299.
     pub fn sized_constraint(&self, tcx: &ty::TyCtxt<'tcx>) -> Ty<'tcx> {
         let dep_node = DepNode::SizedConstraint(self.did);
         match self.sized_constraint.get(dep_node) {
@@ -1749,6 +1760,7 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
             .collect();
 
         match tys.len() {
+            _ if tys.references_error() => tcx.types.err,
             0 => tcx.types.bool,
             1 => tys[0],
             _ => tcx.mk_tup(tys)
@@ -1768,7 +1780,7 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
                 tcx.types.bool
             }
 
-            TyStr | TyTrait(..) | TySlice(_) => {
+            TyStr | TyTrait(..) | TySlice(_) | TyError => {
                 // these are never sized - return the target type
                 ty
             }
@@ -1797,6 +1809,10 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
             }
 
             TyParam(..) => {
+                // perf hack: if there is a `T: Sized` bound, then
+                // we know that `T` is Sized and do not need to check
+                // it on the impl.
+
                 let sized_trait = match tcx.lang_items.sized_trait() {
                     Some(x) => x,
                     _ => return ty
@@ -1815,7 +1831,7 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
                 }
             }
 
-            TyInfer(..) | TyError => {
+            TyInfer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",
                      ty)
             }
@@ -1824,9 +1840,21 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
         result
     }
 
-    /// Calculates the Sized-constraint. This replaces all always-Sized
-    /// types with bool. I could have made the TyIVar an Option, but that
-    /// would have been so much code.
+    /// Calculates the Sized-constraint.
+    ///
+    /// As the Sized-constraint of enums can be a *set* of types,
+    /// the Sized-constraint may need to be a set also. Because introducing
+    /// a new type of IVar is currently a complex affair, the Sized-constraint
+    /// may be a tuple.
+    ///
+    /// In fact, there are only a few options for the constraint:
+    ///     - `bool`, if the type is always Sized
+    ///     - an obviously-unsized type
+    ///     - a type parameter or projection whose Sizedness can't be known
+    ///     - a tuple of type parameters or projections, if there are multiple
+    ///       such.
+    ///     - a TyError, if a type contained itself. The representability
+    ///       check should catch this case.
     fn calculate_sized_constraint_inner(&'tcx self, tcx: &ty::TyCtxt<'tcx>,
                                         stack: &mut Vec<AdtDefMaster<'tcx>>)
     {
