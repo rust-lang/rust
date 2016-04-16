@@ -51,6 +51,40 @@ enum Operation {
     },
 }
 
+/// Parsed command line options.
+#[derive(Clone, Debug, Default)]
+struct CliOptions {
+    skip_children: bool,
+    verbose: bool,
+    write_mode: Option<WriteMode>,
+}
+
+impl CliOptions {
+    fn from_matches(matches: &Matches) -> FmtResult<CliOptions> {
+        let mut options = CliOptions::default();
+        options.skip_children = matches.opt_present("skip-children");
+        options.verbose = matches.opt_present("verbose");
+
+        if let Some(ref write_mode) = matches.opt_str("write-mode") {
+            if let Ok(write_mode) = WriteMode::from_str(write_mode) {
+                options.write_mode = Some(write_mode);
+            } else {
+                return Err(FmtError::from(format!("Invalid write-mode: {}", write_mode)));
+            }
+        }
+
+        Ok(options)
+    }
+
+    fn apply_to(&self, config: &mut Config) {
+        config.skip_children = self.skip_children;
+        config.verbose = self.verbose;
+        if let Some(write_mode) = self.write_mode {
+            config.write_mode = write_mode;
+        }
+    }
+}
+
 /// Try to find a project file in the given directory and its parents. Returns the path of a the
 /// nearest project file if one exists, or `None` if no project file was found.
 fn lookup_project_file(dir: &Path) -> FmtResult<Option<PathBuf>> {
@@ -115,24 +149,6 @@ fn match_cli_path_or_file(config_path: Option<PathBuf>,
     resolve_config(input_file)
 }
 
-fn update_config(config: &mut Config, matches: &Matches) -> FmtResult<()> {
-    config.verbose = matches.opt_present("verbose");
-    config.skip_children = matches.opt_present("skip-children");
-
-    let write_mode = matches.opt_str("write-mode");
-    match matches.opt_str("write-mode").map(|wm| WriteMode::from_str(&wm)) {
-        None => Ok(()),
-        Some(Ok(write_mode)) => {
-            config.write_mode = write_mode;
-            Ok(())
-        }
-        Some(Err(_)) => {
-            Err(FmtError::from(format!("Invalid write-mode: {}",
-                                       write_mode.expect("cannot happen"))))
-        }
-    }
-}
-
 fn make_opts() -> Options {
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this message");
@@ -183,6 +199,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             Ok(run(Input::Text(input), &config))
         }
         Operation::Format { files, config_path } => {
+            let options = try!(CliOptions::from_matches(&matches));
             let mut config = Config::default();
             let mut path = None;
             // Load the config path file if provided
@@ -213,7 +230,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                     config = config_tmp;
                 }
 
-                try!(update_config(&mut config, &matches));
+                options.apply_to(&mut config);
                 error_summary.add(run(Input::File(file), &config));
             }
             Ok(error_summary)
