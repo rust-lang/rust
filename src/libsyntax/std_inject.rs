@@ -59,6 +59,7 @@ pub fn maybe_inject_prelude(sess: &ParseSess, krate: ast::Crate) -> ast::Crate {
         let mut fold = PreludeInjector {
             span: ignored_span(sess, DUMMY_SP),
             crate_identifier: token::str_to_ident(name),
+            inject_prelude: true,
         };
         fold.fold_crate(krate)
     }
@@ -72,8 +73,12 @@ pub fn no_std(krate: &ast::Crate) -> bool {
     attr::contains_name(&krate.attrs, "no_std") || no_core(krate)
 }
 
-fn no_prelude(attrs: &[ast::Attribute]) -> bool {
+fn no_prelude_deep(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
+}
+
+fn no_prelude(attrs: &[ast::Attribute]) -> bool {
+    attr::contains_name(attrs, "no_prelude")
 }
 
 struct CrateInjector {
@@ -101,31 +106,11 @@ impl fold::Folder for CrateInjector {
 struct PreludeInjector {
     span: Span,
     crate_identifier: ast::Ident,
+    inject_prelude: bool,
 }
 
-impl fold::Folder for PreludeInjector {
-    fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        // only add `use std::prelude::*;` if there wasn't a
-        // `#![no_implicit_prelude]` at the crate level.
-        // fold_mod() will insert glob path.
-        if !no_prelude(&krate.attrs) {
-            krate.module = self.fold_mod(krate.module);
-        }
-        krate
-    }
-
-    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
-        if !no_prelude(&item.attrs) {
-            // only recur if there wasn't `#![no_implicit_prelude]`
-            // on this item, i.e. this means that the prelude is not
-            // implicitly imported though the whole subtree
-            fold::noop_fold_item(item, self)
-        } else {
-            SmallVector::one(item)
-        }
-    }
-
-    fn fold_mod(&mut self, mut mod_: ast::Mod) -> ast::Mod {
+impl PreludeInjector {
+    fn inject_prelude(&self, mod_: &mut ast::Mod) {
         let prelude_path = ast::Path {
             span: self.span,
             global: false,
@@ -165,7 +150,36 @@ impl fold::Folder for PreludeInjector {
             vis: ast::Visibility::Inherited,
             span: self.span,
         }));
+    }
+}
 
+impl fold::Folder for PreludeInjector {
+    fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
+        if !no_prelude_deep(&krate.attrs) {
+            self.inject_prelude = !no_prelude(&krate.attrs);
+            krate.module = self.fold_mod(krate.module);
+        }
+        krate
+    }
+
+    fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
+        if no_prelude_deep(&item.attrs) {
+            // don't recur if there was `#![no_implicit_prelude]`
+            // on this item, i.e. this means that the prelude is not
+            // implicitly imported though the whole subtree
+            SmallVector::one(item)
+        } else {
+            // don't include prelude if there was `#![no_prelude]`
+            // on this item, but do recur to sub-modules
+            self.inject_prelude = !no_prelude(&item.attrs);
+            fold::noop_fold_item(item, self)
+        }
+    }
+
+    fn fold_mod(&mut self, mut mod_: ast::Mod) -> ast::Mod {
+        if self.inject_prelude {
+            self.inject_prelude(&mut mod_);
+        }
         fold::noop_fold_mod(mod_, self)
     }
 }

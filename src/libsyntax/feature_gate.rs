@@ -256,6 +256,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Option<u32>, Status
 
     // impl specialization (RFC 1210)
     ("specialization", "1.7.0", Some(31844), Active),
+
+    // Allows using #![no_prelude]
+    ("no_prelude", "1.9.0", Some(20561), Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -302,6 +305,9 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeGat
     ("should_panic", Normal, Ungated),
     ("ignore", Normal, Ungated),
     ("no_implicit_prelude", Normal, Ungated),
+    ("no_prelude", Normal, Gated("no_prelude",
+                                 "the `#[no_prelude]` attribute is an \
+                                  experimental feature")),
     ("reexport_test_harness_main", Normal, Ungated),
     ("link_args", Normal, Ungated),
     ("macro_escape", Normal, Ungated),
@@ -883,6 +889,11 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        if &*attr.name() == "no_implicit_prelude" {
+            self.context.span_handler.span_warn(attr.span,
+                                                "the `#[no_implicit_prelude]` attribute is \
+                                                 deprecated, use `#[no_prelude]` instead");
+        }
         if !self.context.cm.span_allows_unstable(attr.span) {
             self.context.check_attribute(attr, false);
         }

@@ -8,35 +8,36 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(no_prelude)]
+
 // Test that things from the prelude aren't in scope. Use many of them
 // so that renaming some things won't magically make this test fail
 // for the wrong reason (e.g. if `Add` changes to `Addition`, and
-// `no_implicit_prelude` stops working, then the `impl Add` will still
+// `no_prelude` stops working, then the `impl Add` will still
 // fail with the same error message).
+//
+// Unlike `no_implicit_prelude`, `no_prelude` doesn't cascade into nested
+// modules, this makes the impl in foo::baz work.
 
-#[no_implicit_prelude]
-//~^ WARNING: deprecated
-//~^^ WARNING: deprecated
+#[no_prelude]
 mod foo {
     mod baz {
         struct Test;
-        impl Add for Test {} //~ ERROR: not in scope
-        impl Clone for Test {} //~ ERROR: not in scope
-        impl Iterator for Test {} //~ ERROR: not in scope
-        impl ToString for Test {} //~ ERROR: not in scope
-        impl Writer for Test {} //~ ERROR: not in scope
+        impl From<Test> for Test { fn from(t: Test) { Test }}
+        impl Clone for Test { fn clone(&self) { Test } }
+        impl Eq for Test {}
 
         fn foo() {
-            drop(2) //~ ERROR: unresolved name
+            drop(2)
         }
     }
 
     struct Test;
-    impl Add for Test {} //~ ERROR: not in scope
+    impl From for Test {} //~ ERROR: not in scope
     impl Clone for Test {} //~ ERROR: not in scope
     impl Iterator for Test {} //~ ERROR: not in scope
     impl ToString for Test {} //~ ERROR: not in scope
-    impl Writer for Test {} //~ ERROR: not in scope
+    impl Eq for Test {} //~ ERROR: not in scope
 
     fn foo() {
         drop(2) //~ ERROR: unresolved name
@@ -44,16 +45,14 @@ mod foo {
 }
 
 fn qux() {
-    #[no_implicit_prelude]
-    //~^ WARNING: deprecated
-    //~^^ WARNING: deprecated
+    #[no_prelude]
     mod qux_inner {
         struct Test;
-        impl Add for Test {} //~ ERROR: not in scope
+        impl From for Test {} //~ ERROR: not in scope
         impl Clone for Test {} //~ ERROR: not in scope
         impl Iterator for Test {} //~ ERROR: not in scope
         impl ToString for Test {} //~ ERROR: not in scope
-        impl Writer for Test {} //~ ERROR: not in scope
+        impl Eq for Test {} //~ ERROR: not in scope
 
         fn foo() {
             drop(2) //~ ERROR: unresolved name
