@@ -2717,7 +2717,7 @@ Rust does not currently support this. A simple example that causes this error:
 
 ```compile_fail
 fn main() {
-    let _: Box<std::io::Read+std::io::Write>;
+    let _: Box<std::io::Read + std::io::Write>;
 }
 ```
 
@@ -2727,7 +2727,7 @@ following compiles correctly:
 
 ```
 fn main() {
-    let _: Box<std::io::Read+Copy+Sync>;
+    let _: Box<std::io::Read + Send + Sync>;
 }
 ```
 "##,
