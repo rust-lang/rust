@@ -29,7 +29,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use std::mem::replace;
 use std::cell::{Cell, RefCell};
 
 /// Contains data for specific types of import directives.
@@ -371,11 +370,17 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                    i,
                    self.resolver.unresolved_imports);
 
-            self.resolve_imports_for_module_subtree(self.resolver.graph_root, &mut errors);
+            // Attempt to resolve imports in all local modules.
+            for module in self.resolver.arenas.local_modules().iter() {
+                self.resolver.current_module = module;
+                self.resolve_imports_in_current_module(&mut errors);
+            }
 
             if self.resolver.unresolved_imports == 0 {
                 debug!("(resolving imports) success");
-                self.finalize_resolutions(self.resolver.graph_root, false);
+                for module in self.resolver.arenas.local_modules().iter() {
+                    self.finalize_resolutions_in(module, false);
+                }
                 break;
             }
 
@@ -385,7 +390,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // to avoid generating multiple errors on the same import.
                 // Imports that are still indeterminate at this point are actually blocked
                 // by errored imports, so there is no point reporting them.
-                self.finalize_resolutions(self.resolver.graph_root, errors.len() == 0);
+                for module in self.resolver.arenas.local_modules().iter() {
+                    self.finalize_resolutions_in(module, errors.len() == 0);
+                }
                 for e in errors {
                     self.import_resolving_error(e)
                 }
@@ -420,22 +427,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         resolve_error(self.resolver,
                       e.span,
                       ResolutionError::UnresolvedImport(Some((&path, &e.help))));
-    }
-
-    /// Attempts to resolve imports for the given module and all of its
-    /// submodules.
-    fn resolve_imports_for_module_subtree(&mut self,
-                                          module_: Module<'b>,
-                                          errors: &mut Vec<ImportResolvingError<'b>>) {
-        debug!("(resolving imports for module subtree) resolving {}",
-               module_to_string(&module_));
-        let orig_module = replace(&mut self.resolver.current_module, module_);
-        self.resolve_imports_in_current_module(errors);
-        self.resolver.current_module = orig_module;
-
-        for (_, child_module) in module_.module_children.borrow().iter() {
-            self.resolve_imports_for_module_subtree(child_module, errors);
-        }
     }
 
     /// Attempts to resolve imports for the given module only.
@@ -675,7 +666,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
     // Miscellaneous post-processing, including recording reexports, recording shadowed traits,
     // reporting conflicts, reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
-    fn finalize_resolutions(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
+    fn finalize_resolutions_in(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
 
@@ -722,10 +713,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 resolve_error(self.resolver, import.span, ResolutionError::UnresolvedImport(None));
                 break;
             }
-        }
-
-        for (_, child) in module.module_children.borrow().iter() {
-            self.finalize_resolutions(child, report_unresolved_imports);
         }
     }
 }
