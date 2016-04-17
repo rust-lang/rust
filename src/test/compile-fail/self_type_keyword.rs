@@ -39,9 +39,6 @@ pub fn main() {
     }
 }
 
-use self::Self as Foo;
-//~^ ERROR expected identifier, found keyword `Self`
-
 use std::option::Option as Self;
 //~^ ERROR expected identifier, found keyword `Self`
 

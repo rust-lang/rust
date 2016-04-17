@@ -81,6 +81,8 @@ type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute> >);
 pub enum PathParsingMode {
     /// A path with no type parameters; e.g. `foo::bar::Baz`
     NoTypesAllowed,
+    /// Same as `NoTypesAllowed`, but may end with `::{` or `::*`, which are left unparsed
+    ImportPrefix,
     /// A path with a lifetime and type parameters, with no double colons
     /// before the type parameters; e.g. `foo::bar<'a>::Baz<T>`
     LifetimeAndTypesWithoutColons,
@@ -587,20 +589,6 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_ident()
         }
-    }
-
-    pub fn parse_path_list_item(&mut self) -> PResult<'a, ast::PathListItem> {
-        let lo = self.span.lo;
-        let node = if self.eat_keyword(keywords::SelfValue) {
-            let rename = self.parse_rename()?;
-            ast::PathListItemKind::Mod { id: ast::DUMMY_NODE_ID, rename: rename }
-        } else {
-            let ident = self.parse_ident()?;
-            let rename = self.parse_rename()?;
-            ast::PathListItemKind::Ident { name: ident, rename: rename, id: ast::DUMMY_NODE_ID }
-        };
-        let hi = self.last_span.hi;
-        Ok(spanned(lo, hi, node))
     }
 
     /// Check if the next token is `tok`, and return `true` if so.
@@ -1761,8 +1749,8 @@ impl<'a> Parser<'a> {
             LifetimeAndTypesWithColons => {
                 self.parse_path_segments_with_colons()?
             }
-            NoTypesAllowed => {
-                self.parse_path_segments_without_types()?
+            NoTypesAllowed | ImportPrefix => {
+                self.parse_path_segments_without_types(mode == ImportPrefix)?
             }
         };
         path.segments.extend(segments);
@@ -1799,8 +1787,8 @@ impl<'a> Parser<'a> {
             LifetimeAndTypesWithColons => {
                 self.parse_path_segments_with_colons()?
             }
-            NoTypesAllowed => {
-                self.parse_path_segments_without_types()?
+            NoTypesAllowed | ImportPrefix => {
+                self.parse_path_segments_without_types(mode == ImportPrefix)?
             }
         };
 
@@ -1918,7 +1906,8 @@ impl<'a> Parser<'a> {
 
     /// Examples:
     /// - `a::b::c`
-    pub fn parse_path_segments_without_types(&mut self) -> PResult<'a, Vec<ast::PathSegment>> {
+    pub fn parse_path_segments_without_types(&mut self, import_prefix: bool)
+                                             -> PResult<'a, Vec<ast::PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
@@ -1930,9 +1919,11 @@ impl<'a> Parser<'a> {
                 parameters: ast::PathParameters::none()
             });
 
-            // If we do not see a `::`, stop.
-            if !self.eat(&token::ModSep) {
+            // If we do not see a `::` or see `::{`/`::*`, stop.
+            if !self.check(&token::ModSep) || import_prefix && self.is_import_coupler() {
                 return Ok(segments);
+            } else {
+                self.bump();
             }
         }
     }
@@ -6119,106 +6110,67 @@ impl<'a> Parser<'a> {
         self.parse_item_(attrs, true, false)
     }
 
+    fn parse_path_list_items(&mut self) -> PResult<'a, Vec<ast::PathListItem>> {
+        self.parse_unspanned_seq(&token::OpenDelim(token::Brace),
+                                 &token::CloseDelim(token::Brace),
+                                 SeqSep::trailing_allowed(token::Comma), |this| {
+            let lo = this.span.lo;
+            let node = if this.eat_keyword(keywords::SelfValue) {
+                let rename = this.parse_rename()?;
+                ast::PathListItemKind::Mod { id: ast::DUMMY_NODE_ID, rename: rename }
+            } else {
+                let ident = this.parse_ident()?;
+                let rename = this.parse_rename()?;
+                ast::PathListItemKind::Ident { name: ident, rename: rename, id: ast::DUMMY_NODE_ID }
+            };
+            let hi = this.last_span.hi;
+            Ok(spanned(lo, hi, node))
+        })
+    }
 
-    /// Matches view_path : MOD? non_global_path as IDENT
-    /// | MOD? non_global_path MOD_SEP LBRACE RBRACE
-    /// | MOD? non_global_path MOD_SEP LBRACE ident_seq RBRACE
-    /// | MOD? non_global_path MOD_SEP STAR
-    /// | MOD? non_global_path
+    /// `::{` or `::*`
+    fn is_import_coupler(&mut self) -> bool {
+        self.check(&token::ModSep) &&
+            self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace) ||
+                                   *t == token::BinOp(token::Star))
+    }
+
+    /// Matches ViewPath:
+    /// MOD_SEP? non_global_path
+    /// MOD_SEP? non_global_path as IDENT
+    /// MOD_SEP? non_global_path MOD_SEP STAR
+    /// MOD_SEP? non_global_path MOD_SEP LBRACE item_seq RBRACE
+    /// MOD_SEP? LBRACE item_seq RBRACE
     fn parse_view_path(&mut self) -> PResult<'a, P<ViewPath>> {
         let lo = self.span.lo;
-
-        // Allow a leading :: because the paths are absolute either way.
-        // This occurs with "use $crate::..." in macros.
-        let is_global = self.eat(&token::ModSep);
-
-        if self.check(&token::OpenDelim(token::Brace)) {
-            // use {foo,bar}
-            let idents = self.parse_unspanned_seq(
-                &token::OpenDelim(token::Brace),
-                &token::CloseDelim(token::Brace),
-                SeqSep::trailing_allowed(token::Comma),
-                |p| p.parse_path_list_item())?;
-            let path = ast::Path {
+        if self.check(&token::OpenDelim(token::Brace)) || self.is_import_coupler() {
+            // `{foo, bar}` or `::{foo, bar}`
+            let prefix = ast::Path {
+                global: self.eat(&token::ModSep),
+                segments: Vec::new(),
                 span: mk_sp(lo, self.span.hi),
-                global: is_global,
-                segments: Vec::new()
             };
-            return Ok(P(spanned(lo, self.span.hi, ViewPathList(path, idents))));
-        }
-
-        let first_ident = self.parse_ident()?;
-        let mut path = vec!(first_ident);
-        if let token::ModSep = self.token {
-            // foo::bar or foo::{a,b,c} or foo::*
-            while self.check(&token::ModSep) {
+            let items = self.parse_path_list_items()?;
+            Ok(P(spanned(lo, self.span.hi, ViewPathList(prefix, items))))
+        } else {
+            let prefix = self.parse_path(ImportPrefix)?;
+            if self.is_import_coupler() {
+                // `foo::bar::{a, b}` or `foo::bar::*`
                 self.bump();
-
-                match self.token {
-                  token::Ident(..) => {
-                    let ident = self.parse_ident()?;
-                    path.push(ident);
-                  }
-
-                  // foo::bar::{a,b,c}
-                  token::OpenDelim(token::Brace) => {
-                    let idents = self.parse_unspanned_seq(
-                        &token::OpenDelim(token::Brace),
-                        &token::CloseDelim(token::Brace),
-                        SeqSep::trailing_allowed(token::Comma),
-                        |p| p.parse_path_list_item()
-                    )?;
-                    let path = ast::Path {
-                        span: mk_sp(lo, self.span.hi),
-                        global: is_global,
-                        segments: path.into_iter().map(|identifier| {
-                            ast::PathSegment {
-                                identifier: identifier,
-                                parameters: ast::PathParameters::none(),
-                            }
-                        }).collect()
-                    };
-                    return Ok(P(spanned(lo, self.span.hi, ViewPathList(path, idents))));
-                  }
-
-                  // foo::bar::*
-                  token::BinOp(token::Star) => {
+                if self.check(&token::BinOp(token::Star)) {
                     self.bump();
-                    let path = ast::Path {
-                        span: mk_sp(lo, self.span.hi),
-                        global: is_global,
-                        segments: path.into_iter().map(|identifier| {
-                            ast::PathSegment {
-                                identifier: identifier,
-                                parameters: ast::PathParameters::none(),
-                            }
-                        }).collect()
-                    };
-                    return Ok(P(spanned(lo, self.span.hi, ViewPathGlob(path))));
-                  }
-
-                  // fall-through for case foo::bar::;
-                  token::Semi => {
-                    self.span_err(self.span, "expected identifier or `{` or `*`, found `;`");
-                  }
-
-                  _ => break
+                    Ok(P(spanned(lo, self.span.hi, ViewPathGlob(prefix))))
+                } else {
+                    let items = self.parse_path_list_items()?;
+                    Ok(P(spanned(lo, self.span.hi, ViewPathList(prefix, items))))
                 }
+            } else {
+                // `foo::bar` or `foo::bar as baz`
+                let rename = self.parse_rename()?.
+                                  unwrap_or(prefix.segments.last().unwrap().identifier);
+                Ok(P(spanned(lo, self.last_span.hi, ViewPathSimple(rename, prefix))))
             }
         }
-        let mut rename_to = path[path.len() - 1];
-        let path = ast::Path {
-            span: mk_sp(lo, self.last_span.hi),
-            global: is_global,
-            segments: path.into_iter().map(|identifier| {
-                ast::PathSegment {
-                    identifier: identifier,
-                    parameters: ast::PathParameters::none(),
-                }
-            }).collect()
-        };
-        rename_to = self.parse_rename()?.unwrap_or(rename_to);
-        Ok(P(spanned(lo, self.last_span.hi, ViewPathSimple(rename_to, path))))
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
