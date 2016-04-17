@@ -57,5 +57,3 @@ mod mod2 {
         cgu_explicit_inlining::never_inlined();
     }
 }
-
-//~ TRANS_ITEM drop-glue i8
