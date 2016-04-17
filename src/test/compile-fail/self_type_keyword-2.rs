@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+use self::Self as Foo; //~ ERROR unresolved import `self::Self`
 
-use std::any::; //~ ERROR expected identifier, found `;`
+pub fn main() {}

@@ -903,7 +903,7 @@ impl f64 {
     /// let abs_difference_1 = (f.1 - x.cos()).abs();
     ///
     /// assert!(abs_difference_0 < 1e-10);
-    /// assert!(abs_difference_0 < 1e-10);
+    /// assert!(abs_difference_1 < 1e-10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
