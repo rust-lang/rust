@@ -14,7 +14,7 @@ use utils::span_help_and_lint;
 ///
 /// **Example:** if !v.is_empty() { a() } else { b() }
 declare_lint! {
-    pub IF_NOT_ELSE, Warn,
+    pub IF_NOT_ELSE, Allow,
     "finds if branches that could be swapped so no negation operation is necessary on the condition"
 }
 
