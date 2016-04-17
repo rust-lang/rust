@@ -1103,6 +1103,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
 struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
+    local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
@@ -1110,7 +1111,14 @@ struct ResolverArenas<'a> {
 
 impl<'a> ResolverArenas<'a> {
     fn alloc_module(&'a self, module: ModuleS<'a>) -> Module<'a> {
-        self.modules.alloc(module)
+        let module = self.modules.alloc(module);
+        if module.def_id().map(|def_id| def_id.is_local()).unwrap_or(true) {
+            self.local_modules.borrow_mut().push(module);
+        }
+        module
+    }
+    fn local_modules(&'a self) -> ::std::cell::Ref<'a, Vec<Module<'a>>> {
+        self.local_modules.borrow()
     }
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
@@ -1189,6 +1197,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn arenas() -> ResolverArenas<'a> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
+            local_modules: RefCell::new(Vec::new()),
             name_bindings: arena::TypedArena::new(),
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
