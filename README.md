@@ -14,7 +14,7 @@ Table of contents:
 * [License](#license)
 
 ##Lints
-There are 141 lints included in this crate:
+There are 142 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -95,6 +95,7 @@ name                                                                            
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)                           | warn    | for-looping over a range of indices where an iterator over items would do
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                                   | warn    | using a return statement like `return expr;` where an expression would suffice
 [needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                   | warn    | using `{ ..base }` when there are no missing fields
+[neg_multiply](https://github.com/Manishearth/rust-clippy/wiki#neg_multiply)                                         | warn    | Warns on multiplying integers with -1
 [new_ret_no_self](https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self)                                   | warn    | not returning `Self` in a `new` method
 [new_without_default](https://github.com/Manishearth/rust-clippy/wiki#new_without_default)                           | warn    | `fn new() -> Self` method without `Default` implementation
 [no_effect](https://github.com/Manishearth/rust-clippy/wiki#no_effect)                                               | warn    | statements with no effect

@@ -145,6 +145,7 @@ All notable changes to this project will be documented in this file.
 [`needless_range_loop`]: https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop
 [`needless_return`]: https://github.com/Manishearth/rust-clippy/wiki#needless_return
 [`needless_update`]: https://github.com/Manishearth/rust-clippy/wiki#needless_update
+[`neg_multiply`]: https://github.com/Manishearth/rust-clippy/wiki#neg_multiply
 [`new_ret_no_self`]: https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self
 [`new_without_default`]: https://github.com/Manishearth/rust-clippy/wiki#new_without_default
 [`no_effect`]: https://github.com/Manishearth/rust-clippy/wiki#no_effect

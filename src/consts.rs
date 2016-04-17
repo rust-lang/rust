@@ -177,8 +177,9 @@ impl PartialOrd for Constant {
     }
 }
 
+/// parse a `LitKind` to a `Constant`
 #[allow(cast_possible_wrap)]
-fn lit_to_constant(lit: &LitKind) -> Constant {
+pub fn lit_to_constant(lit: &LitKind) -> Constant {
     match *lit {
         LitKind::Str(ref is, style) => Constant::Str(is.to_string(), style),
         LitKind::Byte(b) => Constant::Int(ConstInt::U8(b)),

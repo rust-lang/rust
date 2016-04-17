@@ -88,6 +88,7 @@ pub mod mut_reference;
 pub mod mutex_atomic;
 pub mod needless_bool;
 pub mod needless_update;
+pub mod neg_multiply;
 pub mod new_without_default;
 pub mod no_effect;
 pub mod non_expressive_names;
@@ -232,6 +233,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
+    reg.register_late_lint_pass(box neg_multiply::NegMultiply);
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -343,6 +345,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_update::NEEDLESS_UPDATE,
+        neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,
         no_effect::NO_EFFECT,
         non_expressive_names::MANY_SINGLE_CHAR_NAMES,
