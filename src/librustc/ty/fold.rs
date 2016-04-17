@@ -329,7 +329,6 @@ impl<'tcx> TyCtxt<'tcx> {
         where F : FnMut(ty::BoundRegion) -> ty::Region,
               T : TypeFoldable<'tcx>,
     {
-        debug!("replace_late_bound_regions({:?})", value);
         let mut replacer = RegionReplacer::new(self, &mut f);
         let result = value.skip_binder().fold_with(&mut replacer);
         (result, replacer.map)
@@ -444,8 +443,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {
         match r {
             ty::ReLateBound(debruijn, br) if debruijn.depth == self.current_depth => {
-                debug!("RegionReplacer.fold_region({:?}) folding region (current_depth={})",
-                       r, self.current_depth);
                 let fld_r = &mut self.fld_r;
                 let region = *self.map.entry(br).or_insert_with(|| fld_r(br));
                 if let ty::ReLateBound(debruijn1, br) = region {
