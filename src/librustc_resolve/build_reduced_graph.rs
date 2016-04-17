@@ -177,13 +177,9 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                         }
 
                         let subclass = ImportDirectiveSubclass::single(binding, source_name);
+                        let span = view_path.span;
+                        parent.add_import_directive(module_path, subclass, span, item.id, vis);
                         self.unresolved_imports += 1;
-                        parent.add_import_directive(module_path,
-                                                    subclass,
-                                                    view_path.span,
-                                                    item.id,
-                                                    vis,
-                                                    is_prelude);
                     }
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
@@ -228,23 +224,16 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                                 }
                             };
                             let subclass = ImportDirectiveSubclass::single(rename, name);
+                            let (span, id) = (source_item.span, source_item.node.id());
+                            parent.add_import_directive(module_path, subclass, span, id, vis);
                             self.unresolved_imports += 1;
-                            parent.add_import_directive(module_path,
-                                                        subclass,
-                                                        source_item.span,
-                                                        source_item.node.id(),
-                                                        vis,
-                                                        is_prelude);
                         }
                     }
                     ViewPathGlob(_) => {
+                        let subclass = GlobImport { is_prelude: is_prelude };
+                        let span = view_path.span;
+                        parent.add_import_directive(module_path, subclass, span, item.id, vis);
                         self.unresolved_imports += 1;
-                        parent.add_import_directive(module_path,
-                                                    GlobImport,
-                                                    view_path.span,
-                                                    item.id,
-                                                    vis,
-                                                    is_prelude);
                     }
                 }
             }
