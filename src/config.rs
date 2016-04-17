@@ -38,6 +38,22 @@ configuration_option_enum! { BraceStyle:
     SameLineWhere,
 }
 
+configuration_option_enum! { ControlBraceStyle:
+    // K&R/Stroustrup style, Rust community default
+    AlwaysSameLine,
+    // Allman style
+    AlwaysNextLine,
+}
+
+configuration_option_enum! { ElseIfBraceStyle:
+    // K&R style, Rust community default
+    AlwaysSameLine,
+    // Stroustrup style
+    ClosingNextLine,
+    // Allman style
+    AlwaysNextLine,
+}
+
 // How to indent a function's return type.
 configuration_option_enum! { ReturnIndent:
     // Aligned with the arguments
@@ -315,6 +331,10 @@ create_config! {
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";
+    else_if_brace_style: ElseIfBraceStyle, ElseIfBraceStyle::AlwaysSameLine,
+        "Brace style for if, else if, and else constructs";
+    control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine,
+        "Brace style for match, loop, for, and while constructs";
     impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
     fn_empty_single_line: bool, true, "Put empty-body functions on a single line";
     fn_single_line: bool, false, "Put single-expression functions on a single line";
