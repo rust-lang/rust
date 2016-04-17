@@ -246,6 +246,11 @@ pub struct Cache {
     /// Set of definitions which have been inlined from external crates.
     pub inlined: HashSet<DefId>,
 
+    // Note that external items for which `doc(hidden)` applies to are shown as
+    // non-reachable while local items aren't. This is because we're reusing
+    // the access levels from crateanalysis.
+    pub access_levels: Arc<AccessLevels<DefId>>,
+
     // Private fields only used when initially crawling a crate to build a cache
 
     stack: Vec<String>,
@@ -253,10 +258,6 @@ pub struct Cache {
     parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
     stripped_mod: bool,
-    // Note that external items for which `doc(hidden)` applies to are shown as
-    // non-reachable while local items aren't. This is because we're reusing
-    // the access levels from crateanalysis.
-    access_levels: Arc<AccessLevels<DefId>>,
     deref_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
