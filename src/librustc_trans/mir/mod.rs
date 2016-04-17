@@ -126,6 +126,7 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
     let scopes = debuginfo::create_mir_scopes(fcx);
 
     // Allocate variable and temp allocas
+    let args = arg_value_refs(&bcx, &mir, &scopes);
     let vars = mir.var_decls.iter()
                             .map(|decl| (bcx.monomorphize(&decl.ty), decl))
                             .map(|(mty, decl)| {
@@ -156,7 +157,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                                   TempRef::Operand(None)
                               })
                               .collect();
-    let args = arg_value_refs(&bcx, &mir, &scopes);
 
     // Allocate a `Block` for every basic block
     let block_bcxs: Vec<Block<'blk,'tcx>> =
@@ -278,7 +278,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                     let byte_offset_of_var_in_tuple =
                         machine::llelement_offset(bcx.ccx(), lltuplety, i);
 
-                    let address_operations = unsafe {
+                    let ops = unsafe {
                         [llvm::LLVMDIBuilderCreateOpDeref(),
                          llvm::LLVMDIBuilderCreateOpPlus(),
                          byte_offset_of_var_in_tuple as i64]
@@ -286,7 +286,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
 
                     let variable_access = VariableAccess::IndirectVariable {
                         alloca: lltemp,
-                        address_operations: &address_operations
+                        address_operations: &ops
                     };
                     declare_local(bcx, token::special_idents::invalid.name,
                                   tupled_arg_ty, scope, variable_access,
@@ -327,10 +327,78 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
             lltemp
         };
         bcx.with_block(|bcx| arg_scope.map(|scope| {
-            declare_local(bcx, token::special_idents::invalid.name, arg_ty, scope,
-                          VariableAccess::DirectVariable { alloca: llval },
-                          VariableKind::ArgumentVariable(arg_index + 1),
-                          bcx.fcx().span.unwrap_or(DUMMY_SP));
+            // Is this a regular argument?
+            if arg_index > 0 || mir.upvar_decls.is_empty() {
+                declare_local(bcx, arg_decl.debug_name, arg_ty, scope,
+                              VariableAccess::DirectVariable { alloca: llval },
+                              VariableKind::ArgumentVariable(arg_index + 1),
+                              bcx.fcx().span.unwrap_or(DUMMY_SP));
+                return;
+            }
+
+            // Or is it the closure environment?
+            let (closure_ty, env_ref) = if let ty::TyRef(_, mt) = arg_ty.sty {
+                (mt.ty, true)
+            } else {
+                (arg_ty, false)
+            };
+            let upvar_tys = if let ty::TyClosure(_, ref substs) = closure_ty.sty {
+                &substs.upvar_tys[..]
+            } else {
+                bug!("upvar_decls with non-closure arg0 type `{}`", closure_ty);
+            };
+
+            // Store the pointer to closure data in an alloca for debuginfo
+            // because that's what the llvm.dbg.declare intrinsic expects.
+
+            // FIXME(eddyb) this shouldn't be necessary but SROA seems to
+            // mishandle DW_OP_plus not preceded by DW_OP_deref, i.e. it
+            // doesn't actually strip the offset when splitting the closure
+            // environment into its components so it ends up out of bounds.
+            let env_ptr = if !env_ref {
+                use base::*;
+                use build::*;
+                use common::*;
+                let alloc = alloca(bcx, val_ty(llval), "__debuginfo_env_ptr");
+                Store(bcx, llval, alloc);
+                alloc
+            } else {
+                llval
+            };
+
+            let llclosurety = type_of::type_of(bcx.ccx(), closure_ty);
+            for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
+                let byte_offset_of_var_in_env =
+                    machine::llelement_offset(bcx.ccx(), llclosurety, i);
+
+                let ops = unsafe {
+                    [llvm::LLVMDIBuilderCreateOpDeref(),
+                     llvm::LLVMDIBuilderCreateOpPlus(),
+                     byte_offset_of_var_in_env as i64,
+                     llvm::LLVMDIBuilderCreateOpDeref()]
+                };
+
+                // The environment and the capture can each be indirect.
+
+                // FIXME(eddyb) see above why we have to keep
+                // a pointer in an alloca for debuginfo atm.
+                let mut ops = if env_ref || true { &ops[..] } else { &ops[1..] };
+
+                let ty = if let (true, &ty::TyRef(_, mt)) = (decl.by_ref, &ty.sty) {
+                    mt.ty
+                } else {
+                    ops = &ops[..ops.len() - 1];
+                    ty
+                };
+
+                let variable_access = VariableAccess::IndirectVariable {
+                    alloca: env_ptr,
+                    address_operations: &ops
+                };
+                declare_local(bcx, decl.debug_name, ty, scope, variable_access,
+                              VariableKind::CapturedVariable,
+                              bcx.fcx().span.unwrap_or(DUMMY_SP));
+            }
         }));
         LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty))
     }).collect()

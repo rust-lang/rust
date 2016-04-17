@@ -52,6 +52,10 @@ pub struct Mir<'tcx> {
     /// through the resulting reference.
     pub temp_decls: Vec<TempDecl<'tcx>>,
 
+    /// Names and capture modes of all the closure upvars, assuming
+    /// the first argument is either the closure or a reference to it.
+    pub upvar_decls: Vec<UpvarDecl>,
+
     /// A span representing this MIR, for error reporting
     pub span: Span,
 }
@@ -197,7 +201,20 @@ pub struct ArgDecl<'tcx> {
 
     /// If true, this argument is a tuple after monomorphization,
     /// and has to be collected from multiple actual arguments.
-    pub spread: bool
+    pub spread: bool,
+
+    /// Either special_idents::invalid or the name of a single-binding
+    /// pattern associated with this argument. Useful for debuginfo.
+    pub debug_name: Name
+}
+
+/// A closure capture, with its name and mode.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+pub struct UpvarDecl {
+    pub debug_name: Name,
+
+    /// If true, the capture is behind a reference.
+    pub by_ref: bool
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -80,7 +80,7 @@
 
 #![allow(unused_variables)]
 #![allow(dead_code)]
-#![feature(omit_gdb_pretty_printer_section, rustc_attrs)]
+#![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
 trait TraitWithAssocType {
@@ -127,7 +127,6 @@ fn assoc_tuple<T: TraitWithAssocType>(arg: (T, T::Type)) {
     zzz(); // #break
 }
 
-#[rustc_no_mir] // FIXME(#32790) MIR reuses scopes for match arms.
 fn assoc_enum<T: TraitWithAssocType>(arg: Enum<T>) {
 
     match arg {
