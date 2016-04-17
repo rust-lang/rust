@@ -19,7 +19,6 @@ use ptr::P;
 use str::char_at;
 
 use std::cell::RefCell;
-use std::io::Read;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;

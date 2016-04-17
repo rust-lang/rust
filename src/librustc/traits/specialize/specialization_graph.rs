@@ -13,7 +13,6 @@ use std::rc::Rc;
 
 use super::{Overlap, specializes};
 
-use middle::cstore::CrateStore;
 use hir::def_id::DefId;
 use infer;
 use traits::{self, ProjectionMode};

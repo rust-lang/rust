@@ -14,7 +14,6 @@ use traits::{self, specialization_graph};
 use ty;
 use ty::fast_reject;
 use ty::{Ty, TyCtxt, TraitRef};
-use std::borrow::{Borrow};
 use std::cell::{Cell, RefCell};
 use syntax::ast::Name;
 use hir;

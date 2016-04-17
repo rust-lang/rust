@@ -12,7 +12,6 @@
 
 use session::config;
 use session::Session;
-use middle::cstore::CrateStore;
 use middle::lang_items;
 
 use syntax::ast;

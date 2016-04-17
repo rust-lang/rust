@@ -77,7 +77,6 @@ use hir::map as ast_map;
 use hir;
 use hir::print as pprust;
 
-use middle::cstore::CrateStore;
 use hir::def::Def;
 use hir::def_id::DefId;
 use infer::{self, TypeOrigin};
