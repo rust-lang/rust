@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+mod a {
+    pub mod b {
+        pub mod c {
+            pub struct S<T>(T);
+        }
+    }
+}
 
-use std::any::; //~ ERROR expected identifier, found `;`
+macro_rules! import {
+    ($p: path) => (use $p;);
+}
+
+import! { a::b::c::S<u8> } //~ERROR type or lifetime parameter is found in import path
+
+fn main() {}
