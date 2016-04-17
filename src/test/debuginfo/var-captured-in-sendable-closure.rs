@@ -40,7 +40,7 @@
 // lldb-check:[...]$2 = 5
 
 #![allow(unused_variables)]
-#![feature(unboxed_closures, box_syntax, rustc_attrs, stmt_expr_attributes)]
+#![feature(unboxed_closures, box_syntax)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -50,7 +50,6 @@ struct Struct {
     c: usize
 }
 
-#[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing captures.
 fn main() {
     let constant = 1;
 
@@ -62,9 +61,7 @@ fn main() {
 
     let owned: Box<_> = box 5;
 
-    let closure =
-    #[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing captures.
-    move || {
+    let closure = move || {
         zzz(); // #break
         do_something(&constant, &a_struct.a, &*owned);
     };
@@ -76,9 +73,7 @@ fn main() {
     // The `self` argument of the following closure should be passed by value
     // to FnOnce::call_once(self, args), which gets translated a bit differently
     // than the regular case. Let's make sure this is supported too.
-    let immedate_env =
-    #[rustc_no_mir] // FIXME(#31005) MIR debuginfo is missing captures.
-    move || {
+    let immedate_env = move || {
         zzz(); // #break
         return constant2;
     };

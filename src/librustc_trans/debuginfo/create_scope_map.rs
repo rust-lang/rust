@@ -120,21 +120,28 @@ fn make_mir_scope(ccx: &CrateContext,
         return;
     };
 
-    scopes[idx] = if !has_variables.contains(idx) {
+    if !has_variables.contains(idx) {
         // Do not create a DIScope if there are no variables
         // defined in this MIR Scope, to avoid debuginfo bloat.
-        parent_scope
-    } else {
-        let loc = span_start(ccx, scope_data.span);
-        let file_metadata = file_metadata(ccx, &loc.file.name);
-        unsafe {
-            llvm::LLVMDIBuilderCreateLexicalBlock(
-                DIB(ccx),
-                parent_scope,
-                file_metadata,
-                loc.line as c_uint,
-                loc.col.to_usize() as c_uint)
+
+        // However, we don't skip creating a nested scope if
+        // our parent is the root, because we might want to
+        // put arguments in the root and not have shadowing.
+        if parent_scope != fn_metadata {
+            scopes[idx] = parent_scope;
+            return;
         }
+    }
+
+    let loc = span_start(ccx, scope_data.span);
+    let file_metadata = file_metadata(ccx, &loc.file.name);
+    scopes[idx] = unsafe {
+        llvm::LLVMDIBuilderCreateLexicalBlock(
+            DIB(ccx),
+            parent_scope,
+            file_metadata,
+            loc.line as c_uint,
+            loc.col.to_usize() as c_uint)
     };
 }
 

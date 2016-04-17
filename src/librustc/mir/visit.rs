@@ -248,6 +248,7 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* var_decls,
                     ref $($mutability)* arg_decls,
                     ref $($mutability)* temp_decls,
+                    upvar_decls: _,
                     ref $($mutability)* span,
                 } = *mir;
 
@@ -599,7 +600,8 @@ macro_rules! make_mir_visitor {
                               arg_decl: & $($mutability)* ArgDecl<'tcx>) {
                 let ArgDecl {
                     ref $($mutability)* ty,
-                    spread: _
+                    spread: _,
+                    debug_name: _
                 } = *arg_decl;
 
                 self.visit_ty(ty);

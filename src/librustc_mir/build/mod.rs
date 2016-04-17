@@ -10,13 +10,15 @@
 
 use hair::cx::Cx;
 use rustc::middle::region::{CodeExtent, CodeExtentData};
-use rustc::ty::{FnOutput, Ty};
+use rustc::ty::{self, FnOutput, Ty};
 use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
 use rustc::hir;
+use rustc::hir::pat_util::pat_is_binding;
 use std::ops::{Index, IndexMut};
 use syntax::ast;
 use syntax::codemap::Span;
+use syntax::parse::token;
 
 pub struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
@@ -224,6 +226,29 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                        true
                    }));
 
+    // Gather the upvars of a closure, if any.
+    let upvar_decls: Vec<_> = tcx.with_freevars(fn_id, |freevars| {
+        freevars.iter().map(|fv| {
+            let by_ref = tcx.upvar_capture(ty::UpvarId {
+                var_id: fv.def.var_id(),
+                closure_expr_id: fn_id
+            }).map_or(false, |capture| match capture {
+                ty::UpvarCapture::ByValue => false,
+                ty::UpvarCapture::ByRef(..) => true
+            });
+            let mut decl = UpvarDecl {
+                debug_name: token::special_idents::invalid.name,
+                by_ref: by_ref
+            };
+            if let Some(hir::map::NodeLocal(pat)) = tcx.map.find(fv.def.var_id()) {
+                if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
+                    decl.debug_name = ident.node.name;
+                }
+            }
+            decl
+        }).collect()
+    });
+
     (
         Mir {
             basic_blocks: builder.cfg.basic_blocks,
@@ -231,6 +256,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
             var_decls: builder.var_decls,
             arg_decls: arg_decls.take().expect("args never built?"),
             temp_decls: builder.temp_decls,
+            upvar_decls: upvar_decls,
             return_ty: return_ty,
             span: span
         },
@@ -269,7 +295,20 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 self.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
                                    argument_extent, &lvalue, ty);
 
-                ArgDecl { ty: ty, spread: false }
+                let mut name = token::special_idents::invalid.name;
+                if let Some(pat) = pattern {
+                    if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
+                        if pat_is_binding(&self.hir.tcx().def_map.borrow(), pat) {
+                            name = ident.node.name;
+                        }
+                    }
+                }
+
+                ArgDecl {
+                    ty: ty,
+                    spread: false,
+                    debug_name: name
+                }
             })
             .collect();
 
