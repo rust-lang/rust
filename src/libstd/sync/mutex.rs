@@ -205,10 +205,19 @@ impl<T: ?Sized> Mutex<T> {
     /// held. An RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
     ///
+    /// The exact behavior on locking a mutex in the thread which already holds
+    /// the lock is left unspecified, however, this function will not return on
+    /// the second call, it might e.g. panic or deadlock.
+    ///
     /// # Errors
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error once the mutex is acquired.
+    ///
+    /// # Panics
+    ///
+    /// This function might panic when called if the lock is already held by
+    /// the current thread.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
         unsafe {
