@@ -10,7 +10,6 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use DefModifiers;
 use Module;
 use Namespace::{self, TypeNS, ValueNS};
 use {NameBinding, NameBindingKind, PrivacyError};
@@ -59,11 +58,11 @@ impl ImportDirectiveSubclass {
 /// One import directive.
 #[derive(Debug,Clone)]
 pub struct ImportDirective<'a> {
+    pub id: NodeId,
     module_path: Vec<Name>,
     target_module: Cell<Option<Module<'a>>>, // the resolution of `module_path`
     subclass: ImportDirectiveSubclass,
     span: Span,
-    id: NodeId,
     vis: ty::Visibility, // see note in ImportResolutionPerNamespace about how to use this
     is_prelude: bool,
 }
@@ -71,23 +70,21 @@ pub struct ImportDirective<'a> {
 impl<'a> ImportDirective<'a> {
     // Given the binding to which this directive resolves in a particular namespace,
     // this returns the binding for the name this directive defines in that namespace.
-    fn import(&self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
+    fn import(&'a self, binding: &'a NameBinding<'a>, privacy_error: Option<Box<PrivacyError<'a>>>)
               -> NameBinding<'a> {
-        let mut modifiers = DefModifiers::IMPORTABLE;
-        if let GlobImport = self.subclass {
-            modifiers = modifiers | DefModifiers::GLOB_IMPORTED;
-        }
-
         NameBinding {
             kind: NameBindingKind::Import {
                 binding: binding,
-                id: self.id,
+                directive: self,
                 privacy_error: privacy_error,
             },
             span: Some(self.span),
-            modifiers: modifiers,
             vis: self.vis,
         }
+    }
+
+    pub fn is_glob(&self) -> bool {
+        match self.subclass { ImportDirectiveSubclass::GlobImport => true, _ => false }
     }
 }
 
@@ -141,9 +138,9 @@ impl<'a> SingleImports<'a> {
 impl<'a> NameResolution<'a> {
     fn try_define(&mut self, binding: &'a NameBinding<'a>) -> Result<(), &'a NameBinding<'a>> {
         if let Some(old_binding) = self.binding {
-            if binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+            if binding.is_glob_import() {
                 self.duplicate_globs.push(binding);
-            } else if old_binding.defined_with(DefModifiers::GLOB_IMPORTED) {
+            } else if old_binding.is_glob_import() {
                 self.duplicate_globs.push(old_binding);
                 self.binding = Some(binding);
             } else {
@@ -160,7 +157,7 @@ impl<'a> NameResolution<'a> {
     fn binding(&self) -> Option<&'a NameBinding<'a>> {
         self.binding.and_then(|binding| match self.single_imports {
             SingleImports::None => Some(binding),
-            _ if !binding.defined_with(DefModifiers::GLOB_IMPORTED) => Some(binding),
+            _ if !binding.is_glob_import() => Some(binding),
             _ => None, // The binding could be shadowed by a single import, so it is not known.
         })
     }
@@ -170,7 +167,7 @@ impl<'a> NameResolution<'a> {
     fn try_result(&self, ns: Namespace, allow_private_imports: bool)
                   -> Option<ResolveResult<&'a NameBinding<'a>>> {
         match self.binding {
-            Some(binding) if !binding.defined_with(DefModifiers::GLOB_IMPORTED) =>
+            Some(binding) if !binding.is_glob_import() =>
                 return Some(Success(binding)),
             _ => {} // Items and single imports are not shadowable
         };
@@ -337,7 +334,7 @@ impl<'a> ::ModuleS<'a> {
     }
 
     fn define_in_glob_importers(&self, name: Name, ns: Namespace, binding: &'a NameBinding<'a>) {
-        if !binding.defined_with(DefModifiers::IMPORTABLE) || !binding.is_pseudo_public() { return }
+        if !binding.is_importable() || !binding.is_pseudo_public() { return }
         for &(importer, directive) in self.glob_importers.borrow_mut().iter() {
             let _ = importer.try_define_child(name, ns, directive.import(binding, None));
         }
@@ -410,7 +407,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         // resolution for it so that later resolve stages won't complain.
         if let SingleImport { target, .. } = e.import_directive.subclass {
             let dummy_binding = self.resolver.arenas.alloc_name_binding(NameBinding {
-                modifiers: DefModifiers::GLOB_IMPORTED,
                 kind: NameBindingKind::Def(Def::Err),
                 span: None,
                 vis: ty::Visibility::Public,
@@ -517,7 +513,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
             determined.set(true);
             if let Success(binding) = *result {
-                if !binding.defined_with(DefModifiers::IMPORTABLE) {
+                if !binding.is_importable() {
                     let msg = format!("`{}` is not directly importable", target);
                     span_err!(self.resolver.session, directive.span, E0253, "{}", &msg);
                 }
@@ -662,7 +658,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             resolution.borrow().binding().map(|binding| (*name, binding))
         }).collect::<Vec<_>>();
         for ((name, ns), binding) in bindings {
-            if binding.defined_with(DefModifiers::IMPORTABLE) && binding.is_pseudo_public() {
+            if binding.is_importable() && binding.is_pseudo_public() {
                 let _ = module_.try_define_child(name, ns, directive.import(binding, None));
             }
         }
@@ -705,14 +701,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 }
             }
 
-            if let NameBindingKind::Import { binding: orig_binding, id, .. } = binding.kind {
+            if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {
                 if ns == TypeNS && orig_binding.is_variant() &&
                    !orig_binding.vis.is_at_least(binding.vis, &self.resolver.ast_map) {
                     let msg = format!("variant `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring its enum as `pub`",
                                       name);
                     let lint = lint::builtin::PRIVATE_IN_PUBLIC;
-                    self.resolver.session.add_lint(lint, id, binding.span.unwrap(), msg);
+                    self.resolver.session.add_lint(lint, directive.id, binding.span.unwrap(), msg);
                 }
             }
         }
