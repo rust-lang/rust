@@ -901,11 +901,16 @@ pub trait Iterator {
         Enumerate { iter: self, count: 0 }
     }
 
-    /// Creates an iterator which can look at the `next()` element without
-    /// consuming it.
+    /// Creates an iterator which can use `peek` to look at the next element of
+    /// the iterator without consuming it.
     ///
     /// Adds a [`peek()`] method to an iterator. See its documentation for
     /// more information.
+    ///
+    /// Note that the underlying iterator is still advanced when `peek` is
+    /// called for the first time: In order to retrieve the next element,
+    /// `next` is called on the underlying iterator, hence any side effects of
+    /// the `next` method will occur.
     ///
     /// [`peek()`]: struct.Peekable.html#method.peek
     ///
