@@ -1420,45 +1420,24 @@ fn main() {
 "##,
 
 E0102: r##"
-You hit this error because the compiler lacks information to
-determine a type for this variable. Erroneous code example:
+You hit this error because the compiler lacks the information to
+determine the type of this variable. Erroneous code example:
 
 ```compile_fail
-fn demo(devil: fn () -> !) {
-    let x: &_ = devil();
-    // error: cannot determine a type for this local variable
-}
-
-fn oh_no() -> ! { panic!("the devil is in the details") }
-
 fn main() {
-    demo(oh_no);
+    // could be an array of anything
+    let x = []; // error: cannot determine a type for this local variable
 }
 ```
 
 To solve this situation, constrain the type of the variable.
 Examples:
 
-```no_run
+```
 #![allow(unused_variables)]
 
-fn some_func(x: &u32) {
-    // some code
-}
-
-fn demo(devil: fn () -> !) {
-    let x: &u32 = devil();
-    // Here we defined the type at the variable creation
-
-    let x: &_ = devil();
-    some_func(x);
-    // Here, the type is determined by the function argument type
-}
-
-fn oh_no() -> ! { panic!("the devil is in the details") }
-
 fn main() {
-    demo(oh_no);
+    let x: [u8; 0] = [];
 }
 ```
 "##,
