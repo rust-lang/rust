@@ -42,4 +42,8 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected `char`
     //~| found `bool`
+
+    match () {
+        E::V => {} //~ ERROR failed to resolve. Use of undeclared type or module `E`
+    }
 }

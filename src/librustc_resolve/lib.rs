@@ -2406,7 +2406,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 }
                             }
                         }
-                    } else {
+                    } else if let Err(false) = self.resolve_path(pat_id, &path, 0, ValueNS) {
                         resolve_error(
                             self,
                             path.span,
