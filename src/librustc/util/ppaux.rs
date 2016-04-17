@@ -493,7 +493,7 @@ impl fmt::Debug for ty::BoundRegion {
             BrAnon(n) => write!(f, "BrAnon({:?})", n),
             BrFresh(n) => write!(f, "BrFresh({:?})", n),
             BrNamed(did, name) => {
-                write!(f, "BrNamed({:?}, {:?})", did, name)
+                write!(f, "BrNamed({:?}:{:?}, {:?})", did.krate, did.index, name)
             }
             BrEnv => "BrEnv".fmt(f),
         }

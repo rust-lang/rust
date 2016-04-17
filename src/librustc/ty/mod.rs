@@ -1722,6 +1722,10 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// Returns a simpler type such that `Self: Sized` if and only
     /// if that type is Sized, or `TyErr` if this type is recursive.
     ///
+    /// HACK: instead of returning a list of types, this function can
+    /// return a tuple. In that case, the result is Sized only if
+    /// all elements of the tuple are Sized.
+    ///
     /// This is generally the `struct_tail` if this is a struct, or a
     /// tuple of them if this is an enum.
     ///
@@ -1738,7 +1742,7 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             None => {
                 let this = tcx.lookup_adt_def_master(self.did);
                 this.calculate_sized_constraint_inner(tcx, &mut Vec::new());
-                self.sized_constraint.unwrap(dep_node)
+                self.sized_constraint(tcx)
             }
             Some(ty) => ty
         }
@@ -1756,6 +1760,10 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
     {
         let tys : Vec<_> = tys.into_iter()
             .map(|ty| self.sized_constraint_for_ty(tcx, stack, ty))
+            .flat_map(|ty| match ty.sty {
+                ty::TyTuple(ref tys) => tys.clone(),
+                _ => vec![ty]
+            })
             .filter(|ty| *ty != tcx.types.bool)
             .collect();
 
@@ -1766,6 +1774,7 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
             _ => tcx.mk_tup(tys)
         }
     }
+
     fn sized_constraint_for_ty(
         &'tcx self,
         tcx: &ty::TyCtxt<'tcx>,
