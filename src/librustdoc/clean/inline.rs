@@ -26,7 +26,7 @@ use rustc::middle::stability;
 
 use rustc_const_eval::lookup_const_by_id;
 
-use core::DocContext;
+use core::{DocContext, DocAccessLevels};
 use doctree;
 use clean::{self, GetDefId};
 
@@ -227,15 +227,6 @@ fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
     }, false)
 }
 
-fn is_item_doc_reachable(cx: &DocContext, did: DefId) -> bool {
-    use ::visit_lib::LibEmbargoVisitor;
-
-    if cx.analyzed_crates.borrow_mut().insert(did.krate) {
-        LibEmbargoVisitor::new(cx).visit_lib(did.krate);
-    }
-    cx.access_levels.borrow().is_public(did)
-}
-
 pub fn build_impls(cx: &DocContext,
                    tcx: &TyCtxt,
                    did: DefId) -> Vec<clean::Item> {
@@ -309,7 +300,7 @@ pub fn build_impl(cx: &DocContext,
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
     if let Some(traitref) = associated_trait {
-        if !is_item_doc_reachable(cx, traitref.def_id) {
+        if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
             return
         }
     }
@@ -341,7 +332,7 @@ pub fn build_impl(cx: &DocContext,
     // Only inline impl if the implementing type is
     // reachable in rustdoc generated documentation
     if let Some(did) = for_.def_id() {
-        if !is_item_doc_reachable(cx, did) {
+        if !cx.access_levels.borrow().is_doc_reachable(did) {
             return
         }
     }

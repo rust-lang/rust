@@ -19,8 +19,7 @@ use std::cell::RefMut;
 
 use clean::{Attributes, Clean};
 
-// FIXME: since this is only used for cross-crate impl inlining this only
-//        handles traits and items for which traits can be implemented
+// FIXME: this may not be exhaustive, but is sufficient for rustdocs current uses
 
 /// Similar to `librustc_privacy::EmbargoVisitor`, but also takes
 /// specific rustdoc annotations into account (i.e. `doc(hidden)`)
@@ -69,11 +68,16 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
         for item in self.cstore.item_children(did) {
             if let DefLike::DlDef(def) = item.def {
                 match def {
+                    Def::Mod(did) |
+                    Def::ForeignMod(did) |
                     Def::Trait(did) |
                     Def::Struct(did) |
-                    Def::Mod(did) |
                     Def::Enum(did) |
-                    Def::TyAlias(did) => self.visit_item(did, item),
+                    Def::TyAlias(did) |
+                    Def::Fn(did) |
+                    Def::Method(did) |
+                    Def::Static(did, _) |
+                    Def::Const(did) => self.visit_item(did, item),
                     _ => {}
                 }
             }

@@ -133,6 +133,7 @@ struct CrateNum(ast::CrateNum);
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use rustc::session::config::Input;
+        use ::visit_lib::LibEmbargoVisitor;
 
         if let Some(t) = cx.tcx_opt() {
             cx.deref_trait_did.set(t.lang_items.deref_trait());
@@ -142,6 +143,10 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         let mut externs = Vec::new();
         for cnum in cx.sess().cstore.crates() {
             externs.push((cnum, CrateNum(cnum).clean(cx)));
+            if cx.tcx_opt().is_some() {
+                // Analyze doc-reachability for extern items
+                LibEmbargoVisitor::new(cx).visit_lib(cnum);
+            }
         }
         externs.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
