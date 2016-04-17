@@ -22,6 +22,7 @@ use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_metadata::cstore::CStore;
+use rustc_metadata::creader::LocalCrateReader;
 
 use syntax::{ast, codemap, errors};
 use syntax::errors::emitter::ColorConfig;
@@ -151,14 +152,18 @@ pub fn run_core(search_paths: SearchPaths,
                     .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let krate = driver::assign_node_ids(&sess, krate);
+    let dep_graph = DepGraph::new(false);
+
+    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
+    LocalCrateReader::new(&sess, &cstore, &defs, &krate, &name).read_crates(&dep_graph);
+    let lcx = LoweringContext::new(&sess, Some(&krate), defs);
+
     // Lower ast -> hir.
-    let lcx = LoweringContext::new(&sess, Some(&krate));
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), DepGraph::new(false));
+    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
     let arenas = ty::CtxtArenas::new();
-    let hir_map = driver::make_map(&sess, &mut hir_forest);
+    let hir_map = hir_map::map_crate(&mut hir_forest, defs);
 
     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                     &cstore,
                                                      hir_map,
                                                      &arenas,
                                                      &name,

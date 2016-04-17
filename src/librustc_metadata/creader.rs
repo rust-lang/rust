@@ -45,7 +45,7 @@ pub struct LocalCrateReader<'a> {
     cstore: &'a CStore,
     creader: CrateReader<'a>,
     krate: &'a ast::Crate,
-    defintions: &'a hir_map::Definitions,
+    defintions: &'a RefCell<hir_map::Definitions>,
 }
 
 pub struct CrateReader<'a> {
@@ -59,6 +59,7 @@ pub struct CrateReader<'a> {
 impl<'a, 'ast> visit::Visitor<'ast> for LocalCrateReader<'a> {
     fn visit_item(&mut self, a: &'ast ast::Item) {
         self.process_item(a);
+        visit::walk_item(self, a);
     }
 }
 
@@ -81,6 +82,7 @@ fn should_link(i: &ast::Item) -> bool {
     !attr::contains_name(&i.attrs, "no_link")
 }
 
+#[derive(Debug)]
 struct CrateInfo {
     ident: String,
     name: String,
@@ -750,7 +752,7 @@ impl<'a> CrateReader<'a> {
 impl<'a> LocalCrateReader<'a> {
     pub fn new(sess: &'a Session,
                cstore: &'a CStore,
-               defs: &'a hir_map::Definitions,
+               defs: &'a RefCell<hir_map::Definitions>,
                krate: &'a ast::Crate,
                local_crate_name: &str)
                -> LocalCrateReader<'a> {
@@ -807,9 +809,10 @@ impl<'a> LocalCrateReader<'a> {
                                                                       i.span,
                                                                       PathKind::Crate,
                                                                       true);
-                        let def_id = self.defintions.opt_local_def_id(i.id).unwrap();
 
-                        let len = self.defintions.def_path(def_id.index).data.len();
+                        let defs = self.defintions.borrow();
+                        let def_id = defs.opt_local_def_id(i.id).unwrap();
+                        let len = defs.def_path(def_id.index).data.len();
 
                         self.creader.update_extern_crate(cnum,
                                                          ExternCrate {

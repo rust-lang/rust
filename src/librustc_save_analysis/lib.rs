@@ -73,7 +73,7 @@ pub mod recorder {
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: &'l TyCtxt<'tcx>,
     lcx: &'l lowering::LoweringContext<'l>,
-    span_utils: SpanUtils<'l>,
+    span_utils: SpanUtils<'tcx>,
 }
 
 macro_rules! option_try(
@@ -90,7 +90,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
     pub fn from_span_utils(tcx: &'l TyCtxt<'tcx>,
                            lcx: &'l lowering::LoweringContext<'l>,
-                           span_utils: SpanUtils<'l>)
+                           span_utils: SpanUtils<'tcx>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
@@ -680,7 +680,7 @@ impl<'v> Visitor<'v> for PathCollector {
 pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
                                lcx: &'l lowering::LoweringContext<'l>,
                                krate: &ast::Crate,
-                               analysis: &ty::CrateAnalysis,
+                               analysis: &'l ty::CrateAnalysis<'l>,
                                cratename: &str,
                                odir: Option<&Path>) {
     let _ignore = tcx.dep_graph.in_ignore();
@@ -726,9 +726,10 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     });
     root_path.pop();
 
-    let utils = SpanUtils::new(&tcx.sess);
+    let utils: SpanUtils<'tcx> = SpanUtils::new(&tcx.sess);
+    let save_ctxt = SaveContext::new(tcx, lcx);
     let mut dumper = CsvDumper::new(&mut output_file, utils);
-    let mut visitor = DumpVisitor::new(tcx, lcx, analysis, &mut dumper);
+    let mut visitor = DumpVisitor::new(tcx, save_ctxt, analysis, &mut dumper);
     // FIXME: we don't write anything!
 
     visitor.dump_crate_info(cratename, krate);

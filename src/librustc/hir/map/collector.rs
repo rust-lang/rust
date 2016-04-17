@@ -162,7 +162,12 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
-        self.insert(pat.id, NodeLocal(pat));
+        let node = if let PatKind::Ident(..) = pat.node {
+            NodeLocal(pat)
+        } else {
+            NodePat(pat)
+        };
+        self.insert(pat.id, node);
 
         self.with_parent(pat.id, |this| {
             intravisit::walk_pat(this, pat);
