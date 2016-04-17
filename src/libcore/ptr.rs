@@ -119,6 +119,17 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
 /// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let x = 12;
+/// let y = &x as *const i32;
+///
+/// unsafe { println!("{}", std::ptr::read(y)); }
+/// ```
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
@@ -155,6 +166,21 @@ pub unsafe fn read_and_drop<T>(dest: *mut T) -> T {
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let mut x = 0;
+/// let y = &mut x as *mut i32;
+/// let z = 12;
+///
+/// unsafe {
+///     std::ptr::write(y, z);
+///     println!("{}", std::ptr::read(y));
+/// }
+/// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
@@ -185,6 +211,17 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// `src` is not used before the data is overwritten again (e.g. with `write`,
 /// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let x = 12;
+/// let y = &x as *const i32;
+///
+/// unsafe { println!("{}", std::ptr::read_volatile(y)); }
+/// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn read_volatile<T>(src: *const T) -> T {
@@ -217,6 +254,21 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// let mut x = 0;
+/// let y = &mut x as *mut i32;
+/// let z = 12;
+///
+/// unsafe {
+///     std::ptr::write_volatile(y, z);
+///     println!("{}", std::ptr::read_volatile(y));
+/// }
+/// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
 pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
