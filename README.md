@@ -61,7 +61,7 @@ name                                                                            
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                         | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
 [for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                         | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                           | warn    | using identity operations, e.g. `x + 0` or `y / 1`
-[if_not_else](https://github.com/Manishearth/rust-clippy/wiki#if_not_else)                                           | warn    | finds if branches that could be swapped so no negation operation is necessary on the condition
+[if_not_else](https://github.com/Manishearth/rust-clippy/wiki#if_not_else)                                           | allow   | finds if branches that could be swapped so no negation operation is necessary on the condition
 [if_same_then_else](https://github.com/Manishearth/rust-clippy/wiki#if_same_then_else)                               | warn    | if with the same *then* and *else* blocks
 [ifs_same_cond](https://github.com/Manishearth/rust-clippy/wiki#ifs_same_cond)                                       | warn    | consecutive `ifs` with the same condition
 [indexing_slicing](https://github.com/Manishearth/rust-clippy/wiki#indexing_slicing)                                 | allow   | indexing/slicing usage

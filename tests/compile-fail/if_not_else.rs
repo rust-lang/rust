@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![deny(clippy)]
+#![deny(if_not_else)]
 
 fn bla() -> bool { unimplemented!() }
 
