@@ -18,6 +18,7 @@ use middle::cstore::InlinedItem;
 
 use syntax::ast::*;
 use syntax::visit;
+use syntax::parse::token;
 
 /// Creates def ids for nodes in the HIR.
 pub struct DefCollector<'ast> {
@@ -35,8 +36,9 @@ impl<'ast> DefCollector<'ast> {
             definitions: Definitions::new(),
             parent_def: None,
         };
-        let result = collector.create_def_with_parent(None, CRATE_NODE_ID, DefPathData::CrateRoot);
-        assert_eq!(result, CRATE_DEF_INDEX);
+        let root = collector.create_def_with_parent(None, CRATE_NODE_ID, DefPathData::CrateRoot);
+        assert_eq!(root, CRATE_DEF_INDEX);
+        collector.parent_def = Some(root);
 
         collector.create_def_with_parent(Some(CRATE_DEF_INDEX), DUMMY_NODE_ID, DefPathData::Misc);
 
@@ -125,12 +127,12 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
                             this.create_def(v.node.data.id(),
                                             DefPathData::EnumVariant(v.node.name.name));
 
-                        for field in v.node.data.fields() {
-                            if let Some(ident) = field.ident {
-                                this.create_def_with_parent(Some(variant_def_index),
-                                                            field.id,
-                                                            DefPathData::Field(ident.name));
-                            }
+                        for (index, field) in v.node.data.fields().iter().enumerate() {
+                            let name = field.ident.map(|ident| ident.name)
+                                .unwrap_or(token::intern(&index.to_string()));
+                            this.create_def_with_parent(Some(variant_def_index),
+                                                        field.id,
+                                                        DefPathData::Field(name));
                         }
                     }
                 }
@@ -141,10 +143,10 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
                                         DefPathData::StructCtor);
                     }
 
-                    for field in struct_def.fields() {
-                        if let Some(ident) = field.ident {
-                            this.create_def(field.id, DefPathData::Field(ident.name));
-                        }
+                    for (index, field) in struct_def.fields().iter().enumerate() {
+                        let name = field.ident.map(|ident| ident.name)
+                            .unwrap_or(token::intern(&index.to_string()));
+                        this.create_def(field.id, DefPathData::Field(name));
                     }
                 }
                 _ => {}
@@ -205,14 +207,10 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_pat(&mut self, pat: &'ast Pat) {
-        let maybe_binding = match pat.node {
-            PatKind::Ident(_, id, _) => Some(id.node),
-            _ => None
-        };
-
         let parent_def = self.parent_def;
-        if let Some(id) = maybe_binding {
-            let def = self.create_def(pat.id, DefPathData::Binding(id.name));
+
+        if let PatKind::Ident(_, id, _) = pat.node {
+            let def = self.create_def(pat.id, DefPathData::Binding(id.node.name));
             self.parent_def = Some(def);
         }
 
@@ -353,14 +351,10 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     }
 
     fn visit_pat(&mut self, pat: &'ast hir::Pat) {
-        let maybe_binding = match pat.node {
-            hir::PatKind::Ident(_, id, _) => Some(id.node),
-            _ => None
-        };
-
         let parent_def = self.parent_def;
-        if let Some(id) = maybe_binding {
-            let def = self.create_def(pat.id, DefPathData::Binding(id.name));
+
+        if let hir::PatKind::Ident(_, id, _) = pat.node {
+            let def = self.create_def(pat.id, DefPathData::Binding(id.node.name));
             self.parent_def = Some(def);
         }
 

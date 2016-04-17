@@ -43,6 +43,7 @@ use super::Compilation;
 
 use serialize::json;
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsString, OsStr};
@@ -123,9 +124,9 @@ pub fn compile_input(sess: &Session,
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
 
         // Collect defintions for def ids.
-        let defs = time(sess.time_passes(),
-                        "collecting defs",
-                        || hir_map::collect_definitions(&expanded_crate));
+        let defs = &RefCell::new(time(sess.time_passes(),
+                                 "collecting defs",
+                                 || hir_map::collect_definitions(&expanded_crate)));
 
         time(sess.time_passes(),
              "external crate/lib resolution",
@@ -133,7 +134,7 @@ pub fn compile_input(sess: &Session,
                     .read_crates(&dep_graph));
 
         // Lower ast -> hir.
-        let lcx = LoweringContext::new(sess, Some(&expanded_crate));
+        let lcx = LoweringContext::new(sess, Some(&expanded_crate), defs);
         let hir_forest = &mut time(sess.time_passes(),
                                    "lowering ast -> hir",
                                    || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),

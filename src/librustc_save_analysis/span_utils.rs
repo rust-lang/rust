@@ -26,6 +26,8 @@ use syntax::parse::token::{keywords, Token};
 #[derive(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
+    // FIXME given that we clone SpanUtils all over the place, this err_count is
+    // probably useless and any logic relying on it is bogus.
     pub err_count: Cell<isize>,
 }
 
