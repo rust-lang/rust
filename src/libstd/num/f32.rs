@@ -1030,7 +1030,7 @@ impl f32 {
     /// let abs_difference_1 = (f.1 - x.cos()).abs();
     ///
     /// assert!(abs_difference_0 <= f32::EPSILON);
-    /// assert!(abs_difference_0 <= f32::EPSILON);
+    /// assert!(abs_difference_1 <= f32::EPSILON);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
