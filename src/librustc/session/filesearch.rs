@@ -15,7 +15,6 @@ pub use self::FileMatch::*;
 use std::collections::HashSet;
 use std::env;
 use std::fs;
-use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
 use session::search_paths::{SearchPaths, PathKind};

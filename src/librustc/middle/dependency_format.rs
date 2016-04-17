@@ -65,7 +65,6 @@ use syntax::ast;
 
 use session;
 use session::config;
-use middle::cstore::CrateStore;
 use middle::cstore::LinkagePreference::{self, RequireStatic, RequireDynamic};
 use util::nodemap::FnvHashMap;
 

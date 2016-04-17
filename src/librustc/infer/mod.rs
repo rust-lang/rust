@@ -31,7 +31,7 @@ use ty::adjustment;
 use ty::{TyVid, IntVid, FloatVid};
 use ty::{self, Ty, TyCtxt};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use ty::fold::{TypeFolder, TypeFoldable};
+use ty::fold::TypeFoldable;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::{self, PredicateObligations, ProjectionMode};
 use rustc_data_structures::unify::{self, UnificationTable};

@@ -28,7 +28,6 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::errors::{ColorConfig, Handler};
 use syntax::parse;
-use syntax::parse::lexer::Reader;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
 

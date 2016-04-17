@@ -17,7 +17,7 @@ use dep_graph::DepNode;
 use hir::map as hir_map;
 use session::Session;
 use lint;
-use middle::cstore::{CrateStore, LOCAL_CRATE};
+use middle::cstore::LOCAL_CRATE;
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use ty::{self, TyCtxt};

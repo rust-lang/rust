@@ -54,9 +54,7 @@ use self::TestEvent::*;
 use self::NamePadding::*;
 use self::OutputLocation::*;
 
-use stats::Stats;
 use std::boxed::FnBox;
-use term::Terminal;
 
 use std::any::Any;
 use std::cmp;
