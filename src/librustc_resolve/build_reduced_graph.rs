@@ -260,7 +260,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 let def = Def::Mod(self.ast_map.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false, vis);
                 self.define(parent, name, TypeNS, (module, sp));
-                parent.module_children.borrow_mut().insert(item.id, module);
+                self.module_map.insert(item.id, module);
                 *parent_ref = module;
             }
 
@@ -398,7 +398,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
 
             let parent_link = BlockParentLink(parent, block_id);
             let new_module = self.new_module(parent_link, None, false, parent.vis);
-            parent.module_children.borrow_mut().insert(block_id, new_module);
+            self.module_map.insert(block_id, new_module);
             *parent = new_module;
         }
     }
