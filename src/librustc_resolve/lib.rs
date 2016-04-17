@@ -29,9 +29,6 @@ extern crate log;
 extern crate syntax;
 extern crate arena;
 #[macro_use]
-#[no_link]
-extern crate rustc_bitflags;
-#[macro_use]
 extern crate rustc;
 
 use self::PatternBindingMode::*;
@@ -915,18 +912,9 @@ impl<'a> fmt::Debug for ModuleS<'a> {
     }
 }
 
-bitflags! {
-    #[derive(Debug)]
-    flags DefModifiers: u8 {
-        const IMPORTABLE = 1 << 1,
-        const GLOB_IMPORTED = 1 << 3,
-    }
-}
-
 // Records a possibly-private value, type, or module definition.
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
-    modifiers: DefModifiers,
     kind: NameBindingKind<'a>,
     span: Option<Span>,
     vis: ty::Visibility,
@@ -938,7 +926,7 @@ enum NameBindingKind<'a> {
     Module(Module<'a>),
     Import {
         binding: &'a NameBinding<'a>,
-        id: NodeId,
+        directive: &'a ImportDirective<'a>,
         // Some(error) if using this imported name causes the import to be a privacy error
         privacy_error: Option<Box<PrivacyError<'a>>>,
     },
@@ -950,7 +938,6 @@ struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
 impl<'a> NameBinding<'a> {
     fn create_from_module(module: Module<'a>, span: Option<Span>) -> Self {
         NameBinding {
-            modifiers: DefModifiers::IMPORTABLE,
             kind: NameBindingKind::Module(module),
             span: span,
             vis: module.vis,
@@ -971,10 +958,6 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Module(module) => module.def,
             NameBindingKind::Import { binding, .. } => binding.def(),
         }
-    }
-
-    fn defined_with(&self, modifiers: DefModifiers) -> bool {
-        self.modifiers.contains(modifiers)
     }
 
     fn is_pseudo_public(&self) -> bool {
@@ -1001,6 +984,20 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Import { .. } => true,
             _ => false,
+        }
+    }
+
+    fn is_glob_import(&self) -> bool {
+        match self.kind {
+            NameBindingKind::Import { directive, .. } => directive.is_glob(),
+            _ => false,
+        }
+    }
+
+    fn is_importable(&self) -> bool {
+        match self.def().unwrap() {
+            Def::AssociatedConst(..) | Def::Method(..) | Def::AssociatedTy(..) => false,
+            _ => true,
         }
     }
 }
@@ -1228,12 +1225,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             self.used_crates.insert(krate);
         }
 
-        let (import_id, privacy_error) = match binding.kind {
-            NameBindingKind::Import { id, ref privacy_error, .. } => (id, privacy_error),
+        let (directive, privacy_error) = match binding.kind {
+            NameBindingKind::Import { directive, ref privacy_error, .. } =>
+                (directive, privacy_error),
             _ => return,
         };
 
-        self.used_imports.insert((import_id, ns));
+        self.used_imports.insert((directive.id, ns));
         if let Some(error) = privacy_error.as_ref() {
             self.privacy_errors.push((**error).clone());
         }
@@ -1241,14 +1239,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if !self.make_glob_map {
             return;
         }
-        if self.glob_map.contains_key(&import_id) {
-            self.glob_map.get_mut(&import_id).unwrap().insert(name);
+        if self.glob_map.contains_key(&directive.id) {
+            self.glob_map.get_mut(&directive.id).unwrap().insert(name);
             return;
         }
 
         let mut new_set = FnvHashSet();
         new_set.insert(name);
-        self.glob_map.insert(import_id, new_set);
+        self.glob_map.insert(directive.id, new_set);
     }
 
     fn get_trait_name(&self, did: DefId) -> Name {
