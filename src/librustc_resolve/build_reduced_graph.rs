@@ -28,9 +28,9 @@ use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::ty::{self, VariantKind};
 
-use syntax::ast::Name;
+use syntax::ast::{Name, NodeId};
 use syntax::attr::AttrMetaMethods;
-use syntax::parse::token::{special_idents, SELF_KEYWORD_NAME, SUPER_KEYWORD_NAME};
+use syntax::parse::token::keywords;
 use syntax::codemap::{Span, DUMMY_SP};
 
 use rustc::hir;
@@ -100,6 +100,37 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
         block.stmts.iter().any(is_item)
     }
 
+    fn sanity_check_import(&self, view_path: &hir::ViewPath, id: NodeId) {
+        let path = match view_path.node {
+            ViewPathSimple(_, ref path) |
+            ViewPathGlob (ref path) |
+            ViewPathList(ref path, _) => path
+        };
+
+        // Check for type parameters
+        let found_param = path.segments.iter().any(|segment| {
+            !segment.parameters.types().is_empty() ||
+            !segment.parameters.lifetimes().is_empty() ||
+            !segment.parameters.bindings().is_empty()
+        });
+        if found_param {
+            self.session.span_err(path.span,
+                                  "type or lifetime parameter is found in import path");
+        }
+
+        // Checking for special identifiers in path
+        // prevent `self` or `super` at beginning of global path
+        if path.global && path.segments.len() > 0 {
+            let first = path.segments[0].identifier.name;
+            if first == keywords::Super.to_name() || first == keywords::SelfValue.to_name() {
+                self.session.add_lint(
+                    lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH, id, path.span,
+                    format!("expected identifier, found keyword `{}`", first)
+                );
+            }
+        }
+    }
+
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self, item: &Item, parent_ref: &mut Module<'b>) {
         let parent = *parent_ref;
@@ -114,10 +145,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 // Extract and intern the module part of the path. For
                 // globs and lists, the path is found directly in the AST;
                 // for simple paths we have to munge the path a little.
-                let is_global;
                 let module_path: Vec<Name> = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
-                        is_global = full_path.global;
                         full_path.segments
                                  .split_last()
                                  .unwrap()
@@ -129,7 +158,6 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
 
                     ViewPathGlob(ref module_ident_path) |
                     ViewPathList(ref module_ident_path, _) => {
-                        is_global = module_ident_path.global;
                         module_ident_path.segments
                                          .iter()
                                          .map(|seg| seg.identifier.name)
@@ -137,22 +165,10 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                     }
                 };
 
-                // Checking for special identifiers in path
-                // prevent `self` or `super` at beginning of global path
-                if is_global && (module_path.first() == Some(&SELF_KEYWORD_NAME) ||
-                                 module_path.first() == Some(&SUPER_KEYWORD_NAME)) {
-                    self.session.add_lint(
-                        lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH,
-                        item.id,
-                        item.span,
-                        format!("expected identifier, found keyword `{}`",
-                                module_path.first().unwrap().as_str()));
-                }
+                self.sanity_check_import(view_path, item.id);
 
                 // Build up the import directives.
-                let is_prelude = item.attrs.iter().any(|attr| {
-                    attr.name() == special_idents::prelude_import.name.as_str()
-                });
+                let is_prelude = item.attrs.iter().any(|attr| attr.name() == "prelude_import");
 
                 match view_path.node {
                     ViewPathSimple(binding, ref full_path) => {
