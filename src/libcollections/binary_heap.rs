@@ -919,6 +919,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone)]
 pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }
