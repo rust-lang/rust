@@ -84,6 +84,7 @@ pub mod error;
 pub mod fast_reject;
 pub mod fold;
 pub mod item_path;
+pub mod layout;
 pub mod _match;
 pub mod maps;
 pub mod outlives;
