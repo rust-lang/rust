@@ -237,14 +237,12 @@ impl DiagnosticSpan {
                                                            None,
                                                            backtrace,
                                                            je);
-                         let def_site_span =
-                             bt.def_site_span
-                               .map(|sp| {
-                                   Self::from_span_and_backtrace(sp,
-                                                                 None,
-                                                                 vec![].into_iter(),
-                                                                 je)
-                               });
+                         let def_site_span = bt.def_site_span.map(|sp| {
+                             Self::from_span_and_backtrace(sp,
+                                                           None,
+                                                           vec![].into_iter(),
+                                                           je)
+                         });
                          Box::new(DiagnosticSpanMacroExpansion {
                              span: call_site,
                              macro_decl_name: bt.macro_decl_name,

@@ -69,8 +69,7 @@ fn parse_line(file_name: &str, line: &str) -> Vec<Error> {
                 expected_errors
             }
             Err(error) => {
-                println!("failed to decode compiler output as json: `{}`", error);
-                panic!("failed to decode compiler output as json");
+                panic!("failed to decode compiler output as json: `{}`", error);
             }
         }
     } else {
@@ -82,10 +81,19 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                         diagnostic: &Diagnostic,
                         file_name: &str) {
     // We only consider messages pertaining to the current file.
-    let matching_spans =
-        || diagnostic.spans.iter().filter(|span| span.file_name == file_name);
-    let with_code =
-        |span: &DiagnosticSpan, text: &str| match diagnostic.code {
+    let matching_spans = || {
+        diagnostic.spans.iter().filter(|span| span.file_name == file_name)
+    };
+
+    // We break the output into multiple lines, and then append the
+    // [E123] to every line in the output. This may be overkill.  The
+    // intention was to match existing tests that do things like "//|
+    // found `i32` [E123]" and expect to match that somewhere, and yet
+    // also ensure that `//~ ERROR E123` *always* works. The
+    // assumption is that these multi-line error messages are on their
+    // way out anyhow.
+    let with_code = |span: &DiagnosticSpan, text: &str| {
+        match diagnostic.code {
             Some(ref code) =>
                 // FIXME(#33000) -- it'd be better to use a dedicated
                 // UI harness than to include the line/col number like
@@ -105,7 +113,8 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                         span.line_start, span.column_start,
                         span.line_end, span.column_end,
                         text),
-        };
+        }
+    };
 
     // Convert multi-line messages into multiple expected
     // errors. We expect to replace these with something
