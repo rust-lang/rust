@@ -39,10 +39,10 @@
 //! this module defines the format the JSON file should take, though each
 //! underscore in the field names should be replaced with a hyphen (`-`) in the
 //! JSON file. Some fields are required in every target specification, such as
-//! `llvm-target`, `target-endian`, `target-pointer-width`, `arch`, and
-//! `os`. In general, options passed to rustc with `-C` override the target's
-//! settings, though `target-feature` and `link-args` will *add* to the list
-//! specified by the target, rather than replace.
+//! `llvm-target`, `target-endian`, `target-pointer-width`, `data-layout`,
+//! `arch`, and `os`. In general, options passed to rustc with `-C` override
+//! the target's settings, though `target-feature` and `link-args` will *add*
+//! to the list specified by the target, rather than replace.
 
 use serialize::json::Json;
 use std::default::Default;
@@ -75,7 +75,8 @@ macro_rules! supported_targets {
             if false { }
             $(
                 else if target == stringify!($module) {
-                    let t = $module::target();
+                    let mut t = $module::target();
+                    t.options.is_builtin = true;
                     debug!("Got builtin target: {:?}", t);
                     return Some(t);
                 }
@@ -161,6 +162,8 @@ pub struct Target {
     /// Architecture to use for ABI considerations. Valid options: "x86",
     /// "x86_64", "arm", "aarch64", "mips", "powerpc", and "powerpc64".
     pub arch: String,
+    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
+    pub data_layout: String,
     /// Optional settings with defaults.
     pub options: TargetOptions,
 }
@@ -171,8 +174,9 @@ pub struct Target {
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
 #[derive(Clone, Debug)]
 pub struct TargetOptions {
-    /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
-    pub data_layout: Option<String>,
+    /// Whether the target is built-in or loaded from a custom target specification.
+    pub is_builtin: bool,
+
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
     /// Archive utility to use when managing archives. Defaults to "ar".
@@ -293,7 +297,7 @@ impl Default for TargetOptions {
     /// incomplete, and if used for compilation, will certainly not work.
     fn default() -> TargetOptions {
         TargetOptions {
-            data_layout: None,
+            is_builtin: false,
             linker: option_env!("CFG_DEFAULT_LINKER").unwrap_or("cc").to_string(),
             ar: option_env!("CFG_DEFAULT_AR").unwrap_or("ar").to_string(),
             pre_link_args: Vec::new(),
@@ -378,6 +382,7 @@ impl Target {
             llvm_target: get_req_field("llvm-target"),
             target_endian: get_req_field("target-endian"),
             target_pointer_width: get_req_field("target-pointer-width"),
+            data_layout: get_req_field("data-layout"),
             arch: get_req_field("arch"),
             target_os: get_req_field("os"),
             target_env: get_opt_field("env", ""),
@@ -426,7 +431,6 @@ impl Target {
         key!(staticlib_prefix);
         key!(staticlib_suffix);
         key!(features);
-        key!(data_layout, optional);
         key!(dynamic_linking, bool);
         key!(executables, bool);
         key!(disable_redzone, bool);
