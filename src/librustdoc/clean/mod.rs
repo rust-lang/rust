@@ -2666,7 +2666,7 @@ fn resolve_type(cx: &DocContext,
             hir::TyFloat(ast::FloatTy::F64) => return Primitive(F64),
         },
         Def::SelfTy(..) if path.segments.len() == 1 => {
-            return Generic(keywords::SelfType.ident.to_string());
+            return Generic(keywords::SelfType.name().to_string());
         }
         Def::SelfTy(..) | Def::TyParam(..) => true,
         _ => false,

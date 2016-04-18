@@ -533,7 +533,7 @@ impl ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(subst::SelfSpace, 0, keywords::SelfType.ident.name)
+        ParamTy::new(subst::SelfSpace, 0, keywords::SelfType.name())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {

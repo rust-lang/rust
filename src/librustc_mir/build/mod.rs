@@ -18,7 +18,7 @@ use rustc::hir::pat_util::pat_is_binding;
 use std::ops::{Index, IndexMut};
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token;
+use syntax::parse::token::keywords;
 
 pub struct Builder<'a, 'tcx: 'a> {
     hir: Cx<'a, 'tcx>,
@@ -238,7 +238,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                 ty::UpvarCapture::ByRef(..) => true
             });
             let mut decl = UpvarDecl {
-                debug_name: token::special_idents::invalid.name,
+                debug_name: keywords::Invalid.name(),
                 by_ref: by_ref
             };
             if let Some(hir::map::NodeLocal(pat)) = tcx.map.find(fv.def.var_id()) {
@@ -296,7 +296,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 self.schedule_drop(pattern.as_ref().map_or(ast_block.span, |pat| pat.span),
                                    argument_extent, &lvalue, ty);
 
-                let mut name = token::special_idents::invalid.name;
+                let mut name = keywords::Invalid.name();
                 if let Some(pat) = pattern {
                     if let hir::PatKind::Ident(_, ref ident, _) = pat.node {
                         if pat_is_binding(&self.hir.tcx().def_map.borrow(), pat) {

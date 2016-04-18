@@ -22,7 +22,7 @@ use ast::*;
 use ast;
 use attr::{ThinAttributes, ThinAttributesExt};
 use codemap::{respan, Span, Spanned};
-use parse::token;
+use parse::token::{self, keywords};
 use ptr::P;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
@@ -1015,7 +1015,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
     let config = folder.fold_meta_items(config);
 
     let mut items = folder.fold_item(P(ast::Item {
-        ident: token::special_idents::Invalid,
+        ident: keywords::Invalid.ident(),
         attrs: attrs,
         id: ast::DUMMY_NODE_ID,
         vis: ast::Visibility::Public,

@@ -264,7 +264,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfKind::Value(keywords::SelfValue.ident)))
+            (self_path, respan(span, ast::SelfKind::Value(keywords::SelfValue.ident())))
         }
         Some(ref ptr) => {
             let self_ty = respan(
@@ -272,7 +272,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 match *ptr {
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
-                        ast::SelfKind::Region(lt, mutbl, keywords::SelfValue.ident)
+                        ast::SelfKind::Region(lt, mutbl, keywords::SelfValue.ident())
                     }
                     Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition")
                 });

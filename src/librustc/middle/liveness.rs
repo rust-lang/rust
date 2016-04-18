@@ -1578,7 +1578,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
                 let name = path1.node;
-                if name != keywords::SelfValue.ident.name {
+                if name != keywords::SelfValue.name() {
                     if !self.warn_about_unused(sp, p_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(p_id, sp, var, true);
