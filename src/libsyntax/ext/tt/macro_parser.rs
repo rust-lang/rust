@@ -85,7 +85,7 @@ use codemap;
 use errors::FatalError;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
-use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
+use parse::parser::{PathStyle, Parser};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
 use parse::token;
@@ -546,7 +546,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             }
         },
         "path" => {
-            token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
+            token::NtPath(Box::new(panictry!(p.parse_path(PathStyle::Type))))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         _ => {

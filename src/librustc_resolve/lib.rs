@@ -62,7 +62,7 @@ use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Pos};
 use syntax::errors::DiagnosticBuilder;
-use syntax::parse::token::{self, keywords, special_idents};
+use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc::hir::intravisit::{self, FnKind, Visitor};
@@ -1954,7 +1954,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // plain insert (no renaming, types are not currently hygienic....)
-        self_type_rib.bindings.insert(keywords::SelfType.ident.name, self_def);
+        self_type_rib.bindings.insert(keywords::SelfType.name(), self_def);
         self.type_ribs.push(self_type_rib);
         f(self);
         if !self.resolved {
@@ -2197,7 +2197,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let is_invalid_self_type_name = path.segments.len() > 0 &&
                                                         maybe_qself.is_none() &&
                                                         path.segments[0].identifier.name ==
-                                                        keywords::SelfType.ident.name;
+                                                        keywords::SelfType.name();
                         if is_invalid_self_type_name {
                             resolve_error(self,
                                           ty.span,
@@ -2641,7 +2641,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           namespace: Namespace,
                           record_used: bool)
                           -> Option<LocalDef> {
-        if identifier.name == special_idents::Invalid.name {
+        if identifier.unhygienic_name == keywords::Invalid.name() {
             return Some(LocalDef::from_def(Def::Err));
         }
 
@@ -3073,7 +3073,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             });
 
                             if method_scope &&
-                                    &path_name[..] == keywords::SelfValue.ident.name.as_str() {
+                                    &path_name[..] == keywords::SelfValue.name().as_str() {
                                 resolve_error(self,
                                               expr.span,
                                               ResolutionError::SelfNotAvailableInStaticMethod);

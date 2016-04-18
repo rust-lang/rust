@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+#![feature(pub_restricted)]
 
-fn baz(a: &'self isize) { } //~ ERROR invalid lifetime name: 'self is no longer a special lifetime
+macro_rules! m {
+    ($p: path) => (pub($p) struct Z;)
+}
 
-fn main() { }
+struct S<T>(T);
+m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
+
+fn main() {}
