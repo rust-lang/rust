@@ -598,13 +598,13 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = ['a', 'b', 'c'];
     ///
     /// let mut iter = a.iter().enumerate();
     ///
-    /// assert_eq!(iter.next(), Some((0, &1)));
-    /// assert_eq!(iter.next(), Some((1, &2)));
-    /// assert_eq!(iter.next(), Some((2, &3)));
+    /// assert_eq!(iter.next(), Some((0, &'a')));
+    /// assert_eq!(iter.next(), Some((1, &'b')));
+    /// assert_eq!(iter.next(), Some((2, &'c')));
     /// assert_eq!(iter.next(), None);
     /// ```
     #[inline]
@@ -2109,4 +2109,3 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
     fn next(&mut self) -> Option<I::Item> { (**self).next() }
     fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
 }
-
