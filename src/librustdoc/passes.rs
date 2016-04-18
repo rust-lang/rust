@@ -24,19 +24,17 @@ use fold::FoldItem::Strip;
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
-    let mut stripped = DefIdSet();
+    let mut retained = DefIdSet();
 
     // strip all #[doc(hidden)] items
     let krate = {
         struct Stripper<'a> {
-            stripped: &'a mut DefIdSet
+            retained: &'a mut DefIdSet
         }
         impl<'a> fold::DocFolder for Stripper<'a> {
             fn fold_item(&mut self, i: Item) -> Option<Item> {
                 if i.attrs.list("doc").has_word("hidden") {
                     debug!("found one in strip_hidden; removing");
-                    self.stripped.insert(i.def_id);
-
                     // use a dedicated hidden item for given item type if any
                     match i.inner {
                         clean::StructFieldItem(..) | clean::ModuleItem(..) => {
@@ -44,42 +42,19 @@ pub fn strip_hidden(krate: clean::Crate) -> plugins::PluginResult {
                         }
                         _ => return None,
                     }
+                } else {
+                    self.retained.insert(i.def_id);
                 }
                 self.fold_item_recur(i)
             }
         }
-        let mut stripper = Stripper{ stripped: &mut stripped };
+        let mut stripper = Stripper{ retained: &mut retained };
         stripper.fold_crate(krate)
     };
 
-    // strip any traits implemented on stripped items
-    {
-        struct ImplStripper<'a> {
-            stripped: &'a mut DefIdSet
-        }
-        impl<'a> fold::DocFolder for ImplStripper<'a> {
-            fn fold_item(&mut self, i: Item) -> Option<Item> {
-                if let clean::ImplItem(clean::Impl{
-                           for_: clean::ResolvedPath{ did, .. },
-                           ref trait_, ..
-                }) = i.inner {
-                    // Impls for stripped types don't need to exist
-                    if self.stripped.contains(&did) {
-                        return None;
-                    }
-                    // Impls of stripped traits also don't need to exist
-                    if let Some(did) = trait_.def_id() {
-                        if self.stripped.contains(&did) {
-                            return None;
-                        }
-                    }
-                }
-                self.fold_item_recur(i)
-            }
-        }
-        let mut stripper = ImplStripper{ stripped: &mut stripped };
-        stripper.fold_crate(krate)
-    }
+    // strip all impls referencing stripped items
+    let mut stripper = ImplStripper { retained: &retained };
+    stripper.fold_crate(krate)
 }
 
 /// Strip private items from the point of view of a crate or externally from a
@@ -101,11 +76,9 @@ pub fn strip_private(mut krate: clean::Crate) -> plugins::PluginResult {
         krate = ImportStripper.fold_crate(stripper.fold_crate(krate));
     }
 
-    // strip all private implementations of traits
-    {
-        let mut stripper = ImplStripper(&retained);
-        stripper.fold_crate(krate)
-    }
+    // strip all impls referencing private items
+    let mut stripper = ImplStripper { retained: &retained };
+    stripper.fold_crate(krate)
 }
 
 struct Stripper<'a> {
@@ -204,13 +177,21 @@ impl<'a> fold::DocFolder for Stripper<'a> {
     }
 }
 
-// This stripper discards all private impls of traits
-struct ImplStripper<'a>(&'a DefIdSet);
+// This stripper discards all impls which reference stripped items
+struct ImplStripper<'a> {
+    retained: &'a DefIdSet
+}
+
 impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if let clean::ImplItem(ref imp) = i.inner {
+            if let Some(did) = imp.for_.def_id() {
+                if did.is_local() && !self.retained.contains(&did) {
+                    return None;
+                }
+            }
             if let Some(did) = imp.trait_.def_id() {
-                if did.is_local() && !self.0.contains(&did) {
+                if did.is_local() && !self.retained.contains(&did) {
                     return None;
                 }
             }
