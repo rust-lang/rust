@@ -1518,6 +1518,13 @@ impl Type {
             _ => None,
         }
     }
+
+    pub fn trait_name(&self) -> Option<String> {
+        match *self {
+            ResolvedPath { ref path, .. } => Some(path.last_name()),
+            _ => None,
+        }
+    }
 }
 
 impl GetDefId for Type {
@@ -2008,6 +2015,10 @@ impl Path {
                 }
             }]
         }
+    }
+
+    pub fn last_name(&self) -> String {
+        self.segments.last().unwrap().name.clone()
     }
 }
 
