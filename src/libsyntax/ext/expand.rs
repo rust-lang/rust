@@ -1486,7 +1486,7 @@ mod tests {
     use ext::mtwt;
     use fold::Folder;
     use parse;
-    use parse::token;
+    use parse::token::{self, keywords};
     use util::parser_testing::{string_to_parser};
     use util::parser_testing::{string_to_pat, string_to_crate, strs_to_idents};
     use visit;

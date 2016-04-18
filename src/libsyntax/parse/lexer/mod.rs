@@ -13,8 +13,7 @@ use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
 use errors::{FatalError, Handler, DiagnosticBuilder};
 use ext::tt::transcribe::tt_next_token;
-use parse::token::str_to_ident;
-use parse::token;
+use parse::token::{self, keywords, str_to_ident};
 use str::char_at;
 use rustc_unicode::property::Pattern_White_Space;
 
@@ -1229,14 +1228,9 @@ impl<'a> StringReader<'a> {
                     });
                     let keyword_checking_token = &token::Ident(keyword_checking_ident);
                     let last_bpos = self.last_pos;
-                    if keyword_checking_token.is_keyword(token::keywords::SelfValue) {
-                        self.err_span_(start,
-                                       last_bpos,
-                                       "invalid lifetime name: 'self is no longer a special \
-                                        lifetime");
-                    } else if keyword_checking_token.is_any_keyword() &&
-                       !keyword_checking_token.is_keyword(token::keywords::Static) {
-                        self.err_span_(start, last_bpos, "invalid lifetime name");
+                    if keyword_checking_token.is_any_keyword() &&
+                       !keyword_checking_token.is_keyword(keywords::Static) {
+                        self.err_span_(start, last_bpos, "lifetimes cannot use keyword names");
                     }
 
                     return token::Lifetime(ident);
