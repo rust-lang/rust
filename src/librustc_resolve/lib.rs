@@ -848,6 +848,9 @@ pub struct ModuleS<'a> {
     glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
 
+    // Used to memoize the traits in this module for faster searches through all traits in scope.
+    traits: RefCell<Option<Box<[&'a NameBinding<'a>]>>>,
+
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
@@ -875,6 +878,7 @@ impl<'a> ModuleS<'a> {
             prelude: RefCell::new(None),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
+            traits: RefCell::new(None),
             populated: Cell::new(!external),
             arenas: arenas
         }
@@ -3225,18 +3229,28 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut search_module = self.current_module;
         loop {
             // Look for trait children.
-            let mut search_in_module = |module: Module<'a>| module.for_each_child(|_, ns, binding| {
-                if ns != TypeNS { return }
-                let trait_def_id = match binding.def() {
-                    Some(Def::Trait(trait_def_id)) => trait_def_id,
-                    Some(..) | None => return,
-                };
-                if self.trait_item_map.contains_key(&(name, trait_def_id)) {
-                    add_trait_info(&mut found_traits, trait_def_id, name);
-                    let trait_name = self.get_trait_name(trait_def_id);
-                    self.record_use(trait_name, TypeNS, binding);
+            let mut search_in_module = |module: Module<'a>| {
+                let mut traits = module.traits.borrow_mut();
+                if traits.is_none() {
+                    let mut collected_traits = Vec::new();
+                    module.for_each_child(|_, ns, binding| {
+                        if ns != TypeNS { return }
+                        if let Some(Def::Trait(_)) = binding.def() {
+                            collected_traits.push(binding);
+                        }
+                    });
+                    *traits = Some(collected_traits.into_boxed_slice());
                 }
-            });
+
+                for binding in traits.as_ref().unwrap().iter() {
+                    let trait_def_id = binding.def().unwrap().def_id();
+                    if self.trait_item_map.contains_key(&(name, trait_def_id)) {
+                        add_trait_info(&mut found_traits, trait_def_id, name);
+                        let trait_name = self.get_trait_name(trait_def_id);
+                        self.record_use(trait_name, TypeNS, binding);
+                    }
+                }
+            };
             search_in_module(search_module);
 
             match search_module.parent_link {
