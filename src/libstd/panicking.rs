@@ -67,11 +67,6 @@ pub fn set_hook(hook: Box<Fn(&PanicInfo) + 'static + Sync + Send>) {
         let lock = HOOK_LOCK.write();
         let old_hook = HOOK;
         HOOK = Hook::Custom(Box::into_raw(hook));
-        drop(lock);
-
-        if let Hook::Custom(ptr) = old_hook {
-            Box::from_raw(ptr);
-        }
     }
 }
 
