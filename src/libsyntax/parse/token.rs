@@ -141,7 +141,7 @@ pub enum Token {
     /// Doc comment
     DocComment(ast::Name),
     // In left-hand-sides of MBE macros:
-    /// Parse a nonterminal (name to bind, name of NT, styles of their idents)
+    /// Parse a nonterminal (name to bind, name of NT)
     MatchNt(ast::Ident, ast::Ident),
     // In right-hand-sides of MBE macros:
     /// A syntactic variable that will be filled in by macro expansion.
@@ -271,34 +271,30 @@ impl Token {
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: keywords::Keyword) -> bool {
         match *self {
-            Ident(id) => id.name == kw.ident.name,
+            Ident(id) => id.name == kw.name(),
             _ => false,
         }
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
         match *self {
-            Ident(id) => id.name == keywords::Super.ident.name ||
-                         id.name == keywords::SelfValue.ident.name ||
-                         id.name == keywords::SelfType.ident.name,
+            Ident(id) => id.name == keywords::Super.name() ||
+                         id.name == keywords::SelfValue.name() ||
+                         id.name == keywords::SelfType.name(),
             _ => false,
         }
     }
 
-    /// Returns `true` if the token is either a used or reserved keyword.
+    /// Returns `true` if the token is either a strict or reserved keyword.
     pub fn is_any_keyword(&self) -> bool {
-        match *self {
-            Ident(id) => id.name >= USED_KEYWORD_START &&
-                         id.name <= RESERVED_KEYWORD_FINAL,
-            _ => false
-        }
+        self.is_strict_keyword() || self.is_reserved_keyword()
     }
 
-    /// Returns `true` if the token is a used keyword.
-    pub fn is_used_keyword(&self) -> bool {
+    /// Returns `true` if the token is a strict keyword.
+    pub fn is_strict_keyword(&self) -> bool {
         match *self {
-            Ident(id) => id.name >= USED_KEYWORD_START &&
-                         id.name <= USED_KEYWORD_FINAL,
+            Ident(id) => id.name >= keywords::As.name() &&
+                         id.name <= keywords::While.name(),
             _ => false,
         }
     }
@@ -306,8 +302,8 @@ impl Token {
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_reserved_keyword(&self) -> bool {
         match *self {
-            Ident(id) => id.name >= RESERVED_KEYWORD_START &&
-                         id.name <= RESERVED_KEYWORD_FINAL,
+            Ident(id) => id.name >= keywords::Abstract.name() &&
+                         id.name <= keywords::Yield.name(),
             _ => false,
         }
     }
@@ -370,148 +366,104 @@ impl fmt::Debug for Nonterminal {
     }
 }
 
-// Get the first "argument"
-macro_rules! first {
-    ( $first:expr, $( $remainder:expr, )* ) => ( $first )
-}
-
-// Get the last "argument" (has to be done recursively to avoid phoney local ambiguity error)
-macro_rules! last {
-    ( $first:expr, $( $remainder:expr, )+ ) => ( last!( $( $remainder, )+ ) );
-    ( $first:expr, ) => ( $first )
-}
-
 // In this macro, there is the requirement that the name (the number) must be monotonically
 // increasing by one in the special identifiers, starting at 0; the same holds for the keywords,
 // except starting from the next number instead of zero.
-macro_rules! declare_special_idents_and_keywords {(
-    // So now, in these rules, why is each definition parenthesised?
-    // Answer: otherwise we get a spurious local ambiguity bug on the "}"
-    pub mod special_idents {
-        $( ($si_index: expr, $si_const: ident, $si_str: expr); )*
-    }
-
-    pub mod keywords {
-        'used:
-        $( ($ukw_index: expr, $ukw_const: ident, $ukw_str: expr); )*
-        'reserved:
-        $( ($rkw_index: expr, $rkw_const: ident, $rkw_str: expr); )*
-    }
+macro_rules! declare_keywords {(
+    $( ($index: expr, $konst: ident, $string: expr) )*
 ) => {
-    const USED_KEYWORD_START: ast::Name = first!($( ast::Name($ukw_index), )*);
-    const USED_KEYWORD_FINAL: ast::Name = last!($( ast::Name($ukw_index), )*);
-    const RESERVED_KEYWORD_START: ast::Name = first!($( ast::Name($rkw_index), )*);
-    const RESERVED_KEYWORD_FINAL: ast::Name = last!($( ast::Name($rkw_index), )*);
-
-    pub mod special_idents {
-        use ast;
-        $(
-            #[allow(non_upper_case_globals)]
-            pub const $si_const: ast::Ident = ast::Ident::with_empty_ctxt(ast::Name($si_index));
-        )*
-    }
-
-    /// Rust keywords are either 'used' in the language or 'reserved' for future use.
     pub mod keywords {
         use ast;
         #[derive(Clone, Copy, PartialEq, Eq)]
         pub struct Keyword {
-            pub ident: ast::Ident,
+            ident: ast::Ident,
+        }
+        impl Keyword {
+            #[inline] pub fn ident(self) -> ast::Ident { self.ident }
+            #[inline] pub fn name(self) -> ast::Name { self.ident.name }
         }
         $(
             #[allow(non_upper_case_globals)]
-            pub const $ukw_const: Keyword = Keyword {
-                ident: ast::Ident::with_empty_ctxt(ast::Name($ukw_index))
-            };
-        )*
-        $(
-            #[allow(non_upper_case_globals)]
-            pub const $rkw_const: Keyword = Keyword {
-                ident: ast::Ident::with_empty_ctxt(ast::Name($rkw_index))
+            pub const $konst: Keyword = Keyword {
+                ident: ast::Ident::with_empty_ctxt(ast::Name($index))
             };
         )*
     }
 
     fn mk_fresh_ident_interner() -> IdentInterner {
-        interner::StrInterner::prefill(&[$($si_str,)* $($ukw_str,)* $($rkw_str,)*])
+        interner::StrInterner::prefill(&[$($string,)*])
     }
 }}
 
 // NB: leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max
 // of the reserved words, and thus tagged as "reserved".
+// After modifying this list adjust `is_strict_keyword`/`is_reserved_keyword`,
+// this should be rarely necessary though if the keywords are kept in alphabetic order.
+declare_keywords! {
+    // Invalid identifier
+    (0,  Invalid,        "")
 
-declare_special_idents_and_keywords! {
-    pub mod special_idents {
-        // Special identifiers
-        (0,                          Invalid,        "");
-        (1,                          __Unused1,      "<__unused1>");
-        (2,                          __Unused2,      "<__unused2>");
-        (3,                          __Unused3,      "<__unused3>");
-        (4,                          __Unused4,      "<__unused4>");
-        (5,                          __Unused5,      "<__unused5>");
-        (6,                          Union,          "union");
-        (7,                          Default,        "default");
-        (8,                          StaticLifetime, "'static");
-    }
+    // Strict keywords used in the language.
+    (1,  As,             "as")
+    (2,  Box,            "box")
+    (3,  Break,          "break")
+    (4,  Const,          "const")
+    (5,  Continue,       "continue")
+    (6,  Crate,          "crate")
+    (7,  Else,           "else")
+    (8,  Enum,           "enum")
+    (9,  Extern,         "extern")
+    (10, False,          "false")
+    (11, Fn,             "fn")
+    (12, For,            "for")
+    (13, If,             "if")
+    (14, Impl,           "impl")
+    (15, In,             "in")
+    (16, Let,            "let")
+    (17, Loop,           "loop")
+    (18, Match,          "match")
+    (19, Mod,            "mod")
+    (20, Move,           "move")
+    (21, Mut,            "mut")
+    (22, Pub,            "pub")
+    (23, Ref,            "ref")
+    (24, Return,         "return")
+    (25, SelfValue,      "self")
+    (26, SelfType,       "Self")
+    (27, Static,         "static")
+    (28, Struct,         "struct")
+    (29, Super,          "super")
+    (30, Trait,          "trait")
+    (31, True,           "true")
+    (32, Type,           "type")
+    (33, Unsafe,         "unsafe")
+    (34, Use,            "use")
+    (35, Where,          "where")
+    (36, While,          "while")
 
-    pub mod keywords {
-        // Keywords
-        'used:
-        (9,                          Static,     "static");
-        (10,                         Super,      "super");
-        (11,                         SelfValue,  "self");
-        (12,                         SelfType,   "Self");
-        (13,                         As,         "as");
-        (14,                         Break,      "break");
-        (15,                         Crate,      "crate");
-        (16,                         Else,       "else");
-        (17,                         Enum,       "enum");
-        (18,                         Extern,     "extern");
-        (19,                         False,      "false");
-        (20,                         Fn,         "fn");
-        (21,                         For,        "for");
-        (22,                         If,         "if");
-        (23,                         Impl,       "impl");
-        (24,                         In,         "in");
-        (25,                         Let,        "let");
-        (26,                         Loop,       "loop");
-        (27,                         Match,      "match");
-        (28,                         Mod,        "mod");
-        (29,                         Move,       "move");
-        (30,                         Mut,        "mut");
-        (31,                         Pub,        "pub");
-        (32,                         Ref,        "ref");
-        (33,                         Return,     "return");
-        (34,                         Struct,     "struct");
-        (35,                         True,       "true");
-        (36,                         Trait,      "trait");
-        (37,                         Type,       "type");
-        (38,                         Unsafe,     "unsafe");
-        (39,                         Use,        "use");
-        (40,                         While,      "while");
-        (41,                         Continue,   "continue");
-        (42,                         Box,        "box");
-        (43,                         Const,      "const");
-        (44,                         Where,      "where");
-        'reserved:
-        (45,                         Virtual,    "virtual");
-        (46,                         Proc,       "proc");
-        (47,                         Alignof,    "alignof");
-        (48,                         Become,     "become");
-        (49,                         Offsetof,   "offsetof");
-        (50,                         Priv,       "priv");
-        (51,                         Pure,       "pure");
-        (52,                         Sizeof,     "sizeof");
-        (53,                         Typeof,     "typeof");
-        (54,                         Unsized,    "unsized");
-        (55,                         Yield,      "yield");
-        (56,                         Do,         "do");
-        (57,                         Abstract,   "abstract");
-        (58,                         Final,      "final");
-        (59,                         Override,   "override");
-        (60,                         Macro,      "macro");
-    }
+    // Keywords reserved for future use.
+    (37, Abstract,       "abstract")
+    (38, Alignof,        "alignof")
+    (39, Become,         "become")
+    (40, Do,             "do")
+    (41, Final,          "final")
+    (42, Macro,          "macro")
+    (43, Offsetof,       "offsetof")
+    (44, Override,       "override")
+    (45, Priv,           "priv")
+    (46, Proc,           "proc")
+    (47, Pure,           "pure")
+    (48, Sizeof,         "sizeof")
+    (49, Typeof,         "typeof")
+    (50, Unsized,        "unsized")
+    (51, Virtual,        "virtual")
+    (52, Yield,          "yield")
+
+    // Weak keywords, have special meaning only in specific contexts.
+    (53, Default,        "default")
+    (54, StaticLifetime, "'static")
+    (55, Union,          "union")
 }
 
 // looks like we can get rid of this completely...

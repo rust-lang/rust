@@ -14,7 +14,7 @@ use codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use codemap;
 use fold::Folder;
 use fold;
-use parse::token::{intern, InternedString, special_idents};
+use parse::token::{intern, InternedString, keywords};
 use parse::{token, ParseSess};
 use ptr::P;
 use util::small_vector::SmallVector;
@@ -148,7 +148,7 @@ impl fold::Folder for PreludeInjector {
         let vp = P(codemap::dummy_spanned(ast::ViewPathGlob(prelude_path)));
         mod_.items.insert(0, P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: special_idents::Invalid,
+            ident: keywords::Invalid.ident(),
             node: ast::ItemKind::Use(vp),
             attrs: vec![ast::Attribute {
                 span: self.span,

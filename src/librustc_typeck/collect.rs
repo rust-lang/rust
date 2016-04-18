@@ -1655,7 +1655,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let def = ty::TypeParameterDef {
         space: SelfSpace,
         index: 0,
-        name: keywords::SelfType.ident.name,
+        name: keywords::SelfType.name(),
         def_id: ccx.tcx.map.local_def_id(param_id),
         default_def_id: ccx.tcx.map.local_def_id(parent),
         default: None,

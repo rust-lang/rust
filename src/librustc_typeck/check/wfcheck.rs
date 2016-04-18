@@ -472,7 +472,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         let name = match space {
             TypeSpace => ast_generics.ty_params[index].name,
-            SelfSpace => keywords::SelfType.ident.name,
+            SelfSpace => keywords::SelfType.name(),
             FnSpace => bug!("Fn space occupied?"),
         };
 

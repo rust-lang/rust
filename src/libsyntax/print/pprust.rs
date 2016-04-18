@@ -20,7 +20,7 @@ use attr;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{self, CodeMap, BytePos};
 use errors;
-use parse::token::{self, BinOpToken, Token, InternedString};
+use parse::token::{self, keywords, BinOpToken, Token, InternedString};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
@@ -2957,9 +2957,8 @@ impl<'a> State<'a> {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat)?,
             _ => {
                 match input.pat.node {
-                    PatKind::Ident(_, ref path1, _) if
-                        path1.node.name ==
-                            parse::token::special_idents::Invalid.name => {
+                    PatKind::Ident(_, ref path1, _)
+                            if path1.node.name == keywords::Invalid.name() => {
                         // Do nothing.
                     }
                     _ => {

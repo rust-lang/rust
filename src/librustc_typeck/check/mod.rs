@@ -120,7 +120,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Spanned};
 use syntax::errors::DiagnosticBuilder;
-use syntax::parse::token::{self, InternedString, special_idents};
+use syntax::parse::token::{self, InternedString, keywords};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -2851,7 +2851,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 method_ty
             }
             Err(error) => {
-                if method_name.node != special_idents::Invalid.name {
+                if method_name.node != keywords::Invalid.name() {
                     method::report_error(fcx, method_name.span, expr_t,
                                          method_name.node, Some(rcvr), error);
                 }
@@ -2990,7 +2990,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
             fcx.tcx().sess.span_err(expr.span, &msg);
             fcx.write_ty(expr.id, field_ty);
-        } else if field.node == special_idents::Invalid.name {
+        } else if field.node == keywords::Invalid.name() {
             fcx.write_error(expr.id);
         } else if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
             fcx.type_error_struct(field.span,
@@ -3780,7 +3780,7 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                     method::MethodError::PrivateMatch(def) => Some(def),
                     _ => None,
                 };
-                if item_name != special_idents::Invalid.name {
+                if item_name != keywords::Invalid.name() {
                     method::report_error(fcx, span, ty, item_name, None, error);
                 }
                 def
