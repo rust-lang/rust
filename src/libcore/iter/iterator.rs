@@ -17,9 +17,12 @@ use ops::{Add, FnMut, Mul};
 use option::Option::{self, Some, None};
 use marker::Sized;
 
-use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse, Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev, Zip};
+use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse,
+            Inspect, Map, Peekable, Scan, Skip, SkipWhile, Take, TakeWhile, Rev,
+            Zip};
 use super::ChainState;
-use super::{DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator, IntoIterator};
+use super::{DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator,
+            IntoIterator};
 
 fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 
