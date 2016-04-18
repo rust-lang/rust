@@ -24,18 +24,16 @@ changed from one `i32` to another.
 
 [vb]: variable-bindings.html
 
-If you want to change what the binding points to, you’ll need a [mutable reference][mr]:
+You can also create a [reference][ref] to it, using `&x`, but if you want to use the reference to change it, you will need a mutable reference:
 
 ```rust
 let mut x = 5;
 let y = &mut x;
 ```
 
-[mr]: references-and-borrowing.html
+[ref]: references-and-borrowing.html
 
-`y` is an immutable binding to a mutable reference, which means that you can’t
-bind `y` to something else (`y = &mut z`), but you can mutate the thing that’s
-bound to `y` (`*y = 5`). A subtle distinction.
+`y` is an immutable binding to a mutable reference, which means that you can’t bind 'y' to something else (`y = &mut z`), but `y` can be used to bind `x` to something else (`*y = 5`). A subtle distinction.
 
 Of course, if you need both:
 
