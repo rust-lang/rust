@@ -328,6 +328,7 @@ create_config! {
         "Maximum width of the args of a function call before falling back to vertical formatting";
     struct_lit_width: usize, 16,
         "Maximum width in the body of a struct lit before falling back to vertical formatting";
+    force_explicit_abi: bool, true, "Always print the abi for extern items";
     newline_style: NewlineStyle, NewlineStyle::Unix, "Unix or Windows line endings";
     fn_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for functions";
     item_brace_style: BraceStyle, BraceStyle::SameLineWhere, "Brace style for structs and enums";

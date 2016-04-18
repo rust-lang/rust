@@ -80,7 +80,8 @@ impl Rewrite for ast::Local {
 
 impl<'a> FmtVisitor<'a> {
     pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
-        self.buffer.push_str(&::utils::format_abi(fm.abi));
+        let abi_str = ::utils::format_abi(fm.abi, self.config.force_explicit_abi);
+        self.buffer.push_str(&abi_str);
 
         let snippet = self.snippet(span);
         let brace_pos = snippet.find_uncommented("{").unwrap();
@@ -1265,7 +1266,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     result.push_str(::utils::format_unsafety(unsafety));
 
     if abi != abi::Abi::Rust {
-        result.push_str(&::utils::format_abi(abi));
+        result.push_str(&::utils::format_abi(abi, context.config.force_explicit_abi));
     }
 
     // fn foo

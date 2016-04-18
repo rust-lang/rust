@@ -608,7 +608,7 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
     result.push_str(&::utils::format_unsafety(bare_fn.unsafety));
 
     if bare_fn.abi != abi::Abi::Rust {
-        result.push_str(&::utils::format_abi(bare_fn.abi));
+        result.push_str(&::utils::format_abi(bare_fn.abi, context.config.force_explicit_abi));
     }
 
     result.push_str("fn");

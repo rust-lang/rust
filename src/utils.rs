@@ -91,9 +91,12 @@ pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
 }
 
 #[inline]
-// FIXME(#451): include "C"?
-pub fn format_abi(abi: abi::Abi) -> String {
-    format!("extern {} ", abi)
+pub fn format_abi(abi: abi::Abi, explicit_abi: bool) -> String {
+    if abi == abi::Abi::C && !explicit_abi {
+        "extern ".into()
+    } else {
+        format!("extern {} ", abi)
+    }
 }
 
 // The width of the first line in s.
