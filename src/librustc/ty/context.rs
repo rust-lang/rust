@@ -31,6 +31,7 @@ use hir::FreevarMap;
 use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
+use ty::layout::TargetDataLayout;
 use ty::maps;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
@@ -419,6 +420,9 @@ pub struct TyCtxt<'tcx> {
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
     pub crate_name: token::InternedString,
+
+    /// Data layout specification for the current target.
+    pub data_layout: TargetDataLayout,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -531,6 +535,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                  f: F) -> R
                                  where F: FnOnce(&TyCtxt<'tcx>) -> R
     {
+        let data_layout = TargetDataLayout::parse(s);
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
         let dep_graph = map.dep_graph.clone();
@@ -589,6 +594,7 @@ impl<'tcx> TyCtxt<'tcx> {
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: token::intern_and_get_ident(crate_name),
+            data_layout: data_layout,
        }, f)
     }
 }
