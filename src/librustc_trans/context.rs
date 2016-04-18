@@ -36,11 +36,12 @@ use session::Session;
 use util::sha2::Sha256;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, FnvHashMap, FnvHashSet};
 
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::ptr;
 use std::rc::Rc;
+use std::str;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
@@ -255,14 +256,27 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    if let Some(ref custom_data_layout) = sess.target.target.options.data_layout {
-        let data_layout = CString::new(&custom_data_layout[..]).unwrap();
-        llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
-    } else {
+    // Ensure the data-layout values hardcoded remain the defaults.
+    if sess.target.target.options.is_builtin {
         let tm = ::back::write::create_target_machine(sess);
         llvm::LLVMRustSetDataLayoutFromTargetMachine(llmod, tm);
         llvm::LLVMRustDisposeTargetMachine(tm);
+
+        let data_layout = llvm::LLVMGetDataLayout(llmod);
+        let data_layout = str::from_utf8(CStr::from_ptr(data_layout).to_bytes())
+            .ok().expect("got a non-UTF8 data-layout from LLVM");
+
+        if sess.target.target.data_layout != data_layout {
+            bug!("data-layout for builtin `{}` target, `{}`, \
+                  differs from LLVM default, `{}`",
+                 sess.target.target.llvm_target,
+                 sess.target.target.data_layout,
+                 data_layout);
+        }
     }
+
+    let data_layout = CString::new(&sess.target.target.data_layout[..]).unwrap();
+    llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
 
     let llvm_target = sess.target.target.llvm_target.as_bytes();
     let llvm_target = CString::new(llvm_target).unwrap();

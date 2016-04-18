@@ -19,6 +19,7 @@ pub fn target() -> Target {
         llvm_target: "i686-unknown-dragonfly".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
+        data_layout: "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128".to_string(),
         arch: "x86".to_string(),
         target_os: "dragonfly".to_string(),
         target_env: "".to_string(),
