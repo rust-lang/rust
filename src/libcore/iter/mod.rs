@@ -333,25 +333,6 @@ mod range;
 mod sources;
 mod traits;
 
-// All adaptors that preserve the size of the wrapped iterator are fine
-// Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F> where
-    F: FnMut(&I::Item),
-{}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Rev<I>
-    where I: ExactSizeIterator + DoubleEndedIterator {}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F> where
-    F: FnMut(I::Item) -> B,
-{}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> ExactSizeIterator for Zip<A, B>
-    where A: ExactSizeIterator, B: ExactSizeIterator {}
-
 /// An double-ended iterator with the direction inverted.
 ///
 /// This `struct` is created by the [`rev()`] method on [`Iterator`]. See its
@@ -381,6 +362,10 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> ExactSizeIterator for Rev<I>
+    where I: ExactSizeIterator + DoubleEndedIterator {}
 
 /// An iterator that clones the elements of an underlying iterator.
 ///
@@ -679,6 +664,10 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A, B> ExactSizeIterator for Zip<A, B>
+    where A: ExactSizeIterator, B: ExactSizeIterator {}
+
 /// An iterator that maps the values of `iter` with `f`.
 ///
 /// This `struct` is created by the [`map()`] method on [`Iterator`]. See its
@@ -770,6 +759,10 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
         self.iter.next_back().map(&mut self.f)
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<B, I: ExactSizeIterator, F> ExactSizeIterator for Map<I, F>
+    where F: FnMut(I::Item) -> B {}
 
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///
@@ -965,6 +958,9 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
         })
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -1655,3 +1651,7 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
         self.do_inspect(next)
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F>
+    where F: FnMut(&I::Item) {}
