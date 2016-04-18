@@ -664,8 +664,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         return Success(());
     }
 
-    // Miscellaneous post-processing, including recording reexports, recording shadowed traits,
-    // reporting conflicts, reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
+    // Miscellaneous post-processing, including recording reexports, reporting conflicts,
+    // reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
     fn finalize_resolutions_in(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
