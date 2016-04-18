@@ -51,10 +51,16 @@ impl Duration {
     ///
     /// If the nanoseconds is greater than 1 billion (the number of nanoseconds
     /// in a second), then it will carry over into the seconds provided.
+    ///
+    /// # Panics
+    ///
+    /// This constructor will panic if the carry from the nanoseconds overflows
+    /// the seconds counter.
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
     pub fn new(secs: u64, nanos: u32) -> Duration {
-        let secs = secs + (nanos / NANOS_PER_SEC) as u64;
+        let secs = secs.checked_add((nanos / NANOS_PER_SEC) as u64)
+            .expect("overflow in Duration::new");
         let nanos = nanos % NANOS_PER_SEC;
         Duration { secs: secs, nanos: nanos }
     }
