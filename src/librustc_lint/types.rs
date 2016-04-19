@@ -26,7 +26,7 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr;
 use syntax::codemap::{self, Span};
 
 use rustc::hir;

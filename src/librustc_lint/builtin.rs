@@ -29,7 +29,6 @@
 //! a `pub fn new()`.
 
 use rustc::hir::def::Def;
-use middle::cstore::CrateStore;
 use rustc::hir::def_id::DefId;
 use middle::stability;
 use rustc::{cfg, infer};

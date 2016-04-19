@@ -21,7 +21,7 @@ use def_key;
 use tyencode;
 use index::{self, IndexData};
 
-use middle::cstore::{LOCAL_CRATE, CrateStore, InlinedItemRef, LinkMeta, tls};
+use middle::cstore::{LOCAL_CRATE, InlinedItemRef, LinkMeta, tls};
 use rustc::hir::def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::dependency_format::Linkage;
@@ -46,7 +46,6 @@ use syntax::abi::Abi;
 use syntax::ast::{self, NodeId, Name, CRATE_NODE_ID, CrateNum};
 use syntax::codemap::BytePos;
 use syntax::attr;
-use syntax::attr::AttrMetaMethods;
 use syntax::errors::Handler;
 use syntax;
 use rbml::writer::Encoder;

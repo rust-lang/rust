@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::fmt;
-use std::io::prelude::*;
 use std::io;
 
 use externalfiles::ExternalHtml;

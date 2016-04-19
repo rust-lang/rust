@@ -69,7 +69,6 @@ use rustc_trans::back::link;
 use rustc::session::{config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::{get_unstable_features_setting, nightly_options};
-use rustc::middle::cstore::CrateStore;
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc_metadata::loader;

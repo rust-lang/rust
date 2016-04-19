@@ -34,7 +34,6 @@ use rustc::hir::intravisit::{self, Visitor};
 
 use rustc::dep_graph::DepNode;
 use rustc::lint;
-use rustc::middle::cstore::CrateStore;
 use rustc::hir::def::{self, Def};
 use rustc::hir::def_id::DefId;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};

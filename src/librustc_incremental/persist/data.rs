@@ -11,7 +11,6 @@
 //! The data that we will serialize and deserialize.
 
 use rustc::dep_graph::DepNode;
-use rustc_serialize::{Decoder as RustcDecoder, Encoder as RustcEncoder};
 
 use super::directory::DefPathIndex;
 

@@ -52,7 +52,6 @@ pub fn test_num<T>(ten: T, two: T) where
 mod tests {
     use core::option::Option;
     use core::option::Option::{Some, None};
-    use core::num::Float;
 
     #[test]
     fn from_str_issue7588() {
