@@ -108,8 +108,8 @@ pub mod temporary_assignment;
 pub mod transmute;
 pub mod types;
 pub mod unicode;
-pub mod unused_label;
 pub mod unsafe_removed_from_name;
+pub mod unused_label;
 pub mod vec;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -380,8 +380,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
-        unused_label::UNUSED_LABEL,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
+        unused_label::UNUSED_LABEL,
         vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,
     ]);
