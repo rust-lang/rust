@@ -77,7 +77,6 @@ use declare;
 use expr;
 use glue;
 use inline;
-use intrinsic;
 use machine;
 use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use meth;
@@ -2745,13 +2744,9 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
 
     {
         let ccx = shared_ccx.get_ccx(0);
-
-        // First, verify intrinsics.
-        intrinsic::check_intrinsics(&ccx);
-
         collect_translation_items(&ccx);
 
-        // Next, translate all items. See `TransModVisitor` for
+        // Translate all items. See `TransModVisitor` for
         // details on why we walk in this particular way.
         {
             let _icx = push_ctxt("text");

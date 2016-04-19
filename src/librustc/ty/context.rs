@@ -357,11 +357,6 @@ pub struct TyCtxt<'tcx> {
     pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
                                               lint::LevelSource>>,
 
-    /// The types that must be asserted to be the same size for `transmute`
-    /// to be valid. We gather up these restrictions in the intrinsicck pass
-    /// and check them in trans.
-    pub transmute_restrictions: RefCell<Vec<ty::TransmuteRestriction<'tcx>>>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -605,7 +600,6 @@ impl<'tcx> TyCtxt<'tcx> {
             extern_const_statics: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
             node_lint_levels: RefCell::new(FnvHashMap()),
-            transmute_restrictions: RefCell::new(Vec::new()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),

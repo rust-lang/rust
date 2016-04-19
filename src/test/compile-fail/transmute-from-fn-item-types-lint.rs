@@ -8,39 +8,37 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![deny(transmute_from_fn_item_types)]
+
 use std::mem;
 
 unsafe fn foo() -> (isize, *const (), Option<fn()>) {
     let i = mem::transmute(bar);
-    //~^ WARN is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ WARN was previously accepted
+    //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
+    //~^^ ERROR was previously accepted
 
     let p = mem::transmute(foo);
-    //~^ WARN is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ WARN was previously accepted
+    //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
+    //~^^ ERROR was previously accepted
 
     let of = mem::transmute(main);
-    //~^ WARN is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ WARN was previously accepted
+    //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
+    //~^^ ERROR was previously accepted
 
     (i, p, of)
 }
 
 unsafe fn bar() {
     mem::transmute::<_, *mut ()>(foo);
-    //~^ WARN is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ WARN was previously accepted
+    //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
+    //~^^ ERROR was previously accepted
 
     mem::transmute::<_, fn()>(bar);
-    //~^ WARN is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ WARN was previously accepted
+    //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
+    //~^^ ERROR was previously accepted
 
     // No error if a coercion would otherwise occur.
     mem::transmute::<fn(), usize>(main);
-
-    // Error, still, if the resulting type is not pointer-sized.
-    mem::transmute::<_, u8>(main);
-    //~^ ERROR transmute called with differently sized types
 }
 
 fn main() {
