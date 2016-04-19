@@ -80,6 +80,11 @@ pub struct Build {
     package_vers: String,
     bootstrap_key: String,
 
+    // Probed tools at runtime
+    gdb_version: Option<String>,
+    lldb_version: Option<String>,
+    lldb_python_dir: Option<String>,
+
     // Runtime state filled in later on
     cc: HashMap<String, (gcc::Tool, PathBuf)>,
     cxx: HashMap<String, gcc::Tool>,
@@ -128,6 +133,9 @@ impl Build {
             cc: HashMap::new(),
             cxx: HashMap::new(),
             compiler_rt_built: RefCell::new(HashMap::new()),
+            gdb_version: None,
+            lldb_version: None,
+            lldb_python_dir: None,
         }
     }
 
@@ -159,6 +167,9 @@ impl Build {
                 }
                 CompilerRt { _dummy } => {
                     native::compiler_rt(self, target.target);
+                }
+                TestHelpers { _dummy } => {
+                    native::test_helpers(self, target.target);
                 }
                 Libstd { compiler } => {
                     compile::std(self, target.target, &compiler);
@@ -200,6 +211,9 @@ impl Build {
                 ToolTidy { stage } => {
                     compile::tool(self, stage, target.target, "tidy");
                 }
+                ToolCompiletest { stage } => {
+                    compile::tool(self, stage, target.target, "compiletest");
+                }
                 DocBook { stage } => {
                     doc::rustbook(self, stage, target.target, "book", &doc_out);
                 }
@@ -236,11 +250,74 @@ impl Build {
                 CheckTidy { stage } => {
                     check::tidy(self, stage, target.target);
                 }
+                CheckRPass { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-pass", "run-pass");
+                }
+                CheckCFail { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "compile-fail", "compile-fail");
+                }
+                CheckPFail { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "parse-fail", "parse-fail");
+                }
+                CheckRFail { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-fail", "run-fail");
+                }
+                CheckPretty { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "pretty", "pretty");
+                }
+                CheckCodegen { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "codegen", "codegen");
+                }
+                CheckCodegenUnits { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "codegen-units", "codegen-units");
+                }
+                CheckDebuginfo { compiler } => {
+                    if target.target.contains("msvc") ||
+                       target.target.contains("android") {
+                        // nothing to do
+                    } else if target.target.contains("apple") {
+                        check::compiletest(self, &compiler, target.target,
+                                           "debuginfo-lldb", "debuginfo");
+                    } else {
+                        check::compiletest(self, &compiler, target.target,
+                                           "debuginfo-gdb", "debuginfo");
+                    }
+                }
+                CheckRustdoc { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "rustdoc", "rustdoc");
+                }
+                CheckRPassValgrind { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-pass-valgrind", "run-pass-valgrind");
+                }
+                CheckRPassFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "run-pass", "run-pass-fulldeps");
+                }
+                CheckCFailFull { compiler } => {
+                    check::compiletest(self, &compiler, target.target,
+                                       "compile-fail", "compile-fail-fulldeps")
+                }
 
                 DistDocs { stage } => dist::docs(self, stage, target.target),
                 DistMingw { _dummy } => dist::mingw(self, target.target),
                 DistRustc { stage } => dist::rustc(self, stage, target.target),
                 DistStd { compiler } => dist::std(self, &compiler, target.target),
+
+                DebuggerScripts { stage } => {
+                    let compiler = Compiler::new(stage, target.target);
+                    dist::debugger_scripts(self,
+                                           &self.sysroot(&compiler),
+                                           target.target);
+                }
 
                 Dist { .. } |
                 Doc { .. } | // pseudo-steps
@@ -388,6 +465,7 @@ impl Build {
             self.cargo_out(compiler, Mode::Libstd, host).join("deps"),
             self.cargo_out(compiler, Mode::Libtest, host).join("deps"),
             self.cargo_out(compiler, Mode::Librustc, host).join("deps"),
+            self.cargo_out(compiler, Mode::Tool, host).join("deps"),
         ];
         add_lib_path(paths, &mut cmd);
         return cmd
@@ -442,7 +520,8 @@ impl Build {
         let suffix = match mode {
             Mode::Libstd => "-std",
             Mode::Libtest => "-test",
-            Mode::Tool | Mode::Librustc => "-rustc",
+            Mode::Tool => "-tools",
+            Mode::Librustc => "-rustc",
         };
         self.out.join(compiler.host)
                 .join(format!("stage{}{}", compiler.stage, suffix))
@@ -463,9 +542,42 @@ impl Build {
         self.out.join(target).join("llvm")
     }
 
+    /// Returns the path to `llvm-config` for the specified target
+    fn llvm_config(&self, target: &str) -> PathBuf {
+        let target_config = self.config.target_config.get(target);
+        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+            s.clone()
+        } else {
+            self.llvm_out(&self.config.build).join("bin")
+                .join(exe("llvm-config", target))
+        }
+    }
+
+    /// Returns the path to `llvm-config` for the specified target
+    fn llvm_filecheck(&self, target: &str) -> PathBuf {
+        let target_config = self.config.target_config.get(target);
+        if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
+            s.parent().unwrap().join(exe("FileCheck", target))
+        } else {
+            let base = self.llvm_out(&self.config.build).join("build");
+            let exe = exe("FileCheck", target);
+            if self.config.build.contains("msvc") {
+                base.join("Release/bin").join(exe)
+            } else {
+                base.join("bin").join(exe)
+            }
+        }
+    }
+
     /// Root output directory for compiler-rt compiled for `target`
     fn compiler_rt_out(&self, target: &str) -> PathBuf {
         self.out.join(target).join("compiler-rt")
+    }
+
+    /// Root output directory for rust_test_helpers library compiled for
+    /// `target`
+    fn test_helpers_out(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("rust-test-helpers")
     }
 
     fn add_rustc_lib_path(&self, compiler: &Compiler, cmd: &mut Command) {
@@ -510,8 +622,11 @@ impl Build {
     }
 
     fn cflags(&self, target: &str) -> Vec<String> {
+        // Filter out -O and /O (the optimization flags) that we picked up from
+        // gcc-rs because the build scripts will determine that for themselves.
         let mut base = self.cc[target].0.args().iter()
                            .map(|s| s.to_string_lossy().into_owned())
+                           .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
 
         // If we're compiling on OSX then we add a few unconditional flags

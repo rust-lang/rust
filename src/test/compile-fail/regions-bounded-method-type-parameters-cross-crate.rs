@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:regions_bounded_method_type_parameters_cross_crate_lib.rs
+// aux-build:rbmtp_cross_crate_lib.rs
 
 // Check explicit region bounds on methods in the cross crate case.
 
-extern crate regions_bounded_method_type_parameters_cross_crate_lib as lib;
+extern crate rbmtp_cross_crate_lib as lib;
 
 use lib::Inv;
 use lib::MaybeOwned;

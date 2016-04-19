@@ -1845,7 +1845,7 @@ fn compile_test_and_save_ir(config: &Config, props: &TestProps,
 
 fn check_ir_with_filecheck(config: &Config, testpaths: &TestPaths) -> ProcRes {
     let irfile = output_base_name(config, testpaths).with_extension("ll");
-    let prog = config.llvm_bin_path.as_ref().unwrap().join("FileCheck");
+    let prog = config.llvm_filecheck.as_ref().unwrap();
     let proc_args = ProcArgs {
         // FIXME (#9639): This needs to handle non-utf8 paths
         prog: prog.to_str().unwrap().to_owned(),
@@ -1858,8 +1858,8 @@ fn check_ir_with_filecheck(config: &Config, testpaths: &TestPaths) -> ProcRes {
 fn run_codegen_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
     assert!(props.revisions.is_empty(), "revisions not relevant here");
 
-    if config.llvm_bin_path.is_none() {
-        fatal(None, "missing --llvm-bin-path");
+    if config.llvm_filecheck.is_none() {
+        fatal(None, "missing --llvm-filecheck");
     }
 
     let mut proc_res = compile_test_and_save_ir(config, props, testpaths);
