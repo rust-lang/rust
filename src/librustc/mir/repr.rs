@@ -213,13 +213,6 @@ impl BasicBlock {
         BasicBlock(index as u32)
     }
 
-    /// Returns a BasicBlock with index 1. This is actual end block (containing
-    /// the Return terminator) only during the building of MIR and should not be
-    /// used outside that.
-    pub const fn end_block() -> BasicBlock {
-        BasicBlock(1)
-    }
-
     /// Extract the index.
     pub fn index(self) -> usize {
         self.0 as usize
