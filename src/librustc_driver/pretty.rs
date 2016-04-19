@@ -700,14 +700,14 @@ impl fold::Folder for ReplaceBodyWithLoop {
     }
 }
 
-pub fn pretty_print_input(sess: Session,
+pub fn pretty_print_input(sess: &Session,
                           cstore: &CStore,
                           cfg: ast::CrateConfig,
                           input: &Input,
                           ppm: PpMode,
                           opt_uii: Option<UserIdentifiedItem>,
                           ofile: Option<PathBuf>) {
-    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, input));
+    let krate = panictry!(driver::phase_1_parse_input(sess, cfg, input));
 
     let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
         let mut fold = ReplaceBodyWithLoop::new();
@@ -716,14 +716,14 @@ pub fn pretty_print_input(sess: Session,
         krate
     };
 
-    let id = link::find_crate_name(Some(&sess), &krate.attrs, input);
+    let id = link::find_crate_name(Some(sess), &krate.attrs, input);
 
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None) {
+        match driver::phase_2_configure_and_expand(sess, &cstore, krate, &id, None) {
             Err(_) => return,
-            Ok(k) => driver::assign_node_ids(&sess, k),
+            Ok(k) => driver::assign_node_ids(sess, k),
         }
     } else {
         krate
@@ -739,11 +739,12 @@ pub fn pretty_print_input(sess: Session,
     let ast_map = if compute_ast_map {
         _defs = Some(RefCell::new(hir_map::collect_definitions(&krate)));
         let defs = _defs.as_ref().unwrap();
-        LocalCrateReader::new(&sess, &cstore, defs, &krate, &id).read_crates(&dep_graph);
-        let lcx = LoweringContext::new(&sess, Some(&krate), defs);
+        LocalCrateReader::new(sess, &cstore, defs, &krate, &id).read_crates(&dep_graph);
+        let lcx = LoweringContext::new(sess, Some(&krate), defs);
 
         hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
-        Some(hir_map::map_crate(&mut hir_forest, defs))
+        let map = hir_map::map_crate(&mut hir_forest, defs);
+        Some(map)
     } else {
         None
     };
@@ -764,7 +765,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmSource(s), _) => {
             // Silently ignores an identified node.
             let out: &mut Write = &mut out;
-            s.call_with_pp_support(&sess, ast_map, box out, |annotation, out| {
+            s.call_with_pp_support(sess, ast_map, box out, |annotation, out| {
                 debug!("pretty printing source code {:?}", s);
                 let sess = annotation.sess();
                 pprust::print_crate(sess.codemap(),
@@ -780,7 +781,7 @@ pub fn pretty_print_input(sess: Session,
 
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
-            s.call_with_pp_support_hir(&sess,
+            s.call_with_pp_support_hir(sess,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -801,7 +802,7 @@ pub fn pretty_print_input(sess: Session,
 
         (PpmHir(s), Some(uii)) => {
             let out: &mut Write = &mut out;
-            s.call_with_pp_support_hir(&sess,
+            s.call_with_pp_support_hir(sess,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -836,12 +837,12 @@ pub fn pretty_print_input(sess: Session,
             let ast_map = ast_map.expect("--unpretty missing ast_map");
             let nodeid = if let Some(uii) = uii {
                 debug!("pretty printing MIR for {:?}", uii);
-                Some(uii.to_one_node_id("--unpretty", &sess, &ast_map))
+                Some(uii.to_one_node_id("--unpretty", sess, &ast_map))
             } else {
                 debug!("pretty printing MIR for whole crate");
                 None
             };
-            abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+            abort_on_err(driver::phase_3_run_analysis_passes(sess,
                                                              ast_map,
                                                              &arenas,
                                                              &id,
@@ -864,7 +865,7 @@ pub fn pretty_print_input(sess: Session,
                     }
                 }
                 Ok(())
-            }), &sess)
+            }), sess)
         }
 
         (PpmFlowGraph(mode), opt_uii) => {
@@ -876,7 +877,7 @@ pub fn pretty_print_input(sess: Session,
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
-            let nodeid = uii.to_one_node_id("--pretty", &sess, &ast_map);
+            let nodeid = uii.to_one_node_id("--pretty", sess, &ast_map);
 
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
                 sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
@@ -886,8 +887,8 @@ pub fn pretty_print_input(sess: Session,
             let out: &mut Write = &mut out;
             match code {
                 Some(code) => {
-                    let variants = gather_flowgraph_variants(&sess);
-                    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
+                    let variants = gather_flowgraph_variants(sess);
+                    abort_on_err(driver::phase_3_run_analysis_passes(sess,
                                                                      ast_map,
                                                                      &arenas,
                                                                      &id,
@@ -899,7 +900,7 @@ pub fn pretty_print_input(sess: Session,
                                         code,
                                         mode,
                                         out)
-                    }), &sess)
+                    }), sess)
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs block, fn, or method; got \

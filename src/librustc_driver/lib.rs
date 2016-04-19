@@ -208,11 +208,10 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
 
     do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
 
-    // It is somewhat unfortunate that this is hardwired in - this is forced by
-    // the fact that pretty_print_input requires the session by value.
+    // It is somewhat unfortunate that this is hardwired in.
     let pretty = callbacks.parse_pretty(&sess, &matches);
     if let Some((ppm, opt_uii)) = pretty {
-        pretty::pretty_print_input(sess, &cstore, cfg, &input, ppm, opt_uii, ofile);
+        pretty::pretty_print_input(&sess, &cstore, cfg, &input, ppm, opt_uii, ofile);
         return (Ok(()), None);
     }
 
