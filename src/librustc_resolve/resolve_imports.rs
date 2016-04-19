@@ -25,7 +25,6 @@ use rustc::lint;
 use rustc::hir::def::*;
 
 use syntax::ast::{NodeId, Name};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::util::lev_distance::find_best_match_for_name;
 

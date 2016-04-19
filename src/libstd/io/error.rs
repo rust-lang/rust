@@ -350,7 +350,6 @@ mod test {
     use prelude::v1::*;
     use super::{Error, ErrorKind};
     use error;
-    use error::Error as error_Error;
     use fmt;
     use sys::os::error_string;
 

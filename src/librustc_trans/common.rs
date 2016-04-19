@@ -39,7 +39,7 @@ use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, SelectionContext, ProjectionMode};
-use rustc::ty::fold::{TypeFolder, TypeFoldable};
+use rustc::ty::fold::TypeFoldable;
 use rustc::hir;
 use util::nodemap::NodeMap;
 

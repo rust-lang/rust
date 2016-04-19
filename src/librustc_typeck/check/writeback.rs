@@ -13,7 +13,6 @@
 // substitutions.
 use self::ResolveReason::*;
 
-use astconv::AstConv;
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::pat_util;

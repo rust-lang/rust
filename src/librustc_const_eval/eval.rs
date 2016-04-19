@@ -17,7 +17,7 @@ use self::EvalHint::*;
 
 use rustc::hir::map as ast_map;
 use rustc::hir::map::blocks::FnLikeNode;
-use rustc::middle::cstore::{self, CrateStore, InlinedItem};
+use rustc::middle::cstore::{self, InlinedItem};
 use rustc::{infer, traits};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
