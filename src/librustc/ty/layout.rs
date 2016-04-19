@@ -1199,3 +1199,138 @@ impl Layout {
         }
     }
 }
+
+/// Type size "skeleton", i.e. the only information determining a type's size.
+/// While this is conservative, (aside from constant sizes, only pointers,
+/// newtypes thereof and null pointer optimized enums are allowed), it is
+/// enough to statically check common usecases of transmute.
+#[derive(Copy, Clone, Debug)]
+pub enum SizeSkeleton<'tcx> {
+    /// Any statically computable Layout.
+    Known(Size),
+
+    /// A potentially-fat pointer.
+    Pointer {
+        // If true, this pointer is never null.
+        non_zero: bool,
+        // The type which determines the unsized metadata, if any,
+        // of this pointer. Either a type parameter or a projection
+        // depending on one, with regions erased.
+        tail: Ty<'tcx>
+    }
+}
+
+impl<'tcx> SizeSkeleton<'tcx> {
+    pub fn compute<'a>(ty: Ty<'tcx>, infcx: &InferCtxt<'a, 'tcx>)
+                       -> Result<SizeSkeleton<'tcx>, LayoutError<'tcx>> {
+        let tcx = infcx.tcx;
+        assert!(!ty.has_infer_types());
+
+        // First try computing a static layout.
+        let err = match ty.layout(infcx) {
+            Ok(layout) => {
+                return Ok(SizeSkeleton::Known(layout.size(&tcx.data_layout)));
+            }
+            Err(err) => err
+        };
+
+        match ty.sty {
+            ty::TyBox(pointee) |
+            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+                let non_zero = !ty.is_unsafe_ptr();
+                let tail = tcx.struct_tail(pointee);
+                match tail.sty {
+                    ty::TyParam(_) | ty::TyProjection(_) => {
+                        assert!(tail.has_param_types() || tail.has_self_ty());
+                        Ok(SizeSkeleton::Pointer {
+                            non_zero: non_zero,
+                            tail: tcx.erase_regions(&tail)
+                        })
+                    }
+                    _ => {
+                        bug!("SizeSkeleton::compute({}): layout errored ({}), yet \
+                              tail `{}` is not a type parameter or a projection",
+                             ty, err, tail)
+                    }
+                }
+            }
+
+            ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
+                // Only newtypes and enums w/ nullable pointer optimization.
+                if def.variants.is_empty() || def.variants.len() > 2 {
+                    return Err(err);
+                }
+
+                // If there's a drop flag, it can't be just a pointer.
+                if def.dtor_kind().has_drop_flag() {
+                    return Err(err);
+                }
+
+                // Get a zero-sized variant or a pointer newtype.
+                let zero_or_ptr_variant = |i: usize| {
+                    let fields = def.variants[i].fields.iter().map(|field| {
+                        let ty = normalize_associated_type(infcx, &field.ty(tcx, substs));
+                        SizeSkeleton::compute(ty, infcx)
+                    });
+                    let mut ptr = None;
+                    for field in fields {
+                        let field = field?;
+                        match field {
+                            SizeSkeleton::Known(size) => {
+                                if size.bytes() > 0 {
+                                    return Err(err);
+                                }
+                            }
+                            SizeSkeleton::Pointer {..} => {
+                                if ptr.is_some() {
+                                    return Err(err);
+                                }
+                                ptr = Some(field);
+                            }
+                        }
+                    }
+                    Ok(ptr)
+                };
+
+                let v0 = zero_or_ptr_variant(0)?;
+                // Newtype.
+                if def.variants.len() == 1 {
+                    if let Some(SizeSkeleton::Pointer { non_zero, tail }) = v0 {
+                        return Ok(SizeSkeleton::Pointer {
+                            non_zero: non_zero ||
+                                Some(def.did) == tcx.lang_items.non_zero(),
+                            tail: tail
+                        });
+                    } else {
+                        return Err(err);
+                    }
+                }
+
+                let v1 = zero_or_ptr_variant(1)?;
+                // Nullable pointer enum optimization.
+                match (v0, v1) {
+                    (Some(SizeSkeleton::Pointer { non_zero: true, tail }), None) |
+                    (None, Some(SizeSkeleton::Pointer { non_zero: true, tail })) => {
+                        Ok(SizeSkeleton::Pointer {
+                            non_zero: false,
+                            tail: tail
+                        })
+                    }
+                    _ => Err(err)
+                }
+            }
+
+            _ => Err(err)
+        }
+    }
+
+    pub fn same_size(self, other: SizeSkeleton) -> bool {
+        match (self, other) {
+            (SizeSkeleton::Known(a), SizeSkeleton::Known(b)) => a == b,
+            (SizeSkeleton::Pointer { tail: a, .. },
+             SizeSkeleton::Pointer { tail: b, .. }) => a == b,
+            _ => false
+        }
+    }
+}
