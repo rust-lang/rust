@@ -36,16 +36,14 @@ use glue;
 use type_of;
 use machine;
 use type_::Type;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty};
 use Disr;
 use rustc::ty::subst::Substs;
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::parse::token;
 
-use rustc::lint;
 use rustc::session::Session;
 use syntax::codemap::{Span, DUMMY_SP};
 
@@ -95,76 +93,6 @@ fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
         _ => return None
     };
     Some(ccx.get_intrinsic(&llvm_name))
-}
-
-pub fn span_transmute_size_error(a: &Session, b: Span, msg: &str) {
-    span_err!(a, b, E0512, "{}", msg);
-}
-
-/// Performs late verification that intrinsics are used correctly. At present,
-/// the only intrinsic that needs such verification is `transmute`.
-pub fn check_intrinsics(ccx: &CrateContext) {
-    let _task = ccx.tcx().dep_graph.in_task(DepNode::IntrinsicUseCheck);
-    let mut last_failing_id = None;
-    for transmute_restriction in ccx.tcx().transmute_restrictions.borrow().iter() {
-        // Sometimes, a single call to transmute will push multiple
-        // type pairs to test in order to exhaustively test the
-        // possibility around a type parameter. If one of those fails,
-        // there is no sense reporting errors on the others.
-        if last_failing_id == Some(transmute_restriction.id) {
-            continue;
-        }
-
-        debug!("transmute_restriction: {:?}", transmute_restriction);
-
-        assert!(!transmute_restriction.substituted_from.has_param_types());
-        assert!(!transmute_restriction.substituted_to.has_param_types());
-
-        let llfromtype = type_of::sizing_type_of(ccx,
-                                                 transmute_restriction.substituted_from);
-        let lltotype = type_of::sizing_type_of(ccx,
-                                               transmute_restriction.substituted_to);
-        let from_type_size = machine::llbitsize_of_real(ccx, llfromtype);
-        let to_type_size = machine::llbitsize_of_real(ccx, lltotype);
-
-        if let ty::TyFnDef(..) = transmute_restriction.substituted_from.sty {
-            if to_type_size == machine::llbitsize_of_real(ccx, ccx.int_type()) {
-                // FIXME #19925 Remove this warning after a release cycle.
-                lint::raw_emit_lint(&ccx.tcx().sess,
-                                    &ccx.tcx().sess.lint_store.borrow(),
-                                    lint::builtin::TRANSMUTE_FROM_FN_ITEM_TYPES,
-                                    (lint::Warn, lint::LintSource::Default),
-                                    Some(transmute_restriction.span),
-                                    &format!("`{}` is now zero-sized and has to be cast \
-                                              to a pointer before transmuting to `{}`",
-                                             transmute_restriction.substituted_from,
-                                             transmute_restriction.substituted_to));
-                continue;
-            }
-        }
-        if from_type_size != to_type_size {
-            last_failing_id = Some(transmute_restriction.id);
-
-            if transmute_restriction.original_from != transmute_restriction.substituted_from {
-                span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called with differently sized types: \
-                              {} (could be {} bits) to {} (could be {} bits)",
-                             transmute_restriction.original_from,
-                             from_type_size,
-                             transmute_restriction.original_to,
-                             to_type_size));
-            } else {
-                span_transmute_size_error(ccx.sess(), transmute_restriction.span,
-                    &format!("transmute called with differently sized types: \
-                              {} ({} bits) to {} ({} bits)",
-                             transmute_restriction.original_from,
-                             from_type_size,
-                             transmute_restriction.original_to,
-                             to_type_size));
-            }
-        }
-    }
-    ccx.sess().abort_if_errors();
 }
 
 /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,

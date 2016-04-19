@@ -480,37 +480,6 @@ pub struct CReaderCacheKey {
     pub pos: usize,
 }
 
-/// A restriction that certain types must be the same size. The use of
-/// `transmute` gives rise to these restrictions. These generally
-/// cannot be checked until trans; therefore, each call to `transmute`
-/// will push one or more such restriction into the
-/// `transmute_restrictions` vector during `intrinsicck`. They are
-/// then checked during `trans` by the fn `check_intrinsics`.
-#[derive(Copy, Clone)]
-pub struct TransmuteRestriction<'tcx> {
-    /// The span whence the restriction comes.
-    pub span: Span,
-
-    /// The type being transmuted from.
-    pub original_from: Ty<'tcx>,
-
-    /// The type being transmuted to.
-    pub original_to: Ty<'tcx>,
-
-    /// The type being transmuted from, with all type parameters
-    /// substituted for an arbitrary representative. Not to be shown
-    /// to the end user.
-    pub substituted_from: Ty<'tcx>,
-
-    /// The type being transmuted to, with all type parameters
-    /// substituted for an arbitrary representative. Not to be shown
-    /// to the end user.
-    pub substituted_to: Ty<'tcx>,
-
-    /// NodeId of the transmute intrinsic.
-    pub id: NodeId,
-}
-
 /// Describes the fragment-state associated with a NodeId.
 ///
 /// Currently only unfragmented paths have entries in the table,
