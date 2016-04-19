@@ -81,8 +81,19 @@ pub fn compiletest(build: &Build,
 
     // FIXME: needs android support
     cmd.arg("--android-cross-path").arg("");
+
     // FIXME: CFG_PYTHON should probably be detected more robustly elsewhere
-    cmd.arg("--python").arg("python");
+    let python_default = "python";
+    cmd.arg("--docck-python").arg(python_default);
+
+    if build.config.build.ends_with("apple-darwin") {
+        // Force /usr/bin/python on OSX for LLDB tests because we're loading the
+        // LLDB plugin's compiled module which only works with the system python
+        // (namely not Homebrew-installed python)
+        cmd.arg("--lldb-python").arg("/usr/bin/python");
+    } else {
+        cmd.arg("--lldb-python").arg(python_default);
+    }
 
     if let Some(ref vers) = build.gdb_version {
         cmd.arg("--gdb-version").arg(vers);
