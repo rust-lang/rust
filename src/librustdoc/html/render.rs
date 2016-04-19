@@ -247,6 +247,11 @@ pub struct Cache {
     /// Set of definitions which have been inlined from external crates.
     pub inlined: HashSet<DefId>,
 
+    // Note that external items for which `doc(hidden)` applies to are shown as
+    // non-reachable while local items aren't. This is because we're reusing
+    // the access levels from crateanalysis.
+    pub access_levels: Arc<AccessLevels<DefId>>,
+
     // Private fields only used when initially crawling a crate to build a cache
 
     stack: Vec<String>,
@@ -254,7 +259,6 @@ pub struct Cache {
     parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
     stripped_mod: bool,
-    access_levels: AccessLevels<DefId>,
     deref_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
@@ -263,6 +267,16 @@ pub struct Cache {
     // yet when its implementation methods are being indexed. Caches such methods
     // and their parent id here and indexes them at the end of crate parsing.
     orphan_methods: Vec<(DefId, clean::Item)>,
+}
+
+/// Temporary storage for data obtained during `RustdocVisitor::clean()`.
+/// Later on moved into `CACHE_KEY`.
+#[derive(Default)]
+pub struct RenderInfo {
+    pub inlined: HashSet<DefId>,
+    pub external_paths: ::core::ExternalPaths,
+    pub external_typarams: HashMap<DefId, String>,
+    pub deref_trait_did: Option<DefId>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -416,7 +430,8 @@ pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: PathBuf,
            passes: HashSet<String>,
-           css_file_extension: Option<PathBuf>) -> Result<(), Error> {
+           css_file_extension: Option<PathBuf>,
+           renderinfo: RenderInfo) -> Result<(), Error> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -483,19 +498,20 @@ pub fn run(mut krate: clean::Crate,
     };
 
     // Crawl the crate to build various caches used for the output
-    let analysis = ::ANALYSISKEY.with(|a| a.clone());
-    let analysis = analysis.borrow();
-    let access_levels = analysis.as_ref().map(|a| a.access_levels.clone());
-    let access_levels = access_levels.unwrap_or(Default::default());
-    let paths: HashMap<DefId, (Vec<String>, ItemType)> =
-      analysis.as_ref().map(|a| {
-        let paths = a.external_paths.borrow_mut().take().unwrap();
-        paths.into_iter().map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t)))).collect()
-      }).unwrap_or(HashMap::new());
+    let RenderInfo {
+        inlined,
+        external_paths,
+        external_typarams,
+        deref_trait_did,
+    } = renderinfo;
+
+    let paths = external_paths.into_iter()
+                              .map(|(k, (v, t))| (k, (v, ItemType::from_type_kind(t))))
+                              .collect::<HashMap<_, _>>();
+
     let mut cache = Cache {
         impls: HashMap::new(),
-        external_paths: paths.iter().map(|(&k, v)| (k, v.0.clone()))
-                             .collect(),
+        external_paths: paths.iter().map(|(&k, v)| (k, v.0.clone())).collect(),
         paths: paths,
         implementors: HashMap::new(),
         stack: Vec::new(),
@@ -505,16 +521,12 @@ pub fn run(mut krate: clean::Crate,
         extern_locations: HashMap::new(),
         primitive_locations: HashMap::new(),
         stripped_mod: false,
-        access_levels: access_levels,
+        access_levels: krate.access_levels.clone(),
         orphan_methods: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, HashMap::new()),
-        deref_trait_did: analysis.as_ref().and_then(|a| a.deref_trait_did),
-        typarams: analysis.as_ref().map(|a| {
-            a.external_typarams.borrow_mut().take().unwrap()
-        }).unwrap_or(HashMap::new()),
-        inlined: analysis.as_ref().map(|a| {
-            a.inlined.borrow_mut().take().unwrap()
-        }).unwrap_or(HashSet::new()),
+        deref_trait_did: deref_trait_did,
+        typarams: external_typarams,
+        inlined: inlined,
     };
 
     // Cache where all our extern crates are located

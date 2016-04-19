@@ -48,14 +48,11 @@ extern crate rustc_unicode;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::default::Default;
 use std::env;
-use std::io::Read;
 use std::path::PathBuf;
 use std::process;
-use std::rc::Rc;
 use std::sync::mpsc::channel;
 
 use externalfiles::ExternalHtml;
@@ -83,6 +80,7 @@ pub mod markdown;
 pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
+pub mod visit_lib;
 pub mod test;
 mod flock;
 
@@ -113,12 +111,9 @@ const DEFAULT_PASSES: &'static [&'static str] = &[
     "unindent-comments",
 ];
 
-thread_local!(pub static ANALYSISKEY: Rc<RefCell<Option<core::CrateAnalysis>>> = {
-    Rc::new(RefCell::new(None))
-});
-
 struct Output {
     krate: clean::Crate,
+    renderinfo: html::render::RenderInfo,
     passes: Vec<String>,
 }
 
@@ -302,14 +297,15 @@ pub fn main_args(args: &[String]) -> isize {
             return 1;
         }
     };
-    let Output { krate, passes, } = out;
+    let Output { krate, passes, renderinfo } = out;
     info!("going to format");
     match matches.opt_str("w").as_ref().map(|s| &**s) {
         Some("html") | None => {
             html::render::run(krate, &external_html,
                               output.unwrap_or(PathBuf::from("doc")),
                               passes.into_iter().collect(),
-                              css_file_extension)
+                              css_file_extension,
+                              renderinfo)
                 .expect("failed to generate documentation")
         }
         Some(s) => {
@@ -380,12 +376,8 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         tx.send(core::run_core(paths, cfgs, externs, Input::File(cr),
                                triple)).unwrap();
     });
-    let (mut krate, analysis) = rx.recv().unwrap();
+    let (mut krate, renderinfo) = rx.recv().unwrap();
     info!("finished with rustc");
-    let mut analysis = Some(analysis);
-    ANALYSISKEY.with(|s| {
-        *s.borrow_mut() = analysis.take();
-    });
 
     if let Some(name) = matches.opt_str("crate-name") {
         krate.name = name
@@ -443,5 +435,5 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     // Run everything!
     info!("Executing passes/plugins");
     let krate = pm.run_plugins(krate);
-    Output { krate: krate, passes: passes }
+    Output { krate: krate, renderinfo: renderinfo, passes: passes }
 }

@@ -26,9 +26,9 @@ use rustc::middle::stability;
 
 use rustc_const_eval::lookup_const_by_id;
 
-use core::DocContext;
+use core::{DocContext, DocAccessLevels};
 use doctree;
-use clean::{self, Attributes, GetDefId};
+use clean::{self, GetDefId};
 
 use super::{Clean, ToSource};
 
@@ -116,7 +116,7 @@ fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
         }
         _ => return None,
     };
-    cx.inlined.borrow_mut().as_mut().unwrap().insert(did);
+    cx.renderinfo.borrow_mut().inlined.insert(did);
     ret.push(clean::Item {
         source: clean::Span::empty(),
         name: Some(tcx.item_name(did).to_string()),
@@ -146,7 +146,7 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
             elem.data.to_string()
         });
         let fqn = once(crate_name).chain(relative).collect();
-        cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
+        cx.renderinfo.borrow_mut().external_paths.insert(did, (fqn, kind));
     }
 }
 
@@ -260,11 +260,6 @@ pub fn build_impls(cx: &DocContext,
             match def {
                 cstore::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 cstore::DlDef(Def::Mod(did)) => {
-                    // Don't recurse if this is a #[doc(hidden)] module
-                    if load_attrs(cx, tcx, did).list("doc").has_word("hidden") {
-                        return;
-                    }
-
                     for item in tcx.sess.cstore.item_children(did) {
                         populate_impls(cx, tcx, item.def, impls)
                     }
@@ -295,16 +290,17 @@ pub fn build_impl(cx: &DocContext,
                   tcx: &TyCtxt,
                   did: DefId,
                   ret: &mut Vec<clean::Item>) {
-    if !cx.inlined.borrow_mut().as_mut().unwrap().insert(did) {
+    if !cx.renderinfo.borrow_mut().inlined.insert(did) {
         return
     }
 
     let attrs = load_attrs(cx, tcx, did);
     let associated_trait = tcx.impl_trait_ref(did);
-    if let Some(ref t) = associated_trait {
-        // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
-        let trait_attrs = load_attrs(cx, tcx, t.def_id);
-        if trait_attrs.list("doc").has_word("hidden") {
+
+    // Only inline impl if the implemented trait is
+    // reachable in rustdoc generated documentation
+    if let Some(traitref) = associated_trait {
+        if !cx.access_levels.borrow().is_doc_reachable(traitref.def_id) {
             return
         }
     }
@@ -328,6 +324,17 @@ pub fn build_impl(cx: &DocContext,
             deprecation: stability::lookup_deprecation(tcx, did).clean(cx),
             def_id: did,
         });
+    }
+
+    let ty = tcx.lookup_item_type(did);
+    let for_ = ty.ty.clean(cx);
+
+    // Only inline impl if the implementing type is
+    // reachable in rustdoc generated documentation
+    if let Some(did) = for_.def_id() {
+        if !cx.access_levels.borrow().is_doc_reachable(did) {
+            return
+        }
     }
 
     let predicates = tcx.lookup_predicates(did);
@@ -412,7 +419,6 @@ pub fn build_impl(cx: &DocContext,
         }
     }).collect::<Vec<_>>();
     let polarity = tcx.trait_impl_polarity(did);
-    let ty = tcx.lookup_item_type(did);
     let trait_ = associated_trait.clean(cx).map(|bound| {
         match bound {
             clean::TraitBound(polyt, _) => polyt.trait_,
@@ -436,7 +442,7 @@ pub fn build_impl(cx: &DocContext,
             derived: clean::detect_derived(&attrs),
             provided_trait_methods: provided,
             trait_: trait_,
-            for_: ty.ty.clean(cx),
+            for_: for_,
             generics: (&ty.generics, &predicates, subst::TypeSpace).clean(cx),
             items: trait_items,
             polarity: polarity.map(|p| { p.clean(cx) }),
