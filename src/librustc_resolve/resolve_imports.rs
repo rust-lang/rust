@@ -29,7 +29,6 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 use syntax::util::lev_distance::find_best_match_for_name;
 
-use std::mem::replace;
 use std::cell::{Cell, RefCell};
 
 /// Contains data for specific types of import directives.
@@ -41,7 +40,7 @@ pub enum ImportDirectiveSubclass {
         type_determined: Cell<bool>,
         value_determined: Cell<bool>,
     },
-    GlobImport,
+    GlobImport { is_prelude: bool },
 }
 
 impl ImportDirectiveSubclass {
@@ -64,7 +63,6 @@ pub struct ImportDirective<'a> {
     subclass: ImportDirectiveSubclass,
     span: Span,
     vis: ty::Visibility, // see note in ImportResolutionPerNamespace about how to use this
-    is_prelude: bool,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -84,7 +82,7 @@ impl<'a> ImportDirective<'a> {
     }
 
     pub fn is_glob(&self) -> bool {
-        match self.subclass { ImportDirectiveSubclass::GlobImport => true, _ => false }
+        match self.subclass { ImportDirectiveSubclass::GlobImport { .. } => true, _ => false }
     }
 }
 
@@ -191,7 +189,7 @@ impl<'a> NameResolution<'a> {
                 };
                 let name = match directive.subclass {
                     SingleImport { source, .. } => source,
-                    GlobImport => unreachable!(),
+                    GlobImport { .. } => unreachable!(),
                 };
                 match target_module.resolve_name(name, ns, false) {
                     Failed(_) => {}
@@ -282,8 +280,7 @@ impl<'a> ::ModuleS<'a> {
                                 subclass: ImportDirectiveSubclass,
                                 span: Span,
                                 id: NodeId,
-                                vis: ty::Visibility,
-                                is_prelude: bool) {
+                                vis: ty::Visibility) {
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             module_path: module_path,
             target_module: Cell::new(None),
@@ -291,7 +288,6 @@ impl<'a> ::ModuleS<'a> {
             span: span,
             id: id,
             vis: vis,
-            is_prelude: is_prelude,
         });
 
         self.unresolved_imports.borrow_mut().push(directive);
@@ -304,8 +300,8 @@ impl<'a> ::ModuleS<'a> {
             }
             // We don't add prelude imports to the globs since they only affect lexical scopes,
             // which are not relevant to import resolution.
-            GlobImport if directive.is_prelude => {}
-            GlobImport => self.globs.borrow_mut().push(directive),
+            GlobImport { is_prelude: true } => {}
+            GlobImport { .. } => self.globs.borrow_mut().push(directive),
         }
     }
 
@@ -374,11 +370,17 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                    i,
                    self.resolver.unresolved_imports);
 
-            self.resolve_imports_for_module_subtree(self.resolver.graph_root, &mut errors);
+            // Attempt to resolve imports in all local modules.
+            for module in self.resolver.arenas.local_modules().iter() {
+                self.resolver.current_module = module;
+                self.resolve_imports_in_current_module(&mut errors);
+            }
 
             if self.resolver.unresolved_imports == 0 {
                 debug!("(resolving imports) success");
-                self.finalize_resolutions(self.resolver.graph_root, false);
+                for module in self.resolver.arenas.local_modules().iter() {
+                    self.finalize_resolutions_in(module, false);
+                }
                 break;
             }
 
@@ -388,7 +390,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 // to avoid generating multiple errors on the same import.
                 // Imports that are still indeterminate at this point are actually blocked
                 // by errored imports, so there is no point reporting them.
-                self.finalize_resolutions(self.resolver.graph_root, errors.len() == 0);
+                for module in self.resolver.arenas.local_modules().iter() {
+                    self.finalize_resolutions_in(module, errors.len() == 0);
+                }
                 for e in errors {
                     self.import_resolving_error(e)
                 }
@@ -423,22 +427,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         resolve_error(self.resolver,
                       e.span,
                       ResolutionError::UnresolvedImport(Some((&path, &e.help))));
-    }
-
-    /// Attempts to resolve imports for the given module and all of its
-    /// submodules.
-    fn resolve_imports_for_module_subtree(&mut self,
-                                          module_: Module<'b>,
-                                          errors: &mut Vec<ImportResolvingError<'b>>) {
-        debug!("(resolving imports for module subtree) resolving {}",
-               module_to_string(&module_));
-        let orig_module = replace(&mut self.resolver.current_module, module_);
-        self.resolve_imports_in_current_module(errors);
-        self.resolver.current_module = orig_module;
-
-        for (_, child_module) in module_.module_children.borrow().iter() {
-            self.resolve_imports_for_module_subtree(child_module, errors);
-        }
     }
 
     /// Attempts to resolve imports for the given module only.
@@ -496,7 +484,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         let (source, target, value_determined, type_determined) = match directive.subclass {
             SingleImport { source, target, ref value_determined, ref type_determined } =>
                 (source, target, value_determined, type_determined),
-            GlobImport => return self.resolve_glob_import(target_module, directive),
+            GlobImport { .. } => return self.resolve_glob_import(target_module, directive),
         };
 
         // We need to resolve both namespaces for this to succeed.
@@ -644,7 +632,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         }
         self.resolver.populate_module_if_necessary(target_module);
 
-        if directive.is_prelude {
+        if let GlobImport { is_prelude: true } = directive.subclass {
             *module_.prelude.borrow_mut() = Some(target_module);
             return Success(());
         }
@@ -676,9 +664,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         return Success(());
     }
 
-    // Miscellaneous post-processing, including recording reexports, recording shadowed traits,
-    // reporting conflicts, reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
-    fn finalize_resolutions(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
+    // Miscellaneous post-processing, including recording reexports, reporting conflicts,
+    // reporting the PRIVATE_IN_PUBLIC lint, and reporting unresolved imports.
+    fn finalize_resolutions_in(&mut self, module: Module<'b>, report_unresolved_imports: bool) {
         // Since import resolution is finished, globs will not define any more names.
         *module.globs.borrow_mut() = Vec::new();
 
@@ -726,10 +714,6 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                 break;
             }
         }
-
-        for (_, child) in module.module_children.borrow().iter() {
-            self.finalize_resolutions(child, report_unresolved_imports);
-        }
     }
 }
 
@@ -747,7 +731,7 @@ fn import_path_to_string(names: &[Name], subclass: &ImportDirectiveSubclass) -> 
 fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> String {
     match *subclass {
         SingleImport { source, .. } => source.to_string(),
-        GlobImport => "*".to_string(),
+        GlobImport { .. } => "*".to_string(),
     }
 }
 

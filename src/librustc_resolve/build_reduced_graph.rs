@@ -177,13 +177,9 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                         }
 
                         let subclass = ImportDirectiveSubclass::single(binding, source_name);
+                        let span = view_path.span;
+                        parent.add_import_directive(module_path, subclass, span, item.id, vis);
                         self.unresolved_imports += 1;
-                        parent.add_import_directive(module_path,
-                                                    subclass,
-                                                    view_path.span,
-                                                    item.id,
-                                                    vis,
-                                                    is_prelude);
                     }
                     ViewPathList(_, ref source_items) => {
                         // Make sure there's at most one `mod` import in the list.
@@ -228,23 +224,16 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                                 }
                             };
                             let subclass = ImportDirectiveSubclass::single(rename, name);
+                            let (span, id) = (source_item.span, source_item.node.id());
+                            parent.add_import_directive(module_path, subclass, span, id, vis);
                             self.unresolved_imports += 1;
-                            parent.add_import_directive(module_path,
-                                                        subclass,
-                                                        source_item.span,
-                                                        source_item.node.id(),
-                                                        vis,
-                                                        is_prelude);
                         }
                     }
                     ViewPathGlob(_) => {
+                        let subclass = GlobImport { is_prelude: is_prelude };
+                        let span = view_path.span;
+                        parent.add_import_directive(module_path, subclass, span, item.id, vis);
                         self.unresolved_imports += 1;
-                        parent.add_import_directive(module_path,
-                                                    GlobImport,
-                                                    view_path.span,
-                                                    item.id,
-                                                    vis,
-                                                    is_prelude);
                     }
                 }
             }
@@ -271,7 +260,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 let def = Def::Mod(self.ast_map.local_def_id(item.id));
                 let module = self.new_module(parent_link, Some(def), false, vis);
                 self.define(parent, name, TypeNS, (module, sp));
-                parent.module_children.borrow_mut().insert(item.id, module);
+                self.module_map.insert(item.id, module);
                 *parent_ref = module;
             }
 
@@ -409,7 +398,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
 
             let parent_link = BlockParentLink(parent, block_id);
             let new_module = self.new_module(parent_link, None, false, parent.vis);
-            parent.module_children.borrow_mut().insert(block_id, new_module);
+            self.module_map.insert(block_id, new_module);
             *parent = new_module;
         }
     }

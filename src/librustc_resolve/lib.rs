@@ -827,22 +827,6 @@ pub struct ModuleS<'a> {
     resolutions: RefCell<HashMap<(Name, Namespace), &'a RefCell<NameResolution<'a>>>>,
     unresolved_imports: RefCell<Vec<&'a ImportDirective<'a>>>,
 
-    // The module children of this node, including normal modules and anonymous modules.
-    // Anonymous children are pseudo-modules that are implicitly created around items
-    // contained within blocks.
-    //
-    // For example, if we have this:
-    //
-    //  fn f() {
-    //      fn g() {
-    //          ...
-    //      }
-    //  }
-    //
-    // There will be an anonymous module created around `g` with the ID of the
-    // entry block for `f`.
-    module_children: RefCell<NodeMap<Module<'a>>>,
-
     prelude: RefCell<Option<Module<'a>>>,
 
     glob_importers: RefCell<Vec<(Module<'a>, &'a ImportDirective<'a>)>>,
@@ -874,7 +858,6 @@ impl<'a> ModuleS<'a> {
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
-            module_children: RefCell::new(NodeMap()),
             prelude: RefCell::new(None),
             glob_importers: RefCell::new(Vec::new()),
             globs: RefCell::new((Vec::new())),
@@ -1082,6 +1065,22 @@ pub struct Resolver<'a, 'tcx: 'a> {
     export_map: ExportMap,
     trait_map: TraitMap,
 
+    // A map from nodes to modules, both normal (`mod`) modules and anonymous modules.
+    // Anonymous modules are pseudo-modules that are implicitly created around items
+    // contained within blocks.
+    //
+    // For example, if we have this:
+    //
+    //  fn f() {
+    //      fn g() {
+    //          ...
+    //      }
+    //  }
+    //
+    // There will be an anonymous module created around `g` with the ID of the
+    // entry block for `f`.
+    module_map: NodeMap<Module<'a>>,
+
     // Whether or not to print error messages. Can be set to true
     // when getting additional info for error message suggestions,
     // so as to avoid printing duplicate errors
@@ -1107,6 +1106,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
 struct ResolverArenas<'a> {
     modules: arena::TypedArena<ModuleS<'a>>,
+    local_modules: RefCell<Vec<Module<'a>>>,
     name_bindings: arena::TypedArena<NameBinding<'a>>,
     import_directives: arena::TypedArena<ImportDirective<'a>>,
     name_resolutions: arena::TypedArena<RefCell<NameResolution<'a>>>,
@@ -1114,7 +1114,14 @@ struct ResolverArenas<'a> {
 
 impl<'a> ResolverArenas<'a> {
     fn alloc_module(&'a self, module: ModuleS<'a>) -> Module<'a> {
-        self.modules.alloc(module)
+        let module = self.modules.alloc(module);
+        if module.def_id().map(|def_id| def_id.is_local()).unwrap_or(true) {
+            self.local_modules.borrow_mut().push(module);
+        }
+        module
+    }
+    fn local_modules(&'a self) -> ::std::cell::Ref<'a, Vec<Module<'a>>> {
+        self.local_modules.borrow()
     }
     fn alloc_name_binding(&'a self, name_binding: NameBinding<'a>) -> &'a NameBinding<'a> {
         self.name_bindings.alloc(name_binding)
@@ -1175,6 +1182,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
+            module_map: NodeMap(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
 
@@ -1193,6 +1201,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn arenas() -> ResolverArenas<'a> {
         ResolverArenas {
             modules: arena::TypedArena::new(),
+            local_modules: RefCell::new(Vec::new()),
             name_bindings: arena::TypedArena::new(),
             import_directives: arena::TypedArena::new(),
             name_resolutions: arena::TypedArena::new(),
@@ -1573,7 +1582,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn with_scope<F>(&mut self, id: NodeId, f: F)
         where F: FnOnce(&mut Resolver)
     {
-        if let Some(module) = self.current_module.module_children.borrow().get(&id) {
+        let module = self.module_map.get(&id).cloned(); // clones a reference
+        if let Some(module) = module {
             // Move down in the graph.
             let orig_module = ::std::mem::replace(&mut self.current_module, module);
             self.value_ribs.push(Rib::new(ModuleRibKind(module)));
@@ -2124,8 +2134,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         debug!("(resolving block) entering block");
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        let anonymous_module =
-            orig_module.module_children.borrow().get(&block.id).map(|module| *module);
+        let anonymous_module = self.module_map.get(&block.id).cloned(); // clones a reference
 
         if let Some(anonymous_module) = anonymous_module {
             debug!("(resolving block) found anonymous module, moving down");
