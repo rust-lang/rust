@@ -330,7 +330,7 @@ fn trie_range_leaf(c: usize, bitmap_chunk: u64) -> bool {
 fn trie_lookup_range_table(c: char, r: &'static BoolTrie) -> bool {
     let c = c as usize;
     if c < 0x800 {
-        trie_range_leaf(c, r.r1[c >> 8])
+        trie_range_leaf(c, r.r1[c >> 6])
     } else if c < 0x10000 {
         let child = r.r2[c >> 6];
         trie_range_leaf(c, r.r3[child as usize])
