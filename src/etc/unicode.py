@@ -307,12 +307,114 @@ def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
+def emit_trie_lookup_range_table(f):
+    f.write("""
+pub struct BoolTrie {
+    // 0..0x800 (corresponding to 1 and 2 byte utf-8 sequences)
+    r1: [u64; 32],   // leaves
+
+    // 0x800..0x10000 (corresponding to 3 byte utf-8 sequences)
+    r2: [u8; 1024],      // first level
+    r3: &'static [u64],  // leaves
+
+    // 0x10000..0x110000 (corresponding to 4 byte utf-8 sequences)
+    r4: [u8; 272],       // first level
+    r5: &'static [u8],   // second level
+    r6: &'static [u64],  // leaves
+}
+
+fn trie_range_leaf(c: usize, bitmap_chunk: u64) -> bool {
+    ((bitmap_chunk >> (c & 63)) & 1) != 0
+}
+
+fn trie_lookup_range_table(c: char, r: &'static BoolTrie) -> bool {
+    let c = c as usize;
+    if c < 0x800 {
+        trie_range_leaf(c, r.r1[c >> 8])
+    } else if c < 0x10000 {
+        let child = r.r2[c >> 6];
+        trie_range_leaf(c, r.r3[child as usize])
+    } else {
+        let child = r.r4[c >> 12];
+        let leaf = r.r5[((child as usize) << 6) + ((c >> 6) & 0x3f)];
+        trie_range_leaf(c, r.r6[leaf as usize])
+    }
+}\n
+""")
+
+def compute_trie(rawdata, chunksize):
+    root = []
+    childmap = {}
+    child_data = []
+    for i in range(len(rawdata) / chunksize):
+        data = rawdata[i * chunksize: (i + 1) * chunksize]
+        child = '|'.join(map(str, data))
+        if child not in childmap:
+            childmap[child] = len(childmap)
+            child_data.extend(data)
+        root.append(childmap[child])
+    return (root, child_data)
+
+def emit_bool_trie(f, name, t_data, is_pub=True):
+    CHUNK = 64
+    rawdata = [False] * 0x110000;
+    for (lo, hi) in t_data:
+        for cp in range(lo, hi + 1):
+            rawdata[cp] = True
+
+    # convert to bitmap chunks of 64 bits each
+    chunks = []
+    for i in range(0x110000 / CHUNK):
+        chunk = 0
+        for j in range(64):
+            if rawdata[i * 64 + j]:
+                chunk |= 1 << j
+        chunks.append(chunk)
+
+    pub_string = ""
+    if is_pub:
+        pub_string = "pub "
+    f.write("    %sconst %s: &'static super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name))
+    f.write("        r1: [\n")
+    data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 / CHUNK])
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+
+    # 0x800..0x10000 trie
+    (r2, r3) = compute_trie(chunks[0x800 / CHUNK : 0x10000 / CHUNK], 64 / CHUNK)
+    f.write("        r2: [\n")
+    data = ','.join(str(node) for node in [255] * 32 + r2)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+    f.write("        r3: &[\n")
+    data = ','.join('0x%016x' % chunk for chunk in r3)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+
+    # 0x10000..0x110000 trie
+    (mid, r6) = compute_trie(chunks[0x10000 / CHUNK : 0x110000 / CHUNK], 64 / CHUNK)
+    (r4, r5) = compute_trie(mid, 64)
+    f.write("        r4: [\n")
+    data = ','.join(str(node) for node in [255] * 16 + r4)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+    f.write("        r5: &[\n")
+    data = ','.join(str(node) for node in r5)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+    f.write("        r6: &[\n")
+    data = ','.join('0x%016x' % chunk for chunk in r6)
+    format_table_content(f, data, 12)
+    f.write("\n        ],\n")
+
+    f.write("    };\n\n")
+
 def emit_property_module(f, mod, tbl, emit):
     f.write("pub mod %s {\n" % mod)
     for cat in sorted(emit):
-        emit_table(f, "%s_table" % cat, tbl[cat])
+        emit_bool_trie(f, "%s_table" % cat, tbl[cat])
         f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-        f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
+        f.write("        super::trie_lookup_range_table(c, %s_table)\n" % cat)
         f.write("    }\n\n")
     f.write("}\n\n")
 
@@ -402,8 +504,9 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         norm_props = load_properties("DerivedNormalizationProps.txt",
                      ["Full_Composition_Exclusion"])
 
-        # bsearch_range_table is used in all the property modules below
-        emit_bsearch_range_table(rf)
+        # trie_lookup_table is used in all the property modules below
+        emit_trie_lookup_range_table(rf)
+        # emit_bsearch_range_table(rf)
 
         # category tables
         for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc"]), \
