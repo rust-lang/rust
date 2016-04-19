@@ -109,9 +109,9 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
             ItemKind::DefaultImpl(..) | ItemKind::Impl(..) =>
                 DefPathData::Impl,
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Trait(..) |
-            ItemKind::ExternCrate(..) | ItemKind::Mod(..) | ItemKind::ForeignMod(..) |
-            ItemKind::Ty(..) =>
+            ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) | ItemKind::Ty(..) =>
                 DefPathData::TypeNs(i.ident.name),
+            ItemKind::Mod(..) => DefPathData::Module(i.ident.name),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.name),
             ItemKind::Mac(..) => DefPathData::MacroDef(i.ident.name),
