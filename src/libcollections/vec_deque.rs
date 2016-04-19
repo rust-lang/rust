@@ -32,6 +32,7 @@ use core::cmp;
 use alloc::raw_vec::RawVec;
 
 use super::range::RangeArgument;
+use super::vec::Vec;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
@@ -2121,6 +2122,106 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
     }
 }
 
+#[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
+impl<T> From<Vec<T>> for VecDeque<T> {
+    fn from(mut other: Vec<T>) -> Self {
+        unsafe {
+            let other_buf = other.as_mut_ptr();
+            let mut buf = RawVec::from_raw_parts(other_buf, other.capacity());
+            let len = other.len();
+            mem::forget(other);
+
+            // We need to extend the buf if it's not a power of two, too small
+            // or doesn't have at least one free space
+            if !buf.cap().is_power_of_two()
+                || (buf.cap() < (MINIMUM_CAPACITY + 1))
+                || (buf.cap() == len)
+            {
+                let cap = cmp::max(buf.cap() + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
+                buf.reserve_exact(len, cap - len);
+            }
+
+            VecDeque {
+                tail: 0,
+                head: len,
+                buf: buf
+            }
+        }
+    }
+}
+
+#[stable(feature = "vecdeque_vec_conversions", since = "1.10.0")]
+impl<T> From<VecDeque<T>> for Vec<T> {
+    fn from(other: VecDeque<T>) -> Self {
+        unsafe {
+            let buf = other.buf.ptr();
+            let len = other.len();
+            let tail = other.tail;
+            let head = other.head;
+            let cap = other.cap();
+
+            // Need to move the ring to the front of the buffer, as vec will expect this.
+            if other.is_contiguous() {
+                ptr::copy(buf.offset(tail as isize), buf, len);
+            } else {
+                if (tail - head) >= cmp::min((cap - tail), head) {
+                    // There is enough free space in the centre for the shortest block so we can
+                    // do this in at most three copy moves.
+                    if (cap - tail) > head {
+                        // right hand block is the long one; move that enough for the left
+                        ptr::copy(
+                            buf.offset(tail as isize),
+                            buf.offset((tail - head) as isize),
+                            cap - tail);
+                        // copy left in the end
+                        ptr::copy(buf, buf.offset((cap - head) as isize), head);
+                        // shift the new thing to the start
+                        ptr::copy(buf.offset((tail-head) as isize), buf, len);
+                    } else {
+                        // left hand block is the long one, we can do it in two!
+                        ptr::copy(buf, buf.offset((cap-tail) as isize), head);
+                        ptr::copy(buf.offset(tail as isize), buf, cap-tail);
+                    }
+                } else {
+                    // Need to use N swaps to move the ring
+                    // We can use the space at the end of the ring as a temp store
+
+                    let mut left_edge: usize = 0;
+                    let mut right_edge: usize = tail;
+
+                    // The general problem looks like this
+                    // GHIJKLM...ABCDEF - before any swaps
+                    // ABCDEFM...GHIJKL - after 1 pass of swaps
+                    // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
+                    //                  - then restart the algorithm with a new (smaller) store
+                    // Sometimes the temp store is reached when the right edge is at the end
+                    // of the buffer - this means we've hit the right order with fewer swaps!
+                    // E.g
+                    // EF..ABCD
+                    // ABCDEF.. - after four only swaps we've finished
+
+                    while left_edge < len && right_edge != cap {
+                        let mut right_offset = 0;
+                        for i in left_edge..right_edge {
+                            right_offset = (i - left_edge) % (cap - right_edge);
+                            let src: isize = (right_edge + right_offset) as isize;
+                            ptr::swap(buf.offset(i as isize), buf.offset(src));
+                        }
+                        let n_ops = right_edge - left_edge;
+                        left_edge += n_ops;
+                        right_edge += right_offset + 1;
+
+                    }
+                }
+
+            }
+            let out = Vec::from_raw_parts(buf, len, cap);
+            mem::forget(other);
+            out
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::iter::Iterator;
@@ -2397,6 +2498,84 @@ mod tests {
                     assert!(result.head < result.cap());
                     assert_eq!(tester, expected_self);
                     assert_eq!(result, expected_other);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_from_vec() {
+        use super::super::vec::Vec;
+        for cap in 0..35 {
+            for len in 0..cap + 1 {
+                let mut vec = Vec::with_capacity(cap);
+                vec.extend(0..len);
+
+                let vd = VecDeque::from(vec.clone());
+                assert!(vd.cap().is_power_of_two());
+                assert_eq!(vd.len(), vec.len());
+                assert!(vd.into_iter().eq(vec));
+            }
+        }
+    }
+
+    #[test]
+    fn test_vec_from_vecdeque() {
+        use super::super::vec::Vec;
+
+        fn create_vec_and_test_convert(cap: usize, offset: usize, len: usize) {
+            let mut vd = VecDeque::with_capacity(cap);
+            for _ in 0..offset {
+                vd.push_back(0);
+                vd.pop_front();
+            }
+            vd.extend(0..len);
+
+            let vec: Vec<_> = Vec::from(vd.clone());
+            assert_eq!(vec.len(), vd.len());
+            assert!(vec.into_iter().eq(vd));
+        }
+
+        for cap_pwr in 0..7 {
+            // Make capacity as a (2^x)-1, so that the ring size is 2^x
+            let cap = (2i32.pow(cap_pwr) - 1) as usize;
+
+            // In these cases there is enough free space to solve it with copies
+            for len in 0..((cap+1)/2) {
+                // Test contiguous cases
+                for offset in 0..(cap-len) {
+                    create_vec_and_test_convert(cap, offset, len)
+                }
+
+                // Test cases where block at end of buffer is bigger than block at start
+                for offset in (cap-len)..(cap-(len/2)) {
+                    create_vec_and_test_convert(cap, offset, len)
+                }
+
+                // Test cases where block at start of buffer is bigger than block at end
+                for offset in (cap-(len/2))..cap {
+                    create_vec_and_test_convert(cap, offset, len)
+                }
+            }
+
+            // Now there's not (necessarily) space to straighten the ring with simple copies,
+            // the ring will use swapping when:
+            // (cap + 1 - offset) > (cap + 1 - len) && (len - (cap + 1 - offset)) > (cap + 1 - len))
+            //  right block size  >   free space    &&      left block size       >    free space
+            for len in ((cap+1)/2)..cap {
+                // Test contiguous cases
+                for offset in 0..(cap-len) {
+                    create_vec_and_test_convert(cap, offset, len)
+                }
+
+                // Test cases where block at end of buffer is bigger than block at start
+                for offset in (cap-len)..(cap-(len/2)) {
+                    create_vec_and_test_convert(cap, offset, len)
+                }
+
+                // Test cases where block at start of buffer is bigger than block at end
+                for offset in (cap-(len/2))..cap {
+                    create_vec_and_test_convert(cap, offset, len)
                 }
             }
         }
