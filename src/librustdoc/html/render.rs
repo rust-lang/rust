@@ -1904,10 +1904,11 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if t.items.is_empty() {
         write!(w, "{{ }}")?;
     } else {
+        // FIXME: we should be using a derived_id for the Anchors here
         write!(w, "{{\n")?;
         for t in &types {
             write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor)?;
+            render_assoc_item(w, t, AssocItemLink::Anchor(None))?;
             write!(w, ";\n")?;
         }
         if !types.is_empty() && !consts.is_empty() {
@@ -1915,7 +1916,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for t in &consts {
             write!(w, "    ")?;
-            render_assoc_item(w, t, AssocItemLink::Anchor)?;
+            render_assoc_item(w, t, AssocItemLink::Anchor(None))?;
             write!(w, ";\n")?;
         }
         if !consts.is_empty() && !required.is_empty() {
@@ -1923,7 +1924,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &required {
             write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor)?;
+            render_assoc_item(w, m, AssocItemLink::Anchor(None))?;
             write!(w, ";\n")?;
         }
         if !required.is_empty() && !provided.is_empty() {
@@ -1931,7 +1932,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &provided {
             write!(w, "    ")?;
-            render_assoc_item(w, m, AssocItemLink::Anchor)?;
+            render_assoc_item(w, m, AssocItemLink::Anchor(None))?;
             write!(w, " {{ ... }}\n")?;
         }
         write!(w, "}}")?;
@@ -1948,7 +1949,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "<h3 id='{id}' class='method stab {stab}'><code>",
                id = id,
                stab = m.stability_class())?;
-        render_assoc_item(w, m, AssocItemLink::Anchor)?;
+        render_assoc_item(w, m, AssocItemLink::Anchor(Some(&id)))?;
         write!(w, "</code>")?;
         render_stability_since(w, m, t)?;
         write!(w, "</h3>")?;
@@ -2045,7 +2046,8 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink) -> String {
 
     let anchor = format!("#{}.{}", ty, name);
     match link {
-        AssocItemLink::Anchor => anchor,
+        AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
+        AssocItemLink::Anchor(None) => anchor,
         AssocItemLink::GotoSource(did, _) => {
             href(did).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
         }
@@ -2120,7 +2122,8 @@ fn render_assoc_item(w: &mut fmt::Formatter,
         let name = meth.name.as_ref().unwrap();
         let anchor = format!("#{}.{}", shortty(meth), name);
         let href = match link {
-            AssocItemLink::Anchor => anchor,
+            AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
+            AssocItemLink::Anchor(None) => anchor,
             AssocItemLink::GotoSource(did, provided_methods) => {
                 // We're creating a link from an impl-item to the corresponding
                 // trait-item and need to map the anchored type accordingly.
@@ -2381,8 +2384,17 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 
 #[derive(Copy, Clone)]
 enum AssocItemLink<'a> {
-    Anchor,
+    Anchor(Option<&'a str>),
     GotoSource(DefId, &'a HashSet<String>),
+}
+
+impl<'a> AssocItemLink<'a> {
+    fn anchor(&self, id: &'a String) -> Self {
+        match *self {
+            AssocItemLink::Anchor(_) => { AssocItemLink::Anchor(Some(&id)) },
+            ref other => *other,
+        }
+    }
 }
 
 enum AssocItemRender<'a> {
@@ -2416,7 +2428,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }
         };
         for i in &non_trait {
-            render_impl(w, cx, i, AssocItemLink::Anchor, render_header,
+            render_impl(w, cx, i, AssocItemLink::Anchor(None), render_header,
                         containing_item.stable_since())?;
         }
     }
@@ -2512,32 +2524,32 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                     write!(w, "<h4 id='{}' class='{}'>", id, shortty)?;
                     render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     write!(w, "<code>")?;
-                    render_assoc_item(w, item, link)?;
+                    render_assoc_item(w, item, link.anchor(&id))?;
                     write!(w, "</code></h4>\n")?;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
                 let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link)?;
+                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
                 let id = derive_id(format!("{}.{}", shortty, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_const(w, item, ty, default.as_ref(), link)?;
+                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::ConstantItem(ref c) => {
                 let id = derive_id(format!("{}.{}", shortty, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_const(w, item, &c.type_, Some(&c.expr), link)?;
+                assoc_const(w, item, &c.type_, Some(&c.expr), link.anchor(&id))?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = derive_id(format!("{}.{}", shortty, name));
                 write!(w, "<h4 id='{}' class='{}'><code>", id, shortty)?;
-                assoc_type(w, item, bounds, default.as_ref(), link)?;
+                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
                 write!(w, "</code></h4>\n")?;
             }
             clean::StrippedItem(..) => return Ok(()),
