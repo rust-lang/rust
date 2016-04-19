@@ -239,7 +239,7 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
             .expect("phase_2 returned `None`");
 
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+        let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
         let krate = driver::assign_node_ids(&sess, krate);
         let defs = RefCell::new(ast_map::collect_definitions(&krate));
         LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id).read_crates(&dep_graph);

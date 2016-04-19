@@ -121,7 +121,7 @@ pub fn compile_input(sess: &Session,
                                 Ok(()));
 
         let expanded_crate = assign_node_ids(sess, expanded_crate);
-        let dep_graph = DepGraph::new(sess.opts.build_dep_graph);
+        let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
 
         // Collect defintions for def ids.
         let defs = &RefCell::new(time(sess.time_passes(),
