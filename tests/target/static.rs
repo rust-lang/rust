@@ -15,3 +15,7 @@ static mut name: SomeType =
 pub static count: u8 = 10;
 
 pub const test: &Type = &val;
+
+impl Color {
+    pub const WHITE: u32 = 10;
+}

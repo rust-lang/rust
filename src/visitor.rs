@@ -362,7 +362,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static("const",
-                                             ast::Visibility::Inherited,
+                                             ii.vis,
                                              ii.ident,
                                              ty,
                                              ast::Mutability::Immutable,
