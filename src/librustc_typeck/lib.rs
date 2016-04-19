@@ -122,6 +122,7 @@ use std::cell::RefCell;
 pub mod diagnostics;
 
 pub mod check;
+pub mod check_unused;
 mod rscope;
 mod astconv;
 pub mod collect;
@@ -363,6 +364,7 @@ pub fn check_crate(tcx: &TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
 
     time(time_passes, "drop-impl checking", || check::check_drop_impls(&ccx))?;
 
+    check_unused::check_crate(tcx);
     check_for_entry_fn(&ccx);
 
     let err_count = tcx.sess.err_count();
