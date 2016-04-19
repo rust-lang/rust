@@ -108,15 +108,14 @@ pub fn run(input: &str,
         map: &map,
         maybe_typed: core::NotTyped(&sess),
         input: input,
-        external_paths: RefCell::new(Some(HashMap::new())),
-        external_traits: RefCell::new(None),
-        external_typarams: RefCell::new(None),
-        inlined: RefCell::new(None),
+        external_traits: RefCell::new(HashMap::new()),
         all_crate_impls: RefCell::new(HashMap::new()),
         deref_trait_did: Cell::new(None),
+        access_levels: Default::default(),
+        renderinfo: Default::default(),
     };
 
-    let mut v = RustdocVisitor::new(&ctx, None);
+    let mut v = RustdocVisitor::new(&ctx);
     v.visit(ctx.map.krate());
     let mut krate = v.clean(&ctx);
     if let Some(name) = crate_name {

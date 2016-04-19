@@ -21,12 +21,14 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
 use rustc::hir::map as hir_map;
+use rustc::hir::def::Def;
 use rustc::middle::stability;
+use rustc::middle::privacy::AccessLevel;
 
 use rustc::hir;
 
 use core;
-use clean::{Clean, Attributes};
+use clean::{self, Clean, Attributes};
 use doctree::*;
 
 // looks to me like the first two of these are actually
@@ -41,14 +43,12 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'a, 'tcx>,
-    pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
     inlining_from_glob: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
-    pub fn new(cx: &'a core::DocContext<'a, 'tcx>,
-               analysis: Option<&'a core::CrateAnalysis>) -> RustdocVisitor<'a, 'tcx> {
+    pub fn new(cx: &'a core::DocContext<'a, 'tcx>) -> RustdocVisitor<'a, 'tcx> {
         // If the root is reexported, terminate all recursion.
         let mut stack = HashSet::new();
         stack.insert(ast::CRATE_NODE_ID);
@@ -56,7 +56,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             module: Module::new(None),
             attrs: hir::HirVec::new(),
             cx: cx,
-            analysis: analysis,
             view_item_stack: stack,
             inlining_from_glob: false,
         }
@@ -243,19 +242,40 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Some(tcx) => tcx,
             None => return false
         };
-        let def = tcx.def_map.borrow()[&id].def_id();
-        let def_node_id = match tcx.map.as_local_node_id(def) {
-            Some(n) => n, None => return false
-        };
-        let analysis = match self.analysis {
-            Some(analysis) => analysis, None => return false
-        };
+        let def = tcx.def_map.borrow()[&id];
+        let def_did = def.def_id();
 
         let use_attrs = tcx.map.attrs(id).clean(self.cx);
-
-        let is_private = !analysis.access_levels.is_public(def);
-        let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
         let is_no_inline = use_attrs.list("doc").has_word("no_inline");
+
+        // For cross-crate impl inlining we need to know whether items are
+        // reachable in documentation - a previously nonreachable item can be
+        // made reachable by cross-crate inlining which we're checking here.
+        // (this is done here because we need to know this upfront)
+        if !def.def_id().is_local() && !is_no_inline {
+            let attrs = clean::inline::load_attrs(self.cx, tcx, def_did);
+            let self_is_hidden = attrs.list("doc").has_word("hidden");
+            match def.base_def {
+                Def::Trait(did) |
+                Def::Struct(did) |
+                Def::Enum(did) |
+                Def::TyAlias(did) if !self_is_hidden => {
+                    self.cx.access_levels.borrow_mut().map.insert(did, AccessLevel::Public);
+                },
+                Def::Mod(did) => if !self_is_hidden {
+                    ::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
+                },
+                _ => {},
+            }
+            return false
+        }
+
+        let def_node_id = match tcx.map.as_local_node_id(def_did) {
+            Some(n) => n, None => return false
+        };
+
+        let is_private = !self.cx.access_levels.borrow().is_public(def_did);
+        let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
 
         // Only inline if requested or if the item would otherwise be stripped
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
