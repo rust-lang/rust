@@ -47,7 +47,6 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::middle::cstore::CrateStore;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::pat_util::pat_bindings;
@@ -58,7 +57,6 @@ use rustc::util::nodemap::{NodeMap, FnvHashMap, FnvHashSet};
 
 use syntax::ast::{self, FloatTy};
 use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Pos};
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse::token::{self, keywords};

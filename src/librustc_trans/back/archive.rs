@@ -21,8 +21,6 @@ use std::process::{Command, Output, Stdio};
 use std::ptr;
 use std::str;
 
-use middle::cstore::CrateStore;
-
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};

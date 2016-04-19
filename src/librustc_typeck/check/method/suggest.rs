@@ -13,11 +13,10 @@
 
 use CrateCtxt;
 
-use astconv::AstConv;
 use check::{self, FnCtxt, UnresolvedTypeAction, autoderef};
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
-use middle::cstore::{self, CrateStore};
+use middle::cstore;
 use hir::def::Def;
 use hir::def_id::DefId;
 use middle::lang_items::FnOnceTraitLangItem;
