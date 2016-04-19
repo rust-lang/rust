@@ -776,7 +776,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testpaths: &TestP
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
         cmd2procres(config,
                     testpaths,
-                    Command::new(&config.python)
+                    Command::new(&config.lldb_python)
                             .arg(&lldb_script_path)
                             .arg(test_executable)
                             .arg(debugger_script)
@@ -1901,7 +1901,7 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testpaths: &TestPaths) {
 
     let res = cmd2procres(config,
                           testpaths,
-                          Command::new(&config.python)
+                          Command::new(&config.docck_python)
                                   .arg(root.join("src/etc/htmldocck.py"))
                                   .arg(out_dir)
                                   .arg(&testpaths.file));

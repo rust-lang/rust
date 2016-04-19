@@ -83,8 +83,11 @@ pub struct Config {
     // The rustdoc executable
     pub rustdoc_path: PathBuf,
 
-    // The python executable
-    pub python: String,
+    // The python executable to use for LLDB
+    pub lldb_python: String,
+
+    // The python executable to use for htmldocck
+    pub docck_python: String,
 
     // The llvm FileCheck binary path
     pub llvm_filecheck: Option<PathBuf>,
