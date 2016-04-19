@@ -32,18 +32,7 @@ use rustc::ty::{self, Ty};
 use libc::c_uint;
 
 pub use syntax::abi::Abi;
-
-/// The first half of a fat pointer.
-/// - For a closure, this is the code address.
-/// - For an object or trait instance, this is the address of the box.
-/// - For a slice, this is the base address.
-pub const FAT_PTR_ADDR: usize = 0;
-
-/// The second half of a fat pointer.
-/// - For a closure, this is the address of the environment.
-/// - For an object or trait instance, this is the address of the vtable.
-/// - For a slice, this is the length.
-pub const FAT_PTR_EXTRA: usize = 1;
+pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ArgKind {
