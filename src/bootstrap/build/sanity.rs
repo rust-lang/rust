@@ -66,6 +66,12 @@ pub fn check(build: &mut Build) {
         need_cmd(build.cxx(host).as_ref());
     }
 
+    // Externally configured LLVM requires FileCheck to exist
+    let filecheck = build.llvm_filecheck(&build.config.build);
+    if !filecheck.starts_with(&build.out) && !filecheck.exists() {
+        panic!("filecheck executable {:?} does not exist", filecheck);
+    }
+
     for target in build.config.target.iter() {
         // Either can't build or don't want to run jemalloc on these targets
         if target.contains("rumprun") ||
@@ -133,5 +139,18 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
             panic!("specified target `{}` is not in the ./configure list",
                    target);
         }
+    }
+
+    let run = |cmd: &mut Command| {
+        cmd.output().map(|output| {
+            String::from_utf8_lossy(&output.stdout)
+                   .lines().next().unwrap()
+                   .to_string()
+        })
+    };
+    build.gdb_version = run(Command::new("gdb").arg("--version")).ok();
+    build.lldb_version = run(Command::new("lldb").arg("--version")).ok();
+    if build.lldb_version.is_some() {
+        build.lldb_python_dir = run(Command::new("lldb").arg("-P")).ok();
     }
 }

@@ -195,29 +195,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
         cp_r(&build.src.join("man"), &image.join("share/man/man1"));
 
         // Debugger scripts
-        let cp_debugger_script = |file: &str| {
-            let dst = image.join("lib/rustlib/etc");
-            t!(fs::create_dir_all(&dst));
-            install(&build.src.join("src/etc/").join(file), &dst, 0o644);
-        };
-        if host.contains("windows") {
-            // no debugger scripts
-        } else if host.contains("darwin") {
-            // lldb debugger scripts
-            install(&build.src.join("src/etc/rust-lldb"), &image.join("bin"),
-                    0o755);
-
-            cp_debugger_script("lldb_rust_formatters.py");
-            cp_debugger_script("debugger_pretty_printers_common.py");
-        } else {
-            // gdb debugger scripts
-            install(&build.src.join("src/etc/rust-gdb"), &image.join("bin"),
-                    0o755);
-
-            cp_debugger_script("gdb_load_rust_pretty_printers.py");
-            cp_debugger_script("gdb_rust_pretty_printing.py");
-            cp_debugger_script("debugger_pretty_printers_common.py");
-        }
+        debugger_scripts(build, &image, host);
 
         // Misc license info
         let cp = |file: &str| {
@@ -230,6 +208,35 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
         cp("README.md");
     }
 }
+
+pub fn debugger_scripts(build: &Build,
+                        sysroot: &Path,
+                        host: &str) {
+    let cp_debugger_script = |file: &str| {
+        let dst = sysroot.join("lib/rustlib/etc");
+        t!(fs::create_dir_all(&dst));
+        install(&build.src.join("src/etc/").join(file), &dst, 0o644);
+    };
+    if host.contains("windows") {
+        // no debugger scripts
+    } else if host.contains("darwin") {
+        // lldb debugger scripts
+        install(&build.src.join("src/etc/rust-lldb"), &sysroot.join("bin"),
+                0o755);
+
+        cp_debugger_script("lldb_rust_formatters.py");
+        cp_debugger_script("debugger_pretty_printers_common.py");
+    } else {
+        // gdb debugger scripts
+        install(&build.src.join("src/etc/rust-gdb"), &sysroot.join("bin"),
+                0o755);
+
+        cp_debugger_script("gdb_load_rust_pretty_printers.py");
+        cp_debugger_script("gdb_rust_pretty_printing.py");
+        cp_debugger_script("debugger_pretty_printers_common.py");
+    }
+}
+
 
 pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,

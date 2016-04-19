@@ -611,7 +611,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3)) \
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
         --rustdoc-path $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-        --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin \
+        --llvm-filecheck $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin/FileCheck \
         --aux-base $$(S)src/test/auxiliary/ \
         --stage-id stage$(1)-$(2) \
         --target $(2) \
