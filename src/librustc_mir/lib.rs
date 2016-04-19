@@ -21,7 +21,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![unstable(feature = "rustc_private", issue = "27812")]
 
 #![feature(box_patterns)]
-#![feature(const_fn)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(question_mark)]
