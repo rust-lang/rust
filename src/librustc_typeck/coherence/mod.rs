@@ -34,9 +34,7 @@ use CrateCtxt;
 use rustc::infer::{self, InferCtxt, TypeOrigin, new_infer_ctxt};
 use std::cell::RefCell;
 use std::rc::Rc;
-use syntax::ast;
 use syntax::codemap::Span;
-use syntax::errors::DiagnosticBuilder;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
@@ -515,13 +513,6 @@ fn enforce_trait_manually_implementable(tcx: &TyCtxt, sp: Span, trait_def_id: De
     fileline_help!(&mut err, sp,
                    "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
     err.emit();
-}
-
-// Factored out into helper because the error cannot be defined in multiple locations.
-pub fn report_duplicate_item<'tcx>(tcx: &TyCtxt<'tcx>, sp: Span, name: ast::Name)
-                                   -> DiagnosticBuilder<'tcx>
-{
-    struct_span_err!(tcx.sess, sp, E0201, "duplicate definitions with name `{}`:", name)
 }
 
 pub fn check_coherence(crate_context: &CrateCtxt) {
