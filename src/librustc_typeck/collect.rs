@@ -1044,8 +1044,9 @@ fn convert_enum_def<'tcx>(tcx: &TyCtxt<'tcx>,
                           -> ty::AdtDefMaster<'tcx>
 {
     fn print_err(tcx: &TyCtxt, span: Span, ty: ty::Ty, cv: ConstVal) {
-        span_err!(tcx.sess, span, E0079, "mismatched types: expected `{}` got `{}`",
-                  ty, cv.description());
+        struct_span_err!(tcx.sess, span, E0079, "mismatched types")
+            .note_expected_found(&"type", &ty, &format!("{}", cv.description()))
+            .emit();
     }
     fn evaluate_disr_expr<'tcx>(tcx: &TyCtxt<'tcx>,
                                 repr_ty: attr::IntType,
