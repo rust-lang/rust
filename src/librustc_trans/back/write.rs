@@ -31,7 +31,7 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
-use libc::{c_uint, c_int, c_void};
+use libc::{c_uint, c_void};
 
 pub fn llvm_err(handler: &errors::Handler, msg: String) -> ! {
     match llvm::last_error() {
@@ -982,36 +982,6 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
             sess.abort_if_errors();
         }
     }
-}
-
-pub unsafe fn configure_llvm(sess: &Session) {
-    let mut llvm_c_strs = Vec::new();
-    let mut llvm_args = Vec::new();
-
-    {
-        let mut add = |arg: &str| {
-            let s = CString::new(arg).unwrap();
-            llvm_args.push(s.as_ptr());
-            llvm_c_strs.push(s);
-        };
-        add("rustc"); // fake program name
-        if sess.time_llvm_passes() { add("-time-passes"); }
-        if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
-
-        // FIXME #21627 disable faulty FastISel on AArch64 (even for -O0)
-        if sess.target.target.arch == "aarch64" { add("-fast-isel=0"); }
-
-        for arg in &sess.opts.cg.llvm_args {
-            add(&(*arg));
-        }
-    }
-
-    llvm::LLVMInitializePasses();
-
-    llvm::initialize_available_targets();
-
-    llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
-                                 llvm_args.as_ptr());
 }
 
 pub unsafe fn with_llvm_pmb(llmod: ModuleRef,

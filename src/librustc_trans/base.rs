@@ -2713,26 +2713,6 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         tcx.sess.opts.debug_assertions
     };
 
-    // Before we touch LLVM, make sure that multithreading is enabled.
-    unsafe {
-        use std::sync::Once;
-        static INIT: Once = Once::new();
-        static mut POISONED: bool = false;
-        INIT.call_once(|| {
-            if llvm::LLVMStartMultithreaded() != 1 {
-                // use an extra bool to make sure that all future usage of LLVM
-                // cannot proceed despite the Once not running more than once.
-                POISONED = true;
-            }
-
-            ::back::write::configure_llvm(&tcx.sess);
-        });
-
-        if POISONED {
-            bug!("couldn't enable multi-threaded LLVM");
-        }
-    }
-
     let link_meta = link::build_link_meta(&tcx, name);
 
     let codegen_units = tcx.sess.opts.cg.codegen_units;
