@@ -986,7 +986,9 @@ pub enum ExprKind {
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
-    Closure(CaptureBy, P<FnDecl>, P<Block>),
+    ///
+    /// The final span is the span of the argument block `|...|`
+    Closure(CaptureBy, P<FnDecl>, P<Block>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
 

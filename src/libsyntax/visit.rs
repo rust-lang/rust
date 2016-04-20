@@ -743,7 +743,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
-        ExprKind::Closure(_, ref function_declaration, ref body) => {
+        ExprKind::Closure(_, ref function_declaration, ref body, _decl_span) => {
             visitor.visit_fn(FnKind::Closure,
                              function_declaration,
                              body,

@@ -949,8 +949,10 @@ pub enum Expr_ {
     /// A `match` block, with a source that indicates whether or not it is
     /// the result of a desugaring, and if so, which kind.
     ExprMatch(P<Expr>, HirVec<Arm>, MatchSource),
-    /// A closure (for example, `move |a, b, c| {a + b + c}`)
-    ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
+    /// A closure (for example, `move |a, b, c| {a + b + c}`).
+    ///
+    /// The final span is the span of the argument block `|...|`
+    ExprClosure(CaptureClause, P<FnDecl>, P<Block>, Span),
     /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
