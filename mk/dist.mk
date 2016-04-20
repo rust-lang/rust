@@ -61,7 +61,7 @@ PKG_FILES := \
       rtstartup                                \
       rustllvm                                 \
       rustc                                    \
-      snapshots.txt                            \
+      stage0.txt                               \
       rust-installer                           \
       tools                                    \
       test)                                    \
