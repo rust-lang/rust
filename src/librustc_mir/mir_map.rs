@@ -60,19 +60,13 @@ struct OuterDump<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> OuterDump<'a, 'tcx> {
-    fn visit_mir<OP>(&mut self, attributes: &'a [ast::Attribute], mut walk_op: OP)
+    fn visit_mir<OP>(&mut self, mut walk_op: OP)
         where OP: for<'m> FnMut(&mut InnerDump<'a, 'm, 'tcx>)
     {
         let mut closure_dump = InnerDump {
             tcx: self.tcx,
-            attr: None,
             map: &mut *self.map,
         };
-        for attr in attributes {
-            if attr.check_name("rustc_mir") {
-                closure_dump.attr = Some(attr);
-            }
-        }
         walk_op(&mut closure_dump);
     }
 }
@@ -80,14 +74,14 @@ impl<'a, 'tcx> OuterDump<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterDump<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.visit_mir(&item.attrs, |c| c.visit_item(item));
+        self.visit_mir(|c| c.visit_item(item));
         intravisit::walk_item(self, item);
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
         match trait_item.node {
             hir::MethodTraitItem(_, Some(_)) => {
-                self.visit_mir(&trait_item.attrs, |c| intravisit::walk_trait_item(c, trait_item));
+                self.visit_mir(|c| intravisit::walk_trait_item(c, trait_item));
             }
             hir::MethodTraitItem(_, None) |
             hir::ConstTraitItem(..) |
@@ -99,7 +93,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterDump<'a, 'tcx> {
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
         match impl_item.node {
             hir::ImplItemKind::Method(..) => {
-                self.visit_mir(&impl_item.attrs, |c| intravisit::walk_impl_item(c, impl_item));
+                self.visit_mir(|c| intravisit::walk_impl_item(c, impl_item));
             }
             hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(..) => {}
         }
@@ -113,7 +107,6 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterDump<'a, 'tcx> {
 struct InnerDump<'a, 'm, 'tcx: 'a + 'm> {
     tcx: &'a TyCtxt<'tcx>,
     map: &'m mut MirMap<'tcx>,
-    attr: Option<&'a ast::Attribute>,
 }
 
 impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
