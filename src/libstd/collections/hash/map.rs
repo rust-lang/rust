@@ -202,8 +202,10 @@ fn test_resize_policy() {
 /// The hashes are all keyed by the thread-local random number generator
 /// on creation by default. This means that the ordering of the keys is
 /// randomized, but makes the tables more resistant to
-/// denial-of-service attacks (Hash DoS). This behavior can be
-/// overridden with one of the constructors.
+/// denial-of-service attacks (Hash DoS). No guarantees are made to the
+/// quality of the random data. The implementation uses the best available
+/// random data from your platform at the time of creation. This behavior
+/// can be overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
