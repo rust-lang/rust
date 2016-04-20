@@ -168,7 +168,7 @@ pub fn get_declared_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
 pub fn get_defined_value(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     get_declared_value(ccx, name).and_then(|val|{
         let declaration = unsafe {
-            llvm::LLVMIsDeclaration(val) != 0
+            llvm::as_bool(llvm::LLVMIsDeclaration(val))
         };
         if !declaration {
             Some(val)
