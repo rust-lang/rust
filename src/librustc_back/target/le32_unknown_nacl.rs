@@ -34,6 +34,7 @@ pub fn target() -> Target {
         target_os: "nacl".to_string(),
         target_env: "newlib".to_string(),
         target_vendor: "unknown".to_string(),
+        data_layout: "e-i64:64:64-p:32:32:32-v128:32:32".to_string(),
         arch: "le32".to_string(),
         options: opts,
     }

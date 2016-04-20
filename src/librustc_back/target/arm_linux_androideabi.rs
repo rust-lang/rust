@@ -18,6 +18,7 @@ pub fn target() -> Target {
         llvm_target: "arm-linux-androideabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
+        data_layout: "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
         arch: "arm".to_string(),
         target_os: "android".to_string(),
         target_env: "gnu".to_string(),

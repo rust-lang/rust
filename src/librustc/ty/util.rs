@@ -18,6 +18,7 @@ use hir::pat_util;
 use traits::{self, ProjectionMode};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::{Disr, ParameterEnvironment};
+use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
@@ -595,6 +596,24 @@ impl<'tcx> ty::TyS<'tcx> {
         }
 
         result
+    }
+
+    #[inline]
+    pub fn layout<'a>(&'tcx self, infcx: &infer::InferCtxt<'a, 'tcx>)
+                      -> Result<&'tcx Layout, LayoutError<'tcx>> {
+        let can_cache = !self.has_param_types() && !self.has_self_ty();
+        if can_cache {
+            if let Some(&cached) = infcx.tcx.layout_cache.borrow().get(&self) {
+                return Ok(cached);
+            }
+        }
+
+        let layout = Layout::compute_uncached(self, infcx)?;
+        let layout = infcx.tcx.intern_layout(layout);
+        if can_cache {
+            infcx.tcx.layout_cache.borrow_mut().insert(self, layout);
+        }
+        Ok(layout)
     }
 
 
