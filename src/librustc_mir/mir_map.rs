@@ -80,7 +80,7 @@ impl<'a, 'tcx> OuterDump<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for OuterDump<'a, 'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.visit_mir(&item.attrs, |c| intravisit::walk_item(c, item));
+        self.visit_mir(&item.attrs, |c| c.visit_item(item));
         intravisit::walk_item(self, item);
     }
 
@@ -149,6 +149,32 @@ impl<'a, 'm, 'tcx> Visitor<'tcx> for InnerDump<'a,'m,'tcx> {
         }
 
         intravisit::walk_fn(self, fk, decl, body, span);
+    }
+
+    fn visit_item(&mut self, i: &'tcx hir::Item) {
+        match i.node {
+            hir::ItemConst(_, ref expr) |
+            hir::ItemStatic(_, _, ref expr) => {
+                let param_env = ty::ParameterEnvironment::for_item(self.tcx, i.id);
+                let infcx = infer::new_infer_ctxt(self.tcx,
+                                                  &self.tcx.tables,
+                                                  Some(param_env),
+                                                  ProjectionMode::AnyFinal);
+                let (mir, scope_auxiliary) = build::construct_expr(Cx::new(&infcx),
+                                                                   i.id,
+                                                                   i.span,
+                                                                   expr);
+                pretty::dump_mir(self.tcx,
+                                 "mir_map",
+                                 &0,
+                                 i.id,
+                                 &mir,
+                                 Some(&scope_auxiliary));
+                assert!(self.map.map.insert(i.id, mir).is_none());
+            },
+            _ => {},
+        }
+        intravisit::walk_item(self, i);
     }
 }
 
