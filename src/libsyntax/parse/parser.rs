@@ -394,6 +394,17 @@ impl<'a> Parser<'a> {
         Parser::token_to_string(&self.token)
     }
 
+    pub fn this_token_descr(&self) -> String {
+        let s = self.this_token_to_string();
+        if self.token.is_strict_keyword() {
+            format!("keyword `{}`", s)
+        } else if self.token.is_reserved_keyword() {
+            format!("reserved keyword `{}`", s)
+        } else {
+            format!("`{}`", s)
+        }
+    }
+
     pub fn unexpected_last<T>(&self, t: &token::Token) -> PResult<'a, T> {
         let token_str = Parser::token_to_string(t);
         let last_span = self.last_span;
@@ -1466,7 +1477,7 @@ impl<'a> Parser<'a> {
                  self.parse_qualified_path(PathStyle::Type)?;
 
             TyKind::Path(Some(qself), path)
-        } else if self.is_path_start() {
+        } else if self.token.is_path_start() {
             let path = self.parse_path(PathStyle::Type)?;
             if self.check(&token::Not) {
                 // MACRO INVOCATION
@@ -1485,9 +1496,8 @@ impl<'a> Parser<'a> {
             // TYPE TO BE INFERRED
             TyKind::Infer
         } else {
-            let this_token_str = self.this_token_to_string();
-            let msg = format!("expected type, found `{}`", this_token_str);
-            return Err(self.fatal(&msg[..]));
+            let msg = format!("expected type, found {}", self.this_token_descr());
+            return Err(self.fatal(&msg));
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
@@ -1604,12 +1614,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches token_lit = LIT_INTEGER | ...
-    pub fn lit_from_token(&self, tok: &token::Token) -> PResult<'a, LitKind> {
-        match *tok {
+    pub fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
+        let out = match self.token {
             token::Interpolated(token::NtExpr(ref v)) => {
                 match v.node {
-                    ExprKind::Lit(ref lit) => { Ok(lit.node.clone()) }
-                    _ => { return self.unexpected_last(tok); }
+                    ExprKind::Lit(ref lit) => { lit.node.clone() }
+                    _ => { return self.unexpected_last(&self.token); }
                 }
             }
             token::Literal(lit, suf) => {
@@ -1624,13 +1634,13 @@ impl<'a> Parser<'a> {
                         (false, parse::integer_lit(&s.as_str(),
                                                    suf.as_ref().map(|s| s.as_str()),
                                                    &self.sess.span_diagnostic,
-                                                   self.last_span))
+                                                   self.span))
                     }
                     token::Float(s) => {
                         (false, parse::float_lit(&s.as_str(),
                                                  suf.as_ref().map(|s| s.as_str()),
                                                   &self.sess.span_diagnostic,
-                                                 self.last_span))
+                                                 self.span))
                     }
 
                     token::Str_(s) => {
@@ -1652,14 +1662,17 @@ impl<'a> Parser<'a> {
                 };
 
                 if suffix_illegal {
-                    let sp = self.last_span;
+                    let sp = self.span;
                     self.expect_no_suffix(sp, &format!("{} literal", lit.short_name()), suf)
                 }
 
-                Ok(out)
+                out
             }
-            _ => { return self.unexpected_last(tok); }
-        }
+            _ => { return self.unexpected_last(&self.token); }
+        };
+
+        self.bump();
+        Ok(out)
     }
 
     /// Matches lit = true | false | token_lit
@@ -1670,8 +1683,7 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::False) {
             LitKind::Bool(false)
         } else {
-            let token = self.bump_and_get();
-            let lit = self.lit_from_token(&token)?;
+            let lit = self.parse_lit_token()?;
             lit
         };
         Ok(codemap::Spanned { node: lit, span: mk_sp(lo, self.last_span.hi) })
@@ -2338,7 +2350,7 @@ impl<'a> Parser<'a> {
                     let mut db = self.fatal("expected expression, found statement (`let`)");
                     db.note("variable declaration using `let` is a statement");
                     return Err(db);
-                } else if self.is_path_start() {
+                } else if self.token.is_path_start() {
                     let pth = self.parse_path(PathStyle::Expr)?;
 
                     // `!`, as an operator, is prefix, so we know this isn't that
@@ -2419,10 +2431,18 @@ impl<'a> Parser<'a> {
                     hi = pth.span.hi;
                     ex = ExprKind::Path(None, pth);
                 } else {
-                    // other literal expression
-                    let lit = self.parse_lit()?;
-                    hi = lit.span.hi;
-                    ex = ExprKind::Lit(P(lit));
+                    match self.parse_lit() {
+                        Ok(lit) => {
+                            hi = lit.span.hi;
+                            ex = ExprKind::Lit(P(lit));
+                        }
+                        Err(mut err) => {
+                            err.cancel();
+                            let msg = format!("expected expression, found {}",
+                                              self.this_token_descr());
+                            return Err(self.fatal(&msg));
+                        }
+                    }
                 }
             }
         }
@@ -3567,7 +3587,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pat_range_end(&mut self) -> PResult<'a, P<Expr>> {
-        if self.is_path_start() {
+        if self.token.is_path_start() {
             let lo = self.span.lo;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
@@ -3583,12 +3603,6 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_pat_literal_maybe_minus()
         }
-    }
-
-    fn is_path_start(&self) -> bool {
-        (self.token == token::Lt || self.token == token::ModSep
-            || self.token.is_ident() || self.token.is_path())
-            && !self.token.is_keyword(keywords::True) && !self.token.is_keyword(keywords::False)
     }
 
     /// Parse a pattern.
@@ -3641,7 +3655,7 @@ impl<'a> Parser<'a> {
                 // Parse box pat
                 let subpat = self.parse_pat()?;
                 pat = PatKind::Box(subpat);
-            } else if self.is_path_start() {
+            } else if self.token.is_path_start() {
                 // Parse pattern starting with a path
                 if self.token.is_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
                         *t != token::OpenDelim(token::Brace) &&
@@ -3731,12 +3745,20 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Try to parse everything else as literal with optional minus
-                let begin = self.parse_pat_literal_maybe_minus()?;
-                if self.eat(&token::DotDotDot) {
-                    let end = self.parse_pat_range_end()?;
-                    pat = PatKind::Range(begin, end);
-                } else {
-                    pat = PatKind::Lit(begin);
+                match self.parse_pat_literal_maybe_minus() {
+                    Ok(begin) => {
+                        if self.eat(&token::DotDotDot) {
+                            let end = self.parse_pat_range_end()?;
+                            pat = PatKind::Range(begin, end);
+                        } else {
+                            pat = PatKind::Lit(begin);
+                        }
+                    }
+                    Err(mut err) => {
+                        err.cancel();
+                        let msg = format!("expected pattern, found {}", self.this_token_descr());
+                        return Err(self.fatal(&msg));
+                    }
                 }
             }
           }
