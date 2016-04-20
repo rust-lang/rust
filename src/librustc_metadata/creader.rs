@@ -241,8 +241,8 @@ impl<'a> CrateReader<'a> {
                                               crate_rustc_version
                                               .as_ref().map(|s| &**s)
                                               .unwrap_or("an old version of rustc"));
-            err.fileline_help(span, "consider removing the compiled binaries and recompiling \
-                                     with your current version of rustc");
+            err.help("consider removing the compiled binaries and recompiling \
+                      with your current version of rustc");
             err.emit();
         }
     }

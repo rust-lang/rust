@@ -912,8 +912,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         };
 
         if is_closure {
-            err.fileline_help(span,
-                              "closures behind references must be called via `&mut`");
+            err.help("closures behind references must be called via `&mut`");
         }
         err.emit();
     }

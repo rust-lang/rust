@@ -583,7 +583,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.fatal(&format!("expected identifier, found `{}`",
                                                   self.this_token_to_string()));
                 if self.token == token::Underscore {
-                    err.fileline_note(self.span, "`_` is a wildcard pattern, not an identifier");
+                    err.note("`_` is a wildcard pattern, not an identifier");
                 }
                 Err(err)
             }
@@ -1082,7 +1082,7 @@ impl<'a> Parser<'a> {
     }
     pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> DiagnosticBuilder<'a> {
         let mut err = self.sess.span_diagnostic.struct_span_fatal(sp, m);
-        err.fileline_help(sp, help);
+        err.help(help);
         err
     }
     pub fn bug(&self, m: &str) -> ! {
@@ -2622,10 +2622,9 @@ impl<'a> Parser<'a> {
                             Some(f) => f,
                             None => continue,
                         };
-                        err.fileline_help(last_span,
-                            &format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
-                                    float.trunc() as usize,
-                                    format!(".{}", fstr.splitn(2, ".").last().unwrap())));
+                        err.help(&format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
+                                 float.trunc() as usize,
+                                 format!(".{}", fstr.splitn(2, ".").last().unwrap())));
                     }
                     return Err(err);
 
@@ -3134,7 +3133,7 @@ impl<'a> Parser<'a> {
                 let mut err = self.diagnostic().struct_span_err(op_span,
                     "chained comparison operators require parentheses");
                 if op.node == BinOpKind::Lt && *outer_op == AssocOp::Greater {
-                    err.fileline_help(op_span,
+                    err.help(
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                 }
                 err.emit();
@@ -4951,13 +4950,13 @@ impl<'a> Parser<'a> {
                 if is_macro_rules {
                     self.diagnostic().struct_span_err(span, "can't qualify macro_rules \
                                                              invocation with `pub`")
-                                     .fileline_help(span, "did you mean #[macro_export]?")
+                                     .help("did you mean #[macro_export]?")
                                      .emit();
                 } else {
                     self.diagnostic().struct_span_err(span, "can't qualify macro \
                                                              invocation with `pub`")
-                                     .fileline_help(span, "try adjusting the macro to put `pub` \
-                                                           inside the invocation")
+                                     .help("try adjusting the macro to put `pub` \
+                                            inside the invocation")
                                      .emit();
                 }
             }
@@ -5857,7 +5856,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(keywords::Mut) {
                 let last_span = self.last_span;
                 self.diagnostic().struct_span_err(last_span, "const globals cannot be mutable")
-                                 .fileline_help(last_span, "did you mean to declare a static?")
+                                 .help("did you mean to declare a static?")
                                  .emit();
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None)?;

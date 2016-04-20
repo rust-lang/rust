@@ -148,9 +148,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if is_fn_ty(&rcvr_ty, &fcx, span) {
                 macro_rules! report_function {
                     ($span:expr, $name:expr) => {
-                        err.fileline_note(
-                            $span,
-                            &format!("{} is a function, perhaps you wish to call it",
+                        err.note(&format!("{} is a function, perhaps you wish to call it",
                                      $name));
                     }
                 }
@@ -172,8 +170,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             if !static_sources.is_empty() {
-                err.fileline_note(
-                    span,
+                err.note(
                     "found the following associated functions; to be used as \
                      methods, functions must have a `self` parameter");
 
@@ -187,8 +184,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      p))
                     .collect::<Vec<_>>()
                     .join(", ");
-                err.fileline_note(
-                    span,
+                err.note(
                     &format!("the method `{}` exists but the \
                              following trait bounds were not satisfied: {}",
                              item_name,
@@ -306,13 +302,12 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
             one_of_them = if candidates.len() == 1 {"it"} else {"one of them"});
 
-        err.fileline_help(span, &msg[..]);
+        err.help(&msg[..]);
 
         for (i, trait_did) in candidates.iter().enumerate() {
-            err.fileline_help(span,
-                              &format!("candidate #{}: `use {}`",
-                                        i + 1,
-                                        fcx.tcx().item_path_str(*trait_did)));
+            err.help(&format!("candidate #{}: `use {}`",
+                              i + 1,
+                              fcx.tcx().item_path_str(*trait_did)));
         }
         return
     }
@@ -351,13 +346,12 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
             name = item_name);
 
-        err.fileline_help(span, &msg[..]);
+        err.help(&msg[..]);
 
         for (i, trait_info) in candidates.iter().enumerate() {
-            err.fileline_help(span,
-                              &format!("candidate #{}: `{}`",
-                                        i + 1,
-                                        fcx.tcx().item_path_str(trait_info.def_id)));
+            err.help(&format!("candidate #{}: `{}`",
+                              i + 1,
+                              fcx.tcx().item_path_str(trait_info.def_id)));
         }
     }
 }

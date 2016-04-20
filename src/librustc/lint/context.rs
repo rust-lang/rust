@@ -456,17 +456,13 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
                                    it will become a hard error in a future release!");
         let citation = format!("for more information, see {}",
                                future_incompatible.reference);
-        if let Some(sp) = span {
-            err.fileline_warn(sp, &explanation);
-            err.fileline_note(sp, &citation);
-        } else {
-            err.warn(&explanation);
-            err.note(&citation);
-        }
+        err.warn(&explanation);
+        err.note(&citation);
     }
 
     if let Some(span) = def {
-        err.span_note(span, "lint level defined here");
+        let explanation = "lint level defined here";
+        err = err.span_label(span, &explanation);
     }
 
     err
@@ -542,7 +538,7 @@ pub trait LintContext: Sized {
         let mut err = self.lookup(lint, Some(span), msg);
         if self.current_level(lint) != Level::Allow {
             if note_span == span {
-                err.fileline_note(note_span, note);
+                err.note(note);
             } else {
                 err.span_note(note_span, note);
             }

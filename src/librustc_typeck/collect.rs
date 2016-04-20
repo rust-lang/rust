@@ -1258,9 +1258,9 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             it.span,
             "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
              which traits can use parenthetical notation");
-        fileline_help!(&mut err, it.span,
-                   "add `#![feature(unboxed_closures)]` to \
-                    the crate attributes to use it");
+        help!(&mut err,
+            "add `#![feature(unboxed_closures)]` to \
+             the crate attributes to use it");
         err.emit();
     }
 
@@ -2196,8 +2196,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
                                        pprust::ty_to_string(ast_ty)))
-                    .fileline_help(ast_ty.span,
-                                   "add #![feature(simd_ffi)] to the crate attributes to enable")
+                    .help("add #![feature(simd_ffi)] to the crate attributes to enable")
                     .emit();
             }
         };

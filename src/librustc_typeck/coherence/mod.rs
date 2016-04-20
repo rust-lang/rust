@@ -510,8 +510,7 @@ fn enforce_trait_manually_implementable(tcx: &TyCtxt, sp: Span, trait_def_id: De
                                    E0183,
                                    "manual implementations of `{}` are experimental",
                                    trait_name);
-    fileline_help!(&mut err, sp,
-                   "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
+    help!(&mut err, "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
     err.emit();
 }
 
