@@ -66,6 +66,14 @@ mod imp {
                 if err == libc::EINTR {
                     continue;
                 } else if err == libc::EAGAIN {
+                    // if getrandom() returns EAGAIN it would have blocked
+                    // because the non-blocking pool (urandom) has not
+                    // initialized in the kernel yet due to a lack of entropy
+                    // the fallback we do here is to avoid blocking applications
+                    // which could depend on this call without ever knowing
+                    // they do and don't have a work around. The PRNG of
+                    // /dev/urandom will still be used but not over a completely
+                    // full entropy pool
                     let reader = File::open("/dev/urandom").expect("Unable to open /dev/urandom");
                     let mut reader_rng = ReaderRng::new(reader);
                     reader_rng.fill_bytes(& mut v[read..]);
