@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::*;
-use syntax::ast::{Name, NodeId};
+use syntax::ast::Name;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use utils::span_lint;
@@ -33,16 +33,7 @@ impl LintPass for UnsafeNameRemoval {
 }
 
 impl LateLintPass for UnsafeNameRemoval {
-    fn check_mod(&mut self, cx: &LateContext, m: &Mod, _: Span, _: NodeId) {
-        // only check top level `use` statements
-        for item in &m.item_ids {
-            self.lint_item(cx, cx.krate.item(item.id));
-        }
-    }
-}
-
-impl UnsafeNameRemoval {
-    fn lint_item(&self, cx: &LateContext, item: &Item) {
+    fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemUse(ref item_use) = item.node {
             match item_use.node {
                 ViewPath_::ViewPathSimple(ref name, ref path) => {
