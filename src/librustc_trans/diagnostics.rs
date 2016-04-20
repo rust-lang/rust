@@ -83,32 +83,6 @@ unsafe { simd_add(i32x1(0), i32x1(1)); } // ok!
 ```
 "##,
 
-E0512: r##"
-Transmute with two differently sized types was attempted. Erroneous code
-example:
-
-```compile_fail
-fn takes_u8(_: u8) {}
-
-fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0u16)); }
-    // error: transmute called with differently sized types
-}
-```
-
-Please use types with same size or use the expected type directly. Example:
-
-```
-fn takes_u8(_: u8) {}
-
-fn main() {
-    unsafe { takes_u8(::std::mem::transmute(0i8)); } // ok!
-    // or:
-    unsafe { takes_u8(0u8); } // ok!
-}
-```
-"##,
-
 E0515: r##"
 A constant index expression was out of bounds. Erroneous code example:
 

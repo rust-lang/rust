@@ -31,6 +31,7 @@ use hir::FreevarMap;
 use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
+use ty::layout::{Layout, TargetDataLayout};
 use ty::maps;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
@@ -55,6 +56,7 @@ pub struct CtxtArenas<'tcx> {
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
     stability: TypedArena<attr::Stability>,
+    layout: TypedArena<Layout>,
 
     // references
     trait_defs: TypedArena<ty::TraitDef<'tcx>>,
@@ -69,6 +71,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
             stability: TypedArena::new(),
+            layout: TypedArena::new(),
 
             trait_defs: TypedArena::new(),
             adt_defs: TypedArena::new()
@@ -229,6 +232,7 @@ pub struct TyCtxt<'tcx> {
     bare_fn_interner: RefCell<FnvHashMap<&'tcx BareFnTy<'tcx>, &'tcx BareFnTy<'tcx>>>,
     region_interner: RefCell<FnvHashMap<&'tcx Region, &'tcx Region>>,
     stability_interner: RefCell<FnvHashMap<&'tcx attr::Stability, &'tcx attr::Stability>>,
+    layout_interner: RefCell<FnvHashMap<&'tcx Layout, &'tcx Layout>>,
 
     pub dep_graph: DepGraph,
 
@@ -353,11 +357,6 @@ pub struct TyCtxt<'tcx> {
     pub node_lint_levels: RefCell<FnvHashMap<(NodeId, lint::LintId),
                                               lint::LevelSource>>,
 
-    /// The types that must be asserted to be the same size for `transmute`
-    /// to be valid. We gather up these restrictions in the intrinsicck pass
-    /// and check them in trans.
-    pub transmute_restrictions: RefCell<Vec<ty::TransmuteRestriction<'tcx>>>,
-
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index<'tcx>>,
 
@@ -419,6 +418,12 @@ pub struct TyCtxt<'tcx> {
     /// The definite name of the current crate after taking into account
     /// attributes, commandline parameters, etc.
     pub crate_name: token::InternedString,
+
+    /// Data layout specification for the current target.
+    pub data_layout: TargetDataLayout,
+
+    /// Cache for layouts computed from types.
+    pub layout_cache: RefCell<FnvHashMap<Ty<'tcx>, &'tcx Layout>>,
 }
 
 impl<'tcx> TyCtxt<'tcx> {
@@ -500,6 +505,20 @@ impl<'tcx> TyCtxt<'tcx> {
         interned
     }
 
+    pub fn intern_layout(&self, layout: Layout) -> &'tcx Layout {
+        if let Some(layout) = self.layout_interner.borrow().get(&layout) {
+            return layout;
+        }
+
+        let interned = self.arenas.layout.alloc(layout);
+        if let Some(prev) = self.layout_interner
+                                .borrow_mut()
+                                .insert(interned, interned) {
+            bug!("Tried to overwrite interned Layout: {:?}", prev)
+        }
+        interned
+    }
+
     pub fn store_free_region_map(&self, id: NodeId, map: FreeRegionMap) {
         if self.free_region_maps.borrow_mut().insert(id, map).is_some() {
             bug!("Tried to overwrite interned FreeRegionMap for NodeId {:?}", id)
@@ -531,6 +550,7 @@ impl<'tcx> TyCtxt<'tcx> {
                                  f: F) -> R
                                  where F: FnOnce(&TyCtxt<'tcx>) -> R
     {
+        let data_layout = TargetDataLayout::parse(s);
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
         let dep_graph = map.dep_graph.clone();
@@ -542,6 +562,7 @@ impl<'tcx> TyCtxt<'tcx> {
             bare_fn_interner: RefCell::new(FnvHashMap()),
             region_interner: RefCell::new(FnvHashMap()),
             stability_interner: RefCell::new(FnvHashMap()),
+            layout_interner: RefCell::new(FnvHashMap()),
             dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
@@ -579,7 +600,6 @@ impl<'tcx> TyCtxt<'tcx> {
             extern_const_statics: RefCell::new(DefIdMap()),
             extern_const_fns: RefCell::new(DefIdMap()),
             node_lint_levels: RefCell::new(FnvHashMap()),
-            transmute_restrictions: RefCell::new(Vec::new()),
             stability: RefCell::new(stability),
             selection_cache: traits::SelectionCache::new(),
             evaluation_cache: traits::EvaluationCache::new(),
@@ -589,6 +609,8 @@ impl<'tcx> TyCtxt<'tcx> {
             cast_kinds: RefCell::new(NodeMap()),
             fragment_infos: RefCell::new(DefIdMap()),
             crate_name: token::intern_and_get_ident(crate_name),
+            data_layout: data_layout,
+            layout_cache: RefCell::new(FnvHashMap()),
        }, f)
     }
 }
@@ -762,6 +784,7 @@ impl<'tcx> TyCtxt<'tcx> {
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
         println!("Region interner: #{}", self.region_interner.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
+        println!("Layout interner: #{}", self.layout_interner.borrow().len());
     }
 }
 
