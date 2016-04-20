@@ -12,7 +12,7 @@ use utils::{match_def_path, paths, span_lint};
 declare_lint! {
     pub MEM_FORGET,
     Allow,
-    "std::mem::forget usage is likely to cause memory leaks"
+    "`std::mem::forget` usage is likely to cause memory leaks"
 }
 
 pub struct MemForget;
