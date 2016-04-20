@@ -33,6 +33,8 @@ struct DiagnosticSpan {
     line_end: usize,
     column_start: usize,
     column_end: usize,
+    is_primary: bool,
+    label: Option<String>,
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
@@ -66,7 +68,7 @@ fn parse_line(file_name: &str, line: &str) -> Vec<Error> {
         match json::decode::<Diagnostic>(line) {
             Ok(diagnostic) => {
                 let mut expected_errors = vec![];
-                push_expected_errors(&mut expected_errors, &diagnostic, file_name);
+                push_expected_errors(&mut expected_errors, &diagnostic, &[], file_name);
                 expected_errors
             }
             Err(error) => {
@@ -80,12 +82,24 @@ fn parse_line(file_name: &str, line: &str) -> Vec<Error> {
 
 fn push_expected_errors(expected_errors: &mut Vec<Error>,
                         diagnostic: &Diagnostic,
+                        default_spans: &[&DiagnosticSpan],
                         file_name: &str) {
-    // We only consider messages pertaining to the current file.
-    let matching_spans = || {
-        diagnostic.spans.iter().filter(|span| {
-            Path::new(&span.file_name) == Path::new(&file_name)
-        })
+    let spans_in_this_file: Vec<_> =
+        diagnostic.spans.iter()
+                        .filter(|span| Path::new(&span.file_name) == Path::new(&file_name))
+                        .collect();
+
+    let primary_spans: Vec<_> =
+        spans_in_this_file.iter()
+                          .cloned()
+                          .filter(|span| span.is_primary)
+                          .collect();
+    let primary_spans = if primary_spans.is_empty() {
+        // subdiagnostics often don't have a span of their own;
+        // inherit the span from the parent in that case
+        default_spans
+    } else {
+        &primary_spans
     };
 
     // We break the output into multiple lines, and then append the
@@ -124,7 +138,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     // more structured shortly anyhow.
     let mut message_lines = diagnostic.message.lines();
     if let Some(first_line) = message_lines.next() {
-        for span in matching_spans() {
+        for span in primary_spans {
             let msg = with_code(span, first_line);
             let kind = ErrorKind::from_str(&diagnostic.level).ok();
             expected_errors.push(
@@ -137,7 +151,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
         }
     }
     for next_line in message_lines {
-        for span in matching_spans() {
+        for span in primary_spans {
             expected_errors.push(
                 Error {
                     line_num: span.line_start,
@@ -150,7 +164,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
 
     // If the message has a suggestion, register that.
     if let Some(ref rendered) = diagnostic.rendered {
-        let start_line = matching_spans().map(|s| s.line_start).min().expect("\
+        let start_line = primary_spans.iter().map(|s| s.line_start).min().expect("\
             every suggestion should have at least one span");
         for (index, line) in rendered.lines().enumerate() {
             expected_errors.push(
@@ -164,7 +178,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     }
 
     // Add notes for the backtrace
-    for span in matching_spans() {
+    for span in primary_spans {
         for frame in &span.expansion {
             push_backtrace(expected_errors,
                            frame,
@@ -172,9 +186,20 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
         }
     }
 
+    // Add notes for any labels that appear in the message.
+    for span in spans_in_this_file.iter()
+                                  .filter(|span| span.label.is_some())
+    {
+        expected_errors.push(Error {
+            line_num: span.line_start,
+            kind: Some(ErrorKind::Note),
+            msg: span.label.clone().unwrap()
+        });
+    }
+
     // Flatten out the children.
     for child in &diagnostic.children {
-        push_expected_errors(expected_errors, child, file_name);
+        push_expected_errors(expected_errors, child, primary_spans, file_name);
     }
 }
 
