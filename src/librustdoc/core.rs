@@ -30,7 +30,7 @@ use syntax::feature_gate::UnstableFeatures;
 use syntax::parse::token;
 
 use std::cell::{RefCell, Cell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use visit_ast::RustdocVisitor;
@@ -54,7 +54,7 @@ pub struct DocContext<'a, 'tcx: 'a> {
     pub map: &'a hir_map::Map<'tcx>,
     pub maybe_typed: MaybeTyped<'a, 'tcx>,
     pub input: Input,
-    pub all_crate_impls: RefCell<HashMap<ast::CrateNum, Vec<clean::Item>>>,
+    pub populated_crate_impls: RefCell<HashSet<ast::CrateNum>>,
     pub deref_trait_did: Cell<Option<DefId>>,
     // Note that external items for which `doc(hidden)` applies to are shown as
     // non-reachable while local items aren't. This is because we're reusing
@@ -189,7 +189,7 @@ pub fn run_core(search_paths: SearchPaths,
             map: &tcx.map,
             maybe_typed: Typed(tcx),
             input: input,
-            all_crate_impls: RefCell::new(HashMap::new()),
+            populated_crate_impls: RefCell::new(HashSet::new()),
             deref_trait_did: Cell::new(None),
             access_levels: RefCell::new(access_levels),
             external_traits: RefCell::new(HashMap::new()),
