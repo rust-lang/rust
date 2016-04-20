@@ -19,9 +19,9 @@ use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
-use syntax::codemap::{self, MultiSpan};
+use syntax::codemap::MultiSpan;
 use syntax::errors::{self, Handler, Level};
-use syntax::errors::emitter::Emitter;
+use syntax::errors::emitter::RudimentaryEmitter;
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -100,23 +100,16 @@ impl SharedEmitter {
     }
 }
 
-impl Emitter for SharedEmitter {
-    fn emit(&mut self,
-            sp: &codemap::MultiSpan,
-            msg: &str,
-            code: Option<&str>,
-            lvl: Level) {
-        assert!(sp.primary_span().is_none(), "SharedEmitter doesn't support spans");
-
+impl RudimentaryEmitter for SharedEmitter {
+    fn emit_rudimentary(&mut self,
+                        msg: &str,
+                        code: Option<&str>,
+                        lvl: Level) {
         self.buffer.lock().unwrap().push(Diagnostic {
             msg: msg.to_string(),
             code: code.map(|s| s.to_string()),
             lvl: lvl,
         });
-    }
-
-    fn emit_struct(&mut self, _db: &errors::DiagnosticBuilder) {
-        bug!("SharedEmitter doesn't support emit_struct");
     }
 }
 

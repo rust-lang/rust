@@ -25,10 +25,36 @@ use std::rc::Rc;
 use term;
 
 pub trait Emitter {
+    /// Emit a standalone diagnostic message.
     fn emit(&mut self, span: &MultiSpan, msg: &str, code: Option<&str>, lvl: Level);
 
     /// Emit a structured diagnostic.
     fn emit_struct(&mut self, db: &DiagnosticBuilder);
+}
+
+/// A core trait that can only handle very simple messages: those
+/// without spans or any real structure. Used only in specific contexts.
+pub trait RudimentaryEmitter {
+    fn emit_rudimentary(&mut self, msg: &str, code: Option<&str>, lvl: Level);
+}
+
+impl<T: RudimentaryEmitter> Emitter for T {
+    fn emit(&mut self,
+            msp: &MultiSpan,
+            msg: &str,
+            code: Option<&str>,
+            lvl: Level) {
+        assert!(msp.primary_span().is_none(), "Rudimenatry emitters can't handle spans");
+        self.emit_rudimentary(msg, code, lvl);
+    }
+
+    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
+        self.emit(&db.span, &db.message, db.code.as_ref().map(|s| &**s), db.level);
+        for child in &db.children {
+            assert!(child.render_span.is_none(), "Rudimentary emitters can't handle render spans");
+            self.emit(&child.span, &child.message, None, child.level);
+        }
+    }
 }
 
 /// maximum number of lines we will print for each error; arbitrary.
@@ -57,24 +83,13 @@ pub struct BasicEmitter {
     dst: Destination,
 }
 
-impl Emitter for BasicEmitter {
-    fn emit(&mut self,
-            msp: &MultiSpan,
-            msg: &str,
-            code: Option<&str>,
-            lvl: Level) {
-        assert!(msp.primary_span().is_none(), "BasicEmitter can't handle spans");
-
+impl RudimentaryEmitter for BasicEmitter {
+    fn emit_rudimentary(&mut self,
+                        msg: &str,
+                        code: Option<&str>,
+                        lvl: Level) {
         if let Err(e) = print_diagnostic(&mut self.dst, "", lvl, msg, code) {
             panic!("failed to print diagnostics: {:?}", e);
-        }
-    }
-
-    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
-        self.emit(&db.span, &db.message, db.code.as_ref().map(|s| &**s), db.level);
-        for child in &db.children {
-            assert!(child.render_span.is_none(), "BasicEmitter can't handle spans");
-            self.emit(&child.span, &child.message, None, child.level);
         }
     }
 }
