@@ -108,6 +108,7 @@ pub mod temporary_assignment;
 pub mod transmute;
 pub mod types;
 pub mod unicode;
+pub mod unsafe_removed_from_name;
 pub mod unused_label;
 pub mod vec;
 pub mod zero_div_zero;
@@ -234,6 +235,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
+    reg.register_late_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -378,6 +380,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
         unicode::ZERO_WIDTH_SPACE,
+        unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_label::UNUSED_LABEL,
         vec::USELESS_VEC,
         zero_div_zero::ZERO_DIVIDED_BY_ZERO,

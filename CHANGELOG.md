@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
-* New lint: [`temporary_cstring_as_ptr`]
+* New lint: [`temporary_cstring_as_ptr`] and [`unsafe_removed_from_name`]
 
 ## 0.0.63 — 2016-04-08
 * Rustup to *rustc 1.9.0-nightly (7979dd608 2016-04-07)*
@@ -198,6 +198,7 @@ All notable changes to this project will be documented in this file.
 [`unit_cmp`]: https://github.com/Manishearth/rust-clippy/wiki#unit_cmp
 [`unnecessary_mut_passed`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed
 [`unneeded_field_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern
+[`unsafe_removed_from_name`]: https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name
 [`unstable_as_mut_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_mut_slice
 [`unstable_as_slice`]: https://github.com/Manishearth/rust-clippy/wiki#unstable_as_slice
 [`unused_collect`]: https://github.com/Manishearth/rust-clippy/wiki#unused_collect

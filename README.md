@@ -14,7 +14,7 @@ Table of contents:
 * [License](#license)
 
 ##Lints
-There are 142 lints included in this crate:
+There are 143 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -146,6 +146,7 @@ name                                                                            
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                     | warn    | an argument is passed as a mutable reference although the function/method only demands an immutable reference
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                     | warn    | Struct fields are bound to a wildcard instead of using `..`
+[unsafe_removed_from_name](https://github.com/Manishearth/rust-clippy/wiki#unsafe_removed_from_name)                 | warn    | unsafe removed from name
 [unused_collect](https://github.com/Manishearth/rust-clippy/wiki#unused_collect)                                     | warn    | `collect()`ing an iterator without using the result; this is usually better written as a for loop
 [unused_label](https://github.com/Manishearth/rust-clippy/wiki#unused_label)                                         | warn    | unused label
 [unused_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#unused_lifetimes)                                 | warn    | unused lifetimes in function definitions
