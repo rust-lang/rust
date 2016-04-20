@@ -959,3 +959,16 @@ fn test_extend_ref() {
     assert_eq!(v[4], 5);
     assert_eq!(v[5], 6);
 }
+
+#[test]
+fn test_contains() {
+    let mut v = VecDeque::new();
+    v.extend(&[2, 3, 4]);
+
+    assert!(v.contains(&3));
+    assert!(!v.contains(&1));
+
+    v.clear();
+
+    assert!(!v.contains(&3));
+}

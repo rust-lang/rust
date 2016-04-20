@@ -873,6 +873,17 @@ impl<T> VecDeque<T> {
         self.drain(..);
     }
 
+    /// Returns `true` if the `VecDeque` contains an element equal to the
+    /// given value.
+    #[unstable(feature = "vec_deque_contains", reason = "recently added",
+               issue = "32630")]
+    pub fn contains(&self, x: &T) -> bool
+        where T: PartialEq<T>
+    {
+        let (a, b) = self.as_slices();
+        a.contains(x) || b.contains(x)
+    }
+
     /// Provides a reference to the front element, or `None` if the sequence is
     /// empty.
     ///

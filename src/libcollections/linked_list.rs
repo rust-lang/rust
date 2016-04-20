@@ -403,6 +403,16 @@ impl<T> LinkedList<T> {
         *self = LinkedList::new()
     }
 
+    /// Returns `true` if the `LinkedList` contains an element equal to the
+    /// given value.
+    #[unstable(feature = "linked_list_contains", reason = "recently added",
+               issue = "32630")]
+    pub fn contains(&self, x: &T) -> bool
+        where T: PartialEq<T>
+    {
+        self.iter().any(|e| e == x)
+    }
+
     /// Provides a reference to the front element, or `None` if the list is
     /// empty.
     ///
