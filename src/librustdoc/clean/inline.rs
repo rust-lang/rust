@@ -248,12 +248,10 @@ pub fn build_impls(cx: &DocContext,
     // Primarily, the impls will be used to populate the documentation for this
     // type being inlined, but impls can also be used when generating
     // documentation for primitives (no way to find those specifically).
-    if !cx.all_crate_impls.borrow_mut().contains_key(&did.krate) {
-        let mut impls = Vec::new();
+    if cx.populated_crate_impls.borrow_mut().insert(did.krate) {
         for item in tcx.sess.cstore.crate_top_level_items(did.krate) {
             populate_impls(cx, tcx, item.def, &mut impls);
         }
-        cx.all_crate_impls.borrow_mut().insert(did.krate, impls);
 
         fn populate_impls(cx: &DocContext, tcx: &TyCtxt,
                           def: cstore::DefLike,
@@ -270,21 +268,7 @@ pub fn build_impls(cx: &DocContext,
         }
     }
 
-    let mut candidates = cx.all_crate_impls.borrow_mut();
-    let candidates = candidates.get_mut(&did.krate).unwrap();
-    for i in (0..candidates.len()).rev() {
-        let remove = match candidates[i].inner {
-            clean::ImplItem(ref i) => {
-                i.for_.def_id() == Some(did) || i.for_.primitive_type().is_some()
-            }
-            _ => continue,
-        };
-        if remove {
-            impls.push(candidates.swap_remove(i));
-        }
-    }
-
-    return impls;
+    impls
 }
 
 pub fn build_impl(cx: &DocContext,
