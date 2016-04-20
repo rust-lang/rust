@@ -2,7 +2,7 @@
 All notable changes to this project will be documented in this file.
 
 ## Unreleased
-* New lint: [`temporary_cstring_as_ptr`]
+* New lint: [`temporary_cstring_as_ptr`] and [`unsafe_removed_from_name`]
 
 ## 0.0.63 — 2016-04-08
 * Rustup to *rustc 1.9.0-nightly (7979dd608 2016-04-07)*
