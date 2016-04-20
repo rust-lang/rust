@@ -24,7 +24,6 @@ use rustc::ty::subst;
 use rustc::ty::subst::Subst;
 use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::relate::TypeRelation;
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
 use rustc_metadata::creader::LocalCrateReader;
