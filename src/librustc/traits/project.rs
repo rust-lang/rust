@@ -182,7 +182,8 @@ pub fn poly_project_and_unify_type<'cx, 'gcx, 'tcx>(
         let skol_obligation = obligation.with(skol_predicate);
         match project_and_unify_type(selcx, &skol_obligation) {
             Ok(result) => {
-                match infcx.leak_check(false, &skol_map, snapshot) {
+                let span = obligation.cause.span;
+                match infcx.leak_check(false, span, &skol_map, snapshot) {
                     Ok(()) => Ok(infcx.plug_leaks(skol_map, snapshot, &result)),
                     Err(e) => Err(MismatchedProjectionTypes { err: e }),
                 }
@@ -404,7 +405,11 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
     depth: usize)
     -> Option<NormalizedTy<'tcx>>
 {
-    debug!("normalize_projection_type(\
+    let infcx = selcx.infcx();
+
+    let projection_ty = infcx.resolve_type_vars_if_possible(&projection_ty);
+
+    debug!("opt_normalize_projection_type(\
            projection_ty={:?}, \
            depth={})",
            projection_ty,
@@ -418,7 +423,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             // an impl, where-clause etc) and hence we must
             // re-normalize it
 
-            debug!("normalize_projection_type: projected_ty={:?} depth={} obligations={:?}",
+            debug!("opt_normalize_projection_type: \
+                    projected_ty={:?} depth={} obligations={:?}",
                    projected_ty,
                    depth,
                    obligations);
@@ -427,7 +433,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
                 let mut normalizer = AssociatedTypeNormalizer::new(selcx, cause, depth+1);
                 let normalized_ty = normalizer.fold(&projected_ty);
 
-                debug!("normalize_projection_type: normalized_ty={:?} depth={}",
+                debug!("opt_normalize_projection_type: \
+                        normalized_ty={:?} depth={}",
                        normalized_ty,
                        depth);
 
@@ -444,7 +451,8 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             }
         }
         Ok(ProjectedTy::NoProgress(projected_ty)) => {
-            debug!("normalize_projection_type: projected_ty={:?} no progress",
+            debug!("opt_normalize_projection_type: \
+                    projected_ty={:?} no progress",
                    projected_ty);
             Some(Normalized {
                 value: projected_ty,
@@ -452,11 +460,12 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
             })
         }
         Err(ProjectionTyError::TooManyCandidates) => {
-            debug!("normalize_projection_type: too many candidates");
+            debug!("opt_normalize_projection_type: \
+                    too many candidates");
             None
         }
         Err(ProjectionTyError::TraitSelectionError(_)) => {
-            debug!("normalize_projection_type: ERROR");
+            debug!("opt_normalize_projection_type: ERROR");
             // if we got an error processing the `T as Trait` part,
             // just return `ty::err` but add the obligation `T :
             // Trait`, which when processed will cause the error to be

@@ -28,8 +28,7 @@ fn make_object2<'a,A:SomeTrait+'a>(v: A) -> Box<SomeTrait+'a> {
 
 fn make_object3<'a,'b,A:SomeTrait+'a>(v: A) -> Box<SomeTrait+'b> {
     box v as Box<SomeTrait+'b>
-        //~^ ERROR the parameter type `A` may not live long enough
-        //~^^ ERROR the parameter type `A` may not live long enough
+        //~^ ERROR E0478
 }
 
 fn main() { }

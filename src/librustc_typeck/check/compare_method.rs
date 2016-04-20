@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use middle::free_region::FreeRegionMap;
-use rustc::infer::{self, InferOk, TypeOrigin};
+use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc::ty;
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::subst::{self, Subst, Substs, VecPerParamSpace};
