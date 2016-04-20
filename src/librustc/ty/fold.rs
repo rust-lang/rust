@@ -674,12 +674,11 @@ impl LateBoundRegionsCollector {
 }
 
 impl<'tcx> TypeVisitor<'tcx> for LateBoundRegionsCollector {
-    fn enter_region_binder(&mut self) {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
         self.current_depth += 1;
-    }
-
-    fn exit_region_binder(&mut self) {
+        let r = t.super_visit_with(self);
         self.current_depth -= 1;
+        r
     }
 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
