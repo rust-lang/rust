@@ -450,17 +450,39 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
         let mut control = CompileController::basic();
 
-        if let Some((ppm, opt_uii)) = parse_pretty(&sess, &matches) {
-            control.after_parse.stop = Compilation::Stop;
-            control.after_parse.callback = box move |state| {
-                pretty::pretty_print_input(state.session,
-                                           state.cstore.unwrap(),
-                                           state.input,
-                                           state.krate.take().unwrap(),
-                                           ppm,
-                                           opt_uii.clone(),
-                                           state.out_file);
-            };
+        if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
+            if ppm.needs_ast_map(&opt_uii) {
+                control.after_write_deps.stop = Compilation::Stop;
+
+                control.after_parse.callback = box move |state| {
+                    state.krate = Some(pretty::fold_crate(state.krate.take().unwrap(), ppm));
+                };
+                control.after_write_deps.callback = box move |state| {
+                    pretty::print_after_write_deps(state.session,
+                                                   state.cstore.unwrap(),
+                                                   state.ast_map.unwrap(),
+                                                   state.input,
+                                                   &state.expanded_crate.take().unwrap(),
+                                                   state.crate_name.unwrap(),
+                                                   ppm,
+                                                   state.arenas.unwrap(),
+                                                   opt_uii.clone(),
+                                                   state.out_file);
+                };
+            } else {
+                control.after_parse.stop = Compilation::Stop;
+
+                control.after_parse.callback = box move |state| {
+                    let krate = pretty::fold_crate(state.krate.take().unwrap(), ppm);
+                    pretty::print_after_parsing(state.session,
+                                                state.input,
+                                                &krate,
+                                                ppm,
+                                                state.out_file);
+                };
+            }
+
+            return control;
         }
 
         if sess.opts.parse_only || sess.opts.debugging_opts.show_span.is_some() ||
