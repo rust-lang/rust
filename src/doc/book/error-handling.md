@@ -2133,8 +2133,10 @@ Now we only need to implement our “quiet” functionality. This requires us to
 tweak the case analysis in `main`:
 
 ```rust,ignore
-match search(&args.arg_data_path, &args.arg_city) {
-    Err(CliError::NotFound) if args.flag_quiet => process::exit(1),
+let quiet = matches.opt_present("q");
+
+match search(data_file, city) {
+    Err(CliError::NotFound) if quiet => process::exit(1),
     Err(err) => panic!("{}", err),
     Ok(pops) => for pop in pops {
         println!("{}, {}: {:?}", pop.city, pop.country, pop.count);
