@@ -20,6 +20,7 @@ pub use self::VarValue::*;
 use super::{RegionVariableOrigin, SubregionOrigin, MiscVariable};
 use super::unify_key;
 
+use rustc_data_structures::fnv::{FnvHashMap, FnvHashSet};
 use rustc_data_structures::graph::{self, Direction, NodeIndex, OUTGOING};
 use rustc_data_structures::unify::{self, UnificationTable};
 use middle::free_region::FreeRegionMap;
@@ -27,12 +28,11 @@ use ty::{self, Ty, TyCtxt};
 use ty::{BoundRegion, Region, RegionVid};
 use ty::{ReEmpty, ReStatic, ReFree, ReEarlyBound};
 use ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
-use util::common::indenter;
-use util::nodemap::{FnvHashMap, FnvHashSet};
 
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::fmt;
+use std::mem;
 use std::u32;
 use syntax::ast;
 
@@ -108,13 +108,36 @@ pub struct TwoRegions {
 
 #[derive(Copy, Clone, PartialEq)]
 pub enum UndoLogEntry {
+    /// Pushed when we start a snapshot.
     OpenSnapshot,
+
+    /// Replaces an `OpenSnapshot` when a snapshot is committed, but
+    /// that snapshot is not the root. If the root snapshot is
+    /// unrolled, all nested snapshots must be committed.
     CommitedSnapshot,
+
+    /// We added `RegionVid`
     AddVar(RegionVid),
+
+    /// We added the given `constraint`
     AddConstraint(Constraint),
+
+    /// We added the given `verify`
     AddVerify(usize),
+
+    /// We added the given `given`
     AddGiven(ty::FreeRegion, ty::RegionVid),
+
+    /// We added a GLB/LUB "combinaton variable"
     AddCombination(CombineMapType, TwoRegions),
+
+    /// During skolemization, we sometimes purge entries from the undo
+    /// log in a kind of minisnapshot (unlike other snapshots, this
+    /// purging actually takes place *on success*). In that case, we
+    /// replace the corresponding entry with `Noop` so as to avoid the
+    /// need to do a bunch of swapping. (We can't use `swap_remove` as
+    /// the order of the vector is important.)
+    Purged,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -253,6 +276,116 @@ pub struct RegionSnapshot {
     skolemization_count: u32,
 }
 
+/// When working with skolemized regions, we often wish to find all of
+/// the regions that are either reachable from a skolemized region, or
+/// which can reach a skolemized region, or both. We call such regions
+/// *tained* regions.  This struct allows you to decide what set of
+/// tainted regions you want.
+#[derive(Debug)]
+pub struct TaintDirections {
+    incoming: bool,
+    outgoing: bool,
+}
+
+impl TaintDirections {
+    pub fn incoming() -> Self {
+        TaintDirections { incoming: true, outgoing: false }
+    }
+
+    pub fn outgoing() -> Self {
+        TaintDirections { incoming: false, outgoing: true }
+    }
+
+    pub fn both() -> Self {
+        TaintDirections { incoming: true, outgoing: true }
+    }
+}
+
+struct TaintSet {
+    directions: TaintDirections,
+    regions: FnvHashSet<ty::Region>
+}
+
+impl TaintSet {
+    fn new(directions: TaintDirections,
+           initial_region: ty::Region)
+           -> Self {
+        let mut regions = FnvHashSet();
+        regions.insert(initial_region);
+        TaintSet { directions: directions, regions: regions }
+    }
+
+    fn fixed_point(&mut self,
+                   undo_log: &[UndoLogEntry],
+                   verifys: &[Verify]) {
+        let mut prev_len = 0;
+        while prev_len < self.len() {
+            debug!("tainted: prev_len = {:?} new_len = {:?}",
+                   prev_len, self.len());
+
+            prev_len = self.len();
+
+            for undo_entry in undo_log {
+                match undo_entry {
+                    &AddConstraint(ConstrainVarSubVar(a, b)) => {
+                        self.add_edge(ReVar(a), ReVar(b));
+                    }
+                    &AddConstraint(ConstrainRegSubVar(a, b)) => {
+                        self.add_edge(a, ReVar(b));
+                    }
+                    &AddConstraint(ConstrainVarSubReg(a, b)) => {
+                        self.add_edge(ReVar(a), b);
+                    }
+                    &AddGiven(a, b) => {
+                        self.add_edge(ReFree(a), ReVar(b));
+                    }
+                    &AddVerify(i) => {
+                        match verifys[i] {
+                            VerifyRegSubReg(_, a, b) => {
+                                self.add_edge(a, b);
+                            }
+                            VerifyGenericBound(_, _, a, ref bound) => {
+                                bound.for_each_region(&mut |b| {
+                                    self.add_edge(a, b);
+                                });
+                            }
+                        }
+                    }
+                    &Purged |
+                    &AddCombination(..) |
+                    &AddVar(..) |
+                    &OpenSnapshot |
+                    &CommitedSnapshot => {}
+                }
+            }
+        }
+    }
+
+    fn into_set(self) -> FnvHashSet<ty::Region> {
+        self.regions
+    }
+
+    fn len(&self) -> usize {
+        self.regions.len()
+    }
+
+    fn add_edge(&mut self,
+                source: ty::Region,
+                target: ty::Region) {
+        if self.directions.incoming {
+            if self.regions.contains(&target) {
+                self.regions.insert(source);
+            }
+        }
+
+        if self.directions.outgoing {
+            if self.regions.contains(&source) {
+                self.regions.insert(target);
+            }
+        }
+    }
+}
+
 impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> RegionVarBindings<'a, 'gcx, 'tcx> {
         RegionVarBindings {
@@ -290,6 +423,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         debug!("RegionVarBindings: commit({})", snapshot.length);
         assert!(self.undo_log.borrow().len() > snapshot.length);
         assert!((*self.undo_log.borrow())[snapshot.length] == OpenSnapshot);
+        assert!(self.skolemization_count.get() == snapshot.skolemization_count,
+                "failed to pop skolemized regions: {} now vs {} at start",
+                self.skolemization_count.get(),
+                snapshot.skolemization_count);
 
         let mut undo_log = self.undo_log.borrow_mut();
         if snapshot.length == 0 {
@@ -297,7 +434,6 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         } else {
             (*undo_log)[snapshot.length] = CommitedSnapshot;
         }
-        self.skolemization_count.set(snapshot.skolemization_count);
         self.unification_table.borrow_mut().commit(snapshot.region_snapshot);
     }
 
@@ -307,39 +443,45 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         assert!(undo_log.len() > snapshot.length);
         assert!((*undo_log)[snapshot.length] == OpenSnapshot);
         while undo_log.len() > snapshot.length + 1 {
-            match undo_log.pop().unwrap() {
-                OpenSnapshot => {
-                    bug!("Failure to observe stack discipline");
-                }
-                CommitedSnapshot => {}
-                AddVar(vid) => {
-                    let mut var_origins = self.var_origins.borrow_mut();
-                    var_origins.pop().unwrap();
-                    assert_eq!(var_origins.len(), vid.index as usize);
-                }
-                AddConstraint(ref constraint) => {
-                    self.constraints.borrow_mut().remove(constraint);
-                }
-                AddVerify(index) => {
-                    self.verifys.borrow_mut().pop();
-                    assert_eq!(self.verifys.borrow().len(), index);
-                }
-                AddGiven(sub, sup) => {
-                    self.givens.borrow_mut().remove(&(sub, sup));
-                }
-                AddCombination(Glb, ref regions) => {
-                    self.glbs.borrow_mut().remove(regions);
-                }
-                AddCombination(Lub, ref regions) => {
-                    self.lubs.borrow_mut().remove(regions);
-                }
-            }
+            self.rollback_undo_entry(undo_log.pop().unwrap());
         }
         let c = undo_log.pop().unwrap();
         assert!(c == OpenSnapshot);
         self.skolemization_count.set(snapshot.skolemization_count);
         self.unification_table.borrow_mut()
             .rollback_to(snapshot.region_snapshot);
+    }
+
+    pub fn rollback_undo_entry(&self, undo_entry: UndoLogEntry) {
+        match undo_entry {
+            OpenSnapshot => {
+                panic!("Failure to observe stack discipline");
+            }
+            Purged | CommitedSnapshot => {
+                // nothing to do here
+            }
+            AddVar(vid) => {
+                let mut var_origins = self.var_origins.borrow_mut();
+                var_origins.pop().unwrap();
+                assert_eq!(var_origins.len(), vid.index as usize);
+            }
+            AddConstraint(ref constraint) => {
+                self.constraints.borrow_mut().remove(constraint);
+            }
+            AddVerify(index) => {
+                self.verifys.borrow_mut().pop();
+                assert_eq!(self.verifys.borrow().len(), index);
+            }
+            AddGiven(sub, sup) => {
+                self.givens.borrow_mut().remove(&(sub, sup));
+            }
+            AddCombination(Glb, ref regions) => {
+                self.glbs.borrow_mut().remove(regions);
+            }
+            AddCombination(Lub, ref regions) => {
+                self.lubs.borrow_mut().remove(regions);
+            }
+        }
     }
 
     pub fn num_vars(&self) -> u32 {
@@ -366,28 +508,122 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         return vid;
     }
 
+    pub fn var_origin(&self, vid: RegionVid) -> RegionVariableOrigin {
+        self.var_origins.borrow()[vid.index as usize].clone()
+    }
+
     /// Creates a new skolemized region. Skolemized regions are fresh
     /// regions used when performing higher-ranked computations. They
     /// must be used in a very particular way and are never supposed
     /// to "escape" out into error messages or the code at large.
     ///
     /// The idea is to always create a snapshot. Skolemized regions
-    /// can be created in the context of this snapshot, but once the
-    /// snapshot is committed or rolled back, their numbers will be
-    /// recycled, so you must be finished with them. See the extensive
-    /// comments in `higher_ranked.rs` to see how it works (in
-    /// particular, the subtyping comparison).
+    /// can be created in the context of this snapshot, but before the
+    /// snapshot is committed or rolled back, they must be popped
+    /// (using `pop_skolemized_regions`), so that their numbers can be
+    /// recycled. Normally you don't have to think about this: you use
+    /// the APIs in `higher_ranked/mod.rs`, such as
+    /// `skolemize_late_bound_regions` and `plug_leaks`, which will
+    /// guide you on this path (ensure that the `SkolemizationMap` is
+    /// consumed and you are good).  There are also somewhat extensive
+    /// comments in `higher_ranked/README.md`.
     ///
     /// The `snapshot` argument to this function is not really used;
     /// it's just there to make it explicit which snapshot bounds the
-    /// skolemized region that results.
-    pub fn new_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot) -> Region {
+    /// skolemized region that results. It should always be the top-most snapshot.
+    pub fn push_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot) -> Region {
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
 
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
         ReSkolemized(ty::SkolemizedRegionVid { index: sc }, br)
+    }
+
+    /// Removes all the edges to/from the skolemized regions that are
+    /// in `skols`. This is used after a higher-ranked operation
+    /// completes to remove all trace of the skolemized regions
+    /// created in that time.
+    pub fn pop_skolemized(&self,
+                          skols: &FnvHashSet<ty::Region>,
+                          snapshot: &RegionSnapshot) {
+        debug!("pop_skolemized_regions(skols={:?})", skols);
+
+        assert!(self.in_snapshot());
+        assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
+        assert!(self.skolemization_count.get() as usize >= skols.len(),
+                "popping more skolemized variables than actually exist, \
+                 sc now = {}, skols.len = {}",
+                self.skolemization_count.get(),
+                skols.len());
+
+        let last_to_pop = self.skolemization_count.get();
+        let first_to_pop = last_to_pop - (skols.len() as u32);
+
+        assert!(first_to_pop >= snapshot.skolemization_count,
+                "popping more regions than snapshot contains, \
+                 sc now = {}, sc then = {}, skols.len = {}",
+                self.skolemization_count.get(),
+                snapshot.skolemization_count,
+                skols.len());
+        debug_assert! {
+            skols.iter()
+                 .all(|k| match *k {
+                     ty::ReSkolemized(index, _) =>
+                         index.index >= first_to_pop &&
+                         index.index < last_to_pop,
+                     _ =>
+                         false
+                 }),
+            "invalid skolemization keys or keys out of range ({}..{}): {:?}",
+            snapshot.skolemization_count,
+            self.skolemization_count.get(),
+            skols
+        }
+
+        let mut undo_log = self.undo_log.borrow_mut();
+
+        let constraints_to_kill: Vec<usize> =
+            undo_log.iter()
+                    .enumerate()
+                    .rev()
+                    .filter(|&(_, undo_entry)| kill_constraint(skols, undo_entry))
+                    .map(|(index, _)| index)
+                    .collect();
+
+        for index in constraints_to_kill {
+            let undo_entry = mem::replace(&mut undo_log[index], Purged);
+            self.rollback_undo_entry(undo_entry);
+        }
+
+        self.skolemization_count.set(snapshot.skolemization_count);
+        return;
+
+        fn kill_constraint(skols: &FnvHashSet<ty::Region>,
+                           undo_entry: &UndoLogEntry)
+                           -> bool {
+            match undo_entry {
+                &AddConstraint(ConstrainVarSubVar(_, _)) =>
+                    false,
+                &AddConstraint(ConstrainRegSubVar(a, _)) =>
+                    skols.contains(&a),
+                &AddConstraint(ConstrainVarSubReg(_, b)) =>
+                    skols.contains(&b),
+                &AddGiven(_, _) =>
+                    false,
+                &AddVerify(_) =>
+                    false,
+                &AddCombination(_, ref two_regions) =>
+                    skols.contains(&two_regions.a) ||
+                    skols.contains(&two_regions.b),
+                &AddVar(..) |
+                &OpenSnapshot |
+                &Purged |
+                &CommitedSnapshot =>
+                    false,
+            }
+        }
+
     }
 
     pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> Region {
@@ -632,83 +868,30 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
             .collect()
     }
 
-    /// Computes all regions that have been related to `r0` in any way since the mark `mark` was
-    /// made---`r0` itself will be the first entry. This is used when checking whether skolemized
-    /// regions are being improperly related to other regions.
-    pub fn tainted(&self, mark: &RegionSnapshot, r0: Region) -> Vec<Region> {
-        debug!("tainted(mark={:?}, r0={:?})", mark, r0);
-        let _indenter = indenter();
+    /// Computes all regions that have been related to `r0` since the
+    /// mark `mark` was made---`r0` itself will be the first
+    /// entry. The `directions` parameter controls what kind of
+    /// relations are considered. For example, one can say that only
+    /// "incoming" edges to `r0` are desired, in which case one will
+    /// get the set of regions `{r|r <= r0}`. This is used when
+    /// checking whether skolemized regions are being improperly
+    /// related to other regions.
+    pub fn tainted(&self,
+                   mark: &RegionSnapshot,
+                   r0: Region,
+                   directions: TaintDirections)
+                   -> FnvHashSet<ty::Region> {
+        debug!("tainted(mark={:?}, r0={:?}, directions={:?})",
+               mark, r0, directions);
 
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
         // is not a terribly efficient implementation.
-        let mut result_set = vec![r0];
-        let mut result_index = 0;
-        while result_index < result_set.len() {
-            // nb: can't use usize::range() here because result_set grows
-            let r = result_set[result_index];
-            debug!("result_index={}, r={:?}", result_index, r);
-
-            for undo_entry in self.undo_log.borrow()[mark.length..].iter() {
-                match undo_entry {
-                    &AddConstraint(ConstrainVarSubVar(a, b)) => {
-                        consider_adding_bidirectional_edges(&mut result_set, r, ReVar(a), ReVar(b));
-                    }
-                    &AddConstraint(ConstrainRegSubVar(a, b)) => {
-                        consider_adding_bidirectional_edges(&mut result_set, r, a, ReVar(b));
-                    }
-                    &AddConstraint(ConstrainVarSubReg(a, b)) => {
-                        consider_adding_bidirectional_edges(&mut result_set, r, ReVar(a), b);
-                    }
-                    &AddGiven(a, b) => {
-                        consider_adding_bidirectional_edges(&mut result_set,
-                                                            r,
-                                                            ReFree(a),
-                                                            ReVar(b));
-                    }
-                    &AddVerify(i) => {
-                        match (*self.verifys.borrow())[i] {
-                            VerifyRegSubReg(_, a, b) => {
-                                consider_adding_bidirectional_edges(&mut result_set, r, a, b);
-                            }
-                            VerifyGenericBound(_, _, a, ref bound) => {
-                                bound.for_each_region(&mut |b| {
-                                    consider_adding_bidirectional_edges(&mut result_set, r, a, b)
-                                });
-                            }
-                        }
-                    }
-                    &AddCombination(..) |
-                    &AddVar(..) |
-                    &OpenSnapshot |
-                    &CommitedSnapshot => {}
-                }
-            }
-
-            result_index += 1;
-        }
-
-        return result_set;
-
-        fn consider_adding_bidirectional_edges(result_set: &mut Vec<Region>,
-                                               r: Region,
-                                               r1: Region,
-                                               r2: Region) {
-            consider_adding_directed_edge(result_set, r, r1, r2);
-            consider_adding_directed_edge(result_set, r, r2, r1);
-        }
-
-        fn consider_adding_directed_edge(result_set: &mut Vec<Region>,
-                                         r: Region,
-                                         r1: Region,
-                                         r2: Region) {
-            if r == r1 {
-                // Clearly, this is potentially inefficient.
-                if !result_set.iter().any(|x| *x == r2) {
-                    result_set.push(r2);
-                }
-            }
-        }
+        let mut taint_set = TaintSet::new(directions, r0);
+        taint_set.fixed_point(&self.undo_log.borrow()[mark.length..],
+                              &self.verifys.borrow());
+        debug!("tainted: result={:?}", taint_set.regions);
+        return taint_set.into_set();
     }
 
     /// This function performs the actual region resolution.  It must be

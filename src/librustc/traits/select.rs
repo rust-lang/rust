@@ -46,6 +46,7 @@ use rustc_data_structures::snapshot_vec::{SnapshotVecDelegate, SnapshotVec};
 use std::cell::RefCell;
 use std::fmt;
 use std::marker::PhantomData;
+use std::mem;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
@@ -1237,6 +1238,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                                    skol_trait_predicate.trait_ref.clone(),
                                                    &skol_map,
                                                    snapshot);
+
+                self.infcx.pop_skolemized(skol_map, snapshot);
+
                 assert!(result);
                 true
             }
@@ -1263,7 +1267,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             Err(_) => { return false; }
         }
 
-        self.infcx.leak_check(false, skol_map, snapshot).is_ok()
+        self.infcx.leak_check(false, obligation.cause.span, skol_map, snapshot).is_ok()
     }
 
     /// Given an obligation like `<SomeTrait for T>`, search the obligations that the caller
@@ -1422,9 +1426,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             self.tcx(),
             obligation.predicate.0.trait_ref.self_ty(),
             |impl_def_id| {
-                self.probe(|this, snapshot| {
-                    if let Ok(_) = this.match_impl(impl_def_id, obligation, snapshot) {
-                        candidates.vec.push(ImplCandidate(impl_def_id));
+                self.probe(|this, snapshot| { /* [1] */
+                    match this.match_impl(impl_def_id, obligation, snapshot) {
+                        Ok(skol_map) => {
+                            candidates.vec.push(ImplCandidate(impl_def_id));
+
+                            // NB: we can safely drop the skol map
+                            // since we are in a probe [1]
+                            mem::drop(skol_map);
+                        }
+                        Err(_) => { }
                     }
                 });
             }
@@ -1509,9 +1520,11 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return;
         }
 
-        self.probe(|this, snapshot| {
-            let (self_ty, _) =
-                this.infcx().skolemize_late_bound_regions(&obligation.self_ty(), snapshot);
+        self.probe(|this, _snapshot| {
+            // the code below doesn't care about regions, and the
+            // self-ty here doesn't escape this probe, so just erase
+            // any LBR.
+            let self_ty = this.tcx().erase_late_bound_regions(&obligation.self_ty());
             let poly_trait_ref = match self_ty.sty {
                 ty::TyTrait(ref data) => {
                     match this.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
@@ -2710,7 +2723,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             })?;
         self.inferred_obligations.extend(obligations);
 
-        if let Err(e) = self.infcx.leak_check(false, &skol_map, snapshot) {
+        if let Err(e) = self.infcx.leak_check(false,
+                                              obligation.cause.span,
+                                              &skol_map,
+                                              snapshot) {
             debug!("match_impl: failed leak check due to `{}`", e);
             return Err(());
         }
