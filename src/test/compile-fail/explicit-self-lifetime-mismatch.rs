@@ -16,12 +16,12 @@ struct Foo<'a,'b> {
 impl<'a,'b> Foo<'a,'b> {
     fn bar(self: Foo<'b,'a>) {}
     //~^ ERROR mismatched types
-    //~| expected `Foo<'a, 'b>`
-    //~| found `Foo<'b, 'a>`
+    //~| expected type `Foo<'a, 'b>`
+    //~| found type `Foo<'b, 'a>`
     //~| lifetime mismatch
     //~| ERROR mismatched types
-    //~| expected `Foo<'a, 'b>`
-    //~| found `Foo<'b, 'a>`
+    //~| expected type `Foo<'a, 'b>`
+    //~| found type `Foo<'b, 'a>`
     //~| lifetime mismatch
 }
 
