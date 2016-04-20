@@ -54,6 +54,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
 
     let tf = InternedString::new("target_feature");
     for feat in whitelist {
+        assert_eq!(feat.chars().last(), Some('\0'));
         if unsafe { LLVMRustHasFeature(target_machine, feat.as_ptr() as *const c_char) } {
             cfg.push(attr::mk_name_value_item_str(tf.clone(), intern(&feat[..feat.len()-1])))
         }
