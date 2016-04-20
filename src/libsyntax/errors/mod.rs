@@ -661,7 +661,7 @@ impl Level {
     fn color(self) -> term::color::Color {
         match self {
             Bug | Fatal | PhaseFatal | Error => term::color::BRIGHT_RED,
-            Warning => term::color::BRIGHT_YELLOW,
+            Warning => term::color::BRIGHT_MAGENTA,
             Note => term::color::BRIGHT_GREEN,
             Help => term::color::BRIGHT_CYAN,
             Cancelled => unreachable!(),
