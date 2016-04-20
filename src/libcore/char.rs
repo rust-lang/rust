@@ -299,7 +299,20 @@ impl CharExt for char {
 
     #[inline]
     fn escape_unicode(self) -> EscapeUnicode {
-        EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
+        let c = self as u32;
+
+        // or-ing 1 ensures that for c==0 the code computes that one
+        // digit should be printed and (which is the same) avoids the
+        // (31 - 32) underflow
+        let msb = 31 - (c | 1).leading_zeros();
+
+        // the index of the most significant hex digit
+        let ms_hex_digit = msb / 4;
+        EscapeUnicode {
+            c: self,
+            state: EscapeUnicodeState::Backslash,
+            hex_digit_idx: ms_hex_digit as usize,
+        }
     }
 
     #[inline]
@@ -392,7 +405,12 @@ impl CharExt for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
-    state: EscapeUnicodeState
+    state: EscapeUnicodeState,
+
+    // The index of the next hex digit to be printed (0 if none),
+    // i.e. the number of remaining hex digits to be printed;
+    // increasing from the least significant digit: 0x543210
+    hex_digit_idx: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -400,7 +418,7 @@ enum EscapeUnicodeState {
     Backslash,
     Type,
     LeftBrace,
-    Value(usize),
+    Value,
     RightBrace,
     Done,
 }
@@ -420,19 +438,16 @@ impl Iterator for EscapeUnicode {
                 Some('u')
             }
             EscapeUnicodeState::LeftBrace => {
-                let mut n = 0;
-                while (self.c as u32) >> (4 * (n + 1)) != 0 {
-                    n += 1;
-                }
-                self.state = EscapeUnicodeState::Value(n);
+                self.state = EscapeUnicodeState::Value;
                 Some('{')
             }
-            EscapeUnicodeState::Value(offset) => {
-                let c = from_digit(((self.c as u32) >> (offset * 4)) & 0xf, 16).unwrap();
-                if offset == 0 {
+            EscapeUnicodeState::Value => {
+                let hex_digit = ((self.c as u32) >> (self.hex_digit_idx * 4)) & 0xf;
+                let c = from_digit(hex_digit, 16).unwrap();
+                if self.hex_digit_idx == 0 {
                     self.state = EscapeUnicodeState::RightBrace;
                 } else {
-                    self.state = EscapeUnicodeState::Value(offset - 1);
+                    self.hex_digit_idx -= 1;
                 }
                 Some(c)
             }
@@ -445,18 +460,15 @@ impl Iterator for EscapeUnicode {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let mut n = 0;
-        while (self.c as usize) >> (4 * (n + 1)) != 0 {
-            n += 1;
-        }
         let n = match self.state {
-            EscapeUnicodeState::Backslash => n + 5,
-            EscapeUnicodeState::Type => n + 4,
-            EscapeUnicodeState::LeftBrace => n + 3,
-            EscapeUnicodeState::Value(offset) => offset + 2,
+            EscapeUnicodeState::Backslash => 5,
+            EscapeUnicodeState::Type => 4,
+            EscapeUnicodeState::LeftBrace => 3,
+            EscapeUnicodeState::Value => 2,
             EscapeUnicodeState::RightBrace => 1,
             EscapeUnicodeState::Done => 0,
         };
+        let n = n + self.hex_digit_idx;
         (n, Some(n))
     }
 }
