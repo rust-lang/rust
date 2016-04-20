@@ -65,8 +65,8 @@ fn main() {
 
         let err = String::from_utf8_lossy(&result.stderr);
 
-        // the span should end the line (e.g no extra ~'s)
-        let expected_span = format!("^{}\n", repeat("~").take(n - 1)
+        // the span should end the line (e.g no extra ^'s)
+        let expected_span = format!("^{}\n", repeat("^").take(n - 1)
                                                         .collect::<String>());
         assert!(err.contains(&expected_span));
     }
@@ -91,17 +91,19 @@ fn main() {
 
     // Test both the length of the snake and the leading spaces up to it
 
-    // First snake is 8 ~s long, with 7 preceding spaces (excluding file name/line offset)
-    let expected_span = format!("\n{}^{}\n",
-                                repeat(" ").take(offset + 7).collect::<String>(),
-                                repeat("~").take(8).collect::<String>());
-    assert!(err.contains(&expected_span));
-    // Second snake is only 7 ~s long, with 36 preceding spaces,
-    // because rustc counts chars() now rather than width(). This
-    // is because width() functions are to be removed from
-    // librustc_unicode
-    let expected_span = format!("\n{}^{}\n",
-                                repeat(" ").take(offset + 36).collect::<String>(),
-                                repeat("~").take(7).collect::<String>());
-    assert!(err.contains(&expected_span));
+    // First snake is 9 ^s long.
+    let expected_1 = r#"
+1 |> extern "路濫狼á́́" fn foo() {} extern "路濫狼á́" fn bar() {}
+  |>        ^^^^^^^^^
+"#;
+    assert!(err.contains(&expected_1));
+
+    // Second snake is only 8 ^s long, because rustc counts chars()
+    // now rather than width(). This is because width() functions are
+    // to be removed from librustc_unicode
+    let expected_2 = r#"
+1 |> extern "路濫狼á́́" fn foo() {} extern "路濫狼á́" fn bar() {}
+  |>                                     ^^^^^^^^
+"#;
+    assert!(err.contains(&expected_2));
 }
