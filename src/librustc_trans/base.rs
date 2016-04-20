@@ -1339,7 +1339,7 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
         }
         Some(hir_map::NodeExpr(e)) => {
             match e.node {
-                hir::ExprClosure(_, _, ref blk) => blk,
+                hir::ExprClosure(_, _, ref blk, _) => blk,
                 _ => bug!("unexpected expr variant in has_nested_returns"),
             }
         }

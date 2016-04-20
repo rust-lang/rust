@@ -1118,7 +1118,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         hir::ExprVec(..) | hir::ExprRepeat(..) => {
             tvec::trans_fixed_vstore(bcx, expr, dest)
         }
-        hir::ExprClosure(_, ref decl, ref body) => {
+        hir::ExprClosure(_, ref decl, ref body, _) => {
             let dest = match dest {
                 SaveIn(lldest) => closure::Dest::SaveIn(bcx, lldest),
                 Ignore => closure::Dest::Ignore(bcx.ccx())

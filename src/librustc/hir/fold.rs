@@ -1060,10 +1060,11 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
                           arms.move_map(|x| folder.fold_arm(x)),
                           source)
             }
-            ExprClosure(capture_clause, decl, body) => {
+            ExprClosure(capture_clause, decl, body, fn_decl_span) => {
                 ExprClosure(capture_clause,
                             folder.fold_fn_decl(decl),
-                            folder.fold_block(body))
+                            folder.fold_block(body),
+                            folder.new_span(fn_decl_span))
             }
             ExprBlock(blk) => ExprBlock(folder.fold_block(blk)),
             ExprAssign(el, er) => {

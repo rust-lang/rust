@@ -98,7 +98,7 @@ struct SeedBorrowKind<'a,'tcx:'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
-            hir::ExprClosure(cc, _, ref body) => {
+            hir::ExprClosure(cc, _, ref body, _) => {
                 self.check_closure(expr, cc, &body);
             }
 

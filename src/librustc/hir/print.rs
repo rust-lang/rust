@@ -1392,7 +1392,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, ref body) => {
+            hir::ExprClosure(capture_clause, ref decl, ref body, _fn_decl_span) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(&decl)?;

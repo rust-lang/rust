@@ -728,7 +728,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             };
 
             match fn_expr.node {
-                hir::ExprClosure(_, _, ref body) => body.id,
+                hir::ExprClosure(_, _, ref body, _) => body.id,
                 _ => bug!()
             }
         };

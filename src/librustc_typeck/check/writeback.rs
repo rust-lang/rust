@@ -156,7 +156,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         self.visit_method_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
-        if let hir::ExprClosure(_, ref decl, _) = e.node {
+        if let hir::ExprClosure(_, ref decl, _, _) = e.node {
             for input in &decl.inputs {
                 self.visit_node_id(ResolvingExpr(e.span), input.id);
             }
