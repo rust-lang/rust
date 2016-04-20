@@ -405,7 +405,14 @@ impl<'a> Step<'a> {
                 vec![self.rustc(stage)]
             }
             Source::DistStd { compiler } => {
-                vec![self.libtest(compiler)]
+                // We want to package up as many target libraries as possible
+                // for the `rust-std` package, so if this is a host target we
+                // depend on librustc and otherwise we just depend on libtest.
+                if build.config.host.iter().any(|t| t == self.target) {
+                    vec![self.librustc(compiler)]
+                } else {
+                    vec![self.libtest(compiler)]
+                }
             }
 
             Source::Dist { stage } => {
