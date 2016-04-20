@@ -444,7 +444,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                            "bad final argument to \"rust-call\" fn {:?}", tuple.ty)
         };
 
-        // Handle both by-ref and immediate tuples. This gives us the option of
+        // Handle both by-ref and immediate tuples.
         match tuple.val {
             Ref(llval) => {
                 let base_repr = adt::represent_type(bcx.ccx(), tuple.ty);
