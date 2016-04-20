@@ -9,9 +9,8 @@
 // except according to those terms.
 
 // error-pattern:mismatched types
-// error-pattern:expected `bool`
-// error-pattern:found `_`
-// error-pattern:expected bool
-// error-pattern:found integral variable
+// error-pattern:expected bool, found integral variable
+// error-pattern:expected type `bool`
+// error-pattern:found type `_`
 
 fn main(){assert!(1,1);}

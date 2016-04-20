@@ -24,36 +24,36 @@ fn main() {}
 fn foo<'z>() where &'z (): Sized {
     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected `()`
-    //[verbose]~| found `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>}`
+    //[verbose]~| expected type `()`
+    //[verbose]~| found type `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::bar::<ReStatic, char>}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected `()`
-    //[normal]~| found `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
+    //[normal]~| expected type `()`
+    //[normal]~| found type `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
 
 
     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected `()`
-    //[verbose]~| found `fn() {<i8 as Foo<ReStatic, ReStatic, u32>>::bar::<ReStatic, char>}`
+    //[verbose]~| expected type `()`
+    //[verbose]~| found type `fn() {<i8 as Foo<ReStatic, ReStatic, u32>>::bar::<ReStatic, char>}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected `()`
-    //[normal]~| found `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
+    //[normal]~| expected type `()`
+    //[normal]~| found type `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
 
     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected `()`
-    //[verbose]~| found `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::baz}`
+    //[verbose]~| expected type `()`
+    //[verbose]~| found type `fn() {<i8 as Foo<ReStatic, ReStatic, u8>>::baz}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected `()`
-    //[normal]~| found `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
+    //[normal]~| expected type `()`
+    //[normal]~| found type `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
 
     let x: () = foo::<'static>;
     //[verbose]~^ ERROR mismatched types
-    //[verbose]~| expected `()`
-    //[verbose]~| found `fn() {foo::<ReStatic>}`
+    //[verbose]~| expected type `()`
+    //[verbose]~| found type `fn() {foo::<ReStatic>}`
     //[normal]~^^^^ ERROR mismatched types
-    //[normal]~| expected `()`
-    //[normal]~| found `fn() {foo::<'static>}`
+    //[normal]~| expected type `()`
+    //[normal]~| found type `fn() {foo::<'static>}`
 
     <str as Foo<u8>>::bar;
     //[verbose]~^ ERROR `str: std::marker::Sized` is not satisfied

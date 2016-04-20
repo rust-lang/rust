@@ -14,10 +14,9 @@
 fn foo<Foo, Bar>(x: Foo) -> Bar {
     x
 //~^ ERROR mismatched types
-//~| expected `Bar`
-//~| found `Foo`
-//~| expected type parameter
-//~| found a different type parameter
+//~| expected type `Bar`
+//~| found type `Foo`
+//~| expected type parameter, found a different type parameter
 }
 
 fn main() {}

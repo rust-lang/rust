@@ -13,10 +13,9 @@ struct BarStruct;
 impl<'a> BarStruct {
     fn foo(&'a mut self) -> Box<BarStruct> { self }
     //~^ ERROR mismatched types
-    //~| expected `Box<BarStruct>`
-    //~| found `&'a mut BarStruct`
-    //~| expected box
-    //~| found &-ptr
+    //~| expected type `Box<BarStruct>`
+    //~| found type `&'a mut BarStruct`
+    //~| expected box, found &-ptr
 }
 
 fn main() {}

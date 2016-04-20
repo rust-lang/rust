@@ -16,22 +16,19 @@ fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 fn main() {
     let _: () = (box |_: isize| {}) as Box<FnOnce(isize)>;
     //~^ ERROR mismatched types
-    //~| expected `()`
-    //~| found `Box<std::ops::FnOnce(isize)>`
-    //~| expected ()
-    //~| found box
+    //~| expected type `()`
+    //~| found type `Box<std::ops::FnOnce(isize)>`
+    //~| expected (), found box
     let _: () = (box |_: isize, isize| {}) as Box<Fn(isize, isize)>;
     //~^ ERROR mismatched types
-    //~| expected `()`
-    //~| found `Box<std::ops::Fn(isize, isize)>`
-    //~| expected ()
-    //~| found box
+    //~| expected type `()`
+    //~| found type `Box<std::ops::Fn(isize, isize)>`
+    //~| expected (), found box
     let _: () = (box || -> isize { unimplemented!() }) as Box<FnMut() -> isize>;
     //~^ ERROR mismatched types
-    //~| expected `()`
-    //~| found `Box<std::ops::FnMut() -> isize>`
-    //~| expected ()
-    //~| found box
+    //~| expected type `()`
+    //~| found type `Box<std::ops::FnMut() -> isize>`
+    //~| expected (), found box
 
     needs_fn(1);
     //~^ ERROR : std::ops::Fn<(isize,)>`

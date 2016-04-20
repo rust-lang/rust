@@ -19,13 +19,11 @@ struct Bar { x: isize }
 fn main() {
     let b = Bar { x: 5 };
     let f = Foo { a: 2, ..b }; //~  ERROR mismatched types
-                               //~| expected `Foo`
-                               //~| found `Bar`
-                               //~| expected struct `Foo`
-                               //~| found struct `Bar`
+                               //~| expected type `Foo`
+                               //~| found type `Bar`
+                               //~| expected struct `Foo`, found struct `Bar`
     let f__isize = Foo { a: 2, ..4 }; //~  ERROR mismatched types
-                                 //~| expected `Foo`
-                                 //~| found `_`
-                                 //~| expected struct `Foo`
-                                 //~| found integral variable
+                                 //~| expected type `Foo`
+                                 //~| found type `_`
+                                 //~| expected struct `Foo`, found integral variable
 }

@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main(x: isize) { } //~ ERROR: main function expects type
+fn main(x: isize) { } //~ ERROR: main function has wrong type

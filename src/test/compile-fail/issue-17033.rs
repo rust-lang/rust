@@ -12,10 +12,9 @@
 
 fn f<'r>(p: &'r mut fn(p: &mut ())) {
     (*p)(()) //~  ERROR mismatched types
-             //~| expected `&mut ()`
-             //~| found `()`
-             //~| expected &-ptr
-             //~| found ()
+             //~| expected type `&mut ()`
+             //~| found type `()`
+             //~| expected &-ptr, found ()
 }
 
 fn main() {}

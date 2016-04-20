@@ -13,8 +13,7 @@ use std::raw::Slice;
 fn main() {
     let Slice { data: data, len: len } = "foo";
     //~^ ERROR mismatched types
-    //~| expected `&str`
-    //~| found `std::raw::Slice<_>`
-    //~| expected &-ptr
-    //~| found struct `std::raw::Slice`
+    //~| expected type `&str`
+    //~| found type `std::raw::Slice<_>`
+    //~| expected &-ptr, found struct `std::raw::Slice`
 }

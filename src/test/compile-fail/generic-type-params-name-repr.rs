@@ -22,46 +22,40 @@ fn main() {
     // Ensure that the printed type doesn't include the default type params...
     let _: Foo<isize> = ();
     //~^ ERROR mismatched types
-    //~| expected `Foo<isize>`
-    //~| found `()`
-    //~| expected struct `Foo`
-    //~| found ()
+    //~| expected type `Foo<isize>`
+    //~| found type `()`
+    //~| expected struct `Foo`, found ()
 
     // ...even when they're present, but the same types as the defaults.
     let _: Foo<isize, B, C> = ();
     //~^ ERROR mismatched types
-    //~| expected `Foo<isize>`
-    //~| found `()`
-    //~| expected struct `Foo`
-    //~| found ()
+    //~| expected type `Foo<isize>`
+    //~| found type `()`
+    //~| expected struct `Foo`, found ()
 
     // Including cases where the default is using previous type params.
     let _: HashMap<String, isize> = ();
     //~^ ERROR mismatched types
-    //~| expected `HashMap<std::string::String, isize>`
-    //~| found `()`
-    //~| expected struct `HashMap`
-    //~| found ()
+    //~| expected type `HashMap<std::string::String, isize>`
+    //~| found type `()`
+    //~| expected struct `HashMap`, found ()
     let _: HashMap<String, isize, Hash<String>> = ();
     //~^ ERROR mismatched types
-    //~| expected `HashMap<std::string::String, isize>`
-    //~| found `()`
-    //~| expected struct `HashMap`
-    //~| found ()
+    //~| expected type `HashMap<std::string::String, isize>`
+    //~| found type `()`
+    //~| expected struct `HashMap`, found ()
 
     // But not when there's a different type in between.
     let _: Foo<A, isize, C> = ();
     //~^ ERROR mismatched types
-    //~| expected `Foo<A, isize>`
-    //~| found `()`
-    //~| expected struct `Foo`
-    //~| found ()
+    //~| expected type `Foo<A, isize>`
+    //~| found type `()`
+    //~| expected struct `Foo`, found ()
 
     // And don't print <> at all when there's just defaults.
     let _: Foo<A, B, C> = ();
     //~^ ERROR mismatched types
-    //~| expected `Foo`
-    //~| found `()`
-    //~| expected struct `Foo`
-    //~| found ()
+    //~| expected type `Foo`
+    //~| found type `()`
+    //~| expected struct `Foo`, found ()
 }
