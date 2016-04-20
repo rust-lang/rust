@@ -19,7 +19,7 @@ use llvm::SMDiagnosticRef;
 use {CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
-use syntax::codemap;
+use syntax::codemap::{self, MultiSpan};
 use syntax::errors::{self, Handler, Level};
 use syntax::errors::emitter::Emitter;
 
@@ -84,13 +84,13 @@ impl SharedEmitter {
         for diag in &*buffer {
             match diag.code {
                 Some(ref code) => {
-                    handler.emit_with_code(None,
+                    handler.emit_with_code(&MultiSpan::new(),
                                            &diag.msg,
                                            &code[..],
                                            diag.lvl);
                 },
                 None => {
-                    handler.emit(None,
+                    handler.emit(&MultiSpan::new(),
                                  &diag.msg,
                                  diag.lvl);
                 },
@@ -101,9 +101,12 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit(&mut self, sp: Option<&codemap::MultiSpan>,
-            msg: &str, code: Option<&str>, lvl: Level) {
-        assert!(sp.is_none(), "SharedEmitter doesn't support spans");
+    fn emit(&mut self,
+            sp: &codemap::MultiSpan,
+            msg: &str,
+            code: Option<&str>,
+            lvl: Level) {
+        assert!(sp.primary_span().is_none(), "SharedEmitter doesn't support spans");
 
         self.buffer.lock().unwrap().push(Diagnostic {
             msg: msg.to_string(),
@@ -112,8 +115,8 @@ impl Emitter for SharedEmitter {
         });
     }
 
-    fn custom_emit(&mut self, _sp: &errors::RenderSpan, _msg: &str, _lvl: Level) {
-        bug!("SharedEmitter doesn't support custom_emit");
+    fn emit_struct(&mut self, _db: &errors::DiagnosticBuilder) {
+        bug!("SharedEmitter doesn't support emit_struct");
     }
 }
 

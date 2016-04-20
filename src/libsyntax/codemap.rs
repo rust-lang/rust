@@ -163,6 +163,12 @@ pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
                                          expn_id: COMMAND_LINE_EXPN };
 
 impl Span {
+    /// Returns a new span representing just the end-point of this span
+    pub fn end_point(self) -> Span {
+        let lo = cmp::max(self.hi.0 - 1, self.lo.0);
+        Span { lo: BytePos(lo), hi: self.hi, expn_id: self.expn_id}
+    }
+
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
     pub fn substitute_dummy(self, other: Span) -> Span {
         if self.source_equal(&DUMMY_SP) { other } else { self }
@@ -794,7 +800,7 @@ impl CodeMap {
     /// Creates a new filemap and sets its line information.
     pub fn new_filemap_and_lines(&self, filename: &str, src: &str) -> Rc<FileMap> {
         let fm = self.new_filemap(filename.to_string(), src.to_owned());
-        let mut byte_pos: u32 = 0;
+        let mut byte_pos: u32 = fm.start_pos.0;
         for line in src.lines() {
             // register the start of this line
             fm.next_line(BytePos(byte_pos));
@@ -1126,7 +1132,9 @@ impl CodeMap {
         // numbers in Loc are 1-based, so we subtract 1 to get 0-based
         // lines.
         for line_index in lo.line-1 .. hi.line-1 {
-            let line_len = lo.file.get_line(line_index).map(|s| s.len()).unwrap_or(0);
+            let line_len = lo.file.get_line(line_index)
+                                  .map(|s| s.chars().count())
+                                  .unwrap_or(0);
             lines.push(LineInfo { line_index: line_index,
                                   start_col: start_col,
                                   end_col: CharPos::from_usize(line_len) });
@@ -1584,13 +1592,13 @@ mod tests {
         assert_eq!(file_lines.lines[0].line_index, 1);
     }
 
-    /// Given a string like " ^~~~~~~~~~~~ ", produces a span
+    /// Given a string like " ~~~~~~~~~~~~ ", produces a span
     /// coverting that range. The idea is that the string has the same
     /// length as the input, and we uncover the byte positions.  Note
     /// that this can span lines and so on.
     fn span_from_selection(input: &str, selection: &str) -> Span {
         assert_eq!(input.len(), selection.len());
-        let left_index = selection.find('^').unwrap() as u32;
+        let left_index = selection.find('~').unwrap() as u32;
         let right_index = selection.rfind('~').map(|x|x as u32).unwrap_or(left_index);
         Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), expn_id: NO_EXPANSION }
     }
@@ -1601,7 +1609,7 @@ mod tests {
     fn span_to_snippet_and_lines_spanning_multiple_lines() {
         let cm = CodeMap::new();
         let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
-        let selection = "     \n    ^~\n~~~\n~~~~~     \n   \n";
+        let selection = "     \n    ~~\n~~~\n~~~~~     \n   \n";
         cm.new_filemap_and_lines("blork.rs", inputtext);
         let span = span_from_selection(inputtext, selection);
 
@@ -1750,74 +1758,5 @@ r"blork2.rs:2:1: 2:12
       `first line.`
 ";
         assert_eq!(sstr, res_str);
-    }
-
-    #[test]
-    fn t13() {
-        // Test that collecting multiple spans into line-groups works correctly
-        let cm = CodeMap::new();
-        let inp  =      "_aaaaa__bbb\nvv\nw\nx\ny\nz\ncccccc__ddddee__";
-        let sp1  =      " ^~~~~     \n  \n \n \n \n \n                ";
-        let sp2  =      "           \n  \n \n \n \n^\n                ";
-        let sp3  =      "        ^~~\n~~\n \n \n \n \n                ";
-        let sp4  =      "           \n  \n \n \n \n \n^~~~~~          ";
-        let sp5  =      "           \n  \n \n \n \n \n        ^~~~    ";
-        let sp6  =      "           \n  \n \n \n \n \n          ^~~~  ";
-        let sp_trim =   "           \n  \n \n \n \n \n            ^~  ";
-        let sp_merge =  "           \n  \n \n \n \n \n        ^~~~~~  ";
-        let sp7  =      "           \n ^\n \n \n \n \n                ";
-        let sp8  =      "           \n  \n^\n \n \n \n                ";
-        let sp9  =      "           \n  \n \n^\n \n \n                ";
-        let sp10 =      "           \n  \n \n \n^\n \n                ";
-
-        let span = |sp, expected| {
-            let sp = span_from_selection(inp, sp);
-            assert_eq!(&cm.span_to_snippet(sp).unwrap(), expected);
-            sp
-        };
-
-        cm.new_filemap_and_lines("blork.rs", inp);
-        let sp1 = span(sp1, "aaaaa");
-        let sp2 = span(sp2, "z");
-        let sp3 = span(sp3, "bbb\nvv");
-        let sp4 = span(sp4, "cccccc");
-        let sp5 = span(sp5, "dddd");
-        let sp6 = span(sp6, "ddee");
-        let sp7 = span(sp7, "v");
-        let sp8 = span(sp8, "w");
-        let sp9 = span(sp9, "x");
-        let sp10 = span(sp10, "y");
-        let sp_trim = span(sp_trim, "ee");
-        let sp_merge = span(sp_merge, "ddddee");
-
-        let spans = vec![sp5, sp2, sp4, sp9, sp10, sp7, sp3, sp8, sp1, sp6];
-
-        macro_rules! check_next {
-            ($groups: expr, $expected: expr) => ({
-                let actual = $groups.next().map(|g|&g.spans[..]);
-                let expected = $expected;
-                println!("actual:\n{:?}\n", actual);
-                println!("expected:\n{:?}\n", expected);
-                assert_eq!(actual, expected.as_ref().map(|x|&x[..]));
-            });
-        }
-
-        let _groups = cm.group_spans(spans.clone());
-        let it = &mut _groups.iter();
-
-        check_next!(it, Some([sp1, sp7, sp8, sp9, sp10, sp2]));
-        // New group because we're exceeding MAX_HIGHLIGHT_LINES
-        check_next!(it, Some([sp4, sp_merge]));
-        check_next!(it, Some([sp3]));
-        check_next!(it, None::<[Span; 0]>);
-
-        let _groups = cm.end_group_spans(spans);
-        let it = &mut _groups.iter();
-
-        check_next!(it, Some([sp1, sp7, sp8, sp9, sp10, sp2]));
-        // New group because we're exceeding MAX_HIGHLIGHT_LINES
-        check_next!(it, Some([sp4, sp5, sp_trim]));
-        check_next!(it, Some([sp3]));
-        check_next!(it, None::<[Span; 0]>);
     }
 }

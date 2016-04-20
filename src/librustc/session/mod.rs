@@ -567,7 +567,7 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(None, msg, None, errors::Level::Fatal);
+    emitter.emit(&MultiSpan::new(), msg, None, errors::Level::Fatal);
     panic!(errors::FatalError);
 }
 
@@ -578,7 +578,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
         }
         config::ErrorOutputType::Json => Box::new(JsonEmitter::basic()),
     };
-    emitter.emit(None, msg, None, errors::Level::Warning);
+    emitter.emit(&MultiSpan::new(), msg, None, errors::Level::Warning);
 }
 
 // Err(0) means compilation was stopped, but no errors were found.

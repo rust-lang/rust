@@ -86,10 +86,6 @@ impl Emitter for ExpectErrorEmitter {
             lvl: Level) {
         remove_message(self, msg, lvl);
     }
-
-    fn custom_emit(&mut self, _sp: &RenderSpan, msg: &str, lvl: Level) {
-        remove_message(self, msg, lvl);
-    }
 }
 
 fn errors(msgs: &[&str]) -> (Box<Emitter + Send>, usize) {
