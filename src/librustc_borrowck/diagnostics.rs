@@ -444,4 +444,5 @@ register_diagnostics! {
     E0506, // cannot assign to `..` because it is borrowed
     E0508, // cannot move out of type `..`, a non-copy fixed-size array
     E0509, // cannot move out of type `..`, which defines the `Drop` trait
+    E0524, // two closures require unique access to `..` at the same time
 }
