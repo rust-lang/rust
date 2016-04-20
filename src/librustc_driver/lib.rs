@@ -31,6 +31,7 @@
 #![feature(set_stdio)]
 #![feature(staged_api)]
 #![feature(question_mark)]
+#![feature(unboxed_closures)]
 
 extern crate arena;
 extern crate flate;
@@ -208,15 +209,8 @@ pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
 
     do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile), Some(sess));
 
-    // It is somewhat unfortunate that this is hardwired in.
-    let pretty = callbacks.parse_pretty(&sess, &matches);
-    if let Some((ppm, opt_uii)) = pretty {
-        pretty::pretty_print_input(&sess, &cstore, cfg, &input, ppm, opt_uii, ofile);
-        return (Ok(()), None);
-    }
-
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
-    let control = callbacks.build_controller(&sess);
+    let control = callbacks.build_controller(&sess, &matches);
     (driver::compile_input(&sess, &cstore, cfg, &input, &odir, &ofile,
                            Some(plugins), &control),
      Some(sess))
@@ -244,6 +238,27 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
         }
     } else {
         None
+    }
+}
+
+fn parse_pretty(sess: &Session,
+                matches: &getopts::Matches)
+                -> Option<(PpMode, Option<UserIdentifiedItem>)> {
+    let pretty = if sess.opts.debugging_opts.unstable_options {
+        matches.opt_default("pretty", "normal").map(|a| {
+            // stable pretty-print variants only
+            pretty::parse_pretty(sess, &a, false)
+        })
+    } else {
+        None
+    };
+    if pretty.is_none() && sess.unstable_options() {
+        matches.opt_str("unpretty").map(|a| {
+            // extended with unstable pretty-print variants
+            pretty::parse_pretty(sess, &a, true)
+        })
+    } else {
+        pretty
     }
 }
 
@@ -316,29 +331,9 @@ pub trait CompilerCalls<'a> {
         None
     }
 
-    // Parse pretty printing information from the arguments. The implementer can
-    // choose to ignore this (the default will return None) which will skip pretty
-    // printing. If you do want to pretty print, it is recommended to use the
-    // implementation of this method from RustcDefaultCalls.
-    // FIXME, this is a terrible bit of API. Parsing of pretty printing stuff
-    // should be done as part of the framework and the implementor should customise
-    // handling of it. However, that is not possible atm because pretty printing
-    // essentially goes off and takes another path through the compiler which
-    // means the session is either moved or not depending on what parse_pretty
-    // returns (we could fix this by cloning, but it's another hack). The proper
-    // solution is to handle pretty printing as if it were a compiler extension,
-    // extending CompileController to make this work (see for example the treatment
-    // of save-analysis in RustcDefaultCalls::build_controller).
-    fn parse_pretty(&mut self,
-                    _sess: &Session,
-                    _matches: &getopts::Matches)
-                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-        None
-    }
-
     // Create a CompilController struct for controlling the behaviour of
     // compilation.
-    fn build_controller(&mut self, &Session) -> CompileController<'a>;
+    fn build_controller(&mut self, &Session, &getopts::Matches) -> CompileController<'a>;
 }
 
 // CompilerCalls instance for a regular rustc build.
@@ -441,28 +436,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         None
     }
 
-    fn parse_pretty(&mut self,
-                    sess: &Session,
-                    matches: &getopts::Matches)
-                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-        let pretty = if sess.opts.debugging_opts.unstable_options {
-            matches.opt_default("pretty", "normal").map(|a| {
-                // stable pretty-print variants only
-                pretty::parse_pretty(sess, &a, false)
-            })
-        } else {
-            None
-        };
-        if pretty.is_none() && sess.unstable_options() {
-            matches.opt_str("unpretty").map(|a| {
-                // extended with unstable pretty-print variants
-                pretty::parse_pretty(sess, &a, true)
-            })
-        } else {
-            pretty
-        }
-    }
-
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
@@ -474,8 +447,21 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
-    fn build_controller(&mut self, sess: &Session) -> CompileController<'a> {
+    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
         let mut control = CompileController::basic();
+
+        if let Some((ppm, opt_uii)) = parse_pretty(&sess, &matches) {
+            control.after_parse.stop = Compilation::Stop;
+            control.after_parse.callback = box move |state| {
+                pretty::pretty_print_input(state.session,
+                                           state.cstore.unwrap(),
+                                           state.input,
+                                           state.krate.take().unwrap(),
+                                           ppm,
+                                           opt_uii.clone(),
+                                           state.out_file);
+            };
+        }
 
         if sess.opts.parse_only || sess.opts.debugging_opts.show_span.is_some() ||
            sess.opts.debugging_opts.ast_json_noexpand {
@@ -498,7 +484,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_analysis.callback = box |state| {
                 time(state.session.time_passes(), "save analysis", || {
                     save::process_crate(state.tcx.unwrap(),
-                                        state.krate.unwrap(),
+                                        state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
                                         state.out_dir,

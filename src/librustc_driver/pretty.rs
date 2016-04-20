@@ -49,7 +49,7 @@ use std::fs::File;
 use std::io::{self, Write};
 use std::iter;
 use std::option;
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 
 use rustc::hir::map as hir_map;
@@ -702,13 +702,11 @@ impl fold::Folder for ReplaceBodyWithLoop {
 
 pub fn pretty_print_input(sess: &Session,
                           cstore: &CStore,
-                          cfg: ast::CrateConfig,
                           input: &Input,
+                          krate: ast::Crate,
                           ppm: PpMode,
                           opt_uii: Option<UserIdentifiedItem>,
-                          ofile: Option<PathBuf>) {
-    let krate = panictry!(driver::phase_1_parse_input(sess, cfg, input));
-
+                          ofile: Option<&Path>) {
     let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
         let mut fold = ReplaceBodyWithLoop::new();
         fold.fold_crate(krate)
@@ -922,7 +920,7 @@ pub fn pretty_print_input(sess: &Session,
     match ofile {
         None => print!("{}", String::from_utf8(out).unwrap()),
         Some(p) => {
-            match File::create(&p) {
+            match File::create(p) {
                 Ok(mut w) => w.write_all(&out).unwrap(),
                 Err(e) => panic!("print-print failed to open {} due to {}", p.display(), e),
             }
