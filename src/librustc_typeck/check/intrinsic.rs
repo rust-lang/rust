@@ -61,10 +61,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: &TyCtxt<'tcx>, it: &hir::ForeignItem,
                            it.span,
                            i_ty.ty,
                            fty,
-                           || {
-                format!("intrinsic has wrong type: expected `{}`",
-                         fty)
-            });
+                           "intrinsic has wrong type");
     }
 }
 

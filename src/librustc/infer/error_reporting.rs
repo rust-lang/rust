@@ -249,12 +249,12 @@ pub trait ErrorReporting<'tcx> {
                                      terr: &TypeError<'tcx>)
                                      -> DiagnosticBuilder<'tcx>;
 
-    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String>;
+    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<(String, String)>;
 
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + TypeFoldable<'tcx>>(
         &self,
         exp_found: &ty::error::ExpectedFound<T>)
-        -> Option<String>;
+        -> Option<(String, String)>;
 
     fn report_concrete_failure(&self,
                                origin: SubregionOrigin<'tcx>,
@@ -535,7 +535,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                          trace: TypeTrace<'tcx>,
                          terr: &TypeError<'tcx>)
                          -> DiagnosticBuilder<'tcx> {
-        let expected_found_str = match self.values_str(&trace.values) {
+        let (expected, found) = match self.values_str(&trace.values) {
             Some(v) => v,
             None => {
                 return self.tcx.sess.diagnostic().struct_dummy(); /* derived error */
@@ -548,18 +548,17 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             false
         };
 
-        let expected_found_str = if is_simple_error {
-            expected_found_str
-        } else {
-            format!("{} ({})", expected_found_str, terr)
-        };
-
         let mut err = struct_span_err!(self.tcx.sess,
                                        trace.origin.span(),
                                        E0308,
-                                       "{}: {}",
-                                       trace.origin,
-                                       expected_found_str);
+                                       "{}",
+                                       trace.origin);
+
+        if !is_simple_error {
+            err = err.note_expected_found(&"type", &expected, &found);
+        }
+
+        err = err.span_label(trace.origin.span(), &terr);
 
         self.check_and_note_conflicting_crates(&mut err, terr, trace.origin.span());
 
@@ -574,6 +573,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             },
             _ => ()
         }
+
         err
     }
 
@@ -631,7 +631,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
     /// Returns a string of the form "expected `{}`, found `{}`", or None if this is a derived
     /// error.
-    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<String> {
+    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<(String, String)> {
         match *values {
             infer::Types(ref exp_found) => self.expected_found_str(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
@@ -642,7 +642,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     fn expected_found_str<T: fmt::Display + Resolvable<'tcx> + TypeFoldable<'tcx>>(
         &self,
         exp_found: &ty::error::ExpectedFound<T>)
-        -> Option<String>
+        -> Option<(String, String)>
     {
         let expected = exp_found.expected.resolve(self);
         if expected.references_error() {
@@ -654,9 +654,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             return None;
         }
 
-        Some(format!("expected `{}`, found `{}`",
-                     expected,
-                     found))
+        Some((format!("{}", expected), format!("{}", found)))
     }
 
     fn report_generic_bound_failure(&self,
@@ -1751,11 +1749,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                 };
 
                 match self.values_str(&trace.values) {
-                    Some(values_str) => {
+                    Some((expected, found)) => {
                         err.span_note(
                             trace.origin.span(),
-                            &format!("...so that {} ({})",
-                                    desc, values_str));
+                            &format!("...so that {} (expected {}, found {})",
+                                    desc, expected, found));
                     }
                     None => {
                         // Really should avoid printing this error at

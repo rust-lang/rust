@@ -185,15 +185,14 @@ fn require_c_abi_if_variadic(tcx: &TyCtxt,
     }
 }
 
-fn require_same_types<'a, 'tcx, M>(tcx: &TyCtxt<'tcx>,
-                                   maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
-                                   t1_is_expected: bool,
-                                   span: Span,
-                                   t1: Ty<'tcx>,
-                                   t2: Ty<'tcx>,
-                                   msg: M)
-                                   -> bool where
-    M: FnOnce() -> String,
+fn require_same_types<'a, 'tcx>(tcx: &TyCtxt<'tcx>,
+                                maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
+                                t1_is_expected: bool,
+                                span: Span,
+                                t1: Ty<'tcx>,
+                                t2: Ty<'tcx>,
+                                msg: &str)
+                                -> bool
 {
     let result = match maybe_infcx {
         None => {
@@ -208,7 +207,17 @@ fn require_same_types<'a, 'tcx, M>(tcx: &TyCtxt<'tcx>,
     match result {
         Ok(_) => true,
         Err(ref terr) => {
-            let mut err = struct_span_err!(tcx.sess, span, E0211, "{}: {}", msg(), terr);
+            let mut err = struct_span_err!(tcx.sess, span, E0211, "{}", msg);
+            err = err.span_label(span, &terr);
+            let (mut expected_ty, mut found_ty) =
+                if t1_is_expected {(t1, t2)} else {(t2, t1)};
+            if let Some(infcx) = maybe_infcx {
+                expected_ty = infcx.resolve_type_vars_if_possible(&expected_ty);
+                found_ty = infcx.resolve_type_vars_if_possible(&found_ty);
+            }
+            err = err.note_expected_found(&"type",
+                                          &expected_ty,
+                                          &found_ty);
             tcx.note_and_explain_type_err(&mut err, terr, span);
             err.emit();
             false
@@ -250,10 +259,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             });
 
             require_same_types(tcx, None, false, main_span, main_t, se_ty,
-                || {
-                    format!("main function expects type: `{}`",
-                             se_ty)
-                });
+                               "main function has wrong type");
         }
         _ => {
             span_bug!(main_span,
@@ -301,11 +307,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             });
 
             require_same_types(tcx, None, false, start_span, start_t, se_ty,
-                || {
-                    format!("start function expects type: `{}`",
-                             se_ty)
-                });
-
+                               "start function has wrong type");
         }
         _ => {
             span_bug!(start_span,
