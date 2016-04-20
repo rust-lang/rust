@@ -216,6 +216,13 @@ impl<T> From<T> for T {
     fn from(t: T) -> T { t }
 }
 
+// A (the) value of the unit type can be created from any value of any type.
+// This is useful for use with the `try!` macro or the `?` operator.
+#[stable(feature = "unit_from_anything", since = "1.10.0")]
+impl<T> From<T> for () {
+    fn from(t: T) -> () {}
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // CONCRETE IMPLS
 ////////////////////////////////////////////////////////////////////////////////
