@@ -535,9 +535,6 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
-        // FIXME #21627 disable faulty FastISel on AArch64 (even for -O0)
-        if sess.target.target.arch == "aarch64" { add("-fast-isel=0"); }
-
         for arg in &sess.opts.cg.llvm_args {
             add(&(*arg));
         }
