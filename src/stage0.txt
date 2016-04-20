@@ -1,0 +1,17 @@
+# This file describes the stage0 compiler that's used to then bootstrap the Rust
+# compiler itself. For the rustbuild build system, this also describes the
+# relevant Cargo revision that we're using.
+#
+# Currently Rust always bootstrap from the previous stable release, and in our
+# train model this means that the master branch bootstraps from beta, beta
+# bootstraps from current stable, and stable bootstraps from the previous stable
+# release.
+#
+# If you're looking at this file on the master branch, you'll likely see that
+# rustc bootstraps from `beta-$date`, whereas if you're looking at a source
+# tarball for a stable release you'll likely see `1.x.0-$date` where `1.x.0` was
+# released on `$date`
+
+rustc: beta-2016-04-13
+rustc_key: c2743eb4
+cargo: nightly-2016-04-10

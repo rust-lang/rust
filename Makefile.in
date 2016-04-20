@@ -214,13 +214,6 @@ include $(CFG_SRC_DIR)mk/debuggers.mk
 # Secondary makefiles, conditionalized for speed
 ######################################################################
 
-# Binary snapshots
-ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))   \
-               $(findstring clean,$(MAKECMDGOALS))),)
-  CFG_INFO := $(info cfg: including snap rules)
-  include $(CFG_SRC_DIR)mk/snap.mk
-endif
-
 # The test suite
 ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring test,$(MAKECMDGOALS))  \
