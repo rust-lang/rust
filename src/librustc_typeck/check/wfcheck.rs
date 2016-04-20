@@ -501,8 +501,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
             Some(def_id) => {
-                err.fileline_help(
-                    span,
+                err.help(
                     &format!("consider removing `{}` or using a marker such as `{}`",
                              param_name,
                              self.tcx().item_path_str(def_id)));
