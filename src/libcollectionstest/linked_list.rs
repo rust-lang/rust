@@ -429,3 +429,16 @@ fn bench_iter_mut_rev(b: &mut test::Bencher) {
         assert!(m.iter_mut().rev().count() == 128);
     })
 }
+
+#[test]
+fn test_contains() {
+    let mut l = LinkedList::new();
+    l.extend(&[2, 3, 4]);
+
+    assert!(l.contains(&3));
+    assert!(!l.contains(&1));
+
+    l.clear();
+
+    assert!(!l.contains(&3));
+}
