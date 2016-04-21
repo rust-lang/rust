@@ -1092,6 +1092,15 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
 
+#[doc(hidden)]
+unsafe impl<I> TrustedRandomAccess for Enumerate<I>
+    where I: TrustedRandomAccess
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> (usize, I::Item) {
+        (self.count + i, self.iter.get_unchecked(i))
+    }
+}
+
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
 ///
