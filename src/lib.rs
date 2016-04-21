@@ -79,6 +79,7 @@ pub mod lifetimes;
 pub mod loops;
 pub mod map_clone;
 pub mod matches;
+pub mod mem_forget;
 pub mod methods;
 pub mod minmax;
 pub mod misc;
@@ -236,6 +237,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_late_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
+    reg.register_late_lint_pass(box mem_forget::MemForget);
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
@@ -243,6 +245,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         enum_glob_use::ENUM_GLOB_USE,
         if_not_else::IF_NOT_ELSE,
         matches::SINGLE_MATCH_ELSE,
+        mem_forget::MEM_FORGET,
         methods::OPTION_UNWRAP_USED,
         methods::RESULT_UNWRAP_USED,
         methods::WRONG_PUB_SELF_CONVENTION,
