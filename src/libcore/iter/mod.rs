@@ -785,6 +785,17 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 impl<A, B> ExactSizeIterator for Zip<A, B>
     where A: ExactSizeIterator, B: ExactSizeIterator {}
 
+#[doc(hidden)]
+unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
+    where A: TrustedRandomAccess,
+          B: TrustedRandomAccess,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> (A::Item, B::Item) {
+        (self.a.get_unchecked(i), self.b.get_unchecked(i))
+    }
+
+}
+
 /// An iterator that maps the values of `iter` with `f`.
 ///
 /// This `struct` is created by the [`map()`] method on [`Iterator`]. See its
