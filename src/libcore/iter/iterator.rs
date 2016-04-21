@@ -23,6 +23,7 @@ use super::{Chain, Cycle, Cloned, Enumerate, Filter, FilterMap, FlatMap, Fuse,
 use super::ChainState;
 use super::{DoubleEndedIterator, ExactSizeIterator, Extend, FromIterator,
             IntoIterator};
+use super::ZipImpl;
 
 fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 
@@ -383,7 +384,7 @@ pub trait Iterator {
     fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter> where
         Self: Sized, U: IntoIterator
     {
-        Zip{a: self, b: other.into_iter()}
+        Zip::new(self, other.into_iter())
     }
 
     /// Takes a closure and creates an iterator which calls that closure on each
