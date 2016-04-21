@@ -302,6 +302,7 @@
 use clone::Clone;
 use cmp;
 use fmt;
+use iter_private::TrustedRandomAccess;
 use ops::FnMut;
 use option::Option::{self, Some, None};
 use usize;
@@ -622,7 +623,9 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Zip<A, B> {
     a: A,
-    b: B
+    b: B,
+    index: usize,
+    len: usize,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -631,7 +634,56 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     type Item = (A::Item, B::Item);
 
     #[inline]
-    fn next(&mut self) -> Option<(A::Item, B::Item)> {
+    fn next(&mut self) -> Option<Self::Item> {
+        ZipImpl::next(self)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        ZipImpl::size_hint(self)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A, B> DoubleEndedIterator for Zip<A, B> where
+    A: DoubleEndedIterator + ExactSizeIterator,
+    B: DoubleEndedIterator + ExactSizeIterator,
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
+        ZipImpl::next_back(self)
+    }
+}
+
+// Zip specialization trait
+#[doc(hidden)]
+trait ZipImpl<A, B> {
+    type Item;
+    fn new(a: A, b: B) -> Self;
+    fn next(&mut self) -> Option<Self::Item>;
+    fn size_hint(&self) -> (usize, Option<usize>);
+    fn next_back(&mut self) -> Option<Self::Item>
+        where A: DoubleEndedIterator + ExactSizeIterator,
+              B: DoubleEndedIterator + ExactSizeIterator;
+}
+
+// General Zip impl
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+    where A: Iterator, B: Iterator
+{
+    type Item = (A::Item, B::Item);
+    default fn new(a: A, b: B) -> Self {
+        Zip {
+            a: a,
+            b: b,
+            index: 0, // not used in general case
+            len: 0,
+        }
+    }
+
+    #[inline]
+    default fn next(&mut self) -> Option<(A::Item, B::Item)> {
         self.a.next().and_then(|x| {
             self.b.next().and_then(|y| {
                 Some((x, y))
@@ -640,7 +692,29 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
+    default fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+        where A: DoubleEndedIterator + ExactSizeIterator,
+              B: DoubleEndedIterator + ExactSizeIterator
+    {
+        let a_sz = self.a.len();
+        let b_sz = self.b.len();
+        if a_sz != b_sz {
+            // Adjust a, b to equal length
+            if a_sz > b_sz {
+                for _ in 0..a_sz - b_sz { self.a.next_back(); }
+            } else {
+                for _ in 0..b_sz - a_sz { self.b.next_back(); }
+            }
+        }
+        match (self.a.next_back(), self.b.next_back()) {
+            (Some(x), Some(y)) => Some((x, y)),
+            (None, None) => None,
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    default fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
@@ -657,27 +731,52 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B> DoubleEndedIterator for Zip<A, B> where
-    A: DoubleEndedIterator + ExactSizeIterator,
-    B: DoubleEndedIterator + ExactSizeIterator,
+#[doc(hidden)]
+impl<A, B> ZipImpl<A, B> for Zip<A, B>
+    where A: TrustedRandomAccess, B: TrustedRandomAccess
 {
-    #[inline]
-    fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
-        let a_sz = self.a.len();
-        let b_sz = self.b.len();
-        if a_sz != b_sz {
-            // Adjust a, b to equal length
-            if a_sz > b_sz {
-                for _ in 0..a_sz - b_sz { self.a.next_back(); }
-            } else {
-                for _ in 0..b_sz - a_sz { self.b.next_back(); }
-            }
+    fn new(a: A, b: B) -> Self {
+        let len = cmp::min(a.len(), b.len());
+        Zip {
+            a: a,
+            b: b,
+            index: 0,
+            len: len,
         }
-        match (self.a.next_back(), self.b.next_back()) {
-            (Some(x), Some(y)) => Some((x, y)),
-            (None, None) => None,
-            _ => unreachable!(),
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<(A::Item, B::Item)> {
+        if self.index < self.len {
+            let i = self.index;
+            self.index += 1;
+            unsafe {
+                Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
+            }
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len - self.index;
+        (len, Some(len))
+    }
+
+    #[inline]
+    fn next_back(&mut self) -> Option<(A::Item, B::Item)>
+        where A: DoubleEndedIterator + ExactSizeIterator,
+              B: DoubleEndedIterator + ExactSizeIterator
+    {
+        if self.index < self.len {
+            self.len -= 1;
+            let i = self.len;
+            unsafe {
+                Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
+            }
+        } else {
+            None
         }
     }
 }
