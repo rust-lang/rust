@@ -18,6 +18,7 @@
 extern crate cgu_extern_drop_glue;
 
 //~ TRANS_ITEM drop-glue cgu_extern_drop_glue::Struct[0] @@ extern_drop_glue[OnceODR] extern_drop_glue-mod1[OnceODR]
+//~ TRANS_ITEM drop-glue-contents cgu_extern_drop_glue::Struct[0] @@ extern_drop_glue[OnceODR] extern_drop_glue-mod1[OnceODR]
 
 struct LocalStruct(cgu_extern_drop_glue::Struct);
 
@@ -40,4 +41,3 @@ mod mod1 {
         let _ = LocalStruct(cgu_extern_drop_glue::Struct(0));
     }
 }
-

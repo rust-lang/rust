@@ -304,7 +304,7 @@ fn characteristic_def_id_of_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
 
             Some(instance.def)
         }
-        TransItem::DropGlue(t) => characteristic_def_id_of_type(t),
+        TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
         TransItem::Static(node_id) => Some(tcx.map.local_def_id(node_id)),
     }
 }
