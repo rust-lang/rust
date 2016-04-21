@@ -6,8 +6,8 @@
 # Summary
 [summary]: #summary
 
-Add a new crate type accepted by the compiler, called `rdylib`, which
-corresponds to the behavior of `-C prefer-dynamic` plus `--crate-type dylib`.
+Add a new crate type accepted by the compiler, called `cdylib`, which
+corresponds to exporting a C interface from a Rust dynamic library.
 
 # Motivation
 [motivation]: #motivation
@@ -51,12 +51,13 @@ represent the more rarely used form of dynamic library (rdylibs).
 # Detailed design
 [design]: #detailed-design
 
-A new crate type will be accepted by the compiler, `rdylib`, which can be passed
-as either `--crate-type rdylib` on the command line or via `#![crate_type =
-"rdylib"]` in crate attributes. This crate type will conceptually correspond to
-the rdylib use case described above, and today's `dylib` crate-type will
-correspond to the cdylib use case above. Note that the literal output artifacts
-of these two crate types (files, file names, etc) will be the same.
+A new crate type will be accepted by the compiler, `cdylib`, which can be passed
+as either `--crate-type cdylib` on the command line or via `#![crate_type =
+"cdylib"]` in crate attributes. This crate type will conceptually correspond to
+the cdylib use case described above, and today's `dylib` crate-type will
+continue to correspond to the rdylib use case above. Note that the literal
+output artifacts of these two crate types (files, file names, etc) will be the
+same.
 
 The two formats will differ in the parts listed in the motivation above,
 specifically:
@@ -74,42 +75,6 @@ specifically:
   example the standard library will be linked dynamically by default. On the
   other hand, cdylibs will link all Rust dependencies statically by default.
 
-As is evidenced from many of these changes, however, the reinterpretation of the
-`dylib` output format from what it is today is a breaking change. For example
-metadata will not be present and symbols will be hidden. As a result, this RFC
-has a...
-
-### Transition Plan
-
-This RFC is technically a breaking change, but it is expected to not actually
-break many work flows in practice because there is only one known user of
-rdylibs, the compiler itself. This notably means that plugins will also need to
-be compiled differently, but because they are nightly-only we've got some more
-leeway around them.
-
-All other known users of the `dylib` output crate type fall into the cdylib use
-case. The "breakage" here would mean:
-
-* The metadata section no longer exists. In almost all cases this just means
-  that the output artifacts will get smaller if it isn't present, it's expected
-  that no one other than the compiler itself is actually consuming this
-  information.
-* Rust symbols will be hidden by default. The symbols, however, have
-  unpredictable hashes so there's not really any way they can be meaningfully
-  leveraged today.
-
-Given that background, it's expected that if there's a smooth migration path for
-plugins and the compiler then the "breakage" here won't actually appear in
-practice. The proposed implementation strategy and migration path is:
-
-1. Implement the `rdylib` output type as proposed in this RFC.
-2. Change Cargo to use `--crate-type rdylib` when compiling plugins instead of
-   `--crate-type dylib` + `-C prefer-dynamic`.
-3. Implement the changes to the `dylib` output format as proposed in this RFC.
-
-So long as the steps are spaced apart by a few days it should be the case that
-no nightly builds break if they're always using an up-to-date nightly compiler.
-
 # Drawbacks
 [drawbacks]: #drawbacks
 
@@ -118,35 +83,19 @@ ephemeral. This RFC is an extension of this model, but it's difficult to reason
 about extending that which is not well defined. As a result there could be
 unforseen interactions between this output format and where it's used.
 
-As usual, of course, proposing a breaking change is indeed a drawback. It is
-expected that RFC doesn't break anything in practice, but that'd be difficult to
-gauge until it's implemented.
-
 # Alternatives
 [alternatives]: #alternatives
 
-* Instead of reinterpreting the `dylib` output format as a cdylib, we could
-  continue interpreting it as an rdylib and add a new dedicated `cdylib` output
-  format. This would not be a breaking change, but it doesn't come without its
-  drawbacks. As the most common output type, many projects would have to switch
-  to `cdylib` from `dylib`, meaning that they no longer support older Rust
-  compilers. This may also take time to propagate throughout the community. It's
-  also arguably a "better name", so this RFC proposes an
-  in-practice-not-a-breaking-change by adding a worse name of `rdylib` for the
-  less used output format.
-
-* The compiler could have a longer transition period where `-C prefer-dynamic`
-  plus `--crate-type dylib` is interpreted as an rdylib. Either that or the
-  implementation strategy here could be extended by a release or two to let
-  changes time to propagate throughout the ecosystem.
+* Originally this RFC proposed adding a new crate type, `rdylib`, instead of
+  adding a new crate type, `cdylib`. The existing `dylib` output type would be
+  reinterpreted as a cdylib use-case. This is unfortunately, however, a breaking
+  change and requires a somewhat complicated transition plan in Cargo for
+  plugins. In the end it didn't seem worth it for the benefit of "cdylib is
+  probably what you want".
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* This RFC is currently founded upon the assumption that rdylibs are very rarely
-  used in the ecosystem. An audit has not been performed to determine whether
-  this is true or not, but is this actually the case?
-
-* Should the new `rdylib` format be considered unstable? (should it require a
-  nightly compiler?). The use case for a Rust dynamic library is so limited, and
-  so volatile, we may want to just gate access to it by default.
+* Should the existing `dylib` format be considered unstable? (should it require
+  a nightly compiler?). The use case for a Rust dynamic library is so limited,
+  and so volatile, we may want to just gate access to it by default.
