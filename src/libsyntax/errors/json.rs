@@ -294,7 +294,6 @@ impl DiagnosticSpan {
 
     fn from_render_span(rsp: &RenderSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
         match *rsp {
-            RenderSpan::FileLine(ref msp) |
             RenderSpan::FullSpan(ref msp) =>
                 DiagnosticSpan::from_multispan(msp, je),
             RenderSpan::Suggestion(ref suggestion) =>
@@ -356,7 +355,6 @@ impl DiagnosticCode {
 impl JsonEmitter {
     fn render(&self, render_span: &RenderSpan) -> Option<String> {
         match *render_span {
-            RenderSpan::FileLine(_) |
             RenderSpan::FullSpan(_) => {
                 None
             }

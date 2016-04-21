@@ -24,6 +24,8 @@ use std::io;
 use std::rc::Rc;
 use term;
 
+/// Emitter trait for emitting errors. Do not implement this directly:
+/// implement `CoreEmitter` instead.
 pub trait Emitter {
     /// Emit a standalone diagnostic message.
     fn emit(&mut self, span: &MultiSpan, msg: &str, code: Option<&str>, lvl: Level);
@@ -32,27 +34,44 @@ pub trait Emitter {
     fn emit_struct(&mut self, db: &DiagnosticBuilder);
 }
 
-/// A core trait that can only handle very simple messages: those
-/// without spans or any real structure. Used only in specific contexts.
-pub trait RudimentaryEmitter {
-    fn emit_rudimentary(&mut self, msg: &str, code: Option<&str>, lvl: Level);
+pub trait CoreEmitter {
+    fn emit_message(&mut self,
+                    rsp: &RenderSpan,
+                    msg: &str,
+                    code: Option<&str>,
+                    lvl: Level,
+                    is_header: bool);
 }
 
-impl<T: RudimentaryEmitter> Emitter for T {
+impl<T: CoreEmitter> Emitter for T {
     fn emit(&mut self,
             msp: &MultiSpan,
             msg: &str,
             code: Option<&str>,
             lvl: Level) {
-        assert!(msp.primary_span().is_none(), "Rudimenatry emitters can't handle spans");
-        self.emit_rudimentary(msg, code, lvl);
+        self.emit_message(&FullSpan(msp.clone()),
+                          msg,
+                          code,
+                          lvl,
+                          true);
     }
 
     fn emit_struct(&mut self, db: &DiagnosticBuilder) {
-        self.emit(&db.span, &db.message, db.code.as_ref().map(|s| &**s), db.level);
+        self.emit_message(&FullSpan(db.span.clone()),
+                          &db.message,
+                          db.code.as_ref().map(|s| &**s),
+                          db.level,
+                          true);
         for child in &db.children {
-            assert!(child.render_span.is_none(), "Rudimentary emitters can't handle render spans");
-            self.emit(&child.span, &child.message, None, child.level);
+            let render_span = child.render_span
+                                   .clone()
+                                   .unwrap_or_else(
+                                       || FullSpan(child.span.clone()));
+            self.emit_message(&render_span,
+                              &child.message,
+                              None,
+                              child.level,
+                              false);
         }
     }
 }
@@ -83,11 +102,14 @@ pub struct BasicEmitter {
     dst: Destination,
 }
 
-impl RudimentaryEmitter for BasicEmitter {
-    fn emit_rudimentary(&mut self,
-                        msg: &str,
-                        code: Option<&str>,
-                        lvl: Level) {
+impl CoreEmitter for BasicEmitter {
+    fn emit_message(&mut self,
+                    _rsp: &RenderSpan,
+                    msg: &str,
+                    code: Option<&str>,
+                    lvl: Level,
+                    _is_header: bool) {
+        // we ignore the span as we have no access to a codemap at this point
         if let Err(e) = print_diagnostic(&mut self.dst, "", lvl, msg, code) {
             panic!("failed to print diagnostics: {:?}", e);
         }
@@ -112,28 +134,16 @@ pub struct EmitterWriter {
     first: bool,
 }
 
-impl Emitter for EmitterWriter {
-    fn emit(&mut self,
-            msp: &MultiSpan,
-            msg: &str,
-            code: Option<&str>,
-            lvl: Level) {
-        self.emit_multispan(msp, msg, code, lvl, true);
-    }
-
-    fn emit_struct(&mut self, db: &DiagnosticBuilder) {
-        self.emit_multispan(&db.span, &db.message,
-            db.code.as_ref().map(|s| &**s), db.level, true);
-
-        for child in &db.children {
-            match child.render_span {
-                Some(ref sp) =>
-                    self.emit_renderspan(sp, &child.message,
-                        child.level),
-                None =>
-                    self.emit_multispan(&child.span,
-                        &child.message, None, child.level, false),
-            }
+impl CoreEmitter for EmitterWriter {
+    fn emit_message(&mut self,
+                    rsp: &RenderSpan,
+                    msg: &str,
+                    code: Option<&str>,
+                    lvl: Level,
+                    is_header: bool) {
+        match self.emit_message_(rsp, msg, code, lvl, is_header) {
+            Ok(()) => { }
+            Err(e) => panic!("failed to emit error: {}", e)
         }
     }
 }
@@ -173,82 +183,55 @@ impl EmitterWriter {
         EmitterWriter { dst: Raw(dst), registry: registry, cm: code_map, first: true }
     }
 
-    fn emit_multispan(&mut self,
-                      span: &MultiSpan,
-                      msg: &str,
-                      code: Option<&str>,
-                      lvl: Level,
-                      is_header: bool) {
+    fn emit_message_(&mut self,
+                     rsp: &RenderSpan,
+                     msg: &str,
+                     code: Option<&str>,
+                     lvl: Level,
+                     is_header: bool)
+                     -> io::Result<()> {
         if is_header {
             if self.first {
                 self.first = false;
             } else {
-                match write!(self.dst, "\n") {
-                    Ok(_) => { }
-                    Err(e) => {
-                        panic!("failed to print diagnostics: {:?}", e)
-                    }
-                }
+                write!(self.dst, "\n")?;
             }
         }
-
-        let error = match span.primary_span() {
-            Some(COMMAND_LINE_SP) => {
-                self.emit_(&FileLine(span.clone()), msg, code, lvl)
-            }
-            Some(DUMMY_SP) | None => {
-                print_diagnostic(&mut self.dst, "", lvl, msg, code)
-            }
-            Some(_) => {
-                self.emit_(&FullSpan(span.clone()), msg, code, lvl)
-            }
-        };
-
-        if let Err(e) = error {
-            panic!("failed to print diagnostics: {:?}", e);
-        }
-    }
-
-    fn emit_renderspan(&mut self, sp: &RenderSpan, msg: &str, lvl: Level) {
-        if let Err(e) = self.emit_(sp, msg, None, lvl) {
-            panic!("failed to print diagnostics: {:?}", e);
-        }
-    }
-
-    fn emit_(&mut self,
-             rsp: &RenderSpan,
-             msg: &str,
-             code: Option<&str>,
-             lvl: Level)
-             -> io::Result<()> {
-        let msp = rsp.span();
-        let primary_span = msp.primary_span();
 
         match code {
             Some(code) if self.registry.as_ref()
-                          .and_then(|registry| registry.find_description(code)).is_some() =>
-            {
+                                       .and_then(|registry| registry.find_description(code))
+                                       .is_some() => {
                 let code_with_explain = String::from("--explain ") + code;
                 print_diagnostic(&mut self.dst, "", lvl, msg, Some(&code_with_explain))?
             }
-            _ => print_diagnostic(&mut self.dst, "", lvl, msg, code)?
+            _ => {
+                print_diagnostic(&mut self.dst, "", lvl, msg, code)?
+            }
         }
 
+        // Watch out for various nasty special spans; don't try to
+        // print any filename or anything for those.
+        match rsp.span().primary_span() {
+            Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => {
+                return Ok(());
+            }
+            _ => { }
+        }
+
+        // Otherwise, print out the snippet etc as needed.
         match *rsp {
-            FullSpan(_) => {
+            FullSpan(ref msp) => {
                 self.highlight_lines(msp, lvl)?;
-                if let Some(primary_span) = primary_span {
+                if let Some(primary_span) = msp.primary_span() {
                     self.print_macro_backtrace(primary_span)?;
                 }
             }
             Suggestion(ref suggestion) => {
                 self.highlight_suggestion(suggestion)?;
-                if let Some(primary_span) = primary_span {
+                if let Some(primary_span) = rsp.span().primary_span() {
                     self.print_macro_backtrace(primary_span)?;
                 }
-            }
-            FileLine(..) => {
-                // no source text in this case!
             }
         }
 
