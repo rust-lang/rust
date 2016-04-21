@@ -106,8 +106,11 @@ pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
 
-    /// This is the trait reference from the given projection
+    /// A slice or array is WF only if `T: Sized`
     SliceOrArrayElem,
+
+    /// A tuple is WF only if its middle elements are Sized
+    TupleElem,
 
     /// This is the trait reference from the given projection
     ProjectionWf(ty::ProjectionTy<'tcx>),
