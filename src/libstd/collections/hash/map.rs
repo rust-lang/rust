@@ -1533,6 +1533,18 @@ impl<'a, K, V> Entry<'a, K, V> {
             Vacant(entry) => entry.insert(default()),
         }
     }
+
+    /// Like `or_insert_with`, but doesn't insert anything if the default function
+    /// fails with an `Err` result.
+    #[unstable(feature = "map_entry_insert_with_result", issue = "33126")]
+    pub fn or_insert_with_result<E, F>(self, default: F) -> Result<&'a mut V, E>
+        where F: FnOnce() -> Result<V, E>
+    {
+        match self {
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => Ok(entry.insert(try!(default()))),
+        }
+    }
 }
 
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
@@ -2430,6 +2442,16 @@ mod test_map {
         }
         assert_eq!(map.get(&10).unwrap(), &1000);
         assert_eq!(map.len(), 6);
+
+        // or_insert_with family
+        assert_eq!(map.entry(10).or_insert_with(|| 100), &1000);
+        assert_eq!(map.len(), 6);
+        assert_eq!(map.entry(20).or_insert_with(|| 200), &200);
+        assert_eq!(map.len(), 7);
+        assert_eq!(map.entry(30).or_insert_with_result(|| Ok::<_, &str>(300)), Ok(&mut 300));
+        assert_eq!(map.len(), 8);
+        assert_eq!(map.entry(31).or_insert_with_result(|| Err("nope")), Err("nope"));
+        assert_eq!(map.len(), 8);
     }
 
     #[test]
