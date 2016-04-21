@@ -58,7 +58,7 @@ use attributes;
 use build::*;
 use builder::{Builder, noname};
 use callee::{Callee, CallArgs, ArgExprs, ArgVals};
-use partitioning;
+use partitioning::{self, PartitioningStrategy};
 use cleanup::{self, CleanupMethods, DropHint};
 use closure;
 use common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
@@ -2938,8 +2938,17 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
         collector::collect_crate_translation_items(&ccx, collection_mode)
     });
 
+    let strategy = if ccx.sess().opts.debugging_opts.incremental.is_some() {
+        PartitioningStrategy::PerModule
+    } else {
+        PartitioningStrategy::FixedUnitCount(ccx.sess().opts.cg.codegen_units)
+    };
+
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
-        partitioning::partition(ccx.tcx(), items.iter().cloned(), &inlining_map)
+        partitioning::partition(ccx.tcx(),
+                                items.iter().cloned(),
+                                strategy,
+                                &inlining_map)
     });
 
     if ccx.sess().opts.debugging_opts.print_trans_items.is_some() {

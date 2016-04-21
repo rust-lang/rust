@@ -132,11 +132,17 @@ pub struct CodegenUnit<'tcx> {
     pub items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
 }
 
+pub enum PartitioningStrategy {
+    PerModule,
+    FixedUnitCount(usize)
+}
+
 // Anything we can't find a proper codegen unit for goes into this.
 const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
 pub fn partition<'tcx, I>(tcx: &TyCtxt<'tcx>,
                           trans_items: I,
+                          strategy: PartitioningStrategy,
                           inlining_map: &InliningMap<'tcx>)
                           -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
@@ -144,7 +150,11 @@ pub fn partition<'tcx, I>(tcx: &TyCtxt<'tcx>,
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
-    let initial_partitioning = place_root_translation_items(tcx, trans_items);
+    let mut initial_partitioning = place_root_translation_items(tcx, trans_items);
+
+    if let PartitioningStrategy::FixedUnitCount(count) = strategy {
+        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name[..]);
+    }
 
     // In the next step, we use the inlining map to determine which addtional
     // translation items have to go into each codegen unit. These additional
@@ -214,6 +224,33 @@ fn place_root_translation_items<'tcx, I>(tcx: &TyCtxt<'tcx>,
                                     .map(|(_, codegen_unit)| codegen_unit)
                                     .collect(),
         roots: roots,
+    }
+}
+
+fn merge_codegen_units<'tcx>(initial_partitioning: &mut InitialPartitioning<'tcx>,
+                             target_cgu_count: usize,
+                             crate_name: &str) {
+    if target_cgu_count >= initial_partitioning.codegen_units.len() {
+        return;
+    }
+
+    assert!(target_cgu_count >= 1);
+    let codegen_units = &mut initial_partitioning.codegen_units;
+
+    // Merge the two smallest codegen units until the target size is reached
+    while codegen_units.len() > target_cgu_count {
+        // Sort small cgus to the back
+        codegen_units.as_mut_slice().sort_by_key(|cgu| -(cgu.items.len() as i64));
+        let smallest = codegen_units.pop().unwrap();
+        let second_smallest = codegen_units.last_mut().unwrap();
+
+        for (k, v) in smallest.items.into_iter() {
+            second_smallest.items.insert(k, v);
+        }
+    }
+
+    for (index, cgu) in codegen_units.iter_mut().enumerate() {
+        cgu.name = token::intern_and_get_ident(&format!("{}.{}", crate_name, index)[..]);
     }
 }
 
