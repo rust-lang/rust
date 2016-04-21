@@ -79,5 +79,5 @@ the result of a function call or anything similarly complex or at runtime.
 
 Almost always, if you can choose between the two, choose `const`. It’s pretty
 rare that you actually want a memory location associated with your constant,
-and using a const allows for optimizations like constant propagation not only
+and using a `const` allows for optimizations like constant propagation not only
 in your crate but downstream crates.
