@@ -9,7 +9,7 @@
 // except according to those terms.
 
 const A: [i32; 0] = [];
-const B: i32 = A[1]; //~ ERROR: const index-expr is out of bounds
+const B: i32 = A[1]; //~ ERROR: array index out of bounds
 
 fn main() {
     let _ = B;

@@ -11,8 +11,6 @@
 use llvm::ValueRef;
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use middle::const_val::ConstVal;
-use rustc_const_math::ConstInt;
 use rustc::mir::repr as mir;
 
 use asm;
@@ -100,8 +98,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let tr_elem = self.trans_operand(&bcx, elem);
-                let count = ConstVal::Integral(ConstInt::Usize(count.value));
-                let size = self.trans_constval(&bcx, &count, bcx.tcx().types.usize).immediate();
+                let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
+                let size = C_uint(bcx.ccx(), size);
                 let base = get_dataptr(&bcx, dest.llval);
                 let bcx = bcx.map_block(|block| {
                     tvec::iter_vec_raw(block, base, tr_elem.ty, size, |block, llslot, _| {
@@ -405,7 +403,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             mir::Rvalue::Len(ref lvalue) => {
                 let tr_lvalue = self.trans_lvalue(&bcx, lvalue);
                 let operand = OperandRef {
-                    val: OperandValue::Immediate(self.lvalue_len(&bcx, tr_lvalue)),
+                    val: OperandValue::Immediate(tr_lvalue.len(bcx.ccx())),
                     ty: bcx.tcx().types.usize,
                 };
                 (bcx, operand)

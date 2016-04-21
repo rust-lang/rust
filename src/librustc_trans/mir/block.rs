@@ -114,9 +114,16 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let discr = bcx.with_block(|bcx| base::to_immediate(bcx, discr, switch_ty));
                 let switch = bcx.switch(discr, self.llblock(*otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
-                    let llval = self.trans_constval(&bcx, value, switch_ty).immediate();
+                    let constant = mir::Constant {
+                        literal: mir::Literal::Value {
+                            value: value.clone()
+                        },
+                        ty: switch_ty,
+                        span: terminator.span
+                    };
+                    let val = self.trans_constant(&bcx, &constant).immediate();
                     let llbb = self.llblock(*target);
-                    build::AddCase(switch, llval, llbb)
+                    build::AddCase(switch, val, llbb)
                 }
             }
 
