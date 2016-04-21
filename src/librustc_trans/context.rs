@@ -131,6 +131,9 @@ pub struct LocalCrateContext<'tcx> {
     /// Cache of external const values
     extern_const_values: RefCell<DefIdMap<ValueRef>>,
 
+    /// Mapping from static definitions to their DefId's.
+    statics: RefCell<FnvHashMap<ValueRef, DefId>>,
+
     impl_method_cache: RefCell<FnvHashMap<(DefId, ast::Name), DefId>>,
 
     /// Cache of closure wrappers for bare fn's.
@@ -495,6 +498,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 const_globals: RefCell::new(FnvHashMap()),
                 const_values: RefCell::new(FnvHashMap()),
                 extern_const_values: RefCell::new(DefIdMap()),
+                statics: RefCell::new(FnvHashMap()),
                 impl_method_cache: RefCell::new(FnvHashMap()),
                 closure_bare_wrapper_cache: RefCell::new(FnvHashMap()),
                 statics_to_rauw: RefCell::new(Vec::new()),
@@ -697,6 +701,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
         &self.local.extern_const_values
+    }
+
+    pub fn statics<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, DefId>> {
+        &self.local.statics
     }
 
     pub fn impl_method_cache<'a>(&'a self)
