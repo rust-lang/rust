@@ -327,6 +327,7 @@ pub fn construct_expr<'a,'tcx>(hir: Cx<'a,'tcx>,
             var_decls: builder.var_decls,
             arg_decls: Vec::new(),
             temp_decls: builder.temp_decls,
+            upvar_decls: Vec::new(),
             return_ty: FnOutput::FnConverging(ty),
             span: span
         },
