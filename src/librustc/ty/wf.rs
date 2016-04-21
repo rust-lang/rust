@@ -280,6 +280,22 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
         }
     }
 
+    fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>) {
+        if !subty.has_escaping_regions() {
+            let cause = self.cause(cause);
+            match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
+                                                      ty::BoundSized,
+                                                      subty) {
+                Ok(trait_ref) => {
+                    self.out.push(
+                        traits::Obligation::new(cause,
+                                                trait_ref.to_predicate()));
+                }
+                Err(ErrorReported) => { }
+            }
+        }
+    }
+
     /// Push new obligations into `out`. Returns true if it was able
     /// to generate all the predicates needed to validate that `ty0`
     /// is WF. Returns false if `ty0` is an unresolved type variable,
@@ -301,23 +317,18 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 
                 ty::TySlice(subty) |
                 ty::TyArray(subty, _) => {
-                    if !subty.has_escaping_regions() {
-                        let cause = self.cause(traits::SliceOrArrayElem);
-                        match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
-                                                                  ty::BoundSized,
-                                                                  subty) {
-                            Ok(trait_ref) => {
-                                self.out.push(
-                                    traits::Obligation::new(cause,
-                                                            trait_ref.to_predicate()));
-                            }
-                            Err(ErrorReported) => { }
+                    self.require_sized(subty, traits::SliceOrArrayElem);
+                }
+
+                ty::TyTuple(ref tys) => {
+                    if let Some((_last, rest)) = tys.split_last() {
+                        for elem in rest {
+                            self.require_sized(elem, traits::TupleElem);
                         }
                     }
                 }
 
                 ty::TyBox(_) |
-                ty::TyTuple(_) |
                 ty::TyRawPtr(_) => {
                     // simple cases that are WF if their type args are WF
                 }

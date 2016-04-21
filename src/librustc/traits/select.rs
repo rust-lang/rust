@@ -1652,13 +1652,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
             ty::TyChar | ty::TyBox(_) | ty::TyRef(..) |
-            ty::TyArray(..) | ty::TyTuple(..) | ty::TyClosure(..) |
+            ty::TyArray(..) | ty::TyClosure(..) |
             ty::TyError => {
                 // safe for everything
                 Where(ty::Binder(Vec::new()))
             }
 
             ty::TyStr | ty::TySlice(_) | ty::TyTrait(..) => Never,
+
+            ty::TyTuple(ref tys) => {
+                Where(ty::Binder(match tys.last() {
+                    Some(ty) => vec![ty],
+                    _ => vec![]
+                }))
+            }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());

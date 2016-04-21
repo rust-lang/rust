@@ -1761,8 +1761,8 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
         let tys : Vec<_> = tys.into_iter()
             .map(|ty| self.sized_constraint_for_ty(tcx, stack, ty))
             .flat_map(|ty| match ty.sty {
-                ty::TyTuple(ref tys) => tys.clone(),
-                _ => vec![ty]
+                ty::TyTuple(ref tys) => tys.last().cloned(),
+                _ => Some(ty)
             })
             .filter(|ty| *ty != tcx.types.bool)
             .collect();

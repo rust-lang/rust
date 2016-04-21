@@ -60,6 +60,7 @@ fn f8<X: ?Sized>(x1: &S<X>, x2: &S<X>) {
 fn f9<X: ?Sized>(x1: Box<S<X>>, x2: Box<E<X>>) {
     f5(&(*x1, 34));
     //~^ ERROR `X: std::marker::Sized` is not satisfied
+    //~^^ ERROR `X: std::marker::Sized` is not satisfied
 }
 
 fn f10<X: ?Sized>(x1: Box<S<X>>, x2: Box<E<X>>) {

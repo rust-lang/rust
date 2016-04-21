@@ -33,7 +33,7 @@ use mem;
 use intrinsics;
 
 /// Arithmetic operations required by bignums.
-pub trait FullOps {
+pub trait FullOps: Sized {
     /// Returns `(carry', v')` such that `carry' * 2^W + v' = self + other + carry`,
     /// where `W` is the number of bits in `Self`.
     fn full_add(self, other: Self, carry: bool) -> (bool /*carry*/, Self);

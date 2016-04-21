@@ -764,6 +764,11 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
         ObligationCauseCode::SliceOrArrayElem => {
             err.note("slice and array elements must have `Sized` type");
         }
+        ObligationCauseCode::TupleElem => {
+            err.fileline_note(
+                cause_span,
+                "tuple elements must have `Sized` type");
+        }
         ObligationCauseCode::ProjectionWf(data) => {
             err.note(&format!("required so that the projection `{}` is well-formed",
                               data));
