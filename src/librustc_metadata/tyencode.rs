@@ -308,10 +308,17 @@ fn enc_bound_region(w: &mut Cursor<Vec<u8>>, cx: &ctxt, br: ty::BoundRegion) {
         ty::BrAnon(idx) => {
             write!(w, "a{}|", idx);
         }
-        ty::BrNamed(d, name) => {
-            write!(w, "[{}|{}]",
-                     (cx.ds)(cx.tcx, d),
-                     name);
+        ty::BrNamed(d, name, issue32330) => {
+            write!(w, "[{}|{}|",
+                   (cx.ds)(cx.tcx, d),
+                   name);
+
+            match issue32330 {
+                ty::Issue32330::WontChange =>
+                    write!(w, "n]"),
+                ty::Issue32330::WillChange { fn_def_id, region_name } =>
+                    write!(w, "y{}|{}]", (cx.ds)(cx.tcx, fn_def_id), region_name),
+            };
         }
         ty::BrFresh(id) => {
             write!(w, "f{}|", id);

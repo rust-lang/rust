@@ -144,7 +144,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
         let tcx = self.terms_cx.tcx;
         assert!(is_lifetime(&tcx.map, param_id));
-        match tcx.named_region_map.get(&param_id) {
+        match tcx.named_region_map.defs.get(&param_id) {
             Some(&rl::DefEarlyBoundRegion(_, _, lifetime_decl_id))
                 => lifetime_decl_id,
             Some(_) => bug!("should not encounter non early-bound cases"),

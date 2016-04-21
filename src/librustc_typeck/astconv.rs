@@ -170,7 +170,7 @@ type TraitAndProjections<'tcx> = (ty::PolyTraitRef<'tcx>, Vec<ty::PolyProjection
 
 pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
                             -> ty::Region {
-    let r = match tcx.named_region_map.get(&lifetime.id) {
+    let r = match tcx.named_region_map.defs.get(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
             span_bug!(lifetime.span, "unresolved lifetime");
@@ -181,7 +181,20 @@ pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
         }
 
         Some(&rl::DefLateBoundRegion(debruijn, id)) => {
-            ty::ReLateBound(debruijn, ty::BrNamed(tcx.map.local_def_id(id), lifetime.name))
+            // If this region is declared on a function, it will have
+            // an entry in `late_bound`, but if it comes from
+            // `for<'a>` in some type or something, it won't
+            // necessarily have one. In that case though, we won't be
+            // changed from late to early bound, so we can just
+            // substitute false.
+            let issue_32330 = tcx.named_region_map
+                                 .late_bound
+                                 .get(&id)
+                                 .cloned()
+                                 .unwrap_or(ty::Issue32330::WontChange);
+            ty::ReLateBound(debruijn, ty::BrNamed(tcx.map.local_def_id(id),
+                                                  lifetime.name,
+                                                  issue_32330))
         }
 
         Some(&rl::DefEarlyBoundRegion(space, index, _)) => {
@@ -193,11 +206,21 @@ pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
         }
 
         Some(&rl::DefFreeRegion(scope, id)) => {
+            // As in DefLateBoundRegion above, could be missing for some late-bound
+            // regions, but also for early-bound regions.
+            let issue_32330 = tcx.named_region_map
+                                 .late_bound
+                                 .get(&id)
+                                 .cloned()
+                                 .unwrap_or(ty::Issue32330::WontChange);
             ty::ReFree(ty::FreeRegion {
                     scope: scope.to_code_extent(&tcx.region_maps),
                     bound_region: ty::BrNamed(tcx.map.local_def_id(id),
-                                              lifetime.name)
-                })
+                                              lifetime.name,
+                                              issue_32330)
+            })
+
+                // (*) -- not late-bound, won't change
         }
     };
 
@@ -911,7 +934,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
         for br in late_bound_in_ty.difference(&late_bound_in_trait_ref) {
             let br_name = match *br {
-                ty::BrNamed(_, name) => name,
+                ty::BrNamed(_, name, _) => name,
                 _ => {
                     span_bug!(
                         binding.span,
@@ -1675,7 +1698,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
                 for br in late_bound_in_ret.difference(&late_bound_in_args) {
                     let br_name = match *br {
-                        ty::BrNamed(_, name) => name,
+                        ty::BrNamed(_, name, _) => name,
                         _ => {
                             span_bug!(
                                 bf.decl.output.span(),
