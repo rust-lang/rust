@@ -16,6 +16,22 @@ use errors::DiagnosticBuilder;
 use super::StringReader;
 
 const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
+    (' ', "No-Break Space", ' '),
+    (' ', "Ogham Space Mark", ' '),
+    (' ', "En Quad", ' '),
+    (' ', "Em Quad", ' '),
+    (' ', "En Space", ' '),
+    (' ', "Em Space", ' '),
+    (' ', "Three-Per-Em Space", ' '),
+    (' ', "Four-Per-Em Space", ' '),
+    (' ', "Six-Per-Em Space", ' '),
+    (' ', "Figure Space", ' '),
+    (' ', "Punctuation Space", ' '),
+    (' ', "Thin Space", ' '),
+    (' ', "Hair Space", ' '),
+    (' ', "Narrow No-Break Space", ' '),
+    (' ', "Medium Mathematical Space", ' '),
+    ('　', "Ideographic Space", ' '),
     ('ߺ', "Nko Lajanyalan", '_'),
     ('﹍', "Dashed Low Line", '_'),
     ('﹎', "Centreline Low Line", '_'),
@@ -173,6 +189,7 @@ const UNICODE_ARRAY: &'static [(char, &'static str, char)] = &[
     ('Ⳇ', "Coptic Capital Letter Old Coptic Esh", '/'), ];
 
 const ASCII_ARRAY: &'static [(char, &'static str)] = &[
+    (' ', "Space"),
     ('_', "Underscore"),
     ('-', "Minus/Hyphen"),
     (',', "Comma"),
