@@ -949,7 +949,9 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                         });
                         match ppm {
                             PpmMir => write_mir_pretty(tcx, iter::once((&nodeid, mir)), &mut out),
-                            PpmMirCFG => write_mir_graphviz(tcx, iter::once((&nodeid, mir)), &mut out),
+                            PpmMirCFG => {
+                                write_mir_graphviz(tcx, iter::once((&nodeid, mir)), &mut out)
+                            }
                             _ => unreachable!(),
                         }?;
                     } else {

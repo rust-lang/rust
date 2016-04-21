@@ -447,7 +447,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             .and_then(|| RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
-    fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> CompileController<'a> {
+    fn build_controller(&mut self,
+                        sess: &Session,
+                        matches: &getopts::Matches)
+                        -> CompileController<'a> {
         let mut control = CompileController::basic();
 
         if let Some((ppm, opt_uii)) = parse_pretty(sess, matches) {
