@@ -206,8 +206,8 @@ impl<T: ?Sized> Mutex<T> {
     /// the guard goes out of scope, the mutex will be unlocked.
     ///
     /// The exact behavior on locking a mutex in the thread which already holds
-    /// the lock is left unspecified, however, this function will not return on
-    /// the second call, it might e.g. panic or deadlock.
+    /// the lock is left unspecified. However, this function will not return on
+    /// the second call (it might panic or deadlock, for example).
     ///
     /// # Errors
     ///
