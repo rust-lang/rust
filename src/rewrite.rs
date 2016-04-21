@@ -27,6 +27,7 @@ pub trait Rewrite {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String>;
 }
 
+#[derive(Clone)]
 pub struct RewriteContext<'a> {
     pub parse_session: &'a ParseSess,
     pub codemap: &'a CodeMap,

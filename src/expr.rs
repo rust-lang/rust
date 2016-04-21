@@ -455,9 +455,19 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
     // We couldn't format the closure body as a single line expression; fall
     // back to block formatting.
-    let body_rewrite = inner_block.rewrite(&context, budget, Indent::empty());
+    let body_rewrite = try_opt!(inner_block.rewrite(&context, budget, Indent::empty()));
 
-    Some(format!("{} {}", prefix, try_opt!(body_rewrite)))
+    let block_threshold = context.config.closure_block_indent_threshold;
+    if block_threshold < 0 || body_rewrite.matches('\n').count() <= block_threshold as usize {
+        return Some(format!("{} {}", prefix, body_rewrite));
+    }
+
+    // The body of the closure is big enough to be block indented, that means we
+    // must re-format.
+    let mut context = context.clone();
+    context.block_indent.alignment = 0;
+    let body_rewrite = try_opt!(inner_block.rewrite(&context, budget, Indent::empty()));
+    Some(format!("{} {}", prefix, body_rewrite))
 }
 
 fn and_one_line(x: Option<String>) -> Option<String> {

@@ -188,6 +188,12 @@ impl ConfigType for usize {
     }
 }
 
+impl ConfigType for isize {
+    fn doc_hint() -> String {
+        String::from("<signed integer>")
+    }
+}
+
 impl ConfigType for String {
     fn doc_hint() -> String {
         String::from("<string>")
@@ -384,6 +390,8 @@ create_config! {
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
     match_wildcard_trailing_comma: bool, true, "Put a trailing comma after a wildcard arm";
+    closure_block_indent_threshold: isize, 4, "How many lines a closure must have before it is \
+                                                block indented. -1 means never use block indent.";
     write_mode: WriteMode, WriteMode::Replace,
         "What Write Mode to use when none is supplied: Replace, Overwrite, Display, Diff, Coverage";
 }
