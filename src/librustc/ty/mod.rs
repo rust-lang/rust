@@ -60,6 +60,7 @@ pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, TraitTy};
 pub use self::sty::{ClosureSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
+pub use self::sty::Issue32330;
 pub use self::sty::{TyVid, IntVid, FloatVid, RegionVid, SkolemizedRegionVid};
 pub use self::sty::BoundRegion::*;
 pub use self::sty::FnOutput::*;
@@ -527,7 +528,7 @@ bitflags! {
 
         // Present if the type belongs in a local type context.
         // Only set for TyInfer other than Fresh.
-        const KEEP_IN_LOCAL_TCX = 1 << 10,
+        const KEEP_IN_LOCAL_TCX  = 1 << 11,
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -740,7 +741,8 @@ impl RegionParameterDef {
         })
     }
     pub fn to_bound_region(&self) -> ty::BoundRegion {
-        ty::BoundRegion::BrNamed(self.def_id, self.name)
+        // this is an early bound region, so unaffected by #32330
+        ty::BoundRegion::BrNamed(self.def_id, self.name, Issue32330::WontChange)
     }
 }
 
@@ -2836,7 +2838,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         for def in generics.regions.as_slice() {
             let region =
                 ReFree(FreeRegion { scope: free_id_outlive,
-                                    bound_region: BrNamed(def.def_id, def.name) });
+                                    bound_region: def.to_bound_region() });
             debug!("push_region_params {:?}", region);
             regions.push(def.space, region);
         }

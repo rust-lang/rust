@@ -1140,7 +1140,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
                 ty::BrAnon(i) => {
                     anon_nums.insert(i);
                 }
-                ty::BrNamed(_, name) => {
+                ty::BrNamed(_, name, _) => {
                     region_names.insert(name);
                 }
                 _ => ()
@@ -1154,7 +1154,7 @@ impl<'a, 'gcx, 'tcx> Rebuilder<'a, 'gcx, 'tcx> {
         for sr in self.same_regions {
             for br in &sr.regions {
                 match *br {
-                    ty::BrNamed(_, name) => {
+                    ty::BrNamed(_, name, _) => {
                         all_region_names.insert(name);
                     }
                     _ => ()
