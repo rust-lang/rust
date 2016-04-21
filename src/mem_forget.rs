@@ -8,11 +8,11 @@ use utils::{match_def_path, paths, span_lint};
 ///
 /// **Known problems:** None.
 ///
-/// **Example:** `std::mem::forget(_))`
+/// **Example:** `mem::forget(_))`
 declare_lint! {
     pub MEM_FORGET,
     Allow,
-    "`std::mem::forget` usage is likely to cause memory leaks"
+    "`mem::forget` usage is likely to cause memory leaks"
 }
 
 pub struct MemForget;
@@ -30,7 +30,7 @@ impl LateLintPass for MemForget {
                 let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
 
                 if match_def_path(cx, def_id, &paths::MEM_FORGET) {
-                    span_lint(cx, MEM_FORGET, e.span, "usage of std::mem::forget");
+                    span_lint(cx, MEM_FORGET, e.span, "usage of mem::forget");
                 }
             }
         }
