@@ -2408,9 +2408,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // T -> Trait.
             (_, &ty::TyTrait(ref data)) => {
-                let object_did = data.principal_def_id();
-                if !object_safety::is_object_safe(tcx, object_did) {
-                    return Err(TraitNotObjectSafe(object_did));
+                let mut object_dids =
+                    data.bounds.builtin_bounds.iter().flat_map(|bound| {
+                        tcx.lang_items.from_builtin_kind(bound).ok()
+                    })
+                    .chain(Some(data.principal_def_id()));
+                if let Some(did) = object_dids.find(|did| {
+                    !object_safety::is_object_safe(tcx, *did)
+                }) {
+                    return Err(TraitNotObjectSafe(did))
                 }
 
                 let cause = ObligationCause::new(obligation.cause.span,

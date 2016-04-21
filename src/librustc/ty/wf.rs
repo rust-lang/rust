@@ -301,6 +301,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
     /// is WF. Returns false if `ty0` is an unresolved type variable,
     /// in which case we are not able to simplify at all.
     fn compute(&mut self, ty0: Ty<'tcx>) -> bool {
+        let tcx = self.infcx.tcx;
         let mut subtys = ty0.walk();
         while let Some(ty) = subtys.next() {
             match ty.sty {
@@ -385,10 +386,20 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                     // checking those
 
                     let cause = self.cause(traits::MiscObligation);
-                    self.out.push(
-                        traits::Obligation::new(
-                            cause,
-                            ty::Predicate::ObjectSafe(data.principal_def_id())));
+
+                    let component_traits =
+                        data.bounds.builtin_bounds.iter().flat_map(|bound| {
+                            tcx.lang_items.from_builtin_kind(bound).ok()
+                        })
+                        .chain(Some(data.principal_def_id()));
+                    self.out.extend(
+                        component_traits.map(|did| {
+                            traits::Obligation::new(
+                                cause.clone(),
+                                ty::Predicate::ObjectSafe(did)
+                            )
+                        })
+                    );
                 }
 
                 // Inference variables are the complicated case, since we don't
