@@ -76,6 +76,7 @@ fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
     let inner = match def {
         Def::Trait(did) => {
             record_extern_fqn(cx, did, clean::TypeTrait);
+            ret.extend(build_impls(cx, tcx, did));
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }
         Def::Fn(did) => {
