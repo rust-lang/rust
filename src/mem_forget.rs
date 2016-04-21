@@ -1,6 +1,6 @@
 use rustc::lint::*;
 use rustc::hir::{Expr, ExprCall, ExprPath};
-use utils::{get_trait_def_id, implements_trait, match_def_path, paths, span_lint};
+use utils::{match_def_path, paths, span_lint};
 
 /// **What it does:** This lint checks for usage of `std::mem::forget(t)` where `t` is `Drop`.
 ///
@@ -29,12 +29,13 @@ impl LateLintPass for MemForget {
             if let ExprPath(None, _) = path_expr.node {
                 let def_id = cx.tcx.def_map.borrow()[&path_expr.id].def_id();
                 if match_def_path(cx, def_id, &paths::MEM_FORGET) {
-                    if let Some(drop_trait_id) = get_trait_def_id(cx, &paths::DROP) {
-                        let forgot_ty = cx.tcx.expr_ty(&args[0]);
+                    let forgot_ty = cx.tcx.expr_ty(&args[0]);
 
-                        if implements_trait(cx, forgot_ty, drop_trait_id, Vec::new()) {
-                            span_lint(cx, MEM_FORGET, e.span, "usage of mem::forget on Drop type");
-                        }
+                    if match forgot_ty.ty_adt_def() {
+                        Some(def) => def.has_dtor(),
+                        _ => false
+                    } {
+                        span_lint(cx, MEM_FORGET, e.span, "usage of mem::forget on Drop type");
                     }
                 }
             }
