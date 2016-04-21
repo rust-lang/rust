@@ -20,8 +20,8 @@ use {CrateTranslation, ModuleTranslation};
 use util::common::time;
 use util::common::path2cstr;
 use syntax::codemap::MultiSpan;
-use syntax::errors::{self, Handler, Level};
-use syntax::errors::emitter::RudimentaryEmitter;
+use syntax::errors::{self, Handler, Level, RenderSpan};
+use syntax::errors::emitter::CoreEmitter;
 
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
@@ -100,11 +100,13 @@ impl SharedEmitter {
     }
 }
 
-impl RudimentaryEmitter for SharedEmitter {
-    fn emit_rudimentary(&mut self,
-                        msg: &str,
-                        code: Option<&str>,
-                        lvl: Level) {
+impl CoreEmitter for SharedEmitter {
+    fn emit_message(&mut self,
+                    _rsp: &RenderSpan,
+                    msg: &str,
+                    code: Option<&str>,
+                    lvl: Level,
+                    _is_header: bool) {
         self.buffer.lock().unwrap().push(Diagnostic {
             msg: msg.to_string(),
             code: code.map(|s| s.to_string()),

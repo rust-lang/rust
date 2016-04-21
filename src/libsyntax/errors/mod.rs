@@ -38,10 +38,6 @@ pub enum RenderSpan {
     /// of hypothetical source code, where each `String` is spliced
     /// into the lines in place of the code covered by each span.
     Suggestion(CodeSuggestion),
-
-    /// A FileLine renders with just a line for the message prefixed
-    /// by file:linenum.
-    FileLine(MultiSpan),
 }
 
 #[derive(Clone)]
@@ -54,8 +50,7 @@ impl RenderSpan {
     fn span(&self) -> &MultiSpan {
         match *self {
             FullSpan(ref msp) |
-            Suggestion(CodeSuggestion { ref msp, .. }) |
-            FileLine(ref msp) =>
+            Suggestion(CodeSuggestion { ref msp, .. }) =>
                 msp
         }
     }
