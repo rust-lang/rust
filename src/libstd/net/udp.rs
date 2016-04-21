@@ -243,29 +243,6 @@ impl UdpSocket {
         self.0.ttl()
     }
 
-    /// Sets the value for the `IPV6_V6ONLY` option on this socket.
-    ///
-    /// If this is set to `true` then the socket is restricted to sending and
-    /// receiving IPv6 packets only. If this is the case, an IPv4 and an IPv6
-    /// application can each bind the same port at the same time.
-    ///
-    /// If this is set to `false` then the socket can be used to send and
-    /// receive packets from an IPv4-mapped IPv6 address.
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
-    pub fn set_only_v6(&self, only_v6: bool) -> io::Result<()> {
-        self.0.set_only_v6(only_v6)
-    }
-
-    /// Gets the value of the `IPV6_V6ONLY` option for this socket.
-    ///
-    /// For more information about this option, see [`set_only_v6`][link].
-    ///
-    /// [link]: #method.set_only_v6
-    #[stable(feature = "net2_mutators", since = "1.9.0")]
-    pub fn only_v6(&self) -> io::Result<bool> {
-        self.0.only_v6()
-    }
-
     /// Executes an operation of the `IP_ADD_MEMBERSHIP` type.
     ///
     /// This function specifies a new multicast group for this socket to join.
