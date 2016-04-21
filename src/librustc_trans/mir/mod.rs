@@ -164,8 +164,6 @@ pub fn trans_mir<'blk, 'tcx: 'blk>(fcx: &'blk FunctionContext<'blk, 'tcx>) {
                   .map(|&bb|{
                       if bb == mir::START_BLOCK {
                           fcx.new_block("start", None)
-                      } else if bb == mir::END_BLOCK {
-                          fcx.new_block("end", None)
                       } else {
                           fcx.new_block(&format!("{:?}", bb), None)
                       }
