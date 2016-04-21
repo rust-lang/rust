@@ -11,18 +11,15 @@
 # except according to those terms.
 
 import os
-import shutil
 import sys
-import tarfile
 
 path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../bootstrap"))
 sys.path.append(path)
 
 import bootstrap
 
-def main(argv):
+def main(triple):
     src_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-    triple = argv[1]
     data = bootstrap.stage0_data(src_root)
 
     channel, date = data['rustc'].split('-', 1)
@@ -31,9 +28,8 @@ def main(argv):
     if not os.path.exists(dl_dir):
         os.makedirs(dl_dir)
 
-    filename_base = 'rustc-' + channel + '-' + triple
-    filename = filename_base + '.tar.gz'
-    url = 'https://static.rust-lang.org/dist/' + date + '/' + filename
+    filename = 'rustc-{}-{}.tar.gz'.format(channel, triple)
+    url = 'https://static.rust-lang.org/dist/{}/{}'.format(date, filename)
     dst = dl_dir + '/' + filename
     if not os.path.exists(dst):
         bootstrap.get(url, dst)
@@ -48,4 +44,4 @@ def main(argv):
     bootstrap.unpack(dst, stage0_dst, match='rustc', verbose=True)
 
 if __name__ == '__main__':
-    main(sys.argv)
+    main(sys.argv[1])
