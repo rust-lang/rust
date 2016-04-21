@@ -3769,6 +3769,7 @@ pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
                                                      PathParamMode::Optional,
                                                      &mut def,
                                                      opt_self_ty,
+                                                     node_id,
                                                      &ty_segments[..base_ty_end],
                                                      &ty_segments[base_ty_end..]);
         let item_segment = path.segments.last().unwrap();

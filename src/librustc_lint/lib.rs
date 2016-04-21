@@ -190,6 +190,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(ILLEGAL_STRUCT_OR_ENUM_CONSTANT_PATTERN),
             reference: "RFC 1445 <https://github.com/rust-lang/rfcs/pull/1445>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(HR_LIFETIME_IN_ASSOC_TYPE),
+            reference: "issue #32330 <https://github.com/rust-lang/rust/issues/32330>",
+        },
         ]);
 
     // We have one lint pass defined specially
