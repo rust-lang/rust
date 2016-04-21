@@ -2958,6 +2958,9 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Rev<I> where I: DoubleEndedIterator + FusedIterator {}
+
 /// An iterator that clones the elements of an underlying iterator.
 ///
 /// This `struct` is created by the [`cloned()`] method on [`Iterator`]. See its
@@ -3001,6 +3004,11 @@ impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
     where I: ExactSizeIterator<Item=&'a T>, T: Clone
 {}
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<'a, I, T: 'a> FusedIterator for Cloned<I>
+    where I: FusedIterator<Item=&'a T>, T: Clone
+{}
+
 /// An iterator that repeats endlessly.
 ///
 /// This `struct` is created by the [`cycle()`] method on [`Iterator`]. See its
@@ -3038,6 +3046,11 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
         }
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Cycle<I>
+    where I: Clone + FusedIterator
+{}
 
 /// An iterator that strings two iterators together.
 ///
@@ -3183,6 +3196,12 @@ impl<A, B> DoubleEndedIterator for Chain<A, B> where
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<A, B> FusedIterator for Chain<A, B>
+    where A: Iterator,
+          B: FusedIterator<Item=A::Item>,
+{}
+
 /// An iterator that iterates two other iterators simultaneously.
 ///
 /// This `struct` is created by the [`zip()`] method on [`Iterator`]. See its
@@ -3254,6 +3273,12 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
         }
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<A, B> FusedIterator for Zip<A, B>
+    where A: FusedIterator,
+          B: FusedIterator,
+{}
 
 /// An iterator that maps the values of `iter` with `f`.
 ///
@@ -3347,6 +3372,9 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<B, I: FusedIterator, F> FusedIterator for Map<I, F> where F: FnMut(I::Item) -> B {}
+
 /// An iterator that filters the elements of `iter` with `predicate`.
 ///
 /// This `struct` is created by the [`filter()`] method on [`Iterator`]. See its
@@ -3406,6 +3434,11 @@ impl<I: DoubleEndedIterator, P> DoubleEndedIterator for Filter<I, P>
         None
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I: FusedIterator, P> FusedIterator for Filter<I, P>
+    where P: FnMut(&I::Item) -> bool,
+{}
 
 /// An iterator that uses `f` to both filter and map elements from `iter`.
 ///
@@ -3468,6 +3501,11 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
         None
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F>
+    where F: FnMut(I::Item) -> Option<B>,
+{}
 
 /// An iterator that yields the current count and the element during iteration.
 ///
@@ -3541,6 +3579,9 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
         })
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Enumerate<I> where I: FusedIterator {}
 
 /// An iterator with a `peek()` that returns an optional reference to the next
 /// element.
@@ -3693,6 +3734,9 @@ impl<I: Iterator> Peekable<I> {
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Peekable<I> where I: FusedIterator {}
+
 /// An iterator that rejects elements while `predicate` is true.
 ///
 /// This `struct` is created by the [`skip_while()`] method on [`Iterator`]. See its
@@ -3742,6 +3786,12 @@ impl<I: Iterator, P> Iterator for SkipWhile<I, P>
         (0, upper) // can't know a lower bound, due to the predicate
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I, P> FusedIterator for SkipWhile<I, P>
+    where I: FusedIterator,
+          P: FnMut(&I::Item) -> bool,
+{}
 
 /// An iterator that only accepts elements while `predicate` is true.
 ///
@@ -3797,6 +3847,12 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
         (0, upper) // can't know a lower bound, due to the predicate
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I, P> FusedIterator for TakeWhile<I, P>
+    where I: FusedIterator,
+          P: FnMut(&I::Item) -> bool,
+{}
 
 /// An iterator that skips over `n` elements of `iter`.
 ///
@@ -3889,6 +3945,9 @@ impl<I> DoubleEndedIterator for Skip<I> where I: DoubleEndedIterator + ExactSize
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Skip<I> where I: FusedIterator {}
+
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 ///
 /// This `struct` is created by the [`take()`] method on [`Iterator`]. See its
@@ -3950,6 +4009,8 @@ impl<I> Iterator for Take<I> where I: Iterator{
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Take<I> where I: FusedIterator {}
 
 /// An iterator to maintain state while iterating another iterator.
 ///
@@ -3995,6 +4056,12 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
         (0, upper) // can't know a lower bound, due to the scan function
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<B, I, St, F> FusedIterator for Scan<I, St, F>
+    where I: FusedIterator,
+          F: FnMut(&mut St, I::Item) -> Option<B>,
+{}
 
 /// An iterator that maps each element to an iterator, and yields the elements
 /// of the produced iterators.
@@ -4082,6 +4149,24 @@ impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> wher
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I, U, F> FusedIterator for FlatMap<I, U, F>
+    where I: FusedIterator,
+          U: IntoIterator,
+          F: FnMut(I::Item) -> U,
+{}
+
+/// An iterator that always continues to yield `None` when exhausted.
+///
+/// Calling next on a fused iterator that has returned `None` once is guaranteed
+/// to return `None` again. This trait is should be implemented by all iterators
+/// that behave this way because it allows for some significant optimizations.
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+pub trait FusedIterator: Iterator {}
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<'a, I: FusedIterator + ?Sized> FusedIterator for &'a mut I {}
+
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///
@@ -4098,12 +4183,15 @@ pub struct Fuse<I> {
     done: bool
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> FusedIterator for Fuse<I> where I: Iterator {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I> where I: Iterator {
     type Item = <I as Iterator>::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<<I as Iterator>::Item> {
+    default fn next(&mut self) -> Option<<I as Iterator>::Item> {
         if self.done {
             None
         } else {
@@ -4114,7 +4202,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn nth(&mut self, n: usize) -> Option<I::Item> {
+    default fn nth(&mut self, n: usize) -> Option<I::Item> {
         if self.done {
             None
         } else {
@@ -4125,7 +4213,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn last(self) -> Option<I::Item> {
+    default fn last(self) -> Option<I::Item> {
         if self.done {
             None
         } else {
@@ -4134,7 +4222,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn count(self) -> usize {
+    default fn count(self) -> usize {
         if self.done {
             0
         } else {
@@ -4143,7 +4231,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
+    default fn size_hint(&self) -> (usize, Option<usize>) {
         if self.done {
             (0, Some(0))
         } else {
@@ -4155,7 +4243,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
     #[inline]
-    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+    default fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
         if self.done {
             None
         } else {
@@ -4168,6 +4256,44 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> Iterator for Fuse<I> where I: FusedIterator {
+    #[inline]
+    fn next(&mut self) -> Option<<I as Iterator>::Item> {
+        self.iter.next()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        self.iter.nth(n)
+    }
+
+    #[inline]
+    fn last(self) -> Option<I::Item> {
+        self.iter.last()
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I> DoubleEndedIterator for Fuse<I>
+    where I: DoubleEndedIterator + FusedIterator
+{
+    #[inline]
+    fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
+        self.iter.next_back()
+    }
+}
 
 /// An iterator that calls a function with a reference to each element before
 /// yielding it.
@@ -4231,6 +4357,11 @@ impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
         self.do_inspect(next)
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<I: FusedIterator, F> FusedIterator for Inspect<I, F>
+    where F: FnMut(&I::Item),
+{}
 
 /// Objects that can be stepped over in both directions.
 ///
@@ -4586,6 +4717,9 @@ impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::RangeInclusive<A>> {
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<A: Step + Zero + Clone> FusedIterator for StepBy<A, ops::RangeInclusive<A>> {}
+
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -4644,6 +4778,13 @@ impl<A: Step + One + Clone> DoubleEndedIterator for ops::Range<A> where
     }
 }
 
+// Obviously, this assumes that self.start < self.end always returns the same
+// answer.
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<A: Step + One> FusedIterator for ops::Range<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>
+{}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step + One> Iterator for ops::RangeFrom<A> where
     for<'a> &'a A: Add<&'a A, Output = A>
@@ -4657,6 +4798,13 @@ impl<A: Step + One> Iterator for ops::RangeFrom<A> where
         Some(n)
     }
 }
+
+// Fused because it *never* returns `None`
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Step + One> FusedIterator for ops::RangeFrom<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>
+{}
+
 
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<A: Step + One> Iterator for ops::RangeInclusive<A> where
@@ -4759,6 +4907,11 @@ impl<A: Step + One> DoubleEndedIterator for ops::RangeInclusive<A> where
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<A: Step + One> FusedIterator for ops::RangeInclusive<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>
+{}
+
 /// An iterator that repeats an element endlessly.
 ///
 /// This `struct` is created by the [`repeat()`] function. See its documentation for more.
@@ -4785,6 +4938,9 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<A: Clone> FusedIterator for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
@@ -4880,6 +5036,9 @@ impl<T> ExactSizeIterator for Empty<T> {
     }
 }
 
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<T> FusedIterator for Empty<T> {}
+
 // not #[derive] because that adds a Clone bound on T,
 // which isn't necessary.
 #[stable(feature = "iter_empty", since = "1.2.0")]
@@ -4954,6 +5113,9 @@ impl<T> ExactSizeIterator for Once<T> {
         self.inner.len()
     }
 }
+
+#[unstable(feature = "fused", reason = "recently added", issue = "0")]
+impl<T> FusedIterator for Once<T> {}
 
 /// Creates an iterator that yields an element exactly once.
 ///
