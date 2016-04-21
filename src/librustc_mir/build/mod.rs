@@ -26,23 +26,23 @@ pub struct Builder<'a, 'tcx: 'a> {
 
     fn_span: Span,
 
-    // the current set of scopes, updated as we traverse;
-    // see the `scope` module for more details
+    /// the current set of scopes, updated as we traverse;
+    /// see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
 
-    // for each scope, a span of blocks that defines it;
-    // we track these for use in region and borrow checking,
-    // but these are liable to get out of date once optimization
-    // begins. They are also hopefully temporary, and will be
-    // no longer needed when we adopt graph-based regions.
+    ///  for each scope, a span of blocks that defines it;
+    ///  we track these for use in region and borrow checking,
+    ///  but these are liable to get out of date once optimization
+    ///  begins. They are also hopefully temporary, and will be
+    ///  no longer needed when we adopt graph-based regions.
     scope_auxiliary: ScopeAuxiliaryVec,
 
-    // the current set of loops; see the `scope` module for more
-    // details
+    /// the current set of loops; see the `scope` module for more
+    /// details
     loop_scopes: Vec<scope::LoopScope>,
 
-    // the vector of all scopes that we have created thus far;
-    // we track this for debuginfo later
+    /// the vector of all scopes that we have created thus far;
+    /// we track this for debuginfo later
     scope_datas: Vec<ScopeData>,
 
     var_decls: Vec<VarDecl<'tcx>>,
@@ -50,9 +50,11 @@ pub struct Builder<'a, 'tcx: 'a> {
     temp_decls: Vec<TempDecl<'tcx>>,
     unit_temp: Option<Lvalue<'tcx>>,
 
-    // cached block with a RESUME terminator; we create this at the
-    // first panic
+    /// cached block with the RESUME terminator; this is created
+    /// when first set of cleanups are built.
     cached_resume_block: Option<BasicBlock>,
+    /// cached block with the RETURN terminator
+    cached_return_block: Option<BasicBlock>,
 }
 
 struct CFG<'tcx> {
@@ -182,11 +184,10 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
         var_indices: FnvHashMap(),
         unit_temp: None,
         cached_resume_block: None,
+        cached_return_block: None
     };
 
     assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
-    assert_eq!(builder.cfg.start_new_block(), END_BLOCK);
-
 
     let mut arg_decls = None; // assigned to `Some` in closures below
     let call_site_extent =
@@ -206,12 +207,12 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
             block.unit()
         }));
 
+        let return_block = builder.return_block();
         builder.cfg.terminate(block, call_site_scope_id, span,
-                              TerminatorKind::Goto { target: END_BLOCK });
-        builder.cfg.terminate(END_BLOCK, call_site_scope_id, span,
+                              TerminatorKind::Goto { target: return_block });
+        builder.cfg.terminate(return_block, call_site_scope_id, span,
                               TerminatorKind::Return);
-
-        END_BLOCK.unit()
+        return_block.unit()
     });
 
     assert!(
@@ -326,6 +327,17 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 let tmp = self.temp(ty);
                 self.unit_temp = Some(tmp.clone());
                 tmp
+            }
+        }
+    }
+
+    fn return_block(&mut self) -> BasicBlock {
+        match self.cached_return_block {
+            Some(rb) => rb,
+            None => {
+                let rb = self.cfg.start_new_block();
+                self.cached_return_block = Some(rb);
+                rb
             }
         }
     }
