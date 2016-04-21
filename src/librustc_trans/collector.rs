@@ -211,7 +211,7 @@ use base::{custom_coerce_unsize_info, llvm_linkage_by_name};
 use context::CrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates,
                     type_is_sized};
-use glue;
+use glue::{self, DropGlueKind};
 use llvm;
 use meth;
 use monomorphize::{self, Instance};
@@ -227,7 +227,7 @@ pub enum TransItemCollectionMode {
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum TransItem<'tcx> {
-    DropGlue(Ty<'tcx>),
+    DropGlue(DropGlueKind<'tcx>),
     Fn(Instance<'tcx>),
     Static(NodeId)
 }
@@ -326,7 +326,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
             let def_id = ccx.tcx().map.local_def_id(node_id);
             let ty = ccx.tcx().lookup_item_type(def_id).ty;
             let ty = glue::get_drop_glue_type(ccx, ty);
-            neighbors.push(TransItem::DropGlue(ty));
+            neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
             recursion_depth_reset = None;
         }
         TransItem::Fn(instance) => {
@@ -485,7 +485,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                       &ty);
             let ty = self.ccx.tcx().erase_regions(&ty);
             let ty = glue::get_drop_glue_type(self.ccx, ty);
-            self.output.push(TransItem::DropGlue(ty));
+            self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
         }
 
         self.super_lvalue(lvalue, context);
@@ -575,9 +575,17 @@ fn can_have_local_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                      ty: ty::Ty<'tcx>,
-                                      output: &mut Vec<TransItem<'tcx>>)
-{
+                                      dg: DropGlueKind<'tcx>,
+                                      output: &mut Vec<TransItem<'tcx>>) {
+    let ty = match dg {
+        DropGlueKind::Ty(ty) => ty,
+        DropGlueKind::TyContents(_) => {
+            // We already collected the neighbors of this item via the
+            // DropGlueKind::Ty variant.
+            return
+        }
+    };
+
     debug!("find_drop_glue_neighbors: {}", type_to_string(ccx, ty));
 
     // Make sure the exchange_free_fn() lang-item gets translated if
@@ -634,6 +642,10 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                   &Substs::empty());
             output.push(trans_item);
         }
+
+        // This type has a Drop implementation, we'll need the contents-only
+        // version of the glue too.
+        output.push(TransItem::DropGlue(DropGlueKind::TyContents(ty)));
     }
 
     // Finally add the types of nested values
@@ -661,7 +673,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 let field_type = glue::get_drop_glue_type(ccx, field_type);
 
                 if glue::type_needs_drop(ccx.tcx(), field_type) {
-                    output.push(TransItem::DropGlue(field_type));
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(field_type)));
                 }
             }
         }
@@ -669,7 +681,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             for upvar_ty in &substs.upvar_tys {
                 let upvar_ty = glue::get_drop_glue_type(ccx, upvar_ty);
                 if glue::type_needs_drop(ccx.tcx(), upvar_ty) {
-                    output.push(TransItem::DropGlue(upvar_ty));
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(upvar_ty)));
                 }
             }
         }
@@ -677,14 +689,14 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyArray(inner_type, _) => {
             let inner_type = glue::get_drop_glue_type(ccx, inner_type);
             if glue::type_needs_drop(ccx.tcx(), inner_type) {
-                output.push(TransItem::DropGlue(inner_type));
+                output.push(TransItem::DropGlue(DropGlueKind::Ty(inner_type)));
             }
         }
         ty::TyTuple(ref args) => {
             for arg in args {
                 let arg = glue::get_drop_glue_type(ccx, arg);
                 if glue::type_needs_drop(ccx.tcx(), arg) {
-                    output.push(TransItem::DropGlue(arg));
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(arg)));
                 }
             }
         }
@@ -1000,7 +1012,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                                                 self.ccx.tcx().map.local_def_id(item.id)));
 
                         let ty = glue::get_drop_glue_type(self.ccx, ty);
-                        self.output.push(TransItem::DropGlue(ty));
+                        self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                     }
                 }
             }
@@ -1413,10 +1425,13 @@ impl<'tcx> TransItem<'tcx> {
         let hir_map = &ccx.tcx().map;
 
         return match *self {
-            TransItem::DropGlue(t) => {
+            TransItem::DropGlue(dg) => {
                 let mut s = String::with_capacity(32);
-                s.push_str("drop-glue ");
-                push_unique_type_name(ccx, t, &mut s);
+                match dg {
+                    DropGlueKind::Ty(_) => s.push_str("drop-glue "),
+                    DropGlueKind::TyContents(_) => s.push_str("drop-glue-contents "),
+                };
+                push_unique_type_name(ccx, dg.ty(), &mut s);
                 s
             }
             TransItem::Fn(instance) => {
@@ -1442,8 +1457,8 @@ impl<'tcx> TransItem<'tcx> {
 
     fn to_raw_string(&self) -> String {
         match *self {
-            TransItem::DropGlue(t) => {
-                format!("DropGlue({})", t as *const _ as usize)
+            TransItem::DropGlue(dg) => {
+                format!("DropGlue({})", dg.ty() as *const _ as usize)
             }
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",

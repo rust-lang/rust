@@ -15,6 +15,7 @@
 #![crate_type="lib"]
 
 //~ TRANS_ITEM drop-glue local_drop_glue::Struct[0] @@ local_drop_glue[OnceODR] local_drop_glue-mod1[OnceODR]
+//~ TRANS_ITEM drop-glue-contents local_drop_glue::Struct[0] @@ local_drop_glue[OnceODR] local_drop_glue-mod1[OnceODR]
 struct Struct {
     _a: u32
 }

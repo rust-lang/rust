@@ -14,6 +14,7 @@
 #![deny(dead_code)]
 
 //~ TRANS_ITEM drop-glue tuple_drop_glue::Dropped[0]
+//~ TRANS_ITEM drop-glue-contents tuple_drop_glue::Dropped[0]
 struct Dropped;
 
 impl Drop for Dropped {
