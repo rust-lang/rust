@@ -941,6 +941,7 @@ fn frag_can_be_followed_by_any(frag: &str) -> bool {
         "block" | // exactly one token tree
         "ident" | // exactly one token tree
         "meta" |  // exactly one token tree
+        "lifetime" | // exactly one token tree
         "tt" =>    // exactly one token tree
             true,
 
@@ -963,6 +964,7 @@ fn can_be_followed_by_any(frag: &str) -> bool {
         "block" | // exactly one token tree
         "ident" | // exactly one token tree
         "meta" |  // exactly one token tree
+        "lifetime" | // exactly one token tree
         "tt" =>    // exactly one token tree
             true,
 
@@ -1020,8 +1022,8 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                     _ => Ok(false)
                 }
             },
-            "ident" => {
-                // being a single token, idents are harmless
+            "ident" | "lifetime" => {
+                // being a single token, idents and lifetimes are harmless
                 Ok(true)
             },
             "meta" | "tt" => {
@@ -1048,7 +1050,7 @@ fn has_legal_fragment_specifier(tok: &Token) -> Result<(), String> {
 fn is_legal_fragment_specifier(frag: &str) -> bool {
     match frag {
         "item" | "block" | "stmt" | "expr" | "pat" |
-        "path" | "ty" | "ident" | "meta" | "tt" => true,
+        "path" | "ty" | "ident" | "meta" | "tt" | "lifetime" => true,
         _ => false,
     }
 }

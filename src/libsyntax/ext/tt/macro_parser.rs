@@ -549,12 +549,13 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
+        "lifetime" => token::NtLifetime(panictry!(p.parse_lifetime())),
         _ => {
             p.span_fatal_help(sp,
                               &format!("invalid fragment specifier `{}`", name),
                               "valid fragment specifiers are `ident`, `block`, \
-                               `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
-                               and `item`").emit();
+                               `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt`, \
+                               `lifetime`, and `item`").emit();
             panic!(FatalError);
         }
     }

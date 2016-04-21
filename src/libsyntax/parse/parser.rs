@@ -1955,6 +1955,9 @@ impl<'a> Parser<'a> {
                     name: i.name
                 });
             }
+            token::Interpolated(token::NtLifetime(..)) => {
+                self.bug("lifetime interpolation not converted to real token");
+            }
             _ => {
                 return Err(self.fatal("expected a lifetime name"));
             }
