@@ -58,7 +58,6 @@ use attributes;
 use build::*;
 use builder::{Builder, noname};
 use callee::{Callee, CallArgs, ArgExprs, ArgVals};
-use partitioning::{self, PartitioningStrategy};
 use cleanup::{self, CleanupMethods, DropHint};
 use closure;
 use common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_uint, C_integral};
@@ -83,6 +82,7 @@ use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use meth;
 use mir;
 use monomorphize::{self, Instance};
+use partitioning::{self, PartitioningStrategy, InstantiationMode};
 use symbol_names_test;
 use tvec;
 use type_::Type;
@@ -2934,7 +2934,7 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
         None => TransItemCollectionMode::Lazy
     };
 
-    let (items, inlining_map) = time(time_passes, "translation item collection", || {
+    let (items, reference_map) = time(time_passes, "translation item collection", || {
         collector::collect_crate_translation_items(&ccx, collection_mode)
     });
 
@@ -2948,7 +2948,7 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
         partitioning::partition(ccx.tcx(),
                                 items.iter().cloned(),
                                 strategy,
-                                &inlining_map)
+                                &reference_map)
     });
 
     if ccx.sess().opts.debugging_opts.print_trans_items.is_some() {
@@ -2976,17 +2976,18 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
                     output.push_str(&cgu_name[..]);
 
                     let linkage_abbrev = match linkage {
-                        llvm::ExternalLinkage => "External",
-                        llvm::AvailableExternallyLinkage => "Available",
-                        llvm::LinkOnceAnyLinkage => "OnceAny",
-                        llvm::LinkOnceODRLinkage => "OnceODR",
-                        llvm::WeakAnyLinkage => "WeakAny",
-                        llvm::WeakODRLinkage => "WeakODR",
-                        llvm::AppendingLinkage => "Appending",
-                        llvm::InternalLinkage => "Internal",
-                        llvm::PrivateLinkage => "Private",
-                        llvm::ExternalWeakLinkage => "ExternalWeak",
-                        llvm::CommonLinkage => "Common",
+                        InstantiationMode::Def(llvm::ExternalLinkage) => "External",
+                        InstantiationMode::Def(llvm::AvailableExternallyLinkage) => "Available",
+                        InstantiationMode::Def(llvm::LinkOnceAnyLinkage) => "OnceAny",
+                        InstantiationMode::Def(llvm::LinkOnceODRLinkage) => "OnceODR",
+                        InstantiationMode::Def(llvm::WeakAnyLinkage) => "WeakAny",
+                        InstantiationMode::Def(llvm::WeakODRLinkage) => "WeakODR",
+                        InstantiationMode::Def(llvm::AppendingLinkage) => "Appending",
+                        InstantiationMode::Def(llvm::InternalLinkage) => "Internal",
+                        InstantiationMode::Def(llvm::PrivateLinkage) => "Private",
+                        InstantiationMode::Def(llvm::ExternalWeakLinkage) => "ExternalWeak",
+                        InstantiationMode::Def(llvm::CommonLinkage) => "Common",
+                        InstantiationMode::Decl => "Declaration",
                     };
 
                     output.push_str("[");

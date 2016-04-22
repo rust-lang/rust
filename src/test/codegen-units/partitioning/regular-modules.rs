@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=eager -Z incremental=""
+// compile-flags:-Zprint-trans-items=eager -Z incremental=tmp
 
 #![allow(dead_code)]
 #![crate_type="lib"]
