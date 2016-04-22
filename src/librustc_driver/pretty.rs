@@ -29,6 +29,7 @@ use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
+use rustc_metadata::creader::LocalCrateReader;
 
 use rustc_mir::pretty::write_mir_pretty;
 use rustc_mir::graphviz::write_mir_graphviz;
@@ -43,6 +44,7 @@ use syntax::util::small_vector::SmallVector;
 
 use graphviz as dot;
 
+use std::cell::RefCell;
 use std::fs::File;
 use std::io::{self, Write};
 use std::iter;
@@ -179,7 +181,6 @@ impl PpSourceMode {
     }
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: &'tcx Session,
-                                               cstore: &CStore,
                                                ast_map: &hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                id: &str,
@@ -206,7 +207,6 @@ impl PpSourceMode {
             }
             PpmTyped => {
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
-                                                                 cstore,
                                                                  ast_map.clone(),
                                                                  arenas,
                                                                  id,
@@ -721,7 +721,7 @@ pub fn pretty_print_input(sess: Session,
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id[..], None) {
+        match driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None) {
             Err(_) => return,
             Ok(k) => driver::assign_node_ids(&sess, k),
         }
@@ -732,14 +732,18 @@ pub fn pretty_print_input(sess: Session,
     // There is some twisted, god-forsaken tangle of lifetimes here which makes
     // the ordering of stuff super-finicky.
     let mut hir_forest;
-    let lcx = LoweringContext::new(&sess, Some(&krate));
-    let arenas = ty::CtxtArenas::new();
+    let mut _defs = None;
     let dep_graph = DepGraph::new(false);
+    let arenas = ty::CtxtArenas::new();
     let _ignore = dep_graph.in_ignore();
     let ast_map = if compute_ast_map {
+        _defs = Some(RefCell::new(hir_map::collect_definitions(&krate)));
+        let defs = _defs.as_ref().unwrap();
+        LocalCrateReader::new(&sess, &cstore, defs, &krate, &id).read_crates(&dep_graph);
+        let lcx = LoweringContext::new(&sess, Some(&krate), defs);
+
         hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
-        let map = driver::make_map(&sess, &mut hir_forest);
-        Some(map)
+        Some(hir_map::map_crate(&mut hir_forest, defs))
     } else {
         None
     };
@@ -752,7 +756,7 @@ pub fn pretty_print_input(sess: Session,
                   .unwrap()
                   .as_bytes()
                   .to_vec();
-    let mut rdr = &src[..];
+    let mut rdr = &*src;
 
     let mut out = Vec::new();
 
@@ -777,7 +781,6 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(&sess,
-                                       cstore,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -799,7 +802,6 @@ pub fn pretty_print_input(sess: Session,
         (PpmHir(s), Some(uii)) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(&sess,
-                                       cstore,
                                        &ast_map.unwrap(),
                                        &arenas,
                                        &id,
@@ -840,7 +842,6 @@ pub fn pretty_print_input(sess: Session,
                 None
             };
             abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                             &cstore,
                                                              ast_map,
                                                              &arenas,
                                                              &id,
@@ -887,7 +888,6 @@ pub fn pretty_print_input(sess: Session,
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
                     abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                                     &cstore,
                                                                      ast_map,
                                                                      &arenas,
                                                                      &id,

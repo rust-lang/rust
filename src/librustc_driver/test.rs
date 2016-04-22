@@ -27,8 +27,10 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::relate::TypeRelation;
 use rustc::infer::{self, InferOk, InferResult, TypeOrigin};
 use rustc_metadata::cstore::CStore;
+use rustc_metadata::creader::LocalCrateReader;
 use rustc::hir::map as hir_map;
 use rustc::session::{self, config};
+use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
@@ -119,13 +121,15 @@ fn test_env<F>(source_string: &str,
     let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, "test", None)
                     .expect("phase 2 aborted");
 
-    let krate = driver::assign_node_ids(&sess, krate);
-    let lcx = LoweringContext::new(&sess, Some(&krate));
     let dep_graph = DepGraph::new(false);
+    let krate = driver::assign_node_ids(&sess, krate);
+    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
+    LocalCrateReader::new(&sess, &cstore, defs, &krate, "test_crate").read_crates(&dep_graph);
+    let lcx = LoweringContext::new(&sess, Some(&krate), defs);
     let _ignore = dep_graph.in_ignore();
-    let mut hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
+    let mut hir_forest = &mut hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
     let arenas = ty::CtxtArenas::new();
-    let ast_map = driver::make_map(&sess, &mut hir_forest);
+    let ast_map = hir_map::map_crate(hir_forest, defs);
 
     // run just enough stuff to build a tcx:
     let lang_items = lang_items::collect_language_items(&sess, &ast_map);

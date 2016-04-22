@@ -63,9 +63,6 @@ pub struct Mir<'tcx> {
 /// where execution begins
 pub const START_BLOCK: BasicBlock = BasicBlock(0);
 
-/// where execution ends, on normal return
-pub const END_BLOCK: BasicBlock = BasicBlock(1);
-
 impl<'tcx> Mir<'tcx> {
     pub fn all_basic_blocks(&self) -> Vec<BasicBlock> {
         (0..self.basic_blocks.len())
@@ -322,8 +319,7 @@ pub enum TerminatorKind<'tcx> {
     Resume,
 
     /// Indicates a normal return. The ReturnPointer lvalue should
-    /// have been filled in by now. This should only occur in the
-    /// `END_BLOCK`.
+    /// have been filled in by now. This should occur at most once.
     Return,
 
     /// Drop the Lvalue

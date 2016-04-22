@@ -1339,7 +1339,7 @@ fn roundtrip(in_item: hir::Item) {
 fn test_basic() {
     let cx = mk_ctxt();
     let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
+    let lcx = LoweringContext::testing_context(&fnia);
     roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo() {}
     ).unwrap()));
@@ -1349,7 +1349,7 @@ fn test_basic() {
 fn test_smalltalk() {
     let cx = mk_ctxt();
     let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
+    let lcx = LoweringContext::testing_context(&fnia);
     roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo() -> isize { 3 + 4 } // first smalltalk program ever executed.
     ).unwrap()));
@@ -1359,7 +1359,7 @@ fn test_smalltalk() {
 fn test_more() {
     let cx = mk_ctxt();
     let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
+    let lcx = LoweringContext::testing_context(&fnia);
     roundtrip(lower_item(&lcx, &quote_item!(&cx,
         fn foo(x: usize, y: usize) -> usize {
             let z = x + y;
@@ -1378,7 +1378,7 @@ fn test_simplification() {
         }
     ).unwrap();
     let fnia = FakeNodeIdAssigner;
-    let lcx = LoweringContext::new(&fnia, None);
+    let lcx = LoweringContext::testing_context(&fnia);
     let hir_item = lower_item(&lcx, &item);
     let item_in = InlinedItemRef::Item(&hir_item);
     let item_out = simplify_ast(item_in);
