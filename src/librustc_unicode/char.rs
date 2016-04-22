@@ -754,6 +754,13 @@ pub struct DecodeUtf16Error {
     code: u16,
 }
 
+#[stable(feature = "decode_utf16", since = "1.9.0")]
+impl ::core::error::Error for DecodeUtf16Error {
+    fn description(&self) -> &str {
+        "unpaired surrogate found"
+    }
+}
+
 /// Create an iterator over the UTF-16 encoded code points in `iter`,
 /// returning unpaired surrogates as `Err`s.
 ///

@@ -152,5 +152,7 @@ pub mod str;
 pub mod hash;
 pub mod fmt;
 
+pub mod error;
+
 // note: does not need to be public
 mod tuple;

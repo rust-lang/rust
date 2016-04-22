@@ -48,18 +48,17 @@
 // reconsider what crate these items belong in.
 
 use any::TypeId;
-use boxed::Box;
-use char;
-use fmt::{self, Debug, Display};
+use fmt::{Debug, Display};
 use marker::{Send, Sync, Reflect};
 use mem::transmute;
 use num;
 use raw::TraitObject;
 use str;
-use string::{self, String};
+use option::Option::{self, Some, None};
 
 /// Base functionality for all errors in Rust.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[fundamental]
 pub trait Error: Debug + Display + Reflect {
     /// A short description of the error.
     ///
@@ -80,63 +79,6 @@ pub trait Error: Debug + Display + Reflect {
                issue = "27745")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
-    fn from(err: E) -> Box<Error + 'a> {
-        Box::new(err)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<Error + Send + Sync + 'a> {
-    fn from(err: E) -> Box<Error + Send + Sync + 'a> {
-        Box::new(err)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl From<String> for Box<Error + Send + Sync> {
-    fn from(err: String) -> Box<Error + Send + Sync> {
-        #[derive(Debug)]
-        struct StringError(String);
-
-        impl Error for StringError {
-            fn description(&self) -> &str { &self.0 }
-        }
-
-        impl Display for StringError {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                Display::fmt(&self.0, f)
-            }
-        }
-
-        Box::new(StringError(err))
-    }
-}
-
-#[stable(feature = "string_box_error", since = "1.7.0")]
-impl From<String> for Box<Error> {
-    fn from(str_err: String) -> Box<Error> {
-        let err1: Box<Error + Send + Sync> = From::from(str_err);
-        let err2: Box<Error> = err1;
-        err2
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
-    fn from(err: &'b str) -> Box<Error + Send + Sync + 'a> {
-        From::from(String::from(err))
-    }
-}
-
-#[stable(feature = "string_box_error", since = "1.7.0")]
-impl<'a> From<&'a str> for Box<Error> {
-    fn from(err: &'a str) -> Box<Error> {
-        From::from(String::from(err))
     }
 }
 
@@ -163,45 +105,6 @@ impl Error for num::ParseIntError {
 impl Error for num::ParseFloatError {
     fn description(&self) -> &str {
         self.__description()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for string::FromUtf8Error {
-    fn description(&self) -> &str {
-        "invalid utf-8"
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for string::FromUtf16Error {
-    fn description(&self) -> &str {
-        "invalid utf-16"
-    }
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for string::ParseError {
-    fn description(&self) -> &str {
-        match *self {}
-    }
-}
-
-#[stable(feature = "decode_utf16", since = "1.9.0")]
-impl Error for char::DecodeUtf16Error {
-    fn description(&self) -> &str {
-        "unpaired surrogate found"
-    }
-}
-
-#[stable(feature = "box_error", since = "1.7.0")]
-impl<T: Error> Error for Box<T> {
-    fn description(&self) -> &str {
-        Error::description(&**self)
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        Error::cause(&**self)
     }
 }
 
@@ -301,55 +204,6 @@ impl Error + 'static + Send + Sync {
     #[inline]
     pub fn downcast_mut<T: Error + 'static>(&mut self) -> Option<&mut T> {
         <Error + 'static>::downcast_mut::<T>(self)
-    }
-}
-
-impl Error {
-    #[inline]
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempt to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>) -> Result<Box<T>, Box<Error>> {
-        if self.is::<T>() {
-            unsafe {
-                // Get the raw representation of the trait object
-                let raw = Box::into_raw(self);
-                let to: TraitObject =
-                    transmute::<*mut Error, TraitObject>(raw);
-
-                // Extract the data pointer
-                Ok(Box::from_raw(to.data as *mut T))
-            }
-        } else {
-            Err(self)
-        }
-    }
-}
-
-impl Error + Send {
-    #[inline]
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempt to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>)
-                                        -> Result<Box<T>, Box<Error + Send>> {
-        let err: Box<Error> = self;
-        <Error>::downcast(err).map_err(|s| unsafe {
-            // reapply the Send marker
-            transmute::<Box<Error>, Box<Error + Send>>(s)
-        })
-    }
-}
-
-impl Error + Send + Sync {
-    #[inline]
-    #[stable(feature = "error_downcast", since = "1.3.0")]
-    /// Attempt to downcast the box to a concrete type.
-    pub fn downcast<T: Error + 'static>(self: Box<Self>)
-                                        -> Result<Box<T>, Box<Self>> {
-        let err: Box<Error> = self;
-        <Error>::downcast(err).map_err(|s| unsafe {
-            // reapply the Send+Sync marker
-            transmute::<Box<Error>, Box<Error + Send + Sync>>(s)
-        })
     }
 }
 

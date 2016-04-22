@@ -10,7 +10,7 @@
 
 use boxed::Box;
 use convert::Into;
-use error;
+use core::error;
 use fmt;
 use marker::{Send, Sync};
 use option::Option::{self, Some, None};

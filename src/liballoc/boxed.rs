@@ -68,6 +68,7 @@ use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
 use core::ptr::{self, Unique};
 use core::raw::TraitObject;
 use core::convert::From;
+use core::error::Error;
 
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
@@ -641,3 +642,112 @@ impl<T: ?Sized> AsMut<T> for Box<T> {
         &mut **self
     }
 }
+
+
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
+    fn from(err: E) -> Box<Error + 'a> {
+        Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<Error + Send + Sync + 'a> {
+    fn from(err: E) -> Box<Error + Send + Sync + 'a> {
+        Box::new(err)
+    }
+}
+
+impl Box<str> {
+    fn new_box_str(s: &str) -> Box<str> {
+        let len = s.len();
+        let buf = RawVec::with_capacity(len);
+        unsafe {
+            ptr::copy_nonoverlapping(s.as_ptr(), buf.ptr(), len);
+            mem::transmute(buf.into_box()) // bytes to str ~magic
+        }
+    }
+}
+
+#[unstable(feature="error_box_str",issue="0")]
+impl Error for Box<str> {
+    fn description(&self) -> &str {
+        self
+    }
+}
+
+impl Box<Error> {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    /// Attempt to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self) -> Result<Box<T>, Box<Error>> {
+        if self.is::<T>() {
+            unsafe {
+                // Get the raw representation of the trait object
+                let raw = Box::into_raw(self);
+                let to: TraitObject =
+                    mem::transmute::<*mut Error, TraitObject>(raw);
+
+                // Extract the data pointer
+                Ok(Box::from_raw(to.data as *mut T))
+            }
+        } else {
+            Err(self)
+        }
+    }
+}
+
+impl Box<Error + Send> {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    /// Attempt to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self)
+                                        -> Result<Box<T>, Box<Error + Send>> {
+        let err: Box<Error> = self;
+        <Box<Error>>::downcast(err).map_err(|s| unsafe {
+            // reapply the Send marker
+            mem::transmute::<Box<Error>, Box<Error + Send>>(s)
+        })
+    }
+}
+
+impl Box<Error + Send + Sync> {
+    #[inline]
+    #[stable(feature = "error_downcast", since = "1.3.0")]
+    /// Attempt to downcast the box to a concrete type.
+    pub fn downcast<T: Error + 'static>(self)
+                                        -> Result<Box<T>, Self> {
+        let err: Box<Error> = self;
+        <Box<Error>>::downcast(err).map_err(|s| unsafe {
+            // reapply the Send+Sync marker
+            mem::transmute::<Box<Error>, Box<Error + Send + Sync>>(s)
+        })
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
+    fn from(err: &'b str) -> Box<Error + Send + Sync + 'a> {
+        From::from(Box::new_box_str(err))
+    }
+}
+
+#[stable(feature = "string_box_error", since = "1.7.0")]
+impl<'a> From<&'a str> for Box<Error> {
+    fn from(err: &'a str) -> Box<Error> {
+        From::from(Box::new_box_str(err))
+    }
+}
+
+#[stable(feature = "box_error", since = "1.7.0")]
+impl<T: Error> Error for Box<T> {
+    fn description(&self) -> &str {
+        Error::description(&**self)
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        Error::cause(&**self)
+    }
+}
+
