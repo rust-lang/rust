@@ -531,7 +531,7 @@ mod tests {
     use self::rand::isaac::IsaacRng;
     use serialize::hex::FromHex;
     use std::u64;
-    use super::{Digest, Sha256, FixedBuffer};
+    use super::{Digest, Sha256};
 
     // A normal addition - no overflow occurs
     #[test]
@@ -648,7 +648,7 @@ mod tests {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use super::{Sha256, FixedBuffer, Digest};
+    use super::{Sha256, Digest};
 
     #[bench]
     pub fn sha256_10(b: &mut Bencher) {

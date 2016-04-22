@@ -12,7 +12,6 @@
 //! same type. Likewise, no two inherent impls for a given type
 //! constructor provide a method with the same name.
 
-use middle::cstore::CrateStore;
 use hir::def_id::DefId;
 use rustc::traits::{self, ProjectionMode};
 use rustc::infer;

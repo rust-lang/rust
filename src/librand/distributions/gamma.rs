@@ -13,6 +13,7 @@
 use self::GammaRepr::*;
 use self::ChiSquaredRepr::*;
 
+#[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
 use {Rng, Open01};

@@ -82,7 +82,6 @@
 //! relation, except that a borrowed pointer never owns its
 //! contents.
 
-use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use middle::free_region::FreeRegionMap;

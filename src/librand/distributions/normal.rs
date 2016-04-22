@@ -10,6 +10,7 @@
 
 //! The normal and derived distributions.
 
+#[cfg(not(test))] // only necessary for no_std
 use FloatMath;
 
 use {Rng, Rand, Open01};
