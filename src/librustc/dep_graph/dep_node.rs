@@ -32,6 +32,10 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents the HIR node with the given node-id
     Hir(D),
 
+    // Represents the metadata for a given HIR node, typically found
+    // in an extern crate.
+    MetaData(D),
+
     // Represents different phases in the compiler.
     CrateReader,
     CollectLanguageItems,
@@ -175,6 +179,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TransCrate => Some(TransCrate),
             TransWriteMetadata => Some(TransWriteMetadata),
             Hir(ref d) => op(d).map(Hir),
+            MetaData(ref d) => op(d).map(MetaData),
             CollectItem(ref d) => op(d).map(CollectItem),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),
             CoherenceOverlapCheck(ref d) => op(d).map(CoherenceOverlapCheck),
