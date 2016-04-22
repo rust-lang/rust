@@ -169,15 +169,14 @@ impl<'a> Ty<'a> {
                    -> ast::Path {
         match *self {
             Self_ => {
-                let self_params = self_generics.ty_params.map(|ty_param| {
+                let self_params = self_generics.ty_params.iter().map(|ty_param| {
                     cx.ty_ident(span, ty_param.ident)
-                });
+                }).collect();
                 let lifetimes = self_generics.lifetimes.iter()
                                                        .map(|d| d.lifetime)
                                                        .collect();
 
-                cx.path_all(span, false, vec!(self_ty), lifetimes,
-                            self_params.into_vec(), Vec::new())
+                cx.path_all(span, false, vec![self_ty], lifetimes, self_params, Vec::new())
             }
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)
