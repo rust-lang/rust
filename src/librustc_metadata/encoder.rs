@@ -267,12 +267,8 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         let vid = variant.did;
         let variant_node_id = ecx.local_id(vid);
 
-        if let ty::VariantKind::Struct = variant.kind() {
-            // tuple-like enum variant fields aren't really items so
-            // don't try to encode them.
-            for field in &variant.fields {
-                encode_field(ecx, rbml_w, field, index);
-            }
+        for field in &variant.fields {
+            encode_field(ecx, rbml_w, field, index);
         }
 
         let _task = index.record(vid, rbml_w);
@@ -306,6 +302,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         encode_bounds_and_type_for_item(rbml_w, ecx, index, variant_node_id);
 
         rbml_w.end_tag();
+
         disr_val = disr_val.wrap_incr();
     }
 }
