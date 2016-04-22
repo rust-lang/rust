@@ -226,6 +226,7 @@ impl PpSourceMode {
                 f(&annotation, payload, ast_map.forest.krate())
             }
             PpmTyped => {
+                /*
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
                                                                  ast_map.clone(),
                                                                  arenas,
@@ -240,6 +241,8 @@ impl PpSourceMode {
                       payload,
                       ast_map.forest.krate())
                 }), sess)
+                */
+                unimplemented!()
             }
             _ => panic!("Should use call_with_pp_support"),
         }
@@ -927,6 +930,7 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
         None
     };
 
+    /*
     let mut out = Vec::new();
 
     abort_on_err(driver::phase_3_run_analysis_passes(sess,
@@ -998,4 +1002,6 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     }), sess).unwrap();
 
     write_output(out, ofile);
+    */
+    unimplemented!()
 }
