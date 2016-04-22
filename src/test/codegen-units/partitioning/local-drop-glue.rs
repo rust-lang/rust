@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=lazy -Zincremental=""
+// compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp
 
 #![allow(dead_code)]
 #![crate_type="lib"]
@@ -21,7 +21,7 @@ struct Struct {
 }
 
 impl Drop for Struct {
-    //~ TRANS_ITEM fn local_drop_glue::{{impl}}[0]::drop[0] @@ local_drop_glue[WeakODR]
+    //~ TRANS_ITEM fn local_drop_glue::{{impl}}[0]::drop[0] @@ local_drop_glue[WeakODR] local_drop_glue-mod1[Declaration]
     fn drop(&mut self) {}
 }
 
