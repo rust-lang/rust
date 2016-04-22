@@ -42,7 +42,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
-use rustc::hir::lowering::{lower_expr, LoweringContext};
+use rustc::hir::lowering::lower_expr;
 
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;
@@ -60,12 +60,12 @@ macro_rules! down_cast_data {
     };
 }
 
-pub struct DumpVisitor<'l, 'tcx: 'l, D: 'l> {
+pub struct DumpVisitor<'l, 'tcx: 'l, 'll, D: 'll> {
     save_ctxt: SaveContext<'l, 'tcx>,
     sess: &'l Session,
     tcx: &'l TyCtxt<'tcx>,
     analysis: &'l ty::CrateAnalysis<'l>,
-    dumper: &'l mut D,
+    dumper: &'ll mut D,
 
     span: SpanUtils<'l>,
 
@@ -77,22 +77,19 @@ pub struct DumpVisitor<'l, 'tcx: 'l, D: 'l> {
     // one macro use per unique callsite span.
     mac_defs: HashSet<Span>,
     mac_uses: HashSet<Span>,
-
 }
 
-impl <'l, 'tcx, D> DumpVisitor<'l, 'tcx, D>
-where D: Dump
-{
+impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
     pub fn new(tcx: &'l TyCtxt<'tcx>,
-               lcx: &'l LoweringContext<'l>,
+               save_ctxt: SaveContext<'l, 'tcx>,
                analysis: &'l ty::CrateAnalysis<'l>,
-               dumper: &'l mut D)
-               -> DumpVisitor<'l, 'tcx, D> {
+               dumper: &'ll mut D)
+               -> DumpVisitor<'l, 'tcx, 'll, D> {
         let span_utils = SpanUtils::new(&tcx.sess);
         DumpVisitor {
             sess: &tcx.sess,
             tcx: tcx,
-            save_ctxt: SaveContext::from_span_utils(tcx, lcx, span_utils.clone()),
+            save_ctxt: save_ctxt,
             analysis: analysis,
             dumper: dumper,
             span: span_utils.clone(),
@@ -103,7 +100,7 @@ where D: Dump
     }
 
     fn nest<F>(&mut self, scope_id: NodeId, f: F)
-        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, D>)
+        where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let parent_scope = self.cur_scope;
         self.cur_scope = scope_id;
@@ -982,7 +979,7 @@ where D: Dump
     }
 }
 
-impl<'l, 'tcx, 'v, D: Dump + 'l> Visitor<'v> for DumpVisitor<'l, 'tcx, D> {
+impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 'll, D> {
     fn visit_item(&mut self, item: &ast::Item) {
         use syntax::ast::ItemKind::*;
         self.process_macro_use(item.span, item.id);

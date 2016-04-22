@@ -11,6 +11,7 @@
 pub use self::Node::*;
 use self::MapEntry::*;
 use self::collector::NodeCollector;
+use self::def_collector::DefCollector;
 pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
                             DisambiguatedDefPathData, InlinedRootPath};
 
@@ -21,9 +22,10 @@ use middle::cstore::InlinedItem as II;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 
 use syntax::abi::Abi;
-use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID};
+use syntax::ast::{self, Name, NodeId, DUMMY_NODE_ID, };
 use syntax::attr::ThinAttributesExt;
 use syntax::codemap::{Span, Spanned};
+use syntax::visit;
 
 use hir::*;
 use hir::fold::Folder;
@@ -36,6 +38,7 @@ use std::mem;
 
 pub mod blocks;
 mod collector;
+mod def_collector;
 pub mod definitions;
 
 #[derive(Copy, Clone, Debug)]
@@ -193,7 +196,7 @@ pub struct Map<'ast> {
     /// plain old integers.
     map: RefCell<Vec<MapEntry<'ast>>>,
 
-    definitions: RefCell<Definitions>,
+    definitions: &'ast RefCell<Definitions>,
 }
 
 impl<'ast> Map<'ast> {
@@ -780,12 +783,18 @@ impl<F: FoldOps> Folder for IdAndSpanUpdater<F> {
     }
 }
 
-pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
-    let (map, definitions) = {
-        let mut collector = NodeCollector::root(&forest.krate);
-        intravisit::walk_crate(&mut collector, &forest.krate);
-        (collector.map, collector.definitions)
-    };
+pub fn collect_definitions<'ast>(krate: &'ast ast::Crate) -> Definitions {
+    let mut def_collector = DefCollector::root();
+    visit::walk_crate(&mut def_collector, krate);
+    def_collector.definitions
+}
+
+pub fn map_crate<'ast>(forest: &'ast mut Forest,
+                       definitions: &'ast RefCell<Definitions>)
+                       -> Map<'ast> {
+    let mut collector = NodeCollector::root(&forest.krate);
+    intravisit::walk_crate(&mut collector, &forest.krate);
+    let map = collector.map;
 
     if log_enabled!(::log::DEBUG) {
         // This only makes sense for ordered stores; note the
@@ -807,7 +816,7 @@ pub fn map_crate<'ast>(forest: &'ast mut Forest) -> Map<'ast> {
         forest: forest,
         dep_graph: forest.dep_graph.clone(),
         map: RefCell::new(map),
-        definitions: RefCell::new(definitions),
+        definitions: definitions,
     }
 }
 
@@ -834,21 +843,24 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     };
 
     let ii = map.forest.inlined_items.alloc(ii);
-
     let ii_parent_id = fld.new_id(DUMMY_NODE_ID);
-    let mut collector =
-        NodeCollector::extend(
-            map.krate(),
-            ii,
-            ii_parent_id,
-            parent_def_path,
-            parent_def_id,
-            mem::replace(&mut *map.map.borrow_mut(), vec![]),
-            mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new()));
-    ii.visit(&mut collector);
 
+    let defs = mem::replace(&mut *map.definitions.borrow_mut(), Definitions::new());
+    let mut def_collector = DefCollector::extend(ii_parent_id,
+                                                 parent_def_path.clone(),
+                                                 parent_def_id,
+                                                 defs);
+    def_collector.walk_item(ii, map.krate());
+    *map.definitions.borrow_mut() = def_collector.definitions;
+
+    let mut collector = NodeCollector::extend(map.krate(),
+                                              ii,
+                                              ii_parent_id,
+                                              parent_def_path,
+                                              parent_def_id,
+                                              mem::replace(&mut *map.map.borrow_mut(), vec![]));
+    ii.visit(&mut collector);
     *map.map.borrow_mut() = collector.map;
-    *map.definitions.borrow_mut() = collector.definitions;
 
     ii
 }

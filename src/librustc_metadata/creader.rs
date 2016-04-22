@@ -18,7 +18,7 @@ use decoder;
 use loader::{self, CratePaths};
 
 use rustc::hir::svh::Svh;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepGraph, DepNode};
 use rustc::session::{config, Session};
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateStore, validate_crate_name, ExternCrate};
@@ -37,15 +37,15 @@ use syntax::parse;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::InternedString;
-use rustc::hir::intravisit::Visitor;
-use rustc::hir;
+use syntax::visit;
 use log;
 
-pub struct LocalCrateReader<'a, 'b:'a> {
+pub struct LocalCrateReader<'a> {
     sess: &'a Session,
     cstore: &'a CStore,
     creader: CrateReader<'a>,
-    ast_map: &'a hir_map::Map<'b>,
+    krate: &'a ast::Crate,
+    defintions: &'a RefCell<hir_map::Definitions>,
 }
 
 pub struct CrateReader<'a> {
@@ -56,9 +56,10 @@ pub struct CrateReader<'a> {
     local_crate_name: String,
 }
 
-impl<'a, 'b, 'hir> Visitor<'hir> for LocalCrateReader<'a, 'b> {
-    fn visit_item(&mut self, a: &'hir hir::Item) {
+impl<'a, 'ast> visit::Visitor<'ast> for LocalCrateReader<'a> {
+    fn visit_item(&mut self, a: &'ast ast::Item) {
         self.process_item(a);
+        visit::walk_item(self, a);
     }
 }
 
@@ -80,11 +81,8 @@ fn dump_crates(cstore: &CStore) {
 fn should_link(i: &ast::Item) -> bool {
     !attr::contains_name(&i.attrs, "no_link")
 }
-// Dup for the hir
-fn should_link_hir(i: &hir::Item) -> bool {
-    !attr::contains_name(&i.attrs, "no_link")
-}
 
+#[derive(Debug)]
 struct CrateInfo {
     ident: String,
     name: String,
@@ -175,31 +173,6 @@ impl<'a> CrateReader<'a> {
                     name: name,
                     id: i.id,
                     should_link: should_link(i),
-                })
-            }
-            _ => None
-        }
-    }
-
-    // Dup of the above, but for the hir
-    fn extract_crate_info_hir(&self, i: &hir::Item) -> Option<CrateInfo> {
-        match i.node {
-            hir::ItemExternCrate(ref path_opt) => {
-                debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
-                       i.name, path_opt);
-                let name = match *path_opt {
-                    Some(name) => {
-                        validate_crate_name(Some(self.sess), &name.as_str(),
-                                            Some(i.span));
-                        name.to_string()
-                    }
-                    None => i.name.to_string(),
-                };
-                Some(CrateInfo {
-                    ident: i.name.to_string(),
-                    name: name,
-                    id: i.id,
-                    should_link: should_link_hir(i),
                 })
             }
             _ => None
@@ -776,29 +749,30 @@ impl<'a> CrateReader<'a> {
     }
 }
 
-impl<'a, 'b> LocalCrateReader<'a, 'b> {
+impl<'a> LocalCrateReader<'a> {
     pub fn new(sess: &'a Session,
                cstore: &'a CStore,
-               map: &'a hir_map::Map<'b>,
+               defs: &'a RefCell<hir_map::Definitions>,
+               krate: &'a ast::Crate,
                local_crate_name: &str)
-               -> LocalCrateReader<'a, 'b> {
+               -> LocalCrateReader<'a> {
         LocalCrateReader {
             sess: sess,
             cstore: cstore,
             creader: CrateReader::new(sess, cstore, local_crate_name),
-            ast_map: map,
+            krate: krate,
+            defintions: defs,
         }
     }
 
     // Traverses an AST, reading all the information about use'd crates and
     // extern libraries necessary for later resolving, typechecking, linking,
     // etc.
-    pub fn read_crates(&mut self) {
-        let _task = self.ast_map.dep_graph.in_task(DepNode::CrateReader);
-        let krate = self.ast_map.krate();
+    pub fn read_crates(&mut self, dep_graph: &DepGraph) {
+        let _task = dep_graph.in_task(DepNode::CrateReader);
 
-        self.process_crate(krate);
-        krate.visit_all_items(self);
+        self.process_crate(self.krate);
+        visit::walk_crate(self, self.krate);
         self.creader.inject_allocator_crate();
 
         if log_enabled!(log::INFO) {
@@ -811,34 +785,34 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
         self.creader.register_statically_included_foreign_items();
     }
 
-    fn process_crate(&self, c: &hir::Crate) {
+    fn process_crate(&self, c: &ast::Crate) {
         for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
-            match a.value_str() {
-                Some(ref linkarg) => self.cstore.add_used_link_args(&linkarg),
-                None => { /* fallthrough */ }
+            if let Some(ref linkarg) = a.value_str() {
+                self.cstore.add_used_link_args(&linkarg);
             }
         }
     }
 
-    fn process_item(&mut self, i: &hir::Item) {
+    fn process_item(&mut self, i: &ast::Item) {
         match i.node {
-            hir::ItemExternCrate(_) => {
-                if !should_link_hir(i) {
+            ast::ItemKind::ExternCrate(_) => {
+                if !should_link(i) {
                     return;
                 }
 
-                match self.creader.extract_crate_info_hir(i) {
+                match self.creader.extract_crate_info(i) {
                     Some(info) => {
                         let (cnum, _, _) = self.creader.resolve_crate(&None,
-                                                                          &info.ident,
-                                                                          &info.name,
-                                                                          None,
-                                                                          i.span,
-                                                                          PathKind::Crate,
-                                                                          true);
-                        let def_id = self.ast_map.local_def_id(i.id);
+                                                                      &info.ident,
+                                                                      &info.name,
+                                                                      None,
+                                                                      i.span,
+                                                                      PathKind::Crate,
+                                                                      true);
 
-                        let len = self.ast_map.def_path(def_id).data.len();
+                        let defs = self.defintions.borrow();
+                        let def_id = defs.opt_local_def_id(i.id).unwrap();
+                        let len = defs.def_path(def_id.index).data.len();
 
                         self.creader.update_extern_crate(cnum,
                                                          ExternCrate {
@@ -852,12 +826,12 @@ impl<'a, 'b> LocalCrateReader<'a, 'b> {
                     None => ()
                 }
             }
-            hir::ItemForeignMod(ref fm) => self.process_foreign_mod(i, fm),
+            ast::ItemKind::ForeignMod(ref fm) => self.process_foreign_mod(i, fm),
             _ => { }
         }
     }
 
-    fn process_foreign_mod(&mut self, i: &hir::Item, fm: &hir::ForeignMod) {
+    fn process_foreign_mod(&mut self, i: &ast::Item, fm: &ast::ForeignMod) {
         if fm.abi == Abi::Rust || fm.abi == Abi::RustIntrinsic || fm.abi == Abi::PlatformIntrinsic {
             return;
         }

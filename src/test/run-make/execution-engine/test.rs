@@ -20,6 +20,7 @@ extern crate rustc_metadata;
 extern crate rustc_resolve;
 #[macro_use] extern crate syntax;
 
+use std::cell::RefCell;
 use std::ffi::{CStr, CString};
 use std::mem::transmute;
 use std::path::PathBuf;
@@ -35,6 +36,7 @@ use rustc::session::build_session;
 use rustc_driver::{driver, abort_on_err};
 use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc_resolve::MakeGlobMap;
+use rustc_metadata::creader::LocalCrateReader;
 use rustc_metadata::cstore::CStore;
 use libc::c_void;
 
@@ -237,15 +239,17 @@ fn compile_program(input: &str, sysroot: PathBuf)
         let krate = driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None)
             .expect("phase_2 returned `None`");
 
-        let krate = driver::assign_node_ids(&sess, krate);
-        let lcx = LoweringContext::new(&sess, Some(&krate));
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
+        let krate = driver::assign_node_ids(&sess, krate);
+        let defs = RefCell::new(ast_map::collect_definitions(&krate));
+        LocalCrateReader::new(&sess, &cstore, &defs, &krate, &id).read_crates(&dep_graph);
+        let lcx = LoweringContext::new(&sess, Some(&krate), &defs);
         let mut hir_forest = ast_map::Forest::new(lower_crate(&lcx, &krate), dep_graph);
         let arenas = ty::CtxtArenas::new();
-        let ast_map = driver::make_map(&sess, &mut hir_forest);
+        let ast_map = ast_map::map_crate(&mut hir_forest, &defs);
 
         abort_on_err(driver::phase_3_run_analysis_passes(
-            &sess, &cstore, ast_map, &arenas, &id,
+            &sess, ast_map, &arenas, &id,
             MakeGlobMap::No, |tcx, mir_map, analysis, _| {
 
             let trans = driver::phase_4_translate_to_llvm(tcx, mir_map.unwrap(), analysis);
