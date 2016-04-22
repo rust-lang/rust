@@ -768,6 +768,10 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
             err.fileline_note(
                 cause_span,
                 "tuple elements must have `Sized` type");
+
+            err.fileline_warn(
+                cause_span,
+                "this is a new restriction added in rustc 1.10");
         }
         ObligationCauseCode::ProjectionWf(data) => {
             err.note(&format!("required so that the projection `{}` is well-formed",
