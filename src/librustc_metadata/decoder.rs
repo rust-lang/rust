@@ -71,7 +71,10 @@ impl crate_metadata {
 
     fn lookup_item(&self, item_id: DefIndex) -> rbml::Doc {
         match self.get_item(item_id) {
-            None => bug!("lookup_item: id not found: {:?}", item_id),
+            None => bug!("lookup_item: id not found: {:?} in crate {:?} with number {}",
+                         item_id,
+                         self.name,
+                         self.cnum),
             Some(d) => d
         }
     }
