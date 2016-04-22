@@ -94,15 +94,17 @@ pub fn run(input: &str,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
     let krate = driver::assign_node_ids(&sess, krate);
-    let lcx = LoweringContext::new(&sess, Some(&krate));
+    let dep_graph = DepGraph::new(false);
+    let defs = &RefCell::new(hir_map::collect_definitions(&krate));
+
+    let lcx = LoweringContext::new(&sess, Some(&krate), defs);
     let krate = lower_crate(&lcx, &krate);
 
     let opts = scrape_test_config(&krate);
 
-    let dep_graph = DepGraph::new(false);
     let _ignore = dep_graph.in_ignore();
     let mut forest = hir_map::Forest::new(krate, dep_graph.clone());
-    let map = hir_map::map_crate(&mut forest);
+    let map = hir_map::map_crate(&mut forest, defs);
 
     let ctx = core::DocContext {
         map: &map,

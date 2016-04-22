@@ -17,10 +17,10 @@ use super::data::*;
 use super::dump::Dump;
 use super::span_utils::SpanUtils;
 
-pub struct CsvDumper<'a, 'b, W: 'b> {
+pub struct CsvDumper<'tcx, 'b, W: 'b> {
     output: &'b mut W,
     dump_spans: bool,
-    span: SpanUtils<'a>
+    span: SpanUtils<'tcx>
 }
 
 impl<'a, 'b, W: Write> CsvDumper<'a, 'b, W> {

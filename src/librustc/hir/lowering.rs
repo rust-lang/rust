@@ -62,6 +62,9 @@
 // in the HIR, especially for multiple identifiers.
 
 use hir;
+use hir::map::Definitions;
+use hir::map::definitions::DefPathData;
+use hir::def_id::DefIndex;
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -92,10 +95,20 @@ pub struct LoweringContext<'a> {
     // A copy of cached_id, but is also set to an id while a node is lowered for
     // the first time.
     gensym_key: Cell<u32>,
+    // We must keep the set of definitions up to date as we add nodes that
+    // weren't in the AST.
+    definitions: Option<&'a RefCell<Definitions>>,
+    // As we walk the AST we must keep track of the current 'parent' def id (in
+    // the form of a DefIndex) so that if we create a new node which introduces
+    // a definition, then we can properly create the def id.
+    parent_def: Cell<Option<DefIndex>>,
 }
 
 impl<'a, 'hir> LoweringContext<'a> {
-    pub fn new(id_assigner: &'a NodeIdAssigner, c: Option<&Crate>) -> LoweringContext<'a> {
+    pub fn new(id_assigner: &'a NodeIdAssigner,
+               c: Option<&Crate>,
+               defs: &'a RefCell<Definitions>)
+               -> LoweringContext<'a> {
         let crate_root = c.and_then(|c| {
             if std_inject::no_core(c) {
                 None
@@ -113,6 +126,23 @@ impl<'a, 'hir> LoweringContext<'a> {
             cached_id: Cell::new(0),
             gensym_cache: RefCell::new(HashMap::new()),
             gensym_key: Cell::new(0),
+            definitions: Some(defs),
+            parent_def: Cell::new(None),
+        }
+    }
+
+    // Only use this when you want a LoweringContext for testing and won't look
+    // up def ids for anything created during lowering.
+    pub fn testing_context(id_assigner: &'a NodeIdAssigner) -> LoweringContext<'a> {
+        LoweringContext {
+            crate_root: None,
+            id_cache: RefCell::new(HashMap::new()),
+            id_assigner: id_assigner,
+            cached_id: Cell::new(0),
+            gensym_cache: RefCell::new(HashMap::new()),
+            gensym_key: Cell::new(0),
+            definitions: None,
+            parent_def: Cell::new(None),
         }
     }
 
@@ -145,6 +175,25 @@ impl<'a, 'hir> LoweringContext<'a> {
     // Panics if this LoweringContext's NodeIdAssigner is not able to emit diagnostics.
     fn diagnostic(&self) -> &Handler {
         self.id_assigner.diagnostic()
+    }
+
+    fn with_parent_def<T, F: FnOnce() -> T>(&self, parent_id: NodeId, f: F) -> T {
+        if self.definitions.is_none() {
+            // This should only be used for testing.
+            return f();
+        }
+
+        let old_def = self.parent_def.get();
+        self.parent_def.set(Some(self.get_def(parent_id)));
+        let result = f();
+        self.parent_def.set(old_def);
+
+        result
+    }
+
+    fn get_def(&self, id: NodeId) -> DefIndex {
+        let defs = self.definitions.unwrap().borrow();
+        defs.opt_def_index(id).unwrap()
     }
 }
 
@@ -733,47 +782,51 @@ pub fn lower_item_kind(lctx: &LoweringContext, i: &ItemKind) -> hir::Item_ {
 }
 
 pub fn lower_trait_item(lctx: &LoweringContext, i: &TraitItem) -> hir::TraitItem {
-    hir::TraitItem {
-        id: i.id,
-        name: i.ident.name,
-        attrs: lower_attrs(lctx, &i.attrs),
-        node: match i.node {
-            TraitItemKind::Const(ref ty, ref default) => {
-                hir::ConstTraitItem(lower_ty(lctx, ty),
-                                    default.as_ref().map(|x| lower_expr(lctx, x)))
-            }
-            TraitItemKind::Method(ref sig, ref body) => {
-                hir::MethodTraitItem(lower_method_sig(lctx, sig),
-                                     body.as_ref().map(|x| lower_block(lctx, x)))
-            }
-            TraitItemKind::Type(ref bounds, ref default) => {
-                hir::TypeTraitItem(lower_bounds(lctx, bounds),
-                                   default.as_ref().map(|x| lower_ty(lctx, x)))
-            }
-        },
-        span: i.span,
-    }
+    lctx.with_parent_def(i.id, || {
+        hir::TraitItem {
+            id: i.id,
+            name: i.ident.name,
+            attrs: lower_attrs(lctx, &i.attrs),
+            node: match i.node {
+                TraitItemKind::Const(ref ty, ref default) => {
+                    hir::ConstTraitItem(lower_ty(lctx, ty),
+                                        default.as_ref().map(|x| lower_expr(lctx, x)))
+                }
+                TraitItemKind::Method(ref sig, ref body) => {
+                    hir::MethodTraitItem(lower_method_sig(lctx, sig),
+                                         body.as_ref().map(|x| lower_block(lctx, x)))
+                }
+                TraitItemKind::Type(ref bounds, ref default) => {
+                    hir::TypeTraitItem(lower_bounds(lctx, bounds),
+                                       default.as_ref().map(|x| lower_ty(lctx, x)))
+                }
+            },
+            span: i.span,
+        }
+    })
 }
 
 pub fn lower_impl_item(lctx: &LoweringContext, i: &ImplItem) -> hir::ImplItem {
-    hir::ImplItem {
-        id: i.id,
-        name: i.ident.name,
-        attrs: lower_attrs(lctx, &i.attrs),
-        vis: lower_visibility(lctx, &i.vis),
-        defaultness: lower_defaultness(lctx, i.defaultness),
-        node: match i.node {
-            ImplItemKind::Const(ref ty, ref expr) => {
-                hir::ImplItemKind::Const(lower_ty(lctx, ty), lower_expr(lctx, expr))
-            }
-            ImplItemKind::Method(ref sig, ref body) => {
-                hir::ImplItemKind::Method(lower_method_sig(lctx, sig), lower_block(lctx, body))
-            }
-            ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(lower_ty(lctx, ty)),
-            ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
-        },
-        span: i.span,
-    }
+    lctx.with_parent_def(i.id, || {
+        hir::ImplItem {
+            id: i.id,
+            name: i.ident.name,
+            attrs: lower_attrs(lctx, &i.attrs),
+            vis: lower_visibility(lctx, &i.vis),
+            defaultness: lower_defaultness(lctx, i.defaultness),
+            node: match i.node {
+                ImplItemKind::Const(ref ty, ref expr) => {
+                    hir::ImplItemKind::Const(lower_ty(lctx, ty), lower_expr(lctx, expr))
+                }
+                ImplItemKind::Method(ref sig, ref body) => {
+                    hir::ImplItemKind::Method(lower_method_sig(lctx, sig), lower_block(lctx, body))
+                }
+                ImplItemKind::Type(ref ty) => hir::ImplItemKind::Type(lower_ty(lctx, ty)),
+                ImplItemKind::Macro(..) => panic!("Shouldn't exist any more"),
+            },
+            span: i.span,
+        }
+    })
 }
 
 pub fn lower_mod(lctx: &LoweringContext, m: &Mod) -> hir::Mod {
@@ -831,7 +884,9 @@ pub fn lower_item_id(_lctx: &LoweringContext, i: &Item) -> hir::ItemId {
 }
 
 pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
-    let node = lower_item_kind(lctx, &i.node);
+    let node = lctx.with_parent_def(i.id, || {
+        lower_item_kind(lctx, &i.node)
+    });
 
     hir::Item {
         id: i.id,
@@ -844,21 +899,23 @@ pub fn lower_item(lctx: &LoweringContext, i: &Item) -> hir::Item {
 }
 
 pub fn lower_foreign_item(lctx: &LoweringContext, i: &ForeignItem) -> hir::ForeignItem {
-    hir::ForeignItem {
-        id: i.id,
-        name: i.ident.name,
-        attrs: lower_attrs(lctx, &i.attrs),
-        node: match i.node {
-            ForeignItemKind::Fn(ref fdec, ref generics) => {
-                hir::ForeignItemFn(lower_fn_decl(lctx, fdec), lower_generics(lctx, generics))
-            }
-            ForeignItemKind::Static(ref t, m) => {
-                hir::ForeignItemStatic(lower_ty(lctx, t), m)
-            }
-        },
-        vis: lower_visibility(lctx, &i.vis),
-        span: i.span,
-    }
+    lctx.with_parent_def(i.id, || {
+        hir::ForeignItem {
+            id: i.id,
+            name: i.ident.name,
+            attrs: lower_attrs(lctx, &i.attrs),
+            node: match i.node {
+                ForeignItemKind::Fn(ref fdec, ref generics) => {
+                    hir::ForeignItemFn(lower_fn_decl(lctx, fdec), lower_generics(lctx, generics))
+                }
+                ForeignItemKind::Static(ref t, m) => {
+                    hir::ForeignItemStatic(lower_ty(lctx, t), m)
+                }
+            },
+            vis: lower_visibility(lctx, &i.vis),
+            span: i.span,
+        }
+    })
 }
 
 pub fn lower_method_sig(lctx: &LoweringContext, sig: &MethodSig) -> hir::MethodSig {
@@ -926,9 +983,11 @@ pub fn lower_pat(lctx: &LoweringContext, p: &Pat) -> P<hir::Pat> {
         node: match p.node {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, pth1, ref sub) => {
-                hir::PatKind::Ident(lower_binding_mode(lctx, binding_mode),
-                              respan(pth1.span, lower_ident(lctx, pth1.node)),
-                              sub.as_ref().map(|x| lower_pat(lctx, x)))
+                lctx.with_parent_def(p.id, || {
+                    hir::PatKind::Ident(lower_binding_mode(lctx, binding_mode),
+                                  respan(pth1.span, lower_ident(lctx, pth1.node)),
+                                  sub.as_ref().map(|x| lower_pat(lctx, x)))
+                })
             }
             PatKind::Lit(ref e) => hir::PatKind::Lit(lower_expr(lctx, e)),
             PatKind::TupleStruct(ref pth, ref pats) => {
@@ -1202,9 +1261,11 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                hir::MatchSource::Normal)
             }
             ExprKind::Closure(capture_clause, ref decl, ref body) => {
-                hir::ExprClosure(lower_capture_clause(lctx, capture_clause),
-                                 lower_fn_decl(lctx, decl),
-                                 lower_block(lctx, body))
+                lctx.with_parent_def(e.id, || {
+                    hir::ExprClosure(lower_capture_clause(lctx, capture_clause),
+                                     lower_fn_decl(lctx, decl),
+                                     lower_block(lctx, body))
+                })
             }
             ExprKind::Block(ref blk) => hir::ExprBlock(lower_block(lctx, blk)),
             ExprKind::Assign(ref el, ref er) => {
@@ -1602,7 +1663,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     // `{ let _result = ...; _result }`
                     // underscore prevents an unused_variables lint if the head diverges
                     let result_ident = lctx.str_to_ident("_result");
-                    let let_stmt = stmt_let(lctx, e.span, false, result_ident, match_expr, None);
+                    let let_stmt = stmt_let(lctx,
+                                            e.span,
+                                            false,
+                                            result_ident,
+                                            match_expr,
+                                            None);
                     let result = expr_ident(lctx, e.span, result_ident, None);
                     let block = block_all(lctx, e.span, hir_vec![let_stmt], Some(result));
                     // add the attributes to the outer returned expr node
@@ -1655,7 +1721,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                             let err_ctor = expr_path(lctx, path, None);
                             expr_call(lctx, e.span, err_ctor, hir_vec![from_expr], None)
                         };
-                        let err_pat = pat_err(lctx, e.span, pat_ident(lctx, e.span, err_ident));
+                        let err_pat = pat_err(lctx, e.span,
+                                              pat_ident(lctx, e.span, err_ident));
                         let ret_expr = expr(lctx, e.span,
                                             hir::Expr_::ExprRet(Some(err_expr)), None);
 
@@ -1938,12 +2005,22 @@ fn pat_ident_binding_mode(lctx: &LoweringContext,
                           bm: hir::BindingMode)
                           -> P<hir::Pat> {
     let pat_ident = hir::PatKind::Ident(bm,
-                                  Spanned {
-                                      span: span,
-                                      node: ident,
-                                  },
-                                  None);
-    pat(lctx, span, pat_ident)
+                                        Spanned {
+                                            span: span,
+                                            node: ident,
+                                        },
+                                        None);
+
+    let pat = pat(lctx, span, pat_ident);
+
+    if let Some(defs) = lctx.definitions {
+        let mut defs = defs.borrow_mut();
+        defs.create_def_with_parent(lctx.parent_def.get(),
+                                    pat.id,
+                                    DefPathData::Binding(ident.name));
+    }
+
+    pat
 }
 
 fn pat_wild(lctx: &LoweringContext, span: Span) -> P<hir::Pat> {
@@ -2130,7 +2207,8 @@ mod test {
         let ast_in = quote_expr!(&cx, in HEAP { foo() });
         let ast_in = assigner.fold_expr(ast_in);
 
-        let lctx = LoweringContext::new(&assigner, None);
+        let lctx = LoweringContext::testing_context(&assigner);
+
         let hir1 = lower_expr(&lctx, &ast_if_let);
         let hir2 = lower_expr(&lctx, &ast_if_let);
         assert!(hir1 == hir2);
