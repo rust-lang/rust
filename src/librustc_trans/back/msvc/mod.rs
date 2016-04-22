@@ -34,6 +34,9 @@
 #[cfg(windows)]
 mod registry;
 
+mod lock;
+pub use self::lock::acquire_global_lock;
+
 #[cfg(windows)]
 mod platform {
     use std::env;
