@@ -181,7 +181,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
 fn push_backtrace(expected_errors: &mut Vec<Error>,
                   expansion: &DiagnosticSpanMacroExpansion,
                   file_name: &str) {
-    if expansion.span.file_name == file_name {
+    if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         expected_errors.push(
             Error {
                 line_num: expansion.span.line_start,
