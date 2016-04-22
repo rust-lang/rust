@@ -144,9 +144,8 @@ pub fn rewrite_chain(expr: &ast::Expr,
 
     // Total of all items excluding the last.
     let almost_total = rewrites[..rewrites.len() - 1]
-                           .iter()
-                           .fold(0, |a, b| a + first_line_width(b)) +
-                       parent_rewrite.len();
+        .iter()
+        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let total_width = almost_total + first_line_width(rewrites.last().unwrap());
 
     let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
@@ -271,8 +270,9 @@ fn chain_indent(context: &RewriteContext, offset: Indent) -> Indent {
 fn hacked_chain_indent(context: &RewriteContext, _offset: Indent) -> Indent {
     match context.config.chain_indent {
         BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Visual |
-        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
+        BlockIndentStyle::Visual | BlockIndentStyle::Tabbed => {
+            context.block_indent.block_indent(context.config)
+        }
     }
 }
 

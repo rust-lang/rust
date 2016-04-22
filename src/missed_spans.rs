@@ -112,10 +112,10 @@ impl<'a> FmtVisitor<'a> {
         for (kind, offset, subslice) in CommentCodeSlices::new(snippet) {
             if let CodeCharKind::Comment = kind {
                 let last_char = big_snippet[..(offset + big_diff)]
-                                    .chars()
-                                    .rev()
-                                    .skip_while(|rev_c| [' ', '\t'].contains(&rev_c))
-                                    .next();
+                    .chars()
+                    .rev()
+                    .skip_while(|rev_c| [' ', '\t'].contains(&rev_c))
+                    .next();
 
                 let fix_indent = last_char.map_or(true, |rev_c| ['{', '\n'].contains(&rev_c));
 

@@ -102,8 +102,8 @@ fn assert_output(source: &str, expected_filename: &str) {
 fn idempotence_tests() {
     // Get all files in the tests/target directory.
     let files = fs::read_dir("tests/target")
-                    .expect("Couldn't read target dir")
-                    .map(get_path_string);
+        .expect("Couldn't read target dir")
+        .map(get_path_string);
     let (_reports, count, fails) = check_files(files);
 
     // Display results.
@@ -116,9 +116,9 @@ fn idempotence_tests() {
 #[test]
 fn self_tests() {
     let files = fs::read_dir("src/bin")
-                    .expect("Couldn't read src dir")
-                    .chain(fs::read_dir("tests").expect("Couldn't read tests dir"))
-                    .map(get_path_string);
+        .expect("Couldn't read src dir")
+        .chain(fs::read_dir("tests").expect("Couldn't read tests dir"))
+        .map(get_path_string);
     // Hack because there's no `IntoIterator` impl for `[T; N]`.
     let files = files.chain(Some("src/lib.rs".to_owned()).into_iter());
 
@@ -264,7 +264,7 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
 
     // Matches lines containing significant comments or whitespace.
     let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
-                         .expect("Failed creating pattern 2");
+        .expect("Failed creating pattern 2");
 
     reader.lines()
           .map(|line| line.expect("Failed getting line"))
