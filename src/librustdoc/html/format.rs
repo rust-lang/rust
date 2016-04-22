@@ -451,11 +451,7 @@ impl fmt::Display for clean::Type {
             clean::BareFunction(ref decl) => {
                 write!(f, "{}{}fn{}{}",
                        UnsafetySpace(decl.unsafety),
-                       match &*decl.abi {
-                           "" => " extern ".to_string(),
-                           "\"Rust\"" => "".to_string(),
-                           s => format!(" extern {} ", s)
-                       },
+                       AbiSpace(decl.abi),
                        decl.generics,
                        decl.decl)
             }
@@ -770,8 +766,7 @@ impl fmt::Display for AbiSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
             Abi::Rust => Ok(()),
-            Abi::C => write!(f, "extern "),
-            abi => write!(f, "extern {} ", abi),
+            abi => write!(f, "extern &quot;{}&quot; ", abi.name()),
         }
     }
 }
