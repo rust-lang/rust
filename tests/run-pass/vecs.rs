@@ -36,4 +36,9 @@ fn vec_reallocate() -> Vec<u8> {
     v
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(vec_reallocate().len(), 5);
+    assert_eq!(vec_into_iter(), 30);
+    assert_eq!(make_vec().capacity(), 4);
+}

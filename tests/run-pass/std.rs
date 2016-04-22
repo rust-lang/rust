@@ -44,4 +44,10 @@ fn true_assert() {
     assert_eq!(1, 1);
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    //let x = rc_reference_cycle().0;
+    //assert!(x.borrow().is_some());
+    assert_eq!(*arc(), 42);
+    assert_eq!(rc_cell().get(), 84);
+}

@@ -11,4 +11,8 @@ fn make_box_syntax() -> Box<(i16, i16)> {
     box (1, 2)
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(*make_box(), (1, 2));
+    assert_eq!(*make_box_syntax(), (1, 2));
+}

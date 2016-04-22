@@ -34,4 +34,9 @@ fn for_loop() -> usize {
     sum
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(factorial_loop(), 3628800);
+    assert_eq!(index_for_loop(), 60);
+    assert_eq!(for_loop(), 60);
+}

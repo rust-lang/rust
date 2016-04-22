@@ -7,6 +7,11 @@ fn empty_array() -> [u16; 0] {
 }
 
 #[miri_run]
+fn mini_array() -> [u16; 1] {
+    [42]
+}
+
+#[miri_run]
 fn big_array() -> [u16; 5] {
     [5, 4, 3, 2, 1]
 }
@@ -33,4 +38,14 @@ fn array_repeat() -> [u8; 8] {
     [42; 8]
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    //assert_eq!(empty_array(), []);
+    assert_eq!(index_unsafe(), 20);
+    assert_eq!(index(), 20);
+    /*
+    assert_eq!(big_array(), [5, 4, 3, 2, 1]);
+    assert_eq!(array_array(), [[5, 4], [3, 2], [1, 0]]);
+    assert_eq!(array_repeat(), [42; 8]);
+    */
+}

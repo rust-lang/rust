@@ -37,4 +37,7 @@ fn crazy_closure() -> (i32, i32, i32) {
 //     y
 // }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(simple(), 12);
+}
