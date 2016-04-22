@@ -14,4 +14,4 @@
 #[deny(raw_pointer_derive)]
 #[allow(renamed_and_removed_lints)]
 #[deny(unused_variables)]
-fn main() { let unused = (); } //~ ERR unused
+fn main() { let unused = (); } //~ ERROR unused

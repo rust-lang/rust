@@ -21,6 +21,7 @@
 extern crate libc;
 extern crate test;
 extern crate getopts;
+extern crate serialize as rustc_serialize;
 
 #[macro_use]
 extern crate log;
@@ -40,6 +41,7 @@ use util::logv;
 
 pub mod procsrv;
 pub mod util;
+mod json;
 pub mod header;
 pub mod runtest;
 pub mod common;

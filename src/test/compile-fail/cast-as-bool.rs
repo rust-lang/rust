@@ -11,6 +11,5 @@
 fn main() {
     let u = 5 as bool;
     //~^ ERROR cannot cast as `bool`
-    //~^^ HELP compare with zero instead
-    //~^^^ HELP run `rustc --explain E0054` to see a detailed explanation
+    //~| HELP compare with zero instead
 }

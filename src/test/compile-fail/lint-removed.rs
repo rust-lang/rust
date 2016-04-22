@@ -15,4 +15,4 @@
 
 #[deny(raw_pointer_derive)] //~ WARN raw_pointer_derive has been removed
 #[deny(unused_variables)]
-fn main() { let unused = (); } //~ ERR unused
+fn main() { let unused = (); } //~ ERROR unused

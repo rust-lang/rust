@@ -143,7 +143,7 @@ fn main() {
     id_i64(a16);
     //~^ ERROR mismatched types
     //~| expected `i64`
-    //~| found i16
+    //~| found `i16`
     id_i64(a32);
     //~^ ERROR mismatched types
     //~| expected `i64`
