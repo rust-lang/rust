@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// RFC 401 test extracted into distinct file. This is because some the
+// change to suppress "derived" errors wound up suppressing this error
+// message, since the fallback for `3` doesn't occur.
+
 fn main() {
-    for (ref i,) in [].iter() { //~ ERROR mismatched types
-        i.clone();
-    }
+    let _ = 3 as bool;
+    //~^ ERROR cannot cast as `bool`
+    //~| HELP see a detailed explanation
+    //~| HELP compare with zero
 }
