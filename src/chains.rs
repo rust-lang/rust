@@ -118,14 +118,16 @@ pub fn rewrite_chain(expr: &ast::Expr,
     // put the first non-parent item on the same line as the parent.
     let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
                               parent_rewrite.len() <= context.config.tab_spaces {
-        // Try and put the whole chain on one line.
-        (offset + Indent::new(0, parent_rewrite.len()), true)
+        // Try and put at least the first two items on the same line.
+        (chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), true)
     } else if is_block_expr(parent, &parent_rewrite) {
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
         (parent_block_indent, false)
+    } else if parent_rewrite.contains('\n') {
+        (chain_indent(context, parent_block_indent.block_indent(context.config)), false)
     } else {
-        (chain_indent(context, offset), false)
+        (hacked_chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), false)
     };
 
     let max_width = try_opt!((width + offset.width()).checked_sub(indent.width()));
@@ -204,38 +206,6 @@ pub fn rewrite_chain(expr: &ast::Expr,
              offset)
 }
 
-fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
-                                     last: &mut String,
-                                     almost_total: usize,
-                                     width: usize,
-                                     total_span: Span,
-                                     context: &RewriteContext,
-                                     offset: Indent)
-                                     -> bool {
-    if let &ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) = expr_kind {
-        let budget = match width.checked_sub(almost_total) {
-            Some(b) => b,
-            None => return false,
-        };
-        let mut last_rewrite = rewrite_method_call(method_name.node,
-                                                   types,
-                                                   expressions,
-                                                   total_span,
-                                                   context,
-                                                   budget,
-                                                   offset + almost_total);
-
-        if let Some(ref mut s) = last_rewrite {
-            ::std::mem::swap(s, last);
-            true
-        } else {
-            false
-        }
-    } else {
-        unreachable!();
-    }
-}
-
 // States whether an expression's last line exclusively consists of closing
 // parens, braces, and brackets in its idiomatic formatting.
 fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
@@ -290,9 +260,51 @@ fn chain_base_indent(context: &RewriteContext, offset: Indent) -> Indent {
 
 fn chain_indent(context: &RewriteContext, offset: Indent) -> Indent {
     match context.config.chain_indent {
+        BlockIndentStyle::Visual => offset,
         BlockIndentStyle::Inherit => context.block_indent,
         BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
-        BlockIndentStyle::Visual => offset + Indent::new(context.config.tab_spaces, 0),
+    }
+}
+
+// Temporary hack - ignores visual indenting because this function should be
+// called where it is not possible to use visual indentation.
+fn hacked_chain_indent(context: &RewriteContext, _offset: Indent) -> Indent {
+    match context.config.chain_indent {
+        BlockIndentStyle::Inherit => context.block_indent,
+        BlockIndentStyle::Visual |
+        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
+    }
+}
+
+fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
+                                     last: &mut String,
+                                     almost_total: usize,
+                                     width: usize,
+                                     total_span: Span,
+                                     context: &RewriteContext,
+                                     offset: Indent)
+                                     -> bool {
+    if let &ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) = expr_kind {
+        let budget = match width.checked_sub(almost_total) {
+            Some(b) => b,
+            None => return false,
+        };
+        let mut last_rewrite = rewrite_method_call(method_name.node,
+                                                   types,
+                                                   expressions,
+                                                   total_span,
+                                                   context,
+                                                   budget,
+                                                   offset + almost_total);
+
+        if let Some(ref mut s) = last_rewrite {
+            ::std::mem::swap(s, last);
+            true
+        } else {
+            false
+        }
+    } else {
+        unreachable!();
     }
 }
 
