@@ -8,7 +8,7 @@
 
 * Use spaces around binary operators, including the equals sign in attributes:
 
-``` rust
+```rust,ignore
 #[deprecated = "Use `bar` instead."]
 fn foo(a: usize, b: usize) -> usize {
     a + b
@@ -17,7 +17,7 @@ fn foo(a: usize, b: usize) -> usize {
 
 * Use a space after colons and commas:
 
-``` rust
+```rust,ignore
 fn foo(a: Bar);
 
 MyStruct { foo: 3, bar: 4 }
@@ -28,7 +28,7 @@ foo(bar, baz);
 * Use a space after the opening and before the closing brace for
   single line blocks or `struct` expressions:
 
-``` rust
+```rust,ignore
 spawn(proc() { do_something(); })
 
 Point { x: 0.1, y: 0.3 }
@@ -39,7 +39,7 @@ Point { x: 0.1, y: 0.3 }
 * For multiline function signatures, each new line should align with the
   first parameter. Multiple parameters per line are permitted:
 
-``` rust
+```rust,ignore
 fn frobnicate(a: Bar, b: Bar,
               c: Bar, d: Bar)
               -> Bar {
@@ -59,7 +59,7 @@ fn foo<T: This,
   signatures. However, if the final argument begins a new block, the
   contents of the block may begin on a new line, indented one level:
 
-``` rust
+```rust,ignore
 fn foo_bar(a: Bar, b: Bar,
            c: |Bar|) -> Bar {
     ...
@@ -77,7 +77,7 @@ foo_bar(x, y, |z| {
 
 > **[FIXME]** Do we also want to allow the following?
 >
-> ```rust
+> ```rust,ignore
 > frobnicate(
 >     arg1,
 >     arg2,
@@ -92,7 +92,7 @@ foo_bar(x, y, |z| {
 > * **[Deprecated]** If you have multiple patterns in a single `match`
 >   arm, write each pattern on a separate line:
 >
->     ``` rust
+>     ```rust,ignore
 >     match foo {
 >         bar(_)
 >         | baz => quux,
@@ -110,7 +110,7 @@ Idiomatic code should not use extra whitespace in the middle of a line
 to provide alignment.
 
 
-``` rust
+```rust,ignore
 // Good
 struct Foo {
     short: f64,
