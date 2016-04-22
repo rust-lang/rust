@@ -1,12 +1,12 @@
-- Feature Name: `repr_pack`
+- Feature Name: `repr_packed`
 - Start Date: 2015-12-06
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1399](https://github.com/rust-lang/rfcs/pull/1399)
+- Rust Issue: [rust-lang/rust#33158](https://github.com/rust-lang/rust/issues/33158)
 
 # Summary
 [summary]: #summary
 
-Extend the existing `#[repr]` attribute on structs with a `pack = "N"` option to
+Extend the existing `#[repr]` attribute on structs with a `packed = "N"` option to
 specify a custom packing for `struct` types.
 
 # Motivation
@@ -19,7 +19,7 @@ C/C++ libraries (such as Windows API which uses it pervasively making writing
 Rust libraries such as `winapi` challenging).
 
 At the moment the only way to work around the lack of a proper
-`#[repr(pack = "N")]` attribute is to use `#[repr(packed)]` and then manually
+`#[repr(packed = "N")]` attribute is to use `#[repr(packed)]` and then manually
 fill in padding which is a burdensome task. Even then that isn't quite right
 because the overall alignment of the struct would end up as 1 even though it
 needs to be N (or the default if that is smaller than N), so this fills in a gap
@@ -31,7 +31,7 @@ which is impossible to do in Rust at the moment.
 The `#[repr]` attribute on `struct`s will be extended to include a form such as:
 
 ```rust
-#[repr(pack = "2")]
+#[repr(packed = "2")]
 struct LessAligned(i16, i32);
 ```
 
@@ -42,7 +42,7 @@ alignment of 4 and a size of 8, and the second field would have an offset of 4
 from the base of the struct.
 
 Syntactically, the `repr` meta list will be extended to accept a meta item
-name/value pair with the name "pack" and the value as a string which can be
+name/value pair with the name "packed" and the value as a string which can be
 parsed as a `u64`. The restrictions on where this attribute can be placed along
 with the accepted values are:
 
@@ -61,24 +61,21 @@ struct, then the alignment and layout of the struct should be unaffected.
 When combined with `#[repr(C)]` the size alignment and layout of the struct
 should match the equivalent struct in C.
 
-`#[repr(packed)]` and `#[repr(pack = "1")]` should have identical behavior.
+`#[repr(packed)]` and `#[repr(packed = "1")]` should have identical behavior.
 
 Because this lowers the effective alignment of fields in the same way that
 `#[repr(packed)]` does (which caused [issue #27060][gh27060]), while accessing a
 field should be safe, borrowing a field should be unsafe.
 
-Specifying `#[repr(packed)]` and `#[repr(pack = "N")]` where N is not 1 should
+Specifying `#[repr(packed)]` and `#[repr(packed = "N")]` where N is not 1 should
 result in an error.
 
-Specifying `#[repr(pack = "A")]` and `#[repr(align = "B")]` should still pack
+Specifying `#[repr(packed = "A")]` and `#[repr(align = "B")]` should still pack
 together fields with the packing specified, but then increase the overall
 alignment to the alignment specified. Depends on [RFC #1358][rfc1358] landing.
 
 # Drawbacks
 [drawbacks]: #drawbacks
-
-Duplication in the language where `#[repr(packed)]` and `#[repr(pack = "1")]`
-have identical behavior.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -87,8 +84,6 @@ have identical behavior.
   `#[repr(packed)]` with manual padding, although such structs would always have
   an alignment of 1 which is often wrong.
 * Alternatively a new attribute could be used such as `#[pack]`.
-* `#[repr(packed)]` could be extended as either `#[repr(packed(N))]` or
-  `#[repr(packed = "N")]`.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
