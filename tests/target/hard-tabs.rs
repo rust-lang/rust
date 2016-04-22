@@ -88,8 +88,8 @@ fn main() {
 		});
 	});
 	a.b
-	 .c
-	 .d();
+		.c
+		.d();
 
 	x().y(|| {
 		match cond() {

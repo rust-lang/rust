@@ -132,15 +132,9 @@ pub fn rewrite_chain(expr: &ast::Expr,
 
     let max_width = try_opt!((width + offset.width()).checked_sub(indent.width()));
     let mut rewrites = try_opt!(subexpr_list.iter()
-                                            .rev()
-                                            .map(|e| {
-                                                rewrite_chain_subexpr(e,
-                                                                      total_span,
-                                                                      context,
-                                                                      max_width,
-                                                                      indent)
-                                            })
-                                            .collect::<Option<Vec<_>>>());
+        .rev()
+        .map(|e| rewrite_chain_subexpr(e, total_span, context, max_width, indent))
+        .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
     let almost_total = rewrites[..rewrites.len() - 1]
@@ -367,8 +361,8 @@ fn rewrite_method_call(method_name: ast::Ident,
         (args[0].span.hi, String::new())
     } else {
         let type_list: Vec<_> = try_opt!(types.iter()
-                                              .map(|ty| ty.rewrite(context, width, offset))
-                                              .collect());
+            .map(|ty| ty.rewrite(context, width, offset))
+            .collect());
 
         (types.last().unwrap().span.hi, format!("::<{}>", type_list.join(", ")))
     };

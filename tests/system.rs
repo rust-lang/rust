@@ -85,7 +85,7 @@ fn assert_output(source: &str, expected_filename: &str) {
     let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
     let mut expected_text = String::new();
     expected_file.read_to_string(&mut expected_text)
-                 .expect("Failed reading target");
+        .expect("Failed reading target");
 
     let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
     if compare.len() > 0 {
@@ -267,15 +267,15 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
         .expect("Failed creating pattern 2");
 
     reader.lines()
-          .map(|line| line.expect("Failed getting line"))
-          .take_while(|line| line_regex.is_match(&line))
-          .filter_map(|line| {
-              regex.captures_iter(&line).next().map(|capture| {
-                  (capture.at(1).expect("Couldn't unwrap capture").to_owned(),
-                   capture.at(2).expect("Couldn't unwrap capture").to_owned())
-              })
-          })
-          .collect()
+        .map(|line| line.expect("Failed getting line"))
+        .take_while(|line| line_regex.is_match(&line))
+        .filter_map(|line| {
+            regex.captures_iter(&line).next().map(|capture| {
+                (capture.at(1).expect("Couldn't unwrap capture").to_owned(),
+                 capture.at(2).expect("Couldn't unwrap capture").to_owned())
+            })
+        })
+        .collect()
 }
 
 // Compare output to input.

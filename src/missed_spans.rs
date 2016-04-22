@@ -93,14 +93,14 @@ impl<'a> FmtVisitor<'a> {
 
         fn replace_chars(string: &str) -> String {
             string.chars()
-                  .map(|ch| {
-                      if ch.is_whitespace() {
-                          ch
-                      } else {
-                          'X'
-                      }
-                  })
-                  .collect()
+                .map(|ch| {
+                    if ch.is_whitespace() {
+                        ch
+                    } else {
+                        'X'
+                    }
+                })
+                .collect()
         }
 
         let replaced = match self.config.write_mode {
@@ -134,7 +134,7 @@ impl<'a> FmtVisitor<'a> {
                                                           comment_width,
                                                           self.block_indent,
                                                           self.config)
-                                              .unwrap());
+                        .unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();

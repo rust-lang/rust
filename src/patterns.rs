@@ -103,15 +103,14 @@ impl Rewrite for Pat {
             PatKind::Vec(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
                 let prefix = prefix.iter().map(|p| p.rewrite(context, width, offset));
-                let slice_pat = slice_pat.as_ref().map(|p| {
-                    Some(format!("{}..", try_opt!(p.rewrite(context, width, offset))))
-                });
+                let slice_pat = slice_pat.as_ref()
+                    .map(|p| Some(format!("{}..", try_opt!(p.rewrite(context, width, offset)))));
                 let suffix = suffix.iter().map(|p| p.rewrite(context, width, offset));
 
                 // Munge them together.
                 let pats: Option<Vec<String>> = prefix.chain(slice_pat.into_iter())
-                                                      .chain(suffix)
-                                                      .collect();
+                    .chain(suffix)
+                    .collect();
 
                 // Check that all the rewrites succeeded, and if not return None.
                 let pats = try_opt!(pats);

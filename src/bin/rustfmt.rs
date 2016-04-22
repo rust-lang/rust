@@ -298,13 +298,13 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
 
     // Read the config_path and convert to parent dir if a file is provided.
     let config_path: Option<PathBuf> = matches.opt_str("config-path")
-                                              .map(PathBuf::from)
-                                              .and_then(|dir| {
-                                                  if dir.is_file() {
-                                                      return dir.parent().map(|v| v.into());
-                                                  }
-                                                  Some(dir)
-                                              });
+        .map(PathBuf::from)
+        .and_then(|dir| {
+            if dir.is_file() {
+                return dir.parent().map(|v| v.into());
+            }
+            Some(dir)
+        });
 
     // if no file argument is supplied, read from stdin
     if matches.free.is_empty() {
