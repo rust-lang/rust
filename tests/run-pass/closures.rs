@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -37,3 +36,5 @@ fn crazy_closure() -> (i32, i32, i32) {
 //     }
 //     y
 // }
+
+fn main() {}

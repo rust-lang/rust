@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -33,3 +32,5 @@ fn index() -> i32 {
 fn array_repeat() -> [u8; 8] {
     [42; 8]
 }
+
+fn main() {}

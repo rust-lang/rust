@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -34,3 +33,5 @@ fn for_loop() -> usize {
     }
     sum
 }
+
+fn main() {}

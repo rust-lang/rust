@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -36,3 +35,5 @@ fn vec_reallocate() -> Vec<u8> {
     v.push(5);
     v
 }
+
+fn main() {}

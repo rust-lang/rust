@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -30,3 +29,5 @@ fn field_access() -> (i8, i8) {
     p.x += 5;
     (p.x, p.y)
 }
+
+fn main() {}
