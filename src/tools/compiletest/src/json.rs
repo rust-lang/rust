@@ -11,6 +11,7 @@
 use errors::{Error, ErrorKind};
 use rustc_serialize::json;
 use std::str::FromStr;
+use std::path::Path;
 
 // These structs are a subset of the ones found in
 // `syntax::errors::json`.
@@ -82,7 +83,9 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
                         file_name: &str) {
     // We only consider messages pertaining to the current file.
     let matching_spans = || {
-        diagnostic.spans.iter().filter(|span| span.file_name == file_name)
+        diagnostic.spans.iter().filter(|span| {
+            Path::new(&span.file_name) == Path::new(&file_name)
+        })
     };
 
     // We break the output into multiple lines, and then append the
