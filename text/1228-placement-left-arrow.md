@@ -196,4 +196,17 @@ lowest precedence) to highest in the language. The most prominent choices are:
 
 # Unresolved questions
 
-None
+**What should the precedence of the `<-` operator be?** In particular,
+it may make sense for it to have the same precedence of `=`, as argued
+in [these][huon1] [comments][huon2]. The ultimate answer here will
+probably depend on whether the result of `a <- b` is commonly composed
+and how, so it was decided to hold off on a final decision until there
+was more usage in the wild.
+
+[huon1]: https://github.com/rust-lang/rfcs/pull/1319#issuecomment-206627750
+[huon2]: https://github.com/rust-lang/rfcs/pull/1319#issuecomment-207090495
+
+# Change log
+
+**2016.04.22.** Amended by [rust-lang/rfcs#1319](https://github.com/rust-lang/rfcs/pull/1319)
+to adjust the precedence.
