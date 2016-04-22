@@ -263,6 +263,11 @@ impl Token {
         self.is_keyword(keywords::Const)
     }
 
+    pub fn is_path_start(&self) -> bool {
+        self == &ModSep || self == &Lt || self.is_path() || self.is_ident() &&
+        !self.is_keyword(keywords::True) && !self.is_keyword(keywords::False)
+    }
+
     /// Maps a token to its corresponding binary operator.
     pub fn to_binop(&self) -> Option<BinOpKind> {
         match *self {
