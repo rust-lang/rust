@@ -58,4 +58,14 @@ fn dangling_pointer() -> *const i32 {
     &*b as *const i32
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(one_line_ref(), 1);
+    assert_eq!(basic_ref(), 1);
+    assert_eq!(basic_ref_mut(), 3);
+    assert_eq!(basic_ref_mut_var(), 3);
+    assert_eq!(tuple_ref_mut(), (10, 22));
+    assert_eq!(match_ref_mut(), 42);
+    // FIXME: improve this test... how?
+    assert!(dangling_pointer() != std::ptr::null());
+}

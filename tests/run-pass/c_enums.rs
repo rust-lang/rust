@@ -20,4 +20,7 @@ fn unsafe_match() -> bool {
     }
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert!(unsafe_match());
+}

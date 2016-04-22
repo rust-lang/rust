@@ -1,4 +1,5 @@
-#![feature(rustc_private)]
+#![feature(rustc_private, custom_attribute)]
+#![allow(unused_attributes)]
 
 extern crate miri;
 extern crate rustc;
@@ -23,6 +24,7 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
     }
 }
 
+#[miri_run]
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     rustc_driver::run_compiler(&args, &mut MiriCompilerCalls);

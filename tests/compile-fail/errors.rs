@@ -46,4 +46,15 @@ fn dangling_pointer_deref() -> i32 {
     unsafe { *p } //~ ERROR: dangling pointer was dereferenced
 }
 
+#[miri_run]
+fn wild_pointer_deref() -> i32 {
+    let p = 42 as *const i32;
+    unsafe { *p } //~ ERROR: attempted to interpret some raw bytes as a pointer address
+}
+
+#[miri_run]
+fn null_pointer_deref() -> i32 {
+    unsafe { *std::ptr::null() } //~ ERROR: attempted to interpret some raw bytes as a pointer address
+}
+
 fn main() {}

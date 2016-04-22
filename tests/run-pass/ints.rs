@@ -53,4 +53,13 @@ fn match_int_range() -> i64 {
     }
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(ret(), 1);
+    assert_eq!(neg(), -1);
+    assert_eq!(add(), 3);
+    assert_eq!(indirect_add(), 3);
+    assert_eq!(arith(), 5*5);
+    assert_eq!(match_int(), 20);
+    assert_eq!(match_int_range(), 4);
+}

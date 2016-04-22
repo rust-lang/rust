@@ -1,6 +1,7 @@
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
+#[derive(Debug, PartialEq)]
 enum Unit { Unit }
 
 #[miri_run]
@@ -8,6 +9,7 @@ fn return_unit() -> Unit {
     Unit::Unit
 }
 
+#[derive(Debug, PartialEq)]
 enum MyBool { False, True }
 
 #[miri_run]
@@ -53,4 +55,14 @@ fn two_nones() -> (Option<i16>, Option<i16>) {
     (None, None)
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    //assert_eq!(two_nones(), (None, None));
+    assert_eq!(match_opt_some(), 13);
+    assert_eq!(match_opt_none(), 42);
+    //assert_eq!(return_some(), Some(42));
+    //assert_eq!(return_none(), None);
+    //assert_eq!(return_false(), MyBool::False);
+    //assert_eq!(return_true(), MyBool::True);
+    //assert_eq!(return_unit(), Unit::Unit);
+}

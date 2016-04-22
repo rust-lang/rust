@@ -39,4 +39,11 @@ fn test_size_of() -> usize {
     ::std::mem::size_of::<Option<i32>>()
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert_eq!(call(), 2);
+    assert_eq!(factorial_recursive(), 3628800);
+    //assert_eq!(call_generic(), (42, true));
+    assert_eq!(cross_crate_fn_call(), 1);
+    //assert_eq!(test_size_of(), 8);
+}

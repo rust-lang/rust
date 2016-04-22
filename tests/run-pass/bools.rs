@@ -27,4 +27,10 @@ fn match_bool() -> i16 {
     }
 }
 
-fn main() {}
+#[miri_run]
+fn main() {
+    assert!(boolean());
+    assert_eq!(if_false(), 0);
+    assert_eq!(if_true(), 1);
+    assert_eq!(match_bool(), 1);
+}
