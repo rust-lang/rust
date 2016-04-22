@@ -1750,105 +1750,6 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
 }
 
 impl<'tcx> AdtDefData<'tcx, 'tcx> {
-    fn sized_constraint_for_tys<TYS>(
-        &'tcx self,
-        tcx: &ty::TyCtxt<'tcx>,
-        stack: &mut Vec<AdtDefMaster<'tcx>>,
-        tys: TYS
-    ) -> Ty<'tcx>
-        where TYS: IntoIterator<Item=Ty<'tcx>>
-    {
-        let tys : Vec<_> = tys.into_iter()
-            .map(|ty| self.sized_constraint_for_ty(tcx, stack, ty))
-            .flat_map(|ty| match ty.sty {
-                ty::TyTuple(ref tys) => tys.last().cloned(),
-                _ => Some(ty)
-            })
-            .filter(|ty| *ty != tcx.types.bool)
-            .collect();
-
-        match tys.len() {
-            _ if tys.references_error() => tcx.types.err,
-            0 => tcx.types.bool,
-            1 => tys[0],
-            _ => tcx.mk_tup(tys)
-        }
-    }
-
-    fn sized_constraint_for_ty(
-        &'tcx self,
-        tcx: &ty::TyCtxt<'tcx>,
-        stack: &mut Vec<AdtDefMaster<'tcx>>,
-        ty: Ty<'tcx>
-    ) -> Ty<'tcx> {
-        let result = match ty.sty {
-            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
-            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
-            TyArray(..) | TyClosure(..) => {
-                // these are always sized - return a primitive
-                tcx.types.bool
-            }
-
-            TyStr | TyTrait(..) | TySlice(_) | TyError => {
-                // these are never sized - return the target type
-                ty
-            }
-
-            TyTuple(ref tys) => {
-                self.sized_constraint_for_tys(tcx, stack, tys.iter().cloned())
-            }
-
-            TyEnum(adt, substs) | TyStruct(adt, substs) => {
-                // recursive case
-                let adt = tcx.lookup_adt_def_master(adt.did);
-                adt.calculate_sized_constraint_inner(tcx, stack);
-                let adt_ty =
-                    adt.sized_constraint
-                    .unwrap(DepNode::SizedConstraint(adt.did))
-                    .subst(tcx, substs);
-                debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
-                       ty, adt_ty);
-                self.sized_constraint_for_ty(tcx, stack, adt_ty)
-            }
-
-            TyProjection(..) => {
-                // must calculate explicitly.
-                // FIXME: consider special-casing always-Sized projections
-                ty
-            }
-
-            TyParam(..) => {
-                // perf hack: if there is a `T: Sized` bound, then
-                // we know that `T` is Sized and do not need to check
-                // it on the impl.
-
-                let sized_trait = match tcx.lang_items.sized_trait() {
-                    Some(x) => x,
-                    _ => return ty
-                };
-                let sized_predicate = Binder(TraitRef {
-                    def_id: sized_trait,
-                    substs: tcx.mk_substs(Substs::new_trait(
-                        vec![], vec![], ty
-                    ))
-                }).to_predicate();
-                let predicates = tcx.lookup_predicates(self.did).predicates;
-                if predicates.into_iter().any(|p| p == sized_predicate) {
-                    tcx.types.bool
-                } else {
-                    ty
-                }
-            }
-
-            TyInfer(..) => {
-                bug!("unexpected type `{:?}` in sized_constraint_for_ty",
-                     ty)
-            }
-        };
-        debug!("sized_constraint_for_ty({:?}) = {:?}", ty, result);
-        result
-    }
-
     /// Calculates the Sized-constraint.
     ///
     /// As the Sized-constraint of enums can be a *set* of types,
@@ -1876,20 +1777,32 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
 
         if stack.contains(&self) {
             debug!("calculate_sized_constraint: {:?} is recursive", self);
+            // This should be reported as an error by `check_representable`.
+            //
+            // Consider the type as Sized in the meanwhile to avoid
+            // further errors.
             self.sized_constraint.fulfill(dep_node, tcx.types.err);
             return;
         }
 
         stack.push(self);
-        let ty = self.sized_constraint_for_tys(
-            tcx, stack,
+
+        let tys : Vec<_> =
             self.variants.iter().flat_map(|v| {
                 v.fields.last()
-            }).map(|f| f.unsubst_ty())
-        );
+            }).flat_map(|f| {
+                self.sized_constraint_for_ty(tcx, stack, f.unsubst_ty())
+            }).collect();
 
         let self_ = stack.pop().unwrap();
         assert_eq!(self_, self);
+
+        let ty = match tys.len() {
+            _ if tys.references_error() => tcx.types.err,
+            0 => tcx.types.bool,
+            1 => tys[0],
+            _ => tcx.mk_tup(tys)
+        };
 
         match self.sized_constraint.get(dep_node) {
             Some(old_ty) => {
@@ -1901,6 +1814,87 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
                 self.sized_constraint.fulfill(dep_node, ty)
             }
         }
+    }
+
+    fn sized_constraint_for_ty(
+        &'tcx self,
+        tcx: &ty::TyCtxt<'tcx>,
+        stack: &mut Vec<AdtDefMaster<'tcx>>,
+        ty: Ty<'tcx>
+    ) -> Vec<Ty<'tcx>> {
+        let result = match ty.sty {
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyArray(..) | TyClosure(..) => {
+                vec![]
+            }
+
+            TyStr | TyTrait(..) | TySlice(_) | TyError => {
+                // these are never sized - return the target type
+                vec![ty]
+            }
+
+            TyTuple(ref tys) => {
+                tys.last().into_iter().flat_map(|ty| {
+                    self.sized_constraint_for_ty(tcx, stack, ty)
+                }).collect()
+            }
+
+            TyEnum(adt, substs) | TyStruct(adt, substs) => {
+                // recursive case
+                let adt = tcx.lookup_adt_def_master(adt.did);
+                adt.calculate_sized_constraint_inner(tcx, stack);
+                let adt_ty =
+                    adt.sized_constraint
+                    .unwrap(DepNode::SizedConstraint(adt.did))
+                    .subst(tcx, substs);
+                debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
+                       ty, adt_ty);
+                if let ty::TyTuple(ref tys) = adt_ty.sty {
+                    tys.iter().flat_map(|ty| {
+                        self.sized_constraint_for_ty(tcx, stack, ty)
+                    }).collect()
+                } else {
+                    self.sized_constraint_for_ty(tcx, stack, adt_ty)
+                }
+            }
+
+            TyProjection(..) => {
+                // must calculate explicitly.
+                // FIXME: consider special-casing always-Sized projections
+                vec![ty]
+            }
+
+            TyParam(..) => {
+                // perf hack: if there is a `T: Sized` bound, then
+                // we know that `T` is Sized and do not need to check
+                // it on the impl.
+
+                let sized_trait = match tcx.lang_items.sized_trait() {
+                    Some(x) => x,
+                    _ => return vec![ty]
+                };
+                let sized_predicate = Binder(TraitRef {
+                    def_id: sized_trait,
+                    substs: tcx.mk_substs(Substs::new_trait(
+                        vec![], vec![], ty
+                    ))
+                }).to_predicate();
+                let predicates = tcx.lookup_predicates(self.did).predicates;
+                if predicates.into_iter().any(|p| p == sized_predicate) {
+                    vec![]
+                } else {
+                    vec![ty]
+                }
+            }
+
+            TyInfer(..) => {
+                bug!("unexpected type `{:?}` in sized_constraint_for_ty",
+                     ty)
+            }
+        };
+        debug!("sized_constraint_for_ty({:?}) = {:?}", ty, result);
+        result
     }
 }
 
