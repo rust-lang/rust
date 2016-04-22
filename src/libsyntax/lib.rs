@@ -97,7 +97,6 @@ pub mod config;
 pub mod entry;
 pub mod feature_gate;
 pub mod fold;
-pub mod owned_slice;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;

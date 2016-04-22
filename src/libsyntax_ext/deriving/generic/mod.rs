@@ -525,7 +525,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: P::from_vec(wb.bounds.iter().cloned().collect())
+                        bounds: wb.bounds.iter().cloned().collect(),
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
@@ -595,9 +595,9 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = generics.ty_params.map(|ty_param| {
+        let self_ty_params = generics.ty_params.iter().map(|ty_param| {
             cx.ty_ident(self.span, ty_param.ident)
-        });
+        }).collect();
 
         let self_lifetimes: Vec<ast::Lifetime> =
             generics.lifetimes
@@ -608,7 +608,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        self_ty_params.into_vec(), Vec::new()));
+                        self_ty_params, Vec::new()));
 
         let attr = cx.attribute(
             self.span,

@@ -1160,7 +1160,7 @@ impl<'a> Parser<'a> {
             let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
                 self.parse_ty_param_bounds(BoundParsingMode::Bare)?
             } else {
-                P::empty()
+                P::new()
             };
             let all_bounds =
                 Some(TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)).into_iter()
@@ -4239,7 +4239,7 @@ impl<'a> Parser<'a> {
                                         -> PResult<'a, TyParamBounds>
     {
         if !self.eat(&token::Colon) {
-            Ok(P::empty())
+            Ok(P::new())
         } else {
             self.parse_ty_param_bounds(mode)
         }
