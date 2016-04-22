@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -53,3 +52,5 @@ fn match_int_range() -> i64 {
         _ => 5,
     }
 }
+
+fn main() {}

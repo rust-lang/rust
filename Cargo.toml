@@ -12,3 +12,6 @@ name = "miri"
 
 [dependencies]
 byteorder = "0.4.2"
+
+[dev-dependencies]
+compiletest_rs = "0.1.1"

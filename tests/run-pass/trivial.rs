@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -10,3 +9,5 @@ fn unit_var() {
     let x = ();
     x
 }
+
+fn main() {}

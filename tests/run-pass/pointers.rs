@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -58,3 +57,5 @@ fn dangling_pointer() -> *const i32 {
     let b = Box::new(42);
     &*b as *const i32
 }
+
+fn main() {}

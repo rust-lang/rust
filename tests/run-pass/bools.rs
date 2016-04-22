@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -27,3 +26,5 @@ fn match_bool() -> i16 {
         _ => 0,
     }
 }
+
+fn main() {}

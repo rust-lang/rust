@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute, box_syntax)]
 #![allow(dead_code, unused_attributes)]
 
@@ -11,3 +10,5 @@ fn make_box() -> Box<(i16, i16)> {
 fn make_box_syntax() -> Box<(i16, i16)> {
     box (1, 2)
 }
+
+fn main() {}

@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -20,3 +19,5 @@ fn unsafe_match() -> bool {
         _ => false,
     }
 }
+
+fn main() {}

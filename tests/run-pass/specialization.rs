@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute, specialization)]
 #![allow(dead_code, unused_attributes)]
 
@@ -18,3 +17,5 @@ impl IsUnit for () {
 fn specialization() -> (bool, bool) {
     (i32::is_unit(), <()>::is_unit())
 }
+
+fn main() {}

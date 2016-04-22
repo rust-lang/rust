@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -53,3 +52,5 @@ fn match_opt_some() -> i8 {
 fn two_nones() -> (Option<i16>, Option<i16>) {
     (None, None)
 }
+
+fn main() {}

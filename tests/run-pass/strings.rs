@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -21,3 +20,5 @@ fn hello_bytes() -> &'static [u8; 13] {
 fn hello_bytes_fat() -> &'static [u8] {
     b"Hello, world!"
 }
+
+fn main() {}

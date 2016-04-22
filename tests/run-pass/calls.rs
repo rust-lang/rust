@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute)]
 #![allow(dead_code, unused_attributes)]
 
@@ -39,3 +38,5 @@ fn cross_crate_fn_call() -> i64 {
 fn test_size_of() -> usize {
     ::std::mem::size_of::<Option<i32>>()
 }
+
+fn main() {}

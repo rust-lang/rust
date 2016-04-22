@@ -1,4 +1,3 @@
-#![crate_type = "lib"]
 #![feature(custom_attribute, box_syntax)]
 #![allow(dead_code, unused_attributes)]
 
@@ -44,3 +43,5 @@ fn rc_reference_cycle() -> Loop {
 fn true_assert() {
     assert_eq!(1, 1);
 }
+
+fn main() {}
