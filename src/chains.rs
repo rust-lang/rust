@@ -54,35 +54,26 @@
 ///     .baz();
 /// ```
 ///
-/// `chain_indent` dictates how the rest of the chain is aligned. This only seems
-/// to have an effect if the first non-root part of the chain is put on a
-/// newline, otherwise we align the dots:
-/// ```
-/// foo.bar
-///    .baz()
-/// ```
+/// `chain_indent` dictates how the rest of the chain is aligned.
 /// If the first item in the chain is a block expression, we align the dots with
 /// the braces.
-///
-/// Otherwise:
 /// Visual:
 /// ```
-/// let a = foo(aaa, bbb)
-///             .bar
-///             .baz()
+/// let a = foo.bar
+///            .baz()
+///            .qux
 /// ```
-/// Visual seems to be a tab indented from the indent of the whole expression.
 /// Inherit:
 /// ```
-/// let a = foo(aaa, bbb)
-/// .bar
+/// let a = foo.bar
 /// .baz()
+/// .qux
 /// ```
 /// Tabbed:
 /// ```
-/// let a = foo(aaa, bbb)
-///     .bar
+/// let a = foo.bar
 ///     .baz()
+///     .qux
 /// ```
 /// `chains_overflow_last` applies only to chains where the last item is a
 /// method call. Usually, any line break in a chain sub-expression causes the
@@ -127,7 +118,7 @@ pub fn rewrite_chain(expr: &ast::Expr,
     } else if parent_rewrite.contains('\n') {
         (chain_indent(context, parent_block_indent.block_indent(context.config)), false)
     } else {
-        (hacked_chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), false)
+        (chain_indent_newline(context, offset + Indent::new(0, parent_rewrite.len())), false)
     };
 
     let max_width = try_opt!((width + offset.width()).checked_sub(indent.width()));
@@ -259,9 +250,9 @@ fn chain_indent(context: &RewriteContext, offset: Indent) -> Indent {
     }
 }
 
-// Temporary hack - ignores visual indenting because this function should be
-// called where it is not possible to use visual indentation.
-fn hacked_chain_indent(context: &RewriteContext, _offset: Indent) -> Indent {
+// Ignores visual indenting because this function should be called where it is
+// not possible to use visual indentation because we are starting on a newline.
+fn chain_indent_newline(context: &RewriteContext, _offset: Indent) -> Indent {
     match context.config.chain_indent {
         BlockIndentStyle::Inherit => context.block_indent,
         BlockIndentStyle::Visual | BlockIndentStyle::Tabbed => {
