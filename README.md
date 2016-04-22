@@ -266,7 +266,7 @@ You can also specify the path to the configuration file with:
 
 Both projects are independent and maintained by different people (even if some `clippy-service`'s contributions are authored by some `rust-clippy` members).
 
-You can check it out this great service at [clippy.bashy.io](https://clippy.bashy.io/).
+You can check out this great service at [clippy.bashy.io](https://clippy.bashy.io/).
 
 ##License
 Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
