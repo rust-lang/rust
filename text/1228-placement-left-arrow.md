@@ -83,7 +83,9 @@ let ref_2 = in arena { value_expression };
 
 # Detailed design
 
-Extend the parser to parse `EXPR <- EXPR`.
+Extend the parser to parse `EXPR <- EXPR`. The left arrow operator is
+right-associative and has precedence higher than assignment and
+binop-assignment, but lower than other binary operators.
 
 `EXPR <- EXPR` is parsed into an AST form that is desugared in much
 the same way that `in EXPR { BLOCK }` or `box (EXPR) EXPR` are
@@ -157,6 +159,40 @@ an assignment, we could combine `in` and `<-`, yielding e.g.:
 let ref_1 = in arena <- value_expression;
 let ref_2 = in arena <- value_expression;
 ```
+
+## Precedence
+
+Finally, precedence of this operator may be defined to be anything from being
+less than assignment/binop-assignment (set of right associative operators with
+lowest precedence) to highest in the language. The most prominent choices are:
+
+1. Less than assignment:
+
+    Assuming `()` never becomes a `Placer`, this resolves a pretty common
+    complaint that a statement such as `x = y <- z` is not clear or readable
+    by forcing the programmer to write `x = (y <- z)` for code to typecheck.
+    This, however introduces an inconsistency in parsing between `let x =` and
+    `x =`: `let x = (y <- z)` but `(x = z) <- y`.
+
+2. Same as assignment and binop-assignment:
+
+    `x = y <- z = a <- b = c = d <- e <- f` parses as
+    `x = (y <- (z = (a <- (b = (c = (d <- (e <- f)))))))`. This is so far
+    the easiest option to implement in the compiler.
+
+3. More than assignment and binop-assignment, but less than any other operator:
+
+    This is what this RFC currently proposes.  This allows for various
+    expressions involving equality symbols and `<-` to be parsed reasonably and
+    consistently. For example `x = y <- z += a <- b <- c` would get parsed as `x
+    = ((y <- z) += (a <- (b <- c)))`.
+
+4. More than any operator:
+
+    This is not a terribly interesting one, but still an option. Works well if
+    we want to force people enclose both sides of the operator into parentheses
+    most of the time. This option would get `x <- y <- z * a` parsed as `(x <-
+    (y <- z)) * a`.
 
 # Unresolved questions
 
