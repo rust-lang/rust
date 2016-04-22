@@ -1,7 +1,7 @@
 - Feature Name: `drop_types_in_const`
 - Start Date: 2016-01-01
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1440](https://github.com/rust-lang/rfcs/pull/1440)
+- Rust Issue: [rust-lang/rust#33156](https://github.com/rust-lang/rust/issues/33156)
 
 # Summary
 [summary]: #summary
