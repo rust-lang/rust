@@ -258,6 +258,8 @@ pub struct Cache {
     parent_stack: Vec<DefId>,
     parent_is_trait_impl: bool,
     search_index: Vec<IndexItem>,
+    seen_modules: HashSet<DefId>,
+    seen_mod: bool,
     stripped_mod: bool,
     deref_trait_did: Option<DefId>,
 
@@ -520,6 +522,8 @@ pub fn run(mut krate: clean::Crate,
         parent_is_trait_impl: false,
         extern_locations: HashMap::new(),
         primitive_locations: HashMap::new(),
+        seen_modules: HashSet::new(),
+        seen_mod: false,
         stripped_mod: false,
         access_levels: krate.access_levels.clone(),
         orphan_methods: Vec::new(),
@@ -976,11 +980,18 @@ impl DocFolder for Cache {
         // we don't want it or its children in the search index.
         let orig_stripped_mod = match item.inner {
             clean::StrippedItem(box clean::ModuleItem(..)) => {
-                let prev = self.stripped_mod;
-                self.stripped_mod = true;
-                prev
+                mem::replace(&mut self.stripped_mod, true)
             }
             _ => self.stripped_mod,
+        };
+
+        // Inlining can cause us to visit the same item multiple times.
+        // (i.e. relevant for gathering impls and implementors)
+        let orig_seen_mod = if item.is_mod() {
+            let seen_this = self.seen_mod || !self.seen_modules.insert(item.def_id);
+            mem::replace(&mut self.seen_mod, seen_this)
+        } else {
+            self.seen_mod
         };
 
         // Register any generics to their corresponding string. This is used
@@ -998,20 +1009,22 @@ impl DocFolder for Cache {
             _ => {}
         }
 
-        // Propagate a trait methods' documentation to all implementors of the
-        // trait
-        if let clean::TraitItem(ref t) = item.inner {
-            self.traits.insert(item.def_id, t.clone());
-        }
+        if !self.seen_mod {
+            // Propagate a trait methods' documentation to all implementors of the
+            // trait
+            if let clean::TraitItem(ref t) = item.inner {
+                self.traits.insert(item.def_id, t.clone());
+            }
 
-        // Collect all the implementors of traits.
-        if let clean::ImplItem(ref i) = item.inner {
-            if let Some(did) = i.trait_.def_id() {
-                self.implementors.entry(did).or_insert(vec![]).push(Implementor {
-                    def_id: item.def_id,
-                    stability: item.stability.clone(),
-                    impl_: i.clone(),
-                });
+            // Collect all the implementors of traits.
+            if let clean::ImplItem(ref i) = item.inner {
+                if let Some(did) = i.trait_.def_id() {
+                    self.implementors.entry(did).or_insert(vec![]).push(Implementor {
+                        def_id: item.def_id,
+                        stability: item.stability.clone(),
+                        impl_: i.clone(),
+                    });
+                }
             }
         }
 
@@ -1183,7 +1196,6 @@ impl DocFolder for Cache {
                     } => {
                         Some(did)
                     }
-
                     ref t => {
                         t.primitive_type().and_then(|t| {
                             self.primitive_locations.get(&t).map(|n| {
@@ -1193,13 +1205,14 @@ impl DocFolder for Cache {
                         })
                     }
                 };
-
-                if let Some(did) = did {
-                    self.impls.entry(did).or_insert(vec![]).push(Impl {
-                        impl_: i,
-                        dox: attrs.value("doc").map(|s|s.to_owned()),
-                        stability: item.stability.clone(),
-                    });
+                if !self.seen_mod {
+                    if let Some(did) = did {
+                        self.impls.entry(did).or_insert(vec![]).push(Impl {
+                            impl_: i,
+                            dox: attrs.value("doc").map(|s|s.to_owned()),
+                            stability: item.stability.clone(),
+                        });
+                    }
                 }
                 None
             } else {
@@ -1209,6 +1222,7 @@ impl DocFolder for Cache {
 
         if pushed { self.stack.pop().unwrap(); }
         if parent_pushed { self.parent_stack.pop().unwrap(); }
+        self.seen_mod = orig_seen_mod;
         self.stripped_mod = orig_stripped_mod;
         self.parent_is_trait_impl = orig_parent_is_trait_impl;
         return ret;
