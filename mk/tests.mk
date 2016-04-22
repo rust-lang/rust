@@ -619,7 +619,8 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --stage-id stage$(1)-$(2) \
         --target $(2) \
         --host $(3) \
-	--python $$(CFG_PYTHON) \
+	--docck-python $$(CFG_PYTHON) \
+	--lldb-python $$(CFG_LLDB_PYTHON) \
         --gdb-version="$(CFG_GDB_VERSION)" \
         --lldb-version="$(CFG_LLDB_VERSION)" \
         --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
