@@ -346,7 +346,7 @@ pub use alloc::boxed;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc::rc;
 
-#[stable(feature = "rust1", since = "1.10.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::error;
 
 #[stable(feature = "rust1", since = "1.0.0")]
