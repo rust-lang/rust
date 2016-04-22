@@ -15,12 +15,15 @@ trait T {}
 fn f1<X: ?Sized>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.
     let _: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfied
+    //~| WARNING this is a new restriction added in rustc 1.10
     let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
     let y: (isize, (X, usize)); //~ERROR `X: std::marker::Sized` is not satisfied
+    //~| WARNING this is a new restriction added in rustc 1.10
 }
 fn f2<X: ?Sized + T>(x: &X) {
     let y: X; //~ERROR `X: std::marker::Sized` is not satisfied
     let y: (isize, (X, isize)); //~ERROR `X: std::marker::Sized` is not satisfied
+    //~| WARNING this is a new restriction added in rustc 1.10
 }
 
 fn f3<X: ?Sized>(x1: Box<X>, x2: Box<X>, x3: Box<X>) {
