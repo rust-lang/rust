@@ -609,6 +609,7 @@ opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt rustbuild 0 "use the rust and cargo based build system"
 opt orbit 0 "get MIR where it belongs - everywhere; most importantly, in orbit"
 opt codegen-tests 1 "run the src/test/codegen tests"
+opt option-checking 1 "complain about unrecognized options in this configure script"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"
@@ -674,8 +675,11 @@ then
 fi
 
 # Validate Options
-step_msg "validating $CFG_SELF args"
-validate_opt
+if [ -z "$CFG_DISABLE_OPTION_CHECKING" ]
+then
+    step_msg "validating $CFG_SELF args"
+    validate_opt
+fi
 
 # Validate the release channel, and configure options
 case "$CFG_RELEASE_CHANNEL" in
