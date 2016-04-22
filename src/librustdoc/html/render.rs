@@ -2129,8 +2129,6 @@ fn render_assoc_item(w: &mut fmt::Formatter,
               d: &clean::FnDecl,
               link: AssocItemLink)
               -> fmt::Result {
-        use syntax::abi::Abi;
-
         let name = meth.name.as_ref().unwrap();
         let anchor = format!("#{}.{}", shortty(meth), name);
         let href = match link {
@@ -2157,10 +2155,7 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                    {generics}{decl}{where_clause}",
                ConstnessSpace(vis_constness),
                UnsafetySpace(unsafety),
-               match abi {
-                   Abi::Rust => String::new(),
-                   a => format!("extern {} ", a.to_string())
-               },
+               AbiSpace(abi),
                href = href,
                name = name,
                generics = *g,

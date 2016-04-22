@@ -1721,7 +1721,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     where_predicates: Vec::new()
                 },
                 decl: (cx.map.local_def_id(0), &fty.sig).clean(cx),
-                abi: fty.abi.to_string(),
+                abi: fty.abi,
             }),
             ty::TyStruct(def, substs) |
             ty::TyEnum(def, substs) => {
@@ -2143,7 +2143,7 @@ pub struct BareFunctionDecl {
     pub unsafety: hir::Unsafety,
     pub generics: Generics,
     pub decl: FnDecl,
-    pub abi: String,
+    pub abi: Abi,
 }
 
 impl Clean<BareFunctionDecl> for hir::BareFnTy {
@@ -2156,7 +2156,7 @@ impl Clean<BareFunctionDecl> for hir::BareFnTy {
                 where_predicates: Vec::new()
             },
             decl: self.decl.clean(cx),
-            abi: self.abi.to_string(),
+            abi: self.abi,
         }
     }
 }
