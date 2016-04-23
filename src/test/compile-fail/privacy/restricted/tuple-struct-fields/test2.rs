@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
+#![feature(pub_restricted, type_macros)]
 
-macro_rules! m {
-    ($p: path) => (pub($p) struct Z;)
+macro_rules! define_struct {
+    ($t:ty) => {
+        struct S1(pub $t);
+        struct S2(pub (foo) ());
+        struct S3(pub $t ()); //~ ERROR expected one of `+` or `,`, found `(`
+                              //~| ERROR expected one of `+`, `;`, or `where`, found `(`
+    }
 }
-
-struct S<T>(T);
-m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
 
 mod foo {
-    struct S(pub(foo<T>) ()); //~ ERROR type or lifetime parameters in visibility path
+    define_struct! { (foo) }
 }
-
-fn main() {}
