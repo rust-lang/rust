@@ -28,7 +28,7 @@ use utils::in_macro;
 /// ```
 declare_lint! {
     pub ITEMS_AFTER_STATEMENTS,
-    Warn,
+    Allow,
     "finds blocks where an item comes after a statement"
 }
 
