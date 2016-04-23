@@ -7,54 +7,6 @@ use error::{EvalError, EvalResult};
 use primval::PrimVal;
 
 ////////////////////////////////////////////////////////////////////////////////
-// Value representations
-////////////////////////////////////////////////////////////////////////////////
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum Repr {
-    /// Representation for a non-aggregate type such as a boolean, integer, character or pointer.
-    Primitive {
-        size: usize
-    },
-
-    /// The representation for aggregate types including structs, enums, and tuples.
-    Aggregate {
-        /// The size of the discriminant (an integer). Should be between 0 and 8. Always 0 for
-        /// structs and tuples.
-        discr_size: usize,
-
-        /// The size of the entire aggregate, including the discriminant.
-        size: usize,
-
-        /// The representations of the contents of each variant.
-        variants: Vec<Vec<FieldRepr>>,
-    },
-
-    Array {
-        elem_size: usize,
-
-        /// Number of elements.
-        length: usize,
-    },
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct FieldRepr {
-    pub offset: usize,
-    pub size: usize,
-}
-
-impl Repr {
-    pub fn size(&self) -> usize {
-        match *self {
-            Repr::Primitive { size } => size,
-            Repr::Aggregate { size, .. } => size,
-            Repr::Array { elem_size, length } => elem_size * length,
-        }
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Allocations and pointers
 ////////////////////////////////////////////////////////////////////////////////
 

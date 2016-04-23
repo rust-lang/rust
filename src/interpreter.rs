@@ -1,4 +1,3 @@
-use arena::TypedArena;
 use rustc::infer;
 use rustc::middle::const_val;
 use rustc::hir::def_id::DefId;
@@ -6,10 +5,10 @@ use rustc::mir::mir_map::MirMap;
 use rustc::mir::repr as mir;
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::fold::TypeFoldable;
+use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::DefIdMap;
-use rustc_data_structures::fnv::FnvHashMap;
 use std::cell::RefCell;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -19,12 +18,12 @@ use syntax::attr;
 use syntax::codemap::{self, DUMMY_SP};
 
 use error::{EvalError, EvalResult};
-use memory::{FieldRepr, Memory, Pointer, Repr};
+use memory::{Memory, Pointer};
 use primval::{self, PrimVal};
 
 const TRACE_EXECUTION: bool = false;
 
-struct Interpreter<'a, 'tcx: 'a, 'arena> {
+struct Interpreter<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
     tcx: &'a TyCtxt<'tcx>,
 
@@ -33,12 +32,6 @@ struct Interpreter<'a, 'tcx: 'a, 'arena> {
 
     /// A local cache from DefIds to Mir for non-crate-local items.
     mir_cache: RefCell<DefIdMap<Rc<mir::Mir<'tcx>>>>,
-
-    /// An arena allocator for type representations.
-    repr_arena: &'arena TypedArena<Repr>,
-
-    /// A cache for in-memory representations of types.
-    repr_cache: RefCell<FnvHashMap<ty::Ty<'tcx>, &'arena Repr>>,
 
     /// The virtual memory system.
     memory: Memory,
@@ -112,16 +105,12 @@ enum TerminatorTarget {
     Return,
 }
 
-impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
-    fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>, repr_arena: &'arena TypedArena<Repr>)
-        -> Self
-    {
+impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
+    fn new(tcx: &'a TyCtxt<'tcx>, mir_map: &'a MirMap<'tcx>) -> Self {
         Interpreter {
             tcx: tcx,
             mir_map: mir_map,
             mir_cache: RefCell::new(DefIdMap()),
-            repr_arena: repr_arena,
-            repr_cache: RefCell::new(FnvHashMap()),
             memory: Memory::new(),
             stack: Vec::new(),
             substs_stack: Vec::new(),
@@ -242,7 +231,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = try!(self.eval_lvalue(discr)).to_ptr();
-                let discr_size = self.lvalue_repr(discr).size();
+                let discr_size =
+                    self.lvalue_layout(discr).size(&self.tcx.data_layout).bytes() as usize;
                 let discr_val = try!(self.memory.read_uint(discr_ptr, discr_size));
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -262,12 +252,12 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             Switch { ref discr, ref targets, adt_def } => {
                 let adt_ptr = try!(self.eval_lvalue(discr)).to_ptr();
-                let adt_repr = self.lvalue_repr(discr);
-                let discr_size = match *adt_repr {
-                    Repr::Aggregate { discr_size, .. } => discr_size,
+                let adt_layout = self.lvalue_layout(discr);
+                let discr_size = match *adt_layout {
+                    Layout::General { discr, .. } => discr.size().bytes(),
                     _ => panic!("attmpted to switch on non-aggregate type"),
                 };
-                let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size));
+                let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size as usize));
 
                 let matching = adt_def.variants.iter()
                     .position(|v| discr_val == v.disr_val.to_u64_unchecked());
@@ -328,13 +318,15 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
                                     let last_arg = args.last().unwrap();
                                     let last = try!(self.eval_operand(last_arg));
                                     let last_ty = self.operand_ty(last_arg);
-                                    let last_repr = self.type_repr(last_ty);
-                                    match (&last_ty.sty, last_repr) {
+                                    let last_layout = self.type_layout(last_ty);
+                                    match (&last_ty.sty, last_layout) {
                                         (&ty::TyTuple(ref fields),
-                                         &Repr::Aggregate { discr_size: 0, ref variants, .. }) => {
-                                            assert_eq!(variants.len(), 1);
-                                            for (repr, ty) in variants[0].iter().zip(fields) {
-                                                let src = last.offset(repr.offset as isize);
+                                         &Layout::Univariant { ref variant, .. }) => {
+                                            let offsets = iter::once(0)
+                                                .chain(variant.offset_after_field.iter()
+                                                    .map(|s| s.bytes()));
+                                            for (offset, ty) in offsets.zip(fields) {
+                                                let src = last.offset(offset as isize);
                                                 arg_srcs.push((src, ty));
                                             }
                                         }
@@ -578,28 +570,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         Ok(TerminatorTarget::Call)
     }
 
-    fn assign_to_aggregate(
+    fn assign_fields<I: IntoIterator<Item = u64>>(
         &mut self,
         dest: Pointer,
-        dest_repr: &Repr,
-        variant: usize,
-        discr: Option<u64>,
+        offsets: I,
         operands: &[mir::Operand<'tcx>],
     ) -> EvalResult<()> {
-        match *dest_repr {
-            Repr::Aggregate { discr_size, ref variants, .. } => {
-                if discr_size > 0 {
-                    try!(self.memory.write_uint(dest, discr.unwrap(), discr_size));
-                }
-                let after_discr = dest.offset(discr_size as isize);
-                for (field, operand) in variants[variant].iter().zip(operands) {
-                    let src = try!(self.eval_operand(operand));
-                    let src_ty = self.operand_ty(operand);
-                    let field_dest = after_discr.offset(field.offset as isize);
-                    try!(self.move_(src, field_dest, src_ty));
-                }
-            }
-            _ => panic!("expected Repr::Aggregate target"),
+        for (offset, operand) in offsets.into_iter().zip(operands) {
+            let src = try!(self.eval_operand(operand));
+            let src_ty = self.operand_ty(operand);
+            let field_dest = dest.offset(offset as isize);
+            try!(self.move_(src, field_dest, src_ty));
         }
         Ok(())
     }
@@ -609,7 +590,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     {
         let dest = try!(self.eval_lvalue(lvalue)).to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
-        let dest_repr = self.lvalue_repr(lvalue);
+        let dest_layout = self.lvalue_layout(lvalue);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
@@ -639,39 +620,52 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
             }
 
             Aggregate(ref kind, ref operands) => {
-                use rustc::mir::repr::AggregateKind::*;
-                match *kind {
-                    Tuple | Closure(..) =>
-                        try!(self.assign_to_aggregate(dest, &dest_repr, 0, None, operands)),
-
-                    Adt(adt_def, variant, _) => {
-                        let discr = Some(adt_def.variants[variant].disr_val.to_u64_unchecked());
-                        try!(self.assign_to_aggregate(dest, &dest_repr, variant, discr, operands));
+                match *dest_layout {
+                    Layout::Univariant { ref variant, .. } => {
+                        let offsets = iter::once(0)
+                            .chain(variant.offset_after_field.iter().map(|s| s.bytes()));
+                        try!(self.assign_fields(dest, offsets, operands));
                     }
 
-                    Vec => if let Repr::Array { elem_size, length } = *dest_repr {
-                        assert_eq!(length, operands.len());
-                        for (i, operand) in operands.iter().enumerate() {
-                            let src = try!(self.eval_operand(operand));
-                            let src_ty = self.operand_ty(operand);
-                            let elem_dest = dest.offset((i * elem_size) as isize);
-                            try!(self.move_(src, elem_dest, src_ty));
+                    Layout::Array { .. } => {
+                        let elem_size = match dest_ty.sty {
+                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
+                            _ => panic!("tried to assign {:?} aggregate to non-array type {:?}",
+                                        kind, dest_ty),
+                        };
+                        let offsets = (0..).map(|i| i * elem_size);
+                        try!(self.assign_fields(dest, offsets, operands));
+                    }
+
+                    Layout::General { discr, ref variants, .. } => {
+                        if let mir::AggregateKind::Adt(adt_def, variant, _) = *kind {
+                            let discr_val = adt_def.variants[variant].disr_val.to_u64_unchecked();
+                            let discr_size = discr.size().bytes() as usize;
+                            try!(self.memory.write_uint(dest, discr_val, discr_size));
+
+                            let offsets = variants[variant].offset_after_field.iter()
+                                .map(|s| s.bytes());
+                            try!(self.assign_fields(dest, offsets, operands));
+                        } else {
+                            panic!("tried to assign {:?} aggregate to Layout::General dest", kind);
                         }
-                    } else {
-                        panic!("expected Repr::Array target");
-                    },
+                    }
+
+                    _ => panic!("can't handle destination layout {:?} when assigning {:?}",
+                                dest_layout, kind),
                 }
             }
 
             Repeat(ref operand, _) => {
-                if let Repr::Array { elem_size, length } = *dest_repr {
-                    let src = try!(self.eval_operand(operand));
-                    for i in 0..length {
-                        let elem_dest = dest.offset((i * elem_size) as isize);
-                        try!(self.memory.copy(src, elem_dest, elem_size));
-                    }
-                } else {
-                    panic!("expected Repr::Array target");
+                let (elem_size, length) = match dest_ty.sty {
+                    ty::TyArray(elem_ty, n) => (self.type_size(elem_ty), n),
+                    _ => panic!("tried to assign array-repeat to non-array type {:?}", dest_ty),
+                };
+
+                let src = try!(self.eval_operand(operand));
+                for i in 0..length {
+                    let elem_dest = dest.offset((i * elem_size) as isize);
+                    try!(self.memory.copy(src, elem_dest, elem_size));
                 }
             }
 
@@ -731,7 +725,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                     Misc => {
                         // FIXME(tsion): Wrong for almost everything.
-                        let size = dest_repr.size();
+                        let size = dest_layout.size(&self.tcx.data_layout).bytes() as usize;
                         try!(self.memory.copy(src, dest, size));
                     }
 
@@ -747,22 +741,22 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
-        self.eval_operand_and_repr(op).map(|(p, _)| p)
+        self.eval_operand_and_layout(op).map(|(p, _)| p)
     }
 
-    fn eval_operand_and_repr(&mut self, op: &mir::Operand<'tcx>)
-        -> EvalResult<(Pointer, &'arena Repr)>
+    fn eval_operand_and_layout(&mut self, op: &mir::Operand<'tcx>)
+        -> EvalResult<(Pointer, &'tcx Layout)>
     {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) =>
-                Ok((try!(self.eval_lvalue(lvalue)).to_ptr(), self.lvalue_repr(lvalue))),
+                Ok((try!(self.eval_lvalue(lvalue)).to_ptr(), self.lvalue_layout(lvalue))),
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
                     Value { ref value } => Ok((
                         try!(self.const_to_ptr(value)),
-                        self.type_repr(ty),
+                        self.type_layout(ty),
                     )),
                     Item { .. } => unimplemented!(),
                 }
@@ -770,15 +764,18 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         }
     }
 
-    // TODO(tsion): Replace this inefficient hack with a wrapper like LvalueTy (e.g. LvalueRepr).
-    fn lvalue_repr(&self, lvalue: &mir::Lvalue<'tcx>) -> &'arena Repr {
+    // TODO(tsion): Replace this inefficient hack with a wrapper like LvalueTy (e.g. LvalueLayout).
+    fn lvalue_layout(&self, lvalue: &mir::Lvalue<'tcx>) -> &'tcx Layout {
         use rustc::mir::tcx::LvalueTy;
         match self.mir().lvalue_ty(self.tcx, lvalue) {
-            LvalueTy::Ty { ty } => self.type_repr(ty),
+            LvalueTy::Ty { ty } => self.type_layout(ty),
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
                 let field_tys = adt_def.variants[variant_index].fields.iter()
                     .map(|f| f.ty(self.tcx, substs));
-                self.repr_arena.alloc(self.make_aggregate_repr(iter::once(field_tys)))
+
+                // FIXME(tsion): Handle LvalueTy::Downcast better somehow...
+                unimplemented!();
+                // self.repr_arena.alloc(self.make_aggregate_layout(iter::once(field_tys)))
             }
         }
     }
@@ -796,21 +793,23 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
             Projection(ref proj) => {
                 let base_ptr = try!(self.eval_lvalue(&proj.base)).to_ptr();
-                let base_repr = self.lvalue_repr(&proj.base);
+                let base_layout = self.lvalue_layout(&proj.base);
                 let base_ty = self.lvalue_ty(&proj.base);
+
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
-                    Field(field, _) => match *base_repr {
-                        Repr::Aggregate { discr_size: 0, ref variants, .. } => {
-                            let fields = &variants[0];
-                            base_ptr.offset(fields[field.index()].offset as isize)
+                    Field(field, _) => match *base_layout {
+                        Layout::Univariant { ref variant, .. } => {
+                            let offset = variant.field_offset(field.index()).bytes();
+                            base_ptr.offset(offset as isize)
                         }
-                        _ => panic!("field access on non-product type: {:?}", base_repr),
+                        _ => panic!("field access on non-product type: {:?}", base_layout),
                     },
 
-                    Downcast(..) => match *base_repr {
-                        Repr::Aggregate { discr_size, .. } => base_ptr.offset(discr_size as isize),
-                        _ => panic!("variant downcast on non-aggregate type: {:?}", base_repr),
+                    Downcast(..) => match *base_layout {
+                        Layout::General { discr, .. } =>
+                            base_ptr.offset(discr.size().bytes() as isize),
+                        _ => panic!("variant downcast on non-aggregate type: {:?}", base_layout),
                     },
 
                     Deref => {
@@ -921,99 +920,17 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 
     fn type_size(&self, ty: ty::Ty<'tcx>) -> usize {
-        self.type_repr(ty).size()
+        self.type_layout(ty).size(&self.tcx.data_layout).bytes() as usize
     }
 
-    fn type_repr(&self, ty: ty::Ty<'tcx>) -> &'arena Repr {
+    fn type_layout(&self, ty: ty::Ty<'tcx>) -> &'tcx Layout {
+        // TODO(tsion): Is this inefficient? Needs investigation.
         let ty = self.monomorphize(ty);
 
-        if let Some(repr) = self.repr_cache.borrow().get(ty) {
-            return repr;
-        }
+        let infcx = infer::normalizing_infer_ctxt(self.tcx, &self.tcx.tables, ProjectionMode::Any);
 
-        use syntax::ast::{IntTy, UintTy};
-        let repr = match ty.sty {
-            ty::TyBool => Repr::Primitive { size: 1 },
-
-            ty::TyInt(IntTy::I8)  | ty::TyUint(UintTy::U8)  => Repr::Primitive { size: 1 },
-            ty::TyInt(IntTy::I16) | ty::TyUint(UintTy::U16) => Repr::Primitive { size: 2 },
-            ty::TyInt(IntTy::I32) | ty::TyUint(UintTy::U32) => Repr::Primitive { size: 4 },
-            ty::TyInt(IntTy::I64) | ty::TyUint(UintTy::U64) => Repr::Primitive { size: 8 },
-
-            ty::TyInt(IntTy::Is) | ty::TyUint(UintTy::Us) =>
-                Repr::Primitive { size: self.memory.pointer_size },
-
-            ty::TyTuple(ref fields) =>
-                self.make_aggregate_repr(iter::once(fields.iter().cloned())),
-
-            ty::TyEnum(adt_def, substs) | ty::TyStruct(adt_def, substs) => {
-                let variants = adt_def.variants.iter().map(|v| {
-                    v.fields.iter().map(|f| f.ty(self.tcx, substs))
-                });
-                self.make_aggregate_repr(variants)
-            }
-
-            ty::TyArray(elem_ty, length) => Repr::Array {
-                elem_size: self.type_size(elem_ty),
-                length: length,
-            },
-
-            ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
-            ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |
-            ty::TyBox(ty) => {
-                if self.type_is_sized(ty) {
-                    Repr::Primitive { size: self.memory.pointer_size }
-                } else {
-                    Repr::Primitive { size: self.memory.pointer_size * 2 }
-                }
-            }
-
-            ty::TyFnPtr(..) => Repr::Primitive { size: self.memory.pointer_size },
-
-            ty::TyClosure(_, ref closure_substs) =>
-                self.make_aggregate_repr(iter::once(closure_substs.upvar_tys.iter().cloned())),
-
-            ref t => panic!("can't convert type to repr: {:?}", t),
-        };
-
-        let repr_ref = self.repr_arena.alloc(repr);
-        self.repr_cache.borrow_mut().insert(ty, repr_ref);
-        repr_ref
-    }
-
-    fn make_aggregate_repr<V>(&self, variant_fields: V) -> Repr
-        where V: IntoIterator, V::Item: IntoIterator<Item = ty::Ty<'tcx>>
-    {
-        let mut variants = Vec::new();
-        let mut max_variant_size = 0;
-
-        for field_tys in variant_fields {
-            let mut fields = Vec::new();
-            let mut size = 0;
-
-            for ty in field_tys {
-                let field_size = self.type_size(ty);
-                let offest = size;
-                size += field_size;
-                fields.push(FieldRepr { offset: offest, size: field_size });
-            }
-
-            if size > max_variant_size { max_variant_size = size; }
-            variants.push(fields);
-        }
-
-        let discr_size = match variants.len() as u64 {
-            n if n <= 1       => 0,
-            n if n <= 1 << 8  => 1,
-            n if n <= 1 << 16 => 2,
-            n if n <= 1 << 32 => 4,
-            _                 => 8,
-        };
-        Repr::Aggregate {
-            discr_size: discr_size,
-            size: max_variant_size + discr_size,
-            variants: variants,
-        }
+        // TODO(tsion): Report this error properly.
+        ty.layout(&infcx).unwrap()
     }
 
     pub fn read_primval(&mut self, ptr: Pointer, ty: ty::Ty<'tcx>) -> EvalResult<PrimVal> {
@@ -1237,8 +1154,7 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
 
                 println!("Interpreting: {}", item.name);
 
-                let repr_arena = TypedArena::new();
-                let mut miri = Interpreter::new(tcx, mir_map, &repr_arena);
+                let mut miri = Interpreter::new(tcx, mir_map);
                 let return_ptr = match mir.return_ty {
                     ty::FnConverging(ty) => {
                         let size = miri.type_size(ty);
@@ -1256,6 +1172,38 @@ pub fn interpret_start_points<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) 
                 }
                 println!("");
             }
+        }
+    }
+}
+
+// TODO(tsion): Upstream these methods into rustc::ty::layout.
+
+trait IntegerExt {
+    fn size(self) -> Size;
+}
+
+impl IntegerExt for layout::Integer {
+    fn size(self) -> Size {
+        use rustc::ty::layout::Integer::*;
+        match self {
+            I1 | I8 => Size::from_bits(8),
+            I16 => Size::from_bits(16),
+            I32 => Size::from_bits(32),
+            I64 => Size::from_bits(64),
+        }
+    }
+}
+
+trait StructExt {
+    fn field_offset(&self, index: usize) -> Size;
+}
+
+impl StructExt for layout::Struct {
+    fn field_offset(&self, index: usize) -> Size {
+        if index == 0 {
+            Size::from_bytes(0)
+        } else {
+            self.offset_after_field[index - 1]
         }
     }
 }

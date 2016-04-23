@@ -2,24 +2,24 @@
 #![allow(dead_code, unused_attributes)]
 
 #[derive(Debug, PartialEq)]
-enum Unit { Unit }
+enum Unit { Unit(()) } // Force non-C-enum representation.
 
 #[miri_run]
 fn return_unit() -> Unit {
-    Unit::Unit
+    Unit::Unit(())
 }
 
 #[derive(Debug, PartialEq)]
-enum MyBool { False, True }
+enum MyBool { False(()), True(()) } // Force non-C-enum representation.
 
 #[miri_run]
 fn return_true() -> MyBool {
-    MyBool::True
+    MyBool::True(())
 }
 
 #[miri_run]
 fn return_false() -> MyBool {
-    MyBool::False
+    MyBool::False(())
 }
 
 #[miri_run]
