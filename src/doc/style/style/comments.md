@@ -4,7 +4,7 @@
 
 Use line comments:
 
-``` rust
+```rust
 // Wait for the main thread to return, and set the process error code
 // appropriately.
 ```
@@ -51,7 +51,7 @@ Basically, this means write "Returns" instead of "Return".
 
 For example:
 
-``` rust
+```rust,ignore
 /// Sets up a default runtime configuration, given compiler-supplied arguments.
 ///
 /// This function will block until the entire pool of M:N schedulers has
@@ -80,7 +80,7 @@ For example:
 
 Use inner doc comments _only_ to document crates and file-level modules:
 
-``` rust
+```rust,ignore
 //! The core library.
 //!
 //! The core library is a something something...
@@ -92,7 +92,7 @@ Rust doesn't have special constructors, only functions that return new
 instances.  These aren't visible in the automatically generated documentation
 for a type, so you should specifically link to them:
 
-``` rust
+```rust,ignore
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
 ///

@@ -308,6 +308,12 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "compile-fail", "compile-fail-fulldeps")
                 }
+                CheckDocs { compiler } => {
+                    check::docs(self, &compiler);
+                }
+                CheckErrorIndex { compiler } => {
+                    check::error_index(self, &compiler);
+                }
 
                 DistDocs { stage } => dist::docs(self, stage, target.target),
                 DistMingw { _dummy } => dist::mingw(self, target.target),

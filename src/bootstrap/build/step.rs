@@ -96,6 +96,8 @@ macro_rules! targets {
             (check_rpass_valgrind, CheckRPassValgrind { compiler: Compiler<'a> }),
             (check_rpass_full, CheckRPassFull { compiler: Compiler<'a> }),
             (check_cfail_full, CheckCFailFull { compiler: Compiler<'a> }),
+            (check_docs, CheckDocs { compiler: Compiler<'a> }),
+            (check_error_index, CheckErrorIndex { compiler: Compiler<'a> }),
 
             // Distribution targets, creating tarballs
             (dist, Dist { stage: u32 }),
@@ -341,7 +343,10 @@ impl<'a> Step<'a> {
                     self.check_rpass_valgrind(compiler),
                     self.check_rpass_full(compiler),
                     self.check_cfail_full(compiler),
+                    self.check_error_index(compiler),
+                    self.check_docs(compiler),
                     self.check_linkcheck(stage),
+                    self.check_tidy(stage),
                     self.dist(stage),
                 ]
             }
@@ -382,6 +387,12 @@ impl<'a> Step<'a> {
             Source::CheckCFailFull { compiler } => {
                 vec![self.librustc(compiler),
                      self.tool_compiletest(compiler.stage)]
+            }
+            Source::CheckDocs { compiler } => {
+                vec![self.libstd(compiler)]
+            }
+            Source::CheckErrorIndex { compiler } => {
+                vec![self.libstd(compiler), self.tool_error_index(compiler.stage)]
             }
 
             Source::ToolLinkchecker { stage } |
