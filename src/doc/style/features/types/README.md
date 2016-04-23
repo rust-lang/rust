@@ -4,13 +4,13 @@
 
 Prefer
 
-```rust
+```rust,ignore
 let w = Widget::new(Small, Round)
 ```
 
 over
 
-```rust
+```rust,ignore
 let w = Widget::new(true, false)
 ```
 

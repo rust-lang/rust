@@ -13,7 +13,7 @@ underlying type.
 For example, a `f64` value might be used to represent a quantity in miles or in
 kilometers. Using newtypes, we can keep track of the intended interpretation:
 
-```rust
+```rust,ignore
 struct Miles(pub f64);
 struct Kilometers(pub f64);
 
@@ -28,7 +28,7 @@ impl Kilometers {
 Once we have separated these two types, we can statically ensure that we do not
 confuse them. For example, the function
 
-```rust
+```rust,ignore
 fn are_we_there_yet(distance_travelled: Miles) -> bool { ... }
 ```
 
@@ -46,7 +46,7 @@ type `Enumerate<Skip<vec::MoveItems<T>>>`. We wish to hide this type from the
 client, so that the client's view of the return type is roughly `Iterator<(usize,
 T)>`. We can do so using the newtype pattern:
 
-```rust
+```rust,ignore
 struct MyTransformResult<T>(Enumerate<Skip<vec::MoveItems<T>>>);
 impl<T> Iterator<(usize, T)> for MyTransformResult<T> { ... }
 
