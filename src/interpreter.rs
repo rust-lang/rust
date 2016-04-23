@@ -792,7 +792,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Static(_def_id) => unimplemented!(),
 
             Projection(ref proj) => {
-                let base_ptr = try!(self.eval_lvalue(&proj.base)).to_ptr();
+                let base_ptr = try!(self.eval_lvalue(&proj.base)).ptr;
                 let base_layout = self.lvalue_layout(&proj.base);
                 let base_ty = self.lvalue_ty(&proj.base);
 
