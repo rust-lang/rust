@@ -365,16 +365,23 @@ impl LateLintPass for MethodsPass {
                     lint_cstring_as_ptr(cx, expr, &arglists[0][0], &arglists[1][0]);
                 }
 
-
                 lint_or_fun_call(cx, expr, &name.node.as_str(), &args);
+
+                let self_ty = cx.tcx.expr_ty_adjusted(&args[0]);
                 if args.len() == 1 && name.node.as_str() == "clone" {
                     lint_clone_on_copy(cx, expr);
-                    lint_clone_double_ref(cx, expr, &args[0]);
+                    lint_clone_double_ref(cx, expr, &args[0], self_ty);
                 }
-                for &(method, pos) in &PATTERN_METHODS {
-                    if name.node.as_str() == method && args.len() > pos {
-                        lint_single_char_pattern(cx, expr, &args[pos]);
+
+                match self_ty.sty {
+                    ty::TyRef(_, ty) if ty.ty.sty == ty::TyStr => {
+                        for &(method, pos) in &PATTERN_METHODS {
+                            if name.node.as_str() == method && args.len() > pos {
+                                lint_single_char_pattern(cx, expr, &args[pos]);
+                            }
+                        }
                     }
+                    _ => (),
                 }
             }
             ExprBinary(op, ref lhs, ref rhs) if op.node == BiEq || op.node == BiNe => {
@@ -552,8 +559,7 @@ fn lint_clone_on_copy(cx: &LateContext, expr: &Expr) {
 }
 
 /// Checks for the `CLONE_DOUBLE_REF` lint.
-fn lint_clone_double_ref(cx: &LateContext, expr: &Expr, arg: &Expr) {
-    let ty = cx.tcx.expr_ty(arg);
+fn lint_clone_double_ref(cx: &LateContext, expr: &Expr, arg: &Expr, ty: ty::Ty) {
     if let ty::TyRef(_, ty::TypeAndMut { ty: ref inner, .. }) = ty.sty {
         if let ty::TyRef(..) = inner.sty {
             let mut db = span_lint(cx,

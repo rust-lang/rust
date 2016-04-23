@@ -6,6 +6,7 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::ops::Mul;
 
 struct T;
@@ -469,6 +470,9 @@ fn single_char_pattern() {
     //~^ ERROR single-character string constant used as pattern
     //~| HELP try using a char instead:
     //~| SUGGESTION x.trim_right_matches('x');
+
+    let h = HashSet::<String>::new();
+    h.contains("X"); // should not warn
 }
 
 #[allow(result_unwrap_used)]
