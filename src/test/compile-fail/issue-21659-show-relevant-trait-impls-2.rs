@@ -43,5 +43,4 @@ fn main() {
     //~| help:   <Bar as Foo<i32>>
     //~| help:   <Bar as Foo<u8>>
     //~| help: and 2 others
-    //~| help: run `rustc --explain E0277`
 }

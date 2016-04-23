@@ -577,46 +577,17 @@ impl EmitterWriter {
     fn print_macro_backtrace(&mut self,
                              sp: Span)
                              -> io::Result<()> {
-        let mut last_span = codemap::DUMMY_SP;
-        let mut span = sp;
-
-        loop {
-            let span_name_span = self.cm.with_expn_info(span.expn_id, |expn_info| {
-                expn_info.map(|ei| {
-                    let (pre, post) = match ei.callee.format {
-                        codemap::MacroAttribute(..) => ("#[", "]"),
-                        codemap::MacroBang(..) => ("", "!"),
-                    };
-                    let macro_decl_name = format!("in this expansion of {}{}{}",
-                                                  pre,
-                                                  ei.callee.name(),
-                                                  post);
-                    let def_site_span = ei.callee.span;
-                    (ei.call_site, macro_decl_name, def_site_span)
-                })
-            });
-            let (macro_decl_name, def_site_span) = match span_name_span {
-                None => break,
-                Some((sp, macro_decl_name, def_site_span)) => {
-                    span = sp;
-                    (macro_decl_name, def_site_span)
-                }
-            };
-
-            // Don't print recursive invocations
-            if !span.source_equal(&last_span) {
-                let mut diag_string = macro_decl_name;
-                if let Some(def_site_span) = def_site_span {
-                    diag_string.push_str(&format!(" (defined in {})",
-                                                  self.cm.span_to_filename(def_site_span)));
-                }
-
-                let snippet = self.cm.span_to_string(span);
-                print_diagnostic(&mut self.dst, &snippet, Note, &diag_string, None)?;
+        for trace in self.cm.macro_backtrace(sp) {
+            let mut diag_string =
+                format!("in this expansion of {}", trace.macro_decl_name);
+            if let Some(def_site_span) = trace.def_site_span {
+                diag_string.push_str(
+                    &format!(" (defined in {})",
+                        self.cm.span_to_filename(def_site_span)));
             }
-            last_span = span;
+            let snippet = self.cm.span_to_string(sp);
+            print_diagnostic(&mut self.dst, &snippet, Note, &diag_string, None)?;
         }
-
         Ok(())
     }
 }

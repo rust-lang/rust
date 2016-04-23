@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny = "foo"] //~ ERR malformed lint attribute
-#![allow(bar = "baz")] //~ ERR malformed lint attribute
+#![deny = "foo"] //~ ERROR malformed lint attribute
+#![allow(bar = "baz")] //~ ERROR malformed lint attribute
 
 fn main() { }

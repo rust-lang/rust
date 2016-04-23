@@ -15,15 +15,15 @@ use std::mem;
 unsafe fn foo() -> (isize, *const (), Option<fn()>) {
     let i = mem::transmute(bar);
     //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ ERROR was previously accepted
+    //~^^ WARNING was previously accepted
 
     let p = mem::transmute(foo);
     //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ ERROR was previously accepted
+    //~^^ WARNING was previously accepted
 
     let of = mem::transmute(main);
     //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ ERROR was previously accepted
+    //~^^ WARNING was previously accepted
 
     (i, p, of)
 }
@@ -31,11 +31,11 @@ unsafe fn foo() -> (isize, *const (), Option<fn()>) {
 unsafe fn bar() {
     mem::transmute::<_, *mut ()>(foo);
     //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ ERROR was previously accepted
+    //~^^ WARNING was previously accepted
 
     mem::transmute::<_, fn()>(bar);
     //~^ ERROR is now zero-sized and has to be cast to a pointer before transmuting
-    //~^^ ERROR was previously accepted
+    //~^^ WARNING was previously accepted
 
     // No error if a coercion would otherwise occur.
     mem::transmute::<fn(), usize>(main);

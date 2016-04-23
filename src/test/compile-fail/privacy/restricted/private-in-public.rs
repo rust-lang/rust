@@ -15,6 +15,8 @@ mod foo {
     mod bar {
         use foo::Priv;
         pub(super) fn f(_: Priv) {}
-        pub(crate) fn f(_: Priv) {} //~ ERROR private
+        pub(crate) fn g(_: Priv) {} //~ ERROR E0446
     }
 }
+
+fn main() { }

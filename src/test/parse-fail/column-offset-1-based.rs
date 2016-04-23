@@ -10,4 +10,4 @@
 
 // compile-flags: -Z parse-only
 
-# //~ ERROR 13:1: 13:2 error: expected `[`, found `<eof>`
+# //~ ERROR 13:1: 13:2: expected `[`, found `<eof>`

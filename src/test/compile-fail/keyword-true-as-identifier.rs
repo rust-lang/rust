@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test -- FIXME #33010
+
 // This file was auto-generated using 'src/etc/generate-keyword-tests.py true'
 
 fn main() {
