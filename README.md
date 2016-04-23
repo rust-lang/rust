@@ -69,7 +69,7 @@ name                                                                            
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                       | warn    | `#[inline(always)]` is a bad idea in most cases
 [invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                       | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
 [invalid_upcast_comparisons](https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons)             | warn    | a comparison involving an upcast which is always true or false
-[items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                     | warn    | finds blocks where an item comes after a statement
+[items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                     | allow   | finds blocks where an item comes after a statement
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                     | warn    | for-looping over `_.next()` which is probably not intended
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                         | warn    | traits and impls that have `.len()` but not `.is_empty()`
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                                 | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
