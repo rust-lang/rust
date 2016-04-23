@@ -5,7 +5,7 @@ contribute, and we appreciate all of them. This document is a bit long, so here'
 links to the major sections:
 
 * [Feature Requests](#feature-requests)
-* [Bug Reports](#bug-reports)
+* [Issue and Bug Reports](#issue-and-bug-reports)
 * [The Build System](#the-build-system)
 * [Pull Requests](#pull-requests)
 * [Writing Documentation](#writing-documentation)
@@ -29,7 +29,7 @@ issue in the [RFCs repository](https://github.com/rust-lang/rfcs/issues/new)
 rather than this one. New features and other significant language changes
 must go through the RFC process.
 
-## Bug Reports
+## Issue and Bug Reports
 
 While bugs are unfortunate, they're a reality in software. We can't fix what we
 don't know about, so please report liberally. If you're not sure if something
@@ -46,25 +46,8 @@ extra credit. We won't mind if you accidentally file a duplicate report.
 
 Opening an issue is as easy as following [this
 link](https://github.com/rust-lang/rust/issues/new) and filling out the fields.
-Here's a template that you can use to file a bug, though it's not necessary to
-use it exactly:
-
-    <short summary of the bug>
-
-    I tried this code:
-
-    <code sample that causes the bug>
-
-    I expected to see this happen: <explanation>
-
-    Instead, this happened: <explanation>
-
-    ## Meta
-
-    `rustc --version --verbose`:
-
-    Backtrace:
-
+You'll notice we use [an issue template](ISSUE_TEMPLATE.md). It's advisable to
+try to follow it, of course depending on the kind of issue you have.
 All three components are important: what you did, what you expected, what
 happened instead. Please include the output of `rustc --version --verbose`,
 which includes important information about what platform you're on, what
