@@ -9,7 +9,7 @@ use syntax::ast::Attribute;
 use syntax::attr;
 use syntax::codemap::Span;
 
-use utils::{in_macro, LimitStack, span_help_and_lint};
+use utils::{in_macro, LimitStack, span_help_and_lint, paths, match_type};
 
 /// **What it does:** This lint checks for methods with high cyclomatic complexity
 ///
@@ -57,15 +57,26 @@ impl CyclomaticComplexity {
             match_arms: 0,
             divergence: 0,
             short_circuits: 0,
+            returns: 0,
             tcx: &cx.tcx,
         };
         helper.visit_block(block);
-        let CCHelper { match_arms, divergence, short_circuits, .. } = helper;
-
-        if cc + divergence < match_arms + short_circuits {
-            report_cc_bug(cx, cc, match_arms, divergence, short_circuits, span);
+        let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;
+        let ret_ty = cx.tcx.node_id_to_type(block.id);
+        let ret_adjust = if match_type(cx, ret_ty, &paths::RESULT) {
+            returns
         } else {
-            let rust_cc = cc + divergence - match_arms - short_circuits;
+            returns / 2
+        };
+
+        if cc + divergence < match_arms + short_circuits  {
+            report_cc_bug(cx, cc, match_arms, divergence, short_circuits, ret_adjust, span);
+        } else {
+            let mut rust_cc = cc + divergence - match_arms - short_circuits;
+            // prevent degenerate cases where unreachable code contains `return` statements
+            if rust_cc >= ret_adjust {
+                rust_cc -= ret_adjust;
+            }
             if rust_cc > self.limit.limit() {
                 span_help_and_lint(cx,
                                    CYCLOMATIC_COMPLEXITY,
@@ -109,6 +120,7 @@ impl LateLintPass for CyclomaticComplexity {
 struct CCHelper<'a, 'tcx: 'a> {
     match_arms: u64,
     divergence: u64,
+    returns: u64,
     short_circuits: u64, // && and ||
     tcx: &'a ty::TyCtxt<'tcx>,
 }
@@ -142,31 +154,34 @@ impl<'a, 'b, 'tcx> Visitor<'a> for CCHelper<'b, 'tcx> {
                     _ => (),
                 }
             }
+            ExprRet(_) => self.returns += 1,
             _ => walk_expr(self, e),
         }
     }
 }
 
 #[cfg(feature="debugging")]
-fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {
+fn report_cc_bug(_: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span) {
     span_bug!(span,
               "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
-               div = {}, shorts = {}. Please file a bug report.",
+               div = {}, shorts = {}, returns = {}. Please file a bug report.",
               cc,
               narms,
               div,
-              shorts);
+              shorts,
+              returns);
 }
 #[cfg(not(feature="debugging"))]
-fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, span: Span) {
+fn report_cc_bug(cx: &LateContext, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span) {
     if cx.current_level(CYCLOMATIC_COMPLEXITY) != Level::Allow {
         cx.sess().span_note_without_error(span,
                                           &format!("Clippy encountered a bug calculating cyclomatic complexity \
                                                     (hide this message with `#[allow(cyclomatic_complexity)]`): cc \
-                                                    = {}, arms = {}, div = {}, shorts = {}. Please file a bug report.",
+                                                    = {}, arms = {}, div = {}, shorts = {}, returns = {}. Please file a bug report.",
                                                    cc,
                                                    narms,
                                                    div,
-                                                   shorts));
+                                                   shorts,
+                                                   returns));
     }
 }

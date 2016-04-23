@@ -315,3 +315,60 @@ fn mcarton_sees_all() {
     panic!("meh");
     panic!("möh");
 }
+
+#[cyclomatic_complexity = "0"]
+fn try() -> Result<i32, &'static str> { //~ ERROR: cyclomatic complexity of 1
+    match 5 {
+        5 => Ok(5),
+        _ => return Err("bla"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn try_again() -> Result<i32, &'static str> { //~ ERROR: cyclomatic complexity of 1
+    let _ = try!(Ok(42));
+    let _ = try!(Ok(43));
+    let _ = try!(Ok(44));
+    let _ = try!(Ok(45));
+    let _ = try!(Ok(46));
+    let _ = try!(Ok(47));
+    let _ = try!(Ok(48));
+    let _ = try!(Ok(49));
+    match 5 {
+        5 => Ok(5),
+        _ => return Err("bla"),
+    }
+}
+
+#[cyclomatic_complexity = "0"]
+fn early() -> Result<i32, &'static str> { //~ ERROR: cyclomatic complexity of 1
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+    return Ok(5);
+}
+
+#[cyclomatic_complexity = "0"]
+fn early_ret() -> i32 { //~ ERROR: cyclomatic complexity of 8
+    let a = if true { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    let a = if a < 99 { 42 } else { return 0; };
+    match 5 {
+        5 => 5,
+        _ => return 6,
+    }
+}
