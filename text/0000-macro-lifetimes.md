@@ -18,9 +18,11 @@ a macro is going to need to deal with lifetimes eventually. They're also
 commonly needed for any macros that need to deal with types in a more granular
 way than just `ty`.
 
-Since a lifetime is a single token, there is currently no way to accept one
-without an explicit matcher. Something like `'$lifetime:ident` will fail to
-compile.
+Since a lifetime is a single token, the only way to match against a lifetime is
+by capturing it as `tt`. Something like `'$lifetime:ident` would fail to
+compile. This is extremely limiting, as it becomes difficult to sanitize input,
+and `tt` is extremely difficult to use in a sequence without using awkward
+separators.
 
 # Detailed design
 [design]: #detailed-design
