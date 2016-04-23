@@ -15,26 +15,26 @@ I currently recommend that you install [multirust][multirust] and then use it to
 install the current rustc nightly version that works with Miri:
 
 ```sh
-multirust update nightly-2016-04-11
+multirust update nightly-2016-04-21
 ```
 
 ## Build
 
 ```sh
-multirust run nightly-2016-04-11 cargo build
+multirust run nightly-2016-04-21 cargo build
 ```
 
 ## Run a test
 
 ```sh
-multirust run nightly-2016-04-11 cargo run -- \
-  --sysroot $HOME/.multirust/toolchains/nightly-2016-04-11 \
+multirust run nightly-2016-04-21 cargo run -- \
+  --sysroot $HOME/.multirust/toolchains/nightly-2016-04-21 \
   test/filename.rs
 ```
 
 If you are using [rustup][rustup] (the name of the multirust rewrite in Rust),
 the `sysroot` path will also include your build target (e.g.
-`$HOME/.multirust/toolchains/nightly-2016-04-11-x86_64-apple-darwin`). You can
+`$HOME/.multirust/toolchains/nightly-2016-04-21-x86_64-apple-darwin`). You can
 see the current toolchain's directory by running `rustup which cargo` (ignoring
 the trailing `/bin/cargo`).
 
