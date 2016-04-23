@@ -18,6 +18,7 @@ fn specialization() -> (bool, bool) {
     (i32::is_unit(), <()>::is_unit())
 }
 
+#[miri_run]
 fn main() {
     assert_eq!(specialization(), (false, true));
 }

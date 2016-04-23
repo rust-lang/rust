@@ -14,10 +14,11 @@ pub enum PrimVal {
 }
 
 pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResult<PrimVal> {
+    use rustc::mir::repr::BinOp::*;
+    use self::PrimVal::*;
+
     macro_rules! int_binops {
         ($v:ident, $l:ident, $r:ident) => ({
-            use rustc::mir::repr::BinOp::*;
-            use self::PrimVal::*;
             match bin_op {
                 Add    => $v($l + $r),
                 Sub    => $v($l - $r),
@@ -52,7 +53,6 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
         }
     }
 
-    use self::PrimVal::*;
     let val = match (left, right) {
         (I8(l),  I8(r))  => int_binops!(I8, l, r),
         (I16(l), I16(r)) => int_binops!(I16, l, r),
@@ -62,6 +62,18 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
         (U16(l), U16(r)) => int_binops!(U16, l, r),
         (U32(l), U32(r)) => int_binops!(U32, l, r),
         (U64(l), U64(r)) => int_binops!(U64, l, r),
+
+        (Bool(l), Bool(r)) => {
+            Bool(match bin_op {
+                Eq => l == r,
+                Ne => l != r,
+                Lt => l < r,
+                Le => l <= r,
+                Gt => l > r,
+                Ge => l >= r,
+                _ => panic!("invalid binary operation on booleans: {:?}", bin_op),
+            })
+        }
 
         (IntegerPtr(l), IntegerPtr(r)) => int_binops!(IntegerPtr, l, r),
 
@@ -76,7 +88,6 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
             let l = l_ptr.offset;
             let r = r_ptr.offset;
 
-            use rustc::mir::repr::BinOp::*;
             match bin_op {
                 Eq => Bool(l == r),
                 Ne => Bool(l != r),
