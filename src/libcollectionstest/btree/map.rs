@@ -446,6 +446,58 @@ fn test_vacant_entry_key() {
     assert_eq!(a[key], value);
 }
 
+macro_rules! create_append_test {
+    ($name:ident, $len:expr) => {
+        #[test]
+        fn $name() {
+            let mut a = BTreeMap::new();
+            for i in 0..8 {
+                a.insert(i, i);
+            }
+
+            let mut b = BTreeMap::new();
+            for i in 5..$len {
+                b.insert(i, 2*i);
+            }
+
+            a.append(&mut b);
+
+            assert_eq!(a.len(), $len);
+            assert_eq!(b.len(), 0);
+
+            for i in 0..$len {
+                if i < 5 {
+                    assert_eq!(a[&i], i);
+                } else {
+                    assert_eq!(a[&i], 2*i);
+                }
+            }
+
+            assert_eq!(a.remove(&($len-1)), Some(2*($len-1)));
+            assert_eq!(a.insert($len-1, 20), None);
+        }
+    };
+}
+
+// These are mostly for testing the algorithm that "fixes" the right edge after insertion.
+// Single node.
+create_append_test!(test_append_9, 9);
+// Two leafs that don't need fixing.
+create_append_test!(test_append_17, 17);
+// Two leafs where the second one ends up underfull and needs stealing at the end.
+create_append_test!(test_append_14, 14);
+// Two leafs where the second one ends up empty because the insertion finished at the root.
+create_append_test!(test_append_12, 12);
+// Three levels; insertion finished at the root.
+create_append_test!(test_append_144, 144);
+// Three levels; insertion finished at leaf while there is an empty node on the second level.
+create_append_test!(test_append_145, 145);
+// Tests for several randomly chosen sizes.
+create_append_test!(test_append_170, 170);
+create_append_test!(test_append_181, 181);
+create_append_test!(test_append_239, 239);
+create_append_test!(test_append_1700, 1700);
+
 mod bench {
     use std::collections::BTreeMap;
     use std::__rand::{Rng, thread_rng};

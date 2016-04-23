@@ -13,6 +13,7 @@
 #![feature(binary_heap_extras)]
 #![feature(binary_heap_append)]
 #![feature(box_syntax)]
+#![feature(btree_append)]
 #![feature(btree_range)]
 #![feature(collections)]
 #![feature(collections_bound)]
