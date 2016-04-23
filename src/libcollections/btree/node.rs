@@ -328,6 +328,12 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
         self.as_leaf().len as usize
     }
 
+    /// Returns the height of this node in the whole tree. Zero height denotes the
+    /// leaf level.
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
     /// Removes any static information about whether this node is a `Leaf` or an
     /// `Internal` node.
     pub fn forget_type(self) -> NodeRef<BorrowType, K, V, marker::LeafOrInternal> {
@@ -1231,6 +1237,139 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             }
 
             Handle::new_edge(self.node, self.idx)
+        }
+    }
+
+    /// This removes a key/value pair from the left child and replaces it with the key/value pair
+    /// pointed to by this handle while pushing the old key/value pair of this handle into the right
+    /// child.
+    pub fn steal_left(&mut self) {
+        unsafe {
+            let (k, v, edge) = self.reborrow_mut().left_edge().descend().pop();
+
+            let k = mem::replace(self.reborrow_mut().into_kv_mut().0, k);
+            let v = mem::replace(self.reborrow_mut().into_kv_mut().1, v);
+
+            match self.reborrow_mut().right_edge().descend().force() {
+                ForceResult::Leaf(mut leaf) => leaf.push_front(k, v),
+                ForceResult::Internal(mut internal) => internal.push_front(k, v, edge.unwrap())
+            }
+        }
+    }
+
+    /// This removes a key/value pair from the right child and replaces it with the key/value pair
+    /// pointed to by this handle while pushing the old key/value pair of this handle into the left
+    /// child.
+    pub fn steal_right(&mut self) {
+        unsafe {
+            let (k, v, edge) = self.reborrow_mut().right_edge().descend().pop_front();
+
+            let k = mem::replace(self.reborrow_mut().into_kv_mut().0, k);
+            let v = mem::replace(self.reborrow_mut().into_kv_mut().1, v);
+
+            match self.reborrow_mut().left_edge().descend().force() {
+                ForceResult::Leaf(mut leaf) => leaf.push(k, v),
+                ForceResult::Internal(mut internal) => internal.push(k, v, edge.unwrap())
+            }
+        }
+    }
+
+    /// This does stealing similar to `steal_left` but steals multiple elements at once.
+    pub fn bulk_steal_left(&mut self, n: usize) {
+        unsafe {
+            // Get raw pointers to left child's keys, values and edges.
+            let (left_len, left_k, left_v, left_e) = {
+                let mut left = self.reborrow_mut().left_edge().descend();
+
+                (left.len(),
+                 left.keys_mut().as_mut_ptr(),
+                 left.vals_mut().as_mut_ptr(),
+                 match left.force() {
+                     ForceResult::Leaf(_) => None,
+                     ForceResult::Internal(mut i) => Some(i.as_internal_mut().edges.as_mut_ptr()),
+                 })
+            };
+
+            // Get raw pointers to right child's keys, values and edges.
+            let (right_len, right_k, right_v, right_e) = {
+                let mut right = self.reborrow_mut().right_edge().descend();
+
+                (right.len(),
+                 right.keys_mut().as_mut_ptr(),
+                 right.vals_mut().as_mut_ptr(),
+                 match right.force() {
+                     ForceResult::Leaf(_) => None,
+                     ForceResult::Internal(mut i) => Some(i.as_internal_mut().edges.as_mut_ptr()),
+                 })
+            };
+
+            // Get raw pointers to parent's key and value.
+            let (parent_k, parent_v) = {
+                let kv = self.reborrow_mut().into_kv_mut();
+                (kv.0 as *mut K, kv.1 as *mut V)
+            };
+
+            // Make sure that we may steal safely.
+            debug_assert!(right_len + n <= CAPACITY);
+            debug_assert!(left_len >= n);
+
+            // Make room for stolen elements in right child.
+            ptr::copy(right_k,
+                      right_k.offset(n as isize),
+                      right_len);
+            ptr::copy(right_v,
+                      right_v.offset(n as isize),
+                      right_len);
+            if let Some(edges) = right_e {
+                ptr::copy(edges,
+                          edges.offset(n as isize),
+                          right_len+1);
+            }
+
+            // Move elements from the left child to the right one.
+            let left_ind = (left_len - n) as isize;
+            ptr::copy_nonoverlapping(left_k.offset(left_ind + 1),
+                                     right_k,
+                                     n - 1);
+            ptr::copy_nonoverlapping(left_v.offset(left_ind + 1),
+                                     right_v,
+                                     n - 1);
+            match (left_e, right_e) {
+                (Some(left), Some(right)) => {
+                    ptr::copy_nonoverlapping(left.offset(left_ind + 1),
+                                             right,
+                                             n);
+                },
+                (Some(_), None) => unreachable!(),
+                (None, Some(_)) => unreachable!(),
+                (None, None) => {},
+            }
+
+            // Copy parent key/value pair to right child.
+            ptr::copy_nonoverlapping(parent_k,
+                                     right_k.offset(n as isize - 1),
+                                     1);
+            ptr::copy_nonoverlapping(parent_v,
+                                     right_v.offset(n as isize - 1),
+                                     1);
+            // Copy left-most stolen pair to parent.
+            ptr::copy_nonoverlapping(left_k.offset(left_ind),
+                                     parent_k,
+                                     1);
+            ptr::copy_nonoverlapping(left_v.offset(left_ind),
+                                     parent_v,
+                                     1);
+
+            // Fix lengths of left and right child and parent pointers in children of the right
+            // child.
+            self.reborrow_mut().left_edge().descend().as_leaf_mut().len -= n as u16;
+            let mut right = self.reborrow_mut().right_edge().descend();
+            right.as_leaf_mut().len += n as u16;
+            if let ForceResult::Internal(mut node) = right.force() {
+                for i in 0..(right_len+n+1) {
+                    Handle::new_edge(node.reborrow_mut(), i as usize).correct_parent_link();
+                }
+            }
         }
     }
 }
