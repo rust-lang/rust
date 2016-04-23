@@ -97,17 +97,6 @@ mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
 
-// Perform the callback, not walking deeper if the return is true
-macro_rules! execute_callback {
-    ($node: expr, $walker: expr) => (
-        if let Some(ref callback) = $walker.callback {
-            if callback($node, &mut $walker.resolved) {
-                return;
-            }
-        }
-    )
-}
-
 enum SuggestionType {
     Macro(String),
     Function(token::InternedString),
@@ -559,22 +548,18 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         self.visit_item(self.ast_map.expect_item(item.id))
     }
     fn visit_item(&mut self, item: &Item) {
-        execute_callback!(hir_map::Node::NodeItem(item), self);
         self.resolve_item(item);
     }
     fn visit_arm(&mut self, arm: &Arm) {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &Block) {
-        execute_callback!(hir_map::Node::NodeBlock(block), self);
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr: &Expr) {
-        execute_callback!(hir_map::Node::NodeExpr(expr), self);
         self.resolve_expr(expr);
     }
     fn visit_local(&mut self, local: &Local) {
-        execute_callback!(hir_map::Node::NodeLocal(&local.pat), self);
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &Ty) {
@@ -597,7 +582,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                      variant: &hir::Variant,
                      generics: &Generics,
                      item_id: ast::NodeId) {
-        execute_callback!(hir_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
             self.with_constant_rib(|this| {
@@ -613,7 +597,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                                 variant.span);
     }
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
-        execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);
         let type_parameters = match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
                 HasTypeParameters(generics, FnSpace, ItemRibKind)
@@ -1080,11 +1063,6 @@ pub struct Resolver<'a, 'tcx: 'a> {
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
 
-    // Callback function for intercepting walks
-    callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>,
-    // The intention is that the callback modifies this flag.
-    // Once set, the resolver falls out of the walk, preserving the ribs.
-    resolved: bool,
     privacy_errors: Vec<PrivacyError<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
@@ -1186,8 +1164,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: NodeMap(),
 
-            callback: None,
-            resolved: false,
             privacy_errors: Vec::new(),
 
             arenas: arenas,
@@ -1758,13 +1734,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         f(self);
 
-        match type_parameters {
-            HasTypeParameters(..) => {
-                if !self.resolved {
-                    self.type_ribs.pop();
-                }
-            }
-            NoTypeParameters => {}
+        if let HasTypeParameters(..) = type_parameters {
+            self.type_ribs.pop();
         }
     }
 
@@ -1773,9 +1744,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
-        if !self.resolved {
-            self.label_ribs.pop();
-        }
+        self.label_ribs.pop();
     }
 
     fn with_constant_rib<F>(&mut self, f: F)
@@ -1784,10 +1753,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.value_ribs.push(Rib::new(ConstantItemRibKind));
         self.type_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
-        if !self.resolved {
-            self.type_ribs.pop();
-            self.value_ribs.pop();
-        }
+        self.type_ribs.pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_function(&mut self, rib_kind: RibKind<'a>, declaration: &FnDecl, block: &Block) {
@@ -1813,10 +1780,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving function) leaving function");
 
-        if !self.resolved {
-            self.label_ribs.pop();
-            self.value_ribs.pop();
-        }
+        self.label_ribs.pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_trait_reference(&mut self,
@@ -1950,9 +1915,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self_type_rib.bindings.insert(keywords::SelfType.name(), self_def);
         self.type_ribs.push(self_type_rib);
         f(self);
-        if !self.resolved {
-            self.type_ribs.pop();
-        }
+        self.type_ribs.pop();
     }
 
     fn resolve_implementation(&mut self,
@@ -2117,9 +2080,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
 
-        if !self.resolved {
-            self.value_ribs.pop();
-        }
+        self.value_ribs.pop();
     }
 
     fn resolve_block(&mut self, block: &Block) {
@@ -2141,12 +2102,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         intravisit::walk_block(self, block);
 
         // Move back up.
-        if !self.resolved {
-            self.current_module = orig_module;
-            self.value_ribs.pop();
-            if let Some(_) = anonymous_module {
-                self.type_ribs.pop();
-            }
+        self.current_module = orig_module;
+        self.value_ribs.pop();
+        if let Some(_) = anonymous_module {
+            self.type_ribs.pop();
         }
         debug!("(resolving block) leaving block");
     }
@@ -3588,7 +3547,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
 
     let krate = ast_map.krate();
     let arenas = Resolver::arenas();
-    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas, None);
+    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas);
 
     resolver.resolve_crate(krate);
 
@@ -3608,24 +3567,14 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     }
 }
 
-/// Builds a name resolution walker to be used within this module,
-/// or used externally, with an optional callback function.
-///
-/// The callback takes a &mut bool which allows callbacks to end a
-/// walk when set to true, passing through the rest of the walk, while
-/// preserving the ribs + current module. This allows resolve_path
-/// calls to be made with the correct scope info. The node in the
-/// callback corresponds to the current node in the walk.
+/// Builds a name resolution walker.
 fn create_resolver<'a, 'tcx>(session: &'a Session,
                              ast_map: &'a hir_map::Map<'tcx>,
                              krate: &'a Crate,
                              make_glob_map: MakeGlobMap,
-                             arenas: &'a ResolverArenas<'a>,
-                             callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
+                             arenas: &'a ResolverArenas<'a>)
                              -> Resolver<'a, 'tcx> {
     let mut resolver = Resolver::new(session, ast_map, make_glob_map, arenas);
-
-    resolver.callback = callback;
 
     resolver.build_reduced_graph(krate);
 
