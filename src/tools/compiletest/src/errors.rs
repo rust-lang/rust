@@ -28,7 +28,9 @@ pub enum ErrorKind {
 impl FromStr for ErrorKind {
     type Err = ();
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.trim_right_matches(':') as &str {
+        let s = s.to_uppercase();
+        let part0: &str = s.split(':').next().unwrap();
+        match part0 {
             "HELP" => Ok(ErrorKind::Help),
             "ERROR" => Ok(ErrorKind::Error),
             "NOTE" => Ok(ErrorKind::Note),
@@ -52,7 +54,8 @@ impl fmt::Display for ErrorKind {
     }
 }
 
-pub struct ExpectedError {
+#[derive(Debug)]
+pub struct Error {
     pub line_num: usize,
     /// What kind of message we expect (e.g. warning, error, suggestion).
     /// `None` if not specified or unknown message kind.
@@ -73,7 +76,7 @@ enum WhichLine { ThisLine, FollowPrevious(usize), AdjustBackward(usize) }
 ///
 /// If cfg is not None (i.e., in an incremental test), then we look
 /// for `//[X]~` instead, where `X` is the current `cfg`.
-pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<ExpectedError> {
+pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<Error> {
     let rdr = BufReader::new(File::open(testfile).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
@@ -113,7 +116,7 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
                   line_num: usize,
                   line: &str,
                   tag: &str)
-                  -> Option<(WhichLine, ExpectedError)> {
+                  -> Option<(WhichLine, Error)> {
     let start = match line.find(tag) { Some(i) => i, None => return None };
     let (follow, adjusts) = if line[start + tag.len()..].chars().next().unwrap() == '|' {
         (true, 0)
@@ -121,15 +124,30 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
         (false, line[start + tag.len()..].chars().take_while(|c| *c == '^').count())
     };
     let kind_start = start + tag.len() + adjusts + (follow as usize);
-    let kind = line[kind_start..].split_whitespace()
-                                 .next()
-                                 .expect("Encountered unexpected empty comment")
-                                 .parse::<ErrorKind>()
-                                 .ok();
-    let letters = line[kind_start..].chars();
-    let msg = letters.skip_while(|c| c.is_whitespace())
-                     .skip_while(|c| !c.is_whitespace())
-                     .collect::<String>().trim().to_owned();
+    let (kind, msg);
+    match
+        line[kind_start..].split_whitespace()
+                          .next()
+                          .expect("Encountered unexpected empty comment")
+                          .parse::<ErrorKind>()
+    {
+        Ok(k) => {
+            // If we find `//~ ERROR foo` or something like that:
+            kind = Some(k);
+            let letters = line[kind_start..].chars();
+            msg = letters.skip_while(|c| c.is_whitespace())
+                         .skip_while(|c| !c.is_whitespace())
+                         .collect::<String>();
+        }
+        Err(_) => {
+            // Otherwise we found `//~ foo`:
+            kind = None;
+            let letters = line[kind_start..].chars();
+            msg = letters.skip_while(|c| c.is_whitespace())
+                         .collect::<String>();
+        }
+    }
+    let msg = msg.trim().to_owned();
 
     let (which, line_num) = if follow {
         assert!(adjusts == 0, "use either //~| or //~^, not both.");
@@ -145,7 +163,7 @@ fn parse_expected(last_nonfollow_error: Option<usize>,
 
     debug!("line={} tag={:?} which={:?} kind={:?} msg={:?}",
            line_num, tag, which, kind, msg);
-    Some((which, ExpectedError { line_num: line_num,
-                                 kind: kind,
-                                 msg: msg, }))
+    Some((which, Error { line_num: line_num,
+                         kind: kind,
+                         msg: msg, }))
 }

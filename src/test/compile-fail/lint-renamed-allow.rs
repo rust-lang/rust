@@ -14,4 +14,4 @@
 #[deny(unknown_features)]
 #[allow(renamed_and_removed_lints)]
 #[deny(unused)]
-fn main() { let unused = (); } //~ ERR unused
+fn main() { let unused = (); } //~ ERROR unused

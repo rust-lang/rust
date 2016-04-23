@@ -19,6 +19,11 @@ use std::path::{PathBuf, Path};
 use std::env;
 
 macro_rules! t {
+    ($e:expr, $p:expr) => (match $e {
+        Ok(e) => e,
+        Err(e) => panic!("{} failed on {} with {}", stringify!($e), ($p).display(), e),
+    });
+
     ($e:expr) => (match $e {
         Ok(e) => e,
         Err(e) => panic!("{} failed with {}", stringify!($e), e),
@@ -63,7 +68,7 @@ fn filter_dirs(path: &Path) -> bool {
 
 
 fn walk(path: &Path, skip: &mut FnMut(&Path) -> bool, f: &mut FnMut(&Path)) {
-    for entry in t!(fs::read_dir(path)) {
+    for entry in t!(fs::read_dir(path), path) {
         let entry = t!(entry);
         let kind = t!(entry.file_type());
         let path = entry.path();

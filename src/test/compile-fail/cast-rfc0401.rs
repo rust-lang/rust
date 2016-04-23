@@ -60,12 +60,10 @@ fn main()
     //~^^ HELP through a usize first
     let _ = 3 as bool;
     //~^ ERROR cannot cast as `bool`
-    //~^^ HELP compare with zero
-    //~^^^ HELP run `rustc --explain E0054` to see a detailed explanation
+    //~| HELP compare with zero
     let _ = E::A as bool;
     //~^ ERROR cannot cast as `bool`
-    //~^^ HELP compare with zero
-    //~^^^ HELP run `rustc --explain E0054` to see a detailed explanation
+    //~| HELP compare with zero
     let _ = 0x61u32 as char; //~ ERROR only `u8` can be cast
 
     let _ = false as f32;
@@ -92,9 +90,8 @@ fn main()
     let _ = v as *const [u8]; //~ ERROR cannot cast
     let _ = fat_v as *const Foo;
     //~^ ERROR the trait bound `[u8]: std::marker::Sized` is not satisfied
-    //~^^ HELP run `rustc --explain E0277` to see a detailed explanation
-    //~^^^ NOTE `[u8]` does not have a constant size known at compile-time
-    //~^^^^ NOTE required for the cast to the object type `Foo`
+    //~| NOTE `[u8]` does not have a constant size known at compile-time
+    //~| NOTE required for the cast to the object type `Foo`
     let _ = foo as *const str; //~ ERROR casting
     let _ = foo as *mut str; //~ ERROR casting
     let _ = main as *mut str; //~ ERROR casting
@@ -107,9 +104,8 @@ fn main()
     let a : *const str = "hello";
     let _ = a as *const Foo;
     //~^ ERROR the trait bound `str: std::marker::Sized` is not satisfied
-    //~^^ HELP run `rustc --explain E0277` to see a detailed explanation
-    //~^^^ NOTE `str` does not have a constant size known at compile-time
-    //~^^^^ NOTE required for the cast to the object type `Foo`
+    //~| NOTE `str` does not have a constant size known at compile-time
+    //~| NOTE required for the cast to the object type `Foo`
 
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR attempted access of field

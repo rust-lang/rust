@@ -4,6 +4,7 @@ version = "0.0.0"
 dependencies = [
  "env_logger 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serialize 0.0.0",
 ]
 
 [[package]]
@@ -27,6 +28,10 @@ dependencies = [
 name = "libc"
 version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "log"
+version = "0.0.0"
 
 [[package]]
 name = "log"
@@ -62,6 +67,13 @@ dependencies = [
 name = "regex-syntax"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "serialize"
+version = "0.0.0"
+dependencies = [
+ "log 0.0.0",
+]
 
 [[package]]
 name = "utf8-ranges"

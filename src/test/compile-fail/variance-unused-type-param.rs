@@ -16,18 +16,15 @@
 struct SomeStruct<A> { x: u32 }
 //~^ ERROR parameter `A` is never used
 //~| HELP PhantomData
-//~| HELP run `rustc --explain E0392` to see a detailed explanation
 
 enum SomeEnum<A> { Nothing }
 //~^ ERROR parameter `A` is never used
 //~| HELP PhantomData
-//~| HELP run `rustc --explain E0392` to see a detailed explanation
 
 // Here T might *appear* used, but in fact it isn't.
 enum ListCell<T> {
 //~^ ERROR parameter `T` is never used
 //~| HELP PhantomData
-//~| HELP run `rustc --explain E0392` to see a detailed explanation
     Cons(Box<ListCell<T>>),
     Nil
 }
