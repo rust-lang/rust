@@ -823,6 +823,19 @@ then
     fi
 fi
 
+# LLDB tests on OSX require /usr/bin/python, not something like Homebrew's
+# /usr/local/bin/python. We're loading a compiled module for LLDB tests which is
+# only compatible with the system.
+case $CFG_BUILD in
+    *-apple-darwin)
+        CFG_LLDB_PYTHON=/usr/bin/python
+        ;;
+    *)
+        CFG_LLDB_PYTHON=$CFG_PYTHON
+        ;;
+esac
+putvar CFG_LLDB_PYTHON
+
 step_msg "looking for target specific programs"
 
 probe CFG_ADB        adb

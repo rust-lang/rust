@@ -216,4 +216,5 @@ except IOError as e:
     print("Aborting.", file=sys.stderr)
     sys.exit(1)
 finally:
+    debugger.Terminate()
     script_file.close()
