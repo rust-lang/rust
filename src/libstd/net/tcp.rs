@@ -86,6 +86,8 @@ impl TcpStream {
     /// `addr` is an address of the remote host. Anything which implements
     /// `ToSocketAddrs` trait can be supplied for the address; see this trait
     /// documentation for concrete examples.
+    /// In case `ToSocketAddrs::to_socket_addrs()` returns more than one entry,
+    /// then the first valid and reachable address is used.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
