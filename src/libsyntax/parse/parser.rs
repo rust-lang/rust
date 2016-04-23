@@ -5218,8 +5218,25 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let vis = p.parse_visibility(false)?;
-                let ty = p.parse_ty_sum()?;
+                let mut vis = p.parse_visibility(false)?;
+                let ty_is_interpolated =
+                    p.token.is_interpolated() || p.look_ahead(1, |t| t.is_interpolated());
+                let mut ty = p.parse_ty_sum()?;
+
+                // Handle `pub(path) type`, in which `vis` will be `pub` and `ty` will be `(path)`.
+                if vis == Visibility::Public && !ty_is_interpolated &&
+                   p.token != token::Comma && p.token != token::CloseDelim(token::Paren) {
+                    ty = if let TyKind::Paren(ref path_ty) = ty.node {
+                        if let TyKind::Path(None, ref path) = path_ty.node {
+                            vis = Visibility::Restricted { path: P(path.clone()), id: path_ty.id };
+                            Some(p.parse_ty_sum()?)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }.unwrap_or(ty);
+                }
                 Ok(StructField {
                     span: mk_sp(lo, p.span.hi),
                     vis: vis,
@@ -5263,15 +5280,29 @@ impl<'a> Parser<'a> {
         self.parse_single_struct_field(vis, attrs)
     }
 
-    fn parse_visibility(&mut self, allow_restricted: bool) -> PResult<'a, Visibility> {
+    // If `allow_path` is false, just parse the `pub` in `pub(path)` (but still parse `pub(crate)`)
+    fn parse_visibility(&mut self, allow_path: bool) -> PResult<'a, Visibility> {
+        let pub_crate = |this: &mut Self| {
+            let span = this.last_span;
+            this.expect(&token::CloseDelim(token::Paren))?;
+            Ok(Visibility::Crate(span))
+        };
+
         if !self.eat_keyword(keywords::Pub) {
             Ok(Visibility::Inherited)
-        } else if !allow_restricted || !self.eat(&token::OpenDelim(token::Paren)) {
+        } else if !allow_path {
+            // Look ahead to avoid eating the `(` in `pub(path)` while still parsing `pub(crate)`
+            if self.token == token::OpenDelim(token::Paren) &&
+               self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
+                self.bump(); self.bump();
+                pub_crate(self)
+            } else {
+                Ok(Visibility::Public)
+            }
+        } else if !self.eat(&token::OpenDelim(token::Paren)) {
             Ok(Visibility::Public)
         } else if self.eat_keyword(keywords::Crate) {
-            let span = self.last_span;
-            self.expect(&token::CloseDelim(token::Paren))?;
-            Ok(Visibility::Crate(span))
+            pub_crate(self)
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
             self.expect(&token::CloseDelim(token::Paren))?;
