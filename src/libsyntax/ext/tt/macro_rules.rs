@@ -790,6 +790,19 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 // harmless
                 Ok(true)
             },
+            "vis" => {
+                // Explicitly disallow `priv`, on the off chance it comes back.
+                match *tok {
+                    Comma => Ok(true),
+                    ModSep => Ok(true),
+                    MatchNt(_, ref frag, _, _) => {
+                        let name = frag.name.as_str();
+                        Ok(name == "ident" || name == "ty")
+                    },
+                    Ident(i, _) if i.name.as_str() != "priv" => Ok(true),
+                    _ => Ok(false)
+                }
+            },
             "" => Ok(true), // keywords::Invalid
             _ => Err((format!("invalid fragment specifier `{}`", frag),
                      "valid fragment specifiers are `ident`, `block`, \
@@ -813,7 +826,7 @@ fn has_legal_fragment_specifier(tok: &quoted::TokenTree) -> Result<(), String> {
 fn is_legal_fragment_specifier(frag: &str) -> bool {
     match frag {
         "item" | "block" | "stmt" | "expr" | "pat" |
-        "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
+        "path" | "ty" | "ident" | "meta" | "tt" | "vis" | "" => true,
         _ => false,
     }
 }
