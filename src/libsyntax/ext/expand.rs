@@ -25,7 +25,7 @@ use fold;
 use fold::*;
 use util::move_map::MoveMap;
 use parse;
-use parse::token::{fresh_mark, fresh_name, intern};
+use parse::token::{fresh_mark, fresh_name, intern, keywords};
 use ptr::P;
 use util::small_vector::SmallVector;
 use visit;
@@ -149,14 +149,17 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             fld.cx.expr(span, il).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprKind::Closure(capture_clause, fn_decl, block) => {
+        ast::ExprKind::Closure(capture_clause, fn_decl, block, fn_decl_span) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
             let new_node = ast::ExprKind::Closure(capture_clause,
-                                            rewritten_fn_decl,
-                                            rewritten_block);
-            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span),
-                        attrs: fold_thin_attrs(attrs, fld)})
+                                                  rewritten_fn_decl,
+                                                  rewritten_block,
+                                                  fld.new_span(fn_decl_span));
+            P(ast::Expr{ id:id,
+                         node: new_node,
+                         span: fld.new_span(span),
+                         attrs: fold_thin_attrs(attrs, fld) })
         }
 
         _ => {
@@ -380,7 +383,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
 
             Some(rc) => match *rc {
                 NormalTT(ref expander, tt_span, allow_internal_unstable) => {
-                    if ident.name != parse::token::special_idents::invalid.name {
+                    if ident.name != keywords::Invalid.name() {
                         fld.cx
                             .span_err(path_span,
                                       &format!("macro {}! expects no ident argument, given '{}'",
@@ -401,7 +404,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     expander.expand(fld.cx, span, &marked_before[..])
                 }
                 IdentTT(ref expander, tt_span, allow_internal_unstable) => {
-                    if ident.name == parse::token::special_idents::invalid.name {
+                    if ident.name == keywords::Invalid.name() {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
                                                 extname));
@@ -420,7 +423,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     expander.expand(fld.cx, span, ident, marked_tts)
                 }
                 MacroRulesTT => {
-                    if ident.name == parse::token::special_idents::invalid.name {
+                    if ident.name == keywords::Invalid.name() {
                         fld.cx.span_err(path_span, "macro_rules! expects an ident argument");
                         return SmallVector::zero();
                     }
@@ -893,7 +896,7 @@ fn expand_annotatable(a: Annotatable,
             }
             ast::ItemKind::Mod(_) | ast::ItemKind::ForeignMod(_) => {
                 let valid_ident =
-                    it.ident.name != parse::token::special_idents::invalid.name;
+                    it.ident.name != keywords::Invalid.name();
 
                 if valid_ident {
                     fld.cx.mod_push(it.ident);
@@ -1486,7 +1489,7 @@ mod tests {
     use ext::mtwt;
     use fold::Folder;
     use parse;
-    use parse::token;
+    use parse::token::{self, keywords};
     use util::parser_testing::{string_to_parser};
     use util::parser_testing::{string_to_pat, string_to_crate, strs_to_idents};
     use visit;
@@ -1807,7 +1810,7 @@ mod tests {
 
     // run one of the renaming tests
     fn run_renaming_test(t: &RenamingTest, test_idx: usize) {
-        let invalid_name = token::special_idents::invalid.name;
+        let invalid_name = keywords::Invalid.name();
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_string(), conns.clone(), bic)
         };

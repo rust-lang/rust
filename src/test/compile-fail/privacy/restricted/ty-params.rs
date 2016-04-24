@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// A non-growable owned slice.
-#[unstable(feature = "rustc_private", issue = "0")]
-#[rustc_deprecated(since = "1.7.0", reason = "use `ptr::P<[T]>` instead")]
-pub type OwnedSlice<T> = ::ptr::P<[T]>;
+#![feature(pub_restricted)]
+
+macro_rules! m {
+    ($p: path) => (pub($p) struct Z;)
+}
+
+struct S<T>(T);
+m!{ S<u8> } //~ ERROR type or lifetime parameters in visibility path
+
+fn main() {}

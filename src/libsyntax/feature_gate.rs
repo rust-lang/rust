@@ -1168,7 +1168,19 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_vis(&mut self, vis: &'v ast::Visibility) {
         let span = match *vis {
             ast::Visibility::Crate(span) => span,
-            ast::Visibility::Restricted { ref path, .. } => path.span,
+            ast::Visibility::Restricted { ref path, .. } => {
+                // Check for type parameters
+                let found_param = path.segments.iter().any(|segment| {
+                    !segment.parameters.types().is_empty() ||
+                    !segment.parameters.lifetimes().is_empty() ||
+                    !segment.parameters.bindings().is_empty()
+                });
+                if found_param {
+                    self.context.span_handler.span_err(path.span, "type or lifetime parameters \
+                                                                   in visibility path");
+                }
+                path.span
+            }
             _ => return,
         };
         self.gate_feature("pub_restricted", span, "`pub(restricted)` syntax is experimental");

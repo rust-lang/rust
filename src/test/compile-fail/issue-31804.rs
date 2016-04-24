@@ -13,4 +13,4 @@
 
 fn main() {
     let
-} //~ ERROR unexpected token: `}`
+} //~ ERROR expected pattern, found `}`

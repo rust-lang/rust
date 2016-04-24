@@ -537,8 +537,8 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                 self.consume_expr(&count);
             }
 
-            hir::ExprClosure(..) => {
-                self.walk_captures(expr)
+            hir::ExprClosure(_, _, _, fn_decl_span) => {
+                self.walk_captures(expr, fn_decl_span)
             }
 
             hir::ExprBox(ref base) => {
@@ -1142,7 +1142,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
         }));
     }
 
-    fn walk_captures(&mut self, closure_expr: &hir::Expr) {
+    fn walk_captures(&mut self, closure_expr: &hir::Expr, fn_decl_span: Span) {
         debug!("walk_captures({:?})", closure_expr);
 
         self.tcx().with_freevars(closure_expr.id, |freevars| {
@@ -1152,7 +1152,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                                              closure_expr_id: closure_expr.id };
                 let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
-                                                                   closure_expr.span,
+                                                                   fn_decl_span,
                                                                    freevar.def));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
@@ -1161,7 +1161,7 @@ impl<'d,'t,'a,'tcx> ExprUseVisitor<'d,'t,'a,'tcx> {
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
                         self.delegate.borrow(closure_expr.id,
-                                             closure_expr.span,
+                                             fn_decl_span,
                                              cmt_var,
                                              upvar_borrow.region,
                                              upvar_borrow.kind,

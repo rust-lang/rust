@@ -14,9 +14,8 @@ use syntax::abi::Abi;
 use syntax::ast;
 use syntax::codemap::{self, CodeMap, BytePos, Spanned};
 use syntax::errors;
-use syntax::parse::token::{self, BinOpToken};
+use syntax::parse::token::{self, keywords, BinOpToken};
 use syntax::parse::lexer::comments;
-use syntax::parse;
 use syntax::print::pp::{self, break_offset, word, space, hardbreak};
 use syntax::print::pp::{Breaks, eof};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
@@ -1392,7 +1391,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, indent_unit)?;
             }
-            hir::ExprClosure(capture_clause, ref decl, ref body) => {
+            hir::ExprClosure(capture_clause, ref decl, ref body, _fn_decl_span) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(&decl)?;
@@ -2209,9 +2208,8 @@ impl<'a> State<'a> {
             hir::TyInfer if is_closure => self.print_pat(&input.pat)?,
             _ => {
                 match input.pat.node {
-                    PatKind::Ident(_, ref path1, _) if
-                        path1.node.name ==
-                            parse::token::special_idents::invalid.name => {
+                    PatKind::Ident(_, ref path1, _)
+                            if path1.node.name == keywords::Invalid.name() => {
                         // Do nothing.
                     }
                     _ => {

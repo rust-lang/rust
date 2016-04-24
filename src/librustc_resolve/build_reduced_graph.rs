@@ -112,15 +112,14 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
             !segment.parameters.bindings().is_empty()
         });
         if found_param {
-            self.session.span_err(path.span,
-                                  "type or lifetime parameter is found in import path");
+            self.session.span_err(path.span, "type or lifetime parameters in import path");
         }
 
         // Checking for special identifiers in path
         // prevent `self` or `super` at beginning of global path
         if path.global && path.segments.len() > 0 {
             let first = path.segments[0].identifier.name;
-            if first == keywords::Super.to_name() || first == keywords::SelfValue.to_name() {
+            if first == keywords::Super.name() || first == keywords::SelfValue.name() {
                 self.session.add_lint(
                     lint::builtin::SUPER_OR_SELF_IN_GLOBAL_PATH, id, path.span,
                     format!("expected identifier, found keyword `{}`", first)

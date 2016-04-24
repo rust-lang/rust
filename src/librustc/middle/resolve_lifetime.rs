@@ -29,7 +29,7 @@ use std::fmt;
 use std::mem::replace;
 use syntax::ast;
 use syntax::codemap::Span;
-use syntax::parse::token::special_idents;
+use syntax::parse::token::keywords;
 use util::nodemap::NodeMap;
 
 use hir;
@@ -245,7 +245,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_lifetime(&mut self, lifetime_ref: &hir::Lifetime) {
-        if lifetime_ref.name == special_idents::static_lifetime.name {
+        if lifetime_ref.name == keywords::StaticLifetime.name() {
             self.insert_lifetime(lifetime_ref, DefStaticRegion);
             return;
         }
@@ -672,9 +672,8 @@ impl<'a> LifetimeContext<'a> {
         for i in 0..lifetimes.len() {
             let lifetime_i = &lifetimes[i];
 
-            let special_idents = [special_idents::static_lifetime];
             for lifetime in lifetimes {
-                if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
+                if lifetime.lifetime.name == keywords::StaticLifetime.name() {
                     span_err!(self.sess, lifetime.lifetime.span, E0262,
                         "invalid lifetime parameter name: `{}`", lifetime.lifetime.name);
                 }

@@ -830,7 +830,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+    pub fn keys(&self) -> Keys<K, V> {
         Keys { inner: self.iter() }
     }
 
@@ -852,7 +852,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
+    pub fn values(&self) -> Values<K, V> {
         Values { inner: self.iter() }
     }
 
@@ -880,7 +880,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// }
     /// ```
     #[unstable(feature = "map_values_mut", reason = "recently added", issue = "32551")]
-    pub fn values_mut<'a>(&'a mut self) -> ValuesMut<'a, K, V> {
+    pub fn values_mut<'a>(&'a mut self) -> ValuesMut<K, V> {
         ValuesMut { inner: self.iter_mut() }
     }
 

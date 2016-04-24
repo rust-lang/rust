@@ -201,8 +201,7 @@ use syntax::codemap::{self, DUMMY_SP};
 use syntax::codemap::Span;
 use syntax::errors::Handler;
 use syntax::util::move_map::MoveMap;
-use syntax::parse::token::{intern, InternedString};
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{intern, keywords, InternedString};
 use syntax::ptr::P;
 
 use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
@@ -526,7 +525,7 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: P::from_vec(wb.bounds.iter().cloned().collect())
+                        bounds: wb.bounds.iter().cloned().collect(),
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
@@ -596,9 +595,9 @@ impl<'a> TraitDef<'a> {
         let trait_ref = cx.trait_ref(trait_path);
 
         // Create the type parameters on the `self` path.
-        let self_ty_params = generics.ty_params.map(|ty_param| {
+        let self_ty_params = generics.ty_params.iter().map(|ty_param| {
             cx.ty_ident(self.span, ty_param.ident)
-        });
+        }).collect();
 
         let self_lifetimes: Vec<ast::Lifetime> =
             generics.lifetimes
@@ -609,7 +608,7 @@ impl<'a> TraitDef<'a> {
         // Create the type of `self`.
         let self_type = cx.ty_path(
             cx.path_all(self.span, false, vec!( type_ident ), self_lifetimes,
-                        self_ty_params.into_vec(), Vec::new()));
+                        self_ty_params, Vec::new()));
 
         let attr = cx.attribute(
             self.span,
@@ -635,7 +634,7 @@ impl<'a> TraitDef<'a> {
 
         cx.item(
             self.span,
-            special_idents::invalid,
+            keywords::Invalid.ident(),
             a,
             ast::ItemKind::Impl(unsafety,
                                 ast::ImplPolarity::Positive,
@@ -866,7 +865,7 @@ impl<'a> MethodDef<'a> {
             // creating fresh self id
             _ => Some(ast::Arg::new_self(trait_.span,
                                          ast::Mutability::Immutable,
-                                         special_idents::self_))
+                                         keywords::SelfValue.ident()))
         };
         let args = {
             let args = arg_types.into_iter().map(|(name, ty)| {

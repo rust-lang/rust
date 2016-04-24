@@ -1011,7 +1011,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                 span: sub_span.expect("No span found for use"),
                                 id: item.id,
                                 mod_id: mod_id,
-                                name: ident.name.to_string(),
+                                name: ident.to_string(),
                                 scope: self.cur_scope
                             }.normalize(&self.tcx));
                         }
@@ -1075,7 +1075,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                 if !self.span.filter_generated(alias_span, item.span) {
                     self.dumper.extern_crate(item.span, ExternCrateData {
                         id: item.id,
-                        name: item.ident.name.to_string(),
+                        name: item.ident.to_string(),
                         crate_num: cnum,
                         location: location,
                         span: alias_span.expect("No span found for extern crate"),
@@ -1258,7 +1258,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                                    ty),
                 }
             }
-            ast::ExprKind::Closure(_, ref decl, ref body) => {
+            ast::ExprKind::Closure(_, ref decl, ref body, _fn_decl_span) => {
                 let mut id = String::from("$");
                 id.push_str(&ex.id.to_string());
                 self.process_formals(&decl.inputs, &id);

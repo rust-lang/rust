@@ -200,7 +200,7 @@ pub struct ArgDecl<'tcx> {
     /// and has to be collected from multiple actual arguments.
     pub spread: bool,
 
-    /// Either special_idents::invalid or the name of a single-binding
+    /// Either keywords::Invalid or the name of a single-binding
     /// pattern associated with this argument. Useful for debuginfo.
     pub debug_name: Name
 }

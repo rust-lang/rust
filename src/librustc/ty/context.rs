@@ -44,7 +44,7 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
-use syntax::parse::token::{self, special_idents};
+use syntax::parse::token::{self, keywords};
 
 use hir;
 
@@ -1069,7 +1069,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_self_type(&self) -> Ty<'tcx> {
-        self.mk_param(subst::SelfSpace, 0, special_idents::type_self.name)
+        self.mk_param(subst::SelfSpace, 0, keywords::SelfType.name())
     }
 
     pub fn mk_param_from_def(&self, def: &ty::TypeParameterDef) -> Ty<'tcx> {

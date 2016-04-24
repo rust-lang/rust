@@ -19,8 +19,7 @@ use syntax::ext::base::*;
 use syntax::ext::base;
 use syntax::ext::build::AstBuilder;
 use syntax::fold::Folder;
-use syntax::parse::token::special_idents;
-use syntax::parse::token;
+use syntax::parse::token::{self, keywords};
 use syntax::ptr::P;
 
 use std::collections::HashMap;
@@ -106,7 +105,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         if named || (p.token.is_ident() && p.look_ahead(1, |t| *t == token::Eq)) {
             named = true;
             let ident = match p.token {
-                token::Ident(i, _) => {
+                token::Ident(i) => {
                     p.bump();
                     i
                 }
@@ -449,7 +448,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let sp = piece_ty.span;
         let ty = ecx.ty_rptr(sp,
             ecx.ty(sp, ast::TyKind::Vec(piece_ty)),
-            Some(ecx.lifetime(sp, special_idents::static_lifetime.name)),
+            Some(ecx.lifetime(sp, keywords::StaticLifetime.name())),
             ast::Mutability::Immutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
         // static instead of const to speed up codegen by not requiring this to be inlined
@@ -475,7 +474,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // First, build up the static array which will become our precompiled
         // format "string"
-        let static_lifetime = self.ecx.lifetime(self.fmtsp, special_idents::static_lifetime.name);
+        let static_lifetime = self.ecx.lifetime(self.fmtsp, keywords::StaticLifetime.name());
         let piece_ty = self.ecx.ty_rptr(
                 self.fmtsp,
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),

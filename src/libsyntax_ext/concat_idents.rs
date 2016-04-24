@@ -40,7 +40,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
             }
         } else {
             match *e {
-                TokenTree::Token(_, token::Ident(ident, _)) => {
+                TokenTree::Token(_, token::Ident(ident)) => {
                     res_str.push_str(&ident.name.as_str())
                 },
                 _ => {

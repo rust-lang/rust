@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-fn baz(a: &'self isize) { } //~ ERROR invalid lifetime name: 'self is no longer a special lifetime
+// This file was auto-generated using 'src/etc/generate-keyword-tests.py where'
 
-fn main() { }
+fn main() {
+    let where = "foo"; //~ error: expected pattern, found keyword `where`
+}

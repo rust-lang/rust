@@ -18,7 +18,7 @@ use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::ptr::P;
-use syntax::parse::token;
+use syntax::parse::token::keywords;
 use syntax::util::move_map::MoveMap;
 
 pub trait Folder : Sized {
@@ -867,7 +867,7 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span,
     let config = folder.fold_meta_items(config);
 
     let crate_mod = folder.fold_item(hir::Item {
-        name: token::special_idents::invalid.name,
+        name: keywords::Invalid.name(),
         attrs: attrs,
         id: DUMMY_NODE_ID,
         vis: hir::Public,
@@ -1060,10 +1060,11 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
                           arms.move_map(|x| folder.fold_arm(x)),
                           source)
             }
-            ExprClosure(capture_clause, decl, body) => {
+            ExprClosure(capture_clause, decl, body, fn_decl_span) => {
                 ExprClosure(capture_clause,
                             folder.fold_fn_decl(decl),
-                            folder.fold_block(body))
+                            folder.fold_block(body),
+                            folder.new_span(fn_decl_span))
             }
             ExprBlock(blk) => ExprBlock(folder.fold_block(blk)),
             ExprAssign(el, er) => {

@@ -34,15 +34,17 @@ template = """// Copyright %d The Rust Project Developers. See the COPYRIGHT
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // This file was auto-generated using 'src/etc/generate-keyword-tests.py %s'
 
 fn main() {
-    let %s = "foo"; //~ error: ident
+    let %s = "foo"; //~ error: expected pattern, found keyword `%s`
 }
 """
 
 test_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../test/compile-fail')
+    os.path.join(os.path.dirname(__file__), '../test/parse-fail')
 )
 
 for kw in sys.argv[1:]:
@@ -53,7 +55,7 @@ for kw in sys.argv[1:]:
         os.chmod(test_file, stat.S_IWUSR)
 
     with open(test_file, 'wt') as f:
-        f.write(template % (datetime.datetime.now().year, kw, kw))
+        f.write(template % (datetime.datetime.now().year, kw, kw, kw))
 
     # mark file read-only
     os.chmod(test_file, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)

@@ -13,9 +13,7 @@ use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
 use ext::base::ExtCtxt;
-use parse::token::special_idents;
-use parse::token::InternedString;
-use parse::token;
+use parse::token::{self, keywords, InternedString};
 use ptr::P;
 
 // Transitional reexports so qquote can find the paths it is looking for
@@ -194,10 +192,14 @@ pub trait AstBuilder {
                cond: P<ast::Expr>, then: P<ast::Expr>, els: Option<P<ast::Expr>>) -> P<ast::Expr>;
     fn expr_loop(&self, span: Span, block: P<ast::Block>) -> P<ast::Expr>;
 
-    fn lambda_fn_decl(&self, span: Span,
-                      fn_decl: P<ast::FnDecl>, blk: P<ast::Block>) -> P<ast::Expr>;
+    fn lambda_fn_decl(&self,
+                      span: Span,
+                      fn_decl: P<ast::FnDecl>,
+                      blk: P<ast::Block>,
+                      fn_decl_span: Span)
+                      -> P<ast::Expr>;
 
-    fn lambda(&self, span: Span, ids: Vec<ast::Ident> , blk: P<ast::Block>) -> P<ast::Expr>;
+    fn lambda(&self, span: Span, ids: Vec<ast::Ident>, blk: P<ast::Block>) -> P<ast::Expr>;
     fn lambda0(&self, span: Span, blk: P<ast::Block>) -> P<ast::Expr>;
     fn lambda1(&self, span: Span, blk: P<ast::Block>, ident: ast::Ident) -> P<ast::Expr>;
 
@@ -602,7 +604,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, special_idents::self_)
+        self.expr_ident(span, keywords::SelfValue.ident())
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
@@ -894,17 +896,34 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr(span, ast::ExprKind::Loop(block, None))
     }
 
-    fn lambda_fn_decl(&self, span: Span,
-                      fn_decl: P<ast::FnDecl>, blk: P<ast::Block>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, blk))
+    fn lambda_fn_decl(&self,
+                      span: Span,
+                      fn_decl: P<ast::FnDecl>,
+                      blk: P<ast::Block>,
+                      fn_decl_span: Span) // span of the `|...|` part
+                      -> P<ast::Expr> {
+        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref,
+                                               fn_decl,
+                                               blk,
+                                               fn_decl_span))
     }
-    fn lambda(&self, span: Span, ids: Vec<ast::Ident>, blk: P<ast::Block>) -> P<ast::Expr> {
+
+    fn lambda(&self,
+              span: Span,
+              ids: Vec<ast::Ident>,
+              blk: P<ast::Block>)
+              -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
             self.ty_infer(span));
 
-        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, blk))
+        // FIXME -- We are using `span` as the span of the `|...|`
+        // part of the lambda, but it probably (maybe?) corresponds to
+        // the entire lambda body. Probably we should extend the API
+        // here, but that's not entirely clear.
+        self.expr(span, ast::ExprKind::Closure(ast::CaptureBy::Ref, fn_decl, blk, span))
     }
+
     fn lambda0(&self, span: Span, blk: P<ast::Block>) -> P<ast::Expr> {
         self.lambda(span, Vec::new(), blk)
     }
@@ -1132,7 +1151,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: special_idents::invalid,
+            ident: keywords::Invalid.ident(),
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis: vis,

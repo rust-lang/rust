@@ -19,7 +19,7 @@ use syntax::ast::{Expr,Generics,Ident};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::codemap::{Span,respan};
-use syntax::parse::token::special_idents;
+use syntax::parse::token::keywords;
 use syntax::ptr::P;
 
 /// The types of pointers
@@ -169,15 +169,14 @@ impl<'a> Ty<'a> {
                    -> ast::Path {
         match *self {
             Self_ => {
-                let self_params = self_generics.ty_params.map(|ty_param| {
+                let self_params = self_generics.ty_params.iter().map(|ty_param| {
                     cx.ty_ident(span, ty_param.ident)
-                });
+                }).collect();
                 let lifetimes = self_generics.lifetimes.iter()
                                                        .map(|d| d.lifetime)
                                                        .collect();
 
-                cx.path_all(span, false, vec!(self_ty), lifetimes,
-                            self_params.into_vec(), Vec::new())
+                cx.path_all(span, false, vec![self_ty], lifetimes, self_params, Vec::new())
             }
             Literal(ref p) => {
                 p.to_path(cx, span, self_ty, self_generics)
@@ -264,7 +263,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfKind::Value(special_idents::self_)))
+            (self_path, respan(span, ast::SelfKind::Value(keywords::SelfValue.ident())))
         }
         Some(ref ptr) => {
             let self_ty = respan(
@@ -272,7 +271,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 match *ptr {
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
-                        ast::SelfKind::Region(lt, mutbl, special_idents::self_)
+                        ast::SelfKind::Region(lt, mutbl, keywords::SelfValue.ident())
                     }
                     Raw(_) => cx.span_bug(span, "attempted to use *self in deriving definition")
                 });

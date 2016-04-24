@@ -15,8 +15,5 @@
 fn f<X>() {}
 
 pub fn main() {
-    f<type>();
-    //~^ ERROR expected identifier, found keyword `type`
-    //~^^ ERROR: chained comparison
-    //~^^^ HELP: use `::<
+    f<type>(); //~ ERROR expected expression, found keyword `type`
 }

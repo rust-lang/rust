@@ -479,7 +479,7 @@ fn walk_expr(cx: &CrateContext,
             })
         }
 
-        hir::ExprClosure(_, ref decl, ref block) => {
+        hir::ExprClosure(_, ref decl, ref block, _) => {
             with_new_scope(cx,
                            block.span,
                            scope_stack,
