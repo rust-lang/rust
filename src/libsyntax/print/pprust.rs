@@ -2086,7 +2086,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, INDENT_UNIT)?;
             }
-            ast::ExprKind::Closure(capture_clause, ref decl, ref body) => {
+            ast::ExprKind::Closure(capture_clause, ref decl, ref body, _) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(&decl)?;
