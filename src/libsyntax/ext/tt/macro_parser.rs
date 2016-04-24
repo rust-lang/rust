@@ -85,7 +85,7 @@ use codemap;
 use errors::FatalError;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
-use parse::parser::{LifetimeAndTypesWithoutColons, Parser};
+use parse::parser::{PathStyle, Parser};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, Nonterminal};
 use parse::token;
@@ -216,7 +216,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                     n_rec(p_s, next_m, res, ret_val, idx)?;
                 }
             }
-            TokenTree::Token(sp, MatchNt(bind_name, _, _, _)) => {
+            TokenTree::Token(sp, MatchNt(bind_name, _)) => {
                 match ret_val.entry(bind_name.name) {
                     Vacant(spot) => {
                         spot.insert(res[*idx].clone());
@@ -263,7 +263,7 @@ pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 /// unhygienic comparison)
 pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     match (t1,t2) {
-        (&token::Ident(id1,_),&token::Ident(id2,_))
+        (&token::Ident(id1),&token::Ident(id2))
         | (&token::Lifetime(id1),&token::Lifetime(id2)) =>
             id1.name == id2.name,
         _ => *t1 == *t2
@@ -451,7 +451,7 @@ pub fn parse(sess: &ParseSess,
             if (!bb_eis.is_empty() && !next_eis.is_empty())
                 || bb_eis.len() > 1 {
                 let nts = bb_eis.iter().map(|ei| match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(_, MatchNt(bind, name, _, _)) => {
+                    TokenTree::Token(_, MatchNt(bind, name)) => {
                         format!("{} ('{}')", name, bind)
                     }
                     _ => panic!()
@@ -479,7 +479,7 @@ pub fn parse(sess: &ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {
-                    TokenTree::Token(span, MatchNt(_, ident, _, _)) => {
+                    TokenTree::Token(span, MatchNt(_, ident)) => {
                         let match_cur = ei.match_cur;
                         (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                             parse_nt(&mut rust_parser, span, &ident.name.as_str()))));
@@ -534,9 +534,9 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         "ty" => token::NtTy(panictry!(p.parse_ty())),
         // this could be handled like a token, since it is one
         "ident" => match p.token {
-            token::Ident(sn,b) => {
+            token::Ident(sn) => {
                 p.bump();
-                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}),b)
+                token::NtIdent(Box::new(Spanned::<Ident>{node: sn, span: p.span}))
             }
             _ => {
                 let token_str = pprust::token_to_string(&p.token);
@@ -546,7 +546,7 @@ pub fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
             }
         },
         "path" => {
-            token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
+            token::NtPath(Box::new(panictry!(p.parse_path(PathStyle::Type))))
         },
         "meta" => token::NtMeta(panictry!(p.parse_meta_item())),
         _ => {

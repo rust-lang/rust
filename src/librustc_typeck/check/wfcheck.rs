@@ -24,7 +24,7 @@ use std::collections::HashSet;
 use syntax::ast;
 use syntax::codemap::{Span};
 use syntax::errors::DiagnosticBuilder;
-use syntax::parse::token::{special_idents};
+use syntax::parse::token::keywords;
 use rustc::hir::intravisit::{self, Visitor};
 use rustc::hir;
 
@@ -472,7 +472,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     {
         let name = match space {
             TypeSpace => ast_generics.ty_params[index].name,
-            SelfSpace => special_idents::type_self.name,
+            SelfSpace => keywords::SelfType.name(),
             FnSpace => bug!("Fn space occupied?"),
         };
 

@@ -62,7 +62,7 @@ use syntax::ast::{CRATE_NODE_ID, Name, NodeId, CrateNum, IntTy, UintTy};
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{self, Span, Pos};
 use syntax::errors::DiagnosticBuilder;
-use syntax::parse::token::{self, special_names, special_idents};
+use syntax::parse::token::{self, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use rustc::hir::intravisit::{self, FnKind, Visitor};
@@ -1954,8 +1954,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
         // plain insert (no renaming, types are not currently hygienic....)
-        let name = special_names::type_self;
-        self_type_rib.bindings.insert(name, self_def);
+        self_type_rib.bindings.insert(keywords::SelfType.name(), self_def);
         self.type_ribs.push(self_type_rib);
         f(self);
         if !self.resolved {
@@ -2195,11 +2194,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             "type name"
                         };
 
-                        let self_type_name = special_idents::type_self.name;
                         let is_invalid_self_type_name = path.segments.len() > 0 &&
                                                         maybe_qself.is_none() &&
                                                         path.segments[0].identifier.name ==
-                                                        self_type_name;
+                                                        keywords::SelfType.name();
                         if is_invalid_self_type_name {
                             resolve_error(self,
                                           ty.span,
@@ -2643,7 +2641,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           namespace: Namespace,
                           record_used: bool)
                           -> Option<LocalDef> {
-        if identifier.name == special_idents::invalid.name {
+        if identifier.unhygienic_name == keywords::Invalid.name() {
             return Some(LocalDef::from_def(Def::Err));
         }
 
@@ -3074,7 +3072,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 false // Stop advancing
                             });
 
-                            if method_scope && special_names::self_.as_str() == &path_name[..] {
+                            if method_scope &&
+                                    &path_name[..] == keywords::SelfValue.name().as_str() {
                                 resolve_error(self,
                                               expr.span,
                                               ResolutionError::SelfNotAvailableInStaticMethod);
@@ -3612,7 +3611,7 @@ fn module_to_string(module: Module) -> String {
             }
             BlockParentLink(ref module, _) => {
                 // danger, shouldn't be ident?
-                names.push(special_idents::opaque.name);
+                names.push(token::intern("<opaque>"));
                 collect_mod(names, module);
             }
         }

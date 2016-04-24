@@ -13,7 +13,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
 use ext::build::AstBuilder;
-use parse::parser::{Parser, PathParsingMode};
+use parse::parser::{Parser, PathStyle};
 use parse::token::*;
 use parse::token;
 use ptr::P;
@@ -72,7 +72,7 @@ pub mod rt {
 
     impl ToTokens for ast::Ident {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Token(DUMMY_SP, token::Ident(*self, token::Plain))]
+            vec![TokenTree::Token(DUMMY_SP, token::Ident(*self))]
         }
     }
 
@@ -401,7 +401,7 @@ pub fn parse_meta_item_panic(parser: &mut Parser) -> P<ast::MetaItem> {
     panictry!(parser.parse_meta_item())
 }
 
-pub fn parse_path_panic(parser: &mut Parser, mode: PathParsingMode) -> ast::Path {
+pub fn parse_path_panic(parser: &mut Parser, mode: PathStyle) -> ast::Path {
     panictry!(parser.parse_path(mode))
 }
 
@@ -500,7 +500,7 @@ pub fn expand_quote_path(cx: &mut ExtCtxt,
                         sp: Span,
                         tts: &[TokenTree])
                         -> Box<base::MacResult+'static> {
-    let mode = mk_parser_path(cx, sp, "LifetimeAndTypesWithoutColons");
+    let mode = mk_parser_path(cx, sp, &["PathStyle", "Type"]);
     let expanded = expand_parse_call(cx, sp, "parse_path_panic", vec!(mode), tts);
     base::MacEager::expr(expanded)
 }
@@ -557,8 +557,9 @@ fn mk_token_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
     cx.expr_path(cx.path_global(sp, idents))
 }
 
-fn mk_parser_path(cx: &ExtCtxt, sp: Span, name: &str) -> P<ast::Expr> {
-    let idents = vec!(id_ext("syntax"), id_ext("parse"), id_ext("parser"), id_ext(name));
+fn mk_parser_path(cx: &ExtCtxt, sp: Span, names: &[&str]) -> P<ast::Expr> {
+    let mut idents = vec![id_ext("syntax"), id_ext("parse"), id_ext("parser")];
+    idents.extend(names.iter().cloned().map(id_ext));
     cx.expr_path(cx.path_global(sp, idents))
 }
 
@@ -646,14 +647,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                            cx.expr_usize(sp, n))
         }
 
-        token::Ident(ident, style) => {
+        token::Ident(ident) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "Ident"),
-                                vec![mk_ident(cx, sp, ident),
-                                     match style {
-                                        ModName => mk_token_path(cx, sp, "ModName"),
-                                        Plain   => mk_token_path(cx, sp, "Plain"),
-                                     }]);
+                                vec![mk_ident(cx, sp, ident)]);
         }
 
         token::Lifetime(ident) => {
@@ -668,19 +665,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec!(mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident))));
         }
 
-        token::MatchNt(name, kind, namep, kindp) => {
+        token::MatchNt(name, kind) => {
             return cx.expr_call(sp,
                                 mk_token_path(cx, sp, "MatchNt"),
-                                vec!(mk_ident(cx, sp, name),
-                                     mk_ident(cx, sp, kind),
-                                     match namep {
-                                        ModName => mk_token_path(cx, sp, "ModName"),
-                                        Plain   => mk_token_path(cx, sp, "Plain"),
-                                     },
-                                     match kindp {
-                                        ModName => mk_token_path(cx, sp, "ModName"),
-                                        Plain   => mk_token_path(cx, sp, "Plain"),
-                                     }));
+                                vec![mk_ident(cx, sp, name), mk_ident(cx, sp, kind)]);
         }
 
         token::Interpolated(_) => panic!("quote! with interpolated token"),
@@ -722,7 +710,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
 
 fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stmt> {
     match *tt {
-        TokenTree::Token(sp, SubstNt(ident, _)) => {
+        TokenTree::Token(sp, SubstNt(ident)) => {
             // tt.extend($ident.to_tokens(ext_cx))
 
             let e_to_toks =

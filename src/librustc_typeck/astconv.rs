@@ -73,7 +73,7 @@ use syntax::{abi, ast};
 use syntax::codemap::{Span, Pos};
 use syntax::errors::DiagnosticBuilder;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax::parse::token;
+use syntax::parse::token::{self, keywords};
 
 use rustc::hir::print as pprust;
 use rustc::hir;
@@ -1313,7 +1313,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             let trait_node_id = tcx.map.as_local_node_id(trait_did).unwrap();
             match find_bound_for_assoc_item(this,
                                             trait_node_id,
-                                            token::special_idents::type_self.name,
+                                            keywords::SelfType.name(),
                                             assoc_name,
                                             span) {
                 Ok(bound) => bound,

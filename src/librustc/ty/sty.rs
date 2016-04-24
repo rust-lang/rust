@@ -24,7 +24,7 @@ use std::ops;
 use std::mem;
 use syntax::abi;
 use syntax::ast::{self, Name};
-use syntax::parse::token::special_idents;
+use syntax::parse::token::keywords;
 
 use serialize::{Decodable, Decoder};
 
@@ -533,7 +533,7 @@ impl ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(subst::SelfSpace, 0, special_idents::type_self.name)
+        ParamTy::new(subst::SelfSpace, 0, keywords::SelfType.name())
     }
 
     pub fn for_def(def: &ty::TypeParameterDef) -> ParamTy {

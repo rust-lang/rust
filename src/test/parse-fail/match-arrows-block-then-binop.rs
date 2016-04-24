@@ -14,6 +14,6 @@ fn main() {
 
     match 0 {
       0 => {
-      } + 5 //~ ERROR unexpected token: `+`
+      } + 5 //~ ERROR expected pattern, found `+`
     }
 }

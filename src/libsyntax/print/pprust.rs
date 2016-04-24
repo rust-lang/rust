@@ -20,7 +20,7 @@ use attr;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{self, CodeMap, BytePos};
 use errors;
-use parse::token::{self, BinOpToken, Token, InternedString};
+use parse::token::{self, keywords, BinOpToken, Token, InternedString};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
@@ -270,14 +270,14 @@ pub fn token_to_string(tok: &Token) -> String {
         }
 
         /* Name components */
-        token::Ident(s, _)          => s.to_string(),
+        token::Ident(s)             => s.to_string(),
         token::Lifetime(s)          => s.to_string(),
         token::Underscore           => "_".to_string(),
 
         /* Other */
         token::DocComment(s)        => s.to_string(),
-        token::SubstNt(s, _)        => format!("${}", s),
-        token::MatchNt(s, t, _, _)  => format!("${}:{}", s, t),
+        token::SubstNt(s)           => format!("${}", s),
+        token::MatchNt(s, t)        => format!("${}:{}", s, t),
         token::Eof                  => "<eof>".to_string(),
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),
@@ -294,7 +294,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtBlock(ref e)       => block_to_string(&e),
             token::NtStmt(ref e)        => stmt_to_string(&e),
             token::NtPat(ref e)         => pat_to_string(&e),
-            token::NtIdent(ref e, _)    => ident_to_string(e.node),
+            token::NtIdent(ref e)       => ident_to_string(e.node),
             token::NtTT(ref e)          => tt_to_string(&e),
             token::NtArm(ref e)         => arm_to_string(&e),
             token::NtImplItem(ref e)    => impl_item_to_string(&e),
@@ -995,7 +995,7 @@ impl<'a> State<'a> {
             ast::TyKind::BareFn(ref f) => {
                 let generics = ast::Generics {
                     lifetimes: f.lifetimes.clone(),
-                    ty_params: P::empty(),
+                    ty_params: P::new(),
                     where_clause: ast::WhereClause {
                         id: ast::DUMMY_NODE_ID,
                         predicates: Vec::new(),
@@ -1488,20 +1488,11 @@ impl<'a> State<'a> {
 
     pub fn print_tts(&mut self, tts: &[ast::TokenTree]) -> io::Result<()> {
         self.ibox(0)?;
-        let mut suppress_space = false;
         for (i, tt) in tts.iter().enumerate() {
-            if i != 0 && !suppress_space {
+            if i != 0 {
                 space(&mut self.s)?;
             }
             self.print_tt(tt)?;
-            // There should be no space between the module name and the following `::` in paths,
-            // otherwise imported macros get re-parsed from crate metadata incorrectly (#20701)
-            suppress_space = match *tt {
-                TokenTree::Token(_, token::Ident(_, token::ModName)) |
-                TokenTree::Token(_, token::MatchNt(_, _, _, token::ModName)) |
-                TokenTree::Token(_, token::SubstNt(_, token::ModName)) => true,
-                _ => false
-            }
         }
         self.end()
     }
@@ -2086,7 +2077,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose_(expr.span, INDENT_UNIT)?;
             }
-            ast::ExprKind::Closure(capture_clause, ref decl, ref body) => {
+            ast::ExprKind::Closure(capture_clause, ref decl, ref body, _) => {
                 self.print_capture_clause(capture_clause)?;
 
                 self.print_fn_block_args(&decl)?;
@@ -2966,9 +2957,8 @@ impl<'a> State<'a> {
             ast::TyKind::Infer if is_closure => self.print_pat(&input.pat)?,
             _ => {
                 match input.pat.node {
-                    PatKind::Ident(_, ref path1, _) if
-                        path1.node.name ==
-                            parse::token::special_idents::invalid.name => {
+                    PatKind::Ident(_, ref path1, _)
+                            if path1.node.name == keywords::Invalid.name() => {
                         // Do nothing.
                     }
                     _ => {
@@ -3021,7 +3011,7 @@ impl<'a> State<'a> {
         }
         let generics = ast::Generics {
             lifetimes: Vec::new(),
-            ty_params: P::empty(),
+            ty_params: P::new(),
             where_clause: ast::WhereClause {
                 id: ast::DUMMY_NODE_ID,
                 predicates: Vec::new(),

@@ -782,7 +782,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &hir::Expr) {
             intravisit::walk_expr(rcx, expr);
         }
 
-        hir::ExprClosure(_, _, ref body) => {
+        hir::ExprClosure(_, _, ref body, _) => {
             check_expr_fn_block(rcx, expr, &body);
         }
 

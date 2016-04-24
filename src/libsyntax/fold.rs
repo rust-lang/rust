@@ -22,7 +22,7 @@ use ast::*;
 use ast;
 use attr::{ThinAttributes, ThinAttributesExt};
 use codemap::{respan, Span, Spanned};
-use parse::token;
+use parse::token::{self, keywords};
 use ptr::P;
 use util::small_vector::SmallVector;
 use util::move_map::MoveMap;
@@ -610,17 +610,11 @@ pub fn noop_fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
 pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token {
     match t {
-        token::Ident(id, followed_by_colons) => {
-            token::Ident(fld.fold_ident(id), followed_by_colons)
-        }
+        token::Ident(id) => token::Ident(fld.fold_ident(id)),
         token::Lifetime(id) => token::Lifetime(fld.fold_ident(id)),
         token::Interpolated(nt) => token::Interpolated(fld.fold_interpolated(nt)),
-        token::SubstNt(ident, namep) => {
-            token::SubstNt(fld.fold_ident(ident), namep)
-        }
-        token::MatchNt(name, kind, namep, kindp) => {
-            token::MatchNt(fld.fold_ident(name), fld.fold_ident(kind), namep, kindp)
-        }
+        token::SubstNt(ident) => token::SubstNt(fld.fold_ident(ident)),
+        token::MatchNt(name, kind) => token::MatchNt(fld.fold_ident(name), fld.fold_ident(kind)),
         _ => t
     }
 }
@@ -664,9 +658,8 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtPat(pat) => token::NtPat(fld.fold_pat(pat)),
         token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
         token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
-        token::NtIdent(id, is_mod_name) =>
-            token::NtIdent(Box::new(Spanned::<Ident>{node: fld.fold_ident(id.node), .. *id}),
-                           is_mod_name),
+        token::NtIdent(id) =>
+            token::NtIdent(Box::new(Spanned::<Ident>{node: fld.fold_ident(id.node), ..*id})),
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(path) => token::NtPath(Box::new(fld.fold_path(*path))),
         token::NtTT(tt) => token::NtTT(P(fld.fold_tt(&tt))),
@@ -1022,7 +1015,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
     let config = folder.fold_meta_items(config);
 
     let mut items = folder.fold_item(P(ast::Item {
-        ident: token::special_idents::invalid,
+        ident: keywords::Invalid.ident(),
         attrs: attrs,
         id: ast::DUMMY_NODE_ID,
         vis: ast::Visibility::Public,
@@ -1241,10 +1234,11 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 ExprKind::Match(folder.fold_expr(expr),
                           arms.move_map(|x| folder.fold_arm(x)))
             }
-            ExprKind::Closure(capture_clause, decl, body) => {
+            ExprKind::Closure(capture_clause, decl, body, span) => {
                 ExprKind::Closure(capture_clause,
-                            folder.fold_fn_decl(decl),
-                            folder.fold_block(body))
+                                  folder.fold_fn_decl(decl),
+                                  folder.fold_block(body),
+                                  folder.new_span(span))
             }
             ExprKind::Block(blk) => ExprKind::Block(folder.fold_block(blk)),
             ExprKind::Assign(el, er) => {

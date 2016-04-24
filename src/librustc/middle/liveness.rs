@@ -125,7 +125,7 @@ use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
 use syntax::codemap::{BytePos, original_sp, Span};
-use syntax::parse::token::special_idents;
+use syntax::parse::token::keywords;
 use syntax::ptr::P;
 
 use hir::Expr;
@@ -948,7 +948,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&e, succ)
           }
 
-          hir::ExprClosure(_, _, ref blk) => {
+          hir::ExprClosure(_, _, ref blk, _) => {
               debug!("{} is an ExprClosure",
                      expr_to_string(expr));
 
@@ -1578,7 +1578,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let var = self.variable(p_id, sp);
                 // Ignore unused self.
                 let name = path1.node;
-                if name != special_idents::self_.name {
+                if name != keywords::SelfValue.name() {
                     if !self.warn_about_unused(sp, p_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(p_id, sp, var, true);

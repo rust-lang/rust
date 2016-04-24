@@ -161,7 +161,7 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
                 size + lockstep_iter_size(tt, r)
             })
         },
-        TokenTree::Token(_, SubstNt(name, _)) | TokenTree::Token(_, MatchNt(name, _, _, _)) =>
+        TokenTree::Token(_, SubstNt(name)) | TokenTree::Token(_, MatchNt(name, _)) =>
             match lookup_cur_matched(r, name) {
                 Some(matched) => match *matched {
                     MatchedNonterminal(_) => LisUnconstrained,
@@ -186,7 +186,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             None => (),
             Some(sp) => {
                 r.cur_span = sp;
-                r.cur_tok = token::Ident(r.imported_from.unwrap(), token::Plain);
+                r.cur_tok = token::Ident(r.imported_from.unwrap());
                 return ret_val;
             },
         }
@@ -278,12 +278,12 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 }
             }
             // FIXME #2887: think about span stuff here
-            TokenTree::Token(sp, SubstNt(ident, namep)) => {
+            TokenTree::Token(sp, SubstNt(ident)) => {
                 r.stack.last_mut().unwrap().idx += 1;
                 match lookup_cur_matched(r, ident) {
                     None => {
                         r.cur_span = sp;
-                        r.cur_tok = SubstNt(ident, namep);
+                        r.cur_tok = SubstNt(ident);
                         return ret_val;
                         // this can't be 0 length, just like TokenTree::Delimited
                     }
@@ -292,9 +292,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                             // sidestep the interpolation tricks for ident because
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
-                            MatchedNonterminal(NtIdent(ref sn, b)) => {
+                            MatchedNonterminal(NtIdent(ref sn)) => {
                                 r.cur_span = sn.span;
-                                r.cur_tok = token::Ident(sn.node, b);
+                                r.cur_tok = token::Ident(sn.node);
                                 return ret_val;
                             }
                             MatchedNonterminal(ref other_whole_nt) => {

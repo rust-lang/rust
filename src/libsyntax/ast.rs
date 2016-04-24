@@ -93,7 +93,7 @@ impl Ident {
     pub fn new(name: Name, ctxt: SyntaxContext) -> Ident {
         Ident {name: name, ctxt: ctxt}
     }
-    pub fn with_empty_ctxt(name: Name) -> Ident {
+    pub const fn with_empty_ctxt(name: Name) -> Ident {
         Ident {name: name, ctxt: EMPTY_CTXT}
     }
 }
@@ -248,8 +248,8 @@ impl PathParameters {
     pub fn none() -> PathParameters {
         PathParameters::AngleBracketed(AngleBracketedParameterData {
             lifetimes: Vec::new(),
-            types: P::empty(),
-            bindings: P::empty(),
+            types: P::new(),
+            bindings: P::new(),
         })
     }
 
@@ -421,7 +421,7 @@ impl Default for Generics {
     fn default() ->  Generics {
         Generics {
             lifetimes: Vec::new(),
-            ty_params: P::empty(),
+            ty_params: P::new(),
             where_clause: WhereClause {
                 id: DUMMY_NODE_ID,
                 predicates: Vec::new(),
@@ -986,7 +986,9 @@ pub enum ExprKind {
     /// A `match` block.
     Match(P<Expr>, Vec<Arm>),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
-    Closure(CaptureBy, P<FnDecl>, P<Block>),
+    ///
+    /// The final span is the span of the argument block `|...|`
+    Closure(CaptureBy, P<FnDecl>, P<Block>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
 
@@ -1206,8 +1208,7 @@ impl TokenTree {
                 TokenTree::Delimited(sp, Rc::new(Delimited {
                     delim: token::Bracket,
                     open_span: sp,
-                    tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"),
-                                                                token::Plain)),
+                    tts: vec![TokenTree::Token(sp, token::Ident(token::str_to_ident("doc"))),
                               TokenTree::Token(sp, token::Eq),
                               TokenTree::Token(sp, token::Literal(
                                   token::StrRaw(token::intern(&stripped), num_of_hashes), None))],
@@ -1225,14 +1226,13 @@ impl TokenTree {
             }
             (&TokenTree::Token(sp, token::SpecialVarNt(var)), _) => {
                 let v = [TokenTree::Token(sp, token::Dollar),
-                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str()),
-                                                  token::Plain))];
+                         TokenTree::Token(sp, token::Ident(token::str_to_ident(var.as_str())))];
                 v[index].clone()
             }
-            (&TokenTree::Token(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
-                let v = [TokenTree::Token(sp, token::SubstNt(name, name_st)),
+            (&TokenTree::Token(sp, token::MatchNt(name, kind)), _) => {
+                let v = [TokenTree::Token(sp, token::SubstNt(name)),
                          TokenTree::Token(sp, token::Colon),
-                         TokenTree::Token(sp, token::Ident(kind, kind_st))];
+                         TokenTree::Token(sp, token::Ident(kind))];
                 v[index].clone()
             }
             (&TokenTree::Sequence(_, ref seq), _) => {

@@ -17,7 +17,7 @@ use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::parse;
 use parse::lexer::new_tt_reader;
 use parse::parser::{Parser, Restrictions};
-use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
+use parse::token::{self, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
 use ptr::P;
@@ -244,8 +244,8 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
     // $( $lhs:tt => $rhs:tt );+
     // ...quasiquoting this would be nice.
     // These spans won't matter, anyways
-    let match_lhs_tok = MatchNt(lhs_nm, special_idents::tt, token::Plain, token::Plain);
-    let match_rhs_tok = MatchNt(rhs_nm, special_idents::tt, token::Plain, token::Plain);
+    let match_lhs_tok = MatchNt(lhs_nm, token::str_to_ident("tt"));
+    let match_rhs_tok = MatchNt(rhs_nm, token::str_to_ident("tt"));
     let argument_gram = vec!(
         TokenTree::Sequence(DUMMY_SP,
                    Rc::new(ast::SequenceRepetition {
@@ -415,7 +415,7 @@ fn check_matcher_old<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token, on_fai
     let mut tokens = matcher.peekable();
     while let Some(token) = tokens.next() {
         last = match *token {
-            TokenTree::Token(sp, MatchNt(ref name, ref frag_spec, _, _)) => {
+            TokenTree::Token(sp, MatchNt(ref name, ref frag_spec)) => {
                 // ii. If T is a simple NT, look ahead to the next token T' in
                 // M. If T' is in the set FOLLOW(NT), continue. Else; reject.
                 if can_be_followed_by_any(&frag_spec.name.as_str()) {
@@ -881,7 +881,7 @@ fn check_matcher_core(cx: &mut ExtCtxt,
         // Now `last` holds the complete set of NT tokens that could
         // end the sequence before SUFFIX. Check that every one works with `suffix`.
         'each_last: for &(_sp, ref t) in &last.tokens {
-            if let MatchNt(ref name, ref frag_spec, _, _) = *t {
+            if let MatchNt(ref name, ref frag_spec) = *t {
                 for &(sp, ref next_token) in &suffix_first.tokens {
                     match is_in_follow(cx, next_token, &frag_spec.name.as_str()) {
                         Err(msg) => {
@@ -917,9 +917,8 @@ fn check_matcher_core(cx: &mut ExtCtxt,
     last
 }
 
-
 fn token_can_be_followed_by_any(tok: &Token) -> bool {
-    if let &MatchNt(_, ref frag_spec, _, _) = tok {
+    if let &MatchNt(_, ref frag_spec) = tok {
         frag_can_be_followed_by_any(&frag_spec.name.as_str())
     } else {
         // (Non NT's can always be followed by anthing in matchers.)
@@ -1005,8 +1004,8 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
             "pat" => {
                 match *tok {
                     FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
-                    Ident(i, _) if (i.name.as_str() == "if" ||
-                                    i.name.as_str() == "in") => Ok(true),
+                    Ident(i) if (i.name.as_str() == "if" ||
+                                 i.name.as_str() == "in") => Ok(true),
                     _ => Ok(false)
                 }
             },
@@ -1014,9 +1013,8 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                 match *tok {
                     OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
                     Comma | FatArrow | Colon | Eq | Gt | Semi | BinOp(token::Or) => Ok(true),
-                    MatchNt(_, ref frag, _, _) if frag.name.as_str() == "block" => Ok(true),
-                    Ident(i, _) if (i.name.as_str() == "as" ||
-                                    i.name.as_str() == "where") => Ok(true),
+                    MatchNt(_, ref frag) if frag.name.as_str() == "block" => Ok(true),
+                    Ident(i) if i.name.as_str() == "as" || i.name.as_str() == "where" => Ok(true),
                     _ => Ok(false)
                 }
             },
@@ -1036,7 +1034,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
 
 fn has_legal_fragment_specifier(tok: &Token) -> Result<(), String> {
     debug!("has_legal_fragment_specifier({:?})", tok);
-    if let &MatchNt(_, ref frag_spec, _, _) = tok {
+    if let &MatchNt(_, ref frag_spec) = tok {
         let s = &frag_spec.name.as_str();
         if !is_legal_fragment_specifier(s) {
             return Err(s.to_string());
