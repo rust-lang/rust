@@ -10,8 +10,8 @@
 
 // compile-flags: -Z parse-only
 
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py while'
+// This file was auto-generated using 'src/etc/generate-keyword-tests.py where'
 
 fn main() {
-    let while = "foo"; //~ error: expected pattern, found keyword `while`
+    let where = "foo"; //~ error: expected pattern, found keyword `where`
 }
