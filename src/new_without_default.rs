@@ -6,10 +6,13 @@ use syntax::codemap::Span;
 use utils::paths;
 use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, same_tys, span_lint};
 
-/// **What it does:** This lints about type with a `fn new() -> Self` method and no `Default`
-/// implementation.
+/// **What it does:** This lints about type with a `fn new() -> Self` method
+/// and no implementation of
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
 ///
-/// **Why is this bad?** User might expect to be able to use `Default` as the type can be
+/// **Why is this bad?** User might expect to be able to use
+/// [`Default`](https://doc.rust-lang.org/std/default/trait.Default.html)
+/// as the type can be
 /// constructed without arguments.
 ///
 /// **Known problems:** Hopefully none.
@@ -25,6 +28,21 @@ use utils::{get_trait_def_id, implements_trait, in_external_macro, return_ty, sa
 ///     }
 /// }
 /// ```
+///
+/// Instead, use:
+///
+/// ```rust
+/// struct Foo;
+///
+/// impl Default for Foo {
+///     fn default() -> Self {
+///         Foo
+///     }
+/// }
+/// ```
+///
+/// You can also have `new()` call `Default::default()`
+///
 declare_lint! {
     pub NEW_WITHOUT_DEFAULT,
     Warn,
