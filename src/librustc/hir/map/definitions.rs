@@ -195,6 +195,10 @@ impl Definitions {
         self.opt_def_index(node).map(DefId::local)
     }
 
+    pub fn local_def_id(&self, node: ast::NodeId) -> DefId {
+        self.opt_local_def_id(node).unwrap()
+    }
+
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
             assert!(def_id.index.as_usize() < self.data.len());

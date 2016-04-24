@@ -551,6 +551,44 @@ impl fmt::Debug for Pat {
     }
 }
 
+impl Pat {
+    pub fn walk<F>(&self, it: &mut F) -> bool
+        where F: FnMut(&Pat) -> bool
+    {
+        if !it(self) {
+            return false;
+        }
+
+        match self.node {
+            PatKind::Ident(_, _, Some(ref p)) => p.walk(it),
+            PatKind::Struct(_, ref fields, _) => {
+                fields.iter().all(|field| field.node.pat.walk(it))
+            }
+            PatKind::TupleStruct(_, Some(ref s)) | PatKind::Tup(ref s) => {
+                s.iter().all(|p| p.walk(it))
+            }
+            PatKind::Box(ref s) | PatKind::Ref(ref s, _) => {
+                s.walk(it)
+            }
+            PatKind::Vec(ref before, ref slice, ref after) => {
+                before.iter().all(|p| p.walk(it)) &&
+                slice.iter().all(|p| p.walk(it)) &&
+                after.iter().all(|p| p.walk(it))
+            }
+            PatKind::Wild |
+            PatKind::Lit(_) |
+            PatKind::Range(_, _) |
+            PatKind::Ident(_, _, _) |
+            PatKind::TupleStruct(..) |
+            PatKind::Path(..) |
+            PatKind::QPath(_, _) |
+            PatKind::Mac(_) => {
+                true
+            }
+        }
+    }
+}
+
 /// A single field in a struct pattern
 ///
 /// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
