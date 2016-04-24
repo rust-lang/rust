@@ -71,7 +71,11 @@ pub fn binary_op(bin_op: mir::BinOp, left: PrimVal, right: PrimVal) -> EvalResul
                 Le => l <= r,
                 Gt => l > r,
                 Ge => l >= r,
-                _ => panic!("invalid binary operation on booleans: {:?}", bin_op),
+                BitOr => l | r,
+                BitXor => l ^ r,
+                BitAnd => l & r,
+                Add | Sub | Mul | Div | Rem | Shl | Shr =>
+                    panic!("invalid binary operation on booleans: {:?}", bin_op),
             })
         }
 
