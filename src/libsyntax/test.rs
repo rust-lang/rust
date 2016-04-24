@@ -31,7 +31,7 @@ use ext::expand::ExpansionConfig;
 use fold::Folder;
 use util::move_map::MoveMap;
 use fold;
-use parse::token::{intern, InternedString};
+use parse::token::{intern, keywords, InternedString};
 use parse::{token, ParseSess};
 use print::pprust;
 use ast;
@@ -116,7 +116,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
     fn fold_item(&mut self, i: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         let ident = i.ident;
-        if ident.name != token::special_idents::invalid.name {
+        if ident.name != keywords::Invalid.name() {
             self.cx.path.push(ident);
         }
         debug!("current path: {}", path_name_i(&self.cx.path));
@@ -160,7 +160,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             ast::ItemKind::Mod(..) => fold::noop_fold_item(i, self),
             _ => SmallVector::one(i),
         };
-        if ident.name != token::special_idents::invalid.name {
+        if ident.name != keywords::Invalid.name() {
             self.cx.path.pop();
         }
         res
@@ -453,7 +453,7 @@ fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
         (ast::ItemKind::Use(
             P(nospan(ast::ViewPathSimple(id_test,
                                          path_node(vec!(id_test)))))),
-         ast::Visibility::Public, token::special_idents::invalid)
+         ast::Visibility::Public, keywords::Invalid.ident())
     } else {
         (ast::ItemKind::ExternCrate(None), ast::Visibility::Inherited, id_test)
     };
@@ -545,7 +545,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
 
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: token::special_idents::invalid,
+            ident: keywords::Invalid.ident(),
             attrs: vec![],
             node: ast::ItemKind::Use(P(use_path)),
             vis: ast::Visibility::Inherited,
@@ -590,7 +590,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
     let struct_type = ecx.ty_path(ecx.path(sp, vec![ecx.ident_of("self"),
                                                     ecx.ident_of("test"),
                                                     ecx.ident_of("TestDescAndFn")]));
-    let static_lt = ecx.lifetime(sp, token::special_idents::static_lifetime.name);
+    let static_lt = ecx.lifetime(sp, keywords::StaticLifetime.name());
     // &'static [self::test::TestDescAndFn]
     let static_type = ecx.ty_rptr(sp,
                                   ecx.ty(sp, ast::TyKind::Vec(struct_type)),

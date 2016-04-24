@@ -20,6 +20,6 @@ macro_rules! import {
     ($p: path) => (use $p;);
 }
 
-import! { a::b::c::S<u8> } //~ERROR type or lifetime parameter is found in import path
+import! { a::b::c::S<u8> } //~ERROR type or lifetime parameters in import path
 
 fn main() {}

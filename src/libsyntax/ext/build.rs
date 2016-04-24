@@ -13,9 +13,7 @@ use ast::{self, Ident, Generics, Expr, BlockCheckMode, UnOp, PatKind};
 use attr;
 use codemap::{Span, respan, Spanned, DUMMY_SP, Pos};
 use ext::base::ExtCtxt;
-use parse::token::special_idents;
-use parse::token::InternedString;
-use parse::token;
+use parse::token::{self, keywords, InternedString};
 use ptr::P;
 
 // Transitional reexports so qquote can find the paths it is looking for
@@ -606,7 +604,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, special_idents::self_)
+        self.expr_ident(span, keywords::SelfValue.ident())
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,
@@ -1153,7 +1151,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: special_idents::invalid,
+            ident: keywords::Invalid.ident(),
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis: vis,

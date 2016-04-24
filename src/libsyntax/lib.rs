@@ -25,6 +25,7 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(associated_consts)]
+#![feature(const_fn)]
 #![feature(filling_drop)]
 #![feature(libc)]
 #![feature(rustc_private)]
@@ -96,7 +97,6 @@ pub mod config;
 pub mod entry;
 pub mod feature_gate;
 pub mod fold;
-pub mod owned_slice;
 pub mod parse;
 pub mod ptr;
 pub mod show_span;

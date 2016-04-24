@@ -8,10 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Check that qualified paths with type parameters
+// fail during type checking and not during parsing
 
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py while'
+struct S;
 
-fn main() {
-    let while = "foo"; //~ error: expected pattern, found keyword `while`
+trait Tr {
+    type A;
 }
+
+impl Tr for S {
+    type A = S;
+}
+
+impl S {
+    fn f<T>() {}
+}
+
+type A = <S as Tr>::A::f<u8>; //~ ERROR type parameters are not allowed on this type
+//~^ ERROR ambiguous associated type; specify the type using the syntax `<<S as Tr>::A as Trait>::f`
+
+fn main() {}

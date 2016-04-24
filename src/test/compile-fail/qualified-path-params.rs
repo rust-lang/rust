@@ -8,10 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+// Check that qualified paths with type parameters
+// fail during type checking and not during parsing
 
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py while'
+struct S;
+
+trait Tr {
+    type A;
+}
+
+impl Tr for S {
+    type A = S;
+}
+
+impl S {
+    fn f<T>() {}
+}
 
 fn main() {
-    let while = "foo"; //~ error: expected pattern, found keyword `while`
+    match 10 {
+        <S as Tr>::A::f::<u8> => {} //~ ERROR `f` is not an associated const
+        0 ... <S as Tr>::A::f::<u8> => {} //~ ERROR only char and numeric types are allowed in range
+    }
 }

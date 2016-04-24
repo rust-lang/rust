@@ -8,10 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+pub struct A;
 
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py while'
+mod test {
+    pub use super :: A;
+
+    pub use self :: A as B;
+}
+
+impl A {
+    fn f() {}
+    fn g() {
+        Self :: f()
+    }
+}
 
 fn main() {
-    let while = "foo"; //~ error: expected pattern, found keyword `while`
+    let a: A = test::A;
+    let b: A = test::B;
+    let c: () = A::g();
 }
