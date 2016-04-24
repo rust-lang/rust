@@ -293,6 +293,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtGenerics(ref e)    => generics_to_string(&e),
             token::NtWhereClause(ref e) => where_clause_to_string(&e),
             token::NtArg(ref e)         => arg_to_string(&e),
+            token::NtVis(ref e)         => vis_to_string(&e),
         }
     }
 }
@@ -371,6 +372,10 @@ pub fn path_to_string(p: &ast::Path) -> String {
 
 pub fn ident_to_string(id: ast::Ident) -> String {
     to_string(|s| s.print_ident(id))
+}
+
+pub fn vis_to_string(v: &ast::Visibility) -> String {
+    to_string(|s| s.print_visibility(v))
 }
 
 pub fn fun_to_string(decl: &ast::FnDecl,
