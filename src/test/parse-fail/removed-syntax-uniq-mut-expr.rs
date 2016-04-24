@@ -11,7 +11,5 @@
 // compile-flags: -Z parse-only
 
 fn f() {
-    let a_box = box mut 42;
-    //~^  ERROR expected identifier, found keyword `mut`
-    //~^^ ERROR expected one of `!`, `.`, `::`, `;`, `?`, `{`, or an operator, found `42`
+    let a_box = box mut 42; //~ ERROR expected expression, found keyword `mut`
 }

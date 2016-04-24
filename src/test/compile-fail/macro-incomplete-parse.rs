@@ -19,7 +19,7 @@ macro_rules! ignored_item {
 }
 
 macro_rules! ignored_expr {
-    () => ( 1,  //~ ERROR unexpected token: `,`
+    () => ( 1,  //~ ERROR expected expression, found `,`
             2 )
 }
 

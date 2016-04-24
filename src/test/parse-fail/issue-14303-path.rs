@@ -12,4 +12,4 @@
 
 fn bar<'a, T>(x: mymodule::X<'a, T, 'b, 'c>) {}
 //~^ ERROR lifetime parameters must be declared prior to type parameters
-//~^^ ERROR unexpected token
+//~^^ ERROR expected pattern, found `'c`

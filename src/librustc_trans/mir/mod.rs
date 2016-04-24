@@ -22,7 +22,7 @@ use machine;
 use type_of;
 
 use syntax::codemap::DUMMY_SP;
-use syntax::parse::token;
+use syntax::parse::token::keywords;
 
 use std::ops::Deref;
 use std::rc::Rc;
@@ -286,7 +286,7 @@ fn arg_value_refs<'bcx, 'tcx>(bcx: &BlockAndBuilder<'bcx, 'tcx>,
                         alloca: lltemp,
                         address_operations: &ops
                     };
-                    declare_local(bcx, token::special_idents::invalid.name,
+                    declare_local(bcx, keywords::Invalid.name(),
                                   tupled_arg_ty, scope, variable_access,
                                   VariableKind::ArgumentVariable(arg_index + i + 1),
                                   bcx.fcx().span.unwrap_or(DUMMY_SP));

@@ -12,6 +12,7 @@
 
 fn foo<'a>(a: &'a isize) { }
 fn bar(a: &'static isize) { }
-fn baz(a: &'let isize) { } //~ ERROR invalid lifetime name
+fn baz(a: &'let isize) { } //~ ERROR lifetimes cannot use keyword names
+fn zab(a: &'self isize) { } //~ ERROR lifetimes cannot use keyword names
 
 fn main() { }

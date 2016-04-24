@@ -13,8 +13,10 @@
 fn main() {
     foo(bar(; //~ NOTE: unclosed delimiter
     //~^ NOTE: unclosed delimiter
-    //~^^ ERROR: unexpected token: `;`
+    //~^^ ERROR: expected expression, found `;`
     //~^^^ ERROR: unresolved name `bar`
     //~^^^^ ERROR: unresolved name `foo`
+    //~^^^^^ ERROR: expected one of `)`, `,`, `.`, `<`, `?`
 } //~ ERROR: incorrect close delimiter: `}`
 //~^ ERROR: incorrect close delimiter: `}`
+//~^^ ERROR: expected expression, found `)`

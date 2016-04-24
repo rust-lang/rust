@@ -11,17 +11,17 @@
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
 
-trait Serializable<'self, T> { //~ ERROR no longer a special lifetime
-    fn serialize(val : &'self T) -> Vec<u8> ; //~ ERROR no longer a special lifetime
-    fn deserialize(repr : &[u8]) -> &'self T; //~ ERROR no longer a special lifetime
+trait Serializable<'self, T> { //~ ERROR lifetimes cannot use keyword names
+    fn serialize(val : &'self T) -> Vec<u8> ; //~ ERROR lifetimes cannot use keyword names
+    fn deserialize(repr : &[u8]) -> &'self T; //~ ERROR lifetimes cannot use keyword names
 }
 
-impl<'self> Serializable<str> for &'self str { //~ ERROR no longer a special lifetime
-    //~^ ERROR no longer a special lifetime
-    fn serialize(val : &'self str) -> Vec<u8> { //~ ERROR no longer a special lifetime
+impl<'self> Serializable<str> for &'self str { //~ ERROR lifetimes cannot use keyword names
+    //~^ ERROR lifetimes cannot use keyword names
+    fn serialize(val : &'self str) -> Vec<u8> { //~ ERROR lifetimes cannot use keyword names
         vec!(1)
     }
-    fn deserialize(repr: &[u8]) -> &'self str { //~ ERROR no longer a special lifetime
+    fn deserialize(repr: &[u8]) -> &'self str { //~ ERROR lifetimes cannot use keyword names
         "hi"
     }
 }

@@ -18,7 +18,7 @@ use syntax::attr::ThinAttributesExt;
 use hir;
 use syntax::codemap::{respan, Span, Spanned};
 use syntax::ptr::P;
-use syntax::parse::token;
+use syntax::parse::token::keywords;
 use syntax::util::move_map::MoveMap;
 
 pub trait Folder : Sized {
@@ -867,7 +867,7 @@ pub fn noop_fold_crate<T: Folder>(Crate { module, attrs, config, span,
     let config = folder.fold_meta_items(config);
 
     let crate_mod = folder.fold_item(hir::Item {
-        name: token::special_idents::invalid.name,
+        name: keywords::Invalid.name(),
         attrs: attrs,
         id: DUMMY_NODE_ID,
         vis: hir::Public,
