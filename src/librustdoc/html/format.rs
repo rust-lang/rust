@@ -291,17 +291,19 @@ impl fmt::Display for clean::Path {
 
 pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
+    if !did.is_local() && !cache.access_levels.is_doc_reachable(did) {
+        return None
+    }
+
     let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
     let &(ref fqp, shortty) = match cache.paths.get(&did) {
         Some(p) => p,
         None => return None,
     };
+
     let mut url = if did.is_local() || cache.inlined.contains(&did) {
         repeat("../").take(loc.len()).collect::<String>()
     } else {
-        if !cache.access_levels.is_doc_reachable(did) {
-            return None
-        }
         match cache.extern_locations[&did.krate] {
             (_, render::Remote(ref s)) => s.to_string(),
             (_, render::Local) => repeat("../").take(loc.len()).collect(),
