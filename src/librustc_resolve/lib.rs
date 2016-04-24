@@ -68,7 +68,7 @@ use rustc::hir::intravisit::{self, FnKind, Visitor};
 use rustc::hir;
 use rustc::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
 use rustc::hir::Crate;
-use rustc::hir::{Expr, ExprAgain, ExprBreak, ExprCall, ExprField};
+use rustc::hir::{Expr, ExprAgain, ExprBreak, ExprField};
 use rustc::hir::{ExprLoop, ExprWhile, ExprMethodCall};
 use rustc::hir::{ExprPath, ExprStruct, FnDecl};
 use rustc::hir::{ForeignItemFn, ForeignItemStatic, Generics};
@@ -163,7 +163,7 @@ enum ResolutionError<'a> {
     /// error E0424: `self` is not available in a static method
     SelfNotAvailableInStaticMethod,
     /// error E0425: unresolved name
-    UnresolvedName(&'a str, &'a str, UnresolvedNameContext),
+    UnresolvedName(&'a str, &'a str, UnresolvedNameContext<'a>),
     /// error E0426: use of undeclared label
     UndeclaredLabel(&'a str),
     /// error E0427: cannot use `ref` binding mode with ...
@@ -186,12 +186,12 @@ enum ResolutionError<'a> {
 
 /// Context of where `ResolutionError::UnresolvedName` arose.
 #[derive(Clone, PartialEq, Eq, Debug)]
-enum UnresolvedNameContext {
-    /// `PathIsMod(id)` indicates that a given path, used in
+enum UnresolvedNameContext<'a> {
+    /// `PathIsMod(parent)` indicates that a given path, used in
     /// expression context, actually resolved to a module rather than
-    /// a value. The `id` attached to the variant is the node id of
-    /// the erroneous path expression.
-    PathIsMod(ast::NodeId),
+    /// a value. The optional expression attached to the variant is the
+    /// the parent of the erroneous path expression.
+    PathIsMod(Option<&'a Expr>),
 
     /// `Other` means we have no extra information about the context
     /// of the unresolved name error. (Maybe we could eliminate all
@@ -419,39 +419,25 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
 
             match context {
                 UnresolvedNameContext::Other => { } // no help available
-                UnresolvedNameContext::PathIsMod(id) => {
-                    let mut help_msg = String::new();
-                    let parent_id = resolver.ast_map.get_parent_node(id);
-                    if let Some(hir_map::Node::NodeExpr(e)) = resolver.ast_map.find(parent_id) {
-                        match e.node {
-                            ExprField(_, ident) => {
-                                help_msg = format!("To reference an item from the \
-                                                    `{module}` module, use \
-                                                    `{module}::{ident}`",
-                                                   module = path,
-                                                   ident = ident.node);
-                            }
-                            ExprMethodCall(ident, _, _) => {
-                                help_msg = format!("To call a function from the \
-                                                    `{module}` module, use \
-                                                    `{module}::{ident}(..)`",
-                                                   module = path,
-                                                   ident = ident.node);
-                            }
-                            ExprCall(_, _) => {
-                                help_msg = format!("No function corresponds to `{module}(..)`",
-                                                   module = path);
-                            }
-                            _ => { } // no help available
+                UnresolvedNameContext::PathIsMod(parent) => {
+                    err.fileline_help(span, &match parent.map(|parent| &parent.node) {
+                        Some(&ExprField(_, ident)) => {
+                            format!("To reference an item from the `{module}` module, \
+                                     use `{module}::{ident}`",
+                                    module = path,
+                                    ident = ident.node)
                         }
-                    } else {
-                        help_msg = format!("Module `{module}` cannot be the value of an expression",
-                                           module = path);
-                    }
-
-                    if !help_msg.is_empty() {
-                        err.fileline_help(span, &help_msg);
-                    }
+                        Some(&ExprMethodCall(ident, _, _)) => {
+                            format!("To call a function from the `{module}` module, \
+                                     use `{module}::{ident}(..)`",
+                                    module = path,
+                                    ident = ident.node)
+                        }
+                        _ => {
+                            format!("Module `{module}` cannot be used as an expression",
+                                    module = path)
+                        }
+                    });
                 }
             }
             err
@@ -553,7 +539,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr: &Expr) {
-        self.resolve_expr(expr);
+        self.resolve_expr(expr, None);
     }
     fn visit_local(&mut self, local: &Local) {
         self.resolve_local(local);
@@ -2850,7 +2836,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } SuggestionType::NotFound
     }
 
-    fn resolve_expr(&mut self, expr: &Expr) {
+    fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
 
@@ -2995,7 +2981,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                    UseLexicalScope,
                                                                    expr.span) {
                                         Success(_) => {
-                                            context = UnresolvedNameContext::PathIsMod(expr.id);
+                                            context = UnresolvedNameContext::PathIsMod(parent);
                                         },
                                         _ => {},
                                     };
@@ -3067,6 +3053,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(_) => {
                         span_bug!(expr.span, "label wasn't mapped to a label def!")
                     }
+                }
+            }
+            ExprField(ref subexpression, _) => {
+                self.resolve_expr(subexpression, Some(expr));
+            }
+            ExprMethodCall(_, ref types, ref arguments) => {
+                let mut arguments = arguments.iter();
+                self.resolve_expr(arguments.next().unwrap(), Some(expr));
+                for argument in arguments {
+                    self.resolve_expr(argument, None);
+                }
+                for ty in types.iter() {
+                    self.visit_ty(ty);
                 }
             }
 
