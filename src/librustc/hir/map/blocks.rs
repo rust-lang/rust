@@ -250,7 +250,7 @@ impl<'a> FnLikeNode<'a> {
                 }
             }
             map::NodeExpr(e) => match e.node {
-                ast::ExprClosure(_, ref decl, ref block) =>
+                ast::ExprClosure(_, ref decl, ref block, _fn_decl_span) =>
                     closure(ClosureParts::new(&decl,
                                               &block,
                                               e.id,

@@ -149,14 +149,17 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             fld.cx.expr(span, il).with_attrs(fold_thin_attrs(attrs, fld))
         }
 
-        ast::ExprKind::Closure(capture_clause, fn_decl, block) => {
+        ast::ExprKind::Closure(capture_clause, fn_decl, block, fn_decl_span) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);
             let new_node = ast::ExprKind::Closure(capture_clause,
-                                            rewritten_fn_decl,
-                                            rewritten_block);
-            P(ast::Expr{id:id, node: new_node, span: fld.new_span(span),
-                        attrs: fold_thin_attrs(attrs, fld)})
+                                                  rewritten_fn_decl,
+                                                  rewritten_block,
+                                                  fld.new_span(fn_decl_span));
+            P(ast::Expr{ id:id,
+                         node: new_node,
+                         span: fld.new_span(span),
+                         attrs: fold_thin_attrs(attrs, fld) })
         }
 
         _ => {

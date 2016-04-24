@@ -725,7 +725,7 @@ fn convert_var<'a, 'tcx: 'a>(cx: &mut Cx<'a, 'tcx>,
             let body_id = match cx.tcx.map.find(closure_expr_id) {
                 Some(map::NodeExpr(expr)) => {
                     match expr.node {
-                        hir::ExprClosure(_, _, ref body) => body.id,
+                        hir::ExprClosure(_, _, ref body, _) => body.id,
                         _ => {
                             span_bug!(expr.span, "closure expr is not a closure expr");
                         }

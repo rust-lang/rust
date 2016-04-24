@@ -3225,13 +3225,15 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo, hi, ExprKind::IfLet(pat, expr, thn, els), attrs))
     }
 
-    // `|args| expr`
-    pub fn parse_lambda_expr(&mut self, lo: BytePos,
+    // `move |args| expr`
+    pub fn parse_lambda_expr(&mut self,
+                             lo: BytePos,
                              capture_clause: CaptureBy,
                              attrs: ThinAttributes)
                              -> PResult<'a, P<Expr>>
     {
         let decl = self.parse_fn_block_decl()?;
+        let decl_hi = self.last_span.hi;
         let body = match decl.output {
             FunctionRetTy::Default(_) => {
                 // If no explicit return type is given, parse any
@@ -3255,7 +3257,8 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(
             lo,
             body.span.hi,
-            ExprKind::Closure(capture_clause, decl, body), attrs))
+            ExprKind::Closure(capture_clause, decl, body, mk_sp(lo, decl_hi)),
+            attrs))
     }
 
     // `else` token already eaten

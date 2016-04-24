@@ -3530,7 +3530,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
       hir::ExprMatch(ref discrim, ref arms, match_src) => {
         _match::check_match(fcx, expr, &discrim, arms, expected, match_src);
       }
-      hir::ExprClosure(capture, ref decl, ref body) => {
+      hir::ExprClosure(capture, ref decl, ref body, _) => {
           closure::check_expr_closure(fcx, expr, capture, &decl, &body, expected);
       }
       hir::ExprBlock(ref b) => {

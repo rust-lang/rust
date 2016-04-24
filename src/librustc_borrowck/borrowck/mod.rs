@@ -415,7 +415,7 @@ pub fn closure_to_block(closure_id: ast::NodeId,
                         tcx: &TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
-            hir::ExprClosure(_, _, ref block) => {
+            hir::ExprClosure(_, _, ref block, _) => {
                 block.id
             }
             _ => {
