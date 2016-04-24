@@ -10,7 +10,8 @@
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
-use rustc::hir::map as hir_map;
+use rustc::hir::{map as hir_map, FreevarMap, TraitMap};
+use rustc::hir::def::DefMap;
 use rustc_mir as mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
@@ -139,8 +140,31 @@ pub fn compile_input(sess: &Session,
 
         time(sess.time_passes(),
              "external crate/lib resolution",
-             || LocalCrateReader::new(sess, &cstore, &defs, &expanded_crate, &id)
+             || LocalCrateReader::new(sess, &cstore, defs, &expanded_crate, &id)
                     .read_crates(&dep_graph));
+
+        time(sess.time_passes(),
+             "early lint checks",
+             || lint::check_ast_crate(sess, &expanded_crate));
+
+        let resolve::CrateMap {
+            def_map,
+            freevars,
+            maybe_unused_trait_imports,
+            export_map,
+            trait_map,
+            glob_map,
+        } = time(sess.time_passes(), "name resolution", || {
+            resolve::resolve_crate(sess, &expanded_crate, &defs.borrow(), control.make_glob_map)
+        });
+
+        let analysis = ty::CrateAnalysis {
+            export_map: export_map,
+            access_levels: AccessLevels::default(),
+            reachable: NodeSet(),
+            name: &id,
+            glob_map: glob_map,
+        };
 
         // Lower ast -> hir.
         let lcx = LoweringContext::new(sess, Some(&expanded_crate), defs);
@@ -185,10 +209,6 @@ pub fn compile_input(sess: &Session,
             hir::check_attr::check_crate(sess, &expanded_crate);
         });
 
-        time(sess.time_passes(),
-             "early lint checks",
-             || lint::check_ast_crate(sess, &expanded_crate));
-
         let opt_crate = if keep_ast(sess) {
             Some(&expanded_crate)
         } else {
@@ -200,7 +220,11 @@ pub fn compile_input(sess: &Session,
                                     hir_map,
                                     &arenas,
                                     &id,
-                                    control.make_glob_map,
+                                    analysis,
+                                    def_map,
+                                    freevars,
+                                    trait_map,
+                                    maybe_unused_trait_imports,
                                     |tcx, mir_map, analysis, result| {
             {
                 // Eventually, we will want to track plugins.
@@ -763,7 +787,11 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                hir_map: hir_map::Map<'tcx>,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                name: &str,
-                                               make_glob_map: resolve::MakeGlobMap,
+                                               mut analysis: ty::CrateAnalysis,
+                                               def_map: RefCell<DefMap>,
+                                               freevars: FreevarMap,
+                                               trait_map: TraitMap,
+                                               maybe_unused_trait_imports: NodeSet,
                                                f: F)
                                                -> Result<R, usize>
     where F: FnOnce(&TyCtxt<'tcx>, Option<MirMap<'tcx>>, ty::CrateAnalysis, CompileResult) -> R
@@ -787,25 +815,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             middle::lang_items::collect_language_items(&sess, &hir_map)
         })
     })?;
-
-    let resolve::CrateMap {
-        def_map,
-        freevars,
-        maybe_unused_trait_imports,
-        export_map,
-        trait_map,
-        glob_map,
-    } = time(sess.time_passes(),
-             "name resolution",
-             || resolve::resolve_crate(sess, &hir_map, make_glob_map));
-
-    let mut analysis = ty::CrateAnalysis {
-        export_map: export_map,
-        access_levels: AccessLevels::default(),
-        reachable: NodeSet(),
-        name: name,
-        glob_map: glob_map,
-    };
 
     let named_region_map = time(time_passes,
                                 "lifetime resolution",

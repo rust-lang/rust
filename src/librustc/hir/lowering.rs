@@ -1438,7 +1438,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let loop_expr = hir::ExprLoop(loop_block,
                                               opt_ident.map(|ident| lower_ident(lctx, ident)));
                 // add attributes to the outer returned expr node
-                return expr(lctx, e.span, loop_expr, e.attrs.clone());
+                let attrs = e.attrs.clone();
+                return P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: attrs });
             }
 
             // Desugar ExprForLoop
@@ -1515,7 +1516,8 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let loop_block = block_expr(lctx, match_expr);
                 let loop_expr = hir::ExprLoop(loop_block,
                                               opt_ident.map(|ident| lower_ident(lctx, ident)));
-                let loop_expr = expr(lctx, e.span, loop_expr, None);
+                let loop_expr =
+                    P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: None });
 
                 // `mut iter => { ... }`
                 let iter_arm = {

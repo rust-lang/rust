@@ -344,11 +344,11 @@ struct ImportResolvingError<'a> {
     help: String,
 }
 
-struct ImportResolver<'a, 'b: 'a, 'tcx: 'b> {
-    resolver: &'a mut Resolver<'b, 'tcx>,
+struct ImportResolver<'a, 'b: 'a> {
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
+impl<'a, 'b:'a> ImportResolver<'a, 'b> {
     // Import resolution
     //
     // This is a fixed-point algorithm. We resolve imports until our efforts
@@ -700,7 +700,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         if reexports.len() > 0 {
             if let Some(def_id) = module.def_id() {
-                let node_id = self.resolver.ast_map.as_local_node_id(def_id).unwrap();
+                let node_id = self.resolver.definitions.as_local_node_id(def_id).unwrap();
                 self.resolver.export_map.insert(node_id, reexports);
             }
         }
