@@ -65,7 +65,7 @@ workspace = "../foo"
 
 The root of a workspace, indicated by the presence of `[workspace]`, is
 responsible for defining the entire workspace (listing all members).
-This example here means that two extra crates will members of the workspace
+This example here means that two extra crates will be members of the workspace
 (which also includes the root).
 
 The `package.workspace` key is used to point at a workspace root. For
@@ -75,7 +75,7 @@ workspace root that this package is a member of.
 These keys are mutually exclusive when applied in `Cargo.toml`. A crate may
 *either* specify `package.workspace` or specify `[workspace]`. That is, a
 crate cannot both be a root in a workspace (contain `[workspace]`) and also be
-member of another workspace (contain `package.workspace`).
+a member of another workspace (contain `package.workspace`).
 
 ### "Virtual" `Cargo.toml`
 
@@ -105,17 +105,17 @@ While the restriction of one-root-per workspace may make sense, the restriction
 of crates pointing back to the root may not. If, however, this restriction were
 not in place then the set of crates in a workspace may differ depending on
 which crate it was viewed from. For example if workspace root A includes B then
-it will think B is in A's workspace. If, however, B does ont point back to A,
+it will think B is in A's workspace. If, however, B does not point back to A,
 then B would not think that A was in its workspace. This would in turn cause the
-set of crates in each workspace to be different, futher causing `Cargo.lock` to
+set of crates in each workspace to be different, further causing `Cargo.lock` to
 get out of sync if it were allowed. By ensuring that all crates have edges to
 each other in a workspace Cargo can prevent this situation and guarantee robust
 builds no matter where they're executed in the workspace.
 
 To alleviate misconfiguration Cargo will emit an error if the two properties
-above hold for any crate attempting to be part of a workspace. For example, if
-the `package.workspace` key is specified, but the crate is not a workspace root
-or doesn't point back to the original crate an error is emitted.
+above do not hold for any crate attempting to be part of a workspace. For
+example, if the `package.workspace` key is specified, but the crate is not a
+workspace root or doesn't point back to the original crate an error is emitted.
 
 ### Implicit relations
 
@@ -307,6 +307,9 @@ subcommands with a `--all` flag to perform tasks such as:
 * Test all crates within a workspace (run all unit tests, doc tests, etc)
 * Build all binaries for a set of crates within a workspace
 * Publish all crates in a workspace if necessary to crates.io
+
+Furthermore, workspaces could start to deduplicate metadata among crates like
+version numbers, URL information, authorship, etc.
 
 This support isn't proposed to be added in this RFC specifically, but simply to
 show that workspaces can be used to solve other existing issues in Cargo.
