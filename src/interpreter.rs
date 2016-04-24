@@ -741,23 +741,14 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     }
 
     fn eval_operand(&mut self, op: &mir::Operand<'tcx>) -> EvalResult<Pointer> {
-        self.eval_operand_and_layout(op).map(|(p, _)| p)
-    }
-
-    fn eval_operand_and_layout(&mut self, op: &mir::Operand<'tcx>)
-        -> EvalResult<(Pointer, &'tcx Layout)>
-    {
         use rustc::mir::repr::Operand::*;
         match *op {
             Consume(ref lvalue) =>
-                Ok((try!(self.eval_lvalue(lvalue)).to_ptr(), self.lvalue_layout(lvalue))),
+                Ok(try!(self.eval_lvalue(lvalue)).to_ptr()),
             Constant(mir::Constant { ref literal, ty, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
-                    Value { ref value } => Ok((
-                        try!(self.const_to_ptr(value)),
-                        self.type_layout(ty),
-                    )),
+                    Value { ref value } => Ok(try!(self.const_to_ptr(value))),
                     Item { .. } => unimplemented!(),
                 }
             }
