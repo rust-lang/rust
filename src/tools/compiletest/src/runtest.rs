@@ -1161,7 +1161,8 @@ fn compile_test(config: &Config, props: &TestProps,
     let args = make_compile_args(config,
                                  props,
                                  link_args,
-                                 |a, b| TargetLocation::ThisFile(make_exe_name(a, b)), testpaths);
+                                 &testpaths.file,
+                                 TargetLocation::ThisFile(make_exe_name(config, testpaths)));
     compose_and_run_compiler(config, props, testpaths, args, None)
 }
 
@@ -1270,16 +1271,17 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
             }
         };
         crate_type.extend(extra_link_args.clone());
+        let aux_output = {
+            let f = make_lib_name(config, &testpaths.file, testpaths);
+            let parent = f.parent().unwrap();
+            TargetLocation::ThisDirectory(parent.to_path_buf())
+        };
         let aux_args =
             make_compile_args(config,
                               &aux_props,
                               crate_type,
-                              |a,b| {
-                                  let f = make_lib_name(a, &b.file, testpaths);
-                                  let parent = f.parent().unwrap();
-                                  TargetLocation::ThisDirectory(parent.to_path_buf())
-                              },
-                              &aux_testpaths);
+                              &aux_testpaths.file,
+                              aux_output);
         let auxres = compose_and_run(config,
                                      &aux_testpaths,
                                      aux_args,
@@ -1328,22 +1330,21 @@ enum TargetLocation {
     ThisDirectory(PathBuf),
 }
 
-fn make_compile_args<F>(config: &Config,
-                        props: &TestProps,
-                        extras: Vec<String> ,
-                        xform: F,
-                        testpaths: &TestPaths)
-                        -> ProcArgs where
-    F: FnOnce(&Config, &TestPaths) -> TargetLocation,
+fn make_compile_args(config: &Config,
+                     props: &TestProps,
+                     extras: Vec<String> ,
+                     input_file: &Path,
+                     output_file: TargetLocation)
+                     -> ProcArgs
 {
-    let xform_file = xform(config, testpaths);
     let target = if props.force_host {
         &*config.host
     } else {
         &*config.target
     };
+
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let mut args = vec!(testpaths.file.to_str().unwrap().to_owned(),
+    let mut args = vec!(input_file.to_str().unwrap().to_owned(),
                         "-L".to_owned(),
                         config.build_base.to_str().unwrap().to_owned(),
                         format!("--target={}", target));
@@ -1384,7 +1385,7 @@ fn make_compile_args<F>(config: &Config,
         args.push("-C".to_owned());
         args.push("prefer-dynamic".to_owned());
     }
-    let path = match xform_file {
+    let path = match output_file {
         TargetLocation::ThisFile(path) => {
             args.push("-o".to_owned());
             path
@@ -1550,6 +1551,9 @@ fn output_testname(filepath: &Path) -> PathBuf {
     PathBuf::from(filepath.file_stem().unwrap())
 }
 
+/// Given a test path like `compile-fail/foo/bar.rs` Returns a name like
+///
+///     <output>/foo/bar-stage1
 fn output_base_name(config: &Config, testpaths: &TestPaths) -> PathBuf {
     let dir = config.build_base.join(&testpaths.relative_dir);
 
@@ -1772,10 +1776,11 @@ fn compile_test_and_save_ir(config: &Config, props: &TestProps,
     let args = make_compile_args(config,
                                  props,
                                  link_args,
-                                 |a, b| TargetLocation::ThisDirectory(
-                                     output_base_name(a, b).parent()
-                                        .unwrap().to_path_buf()),
-                                 testpaths);
+                                 &testpaths.file,
+                                 TargetLocation::ThisDirectory(
+                                     output_base_name(config, testpaths).parent()
+                                                                        .unwrap()
+                                                                        .to_path_buf()));
     compose_and_run_compiler(config, props, testpaths, args, None)
 }
 
