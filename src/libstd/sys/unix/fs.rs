@@ -27,7 +27,7 @@ use sys_common::{AsInner, FromInner};
 #[cfg(any(target_os = "linux", target_os = "emscripten"))]
 use libc::{stat64, fstat64, lstat64, off64_t, ftruncate64, lseek64, dirent64, readdir64_r, open64};
 #[cfg(target_os = "android")]
-use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off64_t, ftruncate64, lseek64,
+use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off64_t, lseek64,
            dirent as dirent64, open as open64};
 #[cfg(not(any(target_os = "linux",
               target_os = "emscripten",
@@ -475,10 +475,13 @@ impl File {
     }
 
     pub fn truncate(&self, size: u64) -> io::Result<()> {
-        cvt_r(|| unsafe {
+        #[cfg(target_os = "android")]
+        return ::sys::android::ftruncate64(self.0.raw(), size);
+
+        #[cfg(not(target_os = "android"))]
+        return cvt_r(|| unsafe {
             ftruncate64(self.0.raw(), size as off64_t)
-        })?;
-        Ok(())
+        }).map(|_| ());
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
