@@ -829,7 +829,7 @@ pub struct ModuleS<'a> {
     globs: RefCell<Vec<&'a ImportDirective<'a>>>,
 
     // Used to memoize the traits in this module for faster searches through all traits in scope.
-    traits: RefCell<Option<Box<[&'a NameBinding<'a>]>>>,
+    traits: RefCell<Option<Box<[(Name, &'a NameBinding<'a>)]>>>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
@@ -1232,14 +1232,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut new_set = FnvHashSet();
         new_set.insert(name);
         self.glob_map.insert(directive.id, new_set);
-    }
-
-    fn get_trait_name(&self, did: DefId) -> Name {
-        if let Some(node_id) = self.ast_map.as_local_node_id(did) {
-            self.ast_map.expect_item(node_id).name
-        } else {
-            self.session.cstore.item_name(did)
-        }
     }
 
     /// Resolves the given module path from the given root `module_`.
@@ -3146,20 +3138,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut traits = module.traits.borrow_mut();
                 if traits.is_none() {
                     let mut collected_traits = Vec::new();
-                    module.for_each_child(|_, ns, binding| {
+                    module.for_each_child(|name, ns, binding| {
                         if ns != TypeNS { return }
                         if let Some(Def::Trait(_)) = binding.def() {
-                            collected_traits.push(binding);
+                            collected_traits.push((name, binding));
                         }
                     });
                     *traits = Some(collected_traits.into_boxed_slice());
                 }
 
-                for binding in traits.as_ref().unwrap().iter() {
+                for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
                     let trait_def_id = binding.def().unwrap().def_id();
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
                         add_trait_info(&mut found_traits, trait_def_id, name);
-                        let trait_name = self.get_trait_name(trait_def_id);
                         self.record_use(trait_name, TypeNS, binding);
                     }
                 }
