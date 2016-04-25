@@ -9,8 +9,8 @@
 // except according to those terms.
 
 mod foo {
-    pub const b: u8 = 2; //~ NOTE constant defined here
-    pub const d: u8 = 2; //~ NOTE constant defined here
+    pub const b: u8 = 2;
+    pub const d: u8 = 2;
 }
 
 use foo::b as c; //~ NOTE constant imported here
