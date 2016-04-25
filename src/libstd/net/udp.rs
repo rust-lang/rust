@@ -324,7 +324,7 @@ impl UdpSocket {
         self.0.recv(buf)
     }
 
-    /// Moves this TCP stream into or out of nonblocking mode.
+    /// Moves this UDP socket into or out of nonblocking mode.
     ///
     /// On Unix this corresponds to calling fcntl, and on Windows this
     /// corresponds to calling ioctlsocket.
