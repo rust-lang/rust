@@ -44,6 +44,7 @@ impl<'a, 'b, 'tcx> LibEmbargoVisitor<'a, 'b, 'tcx> {
 
     pub fn visit_lib(&mut self, cnum: ast::CrateNum) {
         let did = DefId { krate: cnum, index: CRATE_DEF_INDEX };
+        self.update(did, Some(AccessLevel::Public));
         self.visit_mod(did);
     }
 
