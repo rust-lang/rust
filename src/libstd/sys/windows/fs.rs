@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use prelude::v1::*;
-use io::prelude::*;
 use os::windows::prelude::*;
 
 use ffi::OsString;
