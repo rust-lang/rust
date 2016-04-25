@@ -1937,19 +1937,19 @@ actual:\n\
 
     fn run_incremental_test(&self) {
         // Basic plan for a test incremental/foo/bar.rs:
-        // - load list of revisions pass1, fail2, pass3
-        //   - each should begin with `rpass`, `rfail`, or `cfail`
+        // - load list of revisions rpass1, cfail2, rpass3
+        //   - each should begin with `rpass`, `cfail`, or `cfail`
         //   - if `rpass`, expect compile and execution to succeed
         //   - if `cfail`, expect compilation to fail
         //   - if `rfail`, expect execution to fail
         // - create a directory build/foo/bar.incremental
-        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C pass1
-        //   - because name of revision starts with "pass", expect success
-        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C fail2
-        //   - because name of revision starts with "fail", expect an error
-        //   - load expected errors as usual, but filter for those that end in `[fail2]`
-        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C pass3
-        //   - because name of revision starts with "pass", expect success
+        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C rpass1
+        //   - because name of revision starts with "rpass", expect success
+        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C cfail2
+        //   - because name of revision starts with "cfail", expect an error
+        //   - load expected errors as usual, but filter for those that end in `[rfail2]`
+        // - compile foo/bar.rs with -Z incremental=.../foo/bar.incremental and -C rpass3
+        //   - because name of revision starts with "rpass", expect success
         // - execute build/foo/bar.exe and save output
         //
         // FIXME -- use non-incremental mode as an oracle? That doesn't apply
