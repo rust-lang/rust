@@ -15,6 +15,5 @@
 fn main() {
     let _ = 3 as bool;
     //~^ ERROR cannot cast as `bool`
-    //~| HELP see a detailed explanation
     //~| HELP compare with zero
 }
