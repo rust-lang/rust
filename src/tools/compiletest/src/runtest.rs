@@ -47,7 +47,7 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         print!("\n\n");
     }
     debug!("running {:?}", testpaths.file.display());
-    let props = header::load_props(&testpaths.file);
+    let props = TestProps::from_file(&testpaths.file);
     debug!("loaded props");
     match config.mode {
         CompileFail => run_cfail_test(&config, &props, &testpaths),
@@ -84,9 +84,7 @@ fn for_each_revision<OP>(config: &Config, props: &TestProps, testpaths: &TestPat
     } else {
         for revision in &props.revisions {
             let mut revision_props = props.clone();
-            header::load_props_into(&mut revision_props,
-                                    &testpaths.file,
-                                    Some(&revision));
+            revision_props.load_from(&testpaths.file, Some(&revision));
             revision_props.compile_flags.extend(vec![
                 format!("--cfg"),
                 format!("{}", revision),
@@ -1174,7 +1172,7 @@ fn document(config: &Config,
     if props.build_aux_docs {
         for rel_ab in &props.aux_builds {
             let aux_testpaths = compute_aux_test_paths(config, testpaths, rel_ab);
-            let aux_props = header::load_props(&aux_testpaths.file);
+            let aux_props = TestProps::from_file(&aux_testpaths.file);
             let auxres = document(config, &aux_props, &aux_testpaths, out_dir);
             if !auxres.status.success() {
                 return auxres;
@@ -1249,7 +1247,7 @@ fn compose_and_run_compiler(config: &Config, props: &TestProps,
 
     for rel_ab in &props.aux_builds {
         let aux_testpaths = compute_aux_test_paths(config, testpaths, rel_ab);
-        let aux_props = header::load_props(&aux_testpaths.file);
+        let aux_props = TestProps::from_file(&aux_testpaths.file);
         let mut crate_type = if aux_props.no_prefer_dynamic {
             Vec::new()
         } else {
@@ -2044,7 +2042,7 @@ fn run_incremental_test(config: &Config, props: &TestProps, testpaths: &TestPath
 
     for revision in &props.revisions {
         let mut revision_props = props.clone();
-        header::load_props_into(&mut revision_props, &testpaths.file, Some(&revision));
+        revision_props.load_from(&testpaths.file, Some(&revision));
 
         revision_props.compile_flags.extend(vec![
             format!("-Z"),

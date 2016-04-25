@@ -39,6 +39,8 @@ use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
 use test::TestPaths;
 use util::logv;
 
+use self::header::EarlyProps;
+
 pub mod procsrv;
 pub mod util;
 mod json;
@@ -394,7 +396,7 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 }
 
 pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn {
-    let early_props = header::early_props(config, &testpaths.file);
+    let early_props = EarlyProps::from_file(config, &testpaths.file);
 
     // The `should-fail` annotation doesn't apply to pretty tests,
     // since we run the pretty printer across all tests by default.
