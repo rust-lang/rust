@@ -42,24 +42,20 @@ impl<'a, 'b, W: Write> CsvDumper<'a, 'b, W> {
 }
 
 impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
-    fn crate_prelude(&mut self, span: Span, data: CratePreludeData) {
-        let crate_root = data.crate_root.unwrap_or("<no source>".to_owned());
-
+    fn crate_prelude(&mut self, data: CratePreludeData) {
         let values = make_values_str(&[
             ("name", &data.crate_name),
-            ("crate_root", &crate_root)
+            ("crate_root", &data.crate_root)
         ]);
 
-        self.record("crate", span, values);
+        self.record("crate", data.span, values);
 
         for c in data.external_crates {
             let num = c.num.to_string();
-            let lo_loc = self.span.sess.codemap().lookup_char_pos(span.lo);
-            let file_name = SpanUtils::make_path_string(&lo_loc.file.name);
             let values = make_values_str(&[
                 ("name", &c.name),
                 ("crate", &num),
-                ("file_name", &file_name)
+                ("file_name", &c.file_name)
             ]);
 
             self.record_raw(&format!("external_crate{}\n", values));

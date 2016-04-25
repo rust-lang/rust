@@ -119,20 +119,23 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
 
         // Info about all the external crates referenced from this crate.
         let external_crates = self.save_ctxt.get_external_crates().into_iter().map(|c| {
+            let lo_loc = self.span.sess.codemap().lookup_char_pos(c.span.lo);
             ExternalCrateData {
                 name: c.name,
-                num: c.number
+                num: c.number,
+                file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             }
         }).collect();
 
         // The current crate.
         let data = CratePreludeData {
             crate_name: name.into(),
-            crate_root: crate_root,
-            external_crates: external_crates
+            crate_root: crate_root.unwrap_or("<no source>".to_owned()),
+            external_crates: external_crates,
+            span: krate.span,
         };
 
-        self.dumper.crate_prelude(krate.span, data);
+        self.dumper.crate_prelude(data);
     }
 
     // Return all non-empty prefixes of a path.
