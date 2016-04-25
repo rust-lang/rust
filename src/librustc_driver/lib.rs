@@ -483,7 +483,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_llvm.stop = Compilation::Stop;
         }
 
-        if sess.opts.debugging_opts.save_analysis {
+        if save_analysis(sess) {
             control.after_analysis.callback = box |state| {
                 time(state.session.time_passes(), "save analysis", || {
                     save::process_crate(state.tcx.unwrap(),
@@ -491,7 +491,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.krate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
-                                        state.out_dir)
+                                        state.out_dir,
+                                        save_analysis_format(state.session))
                 });
             };
             control.after_analysis.run_callback_on_error = true;
@@ -499,6 +500,21 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         control
+    }
+}
+
+fn save_analysis(sess: &Session) -> bool {
+    sess.opts.debugging_opts.save_analysis ||
+    sess.opts.debugging_opts.save_analysis_csv
+}
+
+fn save_analysis_format(sess: &Session) -> save::Format {
+    if sess.opts.debugging_opts.save_analysis {
+        save::Format::Json
+    } else if sess.opts.debugging_opts.save_analysis_csv {
+        save::Format::Csv
+    } else {
+        unreachable!();
     }
 }
 

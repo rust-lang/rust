@@ -141,8 +141,7 @@ pub fn compile_input(sess: &Session,
                                                            dep_graph));
 
         // Discard MTWT tables that aren't required past lowering to HIR.
-        if !sess.opts.debugging_opts.keep_mtwt_tables &&
-           !sess.opts.debugging_opts.save_analysis {
+        if !keep_mtwt_tables(sess) {
             syntax::ext::mtwt::clear_tables();
         }
 
@@ -179,8 +178,7 @@ pub fn compile_input(sess: &Session,
              "early lint checks",
              || lint::check_ast_crate(sess, &expanded_crate));
 
-        let opt_crate = if sess.opts.debugging_opts.keep_ast ||
-                           sess.opts.debugging_opts.save_analysis {
+        let opt_crate = if keep_ast(sess) {
             Some(&expanded_crate)
         } else {
             drop(expanded_crate);
@@ -247,6 +245,18 @@ pub fn compile_input(sess: &Session,
     phase_6_link_output(sess, &trans, &outputs);
 
     Ok(())
+}
+
+fn keep_mtwt_tables(sess: &Session) -> bool {
+    sess.opts.debugging_opts.keep_mtwt_tables ||
+    sess.opts.debugging_opts.save_analysis ||
+    sess.opts.debugging_opts.save_analysis_csv
+}
+
+fn keep_ast(sess: &Session) -> bool {
+    sess.opts.debugging_opts.keep_ast ||
+    sess.opts.debugging_opts.save_analysis ||
+    sess.opts.debugging_opts.save_analysis_csv
 }
 
 /// The name used for source code that doesn't originate in a file
