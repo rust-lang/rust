@@ -141,7 +141,7 @@ enum ResolutionError<'a> {
     /// error E0413: declaration shadows an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
-    OnlyIrrefutablePatternsAllowedHere(DefId, Name),
+    OnlyIrrefutablePatternsAllowedHere(Name),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -323,7 +323,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                               or unit-like struct in scope",
                              name)
         }
-        ResolutionError::OnlyIrrefutablePatternsAllowedHere(did, name) => {
+        ResolutionError::OnlyIrrefutablePatternsAllowedHere(name) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0414,
@@ -331,14 +331,10 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
             err.span_note(span,
                           "there already is a constant in scope sharing the same \
                            name as this pattern");
-            if let Some(sp) = resolver.ast_map.span_if_local(did) {
-                err.span_note(sp, "constant defined here");
-            }
             if let Some(binding) = resolver.current_module
                                            .resolve_name_in_lexical_scope(name, ValueNS) {
-                if binding.is_import() {
-                    err.span_note(binding.span, "constant imported here");
-                }
+                let participle = if binding.is_import() { "imported" } else { "defined" };
+                err.span_note(binding.span, &format!("constant {} here", participle));
             }
             err
         }
@@ -2248,12 +2244,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 depth: 0,
                                             });
                         }
-                        FoundConst(def, name) => {
+                        FoundConst(_, name) => {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(),
-                                                                                    name)
+                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(name)
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
