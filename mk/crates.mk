@@ -120,7 +120,7 @@ DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back rustc_mir
                     log syntax serialize rustc_llvm rustc_platform_intrinsics \
                     rustc_const_math rustc_const_eval rustc_incremental
 DEPS_rustc_incremental := rbml rustc serialize rustc_data_structures
-DEPS_rustc_save_analysis := rustc log syntax
+DEPS_rustc_save_analysis := rustc log syntax serialize
 DEPS_rustc_typeck := rustc syntax rustc_platform_intrinsics rustc_const_math \
                      rustc_const_eval
 

@@ -26,6 +26,7 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+extern crate serialize as rustc_serialize;
 
 use rustc::hir::{self, lowering};
 use rustc::hir::map::NodeItem;
@@ -45,6 +46,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
 mod csv_dumper;
+mod json_dumper;
 mod data;
 mod dump;
 mod dump_visitor;
@@ -52,6 +54,7 @@ mod dump_visitor;
 pub mod span_utils;
 
 pub use self::csv_dumper::CsvDumper;
+pub use self::json_dumper::JsonDumper;
 pub use self::data::*;
 pub use self::dump::Dump;
 pub use self::dump_visitor::DumpVisitor;
@@ -104,9 +107,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let mut result = Vec::new();
 
         for n in self.tcx.sess.cstore.crates() {
+            let span = match self.tcx.sess.cstore.extern_crate(n) {
+                Some(ref c) => c.span,
+                None => {
+                    debug!("Skipping crate {}, no data", n);
+                    continue;
+                }
+            };
             result.push(CrateData {
                 name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
                 number: n,
+                span: span,
             });
         }
 
