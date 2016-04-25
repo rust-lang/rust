@@ -177,6 +177,7 @@ impl error::Error for ExplicitBug {
 
 /// Used for emitting structured error messages and other diagnostic information.
 #[must_use]
+#[derive(Clone)]
 pub struct DiagnosticBuilder<'a> {
     emitter: &'a RefCell<Box<Emitter>>,
     level: Level,
@@ -187,6 +188,7 @@ pub struct DiagnosticBuilder<'a> {
 }
 
 /// For example a note attached to an error.
+#[derive(Clone)]
 struct SubDiagnostic {
     level: Level,
     message: String,
