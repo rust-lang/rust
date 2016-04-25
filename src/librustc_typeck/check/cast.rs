@@ -45,12 +45,13 @@ use super::structurally_resolved_type;
 
 use lint;
 use hir::def_id::DefId;
+use rustc::hir;
+use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::cast::{CastKind, CastTy};
-use syntax::codemap::Span;
-use rustc::hir;
 use syntax::ast;
-
+use syntax::codemap::Span;
+use util::common::ErrorReported;
 
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
@@ -58,6 +59,7 @@ pub struct CastCheck<'tcx> {
     expr: &'tcx hir::Expr,
     expr_ty: Ty<'tcx>,
     cast_ty: Ty<'tcx>,
+    cast_span: Span,
     span: Span,
 }
 
@@ -111,17 +113,37 @@ enum CastError {
 }
 
 impl<'tcx> CastCheck<'tcx> {
-    pub fn new(expr: &'tcx hir::Expr, expr_ty: Ty<'tcx>, cast_ty: Ty<'tcx>, span: Span)
-               -> CastCheck<'tcx> {
-        CastCheck {
+    pub fn new<'a>(fcx: &FnCtxt<'a, 'tcx>,
+                   expr: &'tcx hir::Expr,
+                   expr_ty: Ty<'tcx>,
+                   cast_ty: Ty<'tcx>,
+                   cast_span: Span,
+                   span: Span)
+                   -> Result<CastCheck<'tcx>, ErrorReported> {
+        let check = CastCheck {
             expr: expr,
             expr_ty: expr_ty,
             cast_ty: cast_ty,
+            cast_span: cast_span,
             span: span,
+        };
+
+        // For better error messages, check for some obviously unsized
+        // cases now. We do a more thorough check at the end, once
+        // inference is more completely known.
+        match cast_ty.sty {
+            ty::TyTrait(..) | ty::TySlice(..) => {
+                check.report_cast_to_unsized_type(fcx);
+                Err(ErrorReported)
+            }
+            _ => {
+                Ok(check)
+            }
         }
     }
 
-    fn report_cast_error<'a>(&self, fcx: &FnCtxt<'a, 'tcx>,
+    fn report_cast_error<'a>(&self,
+                             fcx: &FnCtxt<'a, 'tcx>,
                              e: CastError) {
         match e {
             CastError::NeedViaPtr |
@@ -186,6 +208,61 @@ impl<'tcx> CastCheck<'tcx> {
         }
     }
 
+    fn report_cast_to_unsized_type<'a>(&self,
+                                       fcx: &FnCtxt<'a, 'tcx>) {
+        if
+            self.cast_ty.references_error() ||
+            self.expr_ty.references_error()
+        {
+            return;
+        }
+
+        let tstr = fcx.infcx().ty_to_string(self.cast_ty);
+        let mut err = fcx.type_error_struct(self.span, |actual| {
+            format!("cast to unsized type: `{}` as `{}`", actual, tstr)
+        }, self.expr_ty, None);
+        match self.expr_ty.sty {
+            ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
+                let mtstr = match mt {
+                    hir::MutMutable => "mut ",
+                    hir::MutImmutable => ""
+                };
+                if self.cast_ty.is_trait() {
+                    match fcx.tcx().sess.codemap().span_to_snippet(self.cast_span) {
+                        Ok(s) => {
+                            err.span_suggestion(self.cast_span,
+                                                "try casting to a reference instead:",
+                                                format!("&{}{}", mtstr, s));
+                        },
+                        Err(_) =>
+                            span_help!(err, self.cast_span,
+                                       "did you mean `&{}{}`?", mtstr, tstr),
+                    }
+                } else {
+                    span_help!(err, self.span,
+                               "consider using an implicit coercion to `&{}{}` instead",
+                               mtstr, tstr);
+                }
+            }
+            ty::TyBox(..) => {
+                match fcx.tcx().sess.codemap().span_to_snippet(self.cast_span) {
+                    Ok(s) => {
+                        err.span_suggestion(self.cast_span,
+                                            "try casting to a `Box` instead:",
+                                            format!("Box<{}>", s));
+                    },
+                    Err(_) =>
+                        span_help!(err, self.cast_span, "did you mean `Box<{}>`?", tstr),
+                }
+            }
+            _ => {
+                span_help!(err, self.expr.span,
+                           "consider using a box or reference as appropriate");
+            }
+        }
+        err.emit();
+    }
+
     fn trivial_cast_lint<'a>(&self, fcx: &FnCtxt<'a, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
@@ -218,7 +295,9 @@ impl<'tcx> CastCheck<'tcx> {
         debug!("check_cast({}, {:?} as {:?})", self.expr.id, self.expr_ty,
                self.cast_ty);
 
-        if self.expr_ty.references_error() || self.cast_ty.references_error() {
+        if !fcx.type_is_known_to_be_sized(self.cast_ty, self.span) {
+            self.report_cast_to_unsized_type(fcx);
+        } else if self.expr_ty.references_error() || self.cast_ty.references_error() {
             // No sense in giving duplicate error messages
         } else if self.try_coercion_cast(fcx) {
             self.trivial_cast_lint(fcx);
@@ -403,3 +482,17 @@ impl<'tcx> CastCheck<'tcx> {
     }
 
 }
+
+impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    fn type_is_known_to_be_sized(&self,
+                                 ty: Ty<'tcx>,
+                                 span: Span)
+                                 -> bool
+    {
+        traits::type_known_to_meet_builtin_bound(self.infcx(),
+                                                 ty,
+                                                 ty::BoundSized,
+                                                 span)
+    }
+}
+

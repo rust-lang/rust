@@ -35,7 +35,7 @@ use ty::fold::TypeFoldable;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::{self, PredicateObligations, ProjectionMode};
 use rustc_data_structures::unify::{self, UnificationTable};
-use std::cell::{RefCell, Ref};
+use std::cell::{Cell, RefCell, Ref};
 use std::fmt;
 use syntax::ast;
 use syntax::codemap;
@@ -110,6 +110,25 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     // documentation for `ProjectionMode`.
     projection_mode: ProjectionMode,
 
+    // When an error occurs, we want to avoid reporting "derived"
+    // errors that are due to this original failure. Normally, we
+    // handle this with the `err_count_on_creation` count, which
+    // basically just tracks how many errors were reported when we
+    // started type-checking a fn and checks to see if any new errors
+    // have been reported since then. Not great, but it works.
+    //
+    // However, when errors originated in other passes -- notably
+    // resolve -- this heuristic breaks down. Therefore, we have this
+    // auxiliary flag that one can set whenever one creates a
+    // type-error that is due to an error in a prior pass.
+    //
+    // Don't read this flag directly, call `is_tainted_by_errors()`
+    // and `set_tainted_by_errors()`.
+    tainted_by_errors_flag: Cell<bool>,
+
+    // Track how many errors were reported when this infcx is created.
+    // If the number of errors increases, that's also a sign (line
+    // `tained_by_errors`) to avoid reporting certain kinds of errors.
     err_count_on_creation: usize,
 }
 
@@ -379,6 +398,7 @@ pub fn new_infer_ctxt<'a, 'tcx>(tcx: &'a TyCtxt<'tcx>,
         reported_trait_errors: RefCell::new(FnvHashSet()),
         normalize: false,
         projection_mode: projection_mode,
+        tainted_by_errors_flag: Cell::new(false),
         err_count_on_creation: tcx.sess.err_count()
     }
 }
@@ -1128,15 +1148,36 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                         .map(|method| resolve_ty(method.ty)))
     }
 
-    pub fn errors_since_creation(&self) -> bool {
-        self.tcx.sess.err_count() - self.err_count_on_creation != 0
+    /// True if errors have been reported since this infcx was
+    /// created.  This is sometimes used as a heuristic to skip
+    /// reporting errors that often occur as a result of earlier
+    /// errors, but where it's hard to be 100% sure (e.g., unresolved
+    /// inference variables, regionck errors).
+    pub fn is_tainted_by_errors(&self) -> bool {
+        debug!("is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
+                tainted_by_errors_flag={})",
+               self.tcx.sess.err_count(),
+               self.err_count_on_creation,
+               self.tainted_by_errors_flag.get());
+
+        if self.tcx.sess.err_count() > self.err_count_on_creation {
+            return true; // errors reported since this infcx was made
+        }
+        self.tainted_by_errors_flag.get()
+    }
+
+    /// Set the "tainted by errors" flag to true. We call this when we
+    /// observe an error from a prior pass.
+    pub fn set_tainted_by_errors(&self) {
+        debug!("set_tainted_by_errors()");
+        self.tainted_by_errors_flag.set(true)
     }
 
     pub fn node_type(&self, id: ast::NodeId) -> Ty<'tcx> {
         match self.tables.borrow().node_types.get(&id) {
             Some(&t) => t,
             // FIXME
-            None if self.errors_since_creation() =>
+            None if self.is_tainted_by_errors() =>
                 self.tcx.types.err,
             None => {
                 bug!("no type for node {}: {} in fcx",
@@ -1158,7 +1199,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                              free_regions: &FreeRegionMap,
                                              subject_node_id: ast::NodeId) {
         let errors = self.region_vars.resolve_regions(free_regions, subject_node_id);
-        if !self.errors_since_creation() {
+        if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
             // this infcx was in use.  This is totally hokey but

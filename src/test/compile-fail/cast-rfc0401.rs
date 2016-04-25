@@ -58,7 +58,7 @@ fn main()
     let _ = f as *const u8;
     //~^ ERROR casting
     //~^^ HELP through a usize first
-    let _ = 3 as bool;
+    let _ = 3_i32 as bool;
     //~^ ERROR cannot cast as `bool`
     //~| HELP compare with zero
     let _ = E::A as bool;

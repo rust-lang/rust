@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Homura;
+// Test that the resolve failure does not lead to downstream type errors.
+// See issue #31997.
 
-fn akemi(homura: Homura) {
-    let Some(ref madoka) = Some(homura.kaname()); //~ ERROR no method named `kaname` found
-    madoka.clone();
+trait TheTrait { }
+
+fn closure<F, T>(x: F) -> Result<T, ()>
+    where F: FnMut() -> T, T: TheTrait,
+{
+    unimplemented!()
+}
+
+fn foo() -> Result<(), ()> {
+    try!(closure(|| bar(0 as *mut _))); //~ ERROR unresolved name `bar`
+    Ok(())
 }
 
 fn main() { }

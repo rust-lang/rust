@@ -384,6 +384,10 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
     {
         self.tcx().mk_projection(trait_ref, item_name)
     }
+
+    fn set_tainted_by_errors(&self) {
+        // no obvious place to track this, just let it go
+    }
 }
 
 /// Interface used to find the bounds on a type parameter from within
