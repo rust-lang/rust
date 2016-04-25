@@ -232,6 +232,7 @@ pub struct Macro {
 
 pub struct ExternCrate {
     pub name: Name,
+    pub cnum: ast::CrateNum,
     pub path: Option<String>,
     pub vis: hir::Visibility,
     pub attrs: hir::HirVec<ast::Attribute>,
