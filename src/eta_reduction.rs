@@ -40,7 +40,7 @@ impl LateLintPass for EtaPass {
 }
 
 fn check_closure(cx: &LateContext, expr: &Expr) {
-    if let ExprClosure(_, ref decl, ref blk) = expr.node {
+    if let ExprClosure(_, ref decl, ref blk, _) = expr.node {
         if !blk.stmts.is_empty() {
             // || {foo(); bar()}; can't be reduced here
             return;

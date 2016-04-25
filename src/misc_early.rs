@@ -128,7 +128,7 @@ impl EarlyLintPass for MiscEarly {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &Expr) {
         if let ExprKind::Call(ref paren, _) = expr.node {
             if let ExprKind::Paren(ref closure) = paren.node {
-                if let ExprKind::Closure(_, ref decl, ref block) = closure.node {
+                if let ExprKind::Closure(_, ref decl, ref block, _) = closure.node {
                     span_lint_and_then(cx,
                                        REDUNDANT_CLOSURE_CALL,
                                        expr.span,
@@ -150,7 +150,7 @@ impl EarlyLintPass for MiscEarly {
                 let StmtKind::Decl(ref first, _) = w[0].node,
                 let DeclKind::Local(ref local) = first.node,
                 let Option::Some(ref t) = local.init,
-                let ExprKind::Closure(_,_,_) = t.node,
+                let ExprKind::Closure(_,_,_,_) = t.node,
                 let PatKind::Ident(_,sp_ident,_) = local.pat.node,
                 let StmtKind::Semi(ref second,_) = w[1].node,
                 let ExprKind::Assign(_,ref call) = second.node,

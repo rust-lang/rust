@@ -25,7 +25,7 @@ impl LateLintPass for MapClonePass {
         if let ExprMethodCall(name, _, ref args) = expr.node {
             if name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, ref blk) => {
+                    ExprClosure(_, ref decl, ref blk, _) => {
                         if_let_chain! {
                             [
                             // just one expression in the closure
