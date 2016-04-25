@@ -29,9 +29,11 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
 
     let mut out = Vec::new();
     write_header(class, id, &mut out).unwrap();
-    write_source(&sess,
-                 lexer::StringReader::new(&sess.span_diagnostic, fm),
-                 &mut out).unwrap();
+    if let Err(_) = write_source(&sess,
+                                 lexer::StringReader::new(&sess.span_diagnostic, fm),
+                                 &mut out) {
+        return format!("<pre>{}</pre>", src)
+    }
     write_footer(&mut out).unwrap();
     String::from_utf8_lossy(&out[..]).into_owned()
 }
@@ -39,15 +41,15 @@ pub fn render_with_highlighting(src: &str, class: Option<&str>, id: Option<&str>
 /// Highlights `src`, returning the HTML output. Returns only the inner html to
 /// be inserted into an element. C.f., `render_with_highlighting` which includes
 /// an enclosing `<pre>` block.
-pub fn render_inner_with_highlighting(src: &str) -> String {
+pub fn render_inner_with_highlighting(src: &str) -> io::Result<String> {
     let sess = parse::ParseSess::new();
     let fm = sess.codemap().new_filemap("<stdin>".to_string(), src.to_string());
 
     let mut out = Vec::new();
     write_source(&sess,
                  lexer::StringReader::new(&sess.span_diagnostic, fm),
-                 &mut out).unwrap();
-    String::from_utf8_lossy(&out[..]).into_owned()
+                 &mut out)?;
+    Ok(String::from_utf8_lossy(&out[..]).into_owned())
 }
 
 /// Exhausts the `lexer` writing the output into `out`.
@@ -65,7 +67,17 @@ fn write_source(sess: &parse::ParseSess,
     let mut is_macro = false;
     let mut is_macro_nonterminal = false;
     loop {
-        let next = lexer.next_token();
+        let next = match lexer.try_next_token() {
+            Ok(tok) => tok,
+            Err(_) => {
+                lexer.emit_fatal_errors();
+                lexer.span_diagnostic.struct_warn("Backing out of syntax highlighting")
+                                     .note("You probably did not intend to render this \
+                                            as a rust code-block")
+                                     .emit();
+                return Err(io::Error::new(io::ErrorKind::Other, ""))
+            },
+        };
 
         let snip = |sp| sess.codemap().span_to_snippet(sp).unwrap();
 
