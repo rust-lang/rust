@@ -11,31 +11,37 @@
 use std::io::Write;
 
 use rustc_serialize::json::as_json;
+use syntax::codemap::CodeMap;
 
-use super::data::*;
+use rustc::hir::def_id::DefId;
+use syntax::ast::{CrateNum, NodeId};
+
+use super::data::{self, SpanData};
 use super::dump::Dump;
 
-pub struct JsonDumper<'b, W: 'b> {
+pub struct JsonDumper<'a, 'b, W: 'b> {
     output: &'b mut W,
+    codemap: &'a CodeMap,
 }
 
-impl<'b, W: Write> JsonDumper<'b, W> {
-    pub fn new(writer: &'b mut W) -> JsonDumper<'b, W> {
-        JsonDumper { output: writer }
+impl<'a, 'b, W: Write> JsonDumper<'a, 'b, W> {
+    pub fn new(writer: &'b mut W, codemap: &'a CodeMap) -> JsonDumper<'a, 'b, W> {
+        JsonDumper { output: writer, codemap:codemap }
     }
 }
 
 macro_rules! impl_fn {
     ($fn_name: ident, $data_type: ident) => {
-        fn $fn_name(&mut self, data: $data_type) {
+        fn $fn_name(&mut self, data: data::$data_type) {
+            let data = data.lower(self.codemap);
             if let Err(_) = write!(self.output, "{}", as_json(&data)) {
                 error!("Error writing output '{}'", as_json(&data));
             }
-        }        
+        }
     }
 }
 
-impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
+impl<'a, 'b, W: Write + 'b> Dump for JsonDumper<'a, 'b, W> {
     impl_fn!(crate_prelude, CratePreludeData);
     impl_fn!(enum_data, EnumData);
     impl_fn!(extern_crate, ExternCrateData);
@@ -60,4 +66,566 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
     impl_fn!(use_glob, UseGlobData);
     impl_fn!(variable, VariableData);
     impl_fn!(variable_ref, VariableRefData);
+}
+
+trait Lower {
+    type Target;
+    fn lower(self, cm: &CodeMap) -> Self::Target;
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct CratePreludeData {
+    pub crate_name: String,
+    pub crate_root: String,
+    pub external_crates: Vec<data::ExternalCrateData>,
+    pub span: SpanData,
+}
+
+impl Lower for data::CratePreludeData {
+    type Target = CratePreludeData;
+
+    fn lower(self, cm: &CodeMap) -> CratePreludeData {
+        CratePreludeData {
+            crate_name: self.crate_name,
+            crate_root: self.crate_root,
+            external_crates: self.external_crates,
+            span: SpanData::from_span(self.span, cm),    
+        }
+    }
+}
+
+/// Data for enum declarations.
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct EnumData {
+    pub id: NodeId,
+    pub value: String,
+    pub qualname: String,
+    pub span: SpanData,
+    pub scope: NodeId,
+}
+
+impl Lower for data::EnumData {
+    type Target = EnumData;
+
+    fn lower(self, cm: &CodeMap) -> EnumData {
+        EnumData {
+            id: self.id,
+            value: self.value,
+            qualname: self.qualname,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+        }
+    }
+}
+
+/// Data for extern crates.
+#[derive(Debug, RustcEncodable)]
+pub struct ExternCrateData {
+    pub id: NodeId,
+    pub name: String,
+    pub crate_num: CrateNum,
+    pub location: String,
+    pub span: SpanData,
+    pub scope: NodeId,
+}
+
+impl Lower for data::ExternCrateData {
+    type Target = ExternCrateData;
+
+    fn lower(self, cm: &CodeMap) -> ExternCrateData {
+        ExternCrateData {
+            id: self.id,
+            name: self.name,
+            crate_num: self.crate_num,
+            location: self.location,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+        }
+    }
+}
+
+/// Data about a function call.
+#[derive(Debug, RustcEncodable)]
+pub struct FunctionCallData {
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+impl Lower for data::FunctionCallData {
+    type Target = FunctionCallData;
+
+    fn lower(self, cm: &CodeMap) -> FunctionCallData {
+        FunctionCallData {
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            ref_id: self.ref_id,
+        }
+    }
+}
+
+/// Data for all kinds of functions and methods.
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct FunctionData {
+    pub id: NodeId,
+    pub name: String,
+    pub qualname: String,
+    pub declaration: Option<DefId>,
+    pub span: SpanData,
+    pub scope: NodeId,
+}
+
+impl Lower for data::FunctionData {
+    type Target = FunctionData;
+
+    fn lower(self, cm: &CodeMap) -> FunctionData {
+        FunctionData {
+            id: self.id,
+            name: self.name,
+            qualname: self.qualname,
+            declaration: self.declaration,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+        }
+    }
+}
+
+/// Data about a function call.
+#[derive(Debug, RustcEncodable)]
+pub struct FunctionRefData {
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+impl Lower for data::FunctionRefData {
+    type Target = FunctionRefData;
+
+    fn lower(self, cm: &CodeMap) -> FunctionRefData {
+        FunctionRefData {
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            ref_id: self.ref_id,
+        }
+    }
+}
+#[derive(Debug, RustcEncodable)]
+pub struct ImplData {
+    pub id: NodeId,
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub trait_ref: Option<DefId>,
+    pub self_ref: Option<DefId>,
+}
+
+impl Lower for data::ImplData {
+    type Target = ImplData;
+
+    fn lower(self, cm: &CodeMap) -> ImplData {
+        ImplData {
+            id: self.id,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            trait_ref: self.trait_ref,
+            self_ref: self.self_ref,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct InheritanceData {
+    pub span: SpanData,
+    pub base_id: DefId,
+    pub deriv_id: NodeId
+}
+
+impl Lower for data::InheritanceData {
+    type Target = InheritanceData;
+
+    fn lower(self, cm: &CodeMap) -> InheritanceData {
+        InheritanceData {
+            span: SpanData::from_span(self.span, cm),    
+            base_id: self.base_id,
+            deriv_id: self.deriv_id
+        }
+    }
+}
+
+/// Data about a macro declaration.
+#[derive(Debug, RustcEncodable)]
+pub struct MacroData {
+    pub span: SpanData,
+    pub name: String,
+    pub qualname: String,
+}
+
+impl Lower for data::MacroData {
+    type Target = MacroData;
+
+    fn lower(self, cm: &CodeMap) -> MacroData {
+        MacroData {
+            span: SpanData::from_span(self.span, cm),    
+            name: self.name,
+            qualname: self.qualname,
+        }
+    }
+}
+
+/// Data about a macro use.
+#[derive(Debug, RustcEncodable)]
+pub struct MacroUseData {
+    pub span: SpanData,
+    pub name: String,
+    pub qualname: String,
+    // Because macro expansion happens before ref-ids are determined,
+    // we use the callee span to reference the associated macro definition.
+    pub callee_span: SpanData,
+    pub scope: NodeId,
+    pub imported: bool,
+}
+
+impl Lower for data::MacroUseData {
+    type Target = MacroUseData;
+
+    fn lower(self, cm: &CodeMap) -> MacroUseData {
+        MacroUseData {
+            span: SpanData::from_span(self.span, cm),    
+            name: self.name,
+            qualname: self.qualname,
+            callee_span: SpanData::from_span(self.callee_span, cm),
+            scope: self.scope,
+            imported: self.imported,
+        }
+    }
+}
+
+/// Data about a method call.
+#[derive(Debug, RustcEncodable)]
+pub struct MethodCallData {
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub ref_id: Option<DefId>,
+    pub decl_id: Option<DefId>,
+}
+
+impl Lower for data::MethodCallData {
+    type Target = MethodCallData;
+
+    fn lower(self, cm: &CodeMap) -> MethodCallData {
+        MethodCallData {
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            ref_id: self.ref_id,
+            decl_id: self.decl_id,
+        }
+    }
+}
+
+/// Data for method declarations (methods with a body are treated as functions).
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct MethodData {
+    pub id: NodeId,
+    pub qualname: String,
+    pub span: SpanData,
+    pub scope: NodeId,
+}
+
+impl Lower for data::MethodData {
+    type Target = MethodData;
+
+    fn lower(self, cm: &CodeMap) -> MethodData {
+        MethodData {
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            id: self.id,
+            qualname: self.qualname,
+        }
+    }
+}
+
+/// Data for modules.
+#[derive(Debug, RustcEncodable)]
+pub struct ModData {
+    pub id: NodeId,
+    pub name: String,
+    pub qualname: String,
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub filename: String,
+}
+
+impl Lower for data::ModData {
+    type Target = ModData;
+
+    fn lower(self, cm: &CodeMap) -> ModData {
+        ModData {
+            id: self.id,
+            name: self.name,
+            qualname: self.qualname,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            filename: self.filename,
+        }
+    }
+}
+
+/// Data for a reference to a module.
+#[derive(Debug, RustcEncodable)]
+pub struct ModRefData {
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub ref_id: Option<DefId>,
+    pub qualname: String
+}
+
+impl Lower for data::ModRefData {
+    type Target = ModRefData;
+
+    fn lower(self, cm: &CodeMap) -> ModRefData {
+        ModRefData {
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            ref_id: self.ref_id,
+            qualname: self.qualname,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct StructData {
+    pub span: SpanData,
+    pub id: NodeId,
+    pub ctor_id: NodeId,
+    pub qualname: String,
+    pub scope: NodeId,
+    pub value: String
+}
+
+impl Lower for data::StructData {
+    type Target = StructData;
+
+    fn lower(self, cm: &CodeMap) -> StructData {
+        StructData {
+            span: SpanData::from_span(self.span, cm),    
+            id: self.id,
+            ctor_id: self.ctor_id,
+            qualname: self.qualname,
+            scope: self.scope,
+            value: self.value
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct StructVariantData {
+    pub span: SpanData,
+    pub id: NodeId,
+    pub qualname: String,
+    pub type_value: String,
+    pub value: String,
+    pub scope: NodeId
+}
+
+impl Lower for data::StructVariantData {
+    type Target = StructVariantData;
+
+    fn lower(self, cm: &CodeMap) -> StructVariantData {
+        StructVariantData {
+            span: SpanData::from_span(self.span, cm),    
+            id: self.id,
+            qualname: self.qualname,
+            type_value: self.type_value,
+            value: self.value,
+            scope: self.scope,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct TraitData {
+    pub span: SpanData,
+    pub id: NodeId,
+    pub qualname: String,
+    pub scope: NodeId,
+    pub value: String
+}
+
+impl Lower for data::TraitData {
+    type Target = TraitData;
+
+    fn lower(self, cm: &CodeMap) -> TraitData {
+        TraitData {
+            span: SpanData::from_span(self.span, cm),    
+            id: self.id,
+            qualname: self.qualname,
+            scope: self.scope,
+            value: self.value,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct TupleVariantData {
+    pub span: SpanData,
+    pub id: NodeId,
+    pub name: String,
+    pub qualname: String,
+    pub type_value: String,
+    pub value: String,
+    pub scope: NodeId,
+}
+
+impl Lower for data::TupleVariantData {
+    type Target = TupleVariantData;
+
+    fn lower(self, cm: &CodeMap) -> TupleVariantData {
+        TupleVariantData {
+            span: SpanData::from_span(self.span, cm),    
+            id: self.id,
+            name: self.name,
+            qualname: self.qualname,
+            type_value: self.type_value,
+            value: self.value,
+            scope: self.scope,
+        }
+    }
+}
+
+/// Data for a typedef.
+#[derive(Debug, RustcEncodable)]
+pub struct TypedefData {
+    pub id: NodeId,
+    pub span: SpanData,
+    pub qualname: String,
+    pub value: String,
+}
+
+impl Lower for data::TypedefData {
+    type Target = TypedefData;
+
+    fn lower(self, cm: &CodeMap) -> TypedefData {
+        TypedefData {
+            id: self.id,
+            span: SpanData::from_span(self.span, cm),    
+            qualname: self.qualname,
+            value: self.value,
+        }
+    }
+}
+
+/// Data for a reference to a type or trait.
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct TypeRefData {
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub ref_id: Option<DefId>,
+    pub qualname: String,
+}
+
+impl Lower for data::TypeRefData {
+    type Target = TypeRefData;
+
+    fn lower(self, cm: &CodeMap) -> TypeRefData {
+        TypeRefData {
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            ref_id: self.ref_id,
+            qualname: self.qualname,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct UseData {
+    pub id: NodeId,
+    pub span: SpanData,
+    pub name: String,
+    pub mod_id: Option<DefId>,
+    pub scope: NodeId
+}
+
+impl Lower for data::UseData {
+    type Target = UseData;
+
+    fn lower(self, cm: &CodeMap) -> UseData {
+        UseData {
+            id: self.id,
+            span: SpanData::from_span(self.span, cm),    
+            name: self.name,
+            mod_id: self.mod_id,
+            scope: self.scope,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+pub struct UseGlobData {
+    pub id: NodeId,
+    pub span: SpanData,
+    pub names: Vec<String>,
+    pub scope: NodeId
+}
+
+impl Lower for data::UseGlobData {
+    type Target = UseGlobData;
+
+    fn lower(self, cm: &CodeMap) -> UseGlobData {
+        UseGlobData {
+            id: self.id,
+            span: SpanData::from_span(self.span, cm),    
+            names: self.names,
+            scope: self.scope,
+        }
+    }
+}
+
+/// Data for local and global variables (consts and statics).
+#[derive(Debug, RustcEncodable)]
+pub struct VariableData {
+    pub id: NodeId,
+    pub name: String,
+    pub qualname: String,
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub value: String,
+    pub type_value: String,
+}
+
+impl Lower for data::VariableData {
+    type Target = VariableData;
+
+    fn lower(self, cm: &CodeMap) -> VariableData {
+        VariableData {
+            id: self.id,
+            name: self.name,
+            qualname: self.qualname,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            value: self.value,
+            type_value: self.type_value,
+        }
+    }
+}
+
+/// Data for the use of some item (e.g., the use of a local variable, which
+/// will refer to that variables declaration (by ref_id)).
+#[derive(Debug, RustcEncodable)]
+pub struct VariableRefData {
+    pub name: String,
+    pub span: SpanData,
+    pub scope: NodeId,
+    pub ref_id: DefId,
+}
+
+impl Lower for data::VariableRefData {
+    type Target = VariableRefData;
+
+    fn lower(self, cm: &CodeMap) -> VariableRefData {
+        VariableRefData {
+            name: self.name,
+            span: SpanData::from_span(self.span, cm),    
+            scope: self.scope,
+            ref_id: self.ref_id,
+        }
+    }
 }
