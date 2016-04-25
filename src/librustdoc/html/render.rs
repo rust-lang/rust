@@ -1739,16 +1739,19 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
         match myitem.inner {
             clean::ExternCrateItem(ref name, ref src) => {
+                use html::format::HRef;
+
                 match *src {
                     Some(ref src) => {
                         write!(w, "<tr><td><code>{}extern crate {} as {};",
                                VisSpace(&myitem.visibility),
-                               src,
+                               HRef::new(myitem.def_id, src),
                                name)?
                     }
                     None => {
                         write!(w, "<tr><td><code>{}extern crate {};",
-                               VisSpace(&myitem.visibility), name)?
+                               VisSpace(&myitem.visibility),
+                               HRef::new(myitem.def_id, name))?
                     }
                 }
                 write!(w, "</code></td></tr>")?;
