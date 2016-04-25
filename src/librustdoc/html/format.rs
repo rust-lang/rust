@@ -57,6 +57,11 @@ pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 
+pub struct HRef<'a> {
+    pub did: DefId,
+    pub text: &'a str,
+}
+
 impl<'a> VisSpace<'a> {
     pub fn get(self) -> &'a Option<clean::Visibility> {
         let VisSpace(v) = self; v
@@ -363,15 +368,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
             }
         }
     }
-
-    match href(did) {
-        Some((url, shortty, fqp)) => {
-            write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                   shortty, url, fqp.join("::"), last.name)?;
-        }
-        _ => write!(w, "{}", last.name)?,
-    }
-    write!(w, "{}", last.params)?;
+    write!(w, "{}{}", HRef::new(did, &last.name), last.params)?;
     Ok(())
 }
 
@@ -434,6 +431,24 @@ fn tybounds(w: &mut fmt::Formatter,
             Ok(())
         }
         None => Ok(())
+    }
+}
+
+impl<'a> HRef<'a> {
+    pub fn new(did: DefId, text: &'a str) -> HRef<'a> {
+        HRef { did: did, text: text }
+    }
+}
+
+impl<'a> fmt::Display for HRef<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match href(self.did) {
+            Some((url, shortty, fqp)) => {
+                write!(f, "<a class='{}' href='{}' title='{}'>{}</a>",
+                       shortty, url, fqp.join("::"), self.text)
+            }
+            _ => write!(f, "{}", self.text),
+        }
     }
 }
 
