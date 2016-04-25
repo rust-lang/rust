@@ -60,7 +60,7 @@ use mem;
 /// # Platform-specific behavior
 ///
 /// Note that a "best effort" is made to ensure that destructors for types
-/// stored in thread local storage are run, but not all platforms can gurantee
+/// stored in thread local storage are run, but not all platforms can guarantee
 /// that destructors will be run for all types in thread local storage. For
 /// example, there are a number of known caveats where destructors are not run:
 ///
@@ -254,7 +254,7 @@ impl<T: 'static> LocalKey<T> {
     /// destruction has completed. Keys without destructors (e.g. with types
     /// that are `Copy`), may never enter the `Destroyed` state.
     ///
-    /// Keys in the `Uninitialized` can be accessed so long as the
+    /// Keys in the `Uninitialized` state can be accessed so long as the
     /// initialization does not panic. Keys in the `Valid` state are guaranteed
     /// to be able to be accessed. Keys in the `Destroyed` state will panic on
     /// any call to `with`.
