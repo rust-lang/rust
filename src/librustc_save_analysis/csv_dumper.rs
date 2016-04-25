@@ -19,13 +19,12 @@ use super::span_utils::SpanUtils;
 
 pub struct CsvDumper<'tcx, 'b, W: 'b> {
     output: &'b mut W,
-    dump_spans: bool,
     span: SpanUtils<'tcx>
 }
 
 impl<'a, 'b, W: Write> CsvDumper<'a, 'b, W> {
     pub fn new(writer: &'b mut W, span: SpanUtils<'a>) -> CsvDumper<'a, 'b, W> {
-        CsvDumper { output: writer, dump_spans: false, span: span }
+        CsvDumper { output: writer, span: span }
     }
 
     fn record(&mut self, kind: &str, span: Span, values: String) {
@@ -39,15 +38,6 @@ impl<'a, 'b, W: Write> CsvDumper<'a, 'b, W> {
         if let Err(_) = write!(self.output, "{}", info) {
             error!("Error writing output '{}'", info);
         }
-    }
-
-    pub fn dump_span(&mut self, kind: &str, span: Span) {
-        assert!(self.dump_spans);
-        let result = format!("span,kind,{},{},text,\"{}\"\n",
-                             kind,
-                             self.span.extent_str(span),
-                             escape(self.span.snippet(span)));
-        self.record_raw(&result);
     }
 }
 
@@ -78,12 +68,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record_raw("end_external_crates\n");
     }
 
-    fn enum_data(&mut self, span: Span, data: EnumData) {
-        if self.dump_spans {
-            self.dump_span("enum", span);
-            return;
-        }
-
+    fn enum_data(&mut self, data: EnumData) {
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -96,12 +81,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("enum", data.span, values);
     }
 
-    fn extern_crate(&mut self, span: Span, data: ExternCrateData) {
-        if self.dump_spans {
-            self.dump_span("extern_crate", span);
-            return;
-        }
-
+    fn extern_crate(&mut self, data: ExternCrateData) {
         let id = data.id.to_string();
         let crate_num = data.crate_num.to_string();
         let scope = data.scope.to_string();
@@ -116,12 +96,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("extern_crate", data.span, values);
     }
 
-    fn impl_data(&mut self, span: Span, data: ImplData) {
-        if self.dump_spans {
-            self.dump_span("impl", span);
-            return;
-        }
-
+    fn impl_data(&mut self, data: ImplData) {
         let self_ref = data.self_ref.unwrap_or(null_def_id());
         let trait_ref = data.trait_ref.unwrap_or(null_def_id());
 
@@ -144,10 +119,6 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn inheritance(&mut self, data: InheritanceData) {
-       if self.dump_spans {
-           return;
-       }
-
        let base_id = data.base_id.index.as_usize().to_string();
        let base_crate = data.base_id.krate.to_string();
        let deriv_id = data.deriv_id.to_string();
@@ -162,12 +133,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
        self.record("inheritance", data.span, values);
     }
 
-    fn function(&mut self, span: Span, data: FunctionData) {
-        if self.dump_spans {
-            self.dump_span("function", span);
-            return;
-        }
-
+    fn function(&mut self, data: FunctionData) {
         let (decl_id, decl_crate) = match data.declaration {
             Some(id) => (id.index.as_usize().to_string(), id.krate.to_string()),
             None => (String::new(), String::new())
@@ -186,12 +152,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("function", data.span, values);
     }
 
-    fn function_ref(&mut self, span: Span, data: FunctionRefData) {
-        if self.dump_spans {
-            self.dump_span("fn_ref", span);
-            return;
-        }
-
+    fn function_ref(&mut self, data: FunctionRefData) {
         let ref_id = data.ref_id.index.as_usize().to_string();
         let ref_crate = data.ref_id.krate.to_string();
         let scope = data.scope.to_string();
@@ -205,12 +166,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("fn_ref", data.span, values);
     }
 
-    fn function_call(&mut self, span: Span, data: FunctionCallData) {
-        if self.dump_spans {
-            self.dump_span("fn_call", span);
-            return;
-        }
-
+    fn function_call(&mut self, data: FunctionCallData) {
         let ref_id = data.ref_id.index.as_usize().to_string();
         let ref_crate = data.ref_id.krate.to_string();
         let qualname = String::new();
@@ -225,12 +181,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("fn_call", data.span, values);
     }
 
-    fn method(&mut self, span: Span, data: MethodData) {
-        if self.dump_spans {
-            self.dump_span("method_decl", span);
-            return;
-        }
-
+    fn method(&mut self, data: MethodData) {
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -239,15 +190,10 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
             ("scopeid", &scope)
         ]);
 
-        self.record("method_decl", span, values);
+        self.record("method_decl", data.span, values);
     }
 
-    fn method_call(&mut self, span: Span, data: MethodCallData) {
-        if self.dump_spans {
-            self.dump_span("method_call", span);
-            return;
-        }
-
+    fn method_call(&mut self, data: MethodCallData) {
         let (dcn, dck) = match data.decl_id {
             Some(declid) => (declid.index.as_usize().to_string(), declid.krate.to_string()),
             None => (String::new(), String::new()),
@@ -269,12 +215,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("method_call", data.span, values);
     }
 
-    fn macro_data(&mut self, span: Span, data: MacroData) {
-        if self.dump_spans {
-            self.dump_span("macro", span);
-            return;
-        }
-
+    fn macro_data(&mut self, data: MacroData) {
         let values = make_values_str(&[
             ("name", &data.name),
             ("qualname", &data.qualname)
@@ -283,12 +224,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("macro", data.span, values);
     }
 
-    fn macro_use(&mut self, span: Span, data: MacroUseData) {
-        if self.dump_spans {
-            self.dump_span("macro_use", span);
-            return;
-        }
-
+    fn macro_use(&mut self, data: MacroUseData) {
         let scope = data.scope.to_string();
         let values = make_values_str(&[
             ("callee_name", &data.name),
@@ -300,10 +236,6 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
     }
 
     fn mod_data(&mut self, data: ModData) {
-        if self.dump_spans {
-            return;
-        }
-
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -316,12 +248,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("module", data.span, values);
     }
 
-    fn mod_ref(&mut self, span: Span, data: ModRefData) {
-        if self.dump_spans {
-            self.dump_span("mod_ref", span);
-            return;
-        }
-
+    fn mod_ref(&mut self, data: ModRefData) {
         let (ref_id, ref_crate) = match data.ref_id {
             Some(rid) => (rid.index.as_usize().to_string(), rid.krate.to_string()),
             None => (0.to_string(), 0.to_string())
@@ -338,12 +265,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("mod_ref", data.span, values);
     }
 
-    fn struct_data(&mut self, span: Span, data: StructData) {
-        if self.dump_spans {
-            self.dump_span("struct", span);
-            return;
-        }
-
+    fn struct_data(&mut self, data: StructData) {
         let id = data.id.to_string();
         let ctor_id = data.ctor_id.to_string();
         let scope = data.scope.to_string();
@@ -358,12 +280,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("struct", data.span, values);
     }
 
-    fn struct_variant(&mut self, span: Span, data: StructVariantData) {
-        if self.dump_spans {
-            self.dump_span("variant_struct", span);
-            return;
-        }
-
+    fn struct_variant(&mut self, data: StructVariantData) {
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -378,12 +295,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("variant_struct", data.span, values);
     }
 
-    fn trait_data(&mut self, span: Span, data: TraitData) {
-        if self.dump_spans {
-            self.dump_span("trait", span);
-            return;
-        }
-
+    fn trait_data(&mut self, data: TraitData) {
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -396,12 +308,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("trait", data.span, values);
     }
 
-    fn tuple_variant(&mut self, span: Span, data: TupleVariantData) {
-        if self.dump_spans {
-            self.dump_span("variant", span);
-            return;
-        }
-
+    fn tuple_variant(&mut self, data: TupleVariantData) {
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -416,12 +323,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("variant", data.span, values);
     }
 
-    fn type_ref(&mut self, span: Span, data: TypeRefData) {
-        if self.dump_spans {
-            self.dump_span("type_ref", span);
-            return;
-        }
-
+    fn type_ref(&mut self, data: TypeRefData) {
         let (ref_id, ref_crate) = match data.ref_id {
             Some(id) => (id.index.as_usize().to_string(), id.krate.to_string()),
             None => (0.to_string(), 0.to_string())
@@ -438,12 +340,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("type_ref", data.span, values);
     }
 
-    fn typedef(&mut self, span: Span, data: TypedefData) {
-        if self.dump_spans {
-            self.dump_span("typedef", span);
-            return;
-        }
-
+    fn typedef(&mut self, data: TypedefData) {
         let id = data.id.to_string();
         let values = make_values_str(&[
             ("id", &id),
@@ -454,12 +351,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("typedef", data.span, values);
     }
 
-    fn use_data(&mut self, span: Span, data: UseData) {
-        if self.dump_spans {
-            self.dump_span("use_alias", span);
-            return;
-        }
-
+    fn use_data(&mut self, data: UseData) {
         let mod_id = data.mod_id.unwrap_or(null_def_id());
 
         let id = data.id.to_string();
@@ -477,12 +369,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("use_alias", data.span, values);
     }
 
-    fn use_glob(&mut self, span: Span, data: UseGlobData) {
-        if self.dump_spans {
-            self.dump_span("use_glob", span);
-            return;
-        }
-
+    fn use_glob(&mut self, data: UseGlobData) {
         let names = data.names.join(", ");
 
         let id = data.id.to_string();
@@ -496,12 +383,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("use_glob", data.span, values);
     }
 
-    fn variable(&mut self, span: Span, data: VariableData) {
-        if self.dump_spans {
-            self.dump_span("variable", span);
-            return;
-        }
-
+    fn variable(&mut self, data: VariableData) {
         let id = data.id.to_string();
         let scope = data.scope.to_string();
         let values = make_values_str(&[
@@ -516,12 +398,7 @@ impl<'a, 'b, W: Write + 'b> Dump for CsvDumper<'a, 'b, W> {
         self.record("variable", data.span, values);
     }
 
-    fn variable_ref(&mut self, span: Span, data: VariableRefData) {
-        if self.dump_spans {
-            self.dump_span("var_ref", span);
-            return;
-        }
-
+    fn variable_ref(&mut self, data: VariableRefData) {
         let ref_id = data.ref_id.index.as_usize().to_string();
         let ref_crate = data.ref_id.krate.to_string();
         let scope = data.scope.to_string();
