@@ -155,6 +155,12 @@ pub trait AstConv<'tcx> {
                     _trait_ref: ty::TraitRef<'tcx>,
                     _item_name: ast::Name)
                     -> Ty<'tcx>;
+
+    /// Invoked when we encounter an error from some prior pass
+    /// (e.g. resolve) that is translated into a ty-error. This is
+    /// used to help suppress derived errors typeck might otherwise
+    /// report.
+    fn set_tainted_by_errors(&self);
 }
 
 pub fn ast_region_to_region(tcx: &TyCtxt, lifetime: &hir::Lifetime)
@@ -1533,6 +1539,7 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             prim_ty_to_ty(tcx, base_segments, prim_ty)
         }
         Def::Err => {
+            this.set_tainted_by_errors();
             return this.tcx().types.err;
         }
         _ => {

@@ -209,6 +209,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             let self_ty = fcx.to_ty(&qself.ty);
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&pat.id) {
                 if d.base_def == Def::Err {
+                    fcx.infcx().set_tainted_by_errors();
                     fcx.write_error(pat.id);
                     return;
                 }
@@ -628,6 +629,7 @@ fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let path_res = match tcx.def_map.borrow().get(&pat.id) {
         Some(&path_res) if path_res.base_def != Def::Err => path_res,
         _ => {
+            fcx.infcx().set_tainted_by_errors();
             fcx.write_error(pat.id);
 
             if let Some(subpats) = subpats {

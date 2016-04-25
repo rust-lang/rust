@@ -21,7 +21,7 @@ use ParentLink::{ModuleParentLink, BlockParentLink};
 use Resolver;
 use {resolve_error, resolve_struct_error, ResolutionError};
 
-use rustc::middle::cstore::{CrateStore, ChildItem, DlDef};
+use rustc::middle::cstore::{ChildItem, DlDef};
 use rustc::lint;
 use rustc::hir::def::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};

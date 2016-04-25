@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    for (ref i,) in [].iter() { //~ ERROR mismatched types
-        i.clone();
-    }
+// Check that we allow a cast to `_` so long as the target type can be
+// inferred elsewhere.
+
+pub fn main() {
+    let i: *const i32 = 0 as _;
+    assert!(i.is_null());
 }

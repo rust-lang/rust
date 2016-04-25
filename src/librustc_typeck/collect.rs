@@ -74,7 +74,6 @@ use rustc::ty::subst::{Substs, FnSpace, ParamSpace, SelfSpace, TypeSpace, VecPer
 use rustc::ty::{ToPredicate, ImplContainer, ImplOrTraitItemContainer, TraitContainer};
 use rustc::ty::{self, ToPolyTraitRef, Ty, TyCtxt, TypeScheme};
 use rustc::ty::{VariantKind};
-use rustc::ty::fold::{TypeFolder};
 use rustc::ty::util::IntTypeExt;
 use rscope::*;
 use rustc::dep_graph::DepNode;
@@ -383,6 +382,10 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                     -> Ty<'tcx>
     {
         self.tcx().mk_projection(trait_ref, item_name)
+    }
+
+    fn set_tainted_by_errors(&self) {
+        // no obvious place to track this, just let it go
     }
 }
 

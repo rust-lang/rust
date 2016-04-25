@@ -91,6 +91,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
             }
 
             (&ty::TyError, _) | (_, &ty::TyError) => {
+                infcx.set_tainted_by_errors();
                 Ok(self.tcx().types.err)
             }
 

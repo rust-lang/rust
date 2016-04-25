@@ -233,7 +233,6 @@ use std::cmp;
 use std::collections::HashMap;
 use std::fmt;
 use std::fs;
-use std::io::prelude::*;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::ptr;

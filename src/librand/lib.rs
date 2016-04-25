@@ -28,13 +28,13 @@
 #![unstable(feature = "rand",
             reason = "use `rand` from crates.io",
             issue = "27703")]
-#![feature(core_float)]
 #![feature(core_intrinsics)]
 #![feature(staged_api)]
 #![feature(step_by)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 
+#![cfg_attr(not(test), feature(core_float))] // only necessary for no_std
 #![cfg_attr(test, feature(test, rand))]
 
 #![allow(deprecated)]

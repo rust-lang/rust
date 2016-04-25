@@ -624,6 +624,12 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
            predicate,
            obligation);
 
+    // Ambiguity errors are often caused as fallout from earlier
+    // errors. So just ignore them if this infcx is tainted.
+    if infcx.is_tainted_by_errors() {
+        return;
+    }
+
     match predicate {
         ty::Predicate::Trait(ref data) => {
             let trait_ref = data.to_poly_trait_ref();

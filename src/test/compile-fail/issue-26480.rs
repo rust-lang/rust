@@ -30,8 +30,7 @@ macro_rules! write {
 }
 
 macro_rules! cast {
-    ($x:expr) => ($x as ())
-    //~^ ERROR non-scalar cast: `i32` as `()`
+    ($x:expr) => ($x as ()) //~ ERROR non-scalar cast
 }
 
 fn main() {

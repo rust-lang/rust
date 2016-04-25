@@ -35,7 +35,6 @@ use lint;
 use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::cfg;
-use middle::cstore::CrateStore;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
