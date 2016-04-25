@@ -1076,64 +1076,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                         span: Span,
-                                         t_span: Span,
-                                         e_span: Span,
-                                         t_cast: Ty<'tcx>,
-                                         t_expr: Ty<'tcx>,
-                                         id: ast::NodeId) {
-    if t_cast.references_error() || t_expr.references_error() {
-        return;
-    }
-    let tstr = fcx.infcx().ty_to_string(t_cast);
-    let mut err = fcx.type_error_struct(span, |actual| {
-        format!("cast to unsized type: `{}` as `{}`", actual, tstr)
-    }, t_expr, None);
-    match t_expr.sty {
-        ty::TyRef(_, ty::TypeAndMut { mutbl: mt, .. }) => {
-            let mtstr = match mt {
-                hir::MutMutable => "mut ",
-                hir::MutImmutable => ""
-            };
-            if t_cast.is_trait() {
-                match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
-                    Ok(s) => {
-                        err.span_suggestion(t_span,
-                                            "try casting to a reference instead:",
-                                            format!("&{}{}", mtstr, s));
-                    },
-                    Err(_) =>
-                        span_help!(err, t_span,
-                                   "did you mean `&{}{}`?", mtstr, tstr),
-                }
-            } else {
-                span_help!(err, span,
-                           "consider using an implicit coercion to `&{}{}` instead",
-                           mtstr, tstr);
-            }
-        }
-        ty::TyBox(..) => {
-            match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
-                Ok(s) => {
-                    err.span_suggestion(t_span,
-                                        "try casting to a `Box` instead:",
-                                        format!("Box<{}>", s));
-                },
-                Err(_) =>
-                    span_help!(err, t_span, "did you mean `Box<{}>`?", tstr),
-            }
-        }
-        _ => {
-            span_help!(err, e_span,
-                       "consider using a box or reference as appropriate");
-        }
-    }
-    err.emit();
-    fcx.write_error(id);
-}
-
-
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &TyCtxt<'tcx> { self.ccx.tcx }
 
@@ -1239,6 +1181,10 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
                     -> Ty<'tcx>
     {
         self.normalize_associated_type(span, trait_ref, item_name)
+    }
+
+    fn set_tainted_by_errors(&self) {
+        self.infcx().set_tainted_by_errors()
     }
 }
 
@@ -1524,17 +1470,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(self.expr_ty(expr), expr.span, code);
     }
 
-    pub fn type_is_known_to_be_sized(&self,
-                                     ty: Ty<'tcx>,
-                                     span: Span)
-                                     -> bool
-    {
-        traits::type_known_to_meet_builtin_bound(self.infcx(),
-                                                 ty,
-                                                 ty::BoundSized,
-                                                 span)
-    }
-
     pub fn register_builtin_bound(&self,
                                   ty: Ty<'tcx>,
                                   builtin_bound: ty::BuiltinBound,
@@ -1771,16 +1706,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn default_type_parameters(&self) {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
+
+        // Defaulting inference variables becomes very dubious if we have
+        // encountered type-checking errors. Therefore, if we think we saw
+        // some errors in this function, just resolve all uninstanted type
+        // varibles to TyError.
+        if self.infcx().is_tainted_by_errors() {
+            for ty in &self.infcx().unsolved_variables() {
+                if let ty::TyInfer(_) = self.infcx().shallow_resolve(ty).sty {
+                    debug!("default_type_parameters: defaulting `{:?}` to error", ty);
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.err);
+                }
+            }
+            return;
+        }
+
         for ty in &self.infcx().unsolved_variables() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
             if self.infcx().type_var_diverges(resolved) {
+                debug!("default_type_parameters: defaulting `{:?}` to `()` because it diverges",
+                       resolved);
                 demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().mk_nil());
             } else {
                 match self.infcx().type_is_unconstrained_numeric(resolved) {
                     UnconstrainedInt => {
+                        debug!("default_type_parameters: defaulting `{:?}` to `i32`",
+                               resolved);
                         demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
                     },
                     UnconstrainedFloat => {
+                        debug!("default_type_parameters: defaulting `{:?}` to `f32`",
+                               resolved);
                         demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
                     }
                     Neither => { }
@@ -3232,6 +3188,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Find the relevant variant
         let def = lookup_full_def(tcx, path.span, expr.id);
         if def == Def::Err {
+            fcx.infcx().set_tainted_by_errors();
             check_struct_fields_on_error(fcx, expr.id, fields, base_expr);
             return;
         }
@@ -3435,6 +3392,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                    expr.span,
                                    id);
               } else {
+                  fcx.infcx().set_tainted_by_errors();
                   fcx.write_ty(id, fcx.tcx().types.err);
               }
           }
@@ -3560,7 +3518,7 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Find the type of `e`. Supply hints based on the type we are casting to,
         // if appropriate.
         let t_cast = fcx.to_ty(t);
-        let t_cast = structurally_resolved_type(fcx, expr.span, t_cast);
+        let t_cast = fcx.infcx().resolve_type_vars_if_possible(&t_cast);
         check_expr_with_expectation(fcx, e, ExpectCastableToType(t_cast));
         let t_expr = fcx.expr_ty(e);
         let t_cast = fcx.infcx().resolve_type_vars_if_possible(&t_cast);
@@ -3568,8 +3526,6 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // Eagerly check for some obvious errors.
         if t_expr.references_error() || t_cast.references_error() {
             fcx.write_error(id);
-        } else if !fcx.type_is_known_to_be_sized(t_cast, expr.span) {
-            report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_cast, t_expr, id);
         } else {
             // Write a type for the whole expression, assuming everything is going
             // to work out Ok.
@@ -3577,8 +3533,14 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             // Defer other checks until we're done type checking.
             let mut deferred_cast_checks = fcx.inh.deferred_cast_checks.borrow_mut();
-            let cast_check = cast::CastCheck::new(e, t_expr, t_cast, expr.span);
-            deferred_cast_checks.push(cast_check);
+            match cast::CastCheck::new(fcx, e, t_expr, t_cast, t.span, expr.span) {
+                Ok(cast_check) => {
+                    deferred_cast_checks.push(cast_check);
+                }
+                Err(ErrorReported) => {
+                    fcx.write_error(id);
+                }
+            }
         }
       }
       hir::ExprType(ref e, ref t) => {
@@ -4408,8 +4370,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Def::ForeignMod(..) |
         Def::Local(..) |
         Def::Label(..) |
-        Def::Upvar(..) |
+        Def::Upvar(..) => {
+            segment_spaces = vec![None; segments.len()];
+        }
+
         Def::Err => {
+            fcx.infcx().set_tainted_by_errors();
             segment_spaces = vec![None; segments.len()];
         }
     }
@@ -4769,9 +4735,11 @@ fn structurally_resolve_type_or_else<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
         // If not, error.
         if alternative.is_ty_var() || alternative.references_error() {
-            fcx.type_error_message(sp, |_actual| {
-                "the type of this value must be known in this context".to_string()
-            }, ty, None);
+            if !fcx.infcx().is_tainted_by_errors() {
+                fcx.type_error_message(sp, |_actual| {
+                    "the type of this value must be known in this context".to_string()
+                }, ty, None);
+            }
             demand::suptype(fcx, sp, fcx.tcx().types.err, ty);
             ty = fcx.tcx().types.err;
         } else {
