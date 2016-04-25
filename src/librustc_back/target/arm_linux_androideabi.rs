@@ -12,7 +12,7 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
-    base.features = "+v7".to_string();
+    base.features = "+v7,+vfp3,+d16".to_string();
 
     Target {
         llvm_target: "arm-linux-androideabi".to_string(),
