@@ -19,20 +19,39 @@ use syntax::ast::{CrateNum, NodeId};
 use super::data::{self, SpanData};
 use super::dump::Dump;
 
-pub struct JsonDumper<'a, 'b, W: 'b> {
+pub struct JsonDumper<'a, 'b, W: Write + 'b> {
     output: &'b mut W,
     codemap: &'a CodeMap,
+    first: bool,
 }
 
 impl<'a, 'b, W: Write> JsonDumper<'a, 'b, W> {
     pub fn new(writer: &'b mut W, codemap: &'a CodeMap) -> JsonDumper<'a, 'b, W> {
-        JsonDumper { output: writer, codemap:codemap }
+        if let Err(_) = write!(writer, "[") {
+            error!("Error writing output");
+        }        
+        JsonDumper { output: writer, codemap:codemap, first: true }
+    }
+}
+
+impl<'a, 'b, W: Write> Drop for JsonDumper<'a, 'b, W> {
+    fn drop(&mut self) {
+        if let Err(_) = write!(self.output, "]") {
+            error!("Error writing output");
+        }
     }
 }
 
 macro_rules! impl_fn {
     ($fn_name: ident, $data_type: ident) => {
         fn $fn_name(&mut self, data: data::$data_type) {
+            if self.first {
+                self.first = false;
+            } else {
+                if let Err(_) = write!(self.output, ",") {
+                    error!("Error writing output");
+                }
+            }
             let data = data.lower(self.codemap);
             if let Err(_) = write!(self.output, "{}", as_json(&data)) {
                 error!("Error writing output '{}'", as_json(&data));
