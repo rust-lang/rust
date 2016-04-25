@@ -1640,8 +1640,8 @@ fn plain_summary_line(s: Option<&str>) -> String {
 }
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
-    if let Some(s) = short_stability(item, cx, true) {
-        write!(w, "<div class='stability'>{}</div>", s)?;
+    for stability in short_stability(item, cx, true) {
+        write!(w, "<div class='stability'>{}</div>", stability)?;
     }
     if let Some(s) = item.doc_value() {
         write!(w, "<div class='docblock'>{}</div>", Markdown(s))?;
@@ -1761,8 +1761,15 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
             _ => {
                 if myitem.name.is_none() { continue }
-                let stab_docs = if let Some(s) = short_stability(myitem, cx, false) {
-                    format!("[{}]", s)
+
+                let stabilities = short_stability(myitem, cx, false);
+
+                let stab_docs = if !stabilities.is_empty() {
+                    stabilities.iter()
+                               .map(|s| format!("[{}]", s))
+                               .collect::<Vec<_>>()
+                               .as_slice()
+                               .join(" ")
                 } else {
                     String::new()
                 };
@@ -1789,21 +1796,26 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     write!(w, "</table>")
 }
 
-fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Option<String> {
-    item.stability.as_ref().and_then(|stab| {
+fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<String> {
+    let mut stability = vec![];
+
+    if let Some(stab) = item.stability.as_ref() {
         let reason = if show_reason && !stab.reason.is_empty() {
             format!(": {}", stab.reason)
         } else {
             String::new()
         };
-        let text = if !stab.deprecated_since.is_empty() {
+        if !stab.deprecated_since.is_empty() {
             let since = if show_reason {
                 format!(" since {}", Escape(&stab.deprecated_since))
             } else {
                 String::new()
             };
-            format!("Deprecated{}{}", since, Markdown(&reason))
-        } else if stab.level == stability::Unstable {
+            let text = format!("Deprecated{}{}", since, Markdown(&reason));
+            stability.push(format!("<em class='stab deprecated'>{}</em>", text))
+        };
+
+        if stab.level == stability::Unstable {
             let unstable_extra = if show_reason {
                 match (!stab.feature.is_empty(), &cx.shared.issue_tracker_base_url, stab.issue) {
                     (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
@@ -1819,29 +1831,26 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Optio
             } else {
                 String::new()
             };
-            format!("Unstable{}{}", unstable_extra, Markdown(&reason))
-        } else {
-            return None
+            let text = format!("Unstable{}{}", unstable_extra, Markdown(&reason));
+            stability.push(format!("<em class='stab unstable'>{}</em>", text))
         };
-        Some(format!("<em class='stab {}'>{}</em>",
-                     item.stability_class(), text))
-    }).or_else(|| {
-        item.deprecation.as_ref().and_then(|depr| {
-            let note = if show_reason && !depr.note.is_empty() {
-                format!(": {}", depr.note)
-            } else {
-                String::new()
-            };
-            let since = if show_reason && !depr.since.is_empty() {
-                format!(" since {}", Escape(&depr.since))
-            } else {
-                String::new()
-            };
+    } else if let Some(depr) = item.deprecation.as_ref() {
+        let note = if show_reason && !depr.note.is_empty() {
+            format!(": {}", depr.note)
+        } else {
+            String::new()
+        };
+        let since = if show_reason && !depr.since.is_empty() {
+            format!(" since {}", Escape(&depr.since))
+        } else {
+            String::new()
+        };
 
-            let text = format!("Deprecated{}{}", since, Markdown(&note));
-            Some(format!("<em class='stab deprecated'>{}</em>", text))
-        })
-    })
+        let text = format!("Deprecated{}{}", since, Markdown(&note));
+        stability.push(format!("<em class='stab deprecated'>{}</em>", text))
+    }
+
+    stability
 }
 
 struct Initializer<'a>(&'a str);
