@@ -16,7 +16,9 @@ impl std::ops::Neg for S {
     fn neg(self) -> u32 { 0 }
 }
 
-const _MAX: usize = -1;
+// FIXME(eddyb) move this back to a `-1` literal when
+// MIR building stops eagerly erroring in that case.
+const _MAX: usize = -(2 - 1);
 //~^ WARN unary negation of unsigned integer
 //~| ERROR unary negation of unsigned integer
 //~| HELP use a cast or the `!` operator
