@@ -18,7 +18,37 @@ use std::hash::Hasher;
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use syntax::ast::{CrateNum, NodeId};
-use syntax::codemap::Span;
+use syntax::codemap::{Span, CodeMap};
+
+#[derive(Debug, Clone, RustcEncodable)]
+pub struct SpanData {
+    file_name: String,
+    byte_start: u32,
+    byte_end: u32,
+    /// 1-based.
+    line_start: usize,
+    line_end: usize,
+    /// 1-based, character offset.
+    column_start: usize,
+    column_end: usize,
+}
+
+impl SpanData {
+    pub fn from_span(span: Span, cm: &CodeMap) -> SpanData {
+        let start = cm.lookup_char_pos(span.lo);
+        let end = cm.lookup_char_pos(span.hi);
+
+        SpanData {
+            file_name: start.file.name.clone(),
+            byte_start: span.lo.0,
+            byte_end: span.hi.0,
+            line_start: start.line,
+            line_end: end.line,
+            column_start: start.col.0 + 1,
+            column_end: end.col.0 + 1,
+        }
+    }
+}
 
 pub struct CrateData {
     pub name: String,
