@@ -397,8 +397,7 @@ impl Destination {
                    style: Style)
                    -> io::Result<()> {
         match style {
-            Style::FileNameStyle => {
-            }
+            Style::FileNameStyle |
             Style::LineAndColumn => {
             }
             Style::LineNumber => {
