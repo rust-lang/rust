@@ -43,7 +43,7 @@ struct ExVisitor<'v> {
 
 impl<'v> Visitor<'v> for ExVisitor<'v> {
     fn visit_expr(&mut self, expr: &'v Expr) {
-        if let ExprClosure(_, _, ref block) = expr.node {
+        if let ExprClosure(_, _, ref block, _) = expr.node {
             let complex = {
                 if block.stmts.is_empty() {
                     if let Some(ref ex) = block.expr {

@@ -752,7 +752,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &Expr, map_args: &MethodArgs,
 /// lint use of `filter().next() for Iterators`
 fn lint_filter_next(cx: &LateContext, expr: &Expr, filter_args: &MethodArgs) {
     // lint if caller of `.filter().next()` is an Iterator
-    if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         let msg = "called `filter(p).next()` on an Iterator. This is more succinctly expressed by calling `.find(p)` \
                    instead.";
         let filter_snippet = snippet(cx, filter_args[1].span, "..");
@@ -776,7 +776,7 @@ fn lint_filter_next(cx: &LateContext, expr: &Expr, filter_args: &MethodArgs) {
 fn lint_search_is_some(cx: &LateContext, expr: &Expr, search_method: &str, search_args: &MethodArgs,
                        is_some_args: &MethodArgs) {
     // lint if caller of search is an Iterator
-    if match_trait_method(cx, &*is_some_args[0], &["core", "iter", "Iterator"]) {
+    if match_trait_method(cx, &*is_some_args[0], &paths::ITERATOR) {
         let msg = format!("called `is_some()` after searching an iterator with {}. This is more succinctly expressed \
                            by calling `any()`.",
                           search_method);

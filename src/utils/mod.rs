@@ -122,23 +122,33 @@ pub fn in_external_macro<T: LintContext>(cx: &T, span: Span) -> bool {
 /// ```
 /// match_def_path(cx, id, &["core", "option", "Option"])
 /// ```
+///
+/// See also the `paths` module.
 pub fn match_def_path(cx: &LateContext, def_id: DefId, path: &[&str]) -> bool {
-    let krate = &cx.tcx.crate_name(def_id.krate);
-    if krate != &path[0] {
-        return false;
+    use syntax::parse::token;
+
+    struct AbsolutePathBuffer {
+        names: Vec<token::InternedString>,
     }
 
-    let path = &path[1..];
-    let other = cx.tcx.def_path(def_id).data;
+    impl ty::item_path::ItemPathBuffer for AbsolutePathBuffer {
+        fn root_mode(&self) -> &ty::item_path::RootMode {
+            const ABSOLUTE: &'static ty::item_path::RootMode = &ty::item_path::RootMode::Absolute;
+            ABSOLUTE
+        }
 
-    if other.len() != path.len() {
-        return false;
+        fn push(&mut self, text: &str) {
+            self.names.push(token::intern(text).as_str());
+        }
     }
 
-    other.into_iter()
-         .map(|e| e.data)
-         .zip(path)
-         .all(|(nm, p)| nm.as_interned_str() == *p)
+    let mut apb = AbsolutePathBuffer {
+        names: vec![],
+    };
+
+    cx.tcx.push_item_path(&mut apb, def_id);
+
+    apb.names == path
 }
 
 /// Check if type is struct or enum type with given def path.
@@ -730,9 +740,12 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
         Some(unwrap_unstable(expr))
     }
 
-    match unwrap_unstable(&expr).node {
+    // The range syntax is expanded to literal paths starting with `core` or `std` depending on
+    // `#[no_std]`. Testing both instead of resolving the paths.
+
+    match unwrap_unstable(expr).node {
         ExprPath(None, ref path) => {
-            if match_path(path, &paths::RANGE_FULL) {
+            if match_path(path, &paths::RANGE_FULL_STD) || match_path(path, &paths::RANGE_FULL) {
                 Some(UnsugaredRange {
                     start: None,
                     end: None,
@@ -743,31 +756,31 @@ pub fn unsugar_range(expr: &Expr) -> Option<UnsugaredRange> {
             }
         }
         ExprStruct(ref path, ref fields, None) => {
-            if match_path(path, &paths::RANGE_FROM) {
+            if match_path(path, &paths::RANGE_FROM_STD) || match_path(path, &paths::RANGE_FROM) {
                 Some(UnsugaredRange {
                     start: get_field("start", fields),
                     end: None,
                     limits: RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
+            } else if match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY_STD) || match_path(path, &paths::RANGE_INCLUSIVE_NON_EMPTY) {
                 Some(UnsugaredRange {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
                     limits: RangeLimits::Closed,
                 })
-            } else if match_path(path, &paths::RANGE) {
+            } else if match_path(path, &paths::RANGE_STD) || match_path(path, &paths::RANGE) {
                 Some(UnsugaredRange {
                     start: get_field("start", fields),
                     end: get_field("end", fields),
                     limits: RangeLimits::HalfOpen,
                 })
-            } else if match_path(path, &paths::RANGE_TO_INCLUSIVE) {
+            } else if match_path(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_path(path, &paths::RANGE_TO_INCLUSIVE) {
                 Some(UnsugaredRange {
                     start: None,
                     end: get_field("end", fields),
                     limits: RangeLimits::Closed,
                 })
-            } else if match_path(path, &paths::RANGE_TO) {
+            } else if match_path(path, &paths::RANGE_TO_STD) || match_path(path, &paths::RANGE_TO) {
                 Some(UnsugaredRange {
                     start: None,
                     end: get_field("end", fields),

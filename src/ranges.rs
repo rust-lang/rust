@@ -1,7 +1,7 @@
 use rustc::lint::*;
 use rustc::hir::*;
 use syntax::codemap::Spanned;
-use utils::{is_integer_literal, match_type, snippet, span_lint, unsugar_range, UnsugaredRange};
+use utils::{is_integer_literal, match_type, paths, snippet, span_lint, unsugar_range, UnsugaredRange};
 
 /// **What it does:** This lint checks for iterating over ranges with a `.step_by(0)`, which never terminates.
 ///
@@ -39,7 +39,7 @@ impl LateLintPass for StepByZero {
     fn check_expr(&mut self, cx: &LateContext, expr: &Expr) {
         if let ExprMethodCall(Spanned { node: ref name, .. }, _, ref args) = expr.node {
             // Range with step_by(0).
-            if name.as_str() == "step_by" && args.len() == 2 && is_range(cx, &args[0]) &&
+            if name.as_str() == "step_by" && args.len() == 2 && has_step_by(cx, &args[0]) &&
                is_integer_literal(&args[1], 0) {
                 span_lint(cx,
                           RANGE_STEP_BY_ZERO,
@@ -77,10 +77,13 @@ impl LateLintPass for StepByZero {
     }
 }
 
-fn is_range(cx: &LateContext, expr: &Expr) -> bool {
+fn has_step_by(cx: &LateContext, expr: &Expr) -> bool {
     // No need for walk_ptrs_ty here because step_by moves self, so it
     // can't be called on a borrowed range.
     let ty = cx.tcx.expr_ty(expr);
-    // Note: RangeTo and RangeFull don't have step_by
-    match_type(cx, ty, &["core", "ops", "Range"]) || match_type(cx, ty, &["core", "ops", "RangeFrom"])
+
+    // Note: `RangeTo`, `RangeToInclusive` and `RangeFull` don't have step_by
+    match_type(cx, ty, &paths::RANGE)
+        || match_type(cx, ty, &paths::RANGE_FROM)
+        || match_type(cx, ty, &paths::RANGE_INCLUSIVE)
 }

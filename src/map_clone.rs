@@ -25,7 +25,7 @@ impl LateLintPass for MapClonePass {
         if let ExprMethodCall(name, _, ref args) = expr.node {
             if name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
-                    ExprClosure(_, ref decl, ref blk) => {
+                    ExprClosure(_, ref decl, ref blk, _) => {
                         if_let_chain! {
                             [
                             // just one expression in the closure
@@ -51,7 +51,7 @@ impl LateLintPass for MapClonePass {
                                 else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
                                     if clone_call.node.as_str() == "clone" &&
                                         clone_args.len() == 1 &&
-                                        match_trait_method(cx, closure_expr, &["core", "clone", "Clone"]) &&
+                                        match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
                                         expr_eq_ident(&clone_args[0], arg_ident)
                                     {
                                         span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
@@ -96,7 +96,7 @@ fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
 }
 
 fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static str> {
-    if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         Some("iterator")
     } else if match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(arg)), &paths::OPTION) {
         Some("Option")
