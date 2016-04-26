@@ -28,8 +28,9 @@ use rustc::dep_graph::DepNode;
 use rustc::ty::cast::{CastKind};
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, compare_lit_exprs};
 use rustc_const_eval::{eval_const_expr_partial, lookup_const_by_id};
-use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp};
 use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
+use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
+use rustc_const_eval::ErrKind::UnresolvedPath;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::Def;
@@ -490,6 +491,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 Err(ConstEvalErr { kind: UnimplementedConstVal(_), ..}) |
                 Err(ConstEvalErr { kind: MiscCatchAll, ..}) |
                 Err(ConstEvalErr { kind: MiscBinaryOp, ..}) |
+                Err(ConstEvalErr { kind: NonConstPath, ..}) |
+                Err(ConstEvalErr { kind: UnresolvedPath, ..}) |
                 Err(ConstEvalErr { kind: ErroneousReferencedConstant(_), ..}) |
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shr)), ..}) |
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), ..}) |
