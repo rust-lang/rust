@@ -41,13 +41,13 @@ use super::MirContext;
 /// The LLVM type might not be the same for a single Rust type,
 /// e.g. each enum variant would have its own LLVM struct type.
 #[derive(Copy, Clone)]
-struct Const<'tcx> {
-    llval: ValueRef,
-    ty: Ty<'tcx>
+pub struct Const<'tcx> {
+    pub llval: ValueRef,
+    pub ty: Ty<'tcx>
 }
 
 impl<'tcx> Const<'tcx> {
-    fn new(llval: ValueRef, ty: Ty<'tcx>) -> Const<'tcx> {
+    pub fn new(llval: ValueRef, ty: Ty<'tcx>) -> Const<'tcx> {
         Const {
             llval: llval,
             ty: ty
@@ -55,10 +55,10 @@ impl<'tcx> Const<'tcx> {
     }
 
     /// Translate ConstVal into a LLVM constant value.
-    fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
-                         cv: ConstVal,
-                         ty: Ty<'tcx>)
-                         -> Const<'tcx> {
+    pub fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
+                             cv: ConstVal,
+                             ty: Ty<'tcx>)
+                             -> Const<'tcx> {
         let llty = type_of::type_of(ccx, ty);
         let val = match cv {
             ConstVal::Float(v) => C_floating_f64(v, llty),
@@ -110,7 +110,7 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
-    fn to_operand<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
+    pub fn to_operand<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> OperandRef<'tcx> {
         let llty = type_of::immediate_type_of(ccx, self.ty);
         let llvalty = val_ty(self.llval);
 
@@ -799,7 +799,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     pub fn trans_constant(&mut self,
                           bcx: &BlockAndBuilder<'bcx, 'tcx>,
                           constant: &mir::Constant<'tcx>)
-                          -> OperandRef<'tcx>
+                          -> Const<'tcx>
     {
         let ty = bcx.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
@@ -808,10 +808,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 // types, which would not work with MirConstContext.
                 if common::type_is_zero_size(bcx.ccx(), ty) {
                     let llty = type_of::type_of(bcx.ccx(), ty);
-                    return OperandRef {
-                        val: OperandValue::Immediate(C_null(llty)),
-                        ty: ty
-                    };
+                    return Const::new(C_null(llty), ty);
                 }
 
                 let substs = bcx.tcx().mk_substs(bcx.monomorphize(substs));
@@ -827,7 +824,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
         };
 
-        let val = match result {
+        match result {
             Ok(v) => v,
             Err(ConstEvalFailure::Compiletime(_)) => {
                 // We've errored, so we don't have to produce working code.
@@ -839,14 +836,6 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           "MIR constant {:?} results in runtime panic: {}",
                           constant, err.description())
             }
-        };
-
-        let operand = val.to_operand(bcx.ccx());
-        if let OperandValue::Ref(ptr) = operand.val {
-            // If this is a OperandValue::Ref to an immediate constant, load it.
-            self.trans_load(bcx, ptr, operand.ty)
-        } else {
-            operand
         }
     }
 }
