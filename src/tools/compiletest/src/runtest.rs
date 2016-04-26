@@ -1147,14 +1147,27 @@ actual:\n\
         }
     }
 
+    /// For each `aux-build: foo/bar` annotation, we check to find the
+    /// file in a `aux` directory relative to the test itself.
     fn compute_aux_test_paths(&self, rel_ab: &str) -> TestPaths {
-        let abs_ab = self.config.aux_base.join(rel_ab);
+        let test_ab = self.testpaths.file
+                                    .parent()
+                                    .expect("test file path has no parent")
+                                    .join("aux")
+                                    .join(rel_ab);
+        if !test_ab.exists() {
+            self.fatal(&format!("aux-build `{}` source not found", test_ab.display()))
+        }
+
         TestPaths {
-            file: abs_ab,
+            file: test_ab,
             base: self.testpaths.base.clone(),
-            relative_dir: Path::new(rel_ab).parent()
-                                           .map(|p| p.to_path_buf())
-                                           .unwrap_or_else(|| PathBuf::new())
+            relative_dir: self.testpaths.relative_dir
+                                        .join("aux")
+                                        .join(rel_ab)
+                                        .parent()
+                                        .expect("aux-build path has no parent")
+                                        .to_path_buf()
         }
     }
 
