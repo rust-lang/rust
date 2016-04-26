@@ -96,6 +96,7 @@ pub mod mut_mut;
 pub mod mut_reference;
 pub mod mutex_atomic;
 pub mod needless_bool;
+pub mod needless_borrow;
 pub mod needless_update;
 pub mod neg_multiply;
 pub mod new_without_default;
@@ -210,6 +211,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box zero_div_zero::ZeroDivZeroPass);
     reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
     reg.register_late_lint_pass(box needless_update::NeedlessUpdatePass);
+    reg.register_late_lint_pass(box needless_borrow::NeedlessBorrow);
     reg.register_late_lint_pass(box no_effect::NoEffectPass);
     reg.register_late_lint_pass(box map_clone::MapClonePass);
     reg.register_late_lint_pass(box temporary_assignment::TemporaryAssignmentPass);
@@ -364,6 +366,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
+        needless_borrow::NEEDLESS_BORROW,
         needless_update::NEEDLESS_UPDATE,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,

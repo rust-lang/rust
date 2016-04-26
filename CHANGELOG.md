@@ -149,6 +149,7 @@ All notable changes to this project will be documented in this file.
 [`mutex_atomic`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic
 [`mutex_integer`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_integer
 [`needless_bool`]: https://github.com/Manishearth/rust-clippy/wiki#needless_bool
+[`needless_borrow`]: https://github.com/Manishearth/rust-clippy/wiki#needless_borrow
 [`needless_lifetimes`]: https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes
 [`needless_range_loop`]: https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop
 [`needless_return`]: https://github.com/Manishearth/rust-clippy/wiki#needless_return
