@@ -229,10 +229,9 @@ impl<S1,S2> From<(S1, Style, S2, Style, RenderedLineKind)> for RenderedLine
 
 impl RenderedLine {
     fn trim_last(&mut self) {
-        if !self.text.is_empty() {
-            let last_text = &mut self.text.last_mut().unwrap().text;
-            let len = last_text.trim_right().len();
-            last_text.truncate(len);
+        if let Some(last_text) = self.text.last_mut() {
+            let len = last_text.text.trim_right().len();
+            last_text.text.truncate(len);
         }
     }
 }
