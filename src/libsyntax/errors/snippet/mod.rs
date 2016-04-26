@@ -16,7 +16,6 @@ use std::rc::Rc;
 use std::mem;
 use std::ops::Range;
 
-#[cfg(test)]
 mod test;
 
 pub struct SnippetData {
@@ -210,8 +209,7 @@ impl<S> From<(S, Style, RenderedLineKind)> for RenderedLine
 impl<S1,S2> From<(S1, Style, S2, Style, RenderedLineKind)> for RenderedLine
     where S1: StringSource, S2: StringSource
 {
-    fn from(tuple: (S1, Style, S2, Style, RenderedLineKind))
-            -> Self {
+    fn from(tuple: (S1, Style, S2, Style, RenderedLineKind)) -> Self {
         let (text1, style1, text2, style2, kind) = tuple;
         RenderedLine {
             text: vec![
