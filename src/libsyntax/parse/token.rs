@@ -566,6 +566,28 @@ impl<'a> PartialEq<InternedString> for &'a str {
     }
 }
 
+impl PartialEq<str> for InternedString {
+    #[inline(always)]
+    fn eq(&self, other: &str) -> bool {
+        PartialEq::eq(&self.string[..], other)
+    }
+    #[inline(always)]
+    fn ne(&self, other: &str) -> bool {
+        PartialEq::ne(&self.string[..], other)
+    }
+}
+
+impl PartialEq<InternedString> for str {
+    #[inline(always)]
+    fn eq(&self, other: &InternedString) -> bool {
+        PartialEq::eq(self, &other.string[..])
+    }
+    #[inline(always)]
+    fn ne(&self, other: &InternedString) -> bool {
+        PartialEq::ne(self, &other.string[..])
+    }
+}
+
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
         Ok(intern(d.read_str()?.as_ref()).as_str())
