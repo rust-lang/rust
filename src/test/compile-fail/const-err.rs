@@ -21,7 +21,6 @@ fn main() {
     //~^ WARN attempted to negate with overflow
     let b = 200u8 + 200u8 + 200u8;
     //~^ WARN attempted to add with overflow
-    //~^^ WARN attempted to add with overflow
     let c = 200u8 * 4;
     //~^ WARN attempted to multiply with overflow
     let d = 42u8 - (42u8 + 1);
