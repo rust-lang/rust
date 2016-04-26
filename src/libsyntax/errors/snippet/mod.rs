@@ -49,7 +49,7 @@ struct Annotation {
     /// column.
     start_col: usize,
 
-    /// End column within the line.
+    /// End column within the line (exclusive)
     end_col: usize,
 
     /// Is this annotation derived from primary span
@@ -349,24 +349,40 @@ impl FileInfo {
                   label: Option<String>) {
         assert!(lines.len() > 0);
 
-        // If a span covers multiple lines, just put the label on the
-        // first one. This is a sort of arbitrary choice and not
-        // obviously correct.
-        let (line0, remaining_lines) = lines.split_first().unwrap();
-        let index = self.ensure_source_line(line0.line_index);
-        self.lines[index].push_annotation(line0.start_col,
-                                          line0.end_col,
+        // If a span covers multiple lines, we reduce it to a single
+        // point at the start of the span. This means that instead
+        // of producing output like this:
+        //
+        // ```
+        // --> foo.rs:2:1
+        // 2   |> fn conflicting_items<'grammar>(state: &LR0State<'grammar>)
+        //     |> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        // 3   |>                               -> Set<LR0Item<'grammar>>
+        //     |> ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        // (and so on)
+        // ```
+        //
+        // we produce:
+        //
+        // ```
+        // --> foo.rs:2:1
+        // 2   |> fn conflicting_items<'grammar>(state: &LR0State<'grammar>)
+        //        ^
+        // ```
+        //
+        // Basically, although this loses information, multi-line spans just
+        // never look good.
+
+        let (line, start_col, end_col) = if lines.len() == 1 {
+            (lines[0].line_index, lines[0].start_col, lines[0].end_col)
+        } else {
+            (lines[0].line_index, lines[0].start_col, CharPos(lines[0].start_col.0 + 1))
+        };
+        let index = self.ensure_source_line(line);
+        self.lines[index].push_annotation(start_col,
+                                          end_col,
                                           is_primary,
                                           label);
-        for line in remaining_lines {
-            if line.end_col > line.start_col {
-                let index = self.ensure_source_line(line.line_index);
-                self.lines[index].push_annotation(line.start_col,
-                                                  line.end_col,
-                                                  is_primary,
-                                                  None);
-            }
-        }
     }
 
     /// Ensure that we have a `Line` struct corresponding to
@@ -414,57 +430,10 @@ impl FileInfo {
     }
 
     fn render_file_lines(&self, codemap: &Rc<CodeMap>) -> Vec<RenderedLine> {
-        // Group our lines by those with annotations and those without
-        let mut lines_iter = self.lines.iter().peekable();
+        // As a first step, we elide any instance of more than one
+        // continuous unannotated line.
 
-        let mut line_groups = vec![];
-
-        loop {
-            match lines_iter.next() {
-                None => break,
-                Some(line) if line.annotations.is_empty() => {
-                    // Collect unannotated group
-                    let mut unannotated_group : Vec<&Line> = vec![];
-
-                    unannotated_group.push(line);
-
-                    loop {
-                        let next_line =
-                            match lines_iter.peek() {
-                                None => break,
-                                Some(x) if !x.annotations.is_empty() => break,
-                                Some(x) => x.clone()
-                            };
-
-                        unannotated_group.push(next_line);
-                        lines_iter.next();
-                    }
-
-                    line_groups.push((false, unannotated_group));
-                }
-                Some(line) => {
-                    // Collect annotated group
-                    let mut annotated_group : Vec<&Line> = vec![];
-
-                    annotated_group.push(line);
-
-                    loop {
-                        let next_line =
-                            match lines_iter.peek() {
-                                None => break,
-                                Some(x) if x.annotations.is_empty() => break,
-                                Some(x) => x.clone()
-                            };
-
-                        annotated_group.push(next_line);
-                        lines_iter.next();
-                    }
-
-                    line_groups.push((true, annotated_group));
-                }
-            }
-        }
-
+        let mut lines_iter = self.lines.iter();
         let mut output = vec![];
 
         // First insert the name of the file.
@@ -493,65 +462,30 @@ impl FileInfo {
             }
         }
 
-        for &(is_annotated, ref group) in line_groups.iter() {
-            if is_annotated {
-                let mut annotation_ends_at_eol = false;
-                let mut prev_ends_at_eol = false;
-                let mut elide_unlabeled_region = false;
+        let mut next_line = lines_iter.next();
+        while next_line.is_some() {
+            // Consume lines with annotations.
+            while let Some(line) = next_line {
+                if line.annotations.is_empty() { break; }
+                output.append(&mut self.render_line(line));
+                next_line = lines_iter.next();
+            }
 
-                for group_line in group.iter() {
-                    let source_string_len =
-                        self.file.get_line(group_line.line_index)
-                                 .map(|s| s.len())
-                                 .unwrap_or(0);
-
-                    for annotation in &group_line.annotations {
-                        if annotation.end_col == source_string_len {
-                            annotation_ends_at_eol = true;
-                        }
-                    }
-
-                    let is_single_unlabeled_annotated_line =
-                        if group_line.annotations.len() == 1 {
-                            if let Some(annotation) = group_line.annotations.first() {
-                                match annotation.label {
-                                    Some(_) => false,
-                                    None => annotation.start_col == 0 &&
-                                            annotation.end_col == source_string_len
-                                }
-                            } else {
-                                false
-                            }
-                        } else {
-                            false
-                        };
-
-                    if prev_ends_at_eol && is_single_unlabeled_annotated_line {
-                        if !elide_unlabeled_region {
-                            output.push(RenderedLine::from((String::new(),
-                                                            Style::NoStyle,
-                                                            RenderedLineKind::Elision)));
-                            elide_unlabeled_region = true;
-                            prev_ends_at_eol = true;
-                        }
-                        continue;
-                    }
-
-                    let mut v = self.render_line(group_line);
-                    output.append(&mut v);
-
-                    prev_ends_at_eol = annotation_ends_at_eol;
-                }
-            } else {
-                if group.len() > 1 {
-                    output.push(RenderedLine::from((String::new(),
-                                                    Style::NoStyle,
-                                                    RenderedLineKind::Elision)));
-                } else {
-                    let mut v: Vec<RenderedLine> =
-                        group.iter().flat_map(|line| self.render_line(line)).collect();
-                    output.append(&mut v);
-                }
+            // Emit lines without annotations, but only if they are
+            // followed by a line with an annotation.
+            let unannotated_line = next_line;
+            let mut unannotated_lines = 0;
+            while let Some(line) = next_line {
+                if !line.annotations.is_empty() { break; }
+                unannotated_lines += 1;
+                next_line = lines_iter.next();
+            }
+            if unannotated_lines > 1 {
+                output.push(RenderedLine::from((String::new(),
+                                                Style::NoStyle,
+                                                RenderedLineKind::Elision)));
+            } else if let Some(line) = unannotated_line {
+                output.append(&mut self.render_line(line));
             }
         }
 
