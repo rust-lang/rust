@@ -285,7 +285,7 @@ impl LateLintPass for LoopsPass {
                 let iter_expr = &method_args[0];
                 if let Some(lhs_constructor) = path.segments.last() {
                     if method_name.node.as_str() == "next" &&
-                       match_trait_method(cx, match_expr, &["core", "iter", "Iterator"]) &&
+                       match_trait_method(cx, match_expr, &paths::ITERATOR) &&
                        lhs_constructor.identifier.name.as_str() == "Some" &&
                        !is_iterator_used_after_while_let(cx, iter_expr) {
                         let iterator = snippet(cx, method_args[0].span, "_");
@@ -305,7 +305,7 @@ impl LateLintPass for LoopsPass {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
                 if args.len() == 1 && method.node.as_str() == "collect" &&
-                   match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+                   match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(cx,
                               UNUSED_COLLECT,
                               expr.span,
@@ -488,7 +488,7 @@ fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
                                        object,
                                        method_name));
                 }
-            } else if method_name.as_str() == "next" && match_trait_method(cx, arg, &["core", "iter", "Iterator"]) {
+            } else if method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,
                           ITER_NEXT_LOOP,
                           expr.span,
@@ -739,11 +739,11 @@ fn is_ref_iterable_type(cx: &LateContext, e: &Expr) -> bool {
     match_type(cx, ty, &paths::VEC) ||
     match_type(cx, ty, &paths::LINKED_LIST) ||
     match_type(cx, ty, &paths::HASHMAP) ||
-    match_type(cx, ty, &["std", "collections", "hash", "set", "HashSet"]) ||
-    match_type(cx, ty, &["collections", "vec_deque", "VecDeque"]) ||
-    match_type(cx, ty, &["collections", "binary_heap", "BinaryHeap"]) ||
+    match_type(cx, ty, &paths::HASHSET) ||
+    match_type(cx, ty, &paths::VEC_DEQUE) ||
+    match_type(cx, ty, &paths::BINARY_HEAP) ||
     match_type(cx, ty, &paths::BTREEMAP) ||
-    match_type(cx, ty, &["collections", "btree", "set", "BTreeSet"])
+    match_type(cx, ty, &paths::BTREESET)
 }
 
 fn is_iterable_array(ty: ty::Ty) -> bool {

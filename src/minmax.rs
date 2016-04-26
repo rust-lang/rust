@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use std::cmp::{PartialOrd, Ordering};
 use syntax::ptr::P;
-use utils::{match_def_path, span_lint};
+use utils::{match_def_path, paths, span_lint};
 
 /// **What it does:** This lint checks for expressions where `std::cmp::min` and `max` are used to clamp values, but switched so that the result is constant.
 ///
@@ -57,9 +57,9 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
         if let ExprPath(None, _) = path.node {
             let def_id = cx.tcx.def_map.borrow()[&path.id].def_id();
 
-            if match_def_path(cx, def_id, &["core", "cmp", "min"]) {
+            if match_def_path(cx, def_id, &paths::CMP_MIN) {
                 fetch_const(args, MinMax::Min)
-            } else if match_def_path(cx, def_id, &["core", "cmp", "max"]) {
+            } else if match_def_path(cx, def_id, &paths::CMP_MAX) {
                 fetch_const(args, MinMax::Max)
             } else {
                 None

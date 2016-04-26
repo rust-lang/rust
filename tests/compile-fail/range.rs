@@ -1,4 +1,5 @@
 #![feature(step_by)]
+#![feature(inclusive_range_syntax)]
 #![feature(plugin)]
 #![plugin(clippy)]
 
@@ -14,6 +15,7 @@ fn main() {
     (0..1).step_by(1);
 
     (1..).step_by(0); //~ERROR Range::step_by(0) produces an infinite iterator
+    (1...2).step_by(0); //~ERROR Range::step_by(0) produces an infinite iterator
 
     let x = 0..1;
     x.step_by(0); //~ERROR Range::step_by(0) produces an infinite iterator

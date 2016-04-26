@@ -96,7 +96,7 @@ fn expr_eq_ident(expr: &Expr, id: Ident) -> bool {
 }
 
 fn get_type_name(cx: &LateContext, expr: &Expr, arg: &Expr) -> Option<&'static str> {
-    if match_trait_method(cx, expr, &["core", "iter", "Iterator"]) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
         Some("iterator")
     } else if match_type(cx, walk_ptrs_ty(cx.tcx.expr_ty(arg)), &paths::OPTION) {
         Some("Option")
