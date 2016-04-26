@@ -623,7 +623,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
 	--lldb-python $$(CFG_LLDB_PYTHON) \
         --gdb-version="$(CFG_GDB_VERSION)" \
         --lldb-version="$(CFG_LLDB_VERSION)" \
-        --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
+        --android-cross-path=$(CFG_ARM_LINUX_ANDROIDEABI_NDK) \
         --adb-path=$(CFG_ADB) \
         --adb-test-dir=$(CFG_ADB_TEST_DIR) \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
