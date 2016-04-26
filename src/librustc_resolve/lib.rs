@@ -818,7 +818,6 @@ enum ParentLink<'a> {
 pub struct ModuleS<'a> {
     parent_link: ParentLink<'a>,
     def: Option<Def>,
-    vis: ty::Visibility,
 
     // If the module is an extern crate, `def` is root of the external crate and `extern_crate_id`
     // is the NodeId of the local `extern crate` item (otherwise, `extern_crate_id` is None).
@@ -849,12 +848,10 @@ impl<'a> ModuleS<'a> {
     fn new(parent_link: ParentLink<'a>,
            def: Option<Def>,
            external: bool,
-           vis: ty::Visibility,
            arenas: &'a ResolverArenas<'a>) -> Self {
         ModuleS {
             parent_link: parent_link,
             def: def,
-            vis: vis,
             extern_crate_id: None,
             resolutions: RefCell::new(HashMap::new()),
             unresolved_imports: RefCell::new(Vec::new()),
@@ -895,7 +892,7 @@ impl<'a> ModuleS<'a> {
 
 impl<'a> fmt::Debug for ModuleS<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}, {:?}", self.def, self.vis)
+        write!(f, "{:?}", self.def)
     }
 }
 
@@ -923,14 +920,6 @@ enum NameBindingKind<'a> {
 struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
 
 impl<'a> NameBinding<'a> {
-    fn create_from_module(module: Module<'a>, span: Option<Span>) -> Self {
-        NameBinding {
-            kind: NameBindingKind::Module(module),
-            span: span,
-            vis: module.vis,
-        }
-    }
-
     fn module(&self) -> Option<Module<'a>> {
         match self.kind {
             NameBindingKind::Module(module) => Some(module),
@@ -1148,9 +1137,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
            arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a, 'tcx> {
         let root_def_id = ast_map.local_def_id(CRATE_NODE_ID);
-        let vis = ty::Visibility::Public;
         let graph_root =
-            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, vis, arenas);
+            ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
         let graph_root = arenas.alloc_module(graph_root);
 
         Resolver {
@@ -1208,21 +1196,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn new_module(&self,
-                  parent_link: ParentLink<'a>,
-                  def: Option<Def>,
-                  external: bool,
-                  vis: ty::Visibility) -> Module<'a> {
-        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, vis, self.arenas))
+    fn new_module(&self, parent_link: ParentLink<'a>, def: Option<Def>, external: bool)
+                  -> Module<'a> {
+        self.arenas.alloc_module(ModuleS::new(parent_link, def, external, self.arenas))
     }
 
-    fn new_extern_crate_module(&self,
-                               parent_link: ParentLink<'a>,
-                               def: Def,
-                               vis: ty::Visibility,
-                               local_node_id: NodeId)
+    fn new_extern_crate_module(&self, parent_link: ParentLink<'a>, def: Def, local_node_id: NodeId)
                                -> Module<'a> {
-        let mut module = ModuleS::new(parent_link, Some(def), false, vis, self.arenas);
+        let mut module = ModuleS::new(parent_link, Some(def), false, self.arenas);
         module.extern_crate_id = Some(local_node_id);
         self.arenas.modules.alloc(module)
     }

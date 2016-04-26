@@ -46,9 +46,9 @@ trait ToNameBinding<'a> {
     fn to_name_binding(self) -> NameBinding<'a>;
 }
 
-impl<'a> ToNameBinding<'a> for (Module<'a>, Span) {
+impl<'a> ToNameBinding<'a> for (Module<'a>, Span, ty::Visibility) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding::create_from_module(self.0, Some(self.1))
+        NameBinding { kind: NameBindingKind::Module(self.0), span: Some(self.1), vis: self.2 }
     }
 }
 
@@ -247,8 +247,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                     };
                     let parent_link = ModuleParentLink(parent, name);
                     let def = Def::Mod(def_id);
-                    let module = self.new_extern_crate_module(parent_link, def, vis, item.id);
-                    self.define(parent, name, TypeNS, (module, sp));
+                    let module = self.new_extern_crate_module(parent_link, def, item.id);
+                    self.define(parent, name, TypeNS, (module, sp, vis));
 
                     self.build_reduced_graph_for_external_crate(module);
                 }
@@ -257,8 +257,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
             ItemMod(..) => {
                 let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Mod(self.ast_map.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), false, vis);
-                self.define(parent, name, TypeNS, (module, sp));
+                let module = self.new_module(parent_link, Some(def), false);
+                self.define(parent, name, TypeNS, (module, sp, vis));
                 self.module_map.insert(item.id, module);
                 *parent_ref = module;
             }
@@ -289,12 +289,12 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
             ItemEnum(ref enum_definition, _) => {
                 let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Enum(self.ast_map.local_def_id(item.id));
-                let module = self.new_module(parent_link, Some(def), false, vis);
-                self.define(parent, name, TypeNS, (module, sp));
+                let module = self.new_module(parent_link, Some(def), false);
+                self.define(parent, name, TypeNS, (module, sp, vis));
 
                 for variant in &(*enum_definition).variants {
                     let item_def_id = self.ast_map.local_def_id(item.id);
-                    self.build_reduced_graph_for_variant(variant, item_def_id, module);
+                    self.build_reduced_graph_for_variant(variant, item_def_id, module, vis);
                 }
             }
 
@@ -328,8 +328,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 // Add all the items within to a new module.
                 let parent_link = ModuleParentLink(parent, name);
                 let def = Def::Trait(def_id);
-                let module_parent = self.new_module(parent_link, Some(def), false, vis);
-                self.define(parent, name, TypeNS, (module_parent, sp));
+                let module_parent = self.new_module(parent_link, Some(def), false);
+                self.define(parent, name, TypeNS, (module_parent, sp, vis));
 
                 // Add the names of all the items to the trait info.
                 for item in items {
@@ -353,7 +353,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
     fn build_reduced_graph_for_variant(&mut self,
                                        variant: &Variant,
                                        item_id: DefId,
-                                       parent: Module<'b>) {
+                                       parent: Module<'b>,
+                                       vis: ty::Visibility) {
         let name = variant.node.name;
         if variant.node.data.is_struct() {
             // Not adding fields for variants as they are not accessed with a self receiver
@@ -364,8 +365,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
         // Variants are always treated as importable to allow them to be glob used.
         // All variants are defined in both type and value namespaces as future-proofing.
         let def = Def::Variant(item_id, self.ast_map.local_def_id(variant.node.data.id()));
-        self.define(parent, name, ValueNS, (def, variant.span, parent.vis));
-        self.define(parent, name, TypeNS, (def, variant.span, parent.vis));
+        self.define(parent, name, ValueNS, (def, variant.span, vis));
+        self.define(parent, name, TypeNS, (def, variant.span, vis));
     }
 
     /// Constructs the reduced graph for one foreign item.
@@ -396,7 +397,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                    block_id);
 
             let parent_link = BlockParentLink(parent, block_id);
-            let new_module = self.new_module(parent_link, None, false, parent.vis);
+            let new_module = self.new_module(parent_link, None, false);
             self.module_map.insert(block_id, new_module);
             *parent = new_module;
         }
@@ -425,8 +426,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 debug!("(building reduced graph for external crate) building module {} {:?}",
                        name, vis);
                 let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), true, vis);
-                self.try_define(parent, name, TypeNS, (module, DUMMY_SP));
+                let module = self.new_module(parent_link, Some(def), true);
+                self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::Variant(_, variant_id) => {
                 debug!("(building reduced graph for external crate) building variant {}", name);
@@ -467,8 +468,8 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 }
 
                 let parent_link = ModuleParentLink(parent, name);
-                let module = self.new_module(parent_link, Some(def), true, vis);
-                self.try_define(parent, name, TypeNS, (module, DUMMY_SP));
+                let module = self.new_module(parent_link, Some(def), true);
+                self.try_define(parent, name, TypeNS, (module, DUMMY_SP, vis));
             }
             Def::TyAlias(..) | Def::AssociatedTy(..) => {
                 debug!("(building reduced graph for external crate) building type {}", name);
