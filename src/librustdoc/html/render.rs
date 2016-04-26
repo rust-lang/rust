@@ -820,13 +820,16 @@ fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
     Ok(try_err!(try_err!(File::create(&dst), &dst).write_all(contents), &dst))
 }
 
-/// Makes a directory on the filesystem, failing the thread if an error occurs and
-/// skipping if the directory already exists.
+/// Makes a directory on the filesystem, failing the thread if an error occurs
+/// and skipping if the directory already exists.
+///
+/// Note that this also handles races as rustdoc is likely to be run
+/// concurrently against another invocation.
 fn mkdir(path: &Path) -> io::Result<()> {
-    if !path.exists() {
-        fs::create_dir(path)
-    } else {
-        Ok(())
+    match fs::create_dir(path) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(e)
     }
 }
 
