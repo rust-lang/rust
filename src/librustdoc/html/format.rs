@@ -57,6 +57,11 @@ pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 
+pub struct HRef<'a> {
+    pub did: DefId,
+    pub text: &'a str,
+}
+
 impl<'a> VisSpace<'a> {
     pub fn get(self) -> &'a Option<clean::Visibility> {
         let VisSpace(v) = self; v
@@ -291,17 +296,19 @@ impl fmt::Display for clean::Path {
 
 pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
     let cache = cache();
+    if !did.is_local() && !cache.access_levels.is_doc_reachable(did) {
+        return None
+    }
+
     let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
     let &(ref fqp, shortty) = match cache.paths.get(&did) {
         Some(p) => p,
         None => return None,
     };
+
     let mut url = if did.is_local() || cache.inlined.contains(&did) {
         repeat("../").take(loc.len()).collect::<String>()
     } else {
-        if !cache.access_levels.is_doc_reachable(did) {
-            return None
-        }
         match cache.extern_locations[&did.krate] {
             (_, render::Remote(ref s)) => s.to_string(),
             (_, render::Local) => repeat("../").take(loc.len()).collect(),
@@ -361,15 +368,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
             }
         }
     }
-
-    match href(did) {
-        Some((url, shortty, fqp)) => {
-            write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                   shortty, url, fqp.join("::"), last.name)?;
-        }
-        _ => write!(w, "{}", last.name)?,
-    }
-    write!(w, "{}", last.params)?;
+    write!(w, "{}{}", HRef::new(did, &last.name), last.params)?;
     Ok(())
 }
 
@@ -432,6 +431,24 @@ fn tybounds(w: &mut fmt::Formatter,
             Ok(())
         }
         None => Ok(())
+    }
+}
+
+impl<'a> HRef<'a> {
+    pub fn new(did: DefId, text: &'a str) -> HRef<'a> {
+        HRef { did: did, text: text }
+    }
+}
+
+impl<'a> fmt::Display for HRef<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match href(self.did) {
+            Some((url, shortty, fqp)) => {
+                write!(f, "<a class='{}' href='{}' title='{}'>{}</a>",
+                       shortty, url, fqp.join("::"), self.text)
+            }
+            _ => write!(f, "{}", self.text),
+        }
     }
 }
 

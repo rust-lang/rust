@@ -38,7 +38,7 @@ use rustc_trans::back::link;
 use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::privacy::AccessLevels;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{DefId, DefIndex};
+use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::ty;
 use rustc::middle::stability;
@@ -2388,7 +2388,7 @@ impl Clean<Item> for doctree::ExternCrate {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
-            def_id: cx.map.local_def_id(0),
+            def_id: DefId { krate: self.cnum, index: CRATE_DEF_INDEX },
             visibility: self.vis.clean(cx),
             stability: None,
             deprecation: None,
