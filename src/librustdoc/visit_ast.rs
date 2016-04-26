@@ -316,7 +316,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let name = renamed.unwrap_or(item.name);
         match item.node {
             hir::ItemExternCrate(ref p) => {
+                let cstore = &self.cx.sess().cstore;
                 om.extern_crates.push(ExternCrate {
+                    cnum: cstore.extern_mod_stmt_cnum(item.id)
+                                .unwrap_or(ast::CrateNum::max_value()),
                     name: name,
                     path: p.map(|x|x.to_string()),
                     vis: item.vis.clone(),

@@ -63,7 +63,6 @@ use lint;
 use hir::def::Def;
 use hir::def_id::DefId;
 use constrained_type_params as ctp;
-use coherence;
 use middle::lang_items::SizedTraitLangItem;
 use middle::resolve_lifetime;
 use middle::const_val::ConstVal;
@@ -80,13 +79,14 @@ use rscope::*;
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use util::common::{ErrorReported, MemoizationMap};
-use util::nodemap::{FnvHashMap, FnvHashSet};
+use util::nodemap::FnvHashMap;
 use write_ty_to_tcx;
 
 use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
 use std::collections::HashSet;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::rc::Rc;
 
 use syntax::abi;
@@ -746,16 +746,27 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
 
             // Convert all the associated consts.
             // Also, check if there are any duplicate associated items
-            let mut seen_type_items = FnvHashSet();
-            let mut seen_value_items = FnvHashSet();
+            let mut seen_type_items = FnvHashMap();
+            let mut seen_value_items = FnvHashMap();
 
             for impl_item in impl_items {
                 let seen_items = match impl_item.node {
                     hir::ImplItemKind::Type(_) => &mut seen_type_items,
                     _                    => &mut seen_value_items,
                 };
-                if !seen_items.insert(impl_item.name) {
-                    coherence::report_duplicate_item(tcx, impl_item.span, impl_item.name).emit();
+                match seen_items.entry(impl_item.name) {
+                    Occupied(entry) => {
+                        let mut err = struct_span_err!(tcx.sess, impl_item.span, E0201,
+                                                       "duplicate definitions with name `{}`:",
+                                                       impl_item.name);
+                        span_note!(&mut err, *entry.get(),
+                                   "previous definition of `{}` here",
+                                   impl_item.name);
+                        err.emit();
+                    }
+                    Vacant(entry) => {
+                        entry.insert(impl_item.span);
+                    }
                 }
 
                 if let hir::ImplItemKind::Const(ref ty, _) = impl_item.node {

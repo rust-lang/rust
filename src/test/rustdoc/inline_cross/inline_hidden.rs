@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
+// aux-build:rustdoc-hidden.rs
+// build-aux-docs
+// ignore-cross-compile
 
-impl Foo {
-    fn orange(&self) {} //~ NOTE previous definition of `orange` here
-    fn orange(&self) {} //~ ERROR duplicate definitions with name `orange`
-}
+extern crate rustdoc_hidden;
 
-fn main() {}
+#[doc(no_inline)]
+pub use rustdoc_hidden::Foo;
+
+// @has inline_hidden/fn.foo.html
+// @!has - '//a/@title' 'Foo'
+pub fn foo(_: Foo) {}
