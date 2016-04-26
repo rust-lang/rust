@@ -31,7 +31,20 @@ References can also be coerced to raw pointers:
 
 Custom coercions may be defined using [`Deref`](deref-coercions.md).
 
-Coercion is transitive.
+Note that coercion is not transitive:
+
+```rust
+fn main() {
+    let v = vec![1, 2, 3];
+    // &Vec<i32> -> &[i32] is a coercion,
+    let s: &[i32] = &v;
+    // and &[i32] -> *const [i32] is a coercion
+    let t: *const [i32] = s;
+    // but &Vec<i32> -> *const [i32] is not
+    let u: *const [i32] = &v; // type mismatch error
+    println!("{:?}", v);
+}
+```
 
 # `as`
 
