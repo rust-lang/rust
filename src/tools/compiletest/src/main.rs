@@ -82,7 +82,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR"),
           reqopt("", "src-base", "directory to scan for test files", "PATH"),
           reqopt("", "build-base", "directory to deposit test outputs", "PATH"),
-          reqopt("", "aux-base", "directory to find auxiliary test files", "PATH"),
           reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
           reqopt("", "mode", "which sort of compile tests to run",
                  "(compile-fail|parse-fail|run-fail|run-pass|\
@@ -158,7 +157,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
         src_base: opt_path(matches, "src-base"),
         build_base: opt_path(matches, "build-base"),
-        aux_base: opt_path(matches, "aux-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode: matches.opt_str("mode").unwrap().parse().ok().expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
