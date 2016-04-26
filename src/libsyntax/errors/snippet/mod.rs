@@ -90,7 +90,6 @@ pub enum Style {
     LabelSecondary,
     NoStyle,
 }
-use self::Style::*;
 
 #[derive(Debug, Clone)]
 pub enum RenderedLineKind {
@@ -247,19 +246,19 @@ impl RenderedLineKind {
             RLK::SourceText { file: _, line_index } =>
                 StyledString {
                     text: format!("{}", line_index + 1),
-                    style: LineNumber,
+                    style: Style::LineNumber,
                 },
             RLK::Elision =>
                 StyledString {
                     text: String::from("..."),
-                    style: LineNumber,
+                    style: Style::LineNumber,
                 },
             RLK::PrimaryFileName |
             RLK::OtherFileName |
             RLK::Annotations =>
                 StyledString {
                     text: String::from(""),
-                    style: LineNumber,
+                    style: Style::LineNumber,
                 },
         }
     }
@@ -275,7 +274,7 @@ impl StyledBuffer {
         let mut styled_vec: Vec<StyledString> = vec![];
 
         for (row, row_style) in self.text.iter().zip(&self.styles) {
-            let mut current_style = NoStyle;
+            let mut current_style = Style::NoStyle;
             let mut current_text = String::new();
 
             for (&c, &s) in row.iter().zip(row_style) {
@@ -316,7 +315,7 @@ impl StyledBuffer {
         } else {
             while self.text[line].len() < col {
                 self.text[line].push(' ');
-                self.styles[line].push(NoStyle);
+                self.styles[line].push(Style::NoStyle);
             }
             self.text[line].push(chr);
             self.styles[line].push(style);
@@ -479,10 +478,10 @@ impl FileInfo {
                 output.push(RenderedLine {
                     text: vec![StyledString {
                         text: lo.file.name.clone(),
-                        style: FileNameStyle,
+                        style: Style::FileNameStyle,
                     }, StyledString {
                         text: format!(":{}:{}", lo.line, lo.col.0 + 1),
-                        style: LineAndColumn,
+                        style: Style::LineAndColumn,
                     }],
                     kind: RLK::PrimaryFileName,
                 });
@@ -491,7 +490,7 @@ impl FileInfo {
                 output.push(RenderedLine {
                     text: vec![StyledString {
                         text: self.file.name.clone(),
-                        style: FileNameStyle,
+                        style: Style::FileNameStyle,
                     }],
                     kind: RLK::OtherFileName,
                 });
@@ -534,7 +533,7 @@ impl FileInfo {
                     if prev_ends_at_eol && is_single_unlabeled_annotated_line {
                         if !elide_unlabeled_region {
                             output.push(RenderedLine::from((String::new(),
-                                NoStyle, RLK::Elision)));
+                                Style::NoStyle, RLK::Elision)));
                             elide_unlabeled_region = true;
                             prev_ends_at_eol = true;
                         }
@@ -548,7 +547,7 @@ impl FileInfo {
                 }
             } else {
                 if group.len() > 1 {
-                    output.push(RenderedLine::from((String::new(), NoStyle, RLK::Elision)));
+                    output.push(RenderedLine::from((String::new(), Style::NoStyle, RLK::Elision)));
                 } else {
                     let mut v: Vec<RenderedLine> =
                         group.iter().flat_map(|line| self.render_line(line)).collect();
@@ -571,7 +570,7 @@ impl FileInfo {
         let mut styled_buffer = StyledBuffer::new();
 
         // First create the source line we will highlight.
-        styled_buffer.append(0, &source_string, Quotation);
+        styled_buffer.append(0, &source_string, Style::Quotation);
 
         if line.annotations.is_empty() {
             return styled_buffer.render(source_kind);
@@ -606,10 +605,10 @@ impl FileInfo {
         for annotation in &annotations {
             for p in annotation.start_col .. annotation.end_col {
                 if annotation.is_primary {
-                    styled_buffer.putc(1, p, '^', UnderlinePrimary);
-                    styled_buffer.set_style(0, p, UnderlinePrimary);
+                    styled_buffer.putc(1, p, '^', Style::UnderlinePrimary);
+                    styled_buffer.set_style(0, p, Style::UnderlinePrimary);
                 } else {
-                    styled_buffer.putc(1, p, '-', UnderlineSecondary);
+                    styled_buffer.putc(1, p, '-', Style::UnderlineSecondary);
                 }
             }
         }
@@ -671,9 +670,9 @@ impl FileInfo {
                     // string
                     let highlight_label: String = format!(" {}", last.label.as_ref().unwrap());
                     if last.is_primary {
-                        styled_buffer.append(1, &highlight_label, LabelPrimary);
+                        styled_buffer.append(1, &highlight_label, Style::LabelPrimary);
                     } else {
-                        styled_buffer.append(1, &highlight_label, LabelSecondary);
+                        styled_buffer.append(1, &highlight_label, Style::LabelSecondary);
                     }
                     labeled_annotations = previous;
                 }
@@ -696,18 +695,18 @@ impl FileInfo {
             // text ought to be long enough for this.
             for index in 2..blank_lines {
                 if annotation.is_primary {
-                    styled_buffer.putc(index, annotation.start_col, '|', UnderlinePrimary);
+                    styled_buffer.putc(index, annotation.start_col, '|', Style::UnderlinePrimary);
                 } else {
-                    styled_buffer.putc(index, annotation.start_col, '|', UnderlineSecondary);
+                    styled_buffer.putc(index, annotation.start_col, '|', Style::UnderlineSecondary);
                 }
             }
 
             if annotation.is_primary {
                 styled_buffer.puts(blank_lines, annotation.start_col,
-                    annotation.label.as_ref().unwrap(), LabelPrimary);
+                    annotation.label.as_ref().unwrap(), Style::LabelPrimary);
             } else {
                 styled_buffer.puts(blank_lines, annotation.start_col,
-                    annotation.label.as_ref().unwrap(), LabelSecondary);
+                    annotation.label.as_ref().unwrap(), Style::LabelSecondary);
             }
         }
 
@@ -752,7 +751,7 @@ fn prepend_prefixes(rendered_lines: &mut [RenderedLine]) {
                                                  .chain(Some('>'))
                                                  .chain(Some(' '));
                 line.text.insert(0, StyledString {text: dashes.collect(),
-                                                  style: LineNumber})
+                                                  style: Style::LineNumber})
             }
             RenderedLineKind::OtherFileName => {
                 // >>>>> filename
@@ -762,12 +761,12 @@ fn prepend_prefixes(rendered_lines: &mut [RenderedLine]) {
                 let dashes = (0..padding_len + 2).map(|_| '>')
                                                  .chain(Some(' '));
                 line.text.insert(0, StyledString {text: dashes.collect(),
-                                                  style: LineNumber})
+                                                  style: Style::LineNumber})
             }
             _ => {
                 line.text.insert(0, prefix);
                 line.text.insert(1, StyledString {text: String::from("|> "),
-                                                  style: LineNumber})
+                                                  style: Style::LineNumber})
             }
         }
     }
