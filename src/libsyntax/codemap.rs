@@ -144,14 +144,14 @@ pub struct MultiSpan {
 
 #[derive(Clone, Debug)]
 pub struct SpanLabel {
-    /// the span we are going to include in the final snippet
+    /// The span we are going to include in the final snippet.
     pub span: Span,
 
-    /// is this a primary span? This is the "locus" of the message,
-    /// and is indicated with a `^^^^` underline, versus `----`
+    /// Is this a primary span? This is the "locus" of the message,
+    /// and is indicated with a `^^^^` underline, versus `----`.
     pub is_primary: bool,
 
-    /// what label should we attach to this span (if any)?
+    /// What label should we attach to this span (if any)?
     pub label: Option<String>,
 }
 
