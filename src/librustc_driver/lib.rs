@@ -66,7 +66,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_trans::back::link;
-use rustc::session::{config, Session, build_session, CompileResult};
+use rustc::session::{self, config, Session, build_session, CompileResult};
 use rustc::session::config::{Input, PrintRequest, OutputType, ErrorOutputType};
 use rustc::session::config::{get_unstable_features_setting, nightly_options};
 use rustc::middle::cstore::CrateStore;
@@ -91,13 +91,11 @@ use std::thread;
 
 use rustc::session::early_error;
 
-use syntax::ast;
-use syntax::parse::{self, PResult};
-use syntax::errors;
+use syntax::{ast, errors, diagnostics};
+use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
 use syntax::errors::emitter::Emitter;
-use syntax::diagnostics;
-use syntax::parse::token;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
+use syntax::parse::{self, PResult, token};
 
 #[cfg(test)]
 pub mod test;
@@ -148,11 +146,20 @@ pub fn run(args: Vec<String>) -> isize {
     0
 }
 
-// Parse args and run the compiler. This is the primary entry point for rustc.
-// See comments on CompilerCalls below for details about the callbacks argument.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>)
                         -> (CompileResult, Option<Session>) {
+    run_compiler_with_file_loader(args, callbacks, box RealFileLoader)
+}
+
+// Parse args and run the compiler. This is the primary entry point for rustc.
+// See comments on CompilerCalls below for details about the callbacks argument.
+// The FileLoader provides a way to load files from sources other than the file system.
+pub fn run_compiler_with_file_loader<'a, L>(args: &[String],
+                                            callbacks: &mut CompilerCalls<'a>,
+                                            loader: Box<L>)
+                                            -> (CompileResult, Option<Session>)
+    where L: FileLoader + 'static {
     macro_rules! do_or_return {($expr: expr, $sess: expr) => {
         match $expr {
             Compilation::Stop => return (Ok(()), $sess),
@@ -189,7 +196,12 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let cstore = Rc::new(CStore::new(token::get_ident_interner()));
-    let sess = build_session(sopts, input_file_path, descriptions, cstore.clone());
+    let codemap = Rc::new(CodeMap::with_file_loader(loader));
+    let sess = session::build_session_with_codemap(sopts,
+                                                   input_file_path,
+                                                   descriptions,
+                                                   cstore.clone(),
+                                                   codemap);
     rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let mut cfg = config::build_configuration(&sess);
     target_features::add_configuration(&mut cfg, &sess);
