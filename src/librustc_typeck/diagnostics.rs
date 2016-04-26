@@ -3405,6 +3405,37 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0393: r##"
+A type parameter which references `Self` in its default value was not specified.
+Example of erroneous code:
+
+```compile_fail
+trait A<T=Self> {}
+
+fn together_we_will_rule_the_galaxy(son: &A) {}
+// error: the type parameter `T` must be explicitly specified in an
+//        object type because its default value `Self` references the
+//        type `Self`
+```
+
+A trait object is defined over a single, fully-defined trait. With a regular
+default parameter, this parameter can just be substituted in. However, if the
+default parameter is `Self`, the trait changes for each concrete type; i.e.
+`i32` will be expected to implement `A<i32>`, `bool` will be expected to
+implement `A<bool>`, etc... These types will not share an implementation of a
+fully-defined trait; instead they share implementations of a trait with
+different parameters substituted in for each implementation. This is
+irreconcilable with what we need to make a trait object work, and is thus
+disallowed. Making the trait concrete by explicitly specifying the value of the
+defaulted parameter will fix this issue. Fixed example:
+
+```
+trait A<T=Self> {}
+
+fn together_we_will_rule_the_galaxy(son: &A<i32>) {} // Ok!
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -3755,8 +3786,6 @@ register_diagnostics! {
            // between structures
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
-    E0393, // the type parameter `{}` must be explicitly specified in an object
-           // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
     E0436, // functional record update requires a struct
