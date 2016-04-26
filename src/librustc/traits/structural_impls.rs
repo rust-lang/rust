@@ -51,8 +51,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::Vtable<'tcx, N> {
             super::VtableClosure(ref d) =>
                 write!(f, "{:?}", d),
 
-            super::VtableFnPointer(ref d) =>
-                write!(f, "VtableFnPointer({:?})", d),
+            super::VtableFnPointer(ref d, ref n) =>
+                write!(f, "VtableFnPointer({:?}, {:?})", d, n),
 
             super::VtableObject(ref d) =>
                 write!(f, "{:?}", d),
@@ -98,11 +98,12 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableDefaultImplData<N> {
     }
 }
 
-impl<'tcx> fmt::Debug for traits::VtableObjectData<'tcx> {
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::VtableObjectData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VtableObject(upcast={:?}, vtable_base={})",
+        write!(f, "VtableObject(upcast={:?}, vtable_base={}, nested={:?})",
                self.upcast_trait_ref,
-               self.vtable_base)
+               self.vtable_base,
+               self.nested)
     }
 }
 
@@ -199,16 +200,17 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinDa
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
+impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx, N> {
     fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableObjectData {
             upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
-            vtable_base: self.vtable_base
+            vtable_base: self.vtable_base,
+            nested: self.nested.fold_with(folder),
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.upcast_trait_ref.visit_with(visitor)
+        self.upcast_trait_ref.visit_with(visitor) || self.nested.visit_with(visitor)
     }
 }
 
@@ -220,8 +222,8 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
             traits::VtableClosure(ref d) => {
                 traits::VtableClosure(d.fold_with(folder))
             }
-            traits::VtableFnPointer(ref d) => {
-                traits::VtableFnPointer(d.fold_with(folder))
+            traits::VtableFnPointer(ref d, ref n) => {
+                traits::VtableFnPointer(d.fold_with(folder), n.fold_with(folder))
             }
             traits::VtableParam(ref n) => traits::VtableParam(n.fold_with(folder)),
             traits::VtableBuiltin(ref d) => traits::VtableBuiltin(d.fold_with(folder)),
@@ -234,7 +236,9 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
             traits::VtableImpl(ref v) => v.visit_with(visitor),
             traits::VtableDefaultImpl(ref t) => t.visit_with(visitor),
             traits::VtableClosure(ref d) => d.visit_with(visitor),
-            traits::VtableFnPointer(ref d) => d.visit_with(visitor),
+            traits::VtableFnPointer(ref d, ref n) => {
+                d.visit_with(visitor) || n.visit_with(visitor)
+            },
             traits::VtableParam(ref n) => n.visit_with(visitor),
             traits::VtableBuiltin(ref d) => d.visit_with(visitor),
             traits::VtableObject(ref d) => d.visit_with(visitor),
