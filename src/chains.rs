@@ -178,7 +178,7 @@ pub fn rewrite_chain(expr: &ast::Expr,
     let first_connector = if extend {
         ""
     } else {
-        &connector
+        &*connector
     };
 
     wrap_str(format!("{}{}{}",
