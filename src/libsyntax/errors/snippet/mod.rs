@@ -103,7 +103,7 @@ pub enum RenderedLineKind {
     Annotations,
     Elision,
 }
-use self::RenderedLineKind::*;
+use self::RenderedLineKind as RLK;
 
 impl SnippetData {
     pub fn new(codemap: Rc<CodeMap>,
@@ -244,19 +244,19 @@ impl RenderedLine {
 impl RenderedLineKind {
     fn prefix(&self) -> StyledString {
         match *self {
-            SourceText { file: _, line_index } =>
+            RLK::SourceText { file: _, line_index } =>
                 StyledString {
                     text: format!("{}", line_index + 1),
                     style: LineNumber,
                 },
-            Elision =>
+            RLK::Elision =>
                 StyledString {
                     text: String::from("..."),
                     style: LineNumber,
                 },
-            PrimaryFileName |
-            OtherFileName |
-            Annotations =>
+            RLK::PrimaryFileName |
+            RLK::OtherFileName |
+            RLK::Annotations =>
                 StyledString {
                     text: String::from(""),
                     style: LineNumber,
@@ -296,7 +296,7 @@ impl StyledBuffer {
                 //We know our first output line is source and the rest are highlights and labels
                 output.push(RenderedLine { text: styled_vec, kind: source_kind.clone() });
             } else {
-                output.push(RenderedLine { text: styled_vec, kind: Annotations });
+                output.push(RenderedLine { text: styled_vec, kind: RLK::Annotations });
             }
             styled_vec = vec![];
         }
@@ -484,7 +484,7 @@ impl FileInfo {
                         text: format!(":{}:{}", lo.line, lo.col.0 + 1),
                         style: LineAndColumn,
                     }],
-                    kind: PrimaryFileName,
+                    kind: RLK::PrimaryFileName,
                 });
             }
             None => {
@@ -493,7 +493,7 @@ impl FileInfo {
                         text: self.file.name.clone(),
                         style: FileNameStyle,
                     }],
-                    kind: OtherFileName,
+                    kind: RLK::OtherFileName,
                 });
             }
         }
@@ -534,7 +534,7 @@ impl FileInfo {
                     if prev_ends_at_eol && is_single_unlabeled_annotated_line {
                         if !elide_unlabeled_region {
                             output.push(RenderedLine::from((String::new(),
-                                NoStyle, Elision)));
+                                NoStyle, RLK::Elision)));
                             elide_unlabeled_region = true;
                             prev_ends_at_eol = true;
                         }
@@ -548,7 +548,7 @@ impl FileInfo {
                 }
             } else {
                 if group.len() > 1 {
-                    output.push(RenderedLine::from((String::new(), NoStyle, Elision)));
+                    output.push(RenderedLine::from((String::new(), NoStyle, RLK::Elision)));
                 } else {
                     let mut v: Vec<RenderedLine> =
                         group.iter().flat_map(|line| self.render_line(line)).collect();
@@ -563,7 +563,7 @@ impl FileInfo {
     fn render_line(&self, line: &Line) -> Vec<RenderedLine> {
         let source_string = self.file.get_line(line.line_index)
                                      .unwrap_or("");
-        let source_kind = SourceText {
+        let source_kind = RLK::SourceText {
             file: self.file.clone(),
             line_index: line.line_index,
         };
