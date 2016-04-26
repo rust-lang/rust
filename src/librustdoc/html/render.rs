@@ -803,9 +803,7 @@ fn write_shared(cx: &Context,
 fn render_sources(dst: &Path, scx: &mut SharedContext,
                   krate: clean::Crate) -> Result<clean::Crate, Error> {
     info!("emitting source files");
-    let dst = dst.join("src");
-    try_err!(mkdir(&dst), &dst);
-    let dst = dst.join(&krate.name);
+    let dst = dst.join("src").join(&krate.name);
     try_err!(mkdir(&dst), &dst);
     let mut folder = SourceCollector {
         dst: dst,
@@ -823,11 +821,7 @@ fn write(dst: PathBuf, contents: &[u8]) -> Result<(), Error> {
 /// Makes a directory on the filesystem, failing the thread if an error occurs and
 /// skipping if the directory already exists.
 fn mkdir(path: &Path) -> io::Result<()> {
-    if !path.exists() {
-        fs::create_dir(path)
-    } else {
-        Ok(())
-    }
+    fs::create_dir_all(path)
 }
 
 /// Returns a documentation-level item type from the item.
