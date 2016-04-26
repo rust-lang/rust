@@ -28,7 +28,7 @@ impl<'a, 'b, W: Write> JsonDumper<'a, 'b, W> {
     pub fn new(writer: &'b mut W, codemap: &'a CodeMap) -> JsonDumper<'a, 'b, W> {
         if let Err(_) = write!(writer, "[") {
             error!("Error writing output");
-        }        
+        }
         JsonDumper { output: writer, codemap:codemap, first: true }
     }
 }
@@ -109,7 +109,7 @@ impl Lower for data::CratePreludeData {
             crate_name: self.crate_name,
             crate_root: self.crate_root,
             external_crates: self.external_crates,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
         }
     }
 }
@@ -132,7 +132,7 @@ impl Lower for data::EnumData {
             id: self.id,
             value: self.value,
             qualname: self.qualname,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
         }
     }
@@ -158,7 +158,7 @@ impl Lower for data::ExternCrateData {
             name: self.name,
             crate_num: self.crate_num,
             location: self.location,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
         }
     }
@@ -177,7 +177,7 @@ impl Lower for data::FunctionCallData {
 
     fn lower(self, cm: &CodeMap) -> FunctionCallData {
         FunctionCallData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             ref_id: self.ref_id.index.as_u32(),
         }
@@ -204,7 +204,7 @@ impl Lower for data::FunctionData {
             name: self.name,
             qualname: self.qualname,
             declaration: self.declaration.map(|id| id.index.as_u32()),
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
         }
     }
@@ -223,7 +223,7 @@ impl Lower for data::FunctionRefData {
 
     fn lower(self, cm: &CodeMap) -> FunctionRefData {
         FunctionRefData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             ref_id: self.ref_id.index.as_u32(),
         }
@@ -244,7 +244,7 @@ impl Lower for data::ImplData {
     fn lower(self, cm: &CodeMap) -> ImplData {
         ImplData {
             id: self.id,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             trait_ref: self.trait_ref.map(|id| id.index.as_u32()),
             self_ref: self.self_ref.map(|id| id.index.as_u32()),
@@ -264,7 +264,7 @@ impl Lower for data::InheritanceData {
 
     fn lower(self, cm: &CodeMap) -> InheritanceData {
         InheritanceData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             base_id: self.base_id.index.as_u32(),
             deriv_id: self.deriv_id
         }
@@ -284,7 +284,7 @@ impl Lower for data::MacroData {
 
     fn lower(self, cm: &CodeMap) -> MacroData {
         MacroData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             name: self.name,
             qualname: self.qualname,
         }
@@ -309,7 +309,7 @@ impl Lower for data::MacroUseData {
 
     fn lower(self, cm: &CodeMap) -> MacroUseData {
         MacroUseData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             name: self.name,
             qualname: self.qualname,
             callee_span: SpanData::from_span(self.callee_span, cm),
@@ -333,7 +333,7 @@ impl Lower for data::MethodCallData {
 
     fn lower(self, cm: &CodeMap) -> MethodCallData {
         MethodCallData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             ref_id: self.ref_id.map(|id| id.index.as_u32()),
             decl_id: self.decl_id.map(|id| id.index.as_u32()),
@@ -355,7 +355,7 @@ impl Lower for data::MethodData {
 
     fn lower(self, cm: &CodeMap) -> MethodData {
         MethodData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             id: self.id,
             qualname: self.qualname,
@@ -382,7 +382,7 @@ impl Lower for data::ModData {
             id: self.id,
             name: self.name,
             qualname: self.qualname,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             filename: self.filename,
         }
@@ -403,7 +403,7 @@ impl Lower for data::ModRefData {
 
     fn lower(self, cm: &CodeMap) -> ModRefData {
         ModRefData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             ref_id: self.ref_id.map(|id| id.index.as_u32()),
             qualname: self.qualname,
@@ -426,7 +426,7 @@ impl Lower for data::StructData {
 
     fn lower(self, cm: &CodeMap) -> StructData {
         StructData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             id: self.id,
             ctor_id: self.ctor_id,
             qualname: self.qualname,
@@ -451,7 +451,7 @@ impl Lower for data::StructVariantData {
 
     fn lower(self, cm: &CodeMap) -> StructVariantData {
         StructVariantData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             id: self.id,
             qualname: self.qualname,
             type_value: self.type_value,
@@ -475,7 +475,7 @@ impl Lower for data::TraitData {
 
     fn lower(self, cm: &CodeMap) -> TraitData {
         TraitData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             id: self.id,
             qualname: self.qualname,
             scope: self.scope,
@@ -500,7 +500,7 @@ impl Lower for data::TupleVariantData {
 
     fn lower(self, cm: &CodeMap) -> TupleVariantData {
         TupleVariantData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             id: self.id,
             name: self.name,
             qualname: self.qualname,
@@ -526,7 +526,7 @@ impl Lower for data::TypedefData {
     fn lower(self, cm: &CodeMap) -> TypedefData {
         TypedefData {
             id: self.id,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             qualname: self.qualname,
             value: self.value,
         }
@@ -547,7 +547,7 @@ impl Lower for data::TypeRefData {
 
     fn lower(self, cm: &CodeMap) -> TypeRefData {
         TypeRefData {
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             ref_id: self.ref_id.map(|id| id.index.as_u32()),
             qualname: self.qualname,
@@ -570,7 +570,7 @@ impl Lower for data::UseData {
     fn lower(self, cm: &CodeMap) -> UseData {
         UseData {
             id: self.id,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             name: self.name,
             mod_id: self.mod_id.map(|id| id.index.as_u32()),
             scope: self.scope,
@@ -592,7 +592,7 @@ impl Lower for data::UseGlobData {
     fn lower(self, cm: &CodeMap) -> UseGlobData {
         UseGlobData {
             id: self.id,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             names: self.names,
             scope: self.scope,
         }
@@ -619,7 +619,7 @@ impl Lower for data::VariableData {
             id: self.id,
             name: self.name,
             qualname: self.qualname,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             value: self.value,
             type_value: self.type_value,
@@ -643,7 +643,7 @@ impl Lower for data::VariableRefData {
     fn lower(self, cm: &CodeMap) -> VariableRefData {
         VariableRefData {
             name: self.name,
-            span: SpanData::from_span(self.span, cm),    
+            span: SpanData::from_span(self.span, cm),
             scope: self.scope,
             ref_id: self.ref_id.index.as_u32(),
         }

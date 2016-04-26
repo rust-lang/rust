@@ -763,7 +763,7 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
             let mut visitor = DumpVisitor::new(tcx, save_ctxt, analysis, &mut dumper);
 
             visitor.dump_crate_info(cratename, krate);
-            visit::walk_crate(&mut visitor, krate);            
+            visit::walk_crate(&mut visitor, krate);
         }}
     }
 
