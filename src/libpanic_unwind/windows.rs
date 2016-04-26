@@ -14,7 +14,6 @@
 
 use libc::{c_void, c_ulong, c_long, c_ulonglong};
 
-pub use self::EXCEPTION_DISPOSITION::*;
 pub type DWORD = c_ulong;
 pub type LONG = c_long;
 pub type ULONG_PTR = c_ulonglong;
@@ -72,13 +71,13 @@ pub struct DISPATCHER_CONTEXT {
 }
 
 #[repr(C)]
-#[allow(dead_code)] // we only use some variants
 pub enum EXCEPTION_DISPOSITION {
     ExceptionContinueExecution,
     ExceptionContinueSearch,
     ExceptionNestedException,
     ExceptionCollidedUnwind
 }
+pub use self::EXCEPTION_DISPOSITION::*;
 
 extern "system" {
     #[unwind]
@@ -93,4 +92,7 @@ extern "system" {
                        ReturnValue: LPVOID,
                        OriginalContext: *const CONTEXT,
                        HistoryTable: *const UNWIND_HISTORY_TABLE);
+    #[unwind]
+    pub fn _CxxThrowException(pExceptionObject: *mut c_void,
+                              pThrowInfo: *mut u8);
 }
