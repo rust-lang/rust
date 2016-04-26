@@ -51,7 +51,7 @@ impl LateLintPass for MapClonePass {
                                 else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
                                     if clone_call.node.as_str() == "clone" &&
                                         clone_args.len() == 1 &&
-                                        match_trait_method(cx, closure_expr, &["core", "clone", "Clone"]) &&
+                                        match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
                                         expr_eq_ident(&clone_args[0], arg_ident)
                                     {
                                         span_help_and_lint(cx, MAP_CLONE, expr.span, &format!(
