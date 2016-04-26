@@ -53,6 +53,7 @@ thread_local! { pub static PANIC_COUNT: Cell<usize> = Cell::new(0) }
 //
 // One day this may look a little less ad-hoc with the compiler helping out to
 // hook up these functions, but it is not this day!
+#[allow(improper_ctypes)]
 extern {
     fn __rust_maybe_catch_panic(f: fn(*mut u8),
                                 data: *mut u8,

@@ -93,20 +93,43 @@ pub unsafe extern fn __rust_start_panic(_data: usize, _vtable: usize) -> u32 {
 // Essentially this symbol is just defined to get wired up to libcore/libstd
 // binaries, but it should never be called as we don't link in an unwinding
 // runtime at all.
-#[no_mangle]
 #[cfg(not(stage0))]
-pub extern fn rust_eh_personality() {}
+pub mod personalities {
 
-// Similar to above, this corresponds to the `eh_unwind_resume` lang item that's
-// only used on Windows currently.
-#[no_mangle]
-#[cfg(all(not(stage0), target_os = "windows", target_env = "gnu"))]
-pub extern fn rust_eh_unwind_resume() {}
+    #[no_mangle]
+    #[cfg(not(all(target_os = "windows",
+                  target_env = "gnu",
+                  target_arch = "x86_64")))]
+    pub extern fn rust_eh_personality() {}
 
-#[no_mangle]
-#[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-pub extern fn rust_eh_register_frames() {}
+    // On x86_64-pc-windows-gnu we use our own personality function that needs
+    // to return `ExceptionContinueSearch` as we're passing on all our frames.
+    #[no_mangle]
+    #[cfg(all(target_os = "windows",
+              target_env = "gnu",
+              target_arch = "x86_64"))]
+    pub extern fn rust_eh_personality(_record: usize,
+                                      _frame: usize,
+                                      _context: usize,
+                                      _dispatcher: usize) -> u32 {
+        1 // `ExceptionContinueSearch`
+    }
 
-#[no_mangle]
-#[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
-pub extern fn rust_eh_unregister_frames() {}
+    // Similar to above, this corresponds to the `eh_unwind_resume` lang item
+    // that's only used on Windows currently.
+    //
+    // Note that we don't execute landing pads, so this is never called, so it's
+    // body is empty.
+    #[no_mangle]
+    #[cfg(all(target_os = "windows", target_env = "gnu"))]
+    pub extern fn rust_eh_unwind_resume() {}
+
+    // These two are called by our startup objects on i686-pc-windows-gnu, but
+    // they don't need to do anything so the bodies are nops.
+    #[no_mangle]
+    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
+    pub extern fn rust_eh_register_frames() {}
+    #[no_mangle]
+    #[cfg(all(target_os = "windows", target_env = "gnu", target_arch = "x86"))]
+    pub extern fn rust_eh_unregister_frames() {}
+}
