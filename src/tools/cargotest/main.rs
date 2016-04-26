@@ -25,7 +25,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "cargo",
         repo: "https://github.com/rust-lang/cargo",
-        sha: "fae9c539388f1b7c70c31fd0a21b5dd9cd071177",
+        sha: "6151a859720b4fbc04a15789be6db50a97d954ec",
         lock: None,
     },
     Test {
@@ -118,6 +118,7 @@ fn clone_repo(test: &Test, out_dir: &Path) -> PathBuf {
 fn run_cargo_test(cargo_path: &Path, crate_path: &Path) -> bool {
     let status = Command::new(cargo_path)
         .arg("test")
+        .env("RUSTFLAGS", "--cap-lints warn")
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
         .current_dir(crate_path)
