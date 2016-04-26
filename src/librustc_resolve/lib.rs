@@ -42,7 +42,6 @@ use self::ModulePrefixResult::*;
 use self::AssocItemResolveResult::*;
 use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
-use self::FallbackChecks::*;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
@@ -81,7 +80,7 @@ use rustc::hir::{Pat, PatKind, Path, PrimTy};
 use rustc::hir::{PathSegment, PathParameters};
 use rustc::hir::HirVec;
 use rustc::hir::{TraitRef, Ty, TyBool, TyChar, TyFloat, TyInt};
-use rustc::hir::{TyRptr, TyStr, TyUint, TyPath, TyPtr};
+use rustc::hir::{TyRptr, TyStr, TyUint, TyPath};
 
 use std::collections::{HashMap, HashSet};
 use std::cell::{Cell, RefCell};
@@ -676,9 +675,7 @@ impl<T> ResolveResult<T> {
 enum FallbackSuggestion {
     NoSuggestion,
     Field,
-    Method,
     TraitItem,
-    StaticMethod(String),
     TraitMethod(String),
 }
 
@@ -1122,12 +1119,6 @@ impl<'a> ResolverArenas<'a> {
     fn alloc_name_resolution(&'a self) -> &'a RefCell<NameResolution<'a>> {
         self.name_resolutions.alloc(Default::default())
     }
-}
-
-#[derive(PartialEq)]
-enum FallbackChecks {
-    Everything,
-    OnlyTraitAndStatics,
 }
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
@@ -2821,34 +2812,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn find_fallback_in_self_type(&mut self, name: Name) -> FallbackSuggestion {
-        fn extract_path_and_node_id(t: &Ty,
-                                    allow: FallbackChecks)
-                                    -> Option<(Path, NodeId, FallbackChecks)> {
+        fn extract_node_id(t: &Ty) -> Option<NodeId> {
             match t.node {
-                TyPath(None, ref path) => Some((path.clone(), t.id, allow)),
-                TyPtr(ref mut_ty) => extract_path_and_node_id(&mut_ty.ty, OnlyTraitAndStatics),
-                TyRptr(_, ref mut_ty) => extract_path_and_node_id(&mut_ty.ty, allow),
+                TyPath(None, _) => Some(t.id),
+                TyRptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
                 // This doesn't handle the remaining `Ty` variants as they are not
                 // that commonly the self_type, it might be interesting to provide
                 // support for those in future.
                 _ => None,
-            }
-        }
-
-        fn get_module<'a, 'tcx>(this: &mut Resolver<'a, 'tcx>,
-                                span: Span,
-                                name_path: &[ast::Name])
-                                -> Option<Module<'a>> {
-            let last_name = name_path.last().unwrap();
-
-            if name_path.len() == 1 {
-                match this.primitive_type_table.primitive_types.get(last_name) {
-                    Some(_) => None,
-                    None => this.current_module.resolve_name_in_lexical_scope(*last_name, TypeNS)
-                                               .and_then(NameBinding::module)
-                }
-            } else {
-                this.resolve_module_path(&name_path, UseLexicalScope, span).success()
             }
         }
 
@@ -2871,15 +2842,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        let (path, node_id, allowed) = match self.current_self_type {
-            Some(ref ty) => match extract_path_and_node_id(ty, Everything) {
-                Some(x) => x,
-                None => return NoSuggestion,
-            },
-            None => return NoSuggestion,
-        };
-
-        if allowed == Everything {
+        if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
             // Look for a field with the same name in the current self_type.
             match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
                 Some(Def::Enum(did)) |
@@ -2894,24 +2857,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 },
                 _ => {} // Self type didn't resolve properly
-            }
-        }
-
-        let name_path = path.segments.iter().map(|seg| seg.identifier.name).collect::<Vec<_>>();
-
-        // Look for a method in the current self type's impl module.
-        if let Some(module) = get_module(self, path.span, &name_path) {
-            if let Some(binding) = module.resolve_name_in_lexical_scope(name, ValueNS) {
-                if let Some(Def::Method(did)) = binding.def() {
-                    if is_static_method(self, did) {
-                        return StaticMethod(path_names_to_string(&path, 0));
-                    }
-                    if self.current_trait_ref.is_some() {
-                        return TraitItem;
-                    } else if allowed == Everything {
-                        return Method;
-                    }
-                }
             }
         }
 
@@ -3073,10 +3018,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         }
                                     }
                                     Field => format!("`self.{}`", path_name),
-                                    Method |
                                     TraitItem => format!("to call `self.{}`", path_name),
-                                    TraitMethod(path_str) |
-                                    StaticMethod(path_str) =>
+                                    TraitMethod(path_str) =>
                                         format!("to call `{}::{}`", path_str, path_name),
                                 };
 
