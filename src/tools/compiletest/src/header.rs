@@ -134,7 +134,9 @@ pub struct TestProps {
     // If present, the name of a file that this test should match when
     // pretty-printed
     pub pp_exact: Option<PathBuf>,
-    // Modules from aux directory that should be compiled
+    // Other crates that should be compiled (typically from the same
+    // directory as the test, but for backwards compatibility reasons
+    // we also check the auxiliary directory)
     pub aux_builds: Vec<String> ,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String,String)> ,
