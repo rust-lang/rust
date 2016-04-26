@@ -857,6 +857,7 @@ impl<'a> MethodDef<'a> {
                      explicit_self: ast::ExplicitSelf,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
                      body: P<Expr>) -> ast::ImplItem {
+
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -990,6 +991,7 @@ impl<'a> MethodDef<'a> {
             body = cx.expr_match(trait_.span, arg_expr.clone(),
                                      vec!( cx.arm(trait_.span, vec!(pat.clone()), body) ))
         }
+
         body
     }
 
