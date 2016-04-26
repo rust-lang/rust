@@ -62,6 +62,24 @@ This is not idiomatic Rust, however, as it doesn’t take advantage of borrowing
 the first step:
 
 ```rust
+fn foo(v1: &Vec<i32>, v2: &Vec<i32>) -> i32 {
+    // do stuff with v1 and v2
+
+    // return the answer
+    42
+}
+
+let v1 = vec![1, 2, 3];
+let v2 = vec![1, 2, 3];
+
+let answer = foo(&v1, &v2);
+
+// we can use v1 and v2 here!
+```
+
+A more concrete example:
+
+```rust
 fn main() {
     // Don't worry if you don't understand how `fold` works, the point here is that an immutable reference is borrowed.
     fn sum_vec(v: &Vec<i32>) -> i32 {
