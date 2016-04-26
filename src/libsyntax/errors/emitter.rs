@@ -543,7 +543,7 @@ mod test {
         dreizehn
         ";
         let file = cm.new_filemap_and_lines("dummy.txt", content);
-        let start = file.lines.borrow()[7];
+        let start = file.lines.borrow()[10];
         let end = file.lines.borrow()[11];
         let sp = mk_sp(start, end);
         let lvl = Level::Error;
@@ -555,12 +555,9 @@ mod test {
         let str = from_utf8(vec).unwrap();
         println!("r#\"\n{}\"#", str);
         assert_eq!(str, &r#"
-   --> dummy.txt:8:1
-8   |>         line8
-    |> ^^^^^^^^^^^^^
-...
+   --> dummy.txt:11:1
 11  |>         e-lä-vän
-    |> ^^^^^^^^^^^^^^^^
+    |> ^
 "#[1..]);
     }
 
@@ -696,9 +693,8 @@ mod test {
         let expect0 = &r#"
    --> dummy.txt:5:1
 5   |> ccccc
-    |> ^^^^^
+    |> ^
 ...
-8   |> _____
 9   |> ddd__eee_
     |> ^^^  ^^^
 10  |> elided
@@ -709,9 +705,8 @@ mod test {
         let expect = &r#"
    --> dummy.txt:1:1
 1   |> aaaaa
-    |> ^^^^^
+    |> ^
 ...
-8   |> _____
 9   |> ddd__eee_
     |> ^^^  ^^^
 10  |> elided
