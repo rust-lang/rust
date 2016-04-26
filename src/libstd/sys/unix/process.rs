@@ -550,6 +550,12 @@ impl ExitStatus {
     }
 }
 
+impl From<c_int> for ExitStatus {
+    fn from(a: c_int) -> ExitStatus {
+        ExitStatus(a)
+    }
+}
+
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if let Some(code) = self.code() {
