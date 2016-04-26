@@ -75,6 +75,17 @@ pub trait Clone : Sized {
     }
 }
 
+// FIXME(aburka): this method is used solely by #[derive] to
+// assert that every component of a type implements Clone.
+//
+// This should never be called by user code.
+#[doc(hidden)]
+#[inline(always)]
+#[unstable(feature = "derive_clone_copy",
+           reason = "deriving hack, should not be public",
+           issue = "0")]
+pub fn assert_receiver_is_clone<T: Clone + ?Sized>(_: &T) {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Clone for &'a T {
     /// Returns a shallow copy of the reference.

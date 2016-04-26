@@ -11,12 +11,16 @@
 use deriving::generic::*;
 use deriving::generic::ty::*;
 
-use syntax::ast::{MetaItem, Expr, VariantData};
+use syntax::ast::{Expr, ItemKind, Generics, MetaItem, VariantData};
+use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::ext::base::{ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
+
+#[derive(PartialEq)]
+enum Mode { Deep, Shallow }
 
 pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              span: Span,
@@ -24,13 +28,51 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                              item: &Annotatable,
                              push: &mut FnMut(Annotatable))
 {
+    // check if we can use a short form
+    //
+    // the short form is `fn clone(&self) -> Self { *self }`
+    //
+    // we can use the short form if:
+    // - the item is Copy (unfortunately, all we can check is whether it's also deriving Copy)
+    // - there are no generic parameters (after specialization this limitation can be removed)
+    //      if we used the short form with generics, we'd have to bound the generics with
+    //      Clone + Copy, and then there'd be no Clone impl at all if the user fills in something
+    //      that is Clone but not Copy. and until specialization we can't write both impls.
+    let bounds;
+    let substructure;
+    match *item {
+        Annotatable::Item(ref annitem) => {
+            match annitem.node {
+                ItemKind::Struct(_, Generics { ref ty_params, .. }) |
+                ItemKind::Enum(_, Generics { ref ty_params, .. })
+                    if ty_params.is_empty()
+                        && attr::contains_name(&annitem.attrs, "derive_Copy") => {
+
+                    bounds = vec![Literal(path_std!(cx, core::marker::Copy))];
+                    substructure = combine_substructure(Box::new(|c, s, sub| {
+                        cs_clone("Clone", c, s, sub, Mode::Shallow)
+                    }));
+                }
+
+                _ => {
+                    bounds = vec![];
+                    substructure = combine_substructure(Box::new(|c, s, sub| {
+                        cs_clone("Clone", c, s, sub, Mode::Deep)
+                    }));
+                }
+            }
+        }
+
+        _ => cx.span_bug(span, "#[derive(Clone)] on trait item or impl item")
+    }
+
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
         path: path_std!(cx, core::clone::Clone),
-        additional_bounds: Vec::new(),
+        additional_bounds: bounds,
         generics: LifetimeBounds::empty(),
         is_unsafe: false,
         methods: vec!(
@@ -42,9 +84,7 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
                 ret_ty: Self_,
                 attributes: attrs,
                 is_unsafe: false,
-                combine_substructure: combine_substructure(Box::new(|c, s, sub| {
-                    cs_clone("Clone", c, s, sub)
-                })),
+                combine_substructure: substructure,
             }
         ),
         associated_types: Vec::new(),
@@ -56,14 +96,24 @@ pub fn expand_deriving_clone(cx: &mut ExtCtxt,
 fn cs_clone(
     name: &str,
     cx: &mut ExtCtxt, trait_span: Span,
-    substr: &Substructure) -> P<Expr> {
+    substr: &Substructure,
+    mode: Mode) -> P<Expr> {
     let ctor_path;
     let all_fields;
-    let fn_path = cx.std_path(&["clone", "Clone", "clone"]);
+    let fn_path = match mode {
+        Mode::Shallow => cx.std_path(&["clone", "assert_receiver_is_clone"]),
+        Mode::Deep  => cx.std_path(&["clone", "Clone", "clone"]),
+    };
     let subcall = |field: &FieldInfo| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
 
-        cx.expr_call_global(field.span, fn_path.clone(), args)
+        let span = if mode == Mode::Shallow {
+            // set the expn ID so we can call the unstable method
+            Span { expn_id: cx.backtrace(), .. trait_span }
+        } else {
+            field.span
+        };
+        cx.expr_call_global(span, fn_path.clone(), args)
     };
 
     let vdata;
@@ -89,29 +139,41 @@ fn cs_clone(
         }
     }
 
-    match *vdata {
-        VariantData::Struct(..) => {
-            let fields = all_fields.iter().map(|field| {
-                let ident = match field.name {
-                    Some(i) => i,
-                    None => {
-                        cx.span_bug(trait_span,
-                                    &format!("unnamed field in normal struct in \
-                                             `derive({})`", name))
-                    }
-                };
-                cx.field_imm(field.span, ident, subcall(field))
-            }).collect::<Vec<_>>();
+    match mode {
+        Mode::Shallow => {
+            cx.expr_block(cx.block(trait_span,
+                                   all_fields.iter()
+                                             .map(subcall)
+                                             .map(|e| cx.stmt_expr(e))
+                                             .collect(),
+                                   Some(cx.expr_deref(trait_span, cx.expr_self(trait_span)))))
+        }
+        Mode::Deep => {
+            match *vdata {
+                VariantData::Struct(..) => {
+                    let fields = all_fields.iter().map(|field| {
+                        let ident = match field.name {
+                            Some(i) => i,
+                            None => {
+                                cx.span_bug(trait_span,
+                                            &format!("unnamed field in normal struct in \
+                                                     `derive({})`", name))
+                            }
+                        };
+                        cx.field_imm(field.span, ident, subcall(field))
+                    }).collect::<Vec<_>>();
 
-            cx.expr_struct(trait_span, ctor_path, fields)
-        }
-        VariantData::Tuple(..) => {
-            let subcalls = all_fields.iter().map(subcall).collect();
-            let path = cx.expr_path(ctor_path);
-            cx.expr_call(trait_span, path, subcalls)
-        }
-        VariantData::Unit(..) => {
-            cx.expr_path(ctor_path)
+                    cx.expr_struct(trait_span, ctor_path, fields)
+                }
+                VariantData::Tuple(..) => {
+                    let subcalls = all_fields.iter().map(subcall).collect();
+                    let path = cx.expr_path(ctor_path);
+                    cx.expr_call(trait_span, path, subcalls)
+                }
+                VariantData::Unit(..) => {
+                    cx.expr_path(ctor_path)
+                }
+            }
         }
     }
 }
