@@ -498,7 +498,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), ..}) |
                 Err(ConstEvalErr { kind: IndexOpFeatureGated, ..}) => {},
                 Err(msg) => {
-                    self.qualif = self.qualif | ConstQualif::NOT_CONST;
                     self.tcx.sess.add_lint(CONST_ERR, ex.id,
                                            msg.span,
                                            msg.description().into_owned())
