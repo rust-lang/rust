@@ -1016,7 +1016,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
 
     graph_root: Module<'a>,
 
-    trait_item_map: FnvHashMap<(Name, DefId), DefId>,
+    trait_item_map: FnvHashMap<(Name, DefId), bool /* is static method? */>,
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
@@ -2823,25 +2823,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        fn is_static_method(this: &Resolver, did: DefId) -> bool {
-            if let Some(node_id) = this.ast_map.as_local_node_id(did) {
-                let sig = match this.ast_map.get(node_id) {
-                    hir_map::NodeTraitItem(trait_item) => match trait_item.node {
-                        hir::MethodTraitItem(ref sig, _) => sig,
-                        _ => return false,
-                    },
-                    hir_map::NodeImplItem(impl_item) => match impl_item.node {
-                        hir::ImplItemKind::Method(ref sig, _) => sig,
-                        _ => return false,
-                    },
-                    _ => return false,
-                };
-                sig.explicit_self.node == hir::SelfStatic
-            } else {
-                this.session.cstore.is_static_method(did)
-            }
-        }
-
         if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
             // Look for a field with the same name in the current self_type.
             match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
@@ -2862,8 +2843,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Look for a method in the current trait.
         if let Some((trait_did, ref trait_ref)) = self.current_trait_ref {
-            if let Some(&did) = self.trait_item_map.get(&(name, trait_did)) {
-                if is_static_method(self, did) {
+            if let Some(&is_static_method) = self.trait_item_map.get(&(name, trait_did)) {
+                if is_static_method {
                     return TraitMethod(path_names_to_string(&trait_ref.path, 0));
                 } else {
                     return TraitItem;

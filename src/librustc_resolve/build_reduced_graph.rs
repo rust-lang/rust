@@ -334,15 +334,19 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                 // Add the names of all the items to the trait info.
                 for item in items {
                     let item_def_id = self.ast_map.local_def_id(item.id);
+                    let mut is_static_method = false;
                     let (def, ns) = match item.node {
                         hir::ConstTraitItem(..) => (Def::AssociatedConst(item_def_id), ValueNS),
-                        hir::MethodTraitItem(..) => (Def::Method(item_def_id), ValueNS),
+                        hir::MethodTraitItem(ref sig, _) => {
+                            is_static_method = sig.explicit_self.node == hir::SelfStatic;
+                            (Def::Method(item_def_id), ValueNS)
+                        }
                         hir::TypeTraitItem(..) => (Def::AssociatedTy(def_id, item_def_id), TypeNS),
                     };
 
                     self.define(module_parent, item.name, ns, (def, item.span, vis));
 
-                    self.trait_item_map.insert((item.name, def_id), item_def_id);
+                    self.trait_item_map.insert((item.name, def_id), is_static_method);
                 }
             }
         }
@@ -464,7 +468,7 @@ impl<'b, 'tcx:'b> Resolver<'b, 'tcx> {
                             '{}'",
                            trait_item_name);
 
-                    self.trait_item_map.insert((trait_item_name, def_id), trait_item_def.def_id());
+                    self.trait_item_map.insert((trait_item_name, def_id), false);
                 }
 
                 let parent_link = ModuleParentLink(parent, name);
