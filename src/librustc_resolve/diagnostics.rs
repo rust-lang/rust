@@ -948,6 +948,51 @@ use something_which_doesnt_exist;
 Please verify you didn't misspell the import's name.
 "##,
 
+E0434: r##"
+This error indicates that a variable usage inside an inner function is invalid
+because the variable comes from a dynamic environment. Inner functions do not
+have access to their containing environment.
+
+Example of erroneous code:
+
+```compile_fail
+fn foo() {
+    let y = 5;
+    fn bar() -> u32 {
+        y // error: can't capture dynamic environment in a fn item; use the
+          //        || { ... } closure form instead.
+    }
+}
+```
+
+Functions do not capture local variables. To fix this error, you can replace the
+function with a closure:
+
+```
+fn foo() {
+    let y = 5;
+    let bar = || {
+        y
+    };
+}
+```
+
+or replace the captured variable with a constant or a static item:
+
+```
+fn foo() {
+    static mut X: u32 = 4;
+    const Y: u32 = 5;
+    fn bar() -> u32 {
+        unsafe {
+            X = 3;
+        }
+        Y
+    }
+}
+```
+"##,
+
 E0435: r##"
 A non-constant value was used to initialise a constant. Example of erroneous
 code:
@@ -1044,5 +1089,4 @@ register_diagnostics! {
     E0421, // unresolved associated const
     E0427, // cannot use `ref` binding mode with ...
     E0429, // `self` imports are only allowed within a { } list
-    E0434, // can't capture dynamic environment in a fn item
 }
