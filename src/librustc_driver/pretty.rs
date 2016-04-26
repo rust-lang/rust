@@ -26,8 +26,6 @@ use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
-use rustc_metadata::cstore::CStore;
-use rustc_metadata::creader::LocalCrateReader;
 
 use rustc_mir::pretty::write_mir_pretty;
 use rustc_mir::graphviz::write_mir_graphviz;
@@ -42,7 +40,6 @@ use syntax::util::small_vector::SmallVector;
 
 use graphviz as dot;
 
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::{self, Write};
 use std::iter;
@@ -813,7 +810,6 @@ pub fn print_after_parsing(sess: &Session,
 }
 
 pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                              cstore: &CStore,
                                               ast_map: &hir_map::Map<'tcx>,
                                               input: &Input,
                                               krate: &ast::Crate,
@@ -826,7 +822,7 @@ pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
     let _ignore = dep_graph.in_ignore();
 
     if ppm.needs_analysis() {
-        print_with_analysis(sess, cstore, ast_map, crate_name, arenas, ppm, opt_uii, ofile);
+        print_with_analysis(sess, ast_map, crate_name, arenas, ppm, opt_uii, ofile);
         return;
     }
 
@@ -917,7 +913,6 @@ pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
 // with a different callback than the standard driver, so that isn't easy.
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
-                                       cstore: &CStore,
                                        ast_map: &hir_map::Map<'tcx>,
                                        crate_name: &str,
                                        arenas: &'tcx ty::CtxtArenas<'tcx>,
