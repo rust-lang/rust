@@ -131,6 +131,9 @@ pub struct EmitterWriter {
     dst: Destination,
     registry: Option<diagnostics::registry::Registry>,
     cm: Rc<codemap::CodeMap>,
+
+    /// Is this the first error emitted thus far? If not, we emit a
+    /// `\n` before the top-level errors.
     first: bool,
 }
 
@@ -172,7 +175,9 @@ impl EmitterWriter {
             EmitterWriter { dst: dst, registry: registry, cm: code_map, first: true }
         } else {
             EmitterWriter { dst: Raw(Box::new(io::stderr())),
-                registry: registry, cm: code_map, first: true }
+                            registry: registry,
+                            cm: code_map,
+                            first: true }
         }
     }
 
