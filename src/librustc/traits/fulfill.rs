@@ -542,12 +542,12 @@ fn process_predicate1<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
             let trait_obligation = obligation.with(data.clone());
             match selcx.select(&trait_obligation) {
                 Ok(Some(vtable)) => {
-                    info!("selecting trait `{:?}` at depth {} yielded Ok(Some)",
+                    debug!("selecting trait `{:?}` at depth {} yielded Ok(Some)",
                           data, obligation.recursion_depth);
                     Ok(Some(vtable.nested_obligations()))
                 }
                 Ok(None) => {
-                    info!("selecting trait `{:?}` at depth {} yielded Ok(None)",
+                    debug!("selecting trait `{:?}` at depth {} yielded Ok(None)",
                           data, obligation.recursion_depth);
 
                     // This is a bit subtle: for the most part, the
@@ -781,8 +781,6 @@ impl<'tcx> GlobalFulfilledPredicates<'tcx> {
             self.dep_graph.read(data.dep_node());
             debug!("check_duplicate: global predicate `{:?}` already proved elsewhere", data);
 
-            info!("check_duplicate_trait hit: `{:?}`", data);
-
             true
         } else {
             false
@@ -798,7 +796,6 @@ impl<'tcx> GlobalFulfilledPredicates<'tcx> {
             if data.is_global() {
                 if self.set.insert(data.clone()) {
                     debug!("add_if_global: global predicate `{:?}` added", data);
-                    info!("check_duplicate_trait entry: `{:?}`", data);
                 }
             }
         }
