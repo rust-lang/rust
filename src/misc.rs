@@ -424,7 +424,7 @@ fn is_used(cx: &LateContext, expr: &Expr) -> bool {
         match parent.node {
             ExprAssign(_, ref rhs) |
             ExprAssignOp(_, _, ref rhs) => **rhs == *expr,
-            _ => is_used(cx, &parent),
+            _ => is_used(cx, parent),
         }
     } else {
         true

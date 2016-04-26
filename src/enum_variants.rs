@@ -68,9 +68,9 @@ impl EarlyLintPass for EnumVariantNames {
             for var in &def.variants {
                 let name = var2str(var);
 
-                let pre_match = partial_match(&pre, &name);
+                let pre_match = partial_match(pre, &name);
                 pre = &pre[..pre_match];
-                let pre_camel = camel_case_until(&pre);
+                let pre_camel = camel_case_until(pre);
                 pre = &pre[..pre_camel];
                 while let Some((next, last)) = name[pre.len()..].chars().zip(pre.chars().rev()).next() {
                     if next.is_lowercase() {
@@ -82,10 +82,10 @@ impl EarlyLintPass for EnumVariantNames {
                     }
                 }
 
-                let post_match = partial_rmatch(&post, &name);
+                let post_match = partial_rmatch(post, &name);
                 let post_end = post.len() - post_match;
                 post = &post[post_end..];
-                let post_camel = camel_case_from(&post);
+                let post_camel = camel_case_from(post);
                 post = &post[post_camel..];
             }
             let (what, value) = match (pre.is_empty(), post.is_empty()) {

@@ -910,7 +910,7 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
         if let Some(norm_rhs_val) = node_as_const_fullint(cx, rhs) {
             if rel == Rel::Eq || rel == Rel::Ne {
                 if norm_rhs_val < lb || norm_rhs_val > ub {
-                    err_upcast_comparison(cx, &span, lhs, rel == Rel::Ne);
+                    err_upcast_comparison(cx, span, lhs, rel == Rel::Ne);
                 }
             } else if match rel {
                 Rel::Lt => {
@@ -929,7 +929,7 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
                 }
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
-                err_upcast_comparison(cx, &span, lhs, true)
+                err_upcast_comparison(cx, span, lhs, true)
             } else if match rel {
                 Rel::Lt => {
                     if invert {
@@ -947,7 +947,7 @@ fn upcast_comparison_bounds_err(cx: &LateContext, span: &Span, rel: comparisons:
                 }
                 Rel::Eq | Rel::Ne => unreachable!(),
             } {
-                err_upcast_comparison(cx, &span, lhs, false)
+                err_upcast_comparison(cx, span, lhs, false)
             }
         }
     }

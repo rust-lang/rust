@@ -461,8 +461,8 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
     let mut values = Vec::with_capacity(2 * ranges.len());
 
     for r in ranges {
-        values.push(Kind::Start(r.node.0, &r));
-        values.push(Kind::End(r.node.1, &r));
+        values.push(Kind::Start(r.node.0, r));
+        values.push(Kind::End(r.node.1, r));
     }
 
     values.sort();
@@ -475,7 +475,7 @@ pub fn overlapping<T>(ranges: &[SpannedRange<T>]) -> Option<(&SpannedRange<T>, &
                 }
             }
             (&Kind::End(a, _), &Kind::Start(b, _)) if a != b => (),
-            _ => return Some((&a.range(), &b.range())),
+            _ => return Some((a.range(), b.range())),
         }
     }
 

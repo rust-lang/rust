@@ -58,7 +58,7 @@ impl CyclomaticComplexity {
             divergence: 0,
             short_circuits: 0,
             returns: 0,
-            tcx: &cx.tcx,
+            tcx: cx.tcx,
         };
         helper.visit_block(block);
         let CCHelper { match_arms, divergence, short_circuits, returns, .. } = helper;

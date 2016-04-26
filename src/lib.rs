@@ -141,7 +141,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
                 ("clippy.toml", false)
             };
 
-            let (conf, errors) = utils::conf::read_conf(&file_name, must_exist);
+            let (conf, errors) = utils::conf::read_conf(file_name, must_exist);
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {

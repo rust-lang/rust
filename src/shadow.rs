@@ -278,7 +278,7 @@ fn check_expr(cx: &LateContext, expr: &Expr, bindings: &mut Vec<(Name, Span)>) {
             let len = bindings.len();
             for ref arm in arms {
                 for ref pat in &arm.pats {
-                    check_pat(cx, &pat, &Some(&**init), pat.span, bindings);
+                    check_pat(cx, pat, &Some(&**init), pat.span, bindings);
                     // This is ugly, but needed to get the right type
                     if let Some(ref guard) = arm.guard {
                         check_expr(cx, guard, bindings);

@@ -39,13 +39,13 @@ impl LateLintPass for UnnecessaryMutPassed {
                                                            If this happened, the compiler would have \
                                                            aborted the compilation long ago");
                 if let ExprPath(_, ref path) = fn_expr.node {
-                    check_arguments(cx, &arguments, function_type, &path.to_string());
+                    check_arguments(cx, arguments, function_type, &path.to_string());
                 }
             }
             ExprMethodCall(ref name, _, ref arguments) => {
                 let method_call = MethodCall::expr(e.id);
                 let method_type = borrowed_table.method_map.get(&method_call).expect("This should never happen.");
-                check_arguments(cx, &arguments, method_type.ty, &name.node.as_str())
+                check_arguments(cx, arguments, method_type.ty, &name.node.as_str())
             }
             _ => (),
         }

@@ -67,7 +67,7 @@ impl LateLintPass for ArrayIndexing {
                 let size = ConstInt::Infer(size as u64);
 
                 // Index is a constant uint
-                let const_index = eval_const_expr_partial(cx.tcx, &index, ExprTypeChecked, None);
+                let const_index = eval_const_expr_partial(cx.tcx, index, ExprTypeChecked, None);
                 if let Ok(ConstVal::Integral(const_index)) = const_index {
                     if size <= const_index {
                         utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");

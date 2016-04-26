@@ -46,7 +46,7 @@ impl LintPass for LifetimePass {
 impl LateLintPass for LifetimePass {
     fn check_item(&mut self, cx: &LateContext, item: &Item) {
         if let ItemFn(ref decl, _, _, _, ref generics, _) = item.node {
-            check_fn_inner(cx, decl, None, &generics, item.span);
+            check_fn_inner(cx, decl, None, generics, item.span);
         }
     }
 
@@ -102,7 +102,7 @@ fn check_fn_inner(cx: &LateContext, decl: &FnDecl, slf: Option<&ExplicitSelf>, g
                   span,
                   "explicit lifetimes given in parameter types where they could be elided");
     }
-    report_extra_lifetimes(cx, decl, &generics, slf);
+    report_extra_lifetimes(cx, decl, generics, slf);
 }
 
 fn could_use_elision<'a, T: Iterator<Item = &'a Lifetime>>(cx: &LateContext, func: &FnDecl, slf: Option<&ExplicitSelf>,
