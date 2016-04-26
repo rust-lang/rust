@@ -3405,6 +3405,52 @@ parameters. You can read more about it in the API documentation:
 https://doc.rust-lang.org/std/marker/struct.PhantomData.html
 "##,
 
+E0436: r##"
+A struct can include `..` to indicate that you want to use a copy of some other
+struct for some of the values. This functional update syntax can only be used
+on struct types. It is an error to use it on other types, such as enums.
+
+Example of erroneous code:
+
+```compile_fail
+enum Foo {
+    A { x: u32, y: u32 }
+}
+
+fn bar() {
+    baz(Foo::A { x: 5, y: 10 });
+}
+
+fn baz(Foo f) -> Foo {
+    Foo::A { x: 6, ..f } // error: functional record update syntax requires
+                         //        a struct
+}
+```
+
+To fix this, you need to manually initialize the value. For enums, you should
+match on the variants and copy the values to the new enum value:
+
+```
+enum Foo {
+    A { x: u32, y: u32 }
+}
+
+fn bar() {
+    baz(Foo::A { x: 5, y: 10 });
+}
+
+fn baz(Foo f) -> Foo {
+    match f {
+        // Match each variant of the enum and bind each field to a name.
+        Foo::A { y: y, .. } =>
+            // Create a new value of the same enum type, set the field you
+            // want to update and the other fields that were bound.
+            Foo::A { x: 6, y: y },
+    }
+}
+```
+"##,
+
 E0439: r##"
 The length of the platform-intrinsic function `simd_shuffle`
 wasn't specified. Erroneous code example:
@@ -3759,7 +3805,6 @@ register_diagnostics! {
            // type because its default value `{}` references the type `Self`"
     E0399, // trait items need to be implemented because the associated
            // type `{}` was overridden
-    E0436, // functional record update requires a struct
     E0513, // no type for local variable ..
     E0521  // redundant default implementations of trait
 }
