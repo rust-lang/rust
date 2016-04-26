@@ -63,7 +63,7 @@
 use check::{autoderef, FnCtxt, UnresolvedTypeAction};
 
 use rustc::infer::{Coercion, InferOk, TypeOrigin, TypeTrace};
-use rustc::traits::{self, ObligationCause};
+use rustc::traits::{self, ObligationCause, SelectionOk};
 use rustc::traits::{predicate_for_trait_def, report_selection_error};
 use rustc::ty::adjustment::{AutoAdjustment, AutoDerefRef, AdjustDerefRef};
 use rustc::ty::adjustment::{AutoPtr, AutoUnsafe, AdjustReifyFnPointer};
@@ -483,7 +483,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // be silent, as it causes a type mismatch later.
                 }
 
-                Ok(Some(vtable)) => {
+                Ok(Some(SelectionOk { selection: vtable, obligations })) => {
+                    // FIXME(#32730) propagate obligations
+                    assert!(obligations.is_empty());
                     for obligation in vtable.nested_obligations() {
                         queue.push_back(obligation);
                     }

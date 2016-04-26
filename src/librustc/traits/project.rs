@@ -19,6 +19,7 @@ use super::ObligationCause;
 use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
+use super::SelectionOk;
 use super::VtableClosureData;
 use super::VtableImplData;
 use super::util;
@@ -899,7 +900,11 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
     let poly_trait_ref = obligation_trait_ref.to_poly_trait_ref();
     let trait_obligation = obligation.with(poly_trait_ref.to_poly_trait_predicate());
     let vtable = match selcx.select(&trait_obligation) {
-        Ok(Some(vtable)) => vtable,
+        Ok(Some(SelectionOk { selection: vtable, obligations })) => {
+            // FIXME(#32730) propagate obligations (or... not... this *is* an 'assembly_*')
+            assert!(obligations.is_empty());
+            vtable
+        },
         Ok(None) => {
             candidate_set.ambiguous = true;
             return Ok(());

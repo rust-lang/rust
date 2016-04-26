@@ -38,7 +38,7 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, SelectionContext, ProjectionMode};
+use rustc::traits::{self, SelectionContext, SelectionOk, ProjectionMode};
 use rustc::ty::fold::{TypeFolder, TypeFoldable};
 use rustc::hir;
 use util::nodemap::NodeMap;
@@ -1083,7 +1083,11 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         traits::Obligation::new(traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID),
                                 trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {
-        Ok(Some(selection)) => selection,
+        Ok(Some(SelectionOk { selection, obligations })) => {
+            // FIXME(#32730) propagate obligations
+            assert!(obligations.is_empty());
+            selection
+        },
         Ok(None) => {
             // Ambiguity can happen when monomorphizing during trans
             // expands to some humongo type that never occurred

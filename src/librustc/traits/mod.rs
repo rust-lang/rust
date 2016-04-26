@@ -10,7 +10,6 @@
 
 //! Trait Resolution. See the Book for more.
 
-pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
@@ -47,6 +46,8 @@ pub use self::object_safety::is_vtable_safe_method;
 pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
 pub use self::select::{MethodMatchedData}; // intentionally don't export variants
+pub use self::select::{Selection, SelectionOk, SelectionError, SelectionResult};
+pub use self::select::{Unimplemented, OutputTypeParameterMismatch, TraitNotObjectSafe};
 pub use self::specialize::{Overlap, specialization_graph, specializes, translate_substs};
 pub use self::util::elaborate_predicates;
 pub use self::util::get_vtable_index_of_object_method;
@@ -162,17 +163,6 @@ pub type Obligations<'tcx, O> = Vec<Obligation<'tcx, O>>;
 pub type PredicateObligations<'tcx> = Vec<PredicateObligation<'tcx>>;
 pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 
-pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
-
-#[derive(Clone,Debug)]
-pub enum SelectionError<'tcx> {
-    Unimplemented,
-    OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
-                                ty::PolyTraitRef<'tcx>,
-                                ty::error::TypeError<'tcx>),
-    TraitNotObjectSafe(DefId),
-}
-
 pub struct FulfillmentError<'tcx> {
     pub obligation: PredicateObligation<'tcx>,
     pub code: FulfillmentErrorCode<'tcx>
@@ -184,15 +174,6 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
     CodeAmbiguity,
 }
-
-/// When performing resolution, it is typically the case that there
-/// can be one of three outcomes:
-///
-/// - `Ok(Some(r))`: success occurred with result `r`
-/// - `Ok(None)`: could not definitely determine anything, usually due
-///   to inconclusive type inference.
-/// - `Err(e)`: error `e` occurred
-pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 
 /// Given the successful resolution of an obligation, the `Vtable`
 /// indicates where the vtable comes from. Note that while we call this
