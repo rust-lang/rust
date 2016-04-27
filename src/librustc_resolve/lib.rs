@@ -1125,14 +1125,14 @@ impl<'a, 'tcx> ty::NodeIdTree for Resolver<'a, 'tcx> {
     fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
         let ancestor = self.ast_map.local_def_id(ancestor);
         let mut module = *self.module_map.get(&node).unwrap();
-        loop {
-            if module.def_id() == Some(ancestor) { return true; }
+        while module.def_id() != Some(ancestor) {
             let module_parent = match self.get_nearest_normal_module_parent(module) {
                 Some(parent) => parent,
                 None => return false,
             };
             module = module_parent;
         }
+        true
     }
 }
 
