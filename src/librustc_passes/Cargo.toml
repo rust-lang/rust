@@ -12,4 +12,5 @@ crate-type = ["dylib"]
 log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 rustc_const_eval = { path = "../librustc_const_eval" }
+rustc_const_math = { path = "../librustc_const_math" }
 syntax = { path = "../libsyntax" }

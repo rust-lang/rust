@@ -503,7 +503,7 @@ impl ::std::ops::Shr<ConstInt> for ConstInt {
             I8(a) => Ok(I8(overflowing!(a.overflowing_shr(b), Op::Shr))),
             I16(a) => Ok(I16(overflowing!(a.overflowing_shr(b), Op::Shr))),
             I32(a) => Ok(I32(overflowing!(a.overflowing_shr(b), Op::Shr))),
-            I64(a) => Ok(I64(overflowing!(a.overflowing_shr(b), Op::Shl))),
+            I64(a) => Ok(I64(overflowing!(a.overflowing_shr(b), Op::Shr))),
             Isize(Is32(a)) => Ok(Isize(Is32(overflowing!(a.overflowing_shr(b), Op::Shr)))),
             Isize(Is64(a)) => Ok(Isize(Is64(overflowing!(a.overflowing_shr(b), Op::Shr)))),
             U8(a) => Ok(U8(overflowing!(a.overflowing_shr(b), Op::Shr))),

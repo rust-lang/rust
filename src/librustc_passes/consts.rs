@@ -28,9 +28,11 @@ use rustc::dep_graph::DepNode;
 use rustc::ty::cast::{CastKind};
 use rustc_const_eval::{ConstEvalErr, lookup_const_fn_by_id, compare_lit_exprs};
 use rustc_const_eval::{eval_const_expr_partial, lookup_const_by_id};
-use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal};
-use rustc_const_eval::ErrKind::ErroneousReferencedConstant;
+use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
+use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
+use rustc_const_eval::ErrKind::UnresolvedPath;
 use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
@@ -437,29 +439,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 }
                 intravisit::walk_expr(self, ex);
             }
-            // Division by zero and overflow checking.
-            hir::ExprBinary(op, _, _) => {
-                intravisit::walk_expr(self, ex);
-                let div_or_rem = op.node == hir::BiDiv || op.node == hir::BiRem;
-                match node_ty.sty {
-                    ty::TyUint(_) | ty::TyInt(_) if div_or_rem => {
-                        if !self.qualif.intersects(ConstQualif::NOT_CONST) {
-                            match eval_const_expr_partial(
-                                    self.tcx, ex, ExprTypeChecked, None) {
-                                Ok(_) => {}
-                                Err(ConstEvalErr { kind: UnimplementedConstVal(_), ..}) |
-                                Err(ConstEvalErr { kind: IndexOpFeatureGated, ..}) => {},
-                                Err(msg) => {
-                                    self.tcx.sess.add_lint(CONST_ERR, ex.id,
-                                                           msg.span,
-                                                           msg.description().into_owned())
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
             _ => intravisit::walk_expr(self, ex)
         }
 
@@ -505,6 +484,27 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
             }
             None => {}
         }
+
+        if self.mode == Mode::Var && !self.qualif.intersects(ConstQualif::NOT_CONST) {
+            match eval_const_expr_partial(self.tcx, ex, ExprTypeChecked, None) {
+                Ok(_) => {}
+                Err(ConstEvalErr { kind: UnimplementedConstVal(_), ..}) |
+                Err(ConstEvalErr { kind: MiscCatchAll, ..}) |
+                Err(ConstEvalErr { kind: MiscBinaryOp, ..}) |
+                Err(ConstEvalErr { kind: NonConstPath, ..}) |
+                Err(ConstEvalErr { kind: UnresolvedPath, ..}) |
+                Err(ConstEvalErr { kind: ErroneousReferencedConstant(_), ..}) |
+                Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shr)), ..}) |
+                Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), ..}) |
+                Err(ConstEvalErr { kind: IndexOpFeatureGated, ..}) => {},
+                Err(msg) => {
+                    self.tcx.sess.add_lint(CONST_ERR, ex.id,
+                                           msg.span,
+                                           msg.description().into_owned())
+                }
+            }
+        }
+
         self.tcx.const_qualif_map.borrow_mut().insert(ex.id, self.qualif);
         // Don't propagate certain flags.
         self.qualif = outer | (self.qualif - ConstQualif::HAS_STATIC_BORROWS);

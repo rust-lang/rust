@@ -18,5 +18,5 @@ pub const D: u8 = 42u8 - (42u8 + 1); //~ ERROR attempted to subtract with overfl
 pub const E: u8 = [5u8][1]; //~ ERROR index out of bounds
 
 fn main() {
-    let _e = [6u8][1];
+    let _e = [6u8][1]; //~ ERROR: array index out of bounds
 }
