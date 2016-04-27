@@ -14,7 +14,6 @@ use codemap::{CharPos, CodeMap, FileMap, LineInfo, Span};
 use std::cmp;
 use std::rc::Rc;
 use std::mem;
-use std::ops::Range;
 
 mod test;
 
@@ -744,10 +743,6 @@ fn overlaps(a1: &Annotation,
             a2: &Annotation)
             -> bool
 {
-    between(a1.start_col, a2.start_col .. a2.end_col) ||
-        between(a2.start_col, a1.start_col .. a1.end_col)
-}
-
-fn between(v: usize, range: Range<usize>) -> bool {
-    v >= range.start && v < range.end
+    (a2.start_col .. a2.end_col).contains(a1.start_col) ||
+        (a1.start_col .. a1.end_col).contains(a2.start_col)
 }

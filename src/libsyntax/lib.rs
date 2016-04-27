@@ -33,6 +33,7 @@
 #![feature(str_escape)]
 #![feature(unicode)]
 #![feature(question_mark)]
+#![feature(range_contains)]
 
 extern crate serialize;
 extern crate term;
