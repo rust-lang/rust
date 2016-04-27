@@ -40,4 +40,4 @@ mod err;
 pub use int::*;
 pub use us::*;
 pub use is::*;
-pub use err::ConstMathErr;
+pub use err::{ConstMathErr, Op};

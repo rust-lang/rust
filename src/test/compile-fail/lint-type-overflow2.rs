@@ -10,6 +10,7 @@
 //
 
 #![deny(overflowing_literals)]
+#![deny(const_err)]
 
 #[allow(unused_variables)]
 fn main() {
