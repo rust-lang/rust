@@ -26,7 +26,7 @@ use rustc::hir::def::*;
 
 use syntax::ast::{NodeId, Name};
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, DUMMY_SP};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::cell::{Cell, RefCell};
@@ -76,7 +76,7 @@ impl<'a> ImportDirective<'a> {
                 directive: self,
                 privacy_error: privacy_error,
             },
-            span: Some(self.span),
+            span: self.span,
             vis: self.vis,
         }
     }
@@ -412,7 +412,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         if let SingleImport { target, .. } = e.import_directive.subclass {
             let dummy_binding = self.resolver.arenas.alloc_name_binding(NameBinding {
                 kind: NameBindingKind::Def(Def::Err),
-                span: None,
+                span: DUMMY_SP,
                 vis: ty::Visibility::Public,
             });
             let dummy_binding = e.import_directive.import(dummy_binding, None);
@@ -696,7 +696,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                                        (error E0364), consider declaring its enum as `pub`",
                                       name);
                     let lint = lint::builtin::PRIVATE_IN_PUBLIC;
-                    self.resolver.session.add_lint(lint, directive.id, binding.span.unwrap(), msg);
+                    self.resolver.session.add_lint(lint, directive.id, binding.span, msg);
                 }
             }
         }

@@ -48,13 +48,13 @@ trait ToNameBinding<'a> {
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, Span, ty::Visibility) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding { kind: NameBindingKind::Module(self.0), span: Some(self.1), vis: self.2 }
+        NameBinding { kind: NameBindingKind::Module(self.0), span: self.1, vis: self.2 }
     }
 }
 
 impl<'a> ToNameBinding<'a> for (Def, Span, ty::Visibility) {
     fn to_name_binding(self) -> NameBinding<'a> {
-        NameBinding { kind: NameBindingKind::Def(self.0), span: Some(self.1), vis: self.2 }
+        NameBinding { kind: NameBindingKind::Def(self.0), span: self.1, vis: self.2 }
     }
 }
 
