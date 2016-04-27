@@ -41,7 +41,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 span_bug!(expr.span, "no temp_lifetime for expr");
             }
         };
-        this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
+        let expr_span = expr.span;
 
         // Careful here not to cause an infinite cycle. If we always
         // called `into`, then for lvalues like `x.f`, it would
@@ -52,7 +52,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         // course) `as_temp`.
         match Category::of(&expr.kind).unwrap() {
             Category::Lvalue => {
-                let expr_span = expr.span;
                 let lvalue = unpack!(block = this.as_lvalue(block, expr));
                 let rvalue = Rvalue::Use(Operand::Consume(lvalue));
                 let scope_id = this.innermost_scope_id();
@@ -62,6 +61,8 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 unpack!(block = this.into(&temp, block, expr));
             }
         }
+
+        this.schedule_drop(expr_span, temp_lifetime, &temp, expr_ty);
 
         block.and(temp)
     }
