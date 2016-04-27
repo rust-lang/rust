@@ -12,7 +12,7 @@ use self::LockstepIterSize::*;
 use ast;
 use ast::{TokenTree, Ident, Name};
 use codemap::{Span, DUMMY_SP};
-use errors::Handler;
+use errors::{Handler, DiagnosticBuilder};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use parse::token::{DocComment, MatchNt, SubstNt};
 use parse::token::{Token, NtIdent, SpecialMacroVar};
@@ -50,6 +50,7 @@ pub struct TtReader<'a> {
     pub cur_span: Span,
     /// Transform doc comments. Only useful in macro invocations
     pub desugar_doc_comments: bool,
+    pub fatal_errs: Vec<DiagnosticBuilder<'a>>,
 }
 
 /// This can do Macro-By-Example transcription. On the other hand, if
@@ -99,6 +100,7 @@ pub fn new_tt_reader_with_doc_flag(sp_diag: &Handler,
         /* dummy values, never read: */
         cur_tok: token::Eof,
         cur_span: DUMMY_SP,
+        fatal_errs: Vec::new(),
     };
     tt_next_token(&mut r); /* get cur_tok and cur_span set up */
     r
