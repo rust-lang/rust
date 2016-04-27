@@ -556,8 +556,8 @@ mod test {
         println!("r#\"\n{}\"#", str);
         assert_eq!(str, &r#"
    --> dummy.txt:11:1
-11  |>         e-lä-vän
-    |> ^
+11 |>         e-lä-vän
+   |> ^
 "#[1..]);
     }
 

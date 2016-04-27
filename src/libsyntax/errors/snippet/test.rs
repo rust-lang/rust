@@ -405,8 +405,8 @@ impl SomeTrait for () {
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
 >>>>>> foo.rs
-3   |>     fn foo(x: u32) {
-    |>     -
+3 |>     fn foo(x: u32) {
+  |>     -
 "#[1..]);
 }
 
@@ -516,6 +516,6 @@ fn span_overlap_label3() {
 3 |>        let closure = || {
   |>                      - foo
 4 |>            inner
-  |>            ---- bar
+  |>            ----- bar
 "#[1..]);
 }
