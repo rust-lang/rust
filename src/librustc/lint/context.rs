@@ -462,7 +462,7 @@ pub fn raw_struct_lint<'a>(sess: &'a Session,
 
     if let Some(span) = def {
         let explanation = "lint level defined here";
-        err = err.span_label(span, &explanation);
+        err.span_note(span, &explanation);
     }
 
     err
