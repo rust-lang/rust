@@ -334,9 +334,11 @@ impl MultiSpan {
         &self.primary_spans
     }
 
-    /// Returns the strings to highlight. If we have an explicit set,
-    /// return those, otherwise just give back an (unlabeled) version
-    /// of the primary span.
+    /// Returns the strings to highlight. We always ensure that there
+    /// is an entry for each of the primary spans -- for each primary
+    /// span P, if there is at least one label with span P, we return
+    /// those labels (marked as primary). But otherwise we return
+    /// `SpanLabel` instances with empty labels.
     pub fn span_labels(&self) -> Vec<SpanLabel> {
         let is_primary = |span| self.primary_spans.contains(&span);
         let mut span_labels = vec![];
