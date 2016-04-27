@@ -1121,6 +1121,21 @@ impl<'a> ResolverArenas<'a> {
     }
 }
 
+impl<'a, 'tcx> ty::NodeIdTree for Resolver<'a, 'tcx> {
+    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
+        let ancestor = self.ast_map.local_def_id(ancestor);
+        let mut module = *self.module_map.get(&node).unwrap();
+        loop {
+            if module.def_id() == Some(ancestor) { return true; }
+            let module_parent = match self.get_nearest_normal_module_parent(module) {
+                Some(parent) => parent,
+                None => return false,
+            };
+            module = module_parent;
+        }
+    }
+}
+
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn new(session: &'a Session,
            ast_map: &'a hir_map::Map<'tcx>,
@@ -1131,6 +1146,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let graph_root =
             ModuleS::new(NoParentLink, Some(Def::Mod(root_def_id)), false, arenas);
         let graph_root = arenas.alloc_module(graph_root);
+        let mut module_map = NodeMap();
+        module_map.insert(CRATE_NODE_ID, graph_root);
 
         Resolver {
             session: session,
@@ -1161,7 +1178,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
             trait_map: NodeMap(),
-            module_map: NodeMap(),
+            module_map: module_map,
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
 
@@ -3343,7 +3360,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn is_accessible(&self, vis: ty::Visibility) -> bool {
         let current_module = self.get_nearest_normal_module_parent_or_self(self.current_module);
         let node_id = self.ast_map.as_local_node_id(current_module.def_id().unwrap()).unwrap();
-        vis.is_accessible_from(node_id, &self.ast_map)
+        vis.is_accessible_from(node_id, self)
     }
 
     fn check_privacy(&mut self, name: Name, binding: &'a NameBinding<'a>, span: Span) {

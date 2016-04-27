@@ -552,9 +552,9 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
             _ => (),
         }
 
-        let ast_map = self.resolver.ast_map;
         match (&value_result, &type_result) {
-            (&Success(binding), _) if !binding.pseudo_vis().is_at_least(directive.vis, ast_map) &&
+            (&Success(binding), _) if !binding.pseudo_vis()
+                                              .is_at_least(directive.vis, self.resolver) &&
                                       self.resolver.is_accessible(binding.vis) => {
                 let msg = format!("`{}` is private, and cannot be reexported", source);
                 let note_msg = format!("consider marking `{}` as `pub` in the imported module",
@@ -564,7 +564,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                     .emit();
             }
 
-            (_, &Success(binding)) if !binding.pseudo_vis().is_at_least(directive.vis, ast_map) &&
+            (_, &Success(binding)) if !binding.pseudo_vis()
+                                              .is_at_least(directive.vis, self.resolver) &&
                                       self.resolver.is_accessible(binding.vis) => {
                 if binding.is_extern_crate() {
                     let msg = format!("extern crate `{}` is private, and cannot be reexported \
@@ -691,7 +692,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
             if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {
                 if ns == TypeNS && orig_binding.is_variant() &&
-                   !orig_binding.vis.is_at_least(binding.vis, &self.resolver.ast_map) {
+                   !orig_binding.vis.is_at_least(binding.vis, self.resolver) {
                     let msg = format!("variant `{}` is private, and cannot be reexported \
                                        (error E0364), consider declaring its enum as `pub`",
                                       name);
