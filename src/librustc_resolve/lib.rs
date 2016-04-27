@@ -1819,11 +1819,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                                       path_depth)));
 
                 // If it's a typedef, give a note
-                if let Def::TyAlias(did) = path_res.base_def {
+                if let Def::TyAlias(..) = path_res.base_def {
                     err.fileline_note(trait_path.span,
                                   "`type` aliases cannot be used for traits");
-                    if let Some(sp) = self.ast_map.span_if_local(did) {
-                        err.span_note(sp, "type defined here");
+
+                    let definition_site = {
+                        let segments = &trait_path.segments;
+                        if trait_path.global {
+                            self.resolve_crate_relative_path(trait_path.span, segments, TypeNS)
+                        } else {
+                            self.resolve_module_relative_path(trait_path.span, segments, TypeNS)
+                        }.map(|binding| binding.span).unwrap_or(codemap::DUMMY_SP)
+                    };
+
+                    if definition_site != codemap::DUMMY_SP {
+                        err.span_note(definition_site, "type defined here");
                     }
                 }
                 err.emit();
