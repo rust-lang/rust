@@ -349,7 +349,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
             if let Some(binding) = resolver.current_module
                                            .resolve_name_in_lexical_scope(name, ValueNS) {
                 if binding.is_import() {
-                    err.span_note(binding.span.unwrap(), "constant imported here");
+                    err.span_note(binding.span, "constant imported here");
                 }
             }
             err
@@ -900,7 +900,7 @@ impl<'a> fmt::Debug for ModuleS<'a> {
 #[derive(Clone, Debug)]
 pub struct NameBinding<'a> {
     kind: NameBindingKind<'a>,
-    span: Option<Span>,
+    span: Span,
     vis: ty::Visibility,
 }
 
@@ -3293,7 +3293,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             identifier: ident,
                             parameters: params,
                         };
-                        let span = name_binding.span.unwrap_or(syntax::codemap::DUMMY_SP);
+                        let span = name_binding.span;
                         let mut segms = path_segments.clone();
                         segms.push(segment);
                         let segms = HirVec::from_vec(segms);
@@ -3447,7 +3447,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                        binding: &NameBinding,
                        old_binding: &NameBinding) {
         // Error on the second of two conflicting names
-        if old_binding.span.unwrap().lo > binding.span.unwrap().lo {
+        if old_binding.span.lo > binding.span.lo {
             return self.report_conflict(parent, name, ns, old_binding, binding);
         }
 
@@ -3463,7 +3463,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             false => ("defined", "definition"),
         };
 
-        let span = binding.span.unwrap();
+        let span = binding.span;
         let msg = {
             let kind = match (ns, old_binding.module()) {
                 (ValueNS, _) => "a value",
@@ -3488,9 +3488,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             },
         };
 
-        let span = old_binding.span.unwrap();
-        if span != codemap::DUMMY_SP {
-            err.span_note(span, &format!("previous {} of `{}` here", noun, name));
+        if old_binding.span != codemap::DUMMY_SP {
+            err.span_note(old_binding.span, &format!("previous {} of `{}` here", noun, name));
         }
         err.emit();
     }
