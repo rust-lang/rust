@@ -555,7 +555,7 @@ mod test {
         let str = from_utf8(vec).unwrap();
         println!("r#\"\n{}\"#", str);
         assert_eq!(str, &r#"
-   --> dummy.txt:11:1
+  --> dummy.txt:11:1
 11 |>         e-lä-vän
    |> ^
 "#[1..]);

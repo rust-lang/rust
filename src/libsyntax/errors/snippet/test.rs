@@ -404,7 +404,7 @@ impl SomeTrait for () {
     let text: String = make_string(&lines);
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
->>>>>> foo.rs
+>>>> foo.rs
 3 |>     fn foo(x: u32) {
   |>     -
 "#[1..]);
