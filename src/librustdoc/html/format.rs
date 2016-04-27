@@ -766,6 +766,7 @@ impl fmt::Display for AbiSpace {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.0 {
             Abi::Rust => Ok(()),
+            Abi::C => write!(f, "extern "),
             abi => write!(f, "extern &quot;{}&quot; ", abi.name()),
         }
     }
