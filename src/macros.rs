@@ -81,13 +81,22 @@ pub fn rewrite_macro(mac: &ast::Mac,
 
     if MacroStyle::Braces != style {
         loop {
-            expr_vec.push(match parser.parse_expr() {
-                Ok(expr) => expr,
+            let expr = match parser.parse_expr() {
+                Ok(expr) => {
+                    // Recovered errors.
+                    if context.parse_session.span_diagnostic.has_errors() {
+                        return None;
+                    }
+
+                    expr
+                }
                 Err(mut e) => {
                     e.cancel();
                     return None;
                 }
-            });
+            };
+
+            expr_vec.push(expr);
 
             match parser.token {
                 Token::Eof => break,

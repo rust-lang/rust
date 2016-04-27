@@ -378,13 +378,22 @@ fn format_lines(file_map: &mut FileMap, config: &Config) -> FormatReport {
     report
 }
 
-fn parse_input(input: Input, parse_session: &ParseSess) -> Result<ast::Crate, DiagnosticBuilder> {
-    match input {
+fn parse_input(input: Input,
+               parse_session: &ParseSess)
+               -> Result<ast::Crate, Option<DiagnosticBuilder>> {
+    let result = match input {
         Input::File(file) => parse::parse_crate_from_file(&file, Vec::new(), &parse_session),
         Input::Text(text) => {
             parse::parse_crate_from_source_str("stdin".to_owned(), text, Vec::new(), &parse_session)
         }
+    };
+
+    // Bail out if the parser recovered from an error.
+    if parse_session.span_diagnostic.has_errors() {
+        return Err(None);
     }
+
+    result.map_err(|e| Some(e))
 }
 
 pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatReport) {
@@ -405,8 +414,10 @@ pub fn format_input(input: Input, config: &Config) -> (Summary, FileMap, FormatR
 
     let krate = match parse_input(input, &parse_session) {
         Ok(krate) => krate,
-        Err(mut diagnostic) => {
-            diagnostic.emit();
+        Err(diagnostic) => {
+            if let Some(mut diagnostic) = diagnostic {
+                diagnostic.emit();
+            }
             summary.add_parsing_error();
             return (summary, FileMap::new(), FormatReport::new());
         }

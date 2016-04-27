@@ -58,3 +58,8 @@ fn main() {
 impl X {
     empty_invoc!{}
 }
+
+gfx_pipeline!(pipe {
+    vbuf: gfx::VertexBuffer<Vertex> = (),
+    out: gfx::RenderTarget<ColorFormat> = "Target0",
+});
