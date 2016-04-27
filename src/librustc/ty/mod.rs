@@ -290,12 +290,14 @@ pub trait NodeIdTree {
 impl<'a> NodeIdTree for ast_map::Map<'a> {
     fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
         let mut node_ancestor = node;
-        loop {
-            if node_ancestor == ancestor { return true }
+        while node_ancestor != ancestor {
             let node_ancestor_parent = self.get_module_parent(node_ancestor);
-            if node_ancestor_parent == node_ancestor { return false }
+            if node_ancestor_parent == node_ancestor {
+                return false;
+            }
             node_ancestor = node_ancestor_parent;
         }
+        true
     }
 }
 
