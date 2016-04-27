@@ -316,10 +316,6 @@ impl MultiSpan {
         }
     }
 
-    pub fn push_primary_span(&mut self, span: Span) {
-        self.primary_spans.push(span);
-    }
-
     pub fn push_span_label(&mut self, span: Span, label: String) {
         self.span_labels.push((span, label));
     }
