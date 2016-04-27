@@ -53,16 +53,20 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                     }
                     StmtKind::Let { remainder_scope, init_scope, pattern, initializer } => {
                         let remainder_scope_id = this.push_scope(remainder_scope, block);
+                        this.declare_bindings(remainder_scope_id, &pattern);
                         let_extent_stack.push(remainder_scope);
-                        unpack!(block = this.in_scope(init_scope, block, move |this, _| {
-                            // FIXME #30046                              ^~~~
-                            if let Some(init) = initializer {
-                                this.expr_into_pattern(block, remainder_scope_id, pattern, init)
-                            } else {
-                                this.declare_bindings(remainder_scope_id, &pattern);
-                                block.unit()
-                            }
-                        }));
+
+                        let parent = this.scope_datas[remainder_scope_id].parent_scope;
+                        if let Some(init) = initializer {
+                            unpack!(block = this.in_scope(init_scope, block, move |this, id| {
+                                // FIXME #30046                              ^~~~
+
+                                // Don't nest the initializer in the remainder scope.
+                                this.scope_datas[id].parent_scope = parent;
+
+                                this.expr_into_pattern(block, pattern, init)
+                            }));
+                        }
                     }
                 }
             }

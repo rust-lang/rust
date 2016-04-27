@@ -116,45 +116,27 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
     pub fn expr_into_pattern(&mut self,
                              mut block: BasicBlock,
-                             var_scope_id: ScopeId, // lifetime of vars
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
         // optimize the case of `let x = ...`
         match *irrefutable_pat.kind {
-            PatternKind::Binding { mutability,
-                                   name,
-                                   mode: BindingMode::ByValue,
-                                   var,
-                                   ty,
-                                   subpattern: None } => {
-                let index = self.declare_binding(var_scope_id,
-                                                 mutability,
-                                                 name,
-                                                 var,
-                                                 ty,
-                                                 irrefutable_pat.span);
-                let lvalue = Lvalue::Var(index);
+            PatternKind::Binding { mode: BindingMode::ByValue,
+                                   var, subpattern: None, .. } => {
+                let lvalue = Lvalue::Var(self.var_indices[&var]);
                 return self.into(&lvalue, block, initializer);
             }
             _ => {}
         }
         let lvalue = unpack!(block = self.as_lvalue(block, initializer));
-        self.lvalue_into_pattern(block,
-                                 var_scope_id,
-                                 irrefutable_pat,
-                                 &lvalue)
+        self.lvalue_into_pattern(block, irrefutable_pat, &lvalue)
     }
 
     pub fn lvalue_into_pattern(&mut self,
                                mut block: BasicBlock,
-                               var_scope_id: ScopeId,
                                irrefutable_pat: Pattern<'tcx>,
                                initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
-        // first, creating the bindings
-        self.declare_bindings(var_scope_id, &irrefutable_pat);
-
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
