@@ -8,16 +8,79 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Formatting of chained expressions, i.e. expressions which are chained by
-// dots: struct and enum field access and method calls.
-//
-// Instead of walking these subexpressions one-by-one, as is our usual strategy
-// for expression formatting, we collect maximal sequences of these expressions
-// and handle them simultaneously.
-//
-// Whenever possible, the entire chain is put on a single line. If that fails,
-// we put each subexpression on a separate, much like the (default) function
-// argument function argument strategy.
+/// Formatting of chained expressions, i.e. expressions which are chained by
+/// dots: struct and enum field access and method calls.
+///
+/// Instead of walking these subexpressions one-by-one, as is our usual strategy
+/// for expression formatting, we collect maximal sequences of these expressions
+/// and handle them simultaneously.
+///
+/// Whenever possible, the entire chain is put on a single line. If that fails,
+/// we put each subexpression on a separate, much like the (default) function
+/// argument function argument strategy.
+///
+/// Depends on config options: `chain_base_indent` is the indent to use for
+/// blocks in the parent/root/base of the chain.
+/// E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
+/// following values of `chain_base_indent`:
+/// Visual:
+/// ```
+/// let foo = {
+///               aaaa;
+///               bbb;
+///               ccc
+///           }
+///           .bar
+///           .baz();
+/// ```
+/// Inherit:
+/// ```
+/// let foo = {
+///     aaaa;
+///     bbb;
+///     ccc
+/// }
+/// .bar
+/// .baz();
+/// ```
+/// Tabbed:
+/// ```
+/// let foo = {
+///         aaaa;
+///         bbb;
+///         ccc
+///     }
+///     .bar
+///     .baz();
+/// ```
+///
+/// `chain_indent` dictates how the rest of the chain is aligned.
+/// If the first item in the chain is a block expression, we align the dots with
+/// the braces.
+/// Visual:
+/// ```
+/// let a = foo.bar
+///            .baz()
+///            .qux
+/// ```
+/// Inherit:
+/// ```
+/// let a = foo.bar
+/// .baz()
+/// .qux
+/// ```
+/// Tabbed:
+/// ```
+/// let a = foo.bar
+///     .baz()
+///     .qux
+/// ```
+/// `chains_overflow_last` applies only to chains where the last item is a
+/// method call. Usually, any line break in a chain sub-expression causes the
+/// whole chain to be split with newlines at each `.`. With `chains_overflow_last`
+/// true, then we allow the last method call to spill over multiple lines without
+/// forcing the rest of the chain to be split.
+
 
 use Indent;
 use rewrite::{Rewrite, RewriteContext};
@@ -28,58 +91,48 @@ use config::BlockIndentStyle;
 use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
 
-pub fn rewrite_chain(mut expr: &ast::Expr,
+
+pub fn rewrite_chain(expr: &ast::Expr,
                      context: &RewriteContext,
                      width: usize,
                      offset: Indent)
                      -> Option<String> {
     let total_span = expr.span;
-    let mut subexpr_list = vec![expr];
+    let (parent, subexpr_list) = make_subexpr_list(expr);
 
-    while let Some(subexpr) = pop_expr_chain(expr) {
-        subexpr_list.push(subexpr);
-        expr = subexpr;
-    }
-
-    let parent_block_indent = match context.config.chain_base_indent {
-        BlockIndentStyle::Visual => offset,
-        BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
-    };
+    // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
+    let parent_block_indent = chain_base_indent(context, offset);
     let parent_context = &RewriteContext { block_indent: parent_block_indent, ..*context };
-    let parent = subexpr_list.pop().unwrap();
-    let parent_rewrite = try_opt!(expr.rewrite(parent_context, width, offset));
+    let parent_rewrite = try_opt!(parent.rewrite(parent_context, width, offset));
+
+    // Decide how to layout the rest of the chain. `extend` is true if we can
+    // put the first non-parent item on the same line as the parent.
     let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(parent) ||
                               parent_rewrite.len() <= context.config.tab_spaces {
-        (offset + Indent::new(0, parent_rewrite.len()), true)
+        // Try and put at least the first two items on the same line.
+        (chain_indent(context, offset + Indent::new(0, parent_rewrite.len())), true)
     } else if is_block_expr(parent, &parent_rewrite) {
+        // The parent is a block, so align the rest of the chain with the closing
+        // brace.
         (parent_block_indent, false)
+    } else if parent_rewrite.contains('\n') {
+        (chain_indent(context, parent_block_indent.block_indent(context.config)), false)
     } else {
-        match context.config.chain_indent {
-            BlockIndentStyle::Inherit => (context.block_indent, false),
-            BlockIndentStyle::Tabbed => (context.block_indent.block_indent(context.config), false),
-            BlockIndentStyle::Visual => (offset + Indent::new(context.config.tab_spaces, 0), false),
-        }
+        (chain_indent_newline(context, offset + Indent::new(0, parent_rewrite.len())), false)
     };
 
     let max_width = try_opt!((width + offset.width()).checked_sub(indent.width()));
     let mut rewrites = try_opt!(subexpr_list.iter()
-                                            .rev()
-                                            .map(|e| {
-                                                rewrite_chain_expr(e,
-                                                                   total_span,
-                                                                   context,
-                                                                   max_width,
-                                                                   indent)
-                                            })
-                                            .collect::<Option<Vec<_>>>());
+        .rev()
+        .map(|e| rewrite_chain_subexpr(e, total_span, context, max_width, indent))
+        .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
     let almost_total = rewrites[..rewrites.len() - 1]
-                           .iter()
-                           .fold(0, |a, b| a + first_line_width(b)) +
-                       parent_rewrite.len();
+        .iter()
+        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let total_width = almost_total + first_line_width(rewrites.last().unwrap());
+
     let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
         // line, we won't consider putting them on a single line either.
@@ -92,49 +145,40 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
         false
     };
 
-    let fits_single_line = !veto_single_line &&
-                           match subexpr_list[0].node {
-        ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions)
-            if context.config.chains_overflow_last => {
-            let len = rewrites.len();
-            let (init, last) = rewrites.split_at_mut(len - 1);
-            let last = &mut last[0];
+    let mut fits_single_line = !veto_single_line && total_width <= width;
+    if fits_single_line {
+        let len = rewrites.len();
+        let (init, last) = rewrites.split_at_mut(len - 1);
+        fits_single_line = init.iter().all(|s| !s.contains('\n'));
 
-            if init.iter().all(|s| !s.contains('\n')) && total_width <= width {
-                let last_rewrite = width.checked_sub(almost_total)
-                                        .and_then(|inner_width| {
-                                            rewrite_method_call(method_name.node,
-                                                                types,
-                                                                expressions,
-                                                                total_span,
-                                                                context,
-                                                                inner_width,
-                                                                offset + almost_total)
-                                        });
-                match last_rewrite {
-                    Some(mut string) => {
-                        ::std::mem::swap(&mut string, last);
-                        true
-                    }
-                    None => false,
+        if fits_single_line {
+            fits_single_line = match expr.node {
+                ref e @ ast::ExprKind::MethodCall(..) if context.config.chains_overflow_last => {
+                    rewrite_method_call_with_overflow(e,
+                                                      &mut last[0],
+                                                      almost_total,
+                                                      width,
+                                                      total_span,
+                                                      context,
+                                                      offset)
                 }
-            } else {
-                false
+                _ => !last[0].contains('\n'),
             }
         }
-        _ => total_width <= width && rewrites.iter().all(|s| !s.contains('\n')),
-    };
+    }
 
     let connector = if fits_single_line && !parent_rewrite.contains('\n') {
+        // Yay, we can put everything on one line.
         String::new()
     } else {
+        // Use new lines.
         format!("\n{}", indent.to_string(context.config))
     };
 
     let first_connector = if extend {
         ""
     } else {
-        &connector[..]
+        &*connector
     };
 
     wrap_str(format!("{}{}{}",
@@ -147,7 +191,7 @@ pub fn rewrite_chain(mut expr: &ast::Expr,
 }
 
 // States whether an expression's last line exclusively consists of closing
-// parens, braces and brackets in its idiomatic formatting.
+// parens, braces, and brackets in its idiomatic formatting.
 fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
         ast::ExprKind::Struct(..) |
@@ -167,21 +211,96 @@ fn is_block_expr(expr: &ast::Expr, repr: &str) -> bool {
     }
 }
 
-fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
-    match expr.node {
-        ast::ExprKind::MethodCall(_, _, ref expressions) => Some(&expressions[0]),
-        ast::ExprKind::TupField(ref subexpr, _) |
-        ast::ExprKind::Field(ref subexpr, _) => Some(subexpr),
-        _ => None,
+// Returns the root of the chain and a Vec of the prefixes of the rest of the chain.
+// E.g., for input `a.b.c` we return (`a`, [`a.b.c`, `a.b`])
+fn make_subexpr_list(mut expr: &ast::Expr) -> (&ast::Expr, Vec<&ast::Expr>) {
+    fn pop_expr_chain(expr: &ast::Expr) -> Option<&ast::Expr> {
+        match expr.node {
+            ast::ExprKind::MethodCall(_, _, ref expressions) => Some(&expressions[0]),
+            ast::ExprKind::TupField(ref subexpr, _) |
+            ast::ExprKind::Field(ref subexpr, _) => Some(subexpr),
+            _ => None,
+        }
+    }
+
+    let mut subexpr_list = vec![expr];
+
+    while let Some(subexpr) = pop_expr_chain(expr) {
+        subexpr_list.push(subexpr);
+        expr = subexpr;
+    }
+
+    let parent = subexpr_list.pop().unwrap();
+    (parent, subexpr_list)
+}
+
+fn chain_base_indent(context: &RewriteContext, offset: Indent) -> Indent {
+    match context.config.chain_base_indent {
+        BlockIndentStyle::Visual => offset,
+        BlockIndentStyle::Inherit => context.block_indent,
+        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
     }
 }
 
-fn rewrite_chain_expr(expr: &ast::Expr,
-                      span: Span,
-                      context: &RewriteContext,
-                      width: usize,
-                      offset: Indent)
-                      -> Option<String> {
+fn chain_indent(context: &RewriteContext, offset: Indent) -> Indent {
+    match context.config.chain_indent {
+        BlockIndentStyle::Visual => offset,
+        BlockIndentStyle::Inherit => context.block_indent,
+        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
+    }
+}
+
+// Ignores visual indenting because this function should be called where it is
+// not possible to use visual indentation because we are starting on a newline.
+fn chain_indent_newline(context: &RewriteContext, _offset: Indent) -> Indent {
+    match context.config.chain_indent {
+        BlockIndentStyle::Inherit => context.block_indent,
+        BlockIndentStyle::Visual | BlockIndentStyle::Tabbed => {
+            context.block_indent.block_indent(context.config)
+        }
+    }
+}
+
+fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
+                                     last: &mut String,
+                                     almost_total: usize,
+                                     width: usize,
+                                     total_span: Span,
+                                     context: &RewriteContext,
+                                     offset: Indent)
+                                     -> bool {
+    if let &ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) = expr_kind {
+        let budget = match width.checked_sub(almost_total) {
+            Some(b) => b,
+            None => return false,
+        };
+        let mut last_rewrite = rewrite_method_call(method_name.node,
+                                                   types,
+                                                   expressions,
+                                                   total_span,
+                                                   context,
+                                                   budget,
+                                                   offset + almost_total);
+
+        if let Some(ref mut s) = last_rewrite {
+            ::std::mem::swap(s, last);
+            true
+        } else {
+            false
+        }
+    } else {
+        unreachable!();
+    }
+}
+
+// Rewrite the last element in the chain `expr`. E.g., given `a.b.c` we rewrite
+// `.c`.
+fn rewrite_chain_subexpr(expr: &ast::Expr,
+                         span: Span,
+                         context: &RewriteContext,
+                         width: usize,
+                         offset: Indent)
+                         -> Option<String> {
     match expr.node {
         ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) => {
             let inner = &RewriteContext { block_indent: offset, ..*context };
@@ -213,7 +332,7 @@ fn rewrite_chain_expr(expr: &ast::Expr,
     }
 }
 
-// Determines we can continue formatting a given expression on the same line.
+// Determines if we can continue formatting a given expression on the same line.
 fn is_continuable(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Path(..) => true,
@@ -233,8 +352,8 @@ fn rewrite_method_call(method_name: ast::Ident,
         (args[0].span.hi, String::new())
     } else {
         let type_list: Vec<_> = try_opt!(types.iter()
-                                              .map(|ty| ty.rewrite(context, width, offset))
-                                              .collect());
+            .map(|ty| ty.rewrite(context, width, offset))
+            .collect());
 
         (types.last().unwrap().span.hi, format!("::<{}>", type_list.join(", ")))
     };

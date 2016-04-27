@@ -70,24 +70,24 @@ pub fn rewrite_comment(orig: &str,
     let line_breaks = s.chars().filter(|&c| c == '\n').count();
 
     let lines = s.lines()
-                 .enumerate()
-                 .map(|(i, mut line)| {
-                     line = line.trim();
-                     // Drop old closer.
-                     if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
-                         line = &line[..(line.len() - 2)];
-                     }
+        .enumerate()
+        .map(|(i, mut line)| {
+            line = line.trim();
+            // Drop old closer.
+            if i == line_breaks && line.ends_with("*/") && !line.starts_with("//") {
+                line = &line[..(line.len() - 2)];
+            }
 
-                     line.trim_right()
-                 })
-                 .map(left_trim_comment_line)
-                 .map(|line| {
-                     if line_breaks == 0 {
-                         line.trim_left()
-                     } else {
-                         line
-                     }
-                 });
+            line.trim_right()
+        })
+        .map(left_trim_comment_line)
+        .map(|line| {
+            if line_breaks == 0 {
+                line.trim_left()
+            } else {
+                line
+            }
+        });
 
     let mut result = opener.to_owned();
     for line in lines {
@@ -538,7 +538,7 @@ fn changed_comment_content(orig: &str, new: &str) -> bool {
     let code_comment_content = |code| {
         let slices = UngroupedCommentCodeSlices::new(code);
         slices.filter(|&(ref kind, _, _)| *kind == CodeCharKind::Comment)
-              .flat_map(|(_, _, s)| CommentReducer::new(s))
+            .flat_map(|(_, _, s)| CommentReducer::new(s))
     };
     let res = code_comment_content(orig).ne(code_comment_content(new));
     debug!("comment::changed_comment_content: {}\norig: '{}'\nnew: '{}'\nraw_old: {}\nraw_new: {}",

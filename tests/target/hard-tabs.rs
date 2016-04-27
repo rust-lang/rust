@@ -51,9 +51,9 @@ fn main() {
 	}
 
 	let chain = funktion_kall()
-		            .go_to_next_line_with_tab()
-		            .go_to_next_line_with_tab()
-		            .go_to_next_line_with_tab();
+		.go_to_next_line_with_tab()
+		.go_to_next_line_with_tab()
+		.go_to_next_line_with_tab();
 
 	let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
 	         yyyyyyyyyyyyyyyyyyyyyyyyyyy,
@@ -88,8 +88,8 @@ fn main() {
 		});
 	});
 	a.b
-	 .c
-	 .d();
+		.c
+		.d();
 
 	x().y(|| {
 		match cond() {

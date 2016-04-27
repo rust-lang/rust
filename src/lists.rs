@@ -160,8 +160,8 @@ pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> De
           T: AsRef<ListItem>
 {
     let pre_line_comments = items.clone()
-                                 .into_iter()
-                                 .any(|item| item.as_ref().has_line_pre_comment());
+        .into_iter()
+        .any(|item| item.as_ref().has_line_pre_comment());
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,
@@ -353,9 +353,8 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
             let mut new_lines = false;
             // Pre-comment
             let pre_snippet = self.codemap
-                                  .span_to_snippet(codemap::mk_sp(self.prev_span_end,
-                                                                  (self.get_lo)(&item)))
-                                  .unwrap();
+                .span_to_snippet(codemap::mk_sp(self.prev_span_end, (self.get_lo)(&item)))
+                .unwrap();
             let trimmed_pre_snippet = pre_snippet.trim();
             let pre_comment = if !trimmed_pre_snippet.is_empty() {
                 Some(trimmed_pre_snippet.to_owned())
@@ -369,9 +368,8 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 None => self.next_span_start,
             };
             let post_snippet = self.codemap
-                                   .span_to_snippet(codemap::mk_sp((self.get_hi)(&item),
-                                                                   next_start))
-                                   .unwrap();
+                .span_to_snippet(codemap::mk_sp((self.get_hi)(&item), next_start))
+                .unwrap();
 
             let comment_end = match self.inner.peek() {
                 Some(..) => {
@@ -413,7 +411,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 // From the end of the first line of comments.
                 let test_snippet = &test_snippet[first_newline..];
                 let first = test_snippet.find(|c: char| !c.is_whitespace())
-                                        .unwrap_or(test_snippet.len());
+                    .unwrap_or(test_snippet.len());
                 // From the end of the first line of comments to the next non-whitespace char.
                 let test_snippet = &test_snippet[..first];
 
@@ -494,8 +492,8 @@ fn calculate_width<I, T>(items: I) -> (usize, usize)
           T: AsRef<ListItem>
 {
     items.into_iter()
-         .map(|item| total_item_width(item.as_ref()))
-         .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
+        .map(|item| total_item_width(item.as_ref()))
+        .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
 }
 
 fn total_item_width(item: &ListItem) -> usize {

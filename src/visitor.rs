@@ -86,9 +86,9 @@ impl<'a> FmtVisitor<'a> {
         if let Some(ref e) = b.expr {
             self.format_missing_with_indent(e.span.lo);
             let rewrite = e.rewrite(&self.get_context(),
-                                    self.config.max_width - self.block_indent.width(),
-                                    self.block_indent)
-                           .unwrap_or_else(|| self.snippet(e.span));
+                         self.config.max_width - self.block_indent.width(),
+                         self.block_indent)
+                .unwrap_or_else(|| self.snippet(e.span));
 
             self.buffer.push_str(&rewrite);
             self.last_pos = e.span.hi;
@@ -436,9 +436,9 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let outers: Vec<_> = attrs.iter()
-                                  .filter(|a| a.node.style == ast::AttrStyle::Outer)
-                                  .cloned()
-                                  .collect();
+            .filter(|a| a.node.style == ast::AttrStyle::Outer)
+            .cloned()
+            .collect();
         if outers.is_empty() {
             return false;
         }
@@ -447,9 +447,9 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_with_indent(first.span.lo);
 
         let rewrite = outers.rewrite(&self.get_context(),
-                                     self.config.max_width - self.block_indent.width(),
-                                     self.block_indent)
-                            .unwrap();
+                     self.config.max_width - self.block_indent.width(),
+                     self.block_indent)
+            .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();
         self.last_pos = last.span.hi;

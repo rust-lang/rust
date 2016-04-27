@@ -277,10 +277,10 @@ impl<'a> FmtVisitor<'a> {
                     };
 
                     e.rewrite(&self.get_context(),
-                              self.config.max_width - self.block_indent.width(),
-                              self.block_indent)
-                     .map(|s| s + suffix)
-                     .or_else(|| Some(self.snippet(e.span)))
+                                 self.config.max_width - self.block_indent.width(),
+                                 self.block_indent)
+                        .map(|s| s + suffix)
+                        .or_else(|| Some(self.snippet(e.span)))
                 } else if let Some(ref stmt) = block.stmts.first() {
                     stmt.rewrite(&self.get_context(),
                                  self.config.max_width - self.block_indent.width(),
@@ -321,7 +321,7 @@ impl<'a> FmtVisitor<'a> {
                                            self.block_indent,
                                            self.block_indent.block_indent(self.config),
                                            mk_sp(span.lo, body_start))
-                               .unwrap();
+            .unwrap();
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
@@ -359,12 +359,12 @@ impl<'a> FmtVisitor<'a> {
                                  enum_def.variants.iter(),
                                  "}",
                                  |f| {
-                                     if !f.node.attrs.is_empty() {
-                                         f.node.attrs[0].span.lo
-                                     } else {
-                                         f.span.lo
-                                     }
-                                 },
+            if !f.node.attrs.is_empty() {
+                f.node.attrs[0].span.lo
+            } else {
+                f.span.lo
+            }
+        },
                                  |f| f.span.hi,
                                  |f| self.format_variant(f),
                                  body_lo,
@@ -397,10 +397,10 @@ impl<'a> FmtVisitor<'a> {
 
         let indent = self.block_indent;
         let mut result = try_opt!(field.node
-                                       .attrs
-                                       .rewrite(&self.get_context(),
-                                                self.config.max_width - indent.width(),
-                                                indent));
+            .attrs
+            .rewrite(&self.get_context(),
+                     self.config.max_width - indent.width(),
+                     indent));
         if !result.is_empty() {
             result.push('\n');
             result.push_str(&indent.to_string(self.config));
@@ -666,8 +666,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         };
 
         let where_budget = try_opt!(context.config
-                                           .max_width
-                                           .checked_sub(last_line_width(&result)));
+            .max_width
+            .checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
                                                              context.config,
@@ -803,13 +803,13 @@ fn format_struct_struct(context: &RewriteContext,
                              fields.iter(),
                              "}",
                              |field| {
-                                 // Include attributes and doc comments, if present
-                                 if !field.node.attrs.is_empty() {
-                                     field.node.attrs[0].span.lo
-                                 } else {
-                                     field.span.lo
-                                 }
-                             },
+        // Include attributes and doc comments, if present
+        if !field.node.attrs.is_empty() {
+            field.node.attrs[0].span.lo
+        } else {
+            field.span.lo
+        }
+    },
                              |field| field.node.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
                              context.codemap.span_after(span, "{"),
@@ -864,8 +864,8 @@ fn format_tuple_struct(context: &RewriteContext,
             result.push_str(&generics_str);
 
             let where_budget = try_opt!(context.config
-                                               .max_width
-                                               .checked_sub(last_line_width(&result)));
+                .max_width
+                .checked_sub(last_line_width(&result)));
             try_opt!(rewrite_where_clause(context,
                                           &generics.where_clause,
                                           context.config,
@@ -889,13 +889,13 @@ fn format_tuple_struct(context: &RewriteContext,
                              fields.iter(),
                              ")",
                              |field| {
-                                 // Include attributes and doc comments, if present
-                                 if !field.node.attrs.is_empty() {
-                                     field.node.attrs[0].span.lo
-                                 } else {
-                                     field.span.lo
-                                 }
-                             },
+        // Include attributes and doc comments, if present
+        if !field.node.attrs.is_empty() {
+            field.node.attrs[0].span.lo
+        } else {
+            field.span.lo
+        }
+    },
                              |field| field.node.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
                              context.codemap.span_after(span, "("),
@@ -912,7 +912,7 @@ fn format_tuple_struct(context: &RewriteContext,
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
         result.push_str(&(context.block_indent + (context.config.tab_spaces - 1))
-                             .to_string(context.config));
+            .to_string(context.config));
     }
     result.push_str(&where_clause_str);
 
@@ -946,8 +946,8 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     result.push_str(&generics_str);
 
     let where_budget = try_opt!(context.config
-                                       .max_width
-                                       .checked_sub(last_line_width(&result)));
+        .max_width
+        .checked_sub(last_line_width(&result)));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          &generics.where_clause,
                                                          context.config,
@@ -965,26 +965,25 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     // This checked_sub may fail as the extra space after '=' is not taken into account
     // In that case the budget is set to 0 which will make ty.rewrite retry on a new line
     let budget = context.config
-                        .max_width
-                        .checked_sub(indent.width() + line_width + ";".len())
-                        .unwrap_or(0);
+        .max_width
+        .checked_sub(indent.width() + line_width + ";".len())
+        .unwrap_or(0);
     let type_indent = indent + line_width;
     // Try to fit the type on the same line
     let ty_str = try_opt!(ty.rewrite(context, budget, type_indent)
-                            .or_else(|| {
-                                // The line was too short, try to put the type on the next line
+        .or_else(|| {
+            // The line was too short, try to put the type on the next line
 
-                                // Remove the space after '='
-                                result.pop();
-                                let type_indent = indent.block_indent(context.config);
-                                result.push('\n');
-                                result.push_str(&type_indent.to_string(context.config));
-                                let budget = try_opt!(context.config
-                                                             .max_width
-                                                             .checked_sub(type_indent.width() +
-                                                                          ";".len()));
-                                ty.rewrite(context, budget, type_indent)
-                            }));
+            // Remove the space after '='
+            result.pop();
+            let type_indent = indent.block_indent(context.config);
+            result.push('\n');
+            result.push_str(&type_indent.to_string(context.config));
+            let budget = try_opt!(context.config
+                .max_width
+                .checked_sub(type_indent.width() + ";".len()));
+            ty.rewrite(context, budget, type_indent)
+        }));
     result.push_str(&ty_str);
     result.push_str(";");
     Some(result)
@@ -1006,10 +1005,8 @@ impl Rewrite for ast::StructField {
             ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
         };
         let mut attr_str = try_opt!(self.node
-                                        .attrs
-                                        .rewrite(context,
-                                                 context.config.max_width - offset.width(),
-                                                 offset));
+            .attrs
+            .rewrite(context, context.config.max_width - offset.width(), offset));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&offset.to_string(context.config));
@@ -1069,11 +1066,9 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
         let bounds: &[_] = &ty_param_bounds.as_slice();
         let bound_str = bounds.iter()
-                              .filter_map(|ty_bound| {
-                                  ty_bound.rewrite(context, context.config.max_width, indent)
-                              })
-                              .collect::<Vec<String>>()
-                              .join(" + ");
+            .filter_map(|ty_bound| ty_bound.rewrite(context, context.config.max_width, indent))
+            .collect::<Vec<String>>()
+            .join(" + ");
         if bounds.len() > 0 {
             format!(": {}", bound_str)
         } else {
@@ -1287,7 +1282,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     // Note that if the width and indent really matter, we'll re-layout the
     // return type later anyway.
     let ret_str = try_opt!(fd.output
-                             .rewrite(&context, context.config.max_width - indent.width(), indent));
+        .rewrite(&context, context.config.max_width - indent.width(), indent));
 
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str {
@@ -1332,8 +1327,8 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     // A conservative estimation, to goal is to be over all parens in generics
     let args_start = generics.ty_params
-                             .last()
-                             .map_or(span.lo, |tp| end_typaram(tp));
+        .last()
+        .map_or(span.lo, |tp| end_typaram(tp));
     let args_span = mk_sp(context.codemap.span_after(mk_sp(args_start, span.hi), "("),
                           span_for_return(&fd.output).lo);
     let arg_str = try_opt!(rewrite_args(context,
@@ -1408,7 +1403,7 @@ fn rewrite_fn_base(context: &RewriteContext,
 
             let budget = try_opt!(context.config.max_width.checked_sub(ret_indent.width()));
             let ret_str = try_opt!(fd.output
-                                     .rewrite(context, budget, ret_indent));
+                .rewrite(context, budget, ret_indent));
             result.push_str(&ret_str);
         } else {
             result.push_str(&ret_str);
@@ -1477,21 +1472,18 @@ fn rewrite_args(context: &RewriteContext,
                 variadic: bool)
                 -> Option<String> {
     let mut arg_item_strs = try_opt!(args.iter()
-                                         .map(|arg| {
-                                             arg.rewrite(&context, multi_line_budget, arg_indent)
-                                         })
-                                         .collect::<Option<Vec<_>>>());
+        .map(|arg| arg.rewrite(&context, multi_line_budget, arg_indent))
+        .collect::<Option<Vec<_>>>());
 
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
-    let min_args = explicit_self.and_then(|explicit_self| {
-                                    rewrite_explicit_self(explicit_self, args, context)
-                                })
-                                .map_or(1, |self_str| {
-                                    arg_item_strs[0] = self_str;
-                                    2
-                                });
+    let min_args =
+        explicit_self.and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
+            .map_or(1, |self_str| {
+                arg_item_strs[0] = self_str;
+                2
+            });
 
     // Comments between args.
     let mut arg_items = Vec::new();
@@ -1722,9 +1714,9 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     }
 
     let bound_str = bounds.iter()
-                          .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
-                          .collect::<Vec<String>>()
-                          .join(" + ");
+        .filter_map(|ty_bound| ty_bound.rewrite(&context, width, indent))
+        .collect::<Vec<String>>()
+        .join(" + ");
 
     let mut result = String::new();
     result.push_str(": ");

@@ -98,14 +98,14 @@ fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets.into_iter()
-                               .filter(|t| t.kind.is_lib() | t.kind.is_bin())
-                               .inspect(|t| {
-                                   if verbosity == Verbosity::Verbose {
-                                       println!("[{:?}] {:?}", t.kind, t.path)
-                                   }
-                               })
-                               .map(|t| t.path)
-                               .collect();
+        .filter(|t| t.kind.is_lib() | t.kind.is_bin())
+        .inspect(|t| {
+            if verbosity == Verbosity::Verbose {
+                println!("[{:?}] {:?}", t.kind, t.path)
+            }
+        })
+        .map(|t| t.path)
+        .collect();
 
     format_files(&files, &get_fmt_args(), verbosity)
 }
@@ -201,9 +201,9 @@ fn format_files(files: &Vec<PathBuf>,
         println!("");
     }
     let mut command = try!(Command::new("rustfmt")
-                               .stdout(stdout)
-                               .args(files)
-                               .args(fmt_args)
-                               .spawn());
+        .stdout(stdout)
+        .args(files)
+        .args(fmt_args)
+        .spawn());
     command.wait()
 }
