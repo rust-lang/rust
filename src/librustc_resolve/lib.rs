@@ -1683,8 +1683,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             match self.resolve_crate_relative_path(prefix.span,
                                                                    &prefix.segments,
                                                                    TypeNS) {
-                                Ok(def) =>
-                                    self.record_def(item.id, PathResolution::new(def, 0)),
+                                Ok(binding) => {
+                                    let def = binding.def().unwrap();
+                                    self.record_def(item.id, PathResolution::new(def, 0));
+                                }
                                 Err(true) => self.record_def(item.id, err_path_resolution()),
                                 Err(false) => {
                                     resolve_error(self,
@@ -2547,8 +2549,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mk_res = |def| PathResolution::new(def, path_depth);
 
         if path.global {
-            let def = self.resolve_crate_relative_path(span, segments, namespace);
-            return def.map(mk_res);
+            let binding = self.resolve_crate_relative_path(span, segments, namespace);
+            return binding.map(|binding| mk_res(binding.def().unwrap()));
         }
 
         // Try to find a path to an item in a module.
@@ -2584,9 +2586,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         let unqualified_def = resolve_identifier_with_fallback(self, false);
-        let def = self.resolve_module_relative_path(span, segments, namespace);
-        match (def, unqualified_def) {
-            (Ok(d), Some(ref ud)) if d == ud.def => {
+        let qualified_binding = self.resolve_module_relative_path(span, segments, namespace);
+        match (qualified_binding, unqualified_def) {
+            (Ok(binding), Some(ref ud)) if binding.def().unwrap() == ud.def => {
                 self.session
                     .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
                               id,
@@ -2596,7 +2598,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             _ => {}
         }
 
-        def.map(mk_res)
+        qualified_binding.map(|binding| mk_res(binding.def().unwrap()))
     }
 
     // Resolve a single identifier
@@ -2707,7 +2709,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     span: Span,
                                     segments: &[hir::PathSegment],
                                     namespace: Namespace)
-                                    -> Result<Def, bool /* true if an error was reported */> {
+                                    -> Result<&'a NameBinding<'a>,
+                                              bool /* true if an error was reported */> {
         let module_path = segments.split_last()
                                   .unwrap()
                                   .1
@@ -2740,7 +2743,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         result.success().map(|binding| {
             self.check_privacy(name, binding, span);
-            binding.def().unwrap()
+            binding
         }).ok_or(false)
     }
 
@@ -2750,7 +2753,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    span: Span,
                                    segments: &[hir::PathSegment],
                                    namespace: Namespace)
-                                   -> Result<Def, bool /* true if an error was reported */> {
+                                   -> Result<&'a NameBinding<'a>,
+                                             bool /* true if an error was reported */> {
         let module_path = segments.split_last()
                                   .unwrap()
                                   .1
@@ -2790,7 +2794,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         result.success().map(|binding| {
             self.check_privacy(name, binding, span);
-            binding.def().unwrap()
+            binding
         }).ok_or(false)
     }
 
