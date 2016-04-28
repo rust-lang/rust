@@ -135,6 +135,9 @@ pub struct EmitterWriter {
     /// Is this the first error emitted thus far? If not, we emit a
     /// `\n` before the top-level errors.
     first: bool,
+
+    // For now, allow an old-school mode while we transition
+    old_school: bool,
 }
 
 impl CoreEmitter for EmitterWriter {
@@ -170,14 +173,23 @@ impl EmitterWriter {
                   registry: Option<diagnostics::registry::Registry>,
                   code_map: Rc<codemap::CodeMap>)
                   -> EmitterWriter {
+        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+            Ok(_) => false,
+            Err(_) => true,
+        };
         if color_config.use_color() {
             let dst = Destination::from_stderr();
-            EmitterWriter { dst: dst, registry: registry, cm: code_map, first: true }
+            EmitterWriter { dst: dst,
+                            registry: registry,
+                            cm: code_map,
+                            first: true,
+                            old_school: old_school }
         } else {
             EmitterWriter { dst: Raw(Box::new(io::stderr())),
                             registry: registry,
                             cm: code_map,
-                            first: true }
+                            first: true,
+                            old_school: old_school }
         }
     }
 
@@ -185,7 +197,15 @@ impl EmitterWriter {
                registry: Option<diagnostics::registry::Registry>,
                code_map: Rc<codemap::CodeMap>)
                -> EmitterWriter {
-        EmitterWriter { dst: Raw(dst), registry: registry, cm: code_map, first: true }
+        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+            Ok(_) => false,
+            Err(_) => true,
+        };
+        EmitterWriter { dst: Raw(dst),
+                        registry: registry,
+                        cm: code_map,
+                        first: true,
+                        old_school: old_school }
     }
 
     fn emit_message_(&mut self,
@@ -199,7 +219,9 @@ impl EmitterWriter {
             if self.first {
                 self.first = false;
             } else {
-                write!(self.dst, "\n")?;
+                if !self.old_school {
+                    write!(self.dst, "\n")?;
+                }
             }
         }
 
@@ -208,7 +230,17 @@ impl EmitterWriter {
                                        .and_then(|registry| registry.find_description(code))
                                        .is_some() => {
                 let code_with_explain = String::from("--explain ") + code;
-                print_diagnostic(&mut self.dst, "", lvl, msg, Some(&code_with_explain))?
+                if self.old_school {
+                    let loc = match rsp.span().primary_span() {
+                        Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
+                        Some(ps) => self.cm.span_to_string(ps),
+                        None => "".to_string()
+                    };
+                    print_diagnostic(&mut self.dst, &loc, lvl, msg, Some(code))?
+                }
+                else {
+                    print_diagnostic(&mut self.dst, "", lvl, msg, Some(&code_with_explain))?
+                }
             }
             _ => {
                 print_diagnostic(&mut self.dst, "", lvl, msg, code)?
@@ -239,7 +271,24 @@ impl EmitterWriter {
                 }
             }
         }
-
+        if self.old_school {
+            match code {
+                Some(code) if self.registry.as_ref()
+                                        .and_then(|registry| registry.find_description(code))
+                                        .is_some() => {
+                    let loc = match rsp.span().primary_span() {
+                        Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
+                        Some(ps) => self.cm.span_to_string(ps),
+                        None => "".to_string()
+                    };
+                    let msg = "run `rustc --explain ".to_string() + &code.to_string() +
+                        "` to see a detailed explanation";
+                    print_diagnostic(&mut self.dst, &loc, Level::Help, &msg,
+                        None)?
+                }
+                _ => ()
+            }
+        }
         Ok(())
     }
 
@@ -282,19 +331,48 @@ impl EmitterWriter {
     {
         let mut snippet_data = SnippetData::new(self.cm.clone(),
                                                 msp.primary_span());
-        for span_label in msp.span_labels() {
-            snippet_data.push(span_label.span,
-                              span_label.is_primary,
-                              span_label.label);
-        }
-        let rendered_lines = snippet_data.render_lines();
-        for rendered_line in &rendered_lines {
-            for styled_string in &rendered_line.text {
-                self.dst.apply_style(lvl, &rendered_line.kind, styled_string.style)?;
-                write!(&mut self.dst, "{}", styled_string.text)?;
-                self.dst.reset_attrs()?;
+        if self.old_school {
+            let mut output_vec = vec![];
+            for span_label in msp.span_labels() {
+                let mut snippet_data = snippet_data.clone();
+                snippet_data.push(span_label.span,
+                                  span_label.is_primary,
+                                  span_label.label);
+                if span_label.is_primary {
+                    output_vec.insert(0, snippet_data);
+                }
+                else {
+                    output_vec.push(snippet_data);
+                }
             }
-            write!(&mut self.dst, "\n")?;
+
+            for snippet_data in output_vec.iter() {
+                let rendered_lines = snippet_data.render_lines();
+                for rendered_line in &rendered_lines {
+                    for styled_string in &rendered_line.text {
+                        self.dst.apply_style(lvl, &rendered_line.kind, styled_string.style)?;
+                        write!(&mut self.dst, "{}", styled_string.text)?;
+                        self.dst.reset_attrs()?;
+                    }
+                    write!(&mut self.dst, "\n")?;
+                }
+            }
+        }
+        else {
+            for span_label in msp.span_labels() {
+                snippet_data.push(span_label.span,
+                                  span_label.is_primary,
+                                  span_label.label);
+            }
+            let rendered_lines = snippet_data.render_lines();
+            for rendered_line in &rendered_lines {
+                for styled_string in &rendered_line.text {
+                    self.dst.apply_style(lvl, &rendered_line.kind, styled_string.style)?;
+                    write!(&mut self.dst, "{}", styled_string.text)?;
+                    self.dst.reset_attrs()?;
+                }
+                write!(&mut self.dst, "\n")?;
+            }
         }
         Ok(())
     }
@@ -327,7 +405,6 @@ fn line_num_max_digits(line: &codemap::LineInfo) -> usize {
     digits
 }
 
-
 fn print_diagnostic(dst: &mut Destination,
                     topic: &str,
                     lvl: Level,
@@ -335,7 +412,6 @@ fn print_diagnostic(dst: &mut Destination,
                     code: Option<&str>)
                     -> io::Result<()> {
     if !topic.is_empty() {
-        dst.start_attr(term::Attr::ForegroundColor(lvl.color()))?;
         write!(dst, "{}: ", topic)?;
         dst.reset_attrs()?;
     }
@@ -346,10 +422,12 @@ fn print_diagnostic(dst: &mut Destination,
     write!(dst, ": ")?;
     dst.start_attr(term::Attr::Bold)?;
     write!(dst, "{}", msg)?;
+
     if let Some(code) = code {
         let style = term::Attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
         print_maybe_styled!(dst, style, " [{}]", code.clone())?;
     }
+
     dst.reset_attrs()?;
     write!(dst, "\n")?;
     Ok(())
