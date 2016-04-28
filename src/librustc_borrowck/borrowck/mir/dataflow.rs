@@ -303,6 +303,14 @@ impl AllSets {
     pub fn on_entry_set_for(&self, block_idx: usize) -> &[usize] {
         self.lookup_set_for(&self.on_entry_sets, block_idx)
     }
+    pub fn on_exit_set_for(&self, block_idx: usize) -> Vec<usize> {
+        let mut set: Vec<_> = self.on_entry_set_for(block_idx).iter()
+            .map(|x|*x)
+            .collect();
+        bitwise(&mut set[..], self.gen_set_for(block_idx), &Union);
+        bitwise(&mut set[..], self.kill_set_for(block_idx), &Subtract);
+        return set;
+    }
 }
 
 impl<O: BitDenotation> DataflowState<O> {
