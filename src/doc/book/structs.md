@@ -203,8 +203,8 @@ We could have used dot notation to do the same thing:
 let integer_length = length.0;
 ```
 
-It's always possible to use a `struct` than a tuple struct, and can be clearer.
-We would write `Color` and `Point` like this instead:
+It's always possible to use a `struct` instead of a tuple struct, and can be
+clearer. We could write `Color` and `Point` like this instead:
 
 ```rust
 struct Color {
