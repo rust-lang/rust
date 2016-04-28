@@ -26,6 +26,7 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
+extern crate serialize as rustc_serialize;
 
 use rustc::hir::{self, lowering};
 use rustc::hir::map::NodeItem;
@@ -45,6 +46,7 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::ty_to_string;
 
 mod csv_dumper;
+mod json_dumper;
 mod data;
 mod dump;
 mod dump_visitor;
@@ -52,6 +54,7 @@ mod dump_visitor;
 pub mod span_utils;
 
 pub use self::csv_dumper::CsvDumper;
+pub use self::json_dumper::JsonDumper;
 pub use self::data::*;
 pub use self::dump::Dump;
 pub use self::dump_visitor::DumpVisitor;
@@ -104,9 +107,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let mut result = Vec::new();
 
         for n in self.tcx.sess.cstore.crates() {
+            let span = match self.tcx.sess.cstore.extern_crate(n) {
+                Some(ref c) => c.span,
+                None => {
+                    debug!("Skipping crate {}, no data", n);
+                    continue;
+                }
+            };
             result.push(CrateData {
                 name: (&self.tcx.sess.cstore.crate_name(n)[..]).to_owned(),
                 number: n,
+                span: span,
             });
         }
 
@@ -677,12 +688,28 @@ impl<'v> Visitor<'v> for PathCollector {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum Format {
+    Csv,
+    Json,
+}
+
+impl Format {
+    fn extension(&self) -> &'static str {
+        match *self {
+            Format::Csv => ".csv",
+            Format::Json => ".json",
+        }
+    }
+}
+
 pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
                                lcx: &'l lowering::LoweringContext<'l>,
                                krate: &ast::Crate,
                                analysis: &'l ty::CrateAnalysis<'l>,
                                cratename: &str,
-                               odir: Option<&Path>) {
+                               odir: Option<&Path>,
+                               format: Format) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     assert!(analysis.glob_map.is_some());
@@ -690,11 +717,11 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     info!("Dumping crate {}", cratename);
 
     // find a path to dump our data to
-    let mut root_path = match env::var_os("DXR_RUST_TEMP_FOLDER") {
+    let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
         Some(val) => PathBuf::from(val),
         None => match odir {
-            Some(val) => val.join("dxr"),
-            None => PathBuf::from("dxr-temp"),
+            Some(val) => val.join("save-analysis"),
+            None => PathBuf::from("save-analysis-temp"),
         },
     };
 
@@ -718,22 +745,32 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     };
     out_name.push_str(&cratename);
     out_name.push_str(&tcx.sess.opts.cg.extra_filename);
-    out_name.push_str(".csv");
+    out_name.push_str(format.extension());
     root_path.push(&out_name);
     let mut output_file = File::create(&root_path).unwrap_or_else(|e| {
         let disp = root_path.display();
         tcx.sess.fatal(&format!("Could not open {}: {}", disp, e));
     });
     root_path.pop();
+    let output = &mut output_file;
 
     let utils: SpanUtils<'tcx> = SpanUtils::new(&tcx.sess);
     let save_ctxt = SaveContext::new(tcx, lcx);
-    let mut dumper = CsvDumper::new(&mut output_file, utils);
-    let mut visitor = DumpVisitor::new(tcx, save_ctxt, analysis, &mut dumper);
-    // FIXME: we don't write anything!
 
-    visitor.dump_crate_info(cratename, krate);
-    visit::walk_crate(&mut visitor, krate);
+    macro_rules! dump {
+        ($new_dumper: expr) => {{
+            let mut dumper = $new_dumper;
+            let mut visitor = DumpVisitor::new(tcx, save_ctxt, analysis, &mut dumper);
+
+            visitor.dump_crate_info(cratename, krate);
+            visit::walk_crate(&mut visitor, krate);
+        }}
+    }
+
+    match format {
+        Format::Csv => dump!(CsvDumper::new(output, utils)),
+        Format::Json => dump!(JsonDumper::new(output, utils.sess.codemap())),
+    }
 }
 
 // Utility functions for the module.

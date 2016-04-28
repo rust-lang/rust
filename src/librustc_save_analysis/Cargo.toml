@@ -12,3 +12,4 @@ crate-type = ["dylib"]
 log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 syntax = { path = "../libsyntax" }
+serialize = { path = "../libserialize" }
