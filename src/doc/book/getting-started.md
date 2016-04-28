@@ -412,7 +412,7 @@ enter the following commands:
 
 ```bash
 $ mkdir src
-$ mv main.rs src/main.rs
+$ mv main.rs src/main.rs # or 'move main.rs src/main.rs' on Windows
 $ rm main  # or 'del main.exe' on Windows
 ```
 
