@@ -165,8 +165,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   args: &[ValueRef],
                   then: BasicBlockRef,
                   catch: BasicBlockRef,
-                  bundle: Option<&OperandBundleDef>)
-                  -> ValueRef {
+                  bundle: Option<&OperandBundleDef>) -> ValueRef {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({})",
@@ -175,6 +174,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .map(|&v| format!("{:?}", Value(v)))
                    .collect::<Vec<String>>()
                    .join(", "));
+
+        check_call("invoke", llfn, args);
 
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
 
@@ -856,28 +857,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .collect::<Vec<String>>()
                    .join(", "));
 
-        let mut fn_ty = val_ty(llfn);
-        // Strip off pointers
-        while fn_ty.kind() == llvm::TypeKind::Pointer {
-            fn_ty = fn_ty.element_type();
-        }
-
-        assert!(fn_ty.kind() == llvm::TypeKind::Function,
-                "builder::call not passed a function");
-
-        let param_tys = fn_ty.func_params();
-
-        let iter = param_tys.into_iter()
-            .zip(args.iter().map(|&v| val_ty(v)));
-        for (i, (expected_ty, actual_ty)) in iter.enumerate() {
-            if expected_ty != actual_ty {
-                bug!("Type mismatch in function call of {:?}. \
-                      Expected {:?} for param {}, got {:?}",
-                     Value(llfn),
-                     expected_ty, i, actual_ty);
-
-            }
-        }
+        check_call("call", llfn, args);
 
         let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
 
@@ -1118,6 +1098,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn atomic_fence(&self, order: AtomicOrdering, scope: SynchronizationScope) {
         unsafe {
             llvm::LLVMBuildAtomicFence(self.llbuilder, order, scope);
+        }
+    }
+}
+
+fn check_call(typ: &str, llfn: ValueRef, args: &[ValueRef]) {
+    if cfg!(debug_assertions) {
+        let mut fn_ty = val_ty(llfn);
+        // Strip off pointers
+        while fn_ty.kind() == llvm::TypeKind::Pointer {
+            fn_ty = fn_ty.element_type();
+        }
+
+        assert!(fn_ty.kind() == llvm::TypeKind::Function,
+                "builder::{} not passed a function", typ);
+
+        let param_tys = fn_ty.func_params();
+
+        let iter = param_tys.into_iter()
+            .zip(args.iter().map(|&v| val_ty(v)));
+        for (i, (expected_ty, actual_ty)) in iter.enumerate() {
+            if expected_ty != actual_ty {
+                bug!("Type mismatch in function call of {:?}. \
+                      Expected {:?} for param {}, got {:?}",
+                     Value(llfn),
+                     expected_ty, i, actual_ty);
+
+            }
         }
     }
 }
