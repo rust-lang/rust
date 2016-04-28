@@ -12,6 +12,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
 use rustc::mir::repr::*;
 use rustc::hir;
+use syntax::codemap::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn ast_block(&mut self,
@@ -80,5 +81,32 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             block.unit()
         })
+    }
+
+    // Helper method for generating MIR inside a conditional block.
+    pub fn with_cond<F>(&mut self, block: BasicBlock, span: Span,
+                        cond: Operand<'tcx>, f: F) -> BasicBlock
+    where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>, BasicBlock) -> BasicBlock {
+        let scope_id = self.innermost_scope_id();
+
+        let then_block = self.cfg.start_new_block();
+        let else_block = self.cfg.start_new_block();
+
+        self.cfg.terminate(block, scope_id, span,
+                           TerminatorKind::If {
+                               cond: cond,
+                               targets: (then_block, else_block)
+                           });
+
+        let after = f(self, then_block);
+
+        // If the returned block isn't terminated, add a branch to the "else"
+        // block
+        if !self.cfg.terminated(after) {
+            self.cfg.terminate(after, scope_id, span,
+                               TerminatorKind::Goto { target: else_block });
+        }
+
+        else_block
     }
 }
