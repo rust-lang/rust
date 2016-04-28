@@ -176,7 +176,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                    .collect::<Vec<String>>()
                    .join(", "));
 
-        let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
+        let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(ptr::null_mut());
 
         unsafe {
             llvm::LLVMRustBuildInvoke(self.llbuilder,
@@ -879,7 +879,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(0 as *mut _);
+        let bundle = bundle.as_ref().map(|b| b.raw()).unwrap_or(ptr::null_mut());
 
         unsafe {
             llvm::LLVMRustBuildCall(self.llbuilder, llfn, args.as_ptr(),
@@ -981,7 +981,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.count_insn("trap");
             llvm::LLVMRustBuildCall(self.llbuilder, t,
                                     args.as_ptr(), args.len() as c_uint,
-                                    0 as *mut _,
+                                    ptr::null_mut(),
                                     noname());
         }
     }
@@ -1020,7 +1020,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                        parent: Option<ValueRef>,
                        args: &[ValueRef]) -> ValueRef {
         self.count_insn("cleanuppad");
-        let parent = parent.unwrap_or(0 as *mut _);
+        let parent = parent.unwrap_or(ptr::null_mut());
         let name = CString::new("cleanuppad").unwrap();
         let ret = unsafe {
             llvm::LLVMRustBuildCleanupPad(self.llbuilder,
@@ -1036,7 +1036,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn cleanup_ret(&self, cleanup: ValueRef,
                        unwind: Option<BasicBlockRef>) -> ValueRef {
         self.count_insn("cleanupret");
-        let unwind = unwind.unwrap_or(0 as *mut _);
+        let unwind = unwind.unwrap_or(ptr::null_mut());
         let ret = unsafe {
             llvm::LLVMRustBuildCleanupRet(self.llbuilder, cleanup, unwind)
         };
@@ -1072,8 +1072,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         unwind: Option<BasicBlockRef>,
                         num_handlers: usize) -> ValueRef {
         self.count_insn("catchswitch");
-        let parent = parent.unwrap_or(0 as *mut _);
-        let unwind = unwind.unwrap_or(0 as *mut _);
+        let parent = parent.unwrap_or(ptr::null_mut());
+        let unwind = unwind.unwrap_or(ptr::null_mut());
         let name = CString::new("catchswitch").unwrap();
         let ret = unsafe {
             llvm::LLVMRustBuildCatchSwitch(self.llbuilder, parent, unwind,

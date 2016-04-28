@@ -77,7 +77,7 @@ impl DwarfReader {
         }
         // sign-extend
         if shift < 8 * mem::size_of::<u64>() && (byte & 0x40) != 0 {
-            result |= (!0 as u64) << shift;
+            result |= (!0u64) << shift;
         }
         result as i64
     }

@@ -46,10 +46,10 @@ impl Handle {
 
     pub fn new_event(manual: bool, init: bool) -> io::Result<Handle> {
         unsafe {
-            let event = c::CreateEventW(0 as *mut _,
+            let event = c::CreateEventW(ptr::null_mut(),
                                         manual as c::BOOL,
                                         init as c::BOOL,
-                                        0 as *const _);
+                                        ptr::null());
             if event.is_null() {
                 Err(io::Error::last_os_error())
             } else {

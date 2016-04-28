@@ -79,7 +79,7 @@ mod inner {
                 },
             };
             cvt(unsafe {
-                libc::gettimeofday(&mut s.t, 0 as *mut _)
+                libc::gettimeofday(&mut s.t, ptr::null_mut())
             }).unwrap();
             return s
         }
