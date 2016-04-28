@@ -176,7 +176,7 @@ The members of a tuple struct may be accessed by dot notation or destructuring
 # let black = Color(0, 0, 0);
 # let origin = Point(0, 0, 0);
 let black_r = black.0;
-let (_, origin_y, origin_z) = origin;
+let Point(_, origin_y, origin_z) = origin;
 ```
 
 One case when a tuple struct is very useful is when it has only one element.
