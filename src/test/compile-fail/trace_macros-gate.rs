@@ -26,5 +26,5 @@ fn main() {
         ($x: ident) => { trace_macros!($x) }
     }
 
-    expando!(true);
+    expando!(true); //~ ERROR `trace_macros` is not stable
 }

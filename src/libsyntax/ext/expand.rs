@@ -35,6 +35,16 @@ use std_inject;
 use std::collections::HashSet;
 use std::env;
 
+// this function is called to detect use of feature-gated or invalid attributes
+// on macro invoations since they will not be detected after macro expansion
+fn check_attributes(attrs: &[ast::Attribute], fld: &MacroExpander) {
+    for attr in attrs.iter() {
+        feature_gate::check_attribute(&attr, &fld.cx.parse_sess.span_diagnostic,
+                                      &fld.cx.parse_sess.codemap(),
+                                      &fld.cx.ecfg.features.unwrap());
+    }
+}
+
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     let expr_span = e.span;
     return e.and_then(|ast::Expr {id, node, span, attrs}| match node {
@@ -42,6 +52,9 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprKind::Mac(mac) => {
+            if let Some(ref attrs) = attrs {
+                check_attributes(attrs, fld);
+            }
 
             // Assert that we drop any macro attributes on the floor here
             drop(attrs);
@@ -70,10 +83,12 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
         ast::ExprKind::InPlace(placer, value_expr) => {
             // Ensure feature-gate is enabled
-            feature_gate::check_for_placement_in(
-                fld.cx.ecfg.features,
-                &fld.cx.parse_sess.span_diagnostic,
-                expr_span);
+            if !fld.cx.ecfg.features.unwrap().placement_in_syntax {
+                feature_gate::emit_feature_err(
+                    &fld.cx.parse_sess.span_diagnostic, "placement_in_syntax", expr_span,
+                    feature_gate::GateIssue::Language, feature_gate::EXPLAIN_PLACEMENT_IN
+                );
+            }
 
             let placer = fld.fold_expr(placer);
             let value_expr = fld.fold_expr(value_expr);
@@ -370,6 +385,8 @@ pub fn expand_item_mac(it: P<ast::Item>,
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     });
 
+    check_attributes(&attrs, fld);
+
     let fm = fresh_mark();
     let items = {
         let expanded = match fld.cx.syntax_env.find(extname) {
@@ -444,18 +461,6 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     let allow_internal_unstable = attr::contains_name(&attrs,
                                                                       "allow_internal_unstable");
 
-                    // ensure any #[allow_internal_unstable]s are
-                    // detected (including nested macro definitions
-                    // etc.)
-                    if allow_internal_unstable && !fld.cx.ecfg.enable_allow_internal_unstable() {
-                        feature_gate::emit_feature_err(
-                            &fld.cx.parse_sess.span_diagnostic,
-                            "allow_internal_unstable",
-                            span,
-                            feature_gate::GateIssue::Language,
-                            feature_gate::EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
-                    }
-
                     let export = attr::contains_name(&attrs, "macro_export");
                     let def = ast::MacroDef {
                         ident: ident,
@@ -518,6 +523,10 @@ fn expand_stmt(stmt: Stmt, fld: &mut MacroExpander) -> SmallVector<Stmt> {
         StmtKind::Mac(mac, style, attrs) => (mac, style, attrs),
         _ => return expand_non_macro_stmt(stmt, fld)
     };
+
+    if let Some(ref attrs) = attrs {
+        check_attributes(attrs, fld);
+    }
 
     // Assert that we drop any macro attributes on the floor here
     drop(attrs);
@@ -1066,7 +1075,7 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             attrs: ii.attrs,
             vis: ii.vis,
             defaultness: ii.defaultness,
-            node: match ii.node  {
+            node: match ii.node {
                 ast::ImplItemKind::Method(sig, body) => {
                     let (sig, body) = expand_and_rename_method(sig, body, fld);
                     ast::ImplItemKind::Method(sig, body)
@@ -1075,13 +1084,11 @@ fn expand_impl_item(ii: ast::ImplItem, fld: &mut MacroExpander)
             },
             span: fld.new_span(ii.span)
         }),
-        ast::ImplItemKind::Macro(_) => {
-            let (span, mac) = match ii.node {
-                ast::ImplItemKind::Macro(mac) => (ii.span, mac),
-                _ => unreachable!()
-            };
+        ast::ImplItemKind::Macro(mac) => {
+            check_attributes(&ii.attrs, fld);
+
             let maybe_new_items =
-                expand_mac_invoc(mac, span,
+                expand_mac_invoc(mac, ii.span,
                                  |r| r.make_impl_items(),
                                  |meths, mark| meths.move_map(|m| mark_impl_item(m, mark)),
                                  fld);
@@ -1348,14 +1355,14 @@ impl<'feat> ExpansionConfig<'feat> {
     }
 
     feature_tests! {
-        fn enable_quotes = allow_quote,
-        fn enable_asm = allow_asm,
-        fn enable_log_syntax = allow_log_syntax,
-        fn enable_concat_idents = allow_concat_idents,
-        fn enable_trace_macros = allow_trace_macros,
+        fn enable_quotes = quote,
+        fn enable_asm = asm,
+        fn enable_log_syntax = log_syntax,
+        fn enable_concat_idents = concat_idents,
+        fn enable_trace_macros = trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
-        fn enable_custom_derive = allow_custom_derive,
-        fn enable_pushpop_unsafe = allow_pushpop_unsafe,
+        fn enable_custom_derive = custom_derive,
+        fn enable_pushpop_unsafe = pushpop_unsafe,
     }
 }
 
