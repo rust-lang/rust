@@ -28,9 +28,12 @@ separators.
 [design]: #detailed-design
 
 This RFC proposes adding `lifetime` as an additional specifier to
-`macro_rules!` (alternatively: `life` or `lt`). Since a lifetime acts very much
+`macro_rules!` (alternatively: `life` or `lt`). As it is a single token, it is
+able to be followed by any other specifier. Since a lifetime acts very much
 like an identifier, and can appear in almost as many places, it can be handled
-almost identically. A preliminary implementation can be found at
+almost identically.
+
+A preliminary implementation can be found at
 https://github.com/rust-lang/rust/pull/33135
 
 # Drawbacks
