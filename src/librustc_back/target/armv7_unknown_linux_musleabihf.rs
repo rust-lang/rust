@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// See x86_64_unknown_linux_musl for explanation of arguments
-
 use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::musl_base::opts();
-    base.cpu = "pentium4".to_string();
-    base.pre_link_args.push("-m32".to_string());
-    base.pre_link_args.push("-Wl,-melf_i386".to_string());
 
+    // Most of these settings are copied from the armv7_unknown_linux_gnueabihf
+    // target.
+    base.features = "+v7,+vfp3,+neon".to_string();
+    base.cpu = "cortex-a8".to_string();
     Target {
-        llvm_target: "i686-unknown-linux-musl".to_string(),
+        // It's important we use "gnueabihf" and not "musleabihf" here. LLVM
+        // uses it to determine the calling convention and float ABI, and LLVM
+        // doesn't support the "musleabihf" value.
+        llvm_target: "armv7-unknown-linux-gnueabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
-        data_layout: "e-m:e-p:32:32-f64:32:64-f80:32-n8:16:32-S128".to_string(),
-        arch: "x86".to_string(),
+        data_layout: "e-m:e-p:32:32-i64:64-v128:64:128-a:0:32-n32-S64".to_string(),
+        arch: "arm".to_string(),
         target_os: "linux".to_string(),
-        target_env: "musl".to_string(),
+        target_env: "musleabi".to_string(),
         target_vendor: "unknown".to_string(),
         options: base,
     }

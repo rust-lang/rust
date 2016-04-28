@@ -125,13 +125,13 @@ pub fn compiler_rt(build: &Build, target: &str) {
                                           target.contains("netbsd") {
         let os = if target.contains("android") {"-android"} else {""};
         let arch = if arch.starts_with("armv7") {
-          "armv7"
+            "armv7"
         } else if arch.starts_with("arm") {
-          if target.contains("eabihf") || target.contains("android") {
-            "armhf"
-          } else {
-            "arm"
-          }
+            if target.contains("eabihf") || target.contains("android") {
+                "armhf"
+            } else {
+                "arm"
+            }
         } else {
             arch
         };
