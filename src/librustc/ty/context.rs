@@ -80,6 +80,61 @@ impl<'tcx> CtxtArenas<'tcx> {
     }
 }
 
+struct CtxtInterners<'tcx> {
+    /// The arenas that types etc are allocated from.
+    arenas: &'tcx CtxtArenas<'tcx>,
+
+    /// Specifically use a speedy hash algorithm for these hash sets,
+    /// they're accessed quite often.
+    type_: RefCell<FnvHashSet<InternedTy<'tcx>>>,
+    substs: RefCell<FnvHashSet<InternedSubsts<'tcx>>>,
+    bare_fn: RefCell<FnvHashSet<&'tcx BareFnTy<'tcx>>>,
+    region: RefCell<FnvHashSet<&'tcx Region>>,
+    stability: RefCell<FnvHashSet<&'tcx attr::Stability>>,
+    layout: RefCell<FnvHashSet<&'tcx Layout>>,
+}
+
+impl<'tcx> CtxtInterners<'tcx> {
+    fn new(arenas: &'tcx CtxtArenas<'tcx>) -> CtxtInterners<'tcx> {
+        CtxtInterners {
+            arenas: arenas,
+            type_: RefCell::new(FnvHashSet()),
+            substs: RefCell::new(FnvHashSet()),
+            bare_fn: RefCell::new(FnvHashSet()),
+            region: RefCell::new(FnvHashSet()),
+            stability: RefCell::new(FnvHashSet()),
+            layout: RefCell::new(FnvHashSet())
+        }
+    }
+
+    fn intern_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
+        let ty = {
+            let mut interner = self.type_.borrow_mut();
+            match interner.get(&st) {
+                Some(&InternedTy { ty }) => return ty,
+                None => ()
+            }
+
+            let flags = super::flags::FlagComputation::for_sty(&st);
+
+            // Don't be &mut TyS.
+            let ty: Ty = self.arenas.type_.alloc(TyS {
+                sty: st,
+                flags: Cell::new(flags.flags),
+                region_depth: flags.depth,
+            });
+
+            interner.insert(InternedTy { ty: ty });
+            ty
+        };
+
+        debug!("Interned type: {:?} Pointer: {:?}",
+            ty, ty as *const TyS);
+        ty
+    }
+
+}
+
 pub struct CommonTypes<'tcx> {
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
@@ -190,11 +245,8 @@ impl<'a, 'tcx> Tables<'tcx> {
 }
 
 impl<'tcx> CommonTypes<'tcx> {
-    fn new(arena: &'tcx TypedArena<TyS<'tcx>>,
-           interner: &RefCell<FnvHashSet<InternedTy<'tcx>>>)
-           -> CommonTypes<'tcx>
-    {
-        let mk = |sty| TyCtxt::intern_ty(arena, interner, sty);
+    fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
+        let mk = |sty| interners.intern_ty(sty);
         CommonTypes {
             bool: mk(TyBool),
             char: mk(TyChar),
@@ -221,7 +273,7 @@ impl<'tcx> CommonTypes<'tcx> {
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'tcx: 'a> {
     gcx: &'a GlobalCtxt<'tcx>,
-
+    interners: &'a CtxtInterners<'tcx>
 }
 
 impl<'a, 'tcx> Deref for TyCtxt<'a, 'tcx> {
@@ -232,17 +284,7 @@ impl<'a, 'tcx> Deref for TyCtxt<'a, 'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
-    /// The arenas that types etc are allocated from.
-    arenas: &'tcx CtxtArenas<'tcx>,
-
-    /// Specifically use a speedy hash algorithm for this hash map, it's used
-    /// quite often.
-    interner: RefCell<FnvHashSet<InternedTy<'tcx>>>,
-    substs_interner: RefCell<FnvHashSet<InternedSubsts<'tcx>>>,
-    bare_fn_interner: RefCell<FnvHashSet<&'tcx BareFnTy<'tcx>>>,
-    region_interner: RefCell<FnvHashSet<&'tcx Region>>,
-    stability_interner: RefCell<FnvHashSet<&'tcx attr::Stability>>,
-    layout_interner: RefCell<FnvHashSet<&'tcx Layout>>,
+    global_interners: CtxtInterners<'tcx>,
 
     pub dep_graph: DepGraph,
 
@@ -442,6 +484,16 @@ pub struct GlobalCtxt<'tcx> {
     pub layout_cache: RefCell<FnvHashMap<Ty<'tcx>, &'tcx Layout>>,
 }
 
+impl<'tcx> GlobalCtxt<'tcx> {
+    /// Get the global TyCtxt.
+    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx> {
+        TyCtxt {
+            gcx: self,
+            interners: &self.global_interners
+        }
+    }
+}
+
 impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     pub fn crate_name(self, cnum: ast::CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
@@ -481,7 +533,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     pub fn intern_trait_def(self, def: ty::TraitDef<'tcx>)
                             -> &'tcx ty::TraitDef<'tcx> {
         let did = def.trait_ref.def_id;
-        let interned = self.arenas.trait_defs.alloc(def);
+        let interned = self.global_interners.arenas.trait_defs.alloc(def);
         if let Some(prev) = self.trait_defs.borrow_mut().insert(did, interned) {
             bug!("Tried to overwrite interned TraitDef: {:?}", prev)
         }
@@ -490,7 +542,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
 
     pub fn alloc_trait_def(self, def: ty::TraitDef<'tcx>)
                            -> &'tcx ty::TraitDef<'tcx> {
-        self.arenas.trait_defs.alloc(def)
+        self.global_interners.arenas.trait_defs.alloc(def)
     }
 
     pub fn intern_adt_def(self,
@@ -499,7 +551,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
                           variants: Vec<ty::VariantDefData<'tcx, 'tcx>>)
                           -> ty::AdtDefMaster<'tcx> {
         let def = ty::AdtDefData::new(self, did, kind, variants);
-        let interned = self.arenas.adt_defs.alloc(def);
+        let interned = self.global_interners.arenas.adt_defs.alloc(def);
         // this will need a transmute when reverse-variance is removed
         if let Some(prev) = self.adt_defs.borrow_mut().insert(did, interned) {
             bug!("Tried to overwrite interned AdtDef: {:?}", prev)
@@ -508,12 +560,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {
-        if let Some(st) = self.stability_interner.borrow().get(&stab) {
+        if let Some(st) = self.interners.stability.borrow().get(&stab) {
             return st;
         }
 
-        let interned = self.arenas.stability.alloc(stab);
-        if let Some(prev) = self.stability_interner
+        let interned = self.interners.arenas.stability.alloc(stab);
+        if let Some(prev) = self.interners.stability
                                 .borrow_mut()
                                 .replace(interned) {
             bug!("Tried to overwrite interned Stability: {:?}", prev)
@@ -522,12 +574,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     }
 
     pub fn intern_layout(self, layout: Layout) -> &'tcx Layout {
-        if let Some(layout) = self.layout_interner.borrow().get(&layout) {
+        if let Some(layout) = self.interners.layout.borrow().get(&layout) {
             return layout;
         }
 
-        let interned = self.arenas.layout.alloc(layout);
-        if let Some(prev) = self.layout_interner
+        let interned = self.interners.arenas.layout.alloc(layout);
+        if let Some(prev) = self.interners.layout
                                 .borrow_mut()
                                 .replace(interned) {
             bug!("Tried to overwrite interned Layout: {:?}", prev)
@@ -568,18 +620,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
                                   where F: for<'b> FnOnce(TyCtxt<'b, 'tcx>) -> R
     {
         let data_layout = TargetDataLayout::parse(s);
-        let interner = RefCell::new(FnvHashSet());
-        let common_types = CommonTypes::new(&arenas.type_, &interner);
+        let interners = CtxtInterners::new(arenas);
+        let common_types = CommonTypes::new(&interners);
         let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
         tls::enter(GlobalCtxt {
-            arenas: arenas,
-            interner: interner,
-            substs_interner: RefCell::new(FnvHashSet()),
-            bare_fn_interner: RefCell::new(FnvHashSet()),
-            region_interner: RefCell::new(FnvHashSet()),
-            stability_interner: RefCell::new(FnvHashSet()),
-            layout_interner: RefCell::new(FnvHashSet()),
+            global_interners: interners,
             dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
@@ -653,7 +699,7 @@ pub trait Lift<'tcx> {
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
     fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<Ty<'tcx>> {
-        if let Some(&InternedTy { ty }) = tcx.interner.borrow().get(&self.sty) {
+        if let Some(&InternedTy { ty }) = tcx.interners.type_.borrow().get(&self.sty) {
             if *self as *const _ == ty as *const _ {
                 return Some(ty);
             }
@@ -665,7 +711,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
     fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
-        if let Some(&InternedSubsts { substs }) = tcx.substs_interner.borrow().get(*self) {
+        if let Some(&InternedSubsts { substs }) = tcx.interners.substs.borrow().get(*self) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
             }
@@ -697,8 +743,9 @@ pub mod tls {
         })
     }
 
-    pub fn enter<'tcx, F: for<'a> FnOnce(TyCtxt<'a, 'tcx>) -> R, R>(gcx: GlobalCtxt<'tcx>,
-                                                                    f: F) -> R {
+    pub fn enter<'tcx, F, R>(gcx: GlobalCtxt<'tcx>, f: F) -> R
+        where F: for<'a> FnOnce(TyCtxt<'a, 'tcx>) -> R
+    {
         codemap::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
@@ -706,9 +753,7 @@ pub mod tls {
             let result = TLS_TCX.with(|tls| {
                 let prev = tls.get();
                 tls.set(Some(tls_ptr));
-                let ret = f(TyCtxt {
-                    gcx: &gcx
-                });
+                let ret = f(gcx.global_tcx());
                 tls.set(prev);
                 ret
             });
@@ -718,16 +763,18 @@ pub mod tls {
     }
 
     pub fn with<F: FnOnce(TyCtxt) -> R, R>(f: F) -> R {
-        TLS_TCX.with(|tcx| {
-            let tcx = tcx.get().unwrap();
+        TLS_TCX.with(|gcx| {
+            let gcx = gcx.get().unwrap();
+            let gcx = unsafe { &*(gcx as *const GlobalCtxt) };
             f(TyCtxt {
-                gcx: unsafe { &*(tcx as *const GlobalCtxt) }
+                gcx: gcx,
+                interners: &gcx.global_interners
             })
         })
     }
 
     pub fn with_opt<F: FnOnce(Option<TyCtxt>) -> R, R>(f: F) -> R {
-        if TLS_TCX.with(|tcx| tcx.get().is_some()) {
+        if TLS_TCX.with(|gcx| gcx.get().is_some()) {
             with(|v| f(Some(v)))
         } else {
             f(None)
@@ -760,7 +807,7 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
 
-                for &InternedTy { ty: t } in tcx.interner.borrow().iter() {
+                for &InternedTy { ty: t } in tcx.interners.type_.borrow().iter() {
                     let variant = match t.sty {
                         ty::TyBool | ty::TyChar | ty::TyInt(..) | ty::TyUint(..) |
                             ty::TyFloat(..) | ty::TyStr => continue,
@@ -806,11 +853,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
             TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
             TyTrait, TyStruct, TyClosure, TyTuple, TyParam, TyInfer, TyProjection);
 
-        println!("Substs interner: #{}", self.substs_interner.borrow().len());
-        println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
-        println!("Region interner: #{}", self.region_interner.borrow().len());
-        println!("Stability interner: #{}", self.stability_interner.borrow().len());
-        println!("Layout interner: #{}", self.layout_interner.borrow().len());
+        println!("Substs interner: #{}", self.interners.substs.borrow().len());
+        println!("BareFnTy interner: #{}", self.interners.bare_fn.borrow().len());
+        println!("Region interner: #{}", self.interners.region.borrow().len());
+        println!("Stability interner: #{}", self.interners.stability.borrow().len());
+        println!("Layout interner: #{}", self.interners.layout.borrow().len());
     }
 }
 
@@ -862,12 +909,12 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
 impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     // Type constructors
     pub fn mk_substs(self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
-        if let Some(interned) = self.substs_interner.borrow().get(&substs) {
+        if let Some(interned) = self.interners.substs.borrow().get(&substs) {
             return interned.substs;
         }
 
-        let substs = self.arenas.substs.alloc(substs);
-        self.substs_interner.borrow_mut().insert(InternedSubsts {
+        let substs = self.interners.arenas.substs.alloc(substs);
+        self.interners.substs.borrow_mut().insert(InternedSubsts {
             substs: substs
         });
         substs
@@ -884,57 +931,29 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     }
 
     pub fn mk_bare_fn(self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
-        if let Some(bare_fn) = self.bare_fn_interner.borrow().get(&bare_fn) {
+        if let Some(bare_fn) = self.interners.bare_fn.borrow().get(&bare_fn) {
             return *bare_fn;
         }
 
-        let bare_fn = self.arenas.bare_fn.alloc(bare_fn);
-        self.bare_fn_interner.borrow_mut().insert(bare_fn);
+        let bare_fn = self.interners.arenas.bare_fn.alloc(bare_fn);
+        self.interners.bare_fn.borrow_mut().insert(bare_fn);
         bare_fn
     }
 
     pub fn mk_region(self, region: Region) -> &'tcx Region {
-        if let Some(region) = self.region_interner.borrow().get(&region) {
+        if let Some(region) = self.interners.region.borrow().get(&region) {
             return *region;
         }
 
-        let region = self.arenas.region.alloc(region);
-        self.region_interner.borrow_mut().insert(region);
+        let region = self.interners.arenas.region.alloc(region);
+        self.interners.region.borrow_mut().insert(region);
         region
     }
 
-    fn intern_ty(type_arena: &'tcx TypedArena<TyS<'tcx>>,
-                 interner: &RefCell<FnvHashSet<InternedTy<'tcx>>>,
-                 st: TypeVariants<'tcx>)
-                 -> Ty<'tcx> {
-        let ty: Ty /* don't be &mut TyS */ = {
-            let mut interner = interner.borrow_mut();
-            match interner.get(&st) {
-                Some(&InternedTy { ty }) => return ty,
-                None => ()
-            }
-
-            let flags = super::flags::FlagComputation::for_sty(&st);
-
-            let ty = match () {
-                () => type_arena.alloc(TyS { sty: st,
-                                             flags: Cell::new(flags.flags),
-                                             region_depth: flags.depth, }),
-            };
-
-            interner.insert(InternedTy { ty: ty });
-            ty
-        };
-
-        debug!("Interned type: {:?} Pointer: {:?}",
-            ty, ty as *const TyS);
-        ty
-    }
-
-    // Interns a type/name combination, stores the resulting box in cx.interner,
+    // Interns a type/name combination, stores the resulting box in cx.interners,
     // and returns the box as cast to an unsafe ptr (see comments for Ty above).
     pub fn mk_ty(self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
-        TyCtxt::intern_ty(&self.arenas.type_, &self.interner, st)
+        self.interners.intern_ty(st)
     }
 
     pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
