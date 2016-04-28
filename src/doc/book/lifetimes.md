@@ -1,7 +1,7 @@
 % Lifetimes
 
-This guide is three of three presenting Rust’s ownership system. This is one of
-Rust’s most unique and compelling features, with which Rust developers should
+This is the last of three sections presenting Rust’s ownership system. This is one of
+Rust’s most distinct and compelling features, with which Rust developers should
 become quite acquainted. Ownership is how Rust achieves its largest goal,
 memory safety. There are a few distinct concepts, each with its own chapter:
 
