@@ -88,18 +88,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.push_assign(block, scope_id, expr_span, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
 
-                    let of_block = this.cfg.start_new_block();
-                    let ok_block = this.cfg.start_new_block();
-
-                    this.cfg.terminate(block, scope_id, expr_span,
-                                       TerminatorKind::If {
-                                           cond: Operand::Consume(is_min),
-                                           targets: (of_block, ok_block)
-                                       });
-
-                    this.panic(of_block, "attempted to negate with overflow", expr_span);
-
-                    block = ok_block;
+                    block = this.with_cond(
+                        block, expr_span, Operand::Consume(is_min), |this, block| {
+                            this.panic(block, "attempted to negate with overflow", expr_span);
+                            block
+                        });
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
@@ -268,21 +261,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let success = self.cfg.start_new_block();
-            let failure = self.cfg.start_new_block();
-
-            self.cfg.terminate(block, scope_id, span,
-                               TerminatorKind::If {
-                                   cond: Operand::Consume(of),
-                                   targets: (failure, success)
-                               });
             let msg = if op == BinOp::Shl || op == BinOp::Shr {
                 "shift operation overflowed"
             } else {
                 "arithmetic operation overflowed"
             };
-            self.panic(failure, msg, span);
-            success.and(Rvalue::Use(Operand::Consume(val)))
+
+            block = self.with_cond(block, span, Operand::Consume(of), |this, block| {
+                this.panic(block, msg, span);
+                block
+            });
+
+            block.and(Rvalue::Use(Operand::Consume(val)))
         } else {
             if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
                 // Checking division and remainder is more complex, since we 1. always check
@@ -302,17 +292,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(block, scope_id, span, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
 
-                let zero_block = self.cfg.start_new_block();
-                let ok_block   = self.cfg.start_new_block();
-
-                self.cfg.terminate(block, scope_id, span,
-                                   TerminatorKind::If {
-                                       cond: Operand::Consume(is_zero),
-                                       targets: (zero_block, ok_block)
-                                   });
-
-                self.panic(zero_block, zero_msg, span);
-                block = ok_block;
+                block = self.with_cond(block, span, Operand::Consume(is_zero), |this, block| {
+                    this.panic(block, zero_msg, span);
+                    block
+                });
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
@@ -336,18 +319,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, scope_id, span, &of,
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
-                    let of_block = self.cfg.start_new_block();
-                    let ok_block = self.cfg.start_new_block();
-
-                    self.cfg.terminate(block, scope_id, span,
-                                       TerminatorKind::If {
-                                           cond: Operand::Consume(of),
-                                           targets: (of_block, ok_block)
-                                       });
-
-                    self.panic(of_block, overflow_msg, span);
-
-                    block = ok_block;
+                    block = self.with_cond(block, span, Operand::Consume(of), |this, block| {
+                        this.panic(block, overflow_msg, span);
+                        block
+                    });
                 }
             }
 
