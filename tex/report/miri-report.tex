@@ -536,12 +536,6 @@ Miri supports unsafe operations on \rust{Vec} like \rust{v.set_len(10)} or
 \emph{does} invoke undefined behaviour, Miri will abort with an appropriate error message (see
 \autoref{fig:vec-error}).
 
-% You can even do unsafe things with \rust{Vec} like \rust{v.set_len(10)} or
-% \rust{v.get_unchecked(2)}, but if you do these things carefully in a way that doesn't cause any
-% undefined behaviour (just like when you write unsafe code for regular Rust), then Miri can handle it
-% all. But if you do slip up, Miri will error out with an appropriate message (see
-% \autoref{fig:vec-error}).
-
 \begin{figure}[t]
   \begin{minted}[autogobble]{rust}
     fn out_of_bounds() -> u8 {
