@@ -24,7 +24,7 @@ unwind = { path = "../libunwind" }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
-gcc = "0.3"
+gcc = "0.3.27"
 
 [features]
 backtrace = []
