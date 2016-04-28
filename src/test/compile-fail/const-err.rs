@@ -11,7 +11,6 @@
 // these errors are not actually "const_err", they occur in trans/consts
 // and are unconditional warnings that can't be denied or allowed
 
-#![feature(rustc_attrs)]
 #![allow(exceeding_bitshifts)]
 #![allow(const_err)]
 
@@ -24,7 +23,6 @@ const FOO: u8 = [5u8][1];
 //~^ ERROR array index out of bounds
 //~^^ ERROR array index out of bounds
 
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let a = -std::i8::MIN;
     //~^ WARN attempted to negate with overflow
