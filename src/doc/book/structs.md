@@ -179,6 +179,9 @@ let black_r = black.0;
 let Point(_, origin_y, origin_z) = origin;
 ```
 
+Patterns like `Point(_, origin_y, origin_z)` are also used in
+[match expressions][match].
+
 One case when a tuple struct is very useful is when it has only one element.
 We call this the ‘newtype’ pattern, because it allows you to create a new type
 that is distinct from its contained value and also expresses its own semantic
@@ -223,6 +226,8 @@ struct Point {
 Good names are important, and while values in a tuple struct can be
 referenced with dot notation as well, a `struct` gives us actual names,
 rather than positions.
+
+[match]: match.html
 
 # Unit-like structs
 
