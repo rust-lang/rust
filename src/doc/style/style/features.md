@@ -1,4 +1,4 @@
-## `return` [FIXME: needs RFC]
+## `return` [RFC #968]
 
 Terminate `return` statements with semicolons:
 
