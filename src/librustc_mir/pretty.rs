@@ -269,29 +269,6 @@ fn write_scope_tree(tcx: TyCtxt,
     Ok(())
 }
 
-pub fn write_mir_named(tcx: &ty::TyCtxt, name: &str, mir: &Mir, w: &mut Write, auxiliary: Option<&ScopeAuxiliaryVec>)
--> io::Result<()> {
-
-    let annotations = scope_entry_exit_annotations(auxiliary);
-    write_mir_intro_named(tcx, name, mir, w)?;
-    for block in mir.all_basic_blocks() {
-        write_basic_block(tcx, block, mir, w, &annotations)?;
-    }
-    writeln!(w, "}}")
-}
-
-/// Write out a human-readable textual representation of the MIR's
-/// `fn` type and the types of its local variables (both user-defined
-/// bindings and compiler temporaries). Assumes the function
-/// represented by `mir` is named `name`. Note: Generated output
-/// introduces an open curly that needs to be closed.
-pub fn write_mir_intro_named(tcx: &ty::TyCtxt, name: &str, mir: &Mir, w: &mut Write)
--> io::Result<()> {
-    write_mir_fn_sig(tcx, name, mir, w)?;
-    writeln!(w, " {{")?;
-    write_mir_fn_decls(tcx, mir, w)
-}
-
 /// Write out a human-readable textual representation of the MIR's `fn` type and the types of its
 /// local variables (both user-defined bindings and compiler temporaries).
 fn write_mir_intro<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
