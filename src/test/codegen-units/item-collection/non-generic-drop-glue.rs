@@ -14,6 +14,7 @@
 #![deny(dead_code)]
 
 //~ TRANS_ITEM drop-glue non_generic_drop_glue::StructWithDrop[0]
+//~ TRANS_ITEM drop-glue-contents non_generic_drop_glue::StructWithDrop[0]
 struct StructWithDrop {
     x: i32
 }
@@ -28,6 +29,7 @@ struct StructNoDrop {
 }
 
 //~ TRANS_ITEM drop-glue non_generic_drop_glue::EnumWithDrop[0]
+//~ TRANS_ITEM drop-glue-contents non_generic_drop_glue::EnumWithDrop[0]
 enum EnumWithDrop {
     A(i32)
 }

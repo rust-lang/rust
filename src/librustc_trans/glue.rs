@@ -98,7 +98,7 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
-        return t
+        return ccx.tcx().erase_regions(&t);
     }
 
     // FIXME (#22815): note that type_needs_drop conservatively
@@ -121,10 +121,10 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             if llsize_of_alloc(ccx, llty) == 0 {
                 tcx.types.i8
             } else {
-                t
+                ccx.tcx().erase_regions(&t)
             }
         }
-        _ => t
+        _ => ccx.tcx().erase_regions(&t)
     }
 }
 
@@ -215,11 +215,11 @@ pub enum DropGlueKind<'tcx> {
 }
 
 impl<'tcx> DropGlueKind<'tcx> {
-    fn ty(&self) -> Ty<'tcx> {
+    pub fn ty(&self) -> Ty<'tcx> {
         match *self { DropGlueKind::Ty(t) | DropGlueKind::TyContents(t) => t }
     }
 
-    fn map_ty<F>(&self, mut f: F) -> DropGlueKind<'tcx> where F: FnMut(Ty<'tcx>) -> Ty<'tcx>
+    pub fn map_ty<F>(&self, mut f: F) -> DropGlueKind<'tcx> where F: FnMut(Ty<'tcx>) -> Ty<'tcx>
     {
         match *self {
             DropGlueKind::Ty(t) => DropGlueKind::Ty(f(t)),
@@ -487,13 +487,12 @@ pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: &BlockAndBuilder<'blk, 'tcx>,
 
 fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, g: DropGlueKind<'tcx>)
                               -> Block<'blk, 'tcx> {
-    let t = g.ty();
-
     if collector::collecting_debug_information(bcx.ccx()) {
         bcx.ccx()
-           .record_translation_item_as_generated(TransItem::DropGlue(bcx.tcx()
-                                                                        .erase_regions(&t)));
+           .record_translation_item_as_generated(TransItem::DropGlue(g));
     }
+
+    let t = g.ty();
 
     let skip_dtor = match g { DropGlueKind::Ty(_) => false, DropGlueKind::TyContents(_) => true };
     // NB: v0 is an *alias* of type t here, not a direct value.

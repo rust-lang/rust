@@ -116,8 +116,7 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
-use collector::{InliningMap, TransItem};
-use context::CrateContext;
+use collector::{TransItem, ReferenceMap};
 use monomorphize;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -127,9 +126,28 @@ use llvm;
 use syntax::parse::token::{self, InternedString};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub enum InstantiationMode {
+    /// This variant indicates that a translation item should be placed in some
+    /// codegen unit as a definition and with the given linkage.
+    Def(llvm::Linkage),
+
+    /// This variant indicates that only a declaration of some translation item
+    /// should be placed in a given codegen unit.
+    Decl
+}
+
 pub struct CodegenUnit<'tcx> {
     pub name: InternedString,
-    pub items: FnvHashMap<TransItem<'tcx>, llvm::Linkage>,
+    pub items: FnvHashMap<TransItem<'tcx>, InstantiationMode>,
+}
+
+pub enum PartitioningStrategy {
+    /// Generate one codegen unit per source-level module.
+    PerModule,
+
+    /// Partition the whole crate into a fixed number of codegen units.
+    FixedUnitCount(usize)
 }
 
 // Anything we can't find a proper codegen unit for goes into this.
@@ -137,30 +155,47 @@ const FALLBACK_CODEGEN_UNIT: &'static str = "__rustc_fallback_codegen_unit";
 
 pub fn partition<'tcx, I>(tcx: &TyCtxt<'tcx>,
                           trans_items: I,
-                          inlining_map: &InliningMap<'tcx>)
+                          strategy: PartitioningStrategy,
+                          reference_map: &ReferenceMap<'tcx>)
                           -> Vec<CodegenUnit<'tcx>>
     where I: Iterator<Item = TransItem<'tcx>>
 {
     // In the first step, we place all regular translation items into their
     // respective 'home' codegen unit. Regular translation items are all
     // functions and statics defined in the local crate.
-    let initial_partitioning = place_root_translation_items(tcx, trans_items);
+    let mut initial_partitioning = place_root_translation_items(tcx, trans_items);
+
+    // If the partitioning should produce a fixed count of codegen units, merge
+    // until that count is reached.
+    if let PartitioningStrategy::FixedUnitCount(count) = strategy {
+        merge_codegen_units(&mut initial_partitioning, count, &tcx.crate_name[..]);
+    }
 
     // In the next step, we use the inlining map to determine which addtional
     // translation items have to go into each codegen unit. These additional
     // translation items can be drop-glue, functions from external crates, and
     // local functions the definition of which is marked with #[inline].
-    place_inlined_translation_items(initial_partitioning, inlining_map)
+    let post_inlining = place_inlined_translation_items(initial_partitioning,
+                                                        reference_map);
+
+    // Now we know all *definitions* within all codegen units, thus we can
+    // easily determine which declarations need to be placed within each one.
+    let post_declarations = place_declarations(post_inlining, reference_map);
+
+    post_declarations.0
 }
 
-struct InitialPartitioning<'tcx> {
+struct PreInliningPartitioning<'tcx> {
     codegen_units: Vec<CodegenUnit<'tcx>>,
     roots: FnvHashSet<TransItem<'tcx>>,
 }
 
+struct PostInliningPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
+struct PostDeclarationsPartitioning<'tcx>(Vec<CodegenUnit<'tcx>>);
+
 fn place_root_translation_items<'tcx, I>(tcx: &TyCtxt<'tcx>,
                                          trans_items: I)
-                                         -> InitialPartitioning<'tcx>
+                                         -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = TransItem<'tcx>>
 {
     let mut roots = FnvHashSet();
@@ -204,12 +239,13 @@ fn place_root_translation_items<'tcx, I>(tcx: &TyCtxt<'tcx>,
                 }
             };
 
-            codegen_unit.items.insert(trans_item, linkage);
+            codegen_unit.items.insert(trans_item,
+                                      InstantiationMode::Def(linkage));
             roots.insert(trans_item);
         }
     }
 
-    InitialPartitioning {
+    PreInliningPartitioning {
         codegen_units: codegen_units.into_iter()
                                     .map(|(_, codegen_unit)| codegen_unit)
                                     .collect(),
@@ -217,61 +253,115 @@ fn place_root_translation_items<'tcx, I>(tcx: &TyCtxt<'tcx>,
     }
 }
 
-fn place_inlined_translation_items<'tcx>(initial_partitioning: InitialPartitioning<'tcx>,
-                                         inlining_map: &InliningMap<'tcx>)
-                                         -> Vec<CodegenUnit<'tcx>> {
-    let mut final_partitioning = Vec::new();
+fn merge_codegen_units<'tcx>(initial_partitioning: &mut PreInliningPartitioning<'tcx>,
+                             target_cgu_count: usize,
+                             crate_name: &str) {
+    if target_cgu_count >= initial_partitioning.codegen_units.len() {
+        return;
+    }
+
+    assert!(target_cgu_count >= 1);
+    let codegen_units = &mut initial_partitioning.codegen_units;
+
+    // Merge the two smallest codegen units until the target size is reached.
+    // Note that "size" is estimated here rather inaccurately as the number of
+    // translation items in a given unit. This could be improved on.
+    while codegen_units.len() > target_cgu_count {
+        // Sort small cgus to the back
+        codegen_units.as_mut_slice().sort_by_key(|cgu| -(cgu.items.len() as i64));
+        let smallest = codegen_units.pop().unwrap();
+        let second_smallest = codegen_units.last_mut().unwrap();
+
+        for (k, v) in smallest.items.into_iter() {
+            second_smallest.items.insert(k, v);
+        }
+    }
+
+    for (index, cgu) in codegen_units.iter_mut().enumerate() {
+        cgu.name = token::intern_and_get_ident(&format!("{}.{}", crate_name, index)[..]);
+    }
+}
+
+fn place_inlined_translation_items<'tcx>(initial_partitioning: PreInliningPartitioning<'tcx>,
+                                         reference_map: &ReferenceMap<'tcx>)
+                                         -> PostInliningPartitioning<'tcx> {
+    let mut new_partitioning = Vec::new();
 
     for codegen_unit in &initial_partitioning.codegen_units[..] {
         // Collect all items that need to be available in this codegen unit
         let mut reachable = FnvHashSet();
         for root in codegen_unit.items.keys() {
-            follow_inlining(*root, inlining_map, &mut reachable);
+            follow_inlining(*root, reference_map, &mut reachable);
         }
 
-        let mut final_codegen_unit = CodegenUnit {
+        let mut new_codegen_unit = CodegenUnit {
             name: codegen_unit.name.clone(),
             items: FnvHashMap(),
         };
 
         // Add all translation items that are not already there
         for trans_item in reachable {
-            if let Some(linkage) = codegen_unit.items.get(&trans_item) {
+            if let Some(instantiation_mode) = codegen_unit.items.get(&trans_item) {
                 // This is a root, just copy it over
-                final_codegen_unit.items.insert(trans_item, *linkage);
+                new_codegen_unit.items.insert(trans_item, *instantiation_mode);
             } else {
                 if initial_partitioning.roots.contains(&trans_item) {
                     // This item will be instantiated in some other codegen unit,
                     // so we just add it here with AvailableExternallyLinkage
-                    final_codegen_unit.items.insert(trans_item, llvm::AvailableExternallyLinkage);
+                    new_codegen_unit.items.insert(trans_item,
+                        InstantiationMode::Def(llvm::AvailableExternallyLinkage));
                 } else {
                     // We can't be sure if this will also be instantiated
                     // somewhere else, so we add an instance here with
                     // LinkOnceODRLinkage. That way the item can be discarded if
                     // it's not needed (inlined) after all.
-                    final_codegen_unit.items.insert(trans_item, llvm::LinkOnceODRLinkage);
+                    new_codegen_unit.items.insert(trans_item,
+                        InstantiationMode::Def(llvm::LinkOnceODRLinkage));
                 }
             }
         }
 
-        final_partitioning.push(final_codegen_unit);
+        new_partitioning.push(new_codegen_unit);
     }
 
-    return final_partitioning;
+    return PostInliningPartitioning(new_partitioning);
 
     fn follow_inlining<'tcx>(trans_item: TransItem<'tcx>,
-                             inlining_map: &InliningMap<'tcx>,
+                             reference_map: &ReferenceMap<'tcx>,
                              visited: &mut FnvHashSet<TransItem<'tcx>>) {
         if !visited.insert(trans_item) {
             return;
         }
 
-        if let Some(inlined_items) = inlining_map.get(&trans_item) {
-            for &inlined_item in inlined_items {
-                follow_inlining(inlined_item, inlining_map, visited);
+        reference_map.with_inlining_candidates(trans_item, |target| {
+            follow_inlining(target, reference_map, visited);
+        });
+    }
+}
+
+fn place_declarations<'tcx>(codegen_units: PostInliningPartitioning<'tcx>,
+                            reference_map: &ReferenceMap<'tcx>)
+                            -> PostDeclarationsPartitioning<'tcx> {
+    let PostInliningPartitioning(mut codegen_units) = codegen_units;
+
+    for codegen_unit in codegen_units.iter_mut() {
+        let mut declarations = FnvHashSet();
+
+        for (trans_item, _) in &codegen_unit.items {
+            for referenced_item in reference_map.get_direct_references_from(*trans_item) {
+                if !codegen_unit.items.contains_key(referenced_item) {
+                    declarations.insert(*referenced_item);
+                }
             }
         }
+
+        codegen_unit.items
+                    .extend(declarations.iter()
+                                        .map(|trans_item| (*trans_item,
+                                                           InstantiationMode::Decl)));
     }
+
+    PostDeclarationsPartitioning(codegen_units)
 }
 
 fn characteristic_def_id_of_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
@@ -304,7 +394,7 @@ fn characteristic_def_id_of_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
 
             Some(instance.def)
         }
-        TransItem::DropGlue(t) => characteristic_def_id_of_type(t),
+        TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
         TransItem::Static(node_id) => Some(tcx.map.local_def_id(node_id)),
     }
 }
@@ -339,25 +429,4 @@ fn compute_codegen_unit_name<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 
     return token::intern_and_get_ident(&mod_path[..]);
-}
-
-impl<'tcx> CodegenUnit<'tcx> {
-    pub fn _dump<'a>(&self, ccx: &CrateContext<'a, 'tcx>) {
-        println!("CodegenUnit {} (", self.name);
-
-        let mut items: Vec<_> = self.items
-                                    .iter()
-                                    .map(|(trans_item, inst)| {
-                                        format!("{} -- ({:?})", trans_item.to_string(ccx), inst)
-                                    })
-                                    .collect();
-
-        items.as_mut_slice().sort();
-
-        for s in items {
-            println!("  {}", s);
-        }
-
-        println!(")");
-    }
 }

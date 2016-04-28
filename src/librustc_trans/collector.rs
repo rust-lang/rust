@@ -188,6 +188,8 @@
 //! this is not implemented however: a translation item will be produced
 //! regardless of whether it is actually needed or not.
 
+use rustc_data_structures::bitvec::BitVector;
+
 use rustc::hir;
 use rustc::hir::intravisit as hir_visit;
 
@@ -211,7 +213,7 @@ use base::{custom_coerce_unsize_info, llvm_linkage_by_name};
 use context::CrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates,
                     type_is_sized};
-use glue;
+use glue::{self, DropGlueKind};
 use llvm;
 use meth;
 use monomorphize::{self, Instance};
@@ -227,7 +229,7 @@ pub enum TransItemCollectionMode {
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum TransItem<'tcx> {
-    DropGlue(Ty<'tcx>),
+    DropGlue(DropGlueKind<'tcx>),
     Fn(Instance<'tcx>),
     Static(NodeId)
 }
@@ -252,12 +254,76 @@ impl<'tcx> Hash for TransItem<'tcx> {
     }
 }
 
-pub type InliningMap<'tcx> = FnvHashMap<TransItem<'tcx>, FnvHashSet<TransItem<'tcx>>>;
+/// Maps every translation item to all translation items it references in its
+/// body.
+pub struct ReferenceMap<'tcx> {
+    // Maps a source translation item to a range of target translation items.
+    // The two numbers in the tuple are the start (inclusive) and
+    // end index (exclusive) within the `targets` and the `inlined` vecs.
+    index: FnvHashMap<TransItem<'tcx>, (usize, usize)>,
+    targets: Vec<TransItem<'tcx>>,
+    inlined: BitVector
+}
+
+impl<'tcx> ReferenceMap<'tcx> {
+
+    fn new() -> ReferenceMap<'tcx> {
+        ReferenceMap {
+            index: FnvHashMap(),
+            targets: Vec::new(),
+            inlined: BitVector::new(64 * 256),
+        }
+    }
+
+    fn record_references<I>(&mut self, source: TransItem<'tcx>, targets: I)
+        where I: Iterator<Item=(TransItem<'tcx>, bool)>
+    {
+        assert!(!self.index.contains_key(&source));
+
+        let start_index = self.targets.len();
+
+        for (target, inlined) in targets {
+            let index = self.targets.len();
+            self.targets.push(target);
+            self.inlined.grow(index + 1);
+
+            if inlined {
+                self.inlined.insert(index);
+            }
+        }
+
+        let end_index = self.targets.len();
+        self.index.insert(source, (start_index, end_index));
+    }
+
+    // Internally iterate over all items referenced by `source` which will be
+    // made available for inlining.
+    pub fn with_inlining_candidates<F>(&self, source: TransItem<'tcx>, mut f: F)
+        where F: FnMut(TransItem<'tcx>) {
+        if let Some(&(start_index, end_index)) = self.index.get(&source)
+        {
+            for index in start_index .. end_index {
+                if self.inlined.contains(index) {
+                    f(self.targets[index])
+                }
+            }
+        }
+    }
+
+    pub fn get_direct_references_from(&self, source: TransItem<'tcx>) -> &[TransItem<'tcx>]
+    {
+        if let Some(&(start_index, end_index)) = self.index.get(&source) {
+            &self.targets[start_index .. end_index]
+        } else {
+            &self.targets[0 .. 0]
+        }
+    }
+}
 
 pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                  mode: TransItemCollectionMode)
                                                  -> (FnvHashSet<TransItem<'tcx>>,
-                                                     InliningMap<'tcx>) {
+                                                     ReferenceMap<'tcx>) {
     // We are not tracking dependencies of this pass as it has to be re-executed
     // every time no matter what.
     ccx.tcx().dep_graph.with_ignore(|| {
@@ -266,17 +332,17 @@ pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("Building translation item graph, beginning at roots");
         let mut visited = FnvHashSet();
         let mut recursion_depths = DefIdMap();
-        let mut inlining_map = FnvHashMap();
+        let mut reference_map = ReferenceMap::new();
 
         for root in roots {
             collect_items_rec(ccx,
                               root,
                               &mut visited,
                               &mut recursion_depths,
-                              &mut inlining_map);
+                              &mut reference_map);
         }
 
-        (visited, inlining_map)
+        (visited, reference_map)
     })
 }
 
@@ -307,7 +373,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
                                    starting_point: TransItem<'tcx>,
                                    visited: &mut FnvHashSet<TransItem<'tcx>>,
                                    recursion_depths: &mut DefIdMap<usize>,
-                                   inlining_map: &mut InliningMap<'tcx>) {
+                                   reference_map: &mut ReferenceMap<'tcx>) {
     if !visited.insert(starting_point.clone()) {
         // We've been here already, no need to search again.
         return;
@@ -326,7 +392,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
             let def_id = ccx.tcx().map.local_def_id(node_id);
             let ty = ccx.tcx().lookup_item_type(def_id).ty;
             let ty = glue::get_drop_glue_type(ccx, ty);
-            neighbors.push(TransItem::DropGlue(ty));
+            neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
             recursion_depth_reset = None;
         }
         TransItem::Fn(instance) => {
@@ -351,9 +417,10 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
+    record_references(ccx, starting_point, &neighbors[..], reference_map);
+
     for neighbour in neighbors {
-        record_inlined_use(ccx, starting_point, neighbour, inlining_map);
-        collect_items_rec(ccx, neighbour, visited, recursion_depths, inlining_map);
+        collect_items_rec(ccx, neighbour, visited, recursion_depths, reference_map);
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -363,16 +430,17 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     debug!("END collect_items_rec({})", starting_point.to_string(ccx));
 }
 
-fn record_inlined_use<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                caller: TransItem<'tcx>,
-                                callee: TransItem<'tcx>,
-                                inlining_map: &mut InliningMap<'tcx>) {
-    if callee.is_from_extern_crate() ||
-       callee.requests_inline(ccx.tcx()) {
-        inlining_map.entry(caller)
-                    .or_insert_with(|| FnvHashSet())
-                    .insert(callee);
-    }
+fn record_references<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                               caller: TransItem<'tcx>,
+                               callees: &[TransItem<'tcx>],
+                               reference_map: &mut ReferenceMap<'tcx>) {
+    let iter = callees.into_iter()
+                      .map(|callee| {
+                        let is_inlining_candidate = callee.is_from_extern_crate() ||
+                                                    callee.requests_inline(ccx.tcx());
+                        (*callee, is_inlining_candidate)
+                      });
+    reference_map.record_references(caller, iter);
 }
 
 fn check_recursion_limit<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
@@ -485,7 +553,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                       &ty);
             let ty = self.ccx.tcx().erase_regions(&ty);
             let ty = glue::get_drop_glue_type(self.ccx, ty);
-            self.output.push(TransItem::DropGlue(ty));
+            self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
         }
 
         self.super_lvalue(lvalue, context);
@@ -575,9 +643,17 @@ fn can_have_local_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                      ty: ty::Ty<'tcx>,
-                                      output: &mut Vec<TransItem<'tcx>>)
-{
+                                      dg: DropGlueKind<'tcx>,
+                                      output: &mut Vec<TransItem<'tcx>>) {
+    let ty = match dg {
+        DropGlueKind::Ty(ty) => ty,
+        DropGlueKind::TyContents(_) => {
+            // We already collected the neighbors of this item via the
+            // DropGlueKind::Ty variant.
+            return
+        }
+    };
+
     debug!("find_drop_glue_neighbors: {}", type_to_string(ccx, ty));
 
     // Make sure the exchange_free_fn() lang-item gets translated if
@@ -634,6 +710,10 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                   &Substs::empty());
             output.push(trans_item);
         }
+
+        // This type has a Drop implementation, we'll need the contents-only
+        // version of the glue too.
+        output.push(TransItem::DropGlue(DropGlueKind::TyContents(ty)));
     }
 
     // Finally add the types of nested values
@@ -661,7 +741,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 let field_type = glue::get_drop_glue_type(ccx, field_type);
 
                 if glue::type_needs_drop(ccx.tcx(), field_type) {
-                    output.push(TransItem::DropGlue(field_type));
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(field_type)));
                 }
             }
         }
@@ -669,7 +749,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             for upvar_ty in &substs.upvar_tys {
                 let upvar_ty = glue::get_drop_glue_type(ccx, upvar_ty);
                 if glue::type_needs_drop(ccx.tcx(), upvar_ty) {
-                    output.push(TransItem::DropGlue(upvar_ty));
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(upvar_ty)));
                 }
             }
         }
@@ -677,14 +757,14 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyArray(inner_type, _) => {
             let inner_type = glue::get_drop_glue_type(ccx, inner_type);
             if glue::type_needs_drop(ccx.tcx(), inner_type) {
-                output.push(TransItem::DropGlue(inner_type));
+                output.push(TransItem::DropGlue(DropGlueKind::Ty(inner_type)));
             }
         }
         ty::TyTuple(ref args) => {
             for arg in args {
                 let arg = glue::get_drop_glue_type(ccx, arg);
                 if glue::type_needs_drop(ccx.tcx(), arg) {
-                    output.push(TransItem::DropGlue(arg));
+                    output.push(TransItem::DropGlue(DropGlueKind::Ty(arg)));
                 }
             }
         }
@@ -1000,7 +1080,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                                                 self.ccx.tcx().map.local_def_id(item.id)));
 
                         let ty = glue::get_drop_glue_type(self.ccx, ty);
-                        self.output.push(TransItem::DropGlue(ty));
+                        self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                     }
                 }
             }
@@ -1413,10 +1493,13 @@ impl<'tcx> TransItem<'tcx> {
         let hir_map = &ccx.tcx().map;
 
         return match *self {
-            TransItem::DropGlue(t) => {
+            TransItem::DropGlue(dg) => {
                 let mut s = String::with_capacity(32);
-                s.push_str("drop-glue ");
-                push_unique_type_name(ccx, t, &mut s);
+                match dg {
+                    DropGlueKind::Ty(_) => s.push_str("drop-glue "),
+                    DropGlueKind::TyContents(_) => s.push_str("drop-glue-contents "),
+                };
+                push_unique_type_name(ccx, dg.ty(), &mut s);
                 s
             }
             TransItem::Fn(instance) => {
@@ -1442,8 +1525,8 @@ impl<'tcx> TransItem<'tcx> {
 
     fn to_raw_string(&self) -> String {
         match *self {
-            TransItem::DropGlue(t) => {
-                format!("DropGlue({})", t as *const _ as usize)
+            TransItem::DropGlue(dg) => {
+                format!("DropGlue({})", dg.ty() as *const _ as usize)
             }
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",

@@ -52,9 +52,8 @@ impl BitVector {
 
     pub fn grow(&mut self, num_bits: usize) {
         let num_words = u64s(num_bits);
-        let extra_words = self.data.len() - num_words;
-        if extra_words > 0 {
-            self.data.extend((0..extra_words).map(|_| 0));
+        if self.data.len() < num_words {
+            self.data.resize(num_words, 0)
         }
     }
 
@@ -284,15 +283,27 @@ fn union_two_vecs() {
 #[test]
 fn grow() {
     let mut vec1 = BitVector::new(65);
-    assert!(vec1.insert(3));
-    assert!(!vec1.insert(3));
-    assert!(vec1.insert(5));
-    assert!(vec1.insert(64));
+    for index in 0 .. 65 {
+        assert!(vec1.insert(index));
+        assert!(!vec1.insert(index));
+    }
     vec1.grow(128);
-    assert!(vec1.contains(3));
-    assert!(vec1.contains(5));
-    assert!(vec1.contains(64));
-    assert!(!vec1.contains(126));
+
+    // Check if the bits set before growing are still set
+    for index in 0 .. 65 {
+        assert!(vec1.contains(index));
+    }
+
+    // Check if the new bits are all un-set
+    for index in 65 .. 128 {
+        assert!(!vec1.contains(index));
+    }
+
+    // Check that we can set all new bits without running out of bounds
+    for index in 65 .. 128 {
+        assert!(vec1.insert(index));
+        assert!(!vec1.insert(index));
+    }
 }
 
 #[test]
