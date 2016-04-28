@@ -78,25 +78,29 @@ fn bit_str(bit: usize) -> String {
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 
-pub fn bits_to_string(words: &[usize], bytes: usize) -> String {
+pub fn bits_to_string(words: &[usize], bits: usize) -> String {
     let mut result = String::new();
     let mut sep = '[';
 
     // Note: this is a little endian printout of bytes.
 
+    // i tracks how many bits we have printed so far.
     let mut i = 0;
     for &word in words.iter() {
         let mut v = word;
-        for _ in 0..mem::size_of::<usize>() {
-            let byte = v & 0xFF;
-            if i >= bytes {
-                assert!(byte == 0);
-            } else {
-                result.push(sep);
-                result.push_str(&format!("{:02x}", byte));
-            }
+        loop { // for each byte in `v`:
+            let remain = bits - i;
+            // If less than a byte remains, then mask just that many bits.
+            let mask = if remain <= 8 { (1 << remain) - 1 } else { 0xFF };
+            assert!(mask <= 0xFF);
+            let byte = v & mask;
+
+            result.push(sep);
+            result.push_str(&format!("{:02x}", byte));
+
+            if remain <= 8 { break; }
             v >>= 8;
-            i += 1;
+            i += 8;
             sep = '-';
         }
     }
