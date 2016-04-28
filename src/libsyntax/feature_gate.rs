@@ -737,9 +737,7 @@ impl<'a> Context<'a> {
                                with the prefix `rustc_` \
                                are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
-            self.gate_feature("custom_derive", attr.span,
-                              "attributes of the form `#[derive_*]` are reserved \
-                               for the compiler");
+            self.gate_feature("custom_derive", attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs
@@ -814,6 +812,8 @@ pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
 
 pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
     "`#[derive]` for custom traits is not stable enough for use and is subject to change";
+pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
+    "attributes of the form `#[derive_*]` are reserved for the compiler";
 
 struct MacroVisitor<'a> {
     context: &'a Context<'a>
