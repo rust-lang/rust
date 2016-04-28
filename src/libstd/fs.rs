@@ -1543,7 +1543,7 @@ mod tests {
         let result = File::open(filename);
 
         if cfg!(unix) {
-            error!(result, "o such file or directory");
+            error!(result, "No such file or directory");
         }
         if cfg!(windows) {
             error!(result, "The system cannot find the file specified");
@@ -1558,7 +1558,7 @@ mod tests {
         let result = fs::remove_file(filename);
 
         if cfg!(unix) {
-            error!(result, "o such file or directory");
+            error!(result, "No such file or directory");
         }
         if cfg!(windows) {
             error!(result, "The system cannot find the file specified");
