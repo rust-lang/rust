@@ -408,6 +408,19 @@ pub fn build_session(sopts: config::Options,
                      registry: diagnostics::registry::Registry,
                      cstore: Rc<for<'a> CrateStore<'a>>)
                      -> Session {
+    build_session_with_codemap(sopts,
+                              local_crate_source_file,
+                              registry,
+                              cstore,
+                              Rc::new(codemap::CodeMap::new()))
+}
+
+pub fn build_session_with_codemap(sopts: config::Options,
+                                  local_crate_source_file: Option<PathBuf>,
+                                  registry: diagnostics::registry::Registry,
+                                  cstore: Rc<for<'a> CrateStore<'a>>,
+                                  codemap: Rc<codemap::CodeMap>)
+                                  -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
     // later via the source code.
@@ -419,7 +432,6 @@ pub fn build_session(sopts: config::Options,
         .unwrap_or(true);
     let treat_err_as_bug = sopts.treat_err_as_bug;
 
-    let codemap = Rc::new(codemap::CodeMap::new());
     let emitter: Box<Emitter> = match sopts.error_format {
         config::ErrorOutputType::HumanReadable(color_config) => {
             Box::new(EmitterWriter::stderr(color_config, Some(registry), codemap.clone()))
