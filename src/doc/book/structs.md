@@ -164,8 +164,8 @@ let black = Color(0, 0, 0);
 let origin = Point(0, 0, 0);
 ```
 
-Here, `black` and `origin` are not equal, even though they contain the same
-values.
+Here, `black` and `origin` are not the same type, even though they contain the
+same values.
 
 The members of a tuple struct may be accessed by dot notation or destructuring
 `let`, just like regular tuples:
