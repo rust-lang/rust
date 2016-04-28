@@ -159,7 +159,7 @@ impl<'c, 'b: 'c, 'a: 'b, 'tcx: 'a, OnReturn> PropagationContext<'c, 'b, 'a, 'tcx
     where OnReturn: Fn(&MoveData, &mut [usize], &repr::Lvalue)
 {
     fn reset(&mut self, bits: &mut [usize]) {
-        let e = if self.mbcx.flow_state.operator.initial_value() {usize::MAX} else {0};
+        let e = if MoveData::initial_value() {usize::MAX} else {0};
         for b in bits {
             *b = e;
         }
@@ -361,7 +361,7 @@ pub trait BitwiseOperator {
 /// Parameterization for the precise form of data flow that is used.
 pub trait DataflowOperator : BitwiseOperator {
     /// Specifies the initial value for each bit in the `on_entry` set
-    fn initial_value(&self) -> bool;
+    fn initial_value() -> bool;
 }
 
 pub trait BitDenotation: DataflowOperator {
@@ -382,7 +382,7 @@ impl<D: BitDenotation> DataflowState<D> {
         let num_blocks = mir.basic_blocks.len();
         let num_words = num_blocks * words_per_block;
 
-        let entry = if denotation.initial_value() { usize::MAX } else {0};
+        let entry = if D::initial_value() { usize::MAX } else {0};
 
         let zeroes = Bits::new(0, num_words);
         let on_entry = Bits::new(entry, num_words);
@@ -482,7 +482,7 @@ impl<'tcx> BitwiseOperator for MoveData<'tcx> {
 
 impl<'tcx> DataflowOperator for MoveData<'tcx> {
     #[inline]
-    fn initial_value(&self) -> bool {
+    fn initial_value() -> bool {
         false // no loans in scope by default
     }
 }
