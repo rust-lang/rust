@@ -14,6 +14,7 @@ use rustc::ty::TyCtxt;
 use rustc::mir::repr::{self, Mir};
 
 use std::io;
+use std::marker::PhantomData;
 use std::mem;
 use std::usize;
 
@@ -465,6 +466,122 @@ impl<D: BitDenotation> DataflowState<D> {
     }
 }
 
+// Dataflow analyses are built upon some interpretation of the
+// bitvectors attached to each basic block, represented via a
+// zero-sized structure.
+//
+// Note on PhantomData: Each interpretation will need to instantiate
+// the `Bit` and `Ctxt` associated types, and in this case, those
+// associated types need an associated lifetime `'tcx`. The
+// interpretive structures are zero-sized, so they all need to carry a
+// `PhantomData` representing how the structures relate to the `'tcx`
+// lifetime.
+//
+// But, since all of the uses of `'tcx` are solely via instances of
+// `Ctxt` that are passed into the `BitDenotation` methods, we can
+// consistently use a `PhantomData` that is just a function over a
+// `&Ctxt` (== `&MoveData<'tcx>).
+
+/// `MaybeInitializedLvals` tracks all l-values that might be
+/// initialized upon reaching a particular point in the control flow
+/// for a function.
+///
+/// For example, in code like the following, we have corresponding
+/// dataflow information shown in the right-hand comments.
+///
+/// ```rust
+/// struct S;
+/// fn foo(pred: bool) {                       // maybe-init:
+///                                            // {}
+///     let a = S; let b = S; let c; let d;    // {a, b}
+///
+///     if pred {
+///         drop(a);                           // {   b}
+///         b = S;                             // {   b}
+///
+///     } else {
+///         drop(b);                           // {a}
+///         d = S;                             // {a,       d}
+///
+///     }                                      // {a, b,    d}
+///
+///     c = S;                                 // {a, b, c, d}
+/// }
+/// ```
+///
+/// To determine whether an l-value *must* be initialized at a
+/// particular control-flow point, one can take the set-difference
+/// between this data and the data from `MaybeUninitializedLvals` at the
+/// corresponding control-flow point.
+///
+/// Similarly, at a given `drop` statement, the set-intersection
+/// between this data and `MaybeUninitializedLvals` yields the set of
+/// l-values that would require a dynamic drop-flag at that statement.
+#[derive(Debug, Default)]
+pub struct MaybeInitializedLvals<'tcx> {
+    // See "Note on PhantomData" above.
+    phantom: PhantomData<for <'a> Fn(&'a MoveData<'tcx>)>,
+}
+
+/// `MaybeUninitializedLvals` tracks all l-values that might be
+/// uninitialized upon reaching a particular point in the control flow
+/// for a function.
+///
+/// For example, in code like the following, we have corresponding
+/// dataflow information shown in the right-hand comments.
+///
+/// ```rust
+/// struct S;
+/// fn foo(pred: bool) {                       // maybe-uninit:
+///                                            // {a, b, c, d}
+///     let a = S; let b = S; let c; let d;    // {      c, d}
+///
+///     if pred {
+///         drop(a);                           // {a,    c, d}
+///         b = S;                             // {a,    c, d}
+///
+///     } else {
+///         drop(b);                           // {   b, c, d}
+///         d = S;                             // {   b, c   }
+///
+///     }                                      // {a, b, c, d}
+///
+///     c = S;                                 // {a, b,    d}
+/// }
+/// ```
+///
+/// To determine whether an l-value *must* be uninitialized at a
+/// particular control-flow point, one can take the set-difference
+/// between this data and the data from `MaybeInitializedLvals` at the
+/// corresponding control-flow point.
+///
+/// Similarly, at a given `drop` statement, the set-intersection
+/// between this data and `MaybeInitializedLvals` yields the set of
+/// l-values that would require a dynamic drop-flag at that statement.
+#[derive(Debug, Default)]
+pub struct MaybeUninitializedLvals<'tcx> {
+    // See "Note on PhantomData" above.
+    phantom: PhantomData<for <'a> Fn(&'a MoveData<'tcx>)>,
+}
+
+/// `MovingOutStatements` tracks the statements that perform moves out
+/// of particular l-values. More precisely, it tracks whether the
+/// *effect* of such moves (namely, the uninitialization of the
+/// l-value in question) can reach some point in the control-flow of
+/// the function, or if that effect is "killed" by some intervening
+/// operation reinitializing that l-value.
+///
+/// The resulting dataflow is a more enriched version of
+/// `MaybeUninitializedLvals`. Both structures on their own only tell
+/// you if an l-value *might* be uninitialized at a given point in the
+/// control flow. But `MovingOutStatements` also includes the added
+/// data of *which* particular statement causing the deinitialization
+/// that the borrow checker's error meessage may need to report.
+#[derive(Debug, Default)]
+pub struct MovingOutStatements<'tcx> {
+    // See "Note on PhantomData" above.
+    phantom: PhantomData<for <'a> Fn(&'a MoveData<'tcx>)>,
+}
 
 impl<'a, 'tcx> DataflowState<MoveData<'tcx>> {
     pub fn new_move_analysis(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
