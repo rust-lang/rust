@@ -61,15 +61,19 @@ with the accepted values are:
   should be a backwards-compatible extension.
 * Alignment values must be a power of two.
 
-A custom alignment cannot *decrease* the alignment of a structure unless it is
-also declared with `#[repr(packed)]` (to mirror what C does in this regard), but
-it can increase the alignment (and hence size) of a structure (as shown
-above).
+Multiple `#[repr(align = "..")]` directives are accepted on a struct
+declaration, and the actual alignment of the structure will be the maximum of
+all `align` directives and the natural alignment of the struct itself.
 
 Semantically, it will be guaranteed (modulo `unsafe` code) that custom alignment
 will always be respected. If a pointer to a non-aligned structure exists and is
 used then it is considered unsafe behavior. Local variables, objects in arrays,
 statics, etc, will all respect the custom alignment specified for a type.
+
+The `#[repr(align)]` attribute will not interact with `#[repr(packed)]`. That
+is, the `#[repr(packed)]` controls the orthogonal attribute of a structure of
+how the fields are packed, and the `#[repr(align)]` attribute only controls the
+alignment of the overall structure.
 
 # Drawbacks
 [drawbacks]: #drawbacks
