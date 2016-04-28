@@ -535,9 +535,9 @@ impl<T, S> HashSet<T, S>
 
     /// Adds a value to the set.
     ///
-    /// If the set did not have a value present, `true` is returned.
+    /// If the set did not have this value present, `true` is returned.
     ///
-    /// If the set did have this key present, `false` is returned.
+    /// If the set did have this value present, `false` is returned.
     ///
     /// # Examples
     ///
