@@ -15,8 +15,6 @@
 
 #![warn(exceeding_bitshifts)]
 
-#![feature(rustc_attrs)]
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let _x = 1_i32 << 32;
 }

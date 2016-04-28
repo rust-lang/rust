@@ -13,8 +13,6 @@
 // error-pattern:thread 'main' panicked at 'arithmetic operation overflowed'
 // compile-flags: -C debug-assertions
 
-#![feature(rustc_attrs)]
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     let x = 200u8 * 4;
 }
