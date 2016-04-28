@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=lazy
+// compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp
 
 #![crate_type="lib"]
 

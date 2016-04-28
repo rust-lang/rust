@@ -18,6 +18,7 @@ struct Root(Intermediate);
 //~ TRANS_ITEM drop-glue transitive_drop_glue::Intermediate[0]
 struct Intermediate(Leaf);
 //~ TRANS_ITEM drop-glue transitive_drop_glue::Leaf[0]
+//~ TRANS_ITEM drop-glue-contents transitive_drop_glue::Leaf[0]
 struct Leaf;
 
 impl Drop for Leaf {
@@ -25,11 +26,8 @@ impl Drop for Leaf {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM drop-glue transitive_drop_glue::Root[0]
 struct RootGen<T>(IntermediateGen<T>);
-//~ TRANS_ITEM drop-glue transitive_drop_glue::Root[0]
 struct IntermediateGen<T>(LeafGen<T>);
-//~ TRANS_ITEM drop-glue transitive_drop_glue::Root[0]
 struct LeafGen<T>(T);
 
 impl<T> Drop for LeafGen<T> {
@@ -44,12 +42,14 @@ fn main() {
     //~ TRANS_ITEM drop-glue transitive_drop_glue::RootGen[0]<u32>
     //~ TRANS_ITEM drop-glue transitive_drop_glue::IntermediateGen[0]<u32>
     //~ TRANS_ITEM drop-glue transitive_drop_glue::LeafGen[0]<u32>
+    //~ TRANS_ITEM drop-glue-contents transitive_drop_glue::LeafGen[0]<u32>
     //~ TRANS_ITEM fn transitive_drop_glue::{{impl}}[1]::drop[0]<u32>
     let _ = RootGen(IntermediateGen(LeafGen(0u32)));
 
     //~ TRANS_ITEM drop-glue transitive_drop_glue::RootGen[0]<i16>
     //~ TRANS_ITEM drop-glue transitive_drop_glue::IntermediateGen[0]<i16>
     //~ TRANS_ITEM drop-glue transitive_drop_glue::LeafGen[0]<i16>
+    //~ TRANS_ITEM drop-glue-contents transitive_drop_glue::LeafGen[0]<i16>
     //~ TRANS_ITEM fn transitive_drop_glue::{{impl}}[1]::drop[0]<i16>
     let _ = RootGen(IntermediateGen(LeafGen(0i16)));
 }
