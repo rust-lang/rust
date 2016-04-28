@@ -17,11 +17,13 @@ use std::mem;
 
 mod test;
 
+#[derive(Clone)]
 pub struct SnippetData {
     codemap: Rc<CodeMap>,
     files: Vec<FileInfo>,
 }
 
+#[derive(Clone)]
 pub struct FileInfo {
     file: Rc<FileMap>,
 
@@ -35,6 +37,7 @@ pub struct FileInfo {
     lines: Vec<Line>,
 }
 
+#[derive(Clone)]
 struct Line {
     line_index: usize,
     annotations: Vec<Annotation>,
@@ -429,6 +432,10 @@ impl FileInfo {
     }
 
     fn render_file_lines(&self, codemap: &Rc<CodeMap>) -> Vec<RenderedLine> {
+        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+            Ok(_) => false,
+            Err(_) => true,
+        };
         // As a first step, we elide any instance of more than one
         // continuous unannotated line.
 
@@ -436,28 +443,30 @@ impl FileInfo {
         let mut output = vec![];
 
         // First insert the name of the file.
-        match self.primary_span {
-            Some(span) => {
-                let lo = codemap.lookup_char_pos(span.lo);
-                output.push(RenderedLine {
-                    text: vec![StyledString {
-                        text: lo.file.name.clone(),
-                        style: Style::FileNameStyle,
-                    }, StyledString {
-                        text: format!(":{}:{}", lo.line, lo.col.0 + 1),
-                        style: Style::LineAndColumn,
-                    }],
-                    kind: RenderedLineKind::PrimaryFileName,
-                });
-            }
-            None => {
-                output.push(RenderedLine {
-                    text: vec![StyledString {
-                        text: self.file.name.clone(),
-                        style: Style::FileNameStyle,
-                    }],
-                    kind: RenderedLineKind::OtherFileName,
-                });
+        if !old_school {
+            match self.primary_span {
+                Some(span) => {
+                    let lo = codemap.lookup_char_pos(span.lo);
+                    output.push(RenderedLine {
+                        text: vec![StyledString {
+                            text: lo.file.name.clone(),
+                            style: Style::FileNameStyle,
+                        }, StyledString {
+                            text: format!(":{}:{}", lo.line, lo.col.0 + 1),
+                            style: Style::LineAndColumn,
+                        }],
+                        kind: RenderedLineKind::PrimaryFileName,
+                    });
+                }
+                None => {
+                    output.push(RenderedLine {
+                        text: vec![StyledString {
+                            text: self.file.name.clone(),
+                            style: Style::FileNameStyle,
+                        }],
+                        kind: RenderedLineKind::OtherFileName,
+                    });
+                }
             }
         }
 
@@ -466,7 +475,31 @@ impl FileInfo {
             // Consume lines with annotations.
             while let Some(line) = next_line {
                 if line.annotations.is_empty() { break; }
-                output.append(&mut self.render_line(line));
+
+                let mut rendered_line = self.render_line(line);
+                if old_school {
+                    match self.primary_span {
+                        Some(span) => {
+                            let lo = codemap.lookup_char_pos(span.lo);
+                            rendered_line[0].text.insert(0, StyledString {
+                                text: format!(":{} ", lo.line),
+                                style: Style::LineAndColumn,
+                            });
+                            rendered_line[0].text.insert(0, StyledString {
+                                text: lo.file.name.clone(),
+                                style: Style::FileNameStyle,
+                            });
+                            let gap_amount = rendered_line[0].text[0].text.len() +
+                                rendered_line[0].text[1].text.len();
+                            rendered_line[1].text.insert(0, StyledString {
+                                text: vec![" "; gap_amount].join(""),
+                                style: Style::NoStyle
+                            });
+                        }
+                        _ =>()
+                    }
+                }
+                output.append(&mut rendered_line);
                 next_line = lines_iter.next();
             }
 
@@ -492,6 +525,10 @@ impl FileInfo {
     }
 
     fn render_line(&self, line: &Line) -> Vec<RenderedLine> {
+        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+            Ok(_) => false,
+            Err(_) => true,
+        };
         let source_string = self.file.get_line(line.line_index)
                                      .unwrap_or("");
         let source_kind = RenderedLineKind::SourceText {
@@ -535,12 +572,34 @@ impl FileInfo {
 
         // Next, create the highlight line.
         for annotation in &annotations {
-            for p in annotation.start_col .. annotation.end_col {
-                if annotation.is_primary {
-                    styled_buffer.putc(1, p, '^', Style::UnderlinePrimary);
-                    styled_buffer.set_style(0, p, Style::UnderlinePrimary);
-                } else {
-                    styled_buffer.putc(1, p, '-', Style::UnderlineSecondary);
+            if old_school {
+                for p in annotation.start_col .. annotation.end_col {
+                    if p == annotation.start_col {
+                        styled_buffer.putc(1, p, '^',
+                            if annotation.is_primary {
+                                Style::UnderlinePrimary
+                            } else {
+                                Style::UnderlineSecondary
+                            });
+                    }
+                    else {
+                        styled_buffer.putc(1, p, '~',
+                            if annotation.is_primary {
+                                Style::UnderlinePrimary
+                            } else {
+                                Style::UnderlineSecondary
+                            });
+                    }
+                }
+            }
+            else {
+                for p in annotation.start_col .. annotation.end_col {
+                    if annotation.is_primary {
+                        styled_buffer.putc(1, p, '^', Style::UnderlinePrimary);
+                        styled_buffer.set_style(0, p, Style::UnderlinePrimary);
+                    } else {
+                        styled_buffer.putc(1, p, '-', Style::UnderlineSecondary);
+                    }
                 }
             }
         }
@@ -553,6 +612,9 @@ impl FileInfo {
 
         // If there are no annotations that need text, we're done.
         if labeled_annotations.is_empty() {
+            return styled_buffer.render(source_kind);
+        }
+        if old_school {
             return styled_buffer.render(source_kind);
         }
 
@@ -647,6 +709,14 @@ impl FileInfo {
 }
 
 fn prepend_prefixes(rendered_lines: &mut [RenderedLine]) {
+    let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+        Ok(_) => false,
+        Err(_) => true,
+    };
+    if old_school {
+        return;
+    }
+
     let prefixes: Vec<_> =
         rendered_lines.iter()
                       .map(|rl| rl.kind.prefix())
@@ -686,11 +756,14 @@ fn prepend_prefixes(rendered_lines: &mut [RenderedLine]) {
                                                   style: Style::LineNumber})
             }
             RenderedLineKind::OtherFileName => {
-                // >>>>> filename
+                //   ::: filename
                 // 22 |>
                 //   ^
                 //   padding_len
-                let dashes = (0..padding_len + 2).map(|_| '>')
+                let dashes = (0..padding_len - 1).map(|_| ' ')
+                                                 .chain(Some(':'))
+                                                 .chain(Some(':'))
+                                                 .chain(Some(':'))
                                                  .chain(Some(' '));
                 line.text.insert(0, StyledString {text: dashes.collect(),
                                                   style: Style::LineNumber})
