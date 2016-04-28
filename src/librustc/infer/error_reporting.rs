@@ -157,7 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         "scope of call-site for function"
                     }
                     region::CodeExtentData::ParameterScope { .. } => {
-                        "scope of parameters for function"
+                        "scope of function body"
                     }
                     region::CodeExtentData::DestructionScope(_) => {
                         new_string = format!("destruction scope surrounding {}", tag);
