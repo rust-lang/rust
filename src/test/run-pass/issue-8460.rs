@@ -19,13 +19,11 @@ use std::thread;
 macro_rules! check {
     ($($e:expr),*) => {
         $(assert!(thread::spawn({
-            #[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
             move|| { $e; }
         }).join().is_err());)*
     }
 }
 
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     check![
         isize::min_value() / -1,

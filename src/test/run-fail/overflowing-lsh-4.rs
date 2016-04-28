@@ -18,8 +18,6 @@
 
 #![warn(exceeding_bitshifts)]
 
-#![feature(rustc_attrs)]
-#[rustc_no_mir] // FIXME #29769 MIR overflow checking is TBD.
 fn main() {
     // this signals overflow when checking is on
     let x = 1_i8 << 17;
