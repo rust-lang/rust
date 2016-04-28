@@ -333,11 +333,11 @@ pub enum InlineAttr {
 pub fn find_inline_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> InlineAttr {
     attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.node.value.node {
-            MetaItemKind::Word(ref n) if *n == "inline" => {
+            MetaItemKind::Word(ref n) if n == "inline" => {
                 mark_used(attr);
                 InlineAttr::Hint
             }
-            MetaItemKind::List(ref n, ref items) if *n == "inline" => {
+            MetaItemKind::List(ref n, ref items) if n == "inline" => {
                 mark_used(attr);
                 if items.len() != 1 {
                     diagnostic.map(|d|{ d.span_err(attr.span, "expected one argument"); });
@@ -711,7 +711,7 @@ pub fn require_unique_names(diagnostic: &Handler, metas: &[P<MetaItem>]) {
 pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> {
     let mut acc = Vec::new();
     match attr.node.value.node {
-        ast::MetaItemKind::List(ref s, ref items) if *s == "repr" => {
+        ast::MetaItemKind::List(ref s, ref items) if s == "repr" => {
             mark_used(attr);
             for item in items {
                 match item.node {
