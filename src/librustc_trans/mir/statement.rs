@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::mir::repr as mir;
-use common::BlockAndBuilder;
+use common::{self, BlockAndBuilder};
 use debuginfo::DebugLoc;
 
 use super::MirContext;
@@ -42,9 +42,18 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 bcx
                             }
                             TempRef::Operand(Some(_)) => {
-                                span_bug!(statement.span,
-                                          "operand {:?} already assigned",
-                                          rvalue);
+                                let ty = self.mir.lvalue_ty(bcx.tcx(), lvalue);
+                                let ty = bcx.monomorphize(&ty.to_ty(bcx.tcx()));
+
+                                if !common::type_is_zero_size(bcx.ccx(), ty) {
+                                    span_bug!(statement.span,
+                                              "operand {:?} already assigned",
+                                              rvalue);
+                                } else {
+                                    // If the type is zero-sized, it's already been set here,
+                                    // but we still need to make sure we translate the operand
+                                    self.trans_rvalue_operand(bcx, rvalue, debug_loc).0
+                                }
                             }
                         }
                     }

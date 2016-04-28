@@ -436,47 +436,47 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 fn_ty: &FnType,
                                 next_idx: &mut usize,
                                 callee: &mut CalleeData) {
-        // FIXME: consider having some optimization to avoid tupling/untupling
-        // (and storing/loading in the case of immediates)
+        let tuple = self.trans_operand(bcx, operand);
 
-        // avoid trans_operand for pointless copying
-        let lv = match *operand {
-            mir::Operand::Consume(ref lvalue) => self.trans_lvalue(bcx, lvalue),
-            mir::Operand::Constant(ref constant) => {
-                // FIXME: consider being less pessimized
-                if constant.ty.is_nil() {
-                    return;
+        let arg_types = match tuple.ty.sty {
+            ty::TyTuple(ref tys) => tys,
+            _ => span_bug!(self.mir.span,
+                           "bad final argument to \"rust-call\" fn {:?}", tuple.ty)
+        };
+
+        // Handle both by-ref and immediate tuples.
+        match tuple.val {
+            Ref(llval) => {
+                let base_repr = adt::represent_type(bcx.ccx(), tuple.ty);
+                let base = adt::MaybeSizedValue::sized(llval);
+                for (n, &ty) in arg_types.iter().enumerate() {
+                    let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
+                    let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
+                        let (lldata, llextra) = load_fat_ptr(bcx, ptr);
+                        FatPtr(lldata, llextra)
+                    } else {
+                        // trans_argument will load this if it needs to
+                        Ref(ptr)
+                    };
+                    self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
                 }
 
-                let ty = bcx.monomorphize(&constant.ty);
-                let lv = LvalueRef::alloca(bcx, ty, "__untuple_alloca");
-                let constant = self.trans_constant(bcx, constant);
-                self.store_operand(bcx, lv.llval, constant);
-                lv
-           }
-        };
-
-        let lv_ty = lv.ty.to_ty(bcx.tcx());
-        let result_types = match lv_ty.sty {
-            ty::TyTuple(ref tys) => tys,
-            _ => span_bug!(
-                self.mir.span,
-                "bad final argument to \"rust-call\" fn {:?}", lv_ty)
-        };
-
-        let base_repr = adt::represent_type(bcx.ccx(), lv_ty);
-        let base = adt::MaybeSizedValue::sized(lv.llval);
-        for (n, &ty) in result_types.iter().enumerate() {
-            let ptr = adt::trans_field_ptr_builder(bcx, &base_repr, base, Disr(0), n);
-            let val = if common::type_is_fat_ptr(bcx.tcx(), ty) {
-                let (lldata, llextra) = load_fat_ptr(bcx, ptr);
-                FatPtr(lldata, llextra)
-            } else {
-                // Don't bother loading the value, trans_argument will.
-                Ref(ptr)
-            };
-            self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
+            }
+            Immediate(llval) => {
+                for (n, &ty) in arg_types.iter().enumerate() {
+                    let mut elem = bcx.extract_value(llval, n);
+                    // Truncate bools to i1, if needed
+                    if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx()) {
+                        elem = bcx.trunc(elem, Type::i1(bcx.ccx()));
+                    }
+                    // If the tuple is immediate, the elements are as well
+                    let val = Immediate(elem);
+                    self.trans_argument(bcx, val, llargs, fn_ty, next_idx, callee);
+                }
+            }
+            FatPtr(_, _) => bug!("tuple is a fat pointer?!")
         }
+
     }
 
     fn get_personality_slot(&mut self, bcx: &BlockAndBuilder<'bcx, 'tcx>) -> ValueRef {

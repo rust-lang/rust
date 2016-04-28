@@ -50,5 +50,3 @@ mod non_user {
 
     }
 }
-
-//~ TRANS_ITEM drop-glue i8

@@ -189,6 +189,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
                 block.and(Rvalue::Aggregate(AggregateKind::Adt(adt_def, variant_index, substs),
                                             fields))
             }
+            ExprKind::Assign { .. } |
+            ExprKind::AssignOp { .. } => {
+                block = unpack!(this.stmt_expr(block, expr));
+                block.and(this.unit_rvalue())
+            }
             ExprKind::Literal { .. } |
             ExprKind::Block { .. } |
             ExprKind::Match { .. } |
@@ -201,8 +206,6 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             ExprKind::Index { .. } |
             ExprKind::VarRef { .. } |
             ExprKind::SelfRef |
-            ExprKind::Assign { .. } |
-            ExprKind::AssignOp { .. } |
             ExprKind::Break { .. } |
             ExprKind::Continue { .. } |
             ExprKind::Return { .. } |

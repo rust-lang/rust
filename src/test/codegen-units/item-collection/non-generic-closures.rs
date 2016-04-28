@@ -59,5 +59,3 @@ fn main() {
 fn run_closure(f: &Fn(i32)) {
     f(3);
 }
-
-//~ TRANS_ITEM drop-glue i8

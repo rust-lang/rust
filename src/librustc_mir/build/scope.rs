@@ -497,8 +497,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
     pub fn build_drop(&mut self,
                       block: BasicBlock,
                       span: Span,
-                      value: Lvalue<'tcx>)
-                      -> BlockAnd<()> {
+                      value: Lvalue<'tcx>,
+                      ty: Ty<'tcx>) -> BlockAnd<()> {
+        if !self.hir.needs_drop(ty) {
+            return block.unit();
+        }
         let scope_id = self.innermost_scope_id();
         let next_target = self.cfg.start_new_block();
         let diverge_target = self.diverge_cleanup();

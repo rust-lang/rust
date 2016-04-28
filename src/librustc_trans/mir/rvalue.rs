@@ -29,6 +29,7 @@ use type_of;
 use tvec;
 use value::Value;
 use Disr;
+use glue;
 
 use super::MirContext;
 use super::operand::{OperandRef, OperandValue};
@@ -217,7 +218,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
             }
 
             _ => {
-                assert!(rvalue_creates_operand(rvalue));
+                assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue, debug_loc);
                 self.store_operand(&bcx, dest.llval, temp);
                 bcx
@@ -231,7 +232,8 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                 debug_loc: DebugLoc)
                                 -> (BlockAndBuilder<'bcx, 'tcx>, OperandRef<'tcx>)
     {
-        assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
+        assert!(rvalue_creates_operand(&self.mir, &bcx, rvalue),
+                "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -483,7 +485,10 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 (bcx, operand)
             }
 
-            mir::Rvalue::Use(..) |
+            mir::Rvalue::Use(ref operand) => {
+                let operand = self.trans_operand(&bcx, operand);
+                (bcx, operand)
+            }
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) |
             mir::Rvalue::Slice { .. } |
@@ -599,7 +604,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
     }
 }
 
-pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
+pub fn rvalue_creates_operand<'bcx, 'tcx>(mir: &mir::Mir<'tcx>,
+                                          bcx: &BlockAndBuilder<'bcx, 'tcx>,
+                                          rvalue: &mir::Rvalue<'tcx>) -> bool {
     match *rvalue {
         mir::Rvalue::Ref(..) |
         mir::Rvalue::Len(..) |
@@ -608,16 +615,20 @@ pub fn rvalue_creates_operand<'tcx>(rvalue: &mir::Rvalue<'tcx>) -> bool {
         mir::Rvalue::UnaryOp(..) |
         mir::Rvalue::Box(..) =>
             true,
-        mir::Rvalue::Use(..) | // (**)
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) |
         mir::Rvalue::Slice { .. } |
         mir::Rvalue::InlineAsm { .. } =>
             false,
+        mir::Rvalue::Use(ref operand) => {
+            let ty = mir.operand_ty(bcx.tcx(), operand);
+            let ty = bcx.monomorphize(&ty);
+            // Types that don't need dropping can just be an operand,
+            // this allows temporary lvalues, used as rvalues, to
+            // avoid a stack slot when it's unnecessary
+            !glue::type_needs_drop(bcx.tcx(), ty)
+        }
     }
 
     // (*) this is only true if the type is suitable
-    // (**) we need to zero-out the source operand after moving, so we are restricted to either
-    // ensuring all users of `Use` zero it out themselves or not allowing to “create” operand for
-    // it.
 }

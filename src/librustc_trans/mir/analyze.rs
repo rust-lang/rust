@@ -14,13 +14,13 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc::mir::repr as mir;
 use rustc::mir::visit::{Visitor, LvalueContext};
-use common::{self, Block};
+use common::{self, Block, BlockAndBuilder};
 use super::rvalue;
 
 pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
-                               mir: &mir::Mir<'tcx>)
-                               -> BitVector {
-    let mut analyzer = TempAnalyzer::new(mir.temp_decls.len());
+                               mir: &mir::Mir<'tcx>) -> BitVector {
+    let bcx = bcx.build();
+    let mut analyzer = TempAnalyzer::new(mir, &bcx, mir.temp_decls.len());
 
     analyzer.visit_mir(mir);
 
@@ -30,7 +30,8 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
         if ty.is_scalar() ||
             ty.is_unique() ||
             ty.is_region_ptr() ||
-            ty.is_simd()
+            ty.is_simd() ||
+            common::type_is_zero_size(bcx.ccx(), ty)
         {
             // These sorts of types are immediates that we can store
             // in an ValueRef without an alloca.
@@ -50,14 +51,20 @@ pub fn lvalue_temps<'bcx,'tcx>(bcx: Block<'bcx,'tcx>,
     analyzer.lvalue_temps
 }
 
-struct TempAnalyzer {
+struct TempAnalyzer<'mir, 'bcx: 'mir, 'tcx: 'bcx> {
+    mir: &'mir mir::Mir<'tcx>,
+    bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
     lvalue_temps: BitVector,
     seen_assigned: BitVector
 }
 
-impl TempAnalyzer {
-    fn new(temp_count: usize) -> TempAnalyzer {
+impl<'mir, 'bcx, 'tcx> TempAnalyzer<'mir, 'bcx, 'tcx> {
+    fn new(mir: &'mir mir::Mir<'tcx>,
+           bcx: &'mir BlockAndBuilder<'bcx, 'tcx>,
+           temp_count: usize) -> TempAnalyzer<'mir, 'bcx, 'tcx> {
         TempAnalyzer {
+            mir: mir,
+            bcx: bcx,
             lvalue_temps: BitVector::new(temp_count),
             seen_assigned: BitVector::new(temp_count)
         }
@@ -75,7 +82,7 @@ impl TempAnalyzer {
     }
 }
 
-impl<'tcx> Visitor<'tcx> for TempAnalyzer {
+impl<'mir, 'bcx, 'tcx> Visitor<'tcx> for TempAnalyzer<'mir, 'bcx, 'tcx> {
     fn visit_assign(&mut self,
                     block: mir::BasicBlock,
                     lvalue: &mir::Lvalue<'tcx>,
@@ -85,7 +92,7 @@ impl<'tcx> Visitor<'tcx> for TempAnalyzer {
         match *lvalue {
             mir::Lvalue::Temp(index) => {
                 self.mark_assigned(index as usize);
-                if !rvalue::rvalue_creates_operand(rvalue) {
+                if !rvalue::rvalue_creates_operand(self.mir, self.bcx, rvalue) {
                     self.mark_as_lvalue(index as usize);
                 }
             }

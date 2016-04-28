@@ -46,6 +46,10 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         Operand::Constant(constant)
     }
 
+    pub fn unit_rvalue(&mut self) -> Rvalue<'tcx> {
+        Rvalue::Aggregate(AggregateKind::Tuple, vec![])
+    }
+
     pub fn push_usize(&mut self,
                       block: BasicBlock,
                       scope_id: ScopeId,

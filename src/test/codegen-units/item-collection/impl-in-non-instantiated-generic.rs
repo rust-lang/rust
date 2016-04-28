@@ -32,5 +32,3 @@ pub fn generic_function<T>(x: T) -> (T, i32) {
 fn main() {
     0i64.foo();
 }
-
-//~ TRANS_ITEM drop-glue i8
