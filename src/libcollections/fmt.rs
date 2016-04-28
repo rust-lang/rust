@@ -395,8 +395,19 @@
 //! `0`.
 //!
 //! The value for the width can also be provided as a `usize` in the list of
-//! parameters by using the `2$` syntax indicating that the second argument is a
-//! `usize` specifying the width.
+//! parameters by using the dollar syntax indicating that the second argument is
+//! a `usize` specifying the width, for example:
+//!
+//! ```
+//! // All of these print "Hello x    !"
+//! println!("Hello {:5}!", "x");
+//! println!("Hello {:1$}!", "x", 5);
+//! println!("Hello {1:0$}!", 5, "x");
+//! ```
+//!
+//! Referring to an argument with the dollar syntax does not affect the "next
+//! argument" counter, so it's usually a good idea to refer to all arguments by
+//! their position explicitly.
 //!
 //! ## Precision
 //!
