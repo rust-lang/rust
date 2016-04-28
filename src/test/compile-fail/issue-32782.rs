@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the trace_macros feature gate is on.
+macro_rules! bar (
+    () => ()
+);
 
-fn main() {
-    // (Infrastructure does not attempt to detect uses in macro definitions.)
-    macro_rules! expando {
-        ($x: ident) => { trace_macros!($x) }
-    }
+macro_rules! foo (
+    () => (
+        #[allow_internal_unstable] //~ ERROR allow_internal_unstable side-steps
+        bar!();
+    );
+);
 
-    expando!(true); //~ ERROR `trace_macros` is not stable
-}
+foo!();
+fn main() {}
