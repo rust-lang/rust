@@ -380,6 +380,15 @@ impl Build {
                     check::compiletest(self, &compiler, target.target,
                                        "run-make", "run-make")
                 }
+                CheckCrateStd { compiler } => {
+                    check::krate(self, &compiler, target.target, Mode::Libstd)
+                }
+                CheckCrateTest { compiler } => {
+                    check::krate(self, &compiler, target.target, Mode::Libtest)
+                }
+                CheckCrateRustc { compiler } => {
+                    check::krate(self, &compiler, target.target, Mode::Librustc)
+                }
 
                 DistDocs { stage } => dist::docs(self, stage, target.target),
                 DistMingw { _dummy } => dist::mingw(self, target.target),
@@ -485,6 +494,7 @@ impl Build {
                   self.config.rust_debug_assertions.to_string())
              .env("RUSTC_SNAPSHOT", &self.rustc)
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
+             .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
              .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
@@ -520,7 +530,6 @@ impl Build {
         if self.config.rust_optimize {
             cargo.arg("--release");
         }
-        self.add_rustc_lib_path(compiler, &mut cargo);
         return cargo
     }
 

@@ -8,3 +8,7 @@ build = "build.rs"
 name = "core"
 path = "lib.rs"
 test = false
+
+[[test]]
+name = "coretest"
+path = "../libcoretest/lib.rs"

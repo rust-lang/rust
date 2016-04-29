@@ -7,6 +7,7 @@ version = "0.0.0"
 name = "rustc_resolve"
 path = "lib.rs"
 crate-type = ["dylib"]
+test = false
 
 [dependencies]
 log = { path = "../liblog" }

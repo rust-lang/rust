@@ -8,7 +8,6 @@ build = "build.rs"
 name = "std"
 path = "lib.rs"
 crate-type = ["dylib", "rlib"]
-test = false
 
 [dependencies]
 alloc = { path = "../liballoc" }
