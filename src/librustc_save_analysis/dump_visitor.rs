@@ -1032,8 +1032,8 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                         }
 
                         let sub_span = self.span
-                                           .sub_span_of_token(path.span, token::BinOp(token::Star));
-                        if !self.span.filter_generated(sub_span, path.span) {
+                                           .sub_span_of_token(item.span, token::BinOp(token::Star));
+                        if !self.span.filter_generated(sub_span, item.span) {
                             self.dumper.use_glob(UseGlobData {
                                 span: sub_span.expect("No span found for use glob"),
                                 id: item.id,
