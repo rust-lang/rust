@@ -82,7 +82,7 @@ impl<'tcx> Const<'tcx> {
             },
             ConstVal::Integral(Infer(v)) => C_integral(llty, v as u64, false),
             ConstVal::Integral(InferSigned(v)) => C_integral(llty, v as u64, true),
-            ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
+            ConstVal::Str(v) => C_str_slice(ccx, v),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(did, mut field_values) => {
                 let repr = adt::represent_type(ccx, ty);
