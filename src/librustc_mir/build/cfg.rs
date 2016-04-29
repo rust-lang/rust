@@ -86,17 +86,12 @@ impl<'tcx> CFG<'tcx> {
                      scope: ScopeId,
                      span: Span,
                      kind: TerminatorKind<'tcx>) {
-        debug_assert!(!self.terminated(block),
+        debug_assert!(self.block_data(block).terminator.is_none(),
                       "terminate: block {:?} already has a terminator set", block);
         self.block_data_mut(block).terminator = Some(Terminator {
             span: span,
             scope: scope,
             kind: kind,
         });
-    }
-
-    /// Returns whether or not the given block has been terminated or not
-    pub fn terminated(&self, block: BasicBlock) -> bool {
-        self.block_data(block).terminator.is_some()
     }
 }
