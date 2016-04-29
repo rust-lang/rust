@@ -41,6 +41,7 @@ use syntax::attr::IntType;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
+use std::collections::BTreeMap;
 
 use rustc_const_math::*;
 
@@ -410,7 +411,8 @@ pub enum ErrKind {
     IntermediateUnsignedNegative,
     /// Expected, Got
     TypeMismatch(String, ConstInt),
-    BadType(ConstVal),
+    /// target type, got value
+    BadType(String, ConstVal),
     ErroneousReferencedConstant(Box<ConstEvalErr>),
     CharCast(ConstInt),
     Aggregate(Vec<ConstEvalErr>),
@@ -472,7 +474,7 @@ impl ConstEvalErr {
                 format!("mismatched types: expected `{}`, found `{}`",
                         expected, got.description()).into_cow()
             },
-            BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
+            BadType(ref ty, ref i) => format!("expected `{}`, found `{:?}`", ty, i).into_cow(),
             ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
             CharCast(ref got) => {
                 format!("only `u8` can be cast as `char`, not `{}`", got.description()).into_cow()
@@ -1023,7 +1025,8 @@ fn infer<'a, 'tcx>(i: ConstInt,
             let int_ty = tcx.enum_repr_type(hints.iter().next());
             infer(i, tcx, &int_ty.to_ty(tcx).sty)
         },
-        (_, i) => Err(BadType(ConstVal::Integral(i))),
+        (&ty::TyParam(_), i) => Ok(i),
+        (ty, i) => Err(BadType(ty.to_string(), ConstVal::Integral(i))),
     }
 }
 
