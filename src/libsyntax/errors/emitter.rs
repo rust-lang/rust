@@ -40,7 +40,8 @@ pub trait CoreEmitter {
                     msg: &str,
                     code: Option<&str>,
                     lvl: Level,
-                    is_header: bool);
+                    is_header: bool,
+                    show_snippet: bool);
 }
 
 impl<T: CoreEmitter> Emitter for T {
@@ -53,25 +54,47 @@ impl<T: CoreEmitter> Emitter for T {
                           msg,
                           code,
                           lvl,
+                          true,
                           true);
     }
 
     fn emit_struct(&mut self, db: &DiagnosticBuilder) {
+        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+            Ok(_) => false,
+            Err(_) => true,
+        };
+        let db_span = FullSpan(db.span.clone());
         self.emit_message(&FullSpan(db.span.clone()),
                           &db.message,
                           db.code.as_ref().map(|s| &**s),
                           db.level,
+                          true,
                           true);
         for child in &db.children {
             let render_span = child.render_span
                                    .clone()
                                    .unwrap_or_else(
                                        || FullSpan(child.span.clone()));
-            self.emit_message(&render_span,
-                              &child.message,
-                              None,
-                              child.level,
-                              false);
+
+            if !old_school {
+                self.emit_message(&render_span,
+                                    &child.message,
+                                    None,
+                                    child.level,
+                                    false,
+                                    true);
+            } else {
+                let (render_span, show_snippet) = match render_span.span().primary_span() {
+                    None => (db_span.clone(), false),
+                    _ => (render_span, true)
+                };
+                self.emit_message(&render_span,
+                                    &child.message,
+                                    None,
+                                    child.level,
+                                    false,
+                                    show_snippet);
+            }
         }
     }
 }
@@ -108,7 +131,8 @@ impl CoreEmitter for BasicEmitter {
                     msg: &str,
                     code: Option<&str>,
                     lvl: Level,
-                    _is_header: bool) {
+                    _is_header: bool,
+                    _show_snippet: bool) {
         // we ignore the span as we have no access to a codemap at this point
         if let Err(e) = print_diagnostic(&mut self.dst, "", lvl, msg, code) {
             panic!("failed to print diagnostics: {:?}", e);
@@ -146,8 +170,9 @@ impl CoreEmitter for EmitterWriter {
                     msg: &str,
                     code: Option<&str>,
                     lvl: Level,
-                    is_header: bool) {
-        match self.emit_message_(rsp, msg, code, lvl, is_header) {
+                    is_header: bool,
+                    show_snippet: bool) {
+        match self.emit_message_(rsp, msg, code, lvl, is_header, show_snippet) {
             Ok(()) => { }
             Err(e) => panic!("failed to emit error: {}", e)
         }
@@ -213,7 +238,8 @@ impl EmitterWriter {
                      msg: &str,
                      code: Option<&str>,
                      lvl: Level,
-                     is_header: bool)
+                     is_header: bool,
+                     show_snippet: bool)
                      -> io::Result<()> {
         if is_header {
             if self.first {
@@ -243,8 +269,22 @@ impl EmitterWriter {
                 }
             }
             _ => {
-                print_diagnostic(&mut self.dst, "", lvl, msg, code)?
+                if self.old_school {
+                    let loc = match rsp.span().primary_span() {
+                        Some(COMMAND_LINE_SP) | Some(DUMMY_SP) => "".to_string(),
+                        Some(ps) => self.cm.span_to_string(ps),
+                        None => "".to_string()
+                    };
+                    print_diagnostic(&mut self.dst, &loc, lvl, msg, code)?
+                }
+                else {
+                    print_diagnostic(&mut self.dst, "", lvl, msg, code)?
+                }
             }
+        }
+
+        if !show_snippet {
+            return Ok(());
         }
 
         // Watch out for various nasty special spans; don't try to
@@ -333,8 +373,10 @@ impl EmitterWriter {
                                                 msp.primary_span());
         if self.old_school {
             let mut output_vec = vec![];
+
             for span_label in msp.span_labels() {
                 let mut snippet_data = snippet_data.clone();
+
                 snippet_data.push(span_label.span,
                                   span_label.is_primary,
                                   span_label.label);
@@ -412,7 +454,16 @@ fn print_diagnostic(dst: &mut Destination,
                     code: Option<&str>)
                     -> io::Result<()> {
     if !topic.is_empty() {
-        write!(dst, "{}: ", topic)?;
+        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
+            Ok(_) => false,
+            Err(_) => true,
+        };
+        if !old_school {
+            write!(dst, "{}: ", topic)?;
+        }
+        else {
+            write!(dst, "{} ", topic)?;
+        }
         dst.reset_attrs()?;
     }
     dst.start_attr(term::Attr::Bold)?;
