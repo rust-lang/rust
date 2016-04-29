@@ -283,6 +283,24 @@ pub enum Visibility {
     PrivateExternal,
 }
 
+pub trait NodeIdTree {
+    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool;
+}
+
+impl<'a> NodeIdTree for ast_map::Map<'a> {
+    fn is_descendant_of(&self, node: NodeId, ancestor: NodeId) -> bool {
+        let mut node_ancestor = node;
+        while node_ancestor != ancestor {
+            let node_ancestor_parent = self.get_module_parent(node_ancestor);
+            if node_ancestor_parent == node_ancestor {
+                return false;
+            }
+            node_ancestor = node_ancestor_parent;
+        }
+        true
+    }
+}
+
 impl Visibility {
     pub fn from_hir(visibility: &hir::Visibility, id: NodeId, tcx: &TyCtxt) -> Self {
         match *visibility {
@@ -301,7 +319,7 @@ impl Visibility {
     }
 
     /// Returns true if an item with this visibility is accessible from the given block.
-    pub fn is_accessible_from(self, block: NodeId, map: &ast_map::Map) -> bool {
+    pub fn is_accessible_from<T: NodeIdTree>(self, block: NodeId, tree: &T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
             Visibility::Public => return true,
@@ -311,24 +329,18 @@ impl Visibility {
             Visibility::Restricted(module) => module,
         };
 
-        let mut block_ancestor = block;
-        loop {
-            if block_ancestor == restriction { return true }
-            let block_ancestor_parent = map.get_module_parent(block_ancestor);
-            if block_ancestor_parent == block_ancestor { return false }
-            block_ancestor = block_ancestor_parent;
-        }
+        tree.is_descendant_of(block, restriction)
     }
 
     /// Returns true if this visibility is at least as accessible as the given visibility
-    pub fn is_at_least(self, vis: Visibility, map: &ast_map::Map) -> bool {
+    pub fn is_at_least<T: NodeIdTree>(self, vis: Visibility, tree: &T) -> bool {
         let vis_restriction = match vis {
             Visibility::Public => return self == Visibility::Public,
             Visibility::PrivateExternal => return true,
             Visibility::Restricted(module) => module,
         };
 
-        self.is_accessible_from(vis_restriction, map)
+        self.is_accessible_from(vis_restriction, tree)
     }
 }
 
