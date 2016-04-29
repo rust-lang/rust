@@ -200,6 +200,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
                 CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body_id });
         unpack!(block = builder.in_scope(arg_extent, block, |builder, arg_scope_id| {
             arg_decls = Some(unpack!(block = builder.args_and_body(block,
+                                                                   return_ty,
                                                                    implicit_arguments,
                                                                    explicit_arguments,
                                                                    arg_scope_id,
@@ -268,6 +269,7 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
 impl<'a,'tcx> Builder<'a,'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,
+                     return_ty: FnOutput<'tcx>,
                      implicit_arguments: Vec<Ty<'tcx>>,
                      explicit_arguments: Vec<(Ty<'tcx>, &'tcx hir::Pat)>,
                      argument_scope_id: ScopeId,
@@ -313,8 +315,14 @@ impl<'a,'tcx> Builder<'a,'tcx> {
             })
             .collect();
 
+        // FIXME(#32959): temporary hack for the issue at hand
+        let return_is_unit = if let FnOutput::FnConverging(t) = return_ty {
+            t.is_nil()
+        } else {
+            false
+        };
         // start the first basic block and translate the body
-        unpack!(block = self.ast_block(&Lvalue::ReturnPointer, block, ast_block));
+        unpack!(block = self.ast_block(&Lvalue::ReturnPointer, return_is_unit, block, ast_block));
 
         block.and(arg_decls)
     }
