@@ -1,4 +1,4 @@
-% Comments [FIXME: needs RFC]
+% Comments [RFC #505]
 
 ### Avoid block comments.
 
@@ -74,7 +74,25 @@ For example:
 
 ### Code snippets
 
-> **[FIXME]**
+Only use inner doc comments `//!` to write crate and module-level documentation,
+nothing else. When using `mod` blocks, prefer `///` outside of the block:
+
+```rust
+/// This module contains tests
+mod test {
+    // ...
+}
+```
+
+over
+
+```rust
+mod test {
+    //! This module contains tests
+
+    // ...
+}
+```
 
 ### Avoid inner doc comments.
 
