@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use infer::type_variable;
 use ty::subst::{self, VecPerParamSpace};
-use traits;
 use ty::{self, Lift, TraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
@@ -24,14 +24,31 @@ use hir;
 
 impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
     type Lifted = (A::Lifted, B::Lifted);
-    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.0).and_then(|a| tcx.lift(&self.1).map(|b| (a, b)))
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
+    type Lifted = Option<T::Lifted>;
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        self.as_ref().map(|x| tcx.lift(x))
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>, E: Lift<'tcx>> Lift<'tcx> for Result<T, E> {
+    type Lifted = Result<T::Lifted, E::Lifted>;
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            Ok(ref x) => tcx.lift(x).map(Ok),
+            Err(ref e) => tcx.lift(e).map(Err)
+        }
     }
 }
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for [T] {
     type Lifted = Vec<T::Lifted>;
-    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         // type annotation needed to inform `projection_must_outlive`
         let mut result : Vec<<T as Lift<'tcx>>::Lifted>
             = Vec::with_capacity(self.len());
@@ -55,7 +72,7 @@ impl<'tcx> Lift<'tcx> for ty::Region {
 
 impl<'a, 'tcx> Lift<'tcx> for TraitRef<'a> {
     type Lifted = TraitRef<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<TraitRef<'tcx>> {
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<TraitRef<'tcx>> {
         tcx.lift(&self.substs).map(|substs| TraitRef {
             def_id: self.def_id,
             substs: substs
@@ -65,7 +82,8 @@ impl<'a, 'tcx> Lift<'tcx> for TraitRef<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
     type Lifted = ty::TraitPredicate<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<ty::TraitPredicate<'tcx>> {
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+                             -> Option<ty::TraitPredicate<'tcx>> {
         tcx.lift(&self.trait_ref).map(|trait_ref| ty::TraitPredicate {
             trait_ref: trait_ref
         })
@@ -74,22 +92,23 @@ impl<'a, 'tcx> Lift<'tcx> for ty::TraitPredicate<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for ty::EquatePredicate<'a> {
     type Lifted = ty::EquatePredicate<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<ty::EquatePredicate<'tcx>> {
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+                             -> Option<ty::EquatePredicate<'tcx>> {
         tcx.lift(&(self.0, self.1)).map(|(a, b)| ty::EquatePredicate(a, b))
     }
 }
 
 impl<'tcx, A: Copy+Lift<'tcx>, B: Copy+Lift<'tcx>> Lift<'tcx> for ty::OutlivesPredicate<A, B> {
     type Lifted = ty::OutlivesPredicate<A::Lifted, B::Lifted>;
-    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&(self.0, self.1)).map(|(a, b)| ty::OutlivesPredicate(a, b))
     }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
     type Lifted = ty::ProjectionPredicate<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>)
-                       -> Option<ty::ProjectionPredicate<'tcx>> {
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
+                             -> Option<ty::ProjectionPredicate<'tcx>> {
         tcx.lift(&(self.projection_ty.trait_ref, self.ty)).map(|(trait_ref, ty)| {
             ty::ProjectionPredicate {
                 projection_ty: ty::ProjectionTy {
@@ -104,8 +123,79 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionPredicate<'a> {
 
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::Binder<T> {
     type Lifted = ty::Binder<T::Lifted>;
-    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Self::Lifted> {
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.0).map(|x| ty::Binder(x))
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for ty::error::ExpectedFound<T> {
+    type Lifted = ty::error::ExpectedFound<T::Lifted>;
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.expected).and_then(|expected| {
+            tcx.lift(&self.found).map(|found| {
+                ty::error::ExpectedFound {
+                    expected: expected,
+                    found: found
+                }
+            })
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for type_variable::Default<'a> {
+    type Lifted = type_variable::Default<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.ty).map(|ty| {
+            type_variable::Default {
+                ty: ty,
+                origin_span: self.origin_span,
+                def_id: self.def_id
+            }
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
+    type Lifted = ty::error::TypeError<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        use ty::error::TypeError::*;
+
+        Some(match *self {
+            Mismatch => Mismatch,
+            UnsafetyMismatch(x) => UnsafetyMismatch(x),
+            AbiMismatch(x) => AbiMismatch(x),
+            Mutability => Mutability,
+            BoxMutability => BoxMutability,
+            PtrMutability => PtrMutability,
+            RefMutability => RefMutability,
+            VecMutability => VecMutability,
+            TupleSize(x) => TupleSize(x),
+            FixedArraySize(x) => FixedArraySize(x),
+            TyParamSize(x) => TyParamSize(x),
+            ArgCount => ArgCount,
+            RegionsDoesNotOutlive(a, b) => RegionsDoesNotOutlive(a, b),
+            RegionsNotSame(a, b) => RegionsNotSame(a, b),
+            RegionsNoOverlap(a, b) => RegionsNoOverlap(a, b),
+            RegionsInsufficientlyPolymorphic(a, b) => {
+                RegionsInsufficientlyPolymorphic(a, b)
+            }
+            RegionsOverlyPolymorphic(a, b) => RegionsOverlyPolymorphic(a, b),
+            IntegerAsChar => IntegerAsChar,
+            IntMismatch(x) => IntMismatch(x),
+            FloatMismatch(x) => FloatMismatch(x),
+            Traits(x) => Traits(x),
+            BuiltinBoundsMismatch(x) => BuiltinBoundsMismatch(x),
+            VariadicMismatch(x) => VariadicMismatch(x),
+            CyclicTy => CyclicTy,
+            ConvergenceMismatch(x) => ConvergenceMismatch(x),
+            ProjectionNameMismatched(x) => ProjectionNameMismatched(x),
+            ProjectionBoundsLength(x) => ProjectionBoundsLength(x),
+
+            Sorts(ref x) => return tcx.lift(x).map(Sorts),
+            TyParamDefaultMismatch(ref x) => {
+                return tcx.lift(x).map(TyParamDefaultMismatch)
+            }
+        })
     }
 }
 
@@ -124,7 +214,7 @@ macro_rules! CopyImpls {
     ($($ty:ty),+) => {
         $(
             impl<'tcx> TypeFoldable<'tcx> for $ty {
-                fn super_fold_with<F:TypeFolder<'tcx>>(&self, _: &mut F) -> $ty {
+                fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> $ty {
                     *self
                 }
 
@@ -139,7 +229,7 @@ macro_rules! CopyImpls {
 CopyImpls! { (), hir::Unsafety, abi::Abi }
 
 impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T, U) {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> (T, U) {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> (T, U) {
         (self.0.fold_with(folder), self.1.fold_with(folder))
     }
 
@@ -149,7 +239,7 @@ impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Option<T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.as_ref().map(|t| t.fold_with(folder))
     }
 
@@ -159,7 +249,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Option<T> {
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         Rc::new((**self).fold_with(folder))
     }
 
@@ -169,7 +259,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Rc<T> {
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let content: T = (**self).fold_with(folder);
         box content
     }
@@ -180,7 +270,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Box<T> {
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|t| t.fold_with(folder)).collect()
     }
 
@@ -190,11 +280,11 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Vec<T> {
 }
 
 impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::Binder(self.0.fold_with(folder))
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_binder(self)
     }
 
@@ -208,7 +298,7 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.iter().map(|t| t.fold_with(folder)).collect()
     }
 
@@ -218,7 +308,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for P<[T]> {
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for VecPerParamSpace<T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         self.map(|elem| elem.fold_with(folder))
     }
 
@@ -228,7 +318,7 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for VecPerParamSpace<T> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TraitTy {
             principal: self.principal.fold_with(folder),
             bounds: self.bounds.fold_with(folder),
@@ -241,7 +331,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let sty = match self.sty {
             ty::TyBox(typ) => ty::TyBox(typ.fold_with(folder)),
             ty::TyRawPtr(ref tm) => ty::TyRawPtr(tm.fold_with(folder)),
@@ -283,7 +373,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
         folder.tcx().mk_ty(sty)
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_ty(*self)
     }
 
@@ -316,13 +406,13 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::BareFnTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::BareFnTy { sig: self.sig.fold_with(folder),
                        abi: self.abi,
                        unsafety: self.unsafety }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_bare_fn_ty(self)
     }
 
@@ -332,7 +422,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::BareFnTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ClosureTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
        ty::ClosureTy {
             sig: self.sig.fold_with(folder),
             unsafety: self.unsafety,
@@ -340,7 +430,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureTy<'tcx> {
         }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_closure_ty(self)
     }
 
@@ -350,11 +440,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TypeAndMut { ty: self.ty.fold_with(folder), mutbl: self.mutbl }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_mt(self)
     }
 
@@ -364,14 +454,14 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::FnOutput<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             ty::FnConverging(ref ty) => ty::FnConverging(ty.fold_with(folder)),
             ty::FnDiverging => ty::FnDiverging
         }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_output(self)
     }
 
@@ -384,13 +474,13 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnOutput<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::FnSig { inputs: self.inputs.fold_with(folder),
                     output: self.output.fold_with(folder),
                     variadic: self.variadic }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_fn_sig(self)
     }
 
@@ -400,7 +490,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let substs = self.substs.fold_with(folder);
         ty::TraitRef {
             def_id: self.def_id,
@@ -408,7 +498,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
         }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_trait_ref(self)
     }
 
@@ -418,7 +508,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ImplHeader {
             impl_def_id: self.impl_def_id,
             self_ty: self.self_ty.fold_with(folder),
@@ -427,7 +517,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
         }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_impl_header(self)
     }
 
@@ -439,11 +529,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ImplHeader<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Region {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
         *self
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_region(*self)
     }
 
@@ -457,12 +547,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Region {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for subst::Substs<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         subst::Substs { regions: self.regions.fold_with(folder),
                         types: self.types.fold_with(folder) }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_substs(self)
     }
 
@@ -472,7 +562,7 @@ impl<'tcx> TypeFoldable<'tcx> for subst::Substs<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let func_substs = self.func_substs.fold_with(folder);
         ty::ClosureSubsts {
             func_substs: folder.tcx().mk_substs(func_substs),
@@ -486,7 +576,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureSubsts<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ItemSubsts {
             substs: self.substs.fold_with(folder),
         }
@@ -498,7 +588,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoRef<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             ty::adjustment::AutoPtr(r, m) => {
                 let r = r.fold_with(folder);
@@ -508,7 +598,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoRef<'tcx> {
         }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_autoref(self)
     }
 
@@ -521,7 +611,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::AutoRef<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::BuiltinBounds {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _folder: &mut F) -> Self {
         *self
     }
 
@@ -531,7 +621,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::BuiltinBounds {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialBounds<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ExistentialBounds {
             region_bound: self.region_bound.fold_with(folder),
             builtin_bounds: self.builtin_bounds,
@@ -539,7 +629,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialBounds<'tcx> {
         }
     }
 
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         folder.fold_existential_bounds(self)
     }
 
@@ -549,7 +639,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ExistentialBounds<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TypeParameterDef {
             name: self.name,
             def_id: self.def_id,
@@ -568,7 +658,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             ty::ObjectLifetimeDefault::Ambiguous =>
                 ty::ObjectLifetimeDefault::Ambiguous,
@@ -590,7 +680,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::RegionParameterDef {
             name: self.name,
             def_id: self.def_id,
@@ -606,7 +696,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::RegionParameterDef {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::Generics {
             types: self.types.fold_with(folder),
             regions: self.regions.fold_with(folder),
@@ -619,7 +709,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::GenericPredicates {
             predicates: self.predicates.fold_with(folder),
         }
@@ -631,7 +721,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             ty::Predicate::Trait(ref a) =>
                 ty::Predicate::Trait(a.fold_with(folder)),
@@ -670,7 +760,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionPredicate<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ProjectionPredicate {
             projection_ty: self.projection_ty.fold_with(folder),
             ty: self.ty.fold_with(folder),
@@ -683,7 +773,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ProjectionTy {
             trait_ref: self.trait_ref.fold_with(folder),
             item_name: self.item_name,
@@ -696,7 +786,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::InstantiatedPredicates {
             predicates: self.predicates.fold_with(folder),
         }
@@ -708,7 +798,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::EquatePredicate<'tcx> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::EquatePredicate(self.0.fold_with(folder),
                             self.1.fold_with(folder))
     }
@@ -719,7 +809,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::EquatePredicate<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TraitPredicate<'tcx> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TraitPredicate {
             trait_ref: self.trait_ref.fold_with(folder)
         }
@@ -734,7 +824,7 @@ impl<'tcx,T,U> TypeFoldable<'tcx> for ty::OutlivesPredicate<T,U>
     where T : TypeFoldable<'tcx>,
           U : TypeFoldable<'tcx>,
 {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::OutlivesPredicate(self.0.fold_with(folder),
                               self.1.fold_with(folder))
     }
@@ -745,7 +835,7 @@ impl<'tcx,T,U> TypeFoldable<'tcx> for ty::OutlivesPredicate<T,U>
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ClosureUpvar {
             def: self.def,
             span: self.span,
@@ -759,13 +849,11 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'tcx> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::ParameterEnvironment {
             free_substs: self.free_substs.fold_with(folder),
             implicit_region_bound: self.implicit_region_bound.fold_with(folder),
             caller_bounds: self.caller_bounds.fold_with(folder),
-            selection_cache: traits::SelectionCache::new(),
-            evaluation_cache: traits::EvaluationCache::new(),
             free_id_outlive: self.free_id_outlive,
         }
     }
@@ -778,7 +866,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ParameterEnvironment<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for ty::TypeScheme<'tcx>  {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TypeScheme {
             generics: self.generics.fold_with(folder),
             ty: self.ty.fold_with(folder),

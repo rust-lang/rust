@@ -45,7 +45,6 @@ use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
-use self::error_reporting::ErrorReporting;
 use self::unify_key::ToType;
 
 pub mod bivariate;
@@ -93,6 +92,13 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     region_vars: RegionVarBindings<'a, 'tcx>,
 
     pub parameter_environment: ty::ParameterEnvironment<'gcx>,
+
+    /// Caches the results of trait selection. This cache is used
+    /// for things that have to do with the parameters in scope.
+    pub selection_cache: traits::SelectionCache<'tcx>,
+
+    /// Caches the results of trait evaluation.
+    pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
     // the set of predicates on which errors have been reported, to
     // avoid reporting the same error twice.
@@ -407,6 +413,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
             float_unification_table: RefCell::new(UnificationTable::new()),
             region_vars: RegionVarBindings::new(tcx),
             parameter_environment: param_env.unwrap_or(tcx.empty_parameter_environment()),
+            selection_cache: traits::SelectionCache::new(),
+            evaluation_cache: traits::EvaluationCache::new(),
             reported_trait_errors: RefCell::new(FnvHashSet()),
             normalize: false,
             projection_mode: projection_mode,
@@ -465,26 +473,32 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         }
 
         InferCtxt::enter(self, None, None, ProjectionMode::Any, |infcx| {
-            let mut selcx = traits::SelectionContext::new(&infcx);
-            let cause = traits::ObligationCause::dummy();
-            let traits::Normalized { value: result, obligations } =
-                traits::normalize(&mut selcx, cause, &value);
-
-            debug!("normalize_associated_type: result={:?} obligations={:?}",
-                   result, obligations);
-
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-
-            for obligation in obligations {
-                fulfill_cx.register_predicate_obligation(&infcx, obligation);
-            }
-
-            infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
+            infcx.normalize_projections_in(&value)
         })
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    fn normalize_projections_in<T>(&self, value: &T) -> T
+        where T : TypeFoldable<'tcx>
+    {
+        let mut selcx = traits::SelectionContext::new(self);
+        let cause = traits::ObligationCause::dummy();
+        let traits::Normalized { value: result, obligations } =
+            traits::normalize(&mut selcx, cause, value);
+
+        debug!("normalize_projections_in: result={:?} obligations={:?}",
+                result, obligations);
+
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(self, obligation);
+        }
+
+        self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
+    }
+
 pub fn drain_fulfillment_cx_or_panic<T>(&self,
                                         span: Span,
                                         fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
@@ -543,7 +557,7 @@ pub fn drain_fulfillment_cx<T>(&self,
         }
     }
 
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx, 'tcx> {
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'gcx, 'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
@@ -614,7 +628,7 @@ pub fn drain_fulfillment_cx<T>(&self,
     }
 
     fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                      -> CombineFields<'a, 'tcx, 'tcx> {
+                      -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             infcx: self,
             a_is_expected: a_is_expected,
@@ -626,7 +640,7 @@ pub fn drain_fulfillment_cx<T>(&self,
 
     pub fn equate<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut equate = self.combine_fields(a_is_expected, trace).equate();
         let result = equate.relate(a, b);
@@ -635,7 +649,7 @@ pub fn drain_fulfillment_cx<T>(&self,
 
     pub fn sub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut sub = self.combine_fields(a_is_expected, trace).sub();
         let result = sub.relate(a, b);
@@ -644,7 +658,7 @@ pub fn drain_fulfillment_cx<T>(&self,
 
     pub fn lub<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut lub = self.combine_fields(a_is_expected, trace).lub();
         let result = lub.relate(a, b);
@@ -653,7 +667,7 @@ pub fn drain_fulfillment_cx<T>(&self,
 
     pub fn glb<T>(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>, a: &T, b: &T)
         -> InferResult<'tcx, T>
-        where T: Relate<'a, 'tcx>
+        where T: Relate<'tcx>
     {
         let mut glb = self.combine_fields(a_is_expected, trace).glb();
         let result = glb.relate(a, b);
@@ -1412,8 +1426,8 @@ pub fn drain_fulfillment_cx<T>(&self,
         self.region_vars.verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
-        where T: Relate<'b,'tcx> + fmt::Debug
+    pub fn can_equate<T>(&self, a: &T, b: &T) -> UnitResult<'tcx>
+        where T: Relate<'tcx> + fmt::Debug
     {
         debug!("can_equate({:?}, {:?})", a, b);
         self.probe(|_| {
@@ -1438,21 +1452,24 @@ pub fn drain_fulfillment_cx<T>(&self,
     pub fn tables_are_tcx_tables(&self) -> bool {
         let tables: &RefCell<ty::Tables> = &self.tables;
         let tcx_tables: &RefCell<ty::Tables> = &self.tcx.tables;
-        tables as *const _ == tcx_tables as *const _
+        tables as *const _ as usize == tcx_tables as *const _ as usize
     }
 
     pub fn type_moves_by_default(&self, ty: Ty<'tcx>, span: Span) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
-        if ty.needs_infer() ||
-            (ty.has_closure_types() && !self.tables_are_tcx_tables()) {
-            // this can get called from typeck (by euv), and moves_by_default
-            // rightly refuses to work with inference variables, but
-            // moves_by_default has a cache, which we want to use in other
-            // cases.
-            !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
-        } else {
-            ty.moves_by_default(self.tcx, &self.parameter_environment, span)
+        if let Some(ty) = self.tcx.lift_to_global(&ty) {
+            // HACK(eddyb) Temporarily handle infer type in the global tcx.
+            if !ty.needs_infer() &&
+               !(ty.has_closure_types() && !self.tables_are_tcx_tables()) {
+                return ty.moves_by_default(self.tcx.global_tcx(), self.param_env(), span);
+            }
         }
+
+        // this can get called from typeck (by euv), and moves_by_default
+        // rightly refuses to work with inference variables, but
+        // moves_by_default has a cache, which we want to use in other
+        // cases.
+        !traits::type_known_to_meet_builtin_bound(self, ty, ty::BoundCopy, span)
     }
 
     pub fn node_method_ty(&self, method_call: ty::MethodCall)
@@ -1495,7 +1512,7 @@ pub fn drain_fulfillment_cx<T>(&self,
         self.tables.borrow().upvar_capture_map.get(&upvar_id).cloned()
     }
 
-    pub fn param_env(&self) -> &ty::ParameterEnvironment<'tcx> {
+    pub fn param_env(&self) -> &ty::ParameterEnvironment<'gcx> {
         &self.parameter_environment
     }
 
@@ -1526,14 +1543,20 @@ pub fn drain_fulfillment_cx<T>(&self,
                                      substs);
 
         if self.normalize {
-            self.tcx.normalize_associated_type(&closure_ty)
+            let closure_ty = self.tcx.erase_regions(&closure_ty);
+
+            if !closure_ty.has_projection_types() {
+                return closure_ty;
+            }
+
+            self.normalize_projections_in(&closure_ty)
         } else {
             closure_ty
         }
     }
 }
 
-impl<'a, 'tcx> TypeTrace<'tcx> {
+impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.origin.span()
     }
@@ -1549,7 +1572,7 @@ impl<'a, 'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(ExpectedFound {

@@ -46,10 +46,10 @@ pub struct TraitErrorKey<'tcx> {
     predicate: ty::Predicate<'tcx>
 }
 
-impl<'tcx> TraitErrorKey<'tcx> {
-    fn from_error<'a>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                      e: &FulfillmentError<'tcx>,
-                      warning_node_id: Option<ast::NodeId>) -> Self {
+impl<'a, 'gcx, 'tcx> TraitErrorKey<'tcx> {
+    fn from_error(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                  e: &FulfillmentError<'tcx>,
+                  warning_node_id: Option<ast::NodeId>) -> Self {
         let predicate =
             infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
         TraitErrorKey {
@@ -60,7 +60,7 @@ impl<'tcx> TraitErrorKey<'tcx> {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 pub fn report_fulfillment_errors(&self, errors: &Vec<FulfillmentError<'tcx>>) {
     for error in errors {
         self.report_fulfillment_error(error, None);
@@ -558,7 +558,7 @@ pub fn report_selection_error(&self,
 }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 pub fn recursive_type_with_infinite_size_error(self,
                                                type_def_id: DefId)
                                                -> DiagnosticBuilder<'tcx>
@@ -646,7 +646,7 @@ pub fn report_object_safety_error(self,
 }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) {
     // Unable to successfully determine, probably means
     // insufficient type information, but could mean
@@ -737,14 +737,13 @@ fn maybe_report_ambiguity(&self, obligation: &PredicateObligation<'tcx>) {
 /// Returns whether the trait predicate may apply for *some* assignment
 /// to the type parameters.
 fn predicate_can_apply(&self, pred: ty::PolyTraitRef<'tcx>) -> bool {
-    struct ParamToVarFolder<'a, 'tcx: 'a> {
-        infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
+    struct ParamToVarFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
         var_map: FnvHashMap<Ty<'tcx>, Ty<'tcx>>
     }
 
-    impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx>
-    {
-        fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.infcx.tcx }
+    impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ParamToVarFolder<'a, 'gcx, 'tcx> {
+        fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.infcx.tcx }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::TyParam(..) = ty.sty {

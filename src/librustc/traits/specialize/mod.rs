@@ -72,11 +72,11 @@ pub struct OverlapError {
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
-pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                                  source_impl: DefId,
-                                  source_substs: &'tcx Substs<'tcx>,
-                                  target_node: specialization_graph::Node)
-                                  -> &'tcx Substs<'tcx> {
+pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                        source_impl: DefId,
+                                        source_substs: &'tcx Substs<'tcx>,
+                                        target_node: specialization_graph::Node)
+                                        -> &'tcx Substs<'tcx> {
     let source_trait_ref = infcx.tcx
                                 .impl_trait_ref(source_impl)
                                 .unwrap()
@@ -168,10 +168,10 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// generics of `target_impl`, including both those needed to unify with
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
-fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                                 source_trait_ref: ty::TraitRef<'tcx>,
-                                 target_impl: DefId)
-                                 -> Result<Substs<'tcx>, ()> {
+fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                       source_trait_ref: ty::TraitRef<'tcx>,
+                                       target_impl: DefId)
+                                       -> Result<Substs<'tcx>, ()> {
     infcx.commit_if_ok(|_| {
         let selcx = &mut SelectionContext::new(&infcx);
         let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);

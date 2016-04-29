@@ -60,13 +60,13 @@ pub struct CombineFields<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub obligations: PredicateObligations<'tcx>,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 pub fn super_combine_tys<R>(&self,
                             relation: &mut R,
                             a: Ty<'tcx>,
                             b: Ty<'tcx>)
                             -> RelateResult<'tcx, Ty<'tcx>>
-    where R: TypeRelation<'a,'tcx>
+    where R: TypeRelation<'a, 'gcx, 'tcx>
 {
     let a_is_expected = relation.a_is_expected();
 
@@ -150,35 +150,35 @@ fn unify_float_variable(&self,
 }
 }
 
-impl<'a, 'tcx> CombineFields<'a, 'tcx, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    pub fn switch_expected(&self) -> CombineFields<'a, 'tcx, 'tcx> {
+    pub fn switch_expected(&self) -> CombineFields<'a, 'gcx, 'tcx> {
         CombineFields {
             a_is_expected: !self.a_is_expected,
             ..(*self).clone()
         }
     }
 
-    pub fn equate(&self) -> Equate<'a, 'tcx, 'tcx> {
+    pub fn equate(&self) -> Equate<'a, 'gcx, 'tcx> {
         Equate::new(self.clone())
     }
 
-    pub fn bivariate(&self) -> Bivariate<'a, 'tcx, 'tcx> {
+    pub fn bivariate(&self) -> Bivariate<'a, 'gcx, 'tcx> {
         Bivariate::new(self.clone())
     }
 
-    pub fn sub(&self) -> Sub<'a, 'tcx, 'tcx> {
+    pub fn sub(&self) -> Sub<'a, 'gcx, 'tcx> {
         Sub::new(self.clone())
     }
 
-    pub fn lub(&self) -> Lub<'a, 'tcx, 'tcx> {
+    pub fn lub(&self) -> Lub<'a, 'gcx, 'tcx> {
         Lub::new(self.clone())
     }
 
-    pub fn glb(&self) -> Glb<'a, 'tcx, 'tcx> {
+    pub fn glb(&self) -> Glb<'a, 'gcx, 'tcx> {
         Glb::new(self.clone())
     }
 
@@ -299,8 +299,8 @@ struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     cycle_detected: bool,
 }
 
-impl<'cx, 'tcx> ty::fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 

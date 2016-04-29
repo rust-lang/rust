@@ -20,21 +20,10 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 
-pub trait HigherRankedRelations<'a,'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>;
-
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>;
-
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>;
-}
-
-impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
-                            -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>
+impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
+    pub fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+                                -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'tcx>
     {
         debug!("higher_ranked_sub(a={:?}, b={:?})",
                a, b);
@@ -79,8 +68,9 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
         });
     }
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>
+    pub fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>)
+                                -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
@@ -119,14 +109,14 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
             Ok(ty::Binder(result1))
         });
 
-        fn generalize_region<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                                       span: Span,
-                                       snapshot: &CombinedSnapshot,
-                                       debruijn: ty::DebruijnIndex,
-                                       new_vars: &[ty::RegionVid],
-                                       a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
-                                       r0: ty::Region)
-                                       -> ty::Region {
+        fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                             span: Span,
+                                             snapshot: &CombinedSnapshot,
+                                             debruijn: ty::DebruijnIndex,
+                                             new_vars: &[ty::RegionVid],
+                                             a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
+                                             r0: ty::Region)
+                                             -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
@@ -168,8 +158,9 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
-        where T: Relate<'a,'tcx>
+    pub fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>)
+                                -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'tcx>
     {
         debug!("higher_ranked_glb({:?}, {:?})",
                a, b);
@@ -214,15 +205,15 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
             Ok(ty::Binder(result1))
         });
 
-        fn generalize_region<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                                       span: Span,
-                                       snapshot: &CombinedSnapshot,
-                                       debruijn: ty::DebruijnIndex,
-                                       new_vars: &[ty::RegionVid],
-                                       a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
-                                       a_vars: &[ty::RegionVid],
-                                       b_vars: &[ty::RegionVid],
-                                       r0: ty::Region) -> ty::Region {
+        fn generalize_region<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                             span: Span,
+                                             snapshot: &CombinedSnapshot,
+                                             debruijn: ty::DebruijnIndex,
+                                             new_vars: &[ty::RegionVid],
+                                             a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
+                                             a_vars: &[ty::RegionVid],
+                                             b_vars: &[ty::RegionVid],
+                                             r0: ty::Region) -> ty::Region {
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
                 return r0;
@@ -306,9 +297,9 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
     }
 }
 
-fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx, 'tcx>,
-                      map: &FnvHashMap<ty::BoundRegion, ty::Region>)
-                     -> Vec<ty::RegionVid> {
+fn var_ids<'a, 'gcx, 'tcx>(fields: &CombineFields<'a, 'gcx, 'tcx>,
+                           map: &FnvHashMap<ty::BoundRegion, ty::Region>)
+                           -> Vec<ty::RegionVid> {
     map.iter()
        .map(|(_, r)| match *r {
            ty::ReVar(r) => { r }
@@ -329,10 +320,10 @@ fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     }
 }
 
-fn fold_regions_in<'a, 'tcx, T, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   unbound_value: &T,
-                                   mut fldr: F)
-                                   -> T
+fn fold_regions_in<'a, 'gcx, 'tcx, T, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                         unbound_value: &T,
+                                         mut fldr: F)
+                                         -> T
     where T: TypeFoldable<'tcx>,
           F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
@@ -349,7 +340,7 @@ fn fold_regions_in<'a, 'tcx, T, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-impl<'a,'tcx> InferCtxt<'a,'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region> {
         self.region_vars.tainted(&snapshot.region_vars_snapshot, r)
     }

@@ -18,6 +18,7 @@ use ty::{TyParam, TyRawPtr, TyRef, TyTuple};
 use ty::TyClosure;
 use ty::{TyBox, TyTrait, TyInt, TyUint, TyInfer};
 use ty::{self, Ty, TyCtxt, TypeFoldable};
+use ty::fold::{TypeFolder, TypeVisitor};
 
 use std::cell::Cell;
 use std::fmt;
@@ -293,11 +294,11 @@ fn in_binder<'a, 'tcx, T, U>(f: &mut fmt::Formatter,
 struct TraitAndProjections<'tcx>(ty::TraitRef<'tcx>, Vec<ty::ProjectionPredicate<'tcx>>);
 
 impl<'tcx> TypeFoldable<'tcx> for TraitAndProjections<'tcx> {
-    fn super_fold_with<F:ty::fold::TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         TraitAndProjections(self.0.fold_with(folder), self.1.fold_with(folder))
     }
 
-    fn super_visit_with<V: ty::fold::TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.0.visit_with(visitor) || self.1.visit_with(visitor)
     }
 }

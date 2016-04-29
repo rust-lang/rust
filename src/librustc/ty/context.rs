@@ -194,7 +194,7 @@ pub struct Tables<'tcx> {
     pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
 }
 
-impl<'a, 'tcx> Tables<'tcx> {
+impl<'a, 'gcx, 'tcx> Tables<'tcx> {
     pub fn empty() -> Tables<'tcx> {
         Tables {
             node_types: FnvHashMap(),
@@ -210,7 +210,7 @@ impl<'a, 'tcx> Tables<'tcx> {
     }
 
     pub fn closure_kind(this: &RefCell<Self>,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>,
                         def_id: DefId)
                         -> ty::ClosureKind {
         // If this is a local def-id, it should be inserted into the
@@ -226,7 +226,7 @@ impl<'a, 'tcx> Tables<'tcx> {
     }
 
     pub fn closure_type(this: &RefCell<Self>,
-                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        tcx: TyCtxt<'a, 'gcx, 'tcx>,
                         def_id: DefId,
                         substs: &ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
@@ -238,7 +238,7 @@ impl<'a, 'tcx> Tables<'tcx> {
             return ty.subst(tcx, &substs.func_substs);
         }
 
-        let ty = tcx.sess.cstore.closure_ty(tcx, def_id);
+        let ty = tcx.sess.cstore.closure_ty(tcx.global_tcx(), def_id);
         this.borrow_mut().closure_tys.insert(def_id, ty.clone());
         ty.subst(tcx, &substs.func_substs)
     }
@@ -494,7 +494,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn crate_name(self, cnum: ast::CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.crate_name.clone()
@@ -526,12 +526,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         Ref::map(self.tables.borrow(), projection)
     }
 
-    pub fn node_type_insert(self, id: NodeId, ty: Ty<'tcx>) {
+    pub fn node_type_insert(self, id: NodeId, ty: Ty<'gcx>) {
         self.tables.borrow_mut().node_types.insert(id, ty);
     }
 
-    pub fn intern_trait_def(self, def: ty::TraitDef<'tcx>)
-                            -> &'tcx ty::TraitDef<'tcx> {
+    pub fn intern_trait_def(self, def: ty::TraitDef<'gcx>)
+                            -> &'gcx ty::TraitDef<'gcx> {
         let did = def.trait_ref.def_id;
         let interned = self.global_interners.arenas.trait_defs.alloc(def);
         if let Some(prev) = self.trait_defs.borrow_mut().insert(did, interned) {
@@ -540,16 +540,16 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         interned
     }
 
-    pub fn alloc_trait_def(self, def: ty::TraitDef<'tcx>)
-                           -> &'tcx ty::TraitDef<'tcx> {
+    pub fn alloc_trait_def(self, def: ty::TraitDef<'gcx>)
+                           -> &'gcx ty::TraitDef<'gcx> {
         self.global_interners.arenas.trait_defs.alloc(def)
     }
 
     pub fn intern_adt_def(self,
                           did: DefId,
                           kind: ty::AdtKind,
-                          variants: Vec<ty::VariantDefData<'tcx, 'tcx>>)
-                          -> ty::AdtDefMaster<'tcx> {
+                          variants: Vec<ty::VariantDefData<'gcx, 'gcx>>)
+                          -> ty::AdtDefMaster<'gcx> {
         let def = ty::AdtDefData::new(self, did, kind, variants);
         let interned = self.global_interners.arenas.adt_defs.alloc(def);
         // this will need a transmute when reverse-variance is removed
@@ -599,6 +599,18 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 
     pub fn lift<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
+    }
+
+    /// Like lift, but only tries in the global tcx.
+    pub fn lift_to_global<T: ?Sized + Lift<'gcx>>(self, value: &T) -> Option<T::Lifted> {
+        value.lift_to_tcx(self.global_tcx())
+    }
+
+    /// Returns true if self is the same as self.global_tcx().
+    fn is_global(self) -> bool {
+        let local = self.interners as *const _;
+        let global = &self.global_interners as *const _;
+        local as usize == global as usize
     }
 
     /// Create a type context and call the closure with a `TyCtxt` reference
@@ -693,30 +705,40 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
     type Lifted;
-    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Self::Lifted>;
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         if let Some(&InternedTy { ty }) = tcx.interners.type_.borrow().get(&self.sty) {
             if *self as *const _ == ty as *const _ {
                 return Some(ty);
             }
         }
-        None
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
     }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
         if let Some(&InternedSubsts { substs }) = tcx.interners.substs.borrow().get(*self) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
             }
         }
-        None
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
     }
 }
 
@@ -910,7 +932,7 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
             |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // Type constructors
     pub fn mk_substs(self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
         if let Some(interned) = self.interners.substs.borrow().get(&substs) {
@@ -1139,7 +1161,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         self.mk_param(def.space, def.index, def.name)
     }
 
-    pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> {
+    pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'gcx>>> {
         self.trait_items_cache.memoize(trait_did, || {
             let def_ids = self.trait_item_def_ids(trait_did);
             Rc::new(def_ids.iter()
