@@ -120,6 +120,9 @@ macro_rules! targets {
             (check_docs, CheckDocs { compiler: Compiler<'a> }),
             (check_error_index, CheckErrorIndex { compiler: Compiler<'a> }),
             (check_rmake, CheckRMake { compiler: Compiler<'a> }),
+            (check_crate_std, CheckCrateStd { compiler: Compiler<'a> }),
+            (check_crate_test, CheckCrateTest { compiler: Compiler<'a> }),
+            (check_crate_rustc, CheckCrateRustc { compiler: Compiler<'a> }),
 
             // Distribution targets, creating tarballs
             (dist, Dist { stage: u32 }),
@@ -376,6 +379,9 @@ impl<'a> Step<'a> {
                     self.check_cfail(compiler),
                     self.check_rfail(compiler),
                     self.check_pfail(compiler),
+                    self.check_crate_std(compiler),
+                    self.check_crate_test(compiler),
+                    self.check_crate_rustc(compiler),
                     self.check_codegen(compiler),
                     self.check_codegen_units(compiler),
                     self.check_debuginfo(compiler),
@@ -436,6 +442,15 @@ impl<'a> Step<'a> {
             }
             Source::CheckErrorIndex { compiler } => {
                 vec![self.libstd(compiler), self.tool_error_index(compiler.stage)]
+            }
+            Source::CheckCrateStd { compiler } => {
+                vec![self.libtest(compiler)]
+            }
+            Source::CheckCrateTest { compiler } => {
+                vec![self.libtest(compiler)]
+            }
+            Source::CheckCrateRustc { compiler } => {
+                vec![self.libtest(compiler)]
             }
 
             Source::ToolLinkchecker { stage } |
