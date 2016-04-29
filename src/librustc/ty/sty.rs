@@ -270,7 +270,7 @@ pub struct TraitTy<'tcx> {
     pub bounds: ExistentialBounds<'tcx>,
 }
 
-impl<'a, 'tcx> TraitTy<'tcx> {
+impl<'a, 'gcx, 'tcx> TraitTy<'tcx> {
     pub fn principal_def_id(&self) -> DefId {
         self.principal.0.def_id
     }
@@ -279,7 +279,7 @@ impl<'a, 'tcx> TraitTy<'tcx> {
     /// we convert the principal trait-ref into a normal trait-ref,
     /// you must give *some* self-type. A common choice is `mk_err()`
     /// or some skolemized type.
-    pub fn principal_trait_ref_with_self_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn principal_trait_ref_with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                             self_ty: Ty<'tcx>)
                                             -> ty::PolyTraitRef<'tcx>
     {
@@ -292,7 +292,7 @@ impl<'a, 'tcx> TraitTy<'tcx> {
         })
     }
 
-    pub fn projection_bounds_with_self_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn projection_bounds_with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                           self_ty: Ty<'tcx>)
                                           -> Vec<ty::PolyProjectionPredicate<'tcx>>
     {
@@ -521,7 +521,7 @@ pub struct ParamTy {
     pub name: Name,
 }
 
-impl<'a, 'tcx> ParamTy {
+impl<'a, 'gcx, 'tcx> ParamTy {
     pub fn new(space: subst::ParamSpace,
                index: u32,
                name: Name)
@@ -537,7 +537,7 @@ impl<'a, 'tcx> ParamTy {
         ParamTy::new(def.space, def.index, def.name)
     }
 
-    pub fn to_ty(self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         tcx.mk_param(self.space, self.idx, self.name)
     }
 
@@ -762,7 +762,7 @@ impl<'tcx> ExistentialBounds<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct BuiltinBounds(EnumSet<BuiltinBound>);
 
-impl<'a, 'tcx> BuiltinBounds {
+impl<'a, 'gcx, 'tcx> BuiltinBounds {
     pub fn empty() -> BuiltinBounds {
         BuiltinBounds(EnumSet::new())
     }
@@ -771,7 +771,7 @@ impl<'a, 'tcx> BuiltinBounds {
         self.into_iter()
     }
 
-    pub fn to_predicates(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn to_predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                          self_ty: Ty<'tcx>)
                          -> Vec<ty::Predicate<'tcx>> {
         self.iter().filter_map(|builtin_bound|
@@ -819,7 +819,7 @@ impl CLike for BuiltinBound {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn try_add_builtin_trait(self,
                                  trait_def_id: DefId,
                                  builtin_bounds: &mut EnumSet<BuiltinBound>)
@@ -884,7 +884,7 @@ impl Region {
 }
 
 // Type utilities
-impl<'a, 'tcx> TyS<'tcx> {
+impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
         match self.sty {
             ty::TyParam(ref d) => Some(d.clone()),
@@ -971,7 +971,7 @@ impl<'a, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn sequence_element_type(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    pub fn sequence_element_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
             TyStr => tcx.mk_mach_uint(ast::UintTy::U8),
@@ -979,7 +979,7 @@ impl<'a, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_type(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    pub fn simd_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyStruct(def, substs) => {
                 def.struct_variant().fields[0].ty(tcx, substs)

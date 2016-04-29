@@ -43,8 +43,9 @@ pub struct TypeFreshener<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     freshen_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
 }
 
-impl<'a, 'tcx> TypeFreshener<'a, 'tcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>) -> TypeFreshener<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
+               -> TypeFreshener<'a, 'gcx, 'tcx> {
         TypeFreshener {
             infcx: infcx,
             freshen_count: 0,
@@ -77,8 +78,8 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 

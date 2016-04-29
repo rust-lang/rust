@@ -480,7 +480,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<'tcx, 'tcx> for Resolver<'cx, 'tcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }

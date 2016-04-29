@@ -35,19 +35,19 @@ use ty::TyVar;
 use ty::{self, Ty};
 use ty::relate::{RelateResult, TypeRelation};
 
-pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
-    fn infcx(&self) -> &'f InferCtxt<'f, 'tcx, 'tcx>;
+pub trait LatticeDir<'f, 'gcx: 'f+'tcx, 'tcx: 'f> : TypeRelation<'f, 'gcx, 'tcx> {
+    fn infcx(&self) -> &'f InferCtxt<'f, 'gcx, 'tcx>;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
     fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
-pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
-                                                        a: Ty<'tcx>,
-                                                        b: Ty<'tcx>)
-                                                        -> RelateResult<'tcx, Ty<'tcx>>
-    where 'tcx: 'a
+pub fn super_lattice_tys<'a, 'gcx, 'tcx, L>(this: &mut L,
+                                            a: Ty<'tcx>,
+                                            b: Ty<'tcx>)
+                                            -> RelateResult<'tcx, Ty<'tcx>>
+    where L: LatticeDir<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
     debug!("{}.lattice_tys({:?}, {:?})",
            this.tag(),

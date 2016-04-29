@@ -136,10 +136,10 @@ pub enum CustomCoerceUnsized {
     Struct(usize)
 }
 
-impl<'a, 'tcx> ty::TyS<'tcx> {
+impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
     /// See `expr_ty_adjusted`
     pub fn adjust<F>(&'tcx self,
-                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                      span: Span,
                      expr_id: ast::NodeId,
                      adjustment: Option<&AutoAdjustment<'tcx>>,
@@ -216,7 +216,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 
     pub fn adjust_for_autoderef<F>(&'tcx self,
-                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                    expr_id: ast::NodeId,
                                    expr_span: Span,
                                    autoderef: u32, // how many autoderefs so far?
@@ -244,7 +244,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         }
     }
 
-    pub fn adjust_for_autoref(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn adjust_for_autoref(&'tcx self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               autoref: Option<AutoRef<'tcx>>)
                               -> Ty<'tcx> {
         match autoref {

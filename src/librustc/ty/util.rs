@@ -171,7 +171,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn pat_contains_ref_binding(self, pat: &hir::Pat) -> Option<hir::Mutability> {
         pat_util::pat_contains_ref_binding(&self.def_map, pat)
     }
@@ -338,8 +338,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         helper(self, ty, svh, &mut state);
         return state.finish();
 
-        fn helper<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>, svh: &Svh,
-                        state: &mut SipHasher) {
+        fn helper<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                  ty: Ty<'tcx>, svh: &Svh,
+                                  state: &mut SipHasher) {
             macro_rules! byte { ($b:expr) => { ($b as u8).hash(state) } }
             macro_rules! hash { ($e:expr) => { $e.hash(state) }  }
 

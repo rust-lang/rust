@@ -10,6 +10,7 @@
 
 use traits;
 use traits::project::Normalized;
+use ty::{Lift, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use std::fmt;
@@ -130,9 +131,34 @@ impl<'tcx> fmt::Debug for traits::MismatchedProjectionTypes<'tcx> {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////
+// Lift implementations
+
+impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
+    type Lifted = traits::SelectionError<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            super::Unimplemented => Some(super::Unimplemented),
+            super::OutputTypeParameterMismatch(a, b, ref err) => {
+                tcx.lift(&(a, b)).and_then(|(a, b)| {
+                    tcx.lift(err).map(|err| {
+                        super::OutputTypeParameterMismatch(a, b, err)
+                    })
+                })
+            }
+            super::TraitNotObjectSafe(def_id) => {
+                Some(super::TraitNotObjectSafe(def_id))
+            }
+        }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
+// TypeFoldable implementations.
+
 impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx, O>
 {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::Obligation {
             cause: self.cause.clone(),
             recursion_depth: self.recursion_depth,
@@ -146,7 +172,7 @@ impl<'tcx, O: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Obligation<'tcx
 }
 
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<'tcx, N> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         let substs = self.substs.fold_with(folder);
         traits::VtableImplData {
             impl_def_id: self.impl_def_id,
@@ -161,7 +187,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableImplData<
 }
 
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableClosureData<'tcx, N> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableClosureData {
             closure_def_id: self.closure_def_id,
             substs: self.substs.fold_with(folder),
@@ -175,7 +201,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableClosureDa
 }
 
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableDefaultImplData<N> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableDefaultImplData {
             trait_def_id: self.trait_def_id,
             nested: self.nested.fold_with(folder),
@@ -188,7 +214,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableDefaultIm
 }
 
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinData<N> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableBuiltinData {
             nested: self.nested.fold_with(folder),
         }
@@ -200,7 +226,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::VtableBuiltinDa
 }
 
 impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         traits::VtableObjectData {
             upcast_trait_ref: self.upcast_trait_ref.fold_with(folder),
             vtable_base: self.vtable_base
@@ -213,7 +239,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::VtableObjectData<'tcx> {
 }
 
 impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N> {
-    fn super_fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
             traits::VtableDefaultImpl(ref t) => traits::VtableDefaultImpl(t.fold_with(folder)),
@@ -243,7 +269,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
 }
 
 impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for Normalized<'tcx, T> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         Normalized {
             value: self.value.fold_with(folder),
             obligations: self.obligations.fold_with(folder),

@@ -55,7 +55,7 @@ pub enum Component<'tcx> {
     EscapingProjection(Vec<Component<'tcx>>),
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 /// Returns all the things that must outlive `'a` for the condition
 /// `ty0: 'a` to hold.
 pub fn outlives_components(&self, ty0: Ty<'tcx>)

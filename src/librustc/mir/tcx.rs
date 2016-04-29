@@ -78,7 +78,7 @@ impl<'a, 'tcx> LvalueTy<'tcx> {
 }
 
 impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {

@@ -57,7 +57,7 @@ pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     /// at one time will have the same set of skolemized entries,
     /// which is important for checking for trait bounds that
     /// recursively require themselves.
-    freshener: TypeFreshener<'cx, 'tcx, 'tcx>,
+    freshener: TypeFreshener<'cx, 'gcx, 'tcx>,
 
     /// If true, indicates that the evaluation should be conservative
     /// and consider the possibility of types outside this crate.
@@ -210,6 +210,38 @@ enum SelectionCandidate<'tcx> {
     BuiltinUnsizeCandidate,
 }
 
+impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
+    type Lifted = SelectionCandidate<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        Some(match *self {
+            BuiltinCandidate { has_nested } => {
+                BuiltinCandidate {
+                    has_nested: has_nested
+                }
+            }
+            ImplCandidate(def_id) => ImplCandidate(def_id),
+            DefaultImplCandidate(def_id) => DefaultImplCandidate(def_id),
+            DefaultImplObjectCandidate(def_id) => {
+                DefaultImplObjectCandidate(def_id)
+            }
+            ProjectionCandidate => ProjectionCandidate,
+            FnPointerCandidate => FnPointerCandidate,
+            ObjectCandidate => ObjectCandidate,
+            BuiltinObjectCandidate => BuiltinObjectCandidate,
+            BuiltinUnsizeCandidate => BuiltinUnsizeCandidate,
+
+            ParamCandidate(ref trait_ref) => {
+                return tcx.lift(trait_ref).map(ParamCandidate);
+            }
+            ClosureCandidate(def_id, ref substs, kind) => {
+                return tcx.lift(substs).map(|substs| {
+                    ClosureCandidate(def_id, substs, kind)
+                });
+            }
+        })
+    }
+}
+
 struct SelectionCandidateSet<'tcx> {
     // a list of candidates that definitely apply to the current
     // obligation (meaning: types unify).
@@ -262,8 +294,8 @@ pub struct EvaluationCache<'tcx> {
     hashmap: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
 }
 
-impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>) -> SelectionContext<'cx, 'tcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>) -> SelectionContext<'cx, 'gcx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
@@ -271,7 +303,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>) -> SelectionContext<'cx, 'tcx, 'tcx> {
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>) -> SelectionContext<'cx, 'gcx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
@@ -279,11 +311,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         }
     }
 
-    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx, 'tcx> {
+    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
         self.infcx
     }
 
-    pub fn tcx(&self) -> TyCtxt<'cx, 'tcx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -291,7 +323,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         self.infcx.param_env()
     }
 
-    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx, 'tcx> {
+    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'gcx, 'tcx> {
         self.infcx
     }
 
@@ -627,23 +659,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         result
     }
 
-    fn pick_evaluation_cache(&self) -> &EvaluationCache<'tcx> {
-        // see comment in `pick_candidate_cache`
-        if self.intercrate ||
-            !self.param_env().caller_bounds.is_empty()
-        {
-            &self.param_env().evaluation_cache
-        } else
-        {
-            &self.tcx().evaluation_cache
-        }
-    }
-
     fn check_evaluation_cache(&self, trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Option<EvaluationResult>
     {
-        let cache = self.pick_evaluation_cache();
-        cache.hashmap.borrow().get(&trait_ref).cloned()
+        if self.can_use_global_caches() {
+            let cache = self.tcx().evaluation_cache.hashmap.borrow();
+            if let Some(cached) = cache.get(&trait_ref) {
+                return Some(cached.clone());
+            }
+        }
+        self.infcx.evaluation_cache.hashmap.borrow().get(&trait_ref).cloned()
     }
 
     fn insert_evaluation_cache(&mut self,
@@ -661,8 +686,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
             return;
         }
 
-        let cache = self.pick_evaluation_cache();
-        cache.hashmap.borrow_mut().insert(trait_ref, result);
+        if self.can_use_global_caches() {
+            let mut cache = self.tcx().evaluation_cache.hashmap.borrow_mut();
+            if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
+                cache.insert(trait_ref, result);
+                return;
+            }
+        }
+
+        self.infcx.evaluation_cache.hashmap.borrow_mut().insert(trait_ref, result);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -871,7 +903,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         coherence::trait_ref_is_knowable(self.tcx(), trait_ref)
     }
 
-    fn pick_candidate_cache(&self) -> &SelectionCache<'tcx> {
+    /// Returns true if the global caches can be used.
+    /// Do note that if the type itself is not in the
+    /// global tcx, the local caches will be used.
+    fn can_use_global_caches(&self) -> bool {
         // If there are any where-clauses in scope, then we always use
         // a cache local to this particular scope. Otherwise, we
         // switch to a global cache. We used to try and draw
@@ -880,7 +915,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         // rule seems to be pretty clearly safe and also still retains
         // a very high hit rate (~95% when compiling rustc).
         if !self.param_env().caller_bounds.is_empty() {
-            return &self.param_env().selection_cache;
+            return false;
         }
 
         // Avoid using the master cache during coherence and just rely
@@ -891,29 +926,43 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
         // it's not worth going to more trouble to increase the
         // hit-rate I don't think.
         if self.intercrate {
-            return &self.param_env().selection_cache;
+            return false;
         }
 
         // Otherwise, we can use the global cache.
-        &self.tcx().selection_cache
+        true
     }
 
     fn check_candidate_cache(&mut self,
                              cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>)
                              -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>>
     {
-        let cache = self.pick_candidate_cache();
-        let hashmap = cache.hashmap.borrow();
-        hashmap.get(&cache_fresh_trait_pred.0.trait_ref).cloned()
+        let trait_ref = &cache_fresh_trait_pred.0.trait_ref;
+        if self.can_use_global_caches() {
+            let cache = self.tcx().selection_cache.hashmap.borrow();
+            if let Some(cached) = cache.get(&trait_ref) {
+                return Some(cached.clone());
+            }
+        }
+        self.infcx.selection_cache.hashmap.borrow().get(trait_ref).cloned()
     }
 
     fn insert_candidate_cache(&mut self,
                               cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
                               candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>)
     {
-        let cache = self.pick_candidate_cache();
-        let mut hashmap = cache.hashmap.borrow_mut();
-        hashmap.insert(cache_fresh_trait_pred.0.trait_ref.clone(), candidate);
+        let trait_ref = cache_fresh_trait_pred.0.trait_ref;
+        if self.can_use_global_caches() {
+            let mut cache = self.tcx().selection_cache.hashmap.borrow_mut();
+            if let Some(trait_ref) = self.tcx().lift_to_global(&trait_ref) {
+                if let Some(candidate) = self.tcx().lift_to_global(&candidate) {
+                    cache.insert(trait_ref, candidate);
+                    return;
+                }
+            }
+        }
+
+        self.infcx.selection_cache.hashmap.borrow_mut().insert(trait_ref, candidate);
     }
 
     fn should_update_candidate_cache(&mut self,
@@ -1592,7 +1641,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
                 // i.e. EvaluatedToOk:
                 if other.evaluation == EvaluatedToOk {
                     if let ImplCandidate(victim_def) = victim.candidate {
-                        return traits::specializes(self.tcx(), other_def, victim_def);
+                        let tcx = self.tcx().global_tcx();
+                        return traits::specializes(tcx, other_def, victim_def);
                     }
                 }
 

@@ -53,7 +53,7 @@ pub enum MethodViolationCode {
     Generic,
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 pub fn is_object_safe(self, trait_def_id: DefId) -> bool {
     // Because we query yes/no results frequently, we keep a cache:
     let def = self.lookup_trait_def(trait_def_id);
@@ -173,8 +173,8 @@ fn trait_has_sized_self(self, trait_def_id: DefId) -> bool {
 }
 
 fn generics_require_sized_self(self,
-                               generics: &ty::Generics<'tcx>,
-                               predicates: &ty::GenericPredicates<'tcx>)
+                               generics: &ty::Generics<'gcx>,
+                               predicates: &ty::GenericPredicates<'gcx>)
                                -> bool
 {
     let sized_def_id = match self.lang_items.sized_trait() {
@@ -210,7 +210,7 @@ fn generics_require_sized_self(self,
 /// Returns `Some(_)` if this method makes the containing trait not object safe.
 fn object_safety_violation_for_method(self,
                                       trait_def_id: DefId,
-                                      method: &ty::Method<'tcx>)
+                                      method: &ty::Method<'gcx>)
                                       -> Option<MethodViolationCode>
 {
     // Any method that has a `Self : Sized` requisite is otherwise

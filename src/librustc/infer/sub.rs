@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use super::combine::CombineFields;
-use super::higher_ranked::HigherRankedRelations;
 use super::SubregionOrigin;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
@@ -24,8 +23,8 @@ pub struct Sub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fields: CombineFields<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'tcx> Sub<'a, 'tcx, 'tcx> {
-    pub fn new(f: CombineFields<'a, 'tcx, 'tcx>) -> Sub<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> Sub<'a, 'gcx, 'tcx> {
+    pub fn new(f: CombineFields<'a, 'gcx, 'tcx>) -> Sub<'a, 'gcx, 'tcx> {
         Sub { fields: f }
     }
 
@@ -34,9 +33,9 @@ impl<'a, 'tcx> Sub<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for Sub<'a, 'gcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.fields.infcx.tcx }
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R
@@ -50,11 +49,11 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx, 'tcx> {
         r
     }
 
-    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
-                                               variance: ty::Variance,
-                                               a: &T,
-                                               b: &T)
-                                               -> RelateResult<'tcx, T>
+    fn relate_with_variance<T: Relate<'tcx>>(&mut self,
+                                             variance: ty::Variance,
+                                             a: &T,
+                                             b: &T)
+                                             -> RelateResult<'tcx, T>
     {
         match variance {
             ty::Invariant => self.fields.equate().relate(a, b),
@@ -115,7 +114,7 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx, 'tcx> {
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
-        where T: Relate<'a,'tcx>
+        where T: Relate<'tcx>
     {
         self.fields.higher_ranked_sub(a, b)
     }

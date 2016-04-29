@@ -73,7 +73,7 @@ pub struct TraitDef<'tcx> {
     pub flags: Cell<TraitFlags>
 }
 
-impl<'a, 'tcx> TraitDef<'tcx> {
+impl<'a, 'gcx, 'tcx> TraitDef<'tcx> {
     pub fn new(unsafety: hir::Unsafety,
                paren_sugar: bool,
                generics: ty::Generics<'tcx>,
@@ -117,18 +117,18 @@ impl<'a, 'tcx> TraitDef<'tcx> {
         );
     }
 
-    fn write_trait_impls(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    fn write_trait_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
         tcx.dep_graph.write(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
-    fn read_trait_impls(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    fn read_trait_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
         tcx.dep_graph.read(DepNode::TraitImpls(self.trait_ref.def_id));
     }
 
     /// Records a basic trait-to-implementation mapping.
     ///
     /// Returns `true` iff the impl has not previously been recorded.
-    fn record_impl(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn record_impl(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                    impl_def_id: DefId,
                    impl_trait_ref: TraitRef<'tcx>)
                    -> bool {
@@ -163,7 +163,7 @@ impl<'a, 'tcx> TraitDef<'tcx> {
     }
 
     /// Records a trait-to-implementation mapping for a crate-local impl.
-    pub fn record_local_impl(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn record_local_impl(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                              impl_def_id: DefId,
                              impl_trait_ref: TraitRef<'tcx>) {
         assert!(impl_def_id.is_local());
@@ -176,7 +176,7 @@ impl<'a, 'tcx> TraitDef<'tcx> {
     /// The `parent_impl` is the immediately-less-specialized impl, or the
     /// trait's def ID if the impl is not a specialization -- information that
     /// should be pulled from the metadata.
-    pub fn record_remote_impl(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub fn record_remote_impl(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               impl_def_id: DefId,
                               impl_trait_ref: TraitRef<'tcx>,
                               parent_impl: DefId) {
@@ -195,7 +195,7 @@ impl<'a, 'tcx> TraitDef<'tcx> {
     /// overlap information if the impl overlaps but does not specialize an
     /// existing impl.
     pub fn add_impl_for_specialization(&self,
-                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        impl_def_id: DefId)
                                        -> Result<(), traits::OverlapError> {
         assert!(impl_def_id.is_local());
@@ -208,7 +208,7 @@ impl<'a, 'tcx> TraitDef<'tcx> {
         specialization_graph::ancestors(self, of_impl)
     }
 
-    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut f: F) {
+    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, mut f: F) {
         self.read_trait_impls(tcx);
         tcx.populate_implementations_for_trait_if_necessary(self.trait_ref.def_id);
 
@@ -226,7 +226,7 @@ impl<'a, 'tcx> TraitDef<'tcx> {
     /// Iterate over every impl that could possibly match the
     /// self-type `self_ty`.
     pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
-                                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                   tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                    self_ty: Ty<'tcx>,
                                                    mut f: F)
     {
