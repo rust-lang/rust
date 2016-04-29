@@ -106,7 +106,8 @@ impl CoreEmitter for SharedEmitter {
                     msg: &str,
                     code: Option<&str>,
                     lvl: Level,
-                    _is_header: bool) {
+                    _is_header: bool,
+                    _show_snippet: bool) {
         self.buffer.lock().unwrap().push(Diagnostic {
             msg: msg.to_string(),
             code: code.map(|s| s.to_string()),
