@@ -1016,7 +1016,7 @@ pub fn drain_fulfillment_cx<T>(&self,
     pub fn fresh_substs_for_generics(&self,
                                      span: Span,
                                      generics: &ty::Generics<'tcx>)
-                                     -> subst::Substs<'tcx>
+                                     -> &'tcx subst::Substs<'tcx>
     {
         let type_params = subst::VecPerParamSpace::empty();
 
@@ -1034,7 +1034,7 @@ pub fn drain_fulfillment_cx<T>(&self,
                 generics.types.get_slice(*space));
         }
 
-        return substs;
+        self.tcx.mk_substs(substs)
     }
 
     /// Given a set of generics defined on a trait, returns a substitution mapping each output
@@ -1533,7 +1533,7 @@ pub fn drain_fulfillment_cx<T>(&self,
 
     pub fn closure_type(&self,
                         def_id: DefId,
-                        substs: &ty::ClosureSubsts<'tcx>)
+                        substs: ty::ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
         let closure_ty =

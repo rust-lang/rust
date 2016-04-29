@@ -25,7 +25,7 @@ use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::parse::token::keywords;
 
-use serialize::{Decodable, Decoder};
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use hir;
 
@@ -140,10 +140,10 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a closure. Used to represent the type of
     /// `|a| a`.
-    TyClosure(DefId, Box<ClosureSubsts<'tcx>>),
+    TyClosure(DefId, ClosureSubsts<'tcx>),
 
     /// A tuple type.  For example, `(i32, bool)`.
-    TyTuple(Vec<Ty<'tcx>>),
+    TyTuple(&'tcx [Ty<'tcx>]),
 
     /// The projection of an associated type.  For example,
     /// `<T as Trait<..>>::N`.
@@ -234,7 +234,7 @@ pub enum TypeVariants<'tcx> {
 /// closure C wind up influencing the decisions we ought to make for
 /// closure C (which would then require fixed point iteration to
 /// handle). Plus it fixes an ICE. :P
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function.
     /// These are separated out because trans wants to pass them around
@@ -244,22 +244,23 @@ pub struct ClosureSubsts<'tcx> {
     /// The types of the upvars. The list parallels the freevars and
     /// `upvar_borrows` lists. These are kept distinct so that we can
     /// easily index into them.
-    pub upvar_tys: Vec<Ty<'tcx>>
+    pub upvar_tys: &'tcx [Ty<'tcx>]
 }
 
-impl<'tcx> Decodable for &'tcx ClosureSubsts<'tcx> {
-    fn decode<S: Decoder>(s: &mut S) -> Result<&'tcx ClosureSubsts<'tcx>, S::Error> {
-        let closure_substs = Decodable::decode(s)?;
-        let dummy_def_id: DefId = unsafe { mem::zeroed() };
+impl<'tcx> Encodable for ClosureSubsts<'tcx> {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        (self.func_substs, self.upvar_tys).encode(s)
+    }
+}
 
-        cstore::tls::with_decoding_context(s, |dcx, _| {
-            // Intern the value
-            let ty = dcx.tcx().mk_closure_from_closure_substs(dummy_def_id,
-                                                              Box::new(closure_substs));
-            match ty.sty {
-                TyClosure(_, ref closure_substs) => Ok(&**closure_substs),
-                _ => bug!()
-            }
+impl<'tcx> Decodable for ClosureSubsts<'tcx> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<ClosureSubsts<'tcx>, D::Error> {
+        let (func_substs, upvar_tys) = Decodable::decode(d)?;
+        cstore::tls::with_decoding_context(d, |dcx, _| {
+            Ok(ClosureSubsts {
+                func_substs: func_substs,
+                upvar_tys: dcx.tcx().mk_type_list(upvar_tys)
+            })
         })
     }
 }

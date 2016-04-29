@@ -110,7 +110,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             enc_existential_bounds(w, cx, bounds);
             write!(w, "]");
         }
-        ty::TyTuple(ref ts) => {
+        ty::TyTuple(ts) => {
             write!(w, "T[");
             for t in ts { enc_ty(w, cx, *t); }
             write!(w, "]");
@@ -156,10 +156,10 @@ pub fn enc_ty<'a, 'tcx>(w: &mut Cursor<Vec<u8>>, cx: &ctxt<'a, 'tcx>, t: Ty<'tcx
             enc_substs(w, cx, substs);
             write!(w, "]");
         }
-        ty::TyClosure(def, ref substs) => {
+        ty::TyClosure(def, substs) => {
             write!(w, "k[{}|", (cx.ds)(cx.tcx, def));
-            enc_substs(w, cx, &substs.func_substs);
-            for ty in &substs.upvar_tys {
+            enc_substs(w, cx, substs.func_substs);
+            for ty in substs.upvar_tys {
                 enc_ty(w, cx, ty);
             }
             write!(w, ".");

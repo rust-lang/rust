@@ -326,7 +326,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
                 let new_method = MethodCallee {
                     def_id: method.def_id,
                     ty: self.resolve(&method.ty, reason),
-                    substs: self.tcx().mk_substs(self.resolve(method.substs, reason)),
+                    substs: self.resolve(&method.substs, reason),
                 };
 
                 Some(new_method)

@@ -247,7 +247,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             }
             let main_def_id = tcx.map.local_def_id(main_id);
             let substs = tcx.mk_substs(Substs::empty());
-            let se_ty = tcx.mk_fn_def(main_def_id, substs, ty::BareFnTy {
+            let se_ty = tcx.mk_fn_def(main_def_id, substs,
+                                      tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -255,7 +256,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(tcx.mk_nil()),
                     variadic: false
                 })
-            });
+            }));
 
             require_same_types(ccx, None, main_span, main_t, se_ty,
                                "main function has wrong type");
@@ -292,7 +293,8 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
             let start_def_id = ccx.tcx.map.local_def_id(start_id);
             let substs = tcx.mk_substs(Substs::empty());
-            let se_ty = tcx.mk_fn_def(start_def_id, substs, ty::BareFnTy {
+            let se_ty = tcx.mk_fn_def(start_def_id, substs,
+                                      tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -303,7 +305,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     output: ty::FnConverging(tcx.types.isize),
                     variadic: false,
                 }),
-            });
+            }));
 
             require_same_types(ccx, None, start_span, start_t, se_ty,
                                "start function has wrong type");

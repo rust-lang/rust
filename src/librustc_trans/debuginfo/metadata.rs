@@ -187,10 +187,10 @@ impl<'tcx> TypeMap<'tcx> {
                 unique_type_id.push_str("struct ");
                 from_def_id_and_substs(self, cx, def.did, substs, &mut unique_type_id);
             },
-            ty::TyTuple(ref component_types) if component_types.is_empty() => {
+            ty::TyTuple(component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::TyTuple(ref component_types) => {
+            ty::TyTuple(component_types) => {
                 unique_type_id.push_str("tuple ");
                 for &component_type in component_types {
                     let component_type_id =
@@ -289,12 +289,12 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::TyClosure(_, ref substs) if substs.upvar_tys.is_empty() => {
+            ty::TyClosure(_, substs) if substs.upvar_tys.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::TyClosure(_, ref substs) => {
+            ty::TyClosure(_, substs) => {
                 unique_type_id.push_str("closure ");
-                for upvar_type in &substs.upvar_tys {
+                for upvar_type in substs.upvar_tys {
                     let upvar_type_id =
                         self.get_unique_type_id_of_type(cx, upvar_type);
                     let upvar_type_id =

@@ -895,14 +895,14 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyTrait(ref data) => write!(f, "{}", data),
             ty::TyProjection(ref data) => write!(f, "{}", data),
             TyStr => write!(f, "str"),
-            TyClosure(did, ref substs) => ty::tls::with(|tcx| {
+            TyClosure(did, substs) => ty::tls::with(|tcx| {
                 write!(f, "[closure")?;
 
                 if let Some(node_id) = tcx.map.as_local_node_id(did) {
                     write!(f, "@{:?}", tcx.map.span(node_id))?;
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
-                        for (freevar, upvar_ty) in freevars.iter().zip(&substs.upvar_tys) {
+                        for (freevar, upvar_ty) in freevars.iter().zip(substs.upvar_tys) {
                             let node_id = freevar.def.var_id();
                             write!(f,
                                         "{}{}:{}",

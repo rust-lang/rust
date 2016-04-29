@@ -122,7 +122,7 @@ fn try_overloaded_call_step(&self,
             return Some(CallStep::Builtin);
         }
 
-        ty::TyClosure(def_id, ref substs) => {
+        ty::TyClosure(def_id, substs) => {
             assert_eq!(def_id.krate, LOCAL_CRATE);
 
             // Check whether this is a call to a closure where we

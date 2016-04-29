@@ -445,7 +445,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             return Ok(Const::new(C_null(llty), ty));
                         }
 
-                        let substs = self.ccx.tcx().mk_substs(self.monomorphize(substs));
+                        let substs = self.monomorphize(&substs);
                         let instance = Instance::new(def_id, substs);
                         MirConstContext::trans_def(self.ccx, instance, vec![])
                     }
@@ -509,7 +509,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                                     span: DUMMY_SP
                                                 },
                                                 DUMMY_NODE_ID, def_id,
-                                                &self.monomorphize(substs));
+                                                self.monomorphize(&substs));
                 }
 
                 let val = if let mir::AggregateKind::Adt(adt_def, index, _) = *kind {
@@ -821,7 +821,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                     return Const::new(C_null(llty), ty);
                 }
 
-                let substs = bcx.tcx().mk_substs(bcx.monomorphize(substs));
+                let substs = bcx.monomorphize(&substs);
                 let instance = Instance::new(def_id, substs);
                 MirConstContext::trans_def(bcx.ccx(), instance, vec![])
             }

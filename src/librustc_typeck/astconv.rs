@@ -1742,7 +1742,7 @@ struct SelfInfo<'a, 'tcx> {
 pub fn ty_of_method<'tcx>(this: &AstConv<'tcx, 'tcx>,
                           sig: &hir::MethodSig,
                           untransformed_self_ty: Ty<'tcx>)
-                          -> (ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
+                          -> (&'tcx ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
     let self_info = Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
         explicit_self: &sig.explicit_self,
@@ -1756,8 +1756,10 @@ pub fn ty_of_method<'tcx>(this: &AstConv<'tcx, 'tcx>,
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 
-pub fn ty_of_bare_fn<'tcx>(this: &AstConv<'tcx, 'tcx>, unsafety: hir::Unsafety, abi: abi::Abi,
-                                              decl: &hir::FnDecl) -> ty::BareFnTy<'tcx> {
+pub fn ty_of_bare_fn<'tcx>(this: &AstConv<'tcx, 'tcx>,
+                           unsafety: hir::Unsafety, abi: abi::Abi,
+                           decl: &hir::FnDecl)
+                           -> &'tcx ty::BareFnTy<'tcx> {
     let (bare_fn_ty, _) = ty_of_method_or_bare_fn(this, unsafety, abi, None, decl);
     bare_fn_ty
 }
@@ -1767,7 +1769,8 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx, 'tcx>,
                                      abi: abi::Abi,
                                      opt_self_info: Option<SelfInfo<'a, 'tcx>>,
                                      decl: &hir::FnDecl)
-                                     -> (ty::BareFnTy<'tcx>, Option<ty::ExplicitSelfCategory>)
+                                     -> (&'tcx ty::BareFnTy<'tcx>,
+                                         Option<ty::ExplicitSelfCategory>)
 {
     debug!("ty_of_method_or_bare_fn");
 
@@ -1813,7 +1816,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx, 'tcx>,
         hir::NoReturn(..) => ty::FnDiverging
     };
 
-    (ty::BareFnTy {
+    (this.tcx().mk_bare_fn(ty::BareFnTy {
         unsafety: unsafety,
         abi: abi,
         sig: ty::Binder(ty::FnSig {
@@ -1821,7 +1824,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx, 'tcx>,
             output: output_ty,
             variadic: decl.variadic
         }),
-    }, explicit_self_category)
+    }), explicit_self_category)
 }
 
 fn determine_self_type<'a, 'tcx>(this: &AstConv<'tcx, 'tcx>,

@@ -82,10 +82,9 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
         match *self {
             LvalueTy::Ty { ty } => LvalueTy::Ty { ty: ty.fold_with(folder) },
             LvalueTy::Downcast { adt_def, substs, variant_index } => {
-                let substs = substs.fold_with(folder);
                 LvalueTy::Downcast {
                     adt_def: adt_def,
-                    substs: folder.tcx().mk_substs(substs),
+                    substs: substs.fold_with(folder),
                     variant_index: variant_index
                 }
             }
@@ -209,8 +208,7 @@ impl<'a, 'tcx> Mir<'tcx> {
                         Some(def.type_scheme(tcx).ty.subst(tcx, substs))
                     }
                     AggregateKind::Closure(did, substs) => {
-                        Some(tcx.mk_closure_from_closure_substs(
-                            did, Box::new(substs.clone())))
+                        Some(tcx.mk_closure_from_closure_substs(did, substs))
                     }
                 }
             }

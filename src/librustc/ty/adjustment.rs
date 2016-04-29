@@ -156,9 +156,7 @@ impl<'a, 'gcx, 'tcx> ty::TyS<'tcx> {
                 match *adjustment {
                     AdjustReifyFnPointer => {
                         match self.sty {
-                            ty::TyFnDef(_, _, b) => {
-                                tcx.mk_ty(ty::TyFnPtr(b))
-                            }
+                            ty::TyFnDef(_, _, f) => tcx.mk_fn_ptr(f),
                             _ => {
                                 bug!("AdjustReifyFnPointer adjustment on non-fn-item: {:?}",
                                      self);

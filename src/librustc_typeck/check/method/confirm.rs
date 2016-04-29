@@ -117,11 +117,12 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx, 'tcx> {
         // Create the method type
         let def_id = pick.item.def_id();
         let method_ty = pick.item.as_opt_method().unwrap();
-        let fty = self.tcx.mk_fn_def(def_id, all_substs, ty::BareFnTy {
+        let fty = self.tcx.mk_fn_def(def_id, all_substs,
+                                     self.tcx.mk_bare_fn(ty::BareFnTy {
             sig: ty::Binder(method_sig),
             unsafety: method_ty.fty.unsafety,
             abi: method_ty.fty.abi.clone(),
-        });
+        }));
 
         // Add any trait/regions obligations specified on the method's type parameters.
         self.add_obligations(fty, all_substs, &method_predicates);

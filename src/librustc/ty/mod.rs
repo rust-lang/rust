@@ -350,7 +350,7 @@ pub struct Method<'tcx> {
     pub name: Name,
     pub generics: Generics<'tcx>,
     pub predicates: GenericPredicates<'tcx>,
-    pub fty: BareFnTy<'tcx>,
+    pub fty: &'tcx BareFnTy<'tcx>,
     pub explicit_self: ExplicitSelfCategory,
     pub vis: Visibility,
     pub defaultness: hir::Defaultness,
@@ -362,7 +362,7 @@ impl<'tcx> Method<'tcx> {
     pub fn new(name: Name,
                generics: ty::Generics<'tcx>,
                predicates: GenericPredicates<'tcx>,
-               fty: BareFnTy<'tcx>,
+               fty: &'tcx BareFnTy<'tcx>,
                explicit_self: ExplicitSelfCategory,
                vis: Visibility,
                defaultness: hir::Defaultness,
@@ -1213,7 +1213,7 @@ impl<'tcx> TraitRef<'tcx> {
 #[derive(Clone)]
 pub struct ParameterEnvironment<'tcx> {
     /// See `construct_free_substs` for details.
-    pub free_substs: Substs<'tcx>,
+    pub free_substs: &'tcx Substs<'tcx>,
 
     /// Each type parameter has an implicit region bound that
     /// indicates it must outlive at least the function body (the user
@@ -1242,7 +1242,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                               -> ParameterEnvironment<'tcx>
     {
         ParameterEnvironment {
-            free_substs: self.free_substs.clone(),
+            free_substs: self.free_substs,
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
             free_id_outlive: self.free_id_outlive,
@@ -1974,7 +1974,7 @@ impl<'a, 'gcx, 'tcx, 'container> FieldDefData<'tcx, 'container> {
 /// item into the monotype of an item reference.
 #[derive(Clone)]
 pub struct ItemSubsts<'tcx> {
-    pub substs: Substs<'tcx>,
+    pub substs: &'tcx Substs<'tcx>,
 }
 
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -2059,10 +2059,6 @@ impl<'tcx> TyS<'tcx> {
 }
 
 impl<'tcx> ItemSubsts<'tcx> {
-    pub fn empty() -> ItemSubsts<'tcx> {
-        ItemSubsts { substs: Substs::empty() }
-    }
-
     pub fn is_noop(&self) -> bool {
         self.substs.is_noop()
     }
@@ -2153,7 +2149,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn node_id_item_substs(self, id: NodeId) -> ItemSubsts<'gcx> {
         match self.tables.borrow().item_substs.get(&id) {
-            None => ItemSubsts::empty(),
+            None => ItemSubsts {
+                substs: self.global_tcx().mk_substs(Substs::empty())
+            },
             Some(ts) => ts.clone(),
         }
     }
@@ -2722,7 +2720,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn closure_type(self,
                         def_id: DefId,
-                        substs: &ClosureSubsts<'gcx>)
+                        substs: ClosureSubsts<'gcx>)
                         -> ty::ClosureTy<'gcx>
     {
         Tables::closure_type(&self.tables, self.global_tcx(), def_id, substs)
@@ -2805,7 +2803,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // regions, so it shouldn't matter what we use for the free id
         let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment {
-            free_substs: Substs::empty(),
+            free_substs: self.mk_substs(Substs::empty()),
             caller_bounds: Vec::new(),
             implicit_region_bound: ty::ReEmpty,
             free_id_outlive: free_id_outlive
@@ -2882,7 +2880,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         //
 
         let unnormalized_env = ty::ParameterEnvironment {
-            free_substs: free_substs,
+            free_substs: tcx.mk_substs(free_substs),
             implicit_region_bound: ty::ReScope(free_id_outlive),
             caller_bounds: predicates,
             free_id_outlive: free_id_outlive,

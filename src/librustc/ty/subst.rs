@@ -114,8 +114,8 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         Substs { types: types, regions: regions }
     }
 
-    pub fn with_method_from_subst(self, other: &Substs<'tcx>) -> Substs<'tcx> {
-        let Substs { types, regions } = self;
+    pub fn with_method_from_subst(&self, other: &Substs<'tcx>) -> Substs<'tcx> {
+        let Substs { types, regions } = self.clone();
         let types = types.with_slice(FnSpace, other.types.get_slice(FnSpace));
         let regions = regions.with_slice(FnSpace, other.regions.get_slice(FnSpace));
         Substs { types: types, regions: regions }

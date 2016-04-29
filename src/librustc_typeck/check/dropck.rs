@@ -469,8 +469,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
             Ok(())
         }
 
-        ty::TyTuple(ref tys) |
-        ty::TyClosure(_, box ty::ClosureSubsts { upvar_tys: ref tys, .. }) => {
+        ty::TyTuple(tys) |
+        ty::TyClosure(_, ty::ClosureSubsts { upvar_tys: tys, .. }) => {
             for ty in tys {
                 iterate_over_potentially_unsafe_regions_in_type(cx, context, ty, depth+1)?
             }

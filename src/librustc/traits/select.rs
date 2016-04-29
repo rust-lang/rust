@@ -197,7 +197,7 @@ enum SelectionCandidate<'tcx> {
     /// Implementation of a `Fn`-family trait by one of the anonymous types
     /// generated for a `||` expression. The ty::ClosureKind informs the
     /// confirmation step what ClosureKind obligation to emit.
-    ClosureCandidate(/* closure */ DefId, &'tcx ty::ClosureSubsts<'tcx>, ty::ClosureKind),
+    ClosureCandidate(/* closure */ DefId, ty::ClosureSubsts<'tcx>, ty::ClosureKind),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -1270,7 +1270,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // type/region parameters
         let self_ty = *obligation.self_ty().skip_binder();
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::TyClosure(id, ref substs) => (id, substs),
+            ty::TyClosure(id, substs) => (id, substs),
             ty::TyInfer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -1707,16 +1707,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyStr | ty::TySlice(_) | ty::TyTrait(..) => Never,
 
-            ty::TyTuple(ref tys) => {
+            ty::TyTuple(tys) => {
                 // FIXME(#33242) we only need to constrain the last field
-                Where(ty::Binder(tys.clone()))
+                Where(ty::Binder(tys.to_vec()))
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
                 Where(ty::Binder(match sized_crit.sty {
-                    ty::TyTuple(ref tys) => tys.to_owned().subst(self.tcx(), substs),
+                    ty::TyTuple(tys) => tys.to_vec().subst(self.tcx(), substs),
                     ty::TyBool => vec![],
                     _ => vec![sized_crit.subst(self.tcx(), substs)]
                 }))
@@ -1763,9 +1763,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder(vec![element_ty]))
             }
 
-            ty::TyTuple(ref tys) => {
+            ty::TyTuple(tys) => {
                 // (*) binder moved here
-                Where(ty::Binder(tys.clone()))
+                Where(ty::Binder(tys.to_vec()))
             }
 
             ty::TyStruct(..) | ty::TyEnum(..) | ty::TyProjection(..) | ty::TyParam(..) => {
@@ -1842,7 +1842,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::TyTuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                tys.clone()
+                tys.to_vec()
             }
 
             ty::TyClosure(_, ref substs) => {
@@ -1854,7 +1854,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // OIBIT interact? That is, there is no way to say
                 // "make me invariant with respect to this TYPE, but
                 // do not act as though I can reach it"
-                substs.upvar_tys.clone()
+                substs.upvar_tys.to_vec()
             }
 
             // for `PhantomData<T>`, we pass `T`
@@ -2188,7 +2188,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
     fn vtable_impl(&mut self,
                    impl_def_id: DefId,
-                   mut substs: Normalized<'tcx, Substs<'tcx>>,
+                   mut substs: Normalized<'tcx, &'tcx Substs<'tcx>>,
                    cause: ObligationCause<'tcx>,
                    recursion_depth: usize,
                    skol_map: infer::SkolemizationMap,
@@ -2221,7 +2221,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         impl_obligations.append(&mut substs.obligations);
 
         VtableImplData { impl_def_id: impl_def_id,
-                         substs: self.tcx().mk_substs(substs.value),
+                         substs: substs.value,
                          nested: impl_obligations }
     }
 
@@ -2311,7 +2311,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn confirm_closure_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
                                  closure_def_id: DefId,
-                                 substs: &ty::ClosureSubsts<'tcx>,
+                                 substs: ty::ClosureSubsts<'tcx>,
                                  kind: ty::ClosureKind)
                                  -> Result<VtableClosureData<'tcx, PredicateObligation<'tcx>>,
                                            SelectionError<'tcx>>
@@ -2586,7 +2586,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     impl_def_id: DefId,
                     obligation: &TraitObligation<'tcx>,
                     snapshot: &infer::CombinedSnapshot)
-                    -> (Normalized<'tcx, Substs<'tcx>>, infer::SkolemizationMap)
+                    -> (Normalized<'tcx, &'tcx Substs<'tcx>>, infer::SkolemizationMap)
     {
         match self.match_impl(impl_def_id, obligation, snapshot) {
             Ok((substs, skol_map)) => (substs, skol_map),
@@ -2602,7 +2602,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                   impl_def_id: DefId,
                   obligation: &TraitObligation<'tcx>,
                   snapshot: &infer::CombinedSnapshot)
-                  -> Result<(Normalized<'tcx, Substs<'tcx>>,
+                  -> Result<(Normalized<'tcx, &'tcx Substs<'tcx>>,
                              infer::SkolemizationMap), ()>
     {
         let impl_trait_ref = self.tcx().impl_trait_ref(impl_def_id).unwrap();
@@ -2752,7 +2752,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn closure_trait_ref_unnormalized(&mut self,
                                       obligation: &TraitObligation<'tcx>,
                                       closure_def_id: DefId,
-                                      substs: &ty::ClosureSubsts<'tcx>)
+                                      substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
         let closure_type = self.infcx.closure_type(closure_def_id, substs);
@@ -2773,7 +2773,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn closure_trait_ref(&mut self,
                          obligation: &TraitObligation<'tcx>,
                          closure_def_id: DefId,
-                         substs: &ty::ClosureSubsts<'tcx>)
+                         substs: ty::ClosureSubsts<'tcx>)
                          -> Normalized<'tcx, ty::PolyTraitRef<'tcx>>
     {
         let trait_ref = self.closure_trait_ref_unnormalized(

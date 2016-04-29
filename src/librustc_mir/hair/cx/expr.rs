@@ -275,7 +275,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(cx: &mut Cx<'a, 'tcx, 'tcx>,
                     })
                 } else { None };
                 if let Some((adt_def, index)) = adt_data {
-                    let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(fun.id).substs);
+                    let substs = cx.tcx.node_id_item_substs(fun.id).substs;
                     let field_refs = args.iter().enumerate().map(|(idx, e)| FieldExprRef {
                         name: Field::new(idx),
                         expr: e.to_ref()
@@ -506,7 +506,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(cx: &mut Cx<'a, 'tcx, 'tcx>,
         hir::ExprClosure(..) => {
             let closure_ty = cx.tcx.expr_ty(expr);
             let (def_id, substs) = match closure_ty.sty {
-                ty::TyClosure(def_id, ref substs) => (def_id, substs),
+                ty::TyClosure(def_id, substs) => (def_id, substs),
                 _ => {
                     span_bug!(expr.span,
                               "closure expr w/o closure type: {:?}",
@@ -521,7 +521,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(cx: &mut Cx<'a, 'tcx, 'tcx>,
             });
             ExprKind::Closure {
                 closure_id: def_id,
-                substs: &substs,
+                substs: substs,
                 upvars: upvars,
             }
         }
@@ -672,7 +672,7 @@ fn convert_arm<'a, 'tcx>(cx: &mut Cx<'a, 'tcx, 'tcx>,
 fn convert_path_expr<'a, 'tcx>(cx: &mut Cx<'a, 'tcx, 'tcx>,
                                expr: &'tcx hir::Expr)
                                -> ExprKind<'tcx> {
-    let substs = cx.tcx.mk_substs(cx.tcx.node_id_item_substs(expr.id).substs);
+    let substs = cx.tcx.node_id_item_substs(expr.id).substs;
     // Otherwise there may be def_map borrow conflicts
     let def = cx.tcx.def_map.borrow()[&expr.id].full_def();
     let def_id = match def {

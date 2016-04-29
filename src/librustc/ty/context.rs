@@ -53,6 +53,7 @@ use hir;
 pub struct CtxtArenas<'tcx> {
     // internings
     type_: TypedArena<TyS<'tcx>>,
+    type_list: TypedArena<Vec<Ty<'tcx>>>,
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
@@ -68,6 +69,7 @@ impl<'tcx> CtxtArenas<'tcx> {
     pub fn new() -> CtxtArenas<'tcx> {
         CtxtArenas {
             type_: TypedArena::new(),
+            type_list: TypedArena::new(),
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
@@ -87,6 +89,7 @@ struct CtxtInterners<'tcx> {
     /// Specifically use a speedy hash algorithm for these hash sets,
     /// they're accessed quite often.
     type_: RefCell<FnvHashSet<InternedTy<'tcx>>>,
+    type_list: RefCell<FnvHashSet<InternedTyList<'tcx>>>,
     substs: RefCell<FnvHashSet<InternedSubsts<'tcx>>>,
     bare_fn: RefCell<FnvHashSet<&'tcx BareFnTy<'tcx>>>,
     region: RefCell<FnvHashSet<&'tcx Region>>,
@@ -99,6 +102,7 @@ impl<'tcx> CtxtInterners<'tcx> {
         CtxtInterners {
             arenas: arenas,
             type_: RefCell::new(FnvHashSet()),
+            type_list: RefCell::new(FnvHashSet()),
             substs: RefCell::new(FnvHashSet()),
             bare_fn: RefCell::new(FnvHashSet()),
             region: RefCell::new(FnvHashSet()),
@@ -228,19 +232,19 @@ impl<'a, 'gcx, 'tcx> Tables<'tcx> {
     pub fn closure_type(this: &RefCell<Self>,
                         tcx: TyCtxt<'a, 'gcx, 'tcx>,
                         def_id: DefId,
-                        substs: &ClosureSubsts<'tcx>)
+                        substs: ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
         // If this is a local def-id, it should be inserted into the
         // tables by typeck; else, it will be retreived from
         // the external crate metadata.
         if let Some(ty) = this.borrow().closure_tys.get(&def_id) {
-            return ty.subst(tcx, &substs.func_substs);
+            return ty.subst(tcx, substs.func_substs);
         }
 
         let ty = tcx.sess.cstore.closure_ty(tcx.global_tcx(), def_id);
         this.borrow_mut().closure_tys.insert(def_id, ty.clone());
-        ty.subst(tcx, &substs.func_substs)
+        ty.subst(tcx, substs.func_substs)
     }
 }
 
@@ -742,6 +746,23 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a [Ty<'a>] {
+    type Lifted = &'tcx [Ty<'tcx>];
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx [Ty<'tcx>]> {
+        if let Some(&InternedTyList { list }) = tcx.interners.type_list.borrow().get(*self) {
+            if *self as *const _ == list as *const _ {
+                return Some(list);
+            }
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
@@ -914,6 +935,18 @@ impl<'tcx: 'lcx, 'lcx> Borrow<TypeVariants<'lcx>> for InternedTy<'tcx> {
     }
 }
 
+/// An entry in the type list interner.
+#[derive(PartialEq, Eq, Hash)]
+struct InternedTyList<'tcx> {
+    list: &'tcx [Ty<'tcx>]
+}
+
+impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for InternedTyList<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a [Ty<'lcx>] {
+        self.list
+    }
+}
+
 /// An entry in the substs interner.
 #[derive(PartialEq, Eq, Hash)]
 struct InternedSubsts<'tcx> {
@@ -933,6 +966,18 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    pub fn mk_type_list(self, list: Vec<Ty<'tcx>>) -> &'tcx [Ty<'tcx>] {
+        if let Some(interned) = self.interners.type_list.borrow().get(&list[..]) {
+            return interned.list;
+        }
+
+        let list = self.interners.arenas.type_list.alloc(list);
+        self.interners.type_list.borrow_mut().insert(InternedTyList {
+            list: list
+        });
+        list
+    }
+
     // Type constructors
     pub fn mk_substs(self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
         if let Some(interned) = self.interners.substs.borrow().get(&substs) {
@@ -949,11 +994,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Create an unsafe fn ty based on a safe fn ty.
     pub fn safe_to_unsafe_fn_ty(self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
         assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
-        self.mk_fn_ptr(ty::BareFnTy {
+        self.mk_fn_ptr(self.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: bare_fn.abi,
             sig: bare_fn.sig.clone()
-        })
+        }))
     }
 
     pub fn mk_bare_fn(self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
@@ -1063,7 +1108,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_tup(self, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
-        self.mk_ty(TyTuple(ts))
+        self.mk_ty(TyTuple(self.mk_type_list(ts)))
     }
 
     pub fn mk_nil(self) -> Ty<'tcx> {
@@ -1076,12 +1121,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_fn_def(self, def_id: DefId,
                      substs: &'tcx Substs<'tcx>,
-                     fty: BareFnTy<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyFnDef(def_id, substs, self.mk_bare_fn(fty)))
+                     fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnDef(def_id, substs, fty))
     }
 
-    pub fn mk_fn_ptr(self, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(TyFnPtr(self.mk_bare_fn(fty)))
+    pub fn mk_fn_ptr(self, fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
+        self.mk_ty(TyFnPtr(fty))
     }
 
     pub fn mk_trait(self,
@@ -1117,15 +1162,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                       substs: &'tcx Substs<'tcx>,
                       tys: Vec<Ty<'tcx>>)
                       -> Ty<'tcx> {
-        self.mk_closure_from_closure_substs(closure_id, Box::new(ClosureSubsts {
+        self.mk_closure_from_closure_substs(closure_id, ClosureSubsts {
             func_substs: substs,
-            upvar_tys: tys
-        }))
+            upvar_tys: self.mk_type_list(tys)
+        })
     }
 
     pub fn mk_closure_from_closure_substs(self,
                                           closure_id: DefId,
-                                          closure_substs: Box<ClosureSubsts<'tcx>>)
+                                          closure_substs: ClosureSubsts<'tcx>)
                                           -> Ty<'tcx> {
         self.mk_ty(TyClosure(closure_id, closure_substs))
     }

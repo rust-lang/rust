@@ -156,7 +156,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                                                             span: DUMMY_SP
                                                         },
                                                         DUMMY_NODE_ID, def_id,
-                                                        &bcx.monomorphize(substs));
+                                                        bcx.monomorphize(&substs));
                         }
 
                         for (i, operand) in operands.iter().enumerate() {

@@ -987,7 +987,7 @@ pub fn get_impl_or_trait_item<'a, 'tcx>(intr: Rc<IdentInterner>,
             let predicates = doc_predicates(item_doc, tcx, cdata, tag_method_ty_generics);
             let ity = tcx.lookup_item_type(def_id).ty;
             let fty = match ity.sty {
-                ty::TyFnDef(_, _, fty) => fty.clone(),
+                ty::TyFnDef(_, _, fty) => fty,
                 _ => bug!(
                     "the type {:?} of the method {:?} is not a function?",
                     ity, name)

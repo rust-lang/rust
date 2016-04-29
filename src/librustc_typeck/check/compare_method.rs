@@ -178,7 +178,7 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
         trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs)
+        .subst(tcx, impl_to_skol_substs).clone()
         .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
                      impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
     debug!("compare_impl_method: trait_to_skol_substs={:?}",
@@ -279,9 +279,9 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // type.
 
         // Compute skolemized form of impl and trait method tys.
-        let impl_fty = tcx.mk_fn_ptr(impl_m.fty.clone());
+        let impl_fty = tcx.mk_fn_ptr(impl_m.fty);
         let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
-        let trait_fty = tcx.mk_fn_ptr(trait_m.fty.clone());
+        let trait_fty = tcx.mk_fn_ptr(trait_m.fty);
         let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
         let err = infcx.commit_if_ok(|snapshot| {
@@ -299,11 +299,11 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                      impl_m_span,
                                                      impl_m_body_id,
                                                      &impl_sig);
-            let impl_fty = tcx.mk_fn_ptr(ty::BareFnTy {
+            let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: impl_m.fty.unsafety,
                 abi: impl_m.fty.abi,
                 sig: ty::Binder(impl_sig)
-            });
+            }));
             debug!("compare_impl_method: impl_fty={:?}",
                    impl_fty);
 
@@ -317,11 +317,11 @@ pub fn compare_impl_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                      impl_m_span,
                                                      impl_m_body_id,
                                                      &trait_sig);
-            let trait_fty = tcx.mk_fn_ptr(ty::BareFnTy {
+            let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: trait_m.fty.unsafety,
                 abi: trait_m.fty.abi,
                 sig: ty::Binder(trait_sig)
-            });
+            }));
 
             debug!("compare_impl_method: trait_fty={:?}",
                    trait_fty);
@@ -442,7 +442,7 @@ pub fn compare_const_impl<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // Create mapping from trait to skolemized.
         let trait_to_skol_substs =
             trait_to_impl_substs
-            .subst(tcx, impl_to_skol_substs)
+            .subst(tcx, impl_to_skol_substs).clone()
             .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
                          impl_to_skol_substs.regions.get_slice(subst::FnSpace).to_vec());
         debug!("compare_const_impl: trait_to_skol_substs={:?}",

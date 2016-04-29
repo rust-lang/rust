@@ -222,7 +222,7 @@ pub enum ExprKind<'tcx> {
     },
     Closure {
         closure_id: DefId,
-        substs: &'tcx ClosureSubsts<'tcx>,
+        substs: ClosureSubsts<'tcx>,
         upvars: Vec<ExprRef<'tcx>>,
     },
     Literal {

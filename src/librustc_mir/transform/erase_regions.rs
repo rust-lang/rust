@@ -37,7 +37,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
-        *substs = self.tcx.mk_substs(self.tcx.erase_regions(*substs));
+        *substs = self.tcx.erase_regions(&{*substs});
     }
 }
 
