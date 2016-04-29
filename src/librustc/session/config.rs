@@ -1127,17 +1127,18 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
             OptLevel::Default
         } else {
-            match cg.opt_level.as_ref().map(String::as_ref) {
-                None => OptLevel::No,
-                Some("0") => OptLevel::No,
-                Some("1") => OptLevel::Less,
-                Some("2") => OptLevel::Default,
-                Some("3") => OptLevel::Aggressive,
-                Some("s") => OptLevel::Size,
-                Some("z") => OptLevel::SizeMin,
-                Some(arg) => {
+            match (cg.opt_level.as_ref().map(String::as_ref),
+                   nightly_options::is_nightly_build()) {
+                (None, _) => OptLevel::No,
+                (Some("0"), _) => OptLevel::No,
+                (Some("1"), _) => OptLevel::Less,
+                (Some("2"), _) => OptLevel::Default,
+                (Some("3"), _) => OptLevel::Aggressive,
+                (Some("s"), true) => OptLevel::Size,
+                (Some("z"), true) => OptLevel::SizeMin,
+                (Some(arg), _) => {
                     early_error(error_format, &format!("optimization level needs to be \
-                                                      between 0-3, s, or z (instead was `{}`)",
+                                                      between 0-3 (instead was `{}`)",
                                                      arg));
                 }
             }
@@ -1308,7 +1309,7 @@ pub mod nightly_options {
         is_nightly_build() && matches.opt_strs("Z").iter().any(|x| *x == "unstable-options")
     }
 
-    fn is_nightly_build() -> bool {
+    pub fn is_nightly_build() -> bool {
         match get_unstable_features_setting() {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
             _ => false,
