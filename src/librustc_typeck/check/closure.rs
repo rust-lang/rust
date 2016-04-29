@@ -217,7 +217,7 @@ fn deduce_sig_from_projection(&self,
     debug!("deduce_sig_from_projection: arg_param_ty {:?}", arg_param_ty);
 
     let input_tys = match arg_param_ty.sty {
-        ty::TyTuple(ref tys) => { (*tys).clone() }
+        ty::TyTuple(tys) => tys.to_vec(),
         _ => { return None; }
     };
     debug!("deduce_sig_from_projection: input_tys {:?}", input_tys);

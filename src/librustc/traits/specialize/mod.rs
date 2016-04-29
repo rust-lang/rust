@@ -96,7 +96,7 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                       specializaiton failed to hold")
             })
         }
-        specialization_graph::Node::Trait(..) => source_trait_ref.substs.clone(),
+        specialization_graph::Node::Trait(..) => source_trait_ref.substs,
     };
 
     // directly inherent the method generics, since those do not vary across impls
@@ -171,7 +171,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        source_trait_ref: ty::TraitRef<'tcx>,
                                        target_impl: DefId)
-                                       -> Result<Substs<'tcx>, ()> {
+                                       -> Result<&'tcx Substs<'tcx>, ()> {
     infcx.commit_if_ok(|_| {
         let selcx = &mut SelectionContext::new(&infcx);
         let target_substs = fresh_type_vars_for_impl(&infcx, DUMMY_SP, target_impl);

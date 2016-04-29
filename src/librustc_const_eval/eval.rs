@@ -92,7 +92,7 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 /// This generally happens in late/trans const evaluation.
 pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
-                                        substs: Option<subst::Substs<'tcx>>)
+                                        substs: Option<&'tcx subst::Substs<'tcx>>)
                                         -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)> {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         match tcx.map.find(node_id) {
@@ -1004,11 +1004,11 @@ fn infer<'a, 'tcx>(i: ConstInt,
 fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 ti: &'tcx hir::TraitItem,
                                                 trait_id: DefId,
-                                                rcvr_substs: subst::Substs<'tcx>)
+                                                rcvr_substs: &'tcx subst::Substs<'tcx>)
                                                 -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)>
 {
     let trait_ref = ty::Binder(
-        rcvr_substs.erase_regions().to_trait_ref(tcx, trait_id)
+        rcvr_substs.clone().erase_regions().to_trait_ref(tcx, trait_id)
     );
     debug!("resolve_trait_associated_const: trait_ref={:?}",
            trait_ref);

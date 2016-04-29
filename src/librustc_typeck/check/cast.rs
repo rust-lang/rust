@@ -320,8 +320,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (None, Some(t_cast)) => {
                 if let ty::TyFnDef(_, _, f) = self.expr_ty.sty {
                     // Attempt a coercion to a fn pointer type.
-                    let res = fcx.try_coerce(self.expr,
-                                             fcx.tcx.mk_ty(ty::TyFnPtr(f)));
+                    let res = fcx.try_coerce(self.expr, fcx.tcx.mk_fn_ptr(f));
                     if !res.is_ok() {
                         return Err(CastError::NonScalar);
                     }

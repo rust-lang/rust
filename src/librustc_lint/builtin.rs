@@ -823,11 +823,7 @@ impl LateLintPass for UnconditionalRecursion {
                 hir_map::NodeExpr(&hir::Expr { node: hir::ExprCall(ref callee, _), .. }) => {
                     match tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def()) {
                         Some(Def::Method(def_id)) => {
-                            let item_substs =
-                                tcx.tables.borrow().item_substs
-                                                   .get(&callee.id)
-                                                   .cloned()
-                                                   .unwrap_or_else(|| ty::ItemSubsts::empty());
+                            let item_substs = tcx.node_id_item_substs(callee.id);
                             method_call_refers_to_method(
                                 tcx, method, def_id, &item_substs.substs, id)
                         }

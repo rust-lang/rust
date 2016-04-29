@@ -118,9 +118,9 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
 // like traits etc.
 fn relate_item_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
                                          item_def_id: DefId,
-                                         a_subst: &Substs<'tcx>,
-                                         b_subst: &Substs<'tcx>)
-                                         -> RelateResult<'tcx, Substs<'tcx>>
+                                         a_subst: &'tcx Substs<'tcx>,
+                                         b_subst: &'tcx Substs<'tcx>)
+                                         -> RelateResult<'tcx, &'tcx Substs<'tcx>>
     where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
     debug!("substs: item_def_id={:?} a_subst={:?} b_subst={:?}",
@@ -140,9 +140,9 @@ fn relate_item_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 
 pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
                                         variances: Option<&ty::ItemVariances>,
-                                        a_subst: &Substs<'tcx>,
-                                        b_subst: &Substs<'tcx>)
-                                        -> RelateResult<'tcx, Substs<'tcx>>
+                                        a_subst: &'tcx Substs<'tcx>,
+                                        b_subst: &'tcx Substs<'tcx>)
+                                        -> RelateResult<'tcx, &'tcx Substs<'tcx>>
     where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
     let mut substs = Substs::empty();
@@ -166,7 +166,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
         substs.regions.replace(space, regions);
     }
 
-    Ok(substs)
+    Ok(relation.tcx().mk_substs(substs))
 }
 
 fn relate_type_params<'a, 'gcx, 'tcx, R>(relation: &mut R,
@@ -223,19 +223,21 @@ fn relate_region_params<'a, 'gcx, 'tcx, R>(relation: &mut R,
         .collect()
 }
 
-impl<'tcx> Relate<'tcx> for ty::BareFnTy<'tcx> {
+impl<'tcx> Relate<'tcx> for &'tcx ty::BareFnTy<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &ty::BareFnTy<'tcx>,
-                           b: &ty::BareFnTy<'tcx>)
-                           -> RelateResult<'tcx, ty::BareFnTy<'tcx>>
+                           a: &&'tcx ty::BareFnTy<'tcx>,
+                           b: &&'tcx ty::BareFnTy<'tcx>)
+                           -> RelateResult<'tcx, &'tcx ty::BareFnTy<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
         let abi = relation.relate(&a.abi, &b.abi)?;
         let sig = relation.relate(&a.sig, &b.sig)?;
-        Ok(ty::BareFnTy {unsafety: unsafety,
-                         abi: abi,
-                         sig: sig})
+        Ok(relation.tcx().mk_bare_fn(ty::BareFnTy {
+            unsafety: unsafety,
+            abi: abi,
+            sig: sig
+        }))
     }
 }
 
@@ -418,7 +420,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
             let substs = relate_item_substs(relation, a.def_id, a.substs, b.substs)?;
-            Ok(ty::TraitRef { def_id: a.def_id, substs: relation.tcx().mk_substs(substs) })
+            Ok(ty::TraitRef { def_id: a.def_id, substs: substs })
         }
     }
 }
@@ -481,7 +483,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             if a_def == b_def =>
         {
             let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_enum(a_def, tcx.mk_substs(substs)))
+            Ok(tcx.mk_enum(a_def, substs))
         }
 
         (&ty::TyTrait(ref a_), &ty::TyTrait(ref b_)) =>
@@ -495,17 +497,17 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             if a_def == b_def =>
         {
             let substs = relate_item_substs(relation, a_def.did, a_substs, b_substs)?;
-            Ok(tcx.mk_struct(a_def, tcx.mk_substs(substs)))
+            Ok(tcx.mk_struct(a_def, substs))
         }
 
-        (&ty::TyClosure(a_id, ref a_substs),
-         &ty::TyClosure(b_id, ref b_substs))
+        (&ty::TyClosure(a_id, a_substs),
+         &ty::TyClosure(b_id, b_substs))
             if a_id == b_id =>
         {
             // All TyClosure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
-            let substs = relation.relate(a_substs, b_substs)?;
+            let substs = relation.relate(&a_substs, &b_substs)?;
             Ok(tcx.mk_closure_from_closure_substs(a_id, substs))
         }
 
@@ -544,7 +546,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_slice(t))
         }
 
-        (&ty::TyTuple(ref as_), &ty::TyTuple(ref bs)) =>
+        (&ty::TyTuple(as_), &ty::TyTuple(bs)) =>
         {
             if as_.len() == bs.len() {
                 let ts = as_.iter().zip(bs)
@@ -564,13 +566,13 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             if a_def_id == b_def_id =>
         {
             let substs = relate_substs(relation, None, a_substs, b_substs)?;
-            let fty = relation.relate(a_fty, b_fty)?;
-            Ok(tcx.mk_fn_def(a_def_id, tcx.mk_substs(substs), fty))
+            let fty = relation.relate(&a_fty, &b_fty)?;
+            Ok(tcx.mk_fn_def(a_def_id, substs, fty))
         }
 
         (&ty::TyFnPtr(a_fty), &ty::TyFnPtr(b_fty)) =>
         {
-            let fty = relation.relate(a_fty, b_fty)?;
+            let fty = relation.relate(&a_fty, &b_fty)?;
             Ok(tcx.mk_fn_ptr(fty))
         }
 
@@ -594,18 +596,20 @@ impl<'tcx> Relate<'tcx> for ty::ClosureSubsts<'tcx> {
                            -> RelateResult<'tcx, ty::ClosureSubsts<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
-        let func_substs = relate_substs(relation, None, a.func_substs, b.func_substs)?;
+        let substs = relate_substs(relation, None, a.func_substs, b.func_substs)?;
         let upvar_tys = relation.relate_zip(&a.upvar_tys, &b.upvar_tys)?;
-        Ok(ty::ClosureSubsts { func_substs: relation.tcx().mk_substs(func_substs),
-                               upvar_tys: upvar_tys })
+        Ok(ty::ClosureSubsts {
+            func_substs: substs,
+            upvar_tys: relation.tcx().mk_type_list(upvar_tys)
+        })
     }
 }
 
-impl<'tcx> Relate<'tcx> for Substs<'tcx> {
+impl<'tcx> Relate<'tcx> for &'tcx Substs<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &Substs<'tcx>,
-                           b: &Substs<'tcx>)
-                           -> RelateResult<'tcx, Substs<'tcx>>
+                           a: &&'tcx Substs<'tcx>,
+                           b: &&'tcx Substs<'tcx>)
+                           -> RelateResult<'tcx, &'tcx Substs<'tcx>>
         where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
     {
         relate_substs(relation, None, a, b)

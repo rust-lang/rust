@@ -563,7 +563,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               sig, untransformed_rcvr_ty);
 
     let def_id = ccx.tcx.map.local_def_id(id);
-    let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
+    let substs = mk_item_substs(ccx, &ty_generics);
 
     let ty_method = ty::Method::new(name,
                                     ty_generics,
@@ -575,7 +575,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     def_id,
                                     container);
 
-    let fty = ccx.tcx.mk_fn_def(def_id, substs, ty_method.fty.clone());
+    let fty = ccx.tcx.mk_fn_def(def_id, substs, ty_method.fty);
     debug!("method {} (id {}) has type {:?}",
             name, id, fty);
     ccx.tcx.register_item_type(def_id, TypeScheme {
@@ -953,8 +953,8 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 .map(|field| field.unsubst_ty())
                 .collect();
             let def_id = tcx.map.local_def_id(ctor_id);
-            let substs = tcx.mk_substs(mk_item_substs(ccx, &scheme.generics));
-            tcx.mk_fn_def(def_id, substs, ty::BareFnTy {
+            let substs = mk_item_substs(ccx, &scheme.generics);
+            tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
                 unsafety: hir::Unsafety::Normal,
                 abi: abi::Abi::Rust,
                 sig: ty::Binder(ty::FnSig {
@@ -962,7 +962,7 @@ fn convert_variant_ctor<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     output: ty::FnConverging(scheme.ty),
                     variadic: false
                 })
-            })
+            }))
         }
     };
     write_ty_to_tcx(ccx, ctor_id, ctor_ty);
@@ -1454,7 +1454,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
             let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
             let def_id = ccx.tcx.map.local_def_id(it.id);
-            let substs = tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
+            let substs = mk_item_substs(ccx, &ty_generics);
             let ty = tcx.mk_fn_def(def_id, substs, tofd);
             ty::TypeScheme { ty: ty, generics: ty_generics }
         }
@@ -1467,14 +1467,14 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let def = convert_enum_def(ccx, it, ei);
             let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = tcx.mk_enum(def, tcx.mk_substs(substs));
+            let t = tcx.mk_enum(def, substs);
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         hir::ItemStruct(ref si, ref generics) => {
             let def = convert_struct_def(ccx, it, si);
             let ty_generics = ty_generics_for_type(ccx, generics);
             let substs = mk_item_substs(ccx, &ty_generics);
-            let t = tcx.mk_struct(def, tcx.mk_substs(substs));
+            let t = tcx.mk_struct(def, substs);
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
         hir::ItemDefaultImpl(..) |
@@ -2191,14 +2191,14 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
         }
     }
 
-    let substs = ccx.tcx.mk_substs(mk_item_substs(ccx, &ty_generics));
-    let t_fn = ccx.tcx.mk_fn_def(id, substs, ty::BareFnTy {
+    let substs = mk_item_substs(ccx, &ty_generics);
+    let t_fn = ccx.tcx.mk_fn_def(id, substs, ccx.tcx.mk_bare_fn(ty::BareFnTy {
         abi: abi,
         unsafety: hir::Unsafety::Unsafe,
         sig: ty::Binder(ty::FnSig {inputs: input_tys,
                                     output: output,
                                     variadic: decl.variadic}),
-    });
+    }));
 
     ty::TypeScheme {
         generics: ty_generics,
@@ -2208,7 +2208,7 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
 
 fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             ty_generics: &ty::Generics<'tcx>)
-                            -> Substs<'tcx>
+                            -> &'tcx Substs<'tcx>
 {
     let types =
         ty_generics.types.map(
@@ -2218,7 +2218,7 @@ fn mk_item_substs<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ty_generics.regions.map(
             |def| def.to_early_bound_region());
 
-    Substs::new(types, regions)
+    ccx.tcx.mk_substs(Substs::new(types, regions))
 }
 
 /// Checks that all the type parameters on an impl

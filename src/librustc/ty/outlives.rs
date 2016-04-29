@@ -111,7 +111,7 @@ fn compute_components(&self, ty: Ty<'tcx>, out: &mut Vec<Component<'tcx>>) {
             // what func/type parameters are used and unused,
             // taking into consideration UFCS and so forth.
 
-            for &upvar_ty in &substs.upvar_tys {
+            for &upvar_ty in substs.upvar_tys {
                 self.compute_components(upvar_ty, out);
             }
         }

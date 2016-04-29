@@ -609,7 +609,9 @@ pub fn check_pat_struct(&self, pat: &'tcx hir::Pat,
     self.check_struct_pat_fields(pat.span, fields, variant, &item_substs, etc);
 
     self.write_ty(pat.id, pat_ty);
-    self.write_substs(pat.id, ty::ItemSubsts { substs: item_substs.clone() });
+    self.write_substs(pat.id, ty::ItemSubsts {
+        substs: item_substs
+    });
 }
 
 fn check_pat_enum(&self,

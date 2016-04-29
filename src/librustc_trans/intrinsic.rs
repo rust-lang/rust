@@ -1259,11 +1259,11 @@ fn gen_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     };
     let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
 
-    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::BareFnTy {
+    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
         sig: ty::Binder(sig)
-    });
+    }));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
     let (fcx, block_arena);
     block_arena = TypedArena::new();
@@ -1289,7 +1289,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
     // Define the type up front for the signature of the rust_try function.
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+    let fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: Abi::Rust,
         sig: ty::Binder(ty::FnSig {
@@ -1297,7 +1297,7 @@ fn get_rust_try_fn<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
             output: ty::FnOutput::FnConverging(tcx.mk_nil()),
             variadic: false,
         }),
-    });
+    }));
     let output = ty::FnOutput::FnConverging(tcx.types.i32);
     let rust_try = gen_fn(fcx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
     ccx.rust_try_fn().set(Some(rust_try));

@@ -38,7 +38,8 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut substs = Substs::empty();
     substs.types = i_ty.generics.types.map(|def| tcx.mk_param_from_def(def));
 
-    let fty = tcx.mk_fn_def(def_id, tcx.mk_substs(substs), ty::BareFnTy {
+    let fty = tcx.mk_fn_def(def_id, tcx.mk_substs(substs),
+                            tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Unsafe,
         abi: abi,
         sig: ty::Binder(FnSig {
@@ -46,7 +47,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             output: output,
             variadic: false,
         }),
-    });
+    }));
     let i_n_tps = i_ty.generics.types.len(subst::FnSpace);
     if i_n_tps != n_tps {
         span_err!(tcx.sess, it.span, E0094,
@@ -285,7 +286,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
-                let fn_ty = ty::BareFnTy {
+                let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
                     unsafety: hir::Unsafety::Normal,
                     abi: Abi::Rust,
                     sig: ty::Binder(FnSig {
@@ -293,7 +294,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
                         output: ty::FnOutput::FnConverging(tcx.mk_nil()),
                         variadic: false,
                     }),
-                };
+                });
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
@@ -484,7 +485,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
         }
         Aggregate(_flatten, ref expected_contents) => {
             match t.sty {
-                ty::TyTuple(ref contents) => {
+                ty::TyTuple(contents) => {
                     if contents.len() != expected_contents.len() {
                         simple_error(&format!("tuple with length {}", contents.len()),
                                      &format!("tuple with length {}", expected_contents.len()));

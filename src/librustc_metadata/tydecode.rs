@@ -502,15 +502,15 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
         }
     }
 
-    pub fn parse_bare_fn_ty(&mut self) -> ty::BareFnTy<'tcx> {
+    pub fn parse_bare_fn_ty(&mut self) -> &'tcx ty::BareFnTy<'tcx> {
         let unsafety = parse_unsafety(self.next());
         let abi = self.parse_abi_set();
         let sig = self.parse_sig();
-        ty::BareFnTy {
+        self.tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: unsafety,
             abi: abi,
             sig: sig
-        }
+        })
     }
 
     fn parse_sig(&mut self) -> ty::PolyFnSig<'tcx> {

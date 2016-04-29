@@ -1134,7 +1134,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // the key we need to find the closure-kind and
             // closure-type etc.
             let (def_id, substs) = match expr_ty(bcx, expr).sty {
-                ty::TyClosure(def_id, ref substs) => (def_id, substs),
+                ty::TyClosure(def_id, substs) => (def_id, substs),
                 ref t =>
                     span_bug!(
                         expr.span,

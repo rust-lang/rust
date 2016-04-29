@@ -240,11 +240,12 @@ pub fn lookup_method_in_trait_adjusted(&self,
     let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
     let transformed_self_ty = fn_sig.inputs[0];
     let def_id = method_item.def_id();
-    let fty = tcx.mk_fn_def(def_id, trait_ref.substs, ty::BareFnTy {
+    let fty = tcx.mk_fn_def(def_id, trait_ref.substs,
+                            tcx.mk_bare_fn(ty::BareFnTy {
         sig: ty::Binder(fn_sig),
         unsafety: method_ty.fty.unsafety,
         abi: method_ty.fty.abi.clone(),
-    });
+    }));
 
     debug!("lookup_in_trait_adjusted: matched method fty={:?} obligation={:?}",
            fty,

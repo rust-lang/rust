@@ -343,7 +343,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
 
         if abi == Abi::RustCall && !sig.inputs.is_empty() {
-            if let ty::TyTuple(ref args) = sig.inputs[sig.inputs.len() - 1].sty {
+            if let ty::TyTuple(args) = sig.inputs[sig.inputs.len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, codemap::DUMMY_SP));
                 }

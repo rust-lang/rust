@@ -259,7 +259,7 @@ fn consider_unification_despite_ambiguity<'cx, 'gcx, 'tcx>(
     debug!("consider_unification_despite_ambiguity: self_ty.sty={:?}",
            self_ty.sty);
     match self_ty.sty {
-        ty::TyClosure(closure_def_id, ref substs) => {
+        ty::TyClosure(closure_def_id, substs) => {
             let closure_typer = selcx.closure_typer();
             let closure_type = closure_typer.closure_type(closure_def_id, substs);
             let ty::Binder((_, ret_type)) =
@@ -1021,7 +1021,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
     let closure_typer = selcx.closure_typer();
-    let closure_type = closure_typer.closure_type(vtable.closure_def_id, &vtable.substs);
+    let closure_type = closure_typer.closure_type(vtable.closure_def_id, vtable.substs);
     let Normalized {
         value: closure_type,
         mut obligations

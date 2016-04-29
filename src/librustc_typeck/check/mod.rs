@@ -2506,7 +2506,7 @@ fn check_argument_types(&self,
     let formal_tys = if tuple_arguments == TupleArguments {
         let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
         match tuple_type.sty {
-            ty::TyTuple(ref arg_types) => {
+            ty::TyTuple(arg_types) => {
                 if arg_types.len() != args.len() {
                     span_err!(tcx.sess, sp, E0057,
                         "this function takes {} parameter{} but {} parameter{} supplied",
@@ -2524,7 +2524,7 @@ fn check_argument_types(&self,
                         },
                         None => &[]
                     };
-                    (*arg_types).clone()
+                    arg_types.to_vec()
                 }
             }
             _ => {
@@ -2682,7 +2682,7 @@ fn check_argument_types(&self,
                     }, arg_ty, None);
                 }
                 ty::TyFnDef(_, _, f) => {
-                    let ptr_ty = self.tcx.mk_ty(ty::TyFnPtr(f));
+                    let ptr_ty = self.tcx.mk_fn_ptr(f);
                     let ptr_ty = self.resolve_type_vars_if_possible(&ptr_ty);
                     self.type_error_message(arg.span,
                                             |t| {
@@ -4326,6 +4326,7 @@ pub fn instantiate_path(&self,
 
     // The things we are substituting into the type should not contain
     // escaping late-bound regions, and nor should the base type scheme.
+    let substs = self.tcx.mk_substs(substs);
     assert!(!substs.has_regions_escaping_depth(0));
     assert!(!type_scheme.has_escaping_regions());
 
@@ -4371,7 +4372,9 @@ pub fn instantiate_path(&self,
            node_id,
            ty_substituted);
     self.write_ty(node_id, ty_substituted);
-    self.write_substs(node_id, ty::ItemSubsts { substs: substs });
+    self.write_substs(node_id, ty::ItemSubsts {
+        substs: substs
+    });
 }
 
     /// Finds the parameters that the user provided and adds them to `substs`. If too many

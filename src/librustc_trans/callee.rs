@@ -100,7 +100,7 @@ impl<'tcx> Callee<'tcx> {
     /// Trait or impl method.
     pub fn method<'blk>(bcx: Block<'blk, 'tcx>,
                         method: ty::MethodCallee<'tcx>) -> Callee<'tcx> {
-        let substs = bcx.tcx().mk_substs(bcx.fcx.monomorphize(&method.substs));
+        let substs = bcx.fcx.monomorphize(&method.substs);
         Callee::def(bcx.ccx(), method.def_id, substs)
     }
 
@@ -182,7 +182,7 @@ impl<'tcx> Callee<'tcx> {
 
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {
-                    ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                    ty::TyFnDef(_, _, fty) => tcx.mk_fn_ptr(fty),
                     _ => bug!("expected fn item type, found {}",
                               method_ty)
                 };
@@ -194,7 +194,7 @@ impl<'tcx> Callee<'tcx> {
 
                 let method_ty = def_ty(tcx, def_id, substs);
                 let fn_ptr_ty = match method_ty.sty {
-                    ty::TyFnDef(_, _, fty) => tcx.mk_ty(ty::TyFnPtr(fty)),
+                    ty::TyFnDef(_, _, fty) => tcx.mk_fn_ptr(fty),
                     _ => bug!("expected fn item type, found {}",
                               method_ty)
                 };
@@ -252,7 +252,7 @@ impl<'tcx> Callee<'tcx> {
     pub fn reify<'a>(self, ccx: &CrateContext<'a, 'tcx>)
                      -> Datum<'tcx, Rvalue> {
         let fn_ptr_ty = match self.ty.sty {
-            ty::TyFnDef(_, _, f) => ccx.tcx().mk_ty(ty::TyFnPtr(f)),
+            ty::TyFnDef(_, _, f) => ccx.tcx().mk_fn_ptr(f),
             _ => self.ty
         };
         match self.data {
@@ -368,11 +368,11 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
         variadic: false
     };
     let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
-    let tuple_fn_ty = tcx.mk_fn_ptr(ty::BareFnTy {
+    let tuple_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
         unsafety: hir::Unsafety::Normal,
         abi: Abi::RustCall,
         sig: ty::Binder(sig)
-    });
+    }));
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
@@ -476,7 +476,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let fn_ptr_ty = match fn_ty.sty {
             ty::TyFnDef(_, _, fty) => {
                 // Create a fn pointer with the substituted signature.
-                tcx.mk_ty(ty::TyFnPtr(fty))
+                tcx.mk_fn_ptr(fty)
             }
             _ => bug!("expected fn item type, found {}", fn_ty)
         };
@@ -487,7 +487,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Find the actual function pointer.
     let ty = ccx.tcx().lookup_item_type(def_id).ty;
     let fn_ptr_ty = match ty.sty {
-        ty::TyFnDef(_, _, fty) => {
+        ty::TyFnDef(_, _, ref fty) => {
             // Create a fn pointer with the normalized signature.
             tcx.mk_fn_ptr(tcx.normalize_associated_type(fty))
         }

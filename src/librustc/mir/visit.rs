@@ -197,7 +197,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_closure_substs(&mut self,
-                                    substs: & $($mutability)* &'tcx ClosureSubsts<'tcx>) {
+                                    substs: & $($mutability)* ClosureSubsts<'tcx>) {
                 self.super_closure_substs(substs);
             }
 
@@ -681,7 +681,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_closure_substs(&mut self,
-                                    _substs: & $($mutability)* &'tcx ClosureSubsts<'tcx>) {
+                                    _substs: & $($mutability)* ClosureSubsts<'tcx>) {
             }
 
             fn super_const_val(&mut self, _substs: & $($mutability)* ConstVal) {

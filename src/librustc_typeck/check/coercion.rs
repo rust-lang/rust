@@ -546,7 +546,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx, 'tcx> {
 
         match b.sty {
             ty::TyFnPtr(_) => {
-                let a_fn_pointer = self.tcx.mk_ty(ty::TyFnPtr(fn_ty_a));
+                let a_fn_pointer = self.tcx.mk_fn_ptr(fn_ty_a);
                 self.unify_and_identity(a_fn_pointer, b).map(|(ty, _)| {
                     (ty, AdjustReifyFnPointer)
                 })
@@ -667,7 +667,7 @@ pub fn try_find_coercion_lub<'b, E, I>(&self,
         (&ty::TyFnDef(a_def_id, a_substs, a_fty),
          &ty::TyFnDef(b_def_id, b_substs, b_fty)) => {
             // The signature must always match.
-            let fty = self.lub(true, trace.clone(), a_fty, b_fty)
+            let fty = self.lub(true, trace.clone(), &a_fty, &b_fty)
                 .map(|InferOk { value, obligations }| {
                     // FIXME(#32730) propagate obligations
                     assert!(obligations.is_empty());
@@ -677,13 +677,13 @@ pub fn try_find_coercion_lub<'b, E, I>(&self,
             if a_def_id == b_def_id {
                 // Same function, maybe the parameters match.
                 let substs = self.commit_if_ok(|_| {
-                    self.lub(true, trace.clone(), a_substs, b_substs)
+                    self.lub(true, trace.clone(), &a_substs, &b_substs)
                         .map(|InferOk { value, obligations }| {
                             // FIXME(#32730) propagate obligations
                             assert!(obligations.is_empty());
                             value
                         })
-                }).map(|s| self.tcx.mk_substs(s));
+                });
 
                 if let Ok(substs) = substs {
                     // We have a LUB of prev_ty and new_ty, just return it.

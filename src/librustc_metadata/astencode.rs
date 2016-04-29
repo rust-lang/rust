@@ -1149,7 +1149,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     }
                     c::tag_table_item_subst => {
                         let item_substs = ty::ItemSubsts {
-                            substs: val_dsr.read_substs(dcx)
+                            substs: dcx.tcx.mk_substs(val_dsr.read_substs(dcx))
                         };
                         dcx.tcx.tables.borrow_mut().item_substs.insert(
                             id, item_substs);

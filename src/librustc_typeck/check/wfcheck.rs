@@ -349,13 +349,13 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn check_fn_or_method<'fcx>(&mut self,
                                 fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
                                 span: Span,
-                                fty: &ty::BareFnTy<'tcx>,
+                                fty: &'tcx ty::BareFnTy<'tcx>,
                                 predicates: &ty::InstantiatedPredicates<'tcx>,
                                 free_id_outlive: CodeExtent,
                                 implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let free_substs = &fcx.parameter_environment.free_substs;
-        let fty = fcx.instantiate_type_scheme(span, free_substs, fty);
+        let fty = fcx.instantiate_type_scheme(span, free_substs, &fty);
         let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.sig);
 
         for &input_ty in &sig.inputs {

@@ -276,8 +276,8 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx, 'tcx> {
                     if adt_def.is_univariant() => {
                         (&adt_def.variants[0], substs)
                     }
-                ty::TyTuple(ref tys) | ty::TyClosure(_, box ty::ClosureSubsts {
-                    upvar_tys: ref tys, ..
+                ty::TyTuple(tys) | ty::TyClosure(_, ty::ClosureSubsts {
+                    upvar_tys: tys, ..
                 }) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),

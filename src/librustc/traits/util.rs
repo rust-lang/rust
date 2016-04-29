@@ -356,7 +356,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a,
 pub fn fresh_type_vars_for_impl<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                                 span: Span,
                                                 impl_def_id: DefId)
-                                                -> Substs<'tcx>
+                                                -> &'tcx Substs<'tcx>
 {
     let tcx = infcx.tcx;
     let impl_generics = tcx.lookup_item_type(impl_def_id).generics;

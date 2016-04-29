@@ -139,8 +139,8 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
     }
 
     fn fold_substs(&mut self,
-                   substs: &subst::Substs<'tcx>)
-                   -> subst::Substs<'tcx> {
+                   substs: &'tcx subst::Substs<'tcx>)
+                   -> &'tcx subst::Substs<'tcx> {
         substs.super_fold_with(self)
     }
 
@@ -157,8 +157,8 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
     }
 
     fn fold_bare_fn_ty(&mut self,
-                       fty: &ty::BareFnTy<'tcx>)
-                       -> ty::BareFnTy<'tcx>
+                       fty: &'tcx ty::BareFnTy<'tcx>)
+                       -> &'tcx ty::BareFnTy<'tcx>
     {
         fty.super_fold_with(self)
     }
@@ -518,13 +518,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     ty::ReLateBound(..) => r,
                     _ => ty::ReStatic
                 }
-            }
-
-            fn fold_substs(&mut self,
-                           substs: &subst::Substs<'tcx>)
-                           -> subst::Substs<'tcx> {
-                subst::Substs { regions: substs.regions.fold_with(self),
-                                types: substs.types.fold_with(self) }
             }
         }
     }

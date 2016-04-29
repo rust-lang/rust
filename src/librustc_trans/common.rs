@@ -496,7 +496,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             return Callee::def(ccx, def_id, tcx.mk_substs(Substs::empty()));
         }
 
-        let ty = tcx.mk_fn_ptr(ty::BareFnTy {
+        let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
             abi: Abi::C,
             sig: ty::Binder(ty::FnSig {
@@ -504,7 +504,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                 output: ty::FnDiverging,
                 variadic: false
             }),
-        });
+        }));
 
         let unwresume = ccx.eh_unwind_resume();
         if let Some(llfn) = unwresume.get() {
