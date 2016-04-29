@@ -801,7 +801,6 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
           } else {
               signal!(e, NonConstPath)
           };
-          let result = result.as_ref().expect("const fn has no result expression");
           assert_eq!(decl.inputs.len(), args.len());
 
           let mut call_args = NodeMap();
@@ -818,7 +817,11 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
               assert!(old.is_none());
           }
           debug!("const call({:?})", call_args);
-          eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
+          if let &Some(ref result) = result {
+              eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
+          } else {
+              Tuple(None, Vec::new())
+          }
       },
       hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety, lit.span) {
           Ok(val) => val,

@@ -33,6 +33,9 @@ const fn generic_arr<T: Copy>(t: [T; 1]) -> T {
     t[0]
 }
 
+pub const fn test() {}
+const X: () = test();
+
 const fn f(_: ()) -> usize { 1 }
 
 const SUM: u32 = add(44, 22);
@@ -50,4 +53,5 @@ fn main() {
     let _: [&'static str; generic(1)] = ["hi"];
     let _: [&'static str; generic_arr([1])] = ["hi"];
     let _: [&'static str; f({})] = ["hi"];
+    let _ = [0; g(5).field];
 }
