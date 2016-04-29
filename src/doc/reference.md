@@ -3604,7 +3604,7 @@ In this example, the trait `Printable` occurs as a trait object in both the
 type signature of `print`, and the cast expression in `main`.
 
 Trait objects may contain references, and so those references will need a
-lifetime. If the trait contains some sort of lifetime bound, like this:
+lifetime:
 
 ```rust,ignore
 // Some trait like this...
@@ -3623,7 +3623,7 @@ the trait object is behind:
 trait Bar { }
 
 // ... means these are the same:
-&Bar
+&'a Bar
 &'a (Bar + 'a)
 ```
 
@@ -3636,6 +3636,10 @@ trait Bar { }
 // ... means these are the same:
 Box<Bar>
 Box<Bar + 'static>
+
+// and so are these:
+&'a Box<Bar>
+&'a Box<Bar + 'static>
 ```
 
 ### Type parameters
