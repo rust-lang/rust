@@ -83,10 +83,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         })
     }
 
-    // Helper method for generating MIR inside a conditional block.
-    pub fn with_cond<F>(&mut self, block: BasicBlock, span: Span,
-                        cond: Operand<'tcx>, f: F) -> BasicBlock
-    where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>, BasicBlock) -> BasicBlock {
+    // Helper method for generating a conditional branch
+    // Returns (TrueBlock, FalseBlock)
+    pub fn build_cond_br(&mut self, block: BasicBlock, span: Span,
+                         cond: Operand<'tcx>) -> (BasicBlock, BasicBlock) {
         let scope_id = self.innermost_scope_id();
 
         let then_block = self.cfg.start_new_block();
@@ -98,15 +98,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                targets: (then_block, else_block)
                            });
 
-        let after = f(self, then_block);
-
-        // If the returned block isn't terminated, add a branch to the "else"
-        // block
-        if !self.cfg.terminated(after) {
-            self.cfg.terminate(after, scope_id, span,
-                               TerminatorKind::Goto { target: else_block });
-        }
-
-        else_block
+        (then_block, else_block)
     }
 }

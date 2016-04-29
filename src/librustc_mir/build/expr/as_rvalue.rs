@@ -88,11 +88,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     this.cfg.push_assign(block, scope_id, expr_span, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
 
-                    block = this.with_cond(
-                        block, expr_span, Operand::Consume(is_min), |this, block| {
-                            this.panic(block, "attempted to negate with overflow", expr_span);
-                            block
-                        });
+                    let (of_block, ok_block) = this.build_cond_br(block, expr_span,
+                                                                  Operand::Consume(is_min));
+                    this.panic(of_block, "attempted to negate with overflow", expr_span);
+                    block = ok_block;
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
@@ -243,7 +242,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn build_binary_op(&mut self, mut block: BasicBlock, op: BinOp, span: Span, ty: ty::Ty<'tcx>,
+    pub fn build_binary_op(&mut self, mut block: BasicBlock,
+                           op: BinOp, span: Span, ty: ty::Ty<'tcx>,
                            lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
         let scope_id = self.innermost_scope_id();
         let bool_ty = self.hir.bool_ty();
@@ -267,12 +267,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 "arithmetic operation overflowed"
             };
 
-            block = self.with_cond(block, span, Operand::Consume(of), |this, block| {
-                this.panic(block, msg, span);
-                block
-            });
+            let (of_block, ok_block) = self.build_cond_br(block, span, Operand::Consume(of));
+            self.panic(of_block, msg, span);
 
-            block.and(Rvalue::Use(Operand::Consume(val)))
+            ok_block.and(Rvalue::Use(Operand::Consume(val)))
         } else {
             if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
                 // Checking division and remainder is more complex, since we 1. always check
@@ -292,10 +290,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(block, scope_id, span, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
 
-                block = self.with_cond(block, span, Operand::Consume(is_zero), |this, block| {
-                    this.panic(block, zero_msg, span);
-                    block
-                });
+                let (zero_block, ok_block) = self.build_cond_br(block, span,
+                                                                Operand::Consume(is_zero));
+                self.panic(zero_block, zero_msg, span);
+
+                block = ok_block;
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
@@ -319,10 +318,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, scope_id, span, &of,
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
-                    block = self.with_cond(block, span, Operand::Consume(of), |this, block| {
-                        this.panic(block, overflow_msg, span);
-                        block
-                    });
+                    let (of_block, ok_block) = self.build_cond_br(block, span,
+                                                                  Operand::Consume(of));
+                    self.panic(of_block, overflow_msg, span);
+
+                    block = ok_block;
                 }
             }
 
