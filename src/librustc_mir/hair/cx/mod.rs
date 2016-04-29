@@ -129,21 +129,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn try_const_eval_literal(&mut self, e: &hir::Expr) -> Option<Literal<'tcx>> {
-        let hint = const_eval::EvalHint::ExprTypeChecked;
-        let tcx = self.tcx.global_tcx();
-        const_eval::eval_const_expr_partial(tcx, e, hint, None).ok().and_then(|v| {
-            match v {
-                // All of these contain local IDs, unsuitable for storing in MIR.
-                ConstVal::Struct(_) | ConstVal::Tuple(_) |
-                ConstVal::Array(..) | ConstVal::Repeat(..) |
-                ConstVal::Function(_) => None,
-
-                _ => Some(Literal::Value { value: v })
-            }
-        })
-    }
-
     pub fn trait_method(&mut self,
                         trait_def_id: DefId,
                         method_name: &str,
