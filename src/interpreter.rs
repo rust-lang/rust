@@ -169,8 +169,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                 for stmt in &block_data.statements {
                     self.log(0, || print!("{:?}", stmt));
-                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
-                    let result = self.eval_assignment(lvalue, rvalue);
+                    let mir::StatementKind::Assign(ref l_value, ref r_value) = stmt.kind;
+                    let result = self.eval_assignment(l_value, r_value);
                     try!(self.maybe_report(stmt.span, result));
                 }
 
@@ -830,7 +830,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                     Index(ref operand) => {
                         let elem_size = match base_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty),
+                            ty::TyArray(elem_ty, _) |
                             ty::TySlice(elem_ty) => self.type_size(elem_ty),
                             _ => panic!("indexing expected an array or slice, got {:?}", base_ty),
                         };
@@ -1109,11 +1109,9 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
         let vtable = selection.map(|predicate| {
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
-        let vtable = infer::drain_fulfillment_cx_or_panic(
+        infer::drain_fulfillment_cx_or_panic(
             DUMMY_SP, &infcx, &mut fulfill_cx, &vtable
-        );
-
-        vtable
+        )
     }
 
     /// Trait method, which has to be resolved to an impl method.
@@ -1166,7 +1164,7 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
     }
 }
 
-fn pointee_type<'tcx>(ptr_ty: ty::Ty<'tcx>) -> Option<ty::Ty<'tcx>> {
+fn pointee_type(ptr_ty: ty::Ty) -> Option<ty::Ty> {
     match ptr_ty.sty {
         ty::TyRef(_, ty::TypeAndMut { ty, .. }) |
         ty::TyRawPtr(ty::TypeAndMut { ty, .. }) |

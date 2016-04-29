@@ -47,7 +47,7 @@ pub struct FieldRepr {
 impl Repr {
     pub fn size(&self) -> usize {
         match *self {
-            Repr::Primitive { size } => size,
+            Repr::Primitive { size } |
             Repr::Aggregate { size, .. } => size,
             Repr::Array { elem_size, length } => elem_size * length,
         }
@@ -406,7 +406,7 @@ impl Memory {
     fn clear_relocations(&mut self, ptr: Pointer, size: usize) -> EvalResult<()> {
         // Find all relocations overlapping the given range.
         let keys: Vec<_> = try!(self.relocations(ptr, size)).map(|(&k, _)| k).collect();
-        if keys.len() == 0 { return Ok(()); }
+        if keys.is_empty() { return Ok(()); }
 
         // Find the start and end of the given range and its outermost relocations.
         let start = ptr.offset;
