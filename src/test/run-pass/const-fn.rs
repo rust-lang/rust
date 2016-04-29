@@ -38,6 +38,13 @@ const X: () = test();
 
 const fn f(_: ()) -> usize { 1 }
 
+const fn g(x: usize) -> A {
+    A { field: x }
+}
+struct A {
+    field: usize,
+}
+
 const SUM: u32 = add(44, 22);
 const DIFF: u32 = sub(44, 22);
 const DIV: u32 = unsafe{div(44, 22)};
