@@ -91,9 +91,8 @@ use std::thread;
 
 use rustc::session::early_error;
 
-use syntax::{ast, errors, diagnostic};
-use syntax::codemap::MultiSpan;
-use syntax::parse::{self, PResult};
+use syntax::{ast, errors, diagnostics};
+use syntax::codemap::{CodeMap, FileLoader, RealFileLoader, MultiSpan};
 use syntax::errors::emitter::Emitter;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult, token};
