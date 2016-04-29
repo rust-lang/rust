@@ -169,8 +169,8 @@ impl<'a, 'tcx: 'a, 'arena> Interpreter<'a, 'tcx, 'arena> {
 
                 for stmt in &block_data.statements {
                     self.log(0, || print!("{:?}", stmt));
-                    let mir::StatementKind::Assign(ref l_value, ref r_value) = stmt.kind;
-                    let result = self.eval_assignment(l_value, r_value);
+                    let mir::StatementKind::Assign(ref lvalue, ref rvalue) = stmt.kind;
+                    let result = self.eval_assignment(lvalue, rvalue);
                     try!(self.maybe_report(stmt.span, result));
                 }
 
