@@ -23,4 +23,7 @@ const E: &'static UnsafeCell<usize> = &D.a;
 const F: &'static C = &D;
 //~^ ERROR: cannot borrow a constant which contains interior mutability
 
+const G: &'static UnsafeCell<usize> = &UnsafeCell::new(42);
+//~^ ERROR: cannot borrow a constant which contains interior mutability
+
 fn main() {}
