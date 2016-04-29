@@ -20,67 +20,67 @@ use std::{i8, i16, i32, i64, isize};
 use std::{u8, u16, u32, u64, usize};
 
 const VALS_I8: (i8, i8, i8, i8) =
-    (-i8::MIN,
-     i8::MIN - 1,
-     i8::MAX + 1,
-     i8::MIN * 2,
+    (-i8::MIN, //~WARN const_err
+     i8::MIN - 1, //~WARN const_err
+     i8::MAX + 1, //~WARN const_err
+     i8::MIN * 2, //~WARN const_err
      );
 
 const VALS_I16: (i16, i16, i16, i16) =
-    (-i16::MIN,
-     i16::MIN - 1,
-     i16::MAX + 1,
-     i16::MIN * 2,
+    (-i16::MIN, //~WARN const_err
+     i16::MIN - 1, //~WARN const_err
+     i16::MAX + 1, //~WARN const_err
+     i16::MIN * 2, //~WARN const_err
      );
 
 const VALS_I32: (i32, i32, i32, i32) =
-    (-i32::MIN,
-     i32::MIN - 1,
-     i32::MAX + 1,
-     i32::MIN * 2,
+    (-i32::MIN, //~WARN const_err
+     i32::MIN - 1, //~WARN const_err
+     i32::MAX + 1, //~WARN const_err
+     i32::MIN * 2, //~WARN const_err
      );
 
 const VALS_I64: (i64, i64, i64, i64) =
-    (-i64::MIN,
-     i64::MIN - 1,
-     i64::MAX + 1,
-     i64::MAX * 2,
+    (-i64::MIN, //~WARN const_err
+     i64::MIN - 1, //~WARN const_err
+     i64::MAX + 1, //~WARN const_err
+     i64::MAX * 2, //~WARN const_err
      );
 
 const VALS_U8: (u8, u8, u8, u8) =
     (-u8::MIN,
      //~^ ERROR unary negation of unsigned integer
      //~| HELP use a cast or the `!` operator
-     u8::MIN - 1,
-     u8::MAX + 1,
-     u8::MAX * 2,
+     u8::MIN - 1, //~WARN const_err
+     u8::MAX + 1, //~WARN const_err
+     u8::MAX * 2, //~WARN const_err
      );
 
 const VALS_U16: (u16, u16, u16, u16) =
     (-u16::MIN,
      //~^ ERROR unary negation of unsigned integer
      //~| HELP use a cast or the `!` operator
-     u16::MIN - 1,
-     u16::MAX + 1,
-     u16::MAX * 2,
+     u16::MIN - 1, //~WARN const_err
+     u16::MAX + 1, //~WARN const_err
+     u16::MAX * 2, //~WARN const_err
      );
 
 const VALS_U32: (u32, u32, u32, u32) =
     (-u32::MIN,
      //~^ ERROR unary negation of unsigned integer
      //~| HELP use a cast or the `!` operator
-     u32::MIN - 1,
-     u32::MAX + 1,
-     u32::MAX * 2,
+     u32::MIN - 1, //~WARN const_err
+     u32::MAX + 1, //~WARN const_err
+     u32::MAX * 2, //~WARN const_err
      );
 
 const VALS_U64: (u64, u64, u64, u64) =
     (-u64::MIN,
      //~^ ERROR unary negation of unsigned integer
      //~| HELP use a cast or the `!` operator
-     u64::MIN - 1,
-     u64::MAX + 1,
-     u64::MAX * 2,
+     u64::MIN - 1, //~WARN const_err
+     u64::MAX + 1, //~WARN const_err
+     u64::MAX * 2, //~WARN const_err
      );
 
 fn main() {

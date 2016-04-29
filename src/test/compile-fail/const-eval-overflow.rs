@@ -10,6 +10,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(unused_imports)]
+#![allow(const_err)]
 
 // Note: the relevant lint pass here runs before some of the constant
 // evaluation below (e.g. that performed by trans and llvm), so if you
