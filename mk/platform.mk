@@ -148,7 +148,7 @@ define CC_MACROS
   CFG_CC_INCLUDE_$(1)=-I $$(1)
   ifeq ($$(findstring msvc,$(1)),msvc)
     CFG_CC_OUTPUT_$(1)=-Fo:$$(1)
-    CFG_CREATE_ARCHIVE_$(1)=$$(AR_$(1)) -OUT:$$(1)
+    CFG_CREATE_ARCHIVE_$(1)='$$(AR_$(1))' -OUT:$$(1)
   else
     CFG_CC_OUTPUT_$(1)=-o $$(1)
     CFG_CREATE_ARCHIVE_$(1)=$$(AR_$(1)) crus $$(1)
@@ -187,7 +187,7 @@ define CFG_MAKE_TOOLCHAIN
     endif
   endif
 
-  CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
+  CFG_COMPILE_C_$(1) = '$$(CC_$(1))' \
         $$(CFLAGS) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
@@ -198,7 +198,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
-  CFG_COMPILE_CXX_$(1) = $$(CXX_$(1)) \
+  CFG_COMPILE_CXX_$(1) = '$$(CXX_$(1))' \
         $$(CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CXXFLAGS) \

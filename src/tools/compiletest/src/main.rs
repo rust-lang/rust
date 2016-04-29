@@ -35,7 +35,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
-use common::{Pretty, DebugInfoGdb, DebugInfoLldb};
+use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
 use test::TestPaths;
 use util::logv;
 
@@ -100,6 +100,11 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
+          reqopt("", "cc", "path to a C compiler", "PATH"),
+          reqopt("", "cxx", "path to a C++ compiler", "PATH"),
+          reqopt("", "cflags", "flags for the C compiler", "FLAGS"),
+          reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
+          reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
           optflag("h", "help", "show this message"));
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -175,6 +180,12 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
+
+        cc: matches.opt_str("cc").unwrap(),
+        cxx: matches.opt_str("cxx").unwrap(),
+        cflags: matches.opt_str("cflags").unwrap(),
+        llvm_components: matches.opt_str("llvm-components").unwrap(),
+        llvm_cxxflags: matches.opt_str("llvm-cxxflags").unwrap(),
     }
 }
 
@@ -307,8 +318,18 @@ fn collect_tests_from_dir(config: &Config,
     // `compiletest-ignore-dir`.
     for file in fs::read_dir(dir)? {
         let file = file?;
-        if file.file_name() == *"compiletest-ignore-dir" {
+        let name = file.file_name();
+        if name == *"compiletest-ignore-dir" {
             return Ok(());
+        }
+        if name == *"Makefile" && config.mode == Mode::RunMake {
+            let paths = TestPaths {
+                file: dir.to_path_buf(),
+                base: base.to_path_buf(),
+                relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
+            };
+            tests.push(make_test(config, &paths));
+            return Ok(())
         }
     }
 

@@ -98,6 +98,7 @@ macro_rules! targets {
             (check_cfail_full, CheckCFailFull { compiler: Compiler<'a> }),
             (check_docs, CheckDocs { compiler: Compiler<'a> }),
             (check_error_index, CheckErrorIndex { compiler: Compiler<'a> }),
+            (check_rmake, CheckRMake { compiler: Compiler<'a> }),
 
             // Distribution targets, creating tarballs
             (dist, Dist { stage: u32 }),
@@ -345,6 +346,7 @@ impl<'a> Step<'a> {
                     self.check_cfail_full(compiler),
                     self.check_error_index(compiler),
                     self.check_docs(compiler),
+                    self.check_rmake(compiler),
                     self.check_linkcheck(stage),
                     self.check_tidy(stage),
                     self.dist(stage),
@@ -384,7 +386,8 @@ impl<'a> Step<'a> {
                 ]
             }
             Source::CheckRPassFull { compiler } |
-            Source::CheckCFailFull { compiler } => {
+            Source::CheckCFailFull { compiler } |
+            Source::CheckRMake { compiler } => {
                 vec![self.librustc(compiler),
                      self.tool_compiletest(compiler.stage)]
             }
