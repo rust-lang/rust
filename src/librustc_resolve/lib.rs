@@ -1784,8 +1784,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 // If it's a typedef, give a note
                 if let Def::TyAlias(..) = path_res.base_def {
-                    err.note(trait_path.span,
-                             "`type` aliases cannot be used for traits");
+                    err.note("`type` aliases cannot be used for traits");
 
                     let definition_site = {
                         let segments = &trait_path.segments;
