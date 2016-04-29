@@ -450,6 +450,7 @@ CODEGEN_RS := $(call rwildcard,$(S)src/test/codegen/,*.rs)
 CODEGEN_CC := $(call rwildcard,$(S)src/test/codegen/,*.cc)
 CODEGEN_UNITS_RS := $(call rwildcard,$(S)src/test/codegen-units/,*.rs)
 INCREMENTAL_RS := $(call rwildcard,$(S)src/test/incremental/,*.rs)
+RMAKE_RS := $(wildcard $(S)src/test/run-make/*/Makefile)
 RUSTDOCCK_RS := $(call rwildcard,$(S)src/test/rustdoc/,*.rs)
 
 RPASS_TESTS := $(RPASS_RS)
@@ -466,6 +467,7 @@ DEBUGINFO_LLDB_TESTS := $(DEBUGINFO_LLDB_RS)
 CODEGEN_TESTS := $(CODEGEN_RS) $(CODEGEN_CC)
 CODEGEN_UNITS_TESTS := $(CODEGEN_UNITS_RS)
 INCREMENTAL_TESTS := $(INCREMENTAL_RS)
+RMAKE_TESTS := $(RMAKE_RS)
 RUSTDOCCK_TESTS := $(RUSTDOCCK_RS)
 
 CTEST_SRC_BASE_rpass = run-pass
@@ -532,6 +534,11 @@ CTEST_SRC_BASE_incremental = incremental
 CTEST_BUILD_BASE_incremental = incremental
 CTEST_MODE_incremental = incremental
 CTEST_RUNTOOL_incremental = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_rmake = run-make
+CTEST_BUILD_BASE_rmake = run-make
+CTEST_MODE_rmake = run-make
+CTEST_RUNTOOL_rmake = $(CTEST_RUNTOOL)
 
 CTEST_SRC_BASE_rustdocck = rustdoc
 CTEST_BUILD_BASE_rustdocck = rustdoc
@@ -629,6 +636,11 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
         --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
+	--cc '$$(CC_$(3))' \
+	--cxx '$$(CXX_$(3))' \
+	--cflags "$$(CFG_GCCISH_CFLAGS_$(3))" \
+	--llvm-components "$$(LLVM_ALL_COMPONENTS_$(3))" \
+	--llvm-cxxflags "$$(LLVM_CXXFLAGS_$(3))" \
         $$(CTEST_TESTARGS)
 
 ifdef CFG_VALGRIND_RPASS
@@ -658,6 +670,9 @@ CTEST_DEPS_debuginfo-lldb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_LLDB_TESTS) \
 CTEST_DEPS_codegen_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_TESTS)
 CTEST_DEPS_codegen-units_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_UNITS_TESTS)
 CTEST_DEPS_incremental_$(1)-T-$(2)-H-$(3) = $$(INCREMENTAL_TESTS)
+CTEST_DEPS_rmake_$(1)-T-$(2)-H-$(3) = $$(RMAKE_TESTS) \
+	$$(CSREQ$(1)_T_$(3)_H_$(3)) $$(SREQ$(1)_T_$(2)_H_$(3))
+
 CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
 		$(S)src/etc/htmldocck.py
@@ -703,6 +718,10 @@ endif
 
 ifeq ($$(CTEST_DONT_RUN_$(1)-T-$(2)-H-$(3)-$(4)),)
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(3)))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
+	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(3)))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
                 $$(CTEST_DEPS_$(4)_$(1)-T-$(2)-H-$(3))
 	@$$(call E, run $(4) [$(2)]: $$<)
@@ -724,7 +743,8 @@ endif
 endef
 
 CTEST_NAMES = rpass rpass-valgrind rpass-full rfail-full cfail-full rfail cfail pfail \
-	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck incremental
+	debuginfo-gdb debuginfo-lldb codegen codegen-units rustdocck incremental \
+	rmake
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -1009,70 +1029,3 @@ endef
 
 $(foreach crate,$(TEST_CRATES), \
  $(eval $(call DEF_CHECK_CRATE,$(crate))))
-
-######################################################################
-# RMAKE rules
-######################################################################
-
-RMAKE_TESTS := $(shell ls -d $(S)src/test/run-make/*/)
-RMAKE_TESTS := $(RMAKE_TESTS:$(S)src/test/run-make/%/=%)
-
-define DEF_RMAKE_FOR_T_H
-# $(1) the stage
-# $(2) target triple
-# $(3) host triple
-
-
-ifeq ($(2)$(3),$$(CFG_BUILD)$$(CFG_BUILD))
-check-stage$(1)-T-$(2)-H-$(3)-rmake-exec: \
-		$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake)
-
-$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake): \
-		$$(RMAKE_TESTS:%=$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok)
-	@touch $$@
-
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-	export INCLUDE := $$(CFG_MSVC_INCLUDE_PATH_$$(HOST_$(3)))
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-	export LIB := $$(CFG_MSVC_LIB_PATH_$$(HOST_$(3)))
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-	export MSVC_LIB := "$$(CFG_MSVC_LIB_$$(HOST_$(3)))"
-$(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
-		$(S)src/test/run-make/%/Makefile \
-		$$(CSREQ$(1)_T_$(2)_H_$(3))
-	@rm -rf $(3)/test/run-make/$$*
-	@mkdir -p $(3)/test/run-make/$$*
-	$$(Q)touch $$@.start_time
-	$$(Q)$$(CFG_PYTHON) $(S)src/etc/maketest.py $$(dir $$<) \
-        $$(MAKE) \
-	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	    $(3)/test/run-make/$$* \
-	    '$$(CC_$(3))' \
-	    "$$(CFG_GCCISH_CFLAGS_$(3))" \
-	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
-	    "$$(TESTNAME)" \
-	    $$(LD_LIBRARY_PATH_ENV_NAME$(1)_T_$(2)_H_$(3)) \
-	    "$$(LD_LIBRARY_PATH_ENV_HOSTDIR$(1)_T_$(2)_H_$(3))" \
-	    "$$(LD_LIBRARY_PATH_ENV_TARGETDIR$(1)_T_$(2)_H_$(3))" \
-	    $(1) \
-	    $$(S) \
-	    $(3) \
-	    "$$(LLVM_LIBDIR_RUSTFLAGS_$(3))" \
-	    "$$(LLVM_ALL_COMPONENTS_$(3))" \
-	    "$$(LLVM_CXXFLAGS_$(3))" \
-	    '$$(CXX_$(3))'
-	@touch -r $$@.start_time $$@ && rm $$@.start_time
-else
-# FIXME #11094 - The above rule doesn't work right for multiple targets
-check-stage$(1)-T-$(2)-H-$(3)-rmake-exec:
-	@true
-
-endif
-
-
-endef
-
-$(foreach stage,$(STAGES), \
- $(foreach target,$(CFG_TARGET), \
-  $(foreach host,$(CFG_HOST), \
-   $(eval $(call DEF_RMAKE_FOR_T_H,$(stage),$(target),$(host))))))

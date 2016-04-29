@@ -27,6 +27,7 @@ pub enum Mode {
     Rustdoc,
     CodegenUnits,
     Incremental,
+    RunMake,
 }
 
 impl FromStr for Mode {
@@ -45,6 +46,7 @@ impl FromStr for Mode {
           "rustdoc" => Ok(Rustdoc),
           "codegen-units" => Ok(CodegenUnits),
           "incremental" => Ok(Incremental),
+          "run-make" => Ok(RunMake),
           _ => Err(()),
         }
     }
@@ -65,6 +67,7 @@ impl fmt::Display for Mode {
             Rustdoc => "rustdoc",
             CodegenUnits => "codegen-units",
             Incremental => "incremental",
+            RunMake => "run-make",
         }, f)
     }
 }
@@ -165,4 +168,12 @@ pub struct Config {
 
     // Print one character per test instead of one line
     pub quiet: bool,
+
+    // Configuration for various run-make tests frobbing things like C compilers
+    // or querying about various LLVM component information.
+    pub cc: String,
+    pub cxx: String,
+    pub cflags: String,
+    pub llvm_components: String,
+    pub llvm_cxxflags: String,
 }

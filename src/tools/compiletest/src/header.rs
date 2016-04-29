@@ -291,6 +291,9 @@ pub fn early_props(config: &Config, testfile: &Path) -> EarlyProps {
 fn iter_header(testfile: &Path,
                cfg: Option<&str>,
                it: &mut FnMut(&str)) {
+    if testfile.is_dir() {
+        return
+    }
     let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
