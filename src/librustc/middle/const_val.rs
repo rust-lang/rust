@@ -27,7 +27,9 @@ pub enum ConstVal {
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
     Struct(DefId, BTreeMap<ast::Name, ConstVal>),
+    /// Tuple or Tuple structs
     Tuple(Option<DefId>, Vec<ConstVal>),
+    /// A function pointer
     Function(DefId),
     Array(Vec<ConstVal>),
     Repeat(Box<ConstVal>, u64),
