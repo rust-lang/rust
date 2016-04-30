@@ -1136,6 +1136,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 (Some("3"), _) => OptLevel::Aggressive,
                 (Some("s"), true) => OptLevel::Size,
                 (Some("z"), true) => OptLevel::SizeMin,
+                (Some("s"), false) | (Some("z"), false) => {
+                    early_error(error_format, &format!("the optimizations s or z are only \
+                                                        accepted on the nightly compiler"));
+                },
                 (Some(arg), _) => {
                     early_error(error_format, &format!("optimization level needs to be \
                                                       between 0-3 (instead was `{}`)",
