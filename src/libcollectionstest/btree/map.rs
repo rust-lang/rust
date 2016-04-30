@@ -290,6 +290,16 @@ fn test_entry(){
     }
     assert_eq!(map.get(&10).unwrap(), &1000);
     assert_eq!(map.len(), 6);
+
+    // or_insert_with family
+    assert_eq!(map.entry(10).or_insert_with(|| 100), &1000);
+    assert_eq!(map.len(), 6);
+    assert_eq!(map.entry(20).or_insert_with(|| 200), &200);
+    assert_eq!(map.len(), 7);
+    assert_eq!(map.entry(30).or_insert_with_result(|| Ok::<_, &str>(300)), Ok(&mut 300));
+    assert_eq!(map.len(), 8);
+    assert_eq!(map.entry(31).or_insert_with_result(|| Err("nope")), Err("nope"));
+    assert_eq!(map.len(), 8);
 }
 
 #[test]

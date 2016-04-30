@@ -1654,6 +1654,18 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
             Vacant(entry) => entry.insert(default()),
         }
     }
+
+    /// Like `or_insert_with`, but doesn't insert anything if the default function
+    /// fails with an `Err` result.
+    #[unstable(feature = "map_entry_insert_with_result", issue = "33126")]
+    pub fn or_insert_with_result<E, F>(self, default: F) -> Result<&'a mut V, E>
+        where F: FnOnce() -> Result<V, E>
+    {
+        match self {
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => Ok(entry.insert(try!(default()))),
+        }
+    }
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {

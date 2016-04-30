@@ -33,6 +33,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(vec_deque_contains)]
+#![feature(map_entry_insert_with_result)]
 
 extern crate collections;
 extern crate test;
