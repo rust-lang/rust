@@ -1654,6 +1654,15 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
             Vacant(entry) => entry.insert(default()),
         }
     }
+
+    /// Returns a reference to this entry's key.
+    #[unstable(feature = "map_entry_keys", issue = "32281")]
+    pub fn key(&self) -> &K {
+        match *self {
+            Occupied(ref entry) => entry.key(),
+            Vacant(ref entry) => entry.key(),
+        }
+    }
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
