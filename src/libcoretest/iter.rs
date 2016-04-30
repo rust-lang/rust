@@ -134,6 +134,19 @@ fn test_iterator_chain_count() {
 }
 
 #[test]
+fn test_iterator_chain_find() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let mut iter = xs.iter().chain(&ys);
+    assert_eq!(iter.find(|&&i| i == 4), Some(&4));
+    assert_eq!(iter.next(), Some(&5));
+    assert_eq!(iter.find(|&&i| i == 40), Some(&40));
+    assert_eq!(iter.next(), Some(&50));
+    assert_eq!(iter.find(|&&i| i == 100), None);
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_filter_map() {
     let it = (0..).step_by(1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
