@@ -327,9 +327,7 @@ macro_rules! with_exts_frame {
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
                    -> SmallVector<P<ast::Item>> {
-    let it = expand_item_multi_modifier(Annotatable::Item(it), fld);
-
-    expand_annotatable(it, fld)
+    expand_annotatable(Annotatable::Item(it), fld)
         .into_iter().map(|i| i.expect_item()).collect()
 }
 
