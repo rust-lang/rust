@@ -8,7 +8,7 @@ fn main() {
     1 + i; //~ERROR integer arithmetic detected
     i * 2; //~ERROR integer arithmetic detected
     1 % //~ERROR integer arithmetic detected
-    i / 2; 
+    i / 2; // no error, this is part of the expression in the preceding line
     i - 2 + 2 - i; //~ERROR integer arithmetic detected
     -i; //~ERROR integer arithmetic detected
     

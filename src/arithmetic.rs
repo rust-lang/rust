@@ -55,7 +55,7 @@ impl LateLintPass for Arithmetic {
         match expr.node {
             hir::ExprBinary(ref op, ref l, ref r) => {
                 match op.node {
-                    hir::BiRem | hir::BiAnd | hir::BiOr | hir::BiBitAnd | 
+                    hir::BiAnd | hir::BiOr | hir::BiBitAnd | 
                     hir::BiBitOr | hir::BiBitXor | hir::BiShl | hir::BiShr | 
                     hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | 
                     hir::BiGt => return,
