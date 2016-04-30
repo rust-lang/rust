@@ -542,6 +542,23 @@ impl<A, B> Iterator for Chain<A, B> where
     }
 
     #[inline]
+    fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
+        P: FnMut(&Self::Item) -> bool,
+    {
+        match self.state {
+            ChainState::Both => match self.a.find(&mut predicate) {
+                None => {
+                    self.state = ChainState::Back;
+                    self.b.find(predicate)
+                }
+                v => v
+            },
+            ChainState::Front => self.a.find(predicate),
+            ChainState::Back => self.b.find(predicate),
+        }
+    }
+
+    #[inline]
     fn last(self) -> Option<A::Item> {
         match self.state {
             ChainState::Both => {
