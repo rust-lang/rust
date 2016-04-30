@@ -213,6 +213,8 @@ fn cache_ids<'a, OP, R>(lctx: &LoweringContext, expr_id: NodeId, op: OP) -> R
         let id_cache: &mut HashMap<_, _> = &mut lctx.id_cache.borrow_mut();
 
         if id_cache.contains_key(&expr_id) {
+            panic!("relowering!!!");
+            /*
             let cached_id = lctx.cached_id.get();
             if cached_id == 0 {
                 // We're entering a node where we need to track ids, but are not
@@ -224,6 +226,7 @@ fn cache_ids<'a, OP, R>(lctx: &LoweringContext, expr_id: NodeId, op: OP) -> R
                 assert!(cached_id == id_cache[&expr_id], "id mismatch");
             }
             lctx.gensym_key.set(id_cache[&expr_id]);
+            */
         } else {
             // We've never lowered this node before, remember it for next time.
             let next_id = lctx.id_assigner.peek_node_id();
