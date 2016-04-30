@@ -107,6 +107,7 @@ All notable changes to this project will be documented in this file.
 [`explicit_iter_loop`]: https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop
 [`extend_from_slice`]: https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice
 [`filter_next`]: https://github.com/Manishearth/rust-clippy/wiki#filter_next
+[`float_arithmetic`]: https://github.com/Manishearth/rust-clippy/wiki#float_arithmetic
 [`float_cmp`]: https://github.com/Manishearth/rust-clippy/wiki#float_cmp
 [`for_kv_map`]: https://github.com/Manishearth/rust-clippy/wiki#for_kv_map
 [`for_loop_over_option`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option
@@ -118,6 +119,7 @@ All notable changes to this project will be documented in this file.
 [`indexing_slicing`]: https://github.com/Manishearth/rust-clippy/wiki#indexing_slicing
 [`ineffective_bit_mask`]: https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask
 [`inline_always`]: https://github.com/Manishearth/rust-clippy/wiki#inline_always
+[`integer_arithmetic`]: https://github.com/Manishearth/rust-clippy/wiki#integer_arithmetic
 [`invalid_regex`]: https://github.com/Manishearth/rust-clippy/wiki#invalid_regex
 [`invalid_upcast_comparisons`]: https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons
 [`items_after_statements`]: https://github.com/Manishearth/rust-clippy/wiki#items_after_statements

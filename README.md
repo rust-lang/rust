@@ -14,7 +14,7 @@ Table of contents:
 * [License](#license)
 
 ##Lints
-There are 144 lints included in this crate:
+There are 146 lints included in this crate:
 
 name                                                                                                                 | default | meaning
 ---------------------------------------------------------------------------------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -56,6 +56,7 @@ name                                                                            
 [explicit_iter_loop](https://github.com/Manishearth/rust-clippy/wiki#explicit_iter_loop)                             | warn    | for-looping over `_.iter()` or `_.iter_mut()` when `&_` or `&mut _` would do
 [extend_from_slice](https://github.com/Manishearth/rust-clippy/wiki#extend_from_slice)                               | warn    | `.extend_from_slice(_)` is a faster way to extend a Vec by a slice
 [filter_next](https://github.com/Manishearth/rust-clippy/wiki#filter_next)                                           | warn    | using `filter(p).next()`, which is more succinctly expressed as `.find(p)`
+[float_arithmetic](https://github.com/Manishearth/rust-clippy/wiki#float_arithmetic)                                 | allow   | Any floating-point arithmetic statement
 [float_cmp](https://github.com/Manishearth/rust-clippy/wiki#float_cmp)                                               | warn    | using `==` or `!=` on float values (as floating-point operations usually involve rounding errors, it is always better to check for approximate equality within small bounds)
 [for_kv_map](https://github.com/Manishearth/rust-clippy/wiki#for_kv_map)                                             | warn    | looping on a map using `iter` when `keys` or `values` would do
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                         | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
@@ -67,6 +68,7 @@ name                                                                            
 [indexing_slicing](https://github.com/Manishearth/rust-clippy/wiki#indexing_slicing)                                 | allow   | indexing/slicing usage
 [ineffective_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#ineffective_bit_mask)                         | warn    | expressions where a bit mask will be rendered useless by a comparison, e.g. `(x | 1) > 2`
 [inline_always](https://github.com/Manishearth/rust-clippy/wiki#inline_always)                                       | warn    | `#[inline(always)]` is a bad idea in most cases
+[integer_arithmetic](https://github.com/Manishearth/rust-clippy/wiki#integer_arithmetic)                             | allow   | Any integer arithmetic statement
 [invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                       | deny    | finds invalid regular expressions in `Regex::new(_)` invocations
 [invalid_upcast_comparisons](https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons)             | warn    | a comparison involving an upcast which is always true or false
 [items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                     | allow   | finds blocks where an item comes after a statement
