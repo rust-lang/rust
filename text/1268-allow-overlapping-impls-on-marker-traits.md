@@ -112,9 +112,10 @@ probably be considered an acceptable breakage.
 
 # Alternatives
 
-Once specialization lands, there does not appear to be a case that is impossible
-to write, albeit with some additional boilerplate, as you'll have to manually
-specify the empty impl for any overlap that might occur.
+If the lattice rule for specialization is eventually accepted, there does not
+appear to be a case that is impossible to write, albeit with some additional
+boilerplate, as you'll have to manually specify the empty impl for any overlap
+that might occur.
 
 # Unresolved questions
 
