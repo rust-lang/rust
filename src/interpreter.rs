@@ -256,18 +256,34 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Switch { ref discr, ref targets, adt_def } => {
                 let adt_ptr = try!(self.eval_lvalue(discr)).to_ptr();
                 let adt_layout = self.type_layout(self.lvalue_ty(discr));
-                let discr_size = match *adt_layout {
-                    Layout::General { discr, .. } => discr.size().bytes(),
+
+                 match *adt_layout {
+                    Layout::General { discr, .. } => {
+                        let discr_size = discr.size().bytes();
+                        let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size as usize));
+
+                        let matching = adt_def.variants.iter()
+                            .position(|v| discr_val == v.disr_val.to_u64_unchecked());
+
+                        match matching {
+                            Some(i) => TerminatorTarget::Block(targets[i]),
+                            None => return Err(EvalError::InvalidDiscriminant),
+                        }
+                    }
+
+                    Layout::RawNullablePointer { nndiscr, .. } => {
+                        let is_null = match self.memory.read_usize(adt_ptr) {
+                            Ok(0) => true,
+                            Ok(_) | Err(EvalError::ReadPointerAsBytes) => false,
+                            Err(e) => return Err(e),
+                        };
+
+                        assert!(nndiscr == 0 || nndiscr == 1);
+                        let target = if is_null { 1 - nndiscr } else { nndiscr };
+                        TerminatorTarget::Block(targets[target as usize])
+                    }
+
                     _ => panic!("attmpted to switch on non-aggregate type"),
-                };
-                let discr_val = try!(self.memory.read_uint(adt_ptr, discr_size as usize));
-
-                let matching = adt_def.variants.iter()
-                    .position(|v| discr_val == v.disr_val.to_u64_unchecked());
-
-                match matching {
-                    Some(i) => TerminatorTarget::Block(targets[i]),
-                    None => return Err(EvalError::InvalidDiscriminant),
                 }
             }
 
@@ -633,7 +649,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                     Layout::Array { .. } => {
                         let elem_size = match dest_ty.sty {
                             ty::TyArray(elem_ty, _) => self.type_size(elem_ty) as u64,
-                            _ => panic!("tried to assign {:?} aggregate to non-array type {:?}",
+                            _ => panic!("tried to assign {:?} to non-array type {:?}",
                                         kind, dest_ty),
                         };
                         let offsets = (0..).map(|i| i * elem_size);
@@ -650,7 +666,24 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                                 .map(|s| s.bytes());
                             try!(self.assign_fields(dest, offsets, operands));
                         } else {
-                            panic!("tried to assign {:?} aggregate to Layout::General dest", kind);
+                            panic!("tried to assign {:?} to Layout::General", kind);
+                        }
+                    }
+
+                    Layout::RawNullablePointer { nndiscr, .. } => {
+                        if let mir::AggregateKind::Adt(_, variant, _) = *kind {
+                            if nndiscr == variant as u64 {
+                                assert_eq!(operands.len(), 1);
+                                let operand = &operands[0];
+                                let src = try!(self.eval_operand(operand));
+                                let src_ty = self.operand_ty(operand);
+                                try!(self.move_(src, dest, src_ty));
+                            } else {
+                                assert_eq!(operands.len(), 0);
+                                try!(self.memory.write_isize(dest, 0));
+                            }
+                        } else {
+                            panic!("tried to assign {:?} to Layout::RawNullablePointer", kind);
                         }
                     }
 
@@ -788,6 +821,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                                     panic!("field access on enum had no variant index");
                                 }
                             }
+                            Layout::RawNullablePointer { .. } => {
+                                assert_eq!(field.index(), 0);
+                                return Ok(base);
+                            }
                             _ => panic!("field access on non-product type: {:?}", base_layout),
                         };
 
@@ -802,6 +839,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                                 extra: LvalueExtra::DowncastVariant(variant),
                             });
                         }
+                        Layout::RawNullablePointer { .. } => return Ok(base),
                         _ => panic!("variant downcast on non-aggregate type: {:?}", base_layout),
                     },
 

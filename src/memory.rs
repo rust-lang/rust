@@ -403,7 +403,7 @@ impl Memory {
     // Undefined bytes
     ////////////////////////////////////////////////////////////////////////////////
 
-    // FIXME(tsino): This is a very naive, slow version.
+    // FIXME(tsion): This is a very naive, slow version.
     fn copy_undef_mask(&mut self, src: Pointer, dest: Pointer, size: usize) -> EvalResult<()> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         let mut v = Vec::with_capacity(size);
