@@ -42,8 +42,6 @@ use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{path_to_string, ty_to_string};
 use syntax::ptr::P;
 
-use rustc::hir::lowering::lower_expr;
-
 use super::{escape, generated_code, SaveContext, PathCollector};
 use super::data::*;
 use super::dump::Dump;
@@ -1222,7 +1220,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
                 visit::walk_expr(self, ex);
             }
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
-                let hir_expr = lower_expr(self.save_ctxt.lcx, ex);
+                let hir_expr = self.save_ctxt.tcx.map.expect_expr(ex.id);
                 let adt = self.tcx.expr_ty(&hir_expr).ty_adt_def().unwrap();
                 let def = self.tcx.resolve_expr(&hir_expr);
                 self.process_struct_lit(ex, path, fields, adt.variant_of_def(def), base)
@@ -1241,7 +1239,7 @@ impl<'v, 'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'v> for DumpVisitor<'l, 'tcx, 
             ast::ExprKind::TupField(ref sub_ex, idx) => {
                 self.visit_expr(&sub_ex);
 
-                let hir_node = lower_expr(self.save_ctxt.lcx, sub_ex);
+                let hir_node = self.save_ctxt.tcx.map.expect_expr(sub_ex.id);
                 let ty = &self.tcx.expr_ty_adjusted(&hir_node).sty;
                 match *ty {
                     ty::TyStruct(def, _) => {
