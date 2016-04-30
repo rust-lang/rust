@@ -7,6 +7,7 @@
 #![feature(question_mark)]
 #![feature(stmt_expr_attributes)]
 #![allow(indexing_slicing, shadow_reuse, unknown_lints)]
+#![allow(float_arithmetic, integer_arithmetic)]
 
 // this only exists to allow the "dogfood" integration test to work
 #[allow(dead_code)]
@@ -43,12 +44,19 @@ extern crate rustc_const_eval;
 extern crate rustc_const_math;
 use rustc_plugin::Registry;
 
+macro_rules! declare_restriction_lint {
+    { pub $name:tt, $description:tt } => {
+        declare_lint! { pub $name, Allow, $description }
+    };
+}
+
 pub mod consts;
 #[macro_use]
 pub mod utils;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
+pub mod arithmetic;
 pub mod array_indexing;
 pub mod attrs;
 pub mod bit_mask;
@@ -238,6 +246,12 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_late_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
     reg.register_late_lint_pass(box mem_forget::MemForget);
+    reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
+
+    reg.register_lint_group("clippy_restrictions", vec![
+        arithmetic::FLOAT_ARITHMETIC,
+        arithmetic::INTEGER_ARITHMETIC,
+    ]);
 
     reg.register_lint_group("clippy_pedantic", vec![
         array_indexing::INDEXING_SLICING,
