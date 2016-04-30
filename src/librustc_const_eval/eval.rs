@@ -281,7 +281,7 @@ pub fn const_expr_to_pat(tcx: &ty::TyCtxt, expr: &Expr, pat_id: ast::NodeId, spa
             let path = match def.full_def() {
                 Def::Struct(def_id) => def_to_path(tcx, def_id),
                 Def::Variant(_, variant_did) => def_to_path(tcx, variant_did),
-                Def::Fn(..) => return Ok(P(hir::Pat {
+                Def::Fn(..) | Def::Method(..) => return Ok(P(hir::Pat {
                     id: expr.id,
                     node: PatKind::Lit(P(expr.clone())),
                     span: span,
