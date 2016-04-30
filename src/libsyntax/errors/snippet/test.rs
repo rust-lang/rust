@@ -105,7 +105,7 @@ fn foo() {
 
     println!("text=\n{}", text);
     assert_eq!(&text[..], &r#"
->>>> foo.rs
+ ::: foo.rs
 3 |>     vec.push(vec.pop().unwrap());
   |>     ---      ---                - previous borrow ends here
   |>     |        |
@@ -180,7 +180,7 @@ fn bar() {
     |>     |        |
     |>     |        b
     |>     a
->>>>>> bar.rs
+   ::: bar.rs
 17  |>     vec.push();
     |>     ---       - f
     |>     |
@@ -224,7 +224,7 @@ fn foo() {
 
     println!("text=\n{}", text);
     assert_eq!(&text[..], &r#"
->>>>>> foo.rs
+   ::: foo.rs
 3   |>     let name = find_id(&data, 22).unwrap();
     |>                         ---- immutable borrow begins here
 ...
@@ -263,7 +263,7 @@ fn foo() {
 
     println!("text=r#\"\n{}\".trim_left()", text);
     assert_eq!(&text[..], &r#"
->>>> foo.rs
+ ::: foo.rs
 3 |>     vec.push(vec.pop().unwrap());
   |>     --------           ------ D
   |>     ||
@@ -299,7 +299,7 @@ fn foo() {
 
     println!("text=r#\"\n{}\".trim_left()", text);
     assert_eq!(&text[..], &r#"
->>>> foo.rs
+ ::: foo.rs
 3 |>     vec.push(vec.pop().unwrap());
   |>     ---      ---                - previous borrow ends here
   |>     |        |
@@ -337,7 +337,7 @@ fn foo() {
     let text: String = make_string(&lines);
     println!("text=r#\"\n{}\".trim_left()", text);
     assert_eq!(&text[..], &r#"
->>>>>> foo.rs
+   ::: foo.rs
 4   |>     let mut vec2 = vec;
     |>                    --- `vec` moved here because it has type `collections::vec::Vec<i32>`
 ...
@@ -373,7 +373,7 @@ fn foo() {
     let text: String = make_string(&lines);
     println!("text=&r#\"\n{}\n\"#[1..]", text);
     assert_eq!(text, &r#"
->>>> foo.rs
+ ::: foo.rs
 3 |>     let mut vec = vec![0, 1, 2];
   |>             ---   ---
 4 |>     let mut vec2 = vec;
@@ -404,7 +404,7 @@ impl SomeTrait for () {
     let text: String = make_string(&lines);
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
->>>> foo.rs
+ ::: foo.rs
 3 |>     fn foo(x: u32) {
   |>     -
 "#[1..]);
@@ -433,7 +433,7 @@ fn span_overlap_label() {
     let text: String = make_string(&lines);
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
->>>> foo.rs
+ ::: foo.rs
 2 |>     fn foo(x: u32) {
   |>     --------------
   |>     |      |
@@ -467,7 +467,7 @@ fn span_overlap_label2() {
     let text: String = make_string(&lines);
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
->>>> foo.rs
+ ::: foo.rs
 2 |>     fn foo(x: u32) {
   |>     --------------
   |>     |      |
@@ -512,7 +512,7 @@ fn span_overlap_label3() {
     let text: String = make_string(&lines);
     println!("r#\"\n{}\"", text);
     assert_eq!(text, &r#"
->>>> foo.rs
+ ::: foo.rs
 3 |>        let closure = || {
   |>                      - foo
 4 |>            inner

@@ -11,6 +11,7 @@
 // Code for annotating snippets.
 
 use codemap::{CharPos, CodeMap, FileMap, LineInfo, Span};
+use errors::check_old_skool;
 use std::cmp;
 use std::rc::Rc;
 use std::mem;
@@ -432,10 +433,8 @@ impl FileInfo {
     }
 
     fn render_file_lines(&self, codemap: &Rc<CodeMap>) -> Vec<RenderedLine> {
-        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-            Ok(_) => false,
-            Err(_) => true,
-        };
+        let old_school = check_old_skool();
+
         // As a first step, we elide any instance of more than one
         // continuous unannotated line.
 
@@ -525,10 +524,7 @@ impl FileInfo {
     }
 
     fn render_line(&self, line: &Line) -> Vec<RenderedLine> {
-        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-            Ok(_) => false,
-            Err(_) => true,
-        };
+        let old_school = check_old_skool();
         let source_string = self.file.get_line(line.line_index)
                                      .unwrap_or("");
         let source_kind = RenderedLineKind::SourceText {
@@ -709,10 +705,7 @@ impl FileInfo {
 }
 
 fn prepend_prefixes(rendered_lines: &mut [RenderedLine]) {
-    let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-        Ok(_) => false,
-        Err(_) => true,
-    };
+    let old_school = check_old_skool();
     if old_school {
         return;
     }
