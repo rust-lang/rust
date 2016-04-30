@@ -29,21 +29,6 @@
 // are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
 // If you do, you must then set the new node's id to a fresh one.
 //
-// Lowering must be reproducable (the compiler only lowers once, but tools and
-// custom lints may lower an AST node to a HIR node to interact with the
-// compiler). The most interesting bit of this is ids - if you lower an AST node
-// and create new HIR nodes with fresh ids, when re-lowering the same node, you
-// must ensure you get the same ids! To do this, we keep track of the next id
-// when we translate a node which requires new ids. By checking this cache and
-// using node ids starting with the cached id, we ensure ids are reproducible.
-// To use this system, you just need to hold on to a CachedIdSetter object
-// whilst lowering. This is an RAII object that takes care of setting and
-// restoring the cached id, etc.
-//
-// This whole system relies on node ids being incremented one at a time and
-// all increments being for lowering. This means that you should not call any
-// non-lowering function which will use new node ids.
-//
 // We must also cache gensym'ed Idents to ensure that we get the same Ident
 // every time we lower a node with gensym'ed names. One consequence of this is
 // that you can only gensym a name once in a lowering (you don't need to worry
@@ -67,7 +52,6 @@ use hir::map::definitions::DefPathData;
 use hir::def_id::DefIndex;
 
 use std::collections::BTreeMap;
-use std::collections::HashMap;
 use std::iter;
 use syntax::ast::*;
 use syntax::attr::{ThinAttributes, ThinAttributesExt};
@@ -83,18 +67,8 @@ use std::cell::{Cell, RefCell};
 
 pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
-    // Map AST ids to ids used for expanded nodes.
-    id_cache: RefCell<HashMap<NodeId, NodeId>>,
-    // Use if there are no cached ids for the current node.
+    // Use to assign ids to hir nodes that do not directly correspond to an ast node
     id_assigner: &'a NodeIdAssigner,
-    // 0 == no cached id. Must be incremented to align with previous id
-    // incrementing.
-    cached_id: Cell<u32>,
-    // Keep track of gensym'ed idents.
-    gensym_cache: RefCell<HashMap<(NodeId, &'static str), hir::Ident>>,
-    // A copy of cached_id, but is also set to an id while a node is lowered for
-    // the first time.
-    gensym_key: Cell<u32>,
     // We must keep the set of definitions up to date as we add nodes that
     // weren't in the AST.
     definitions: Option<&'a RefCell<Definitions>>,
@@ -121,11 +95,7 @@ impl<'a, 'hir> LoweringContext<'a> {
 
         LoweringContext {
             crate_root: crate_root,
-            id_cache: RefCell::new(HashMap::new()),
             id_assigner: id_assigner,
-            cached_id: Cell::new(0),
-            gensym_cache: RefCell::new(HashMap::new()),
-            gensym_key: Cell::new(0),
             definitions: Some(defs),
             parent_def: Cell::new(None),
         }
@@ -136,40 +106,18 @@ impl<'a, 'hir> LoweringContext<'a> {
     pub fn testing_context(id_assigner: &'a NodeIdAssigner) -> LoweringContext<'a> {
         LoweringContext {
             crate_root: None,
-            id_cache: RefCell::new(HashMap::new()),
             id_assigner: id_assigner,
-            cached_id: Cell::new(0),
-            gensym_cache: RefCell::new(HashMap::new()),
-            gensym_key: Cell::new(0),
             definitions: None,
             parent_def: Cell::new(None),
         }
     }
 
     fn next_id(&self) -> NodeId {
-        let cached_id = self.cached_id.get();
-        if cached_id == 0 {
-            return self.id_assigner.next_node_id();
-        }
-
-        self.cached_id.set(cached_id + 1);
-        cached_id
+        self.id_assigner.next_node_id()
     }
 
     fn str_to_ident(&self, s: &'static str) -> hir::Ident {
-        let gensym_key = self.gensym_key.get();
-        if gensym_key == 0 {
-            return hir::Ident::from_name(token::gensym(s));
-        }
-
-        let cached = self.gensym_cache.borrow().contains_key(&(gensym_key, s));
-        if cached {
-            self.gensym_cache.borrow()[&(gensym_key, s)]
-        } else {
-            let result = hir::Ident::from_name(token::gensym(s));
-            self.gensym_cache.borrow_mut().insert((gensym_key, s), result);
-            result
-        }
+        hir::Ident::from_name(token::gensym(s))
     }
 
     // Panics if this LoweringContext's NodeIdAssigner is not able to emit diagnostics.
@@ -195,56 +143,6 @@ impl<'a, 'hir> LoweringContext<'a> {
         let defs = self.definitions.unwrap().borrow();
         defs.opt_def_index(id).unwrap()
     }
-}
-
-// Utility fn for setting and unsetting the cached id.
-fn cache_ids<'a, OP, R>(lctx: &LoweringContext, expr_id: NodeId, op: OP) -> R
-    where OP: FnOnce(&LoweringContext) -> R
-{
-    // Only reset the id if it was previously 0, i.e., was not cached.
-    // If it was cached, we are in a nested node, but our id count will
-    // still count towards the parent's count.
-    let reset_cached_id = lctx.cached_id.get() == 0;
-    // We always reset gensym_key so that if we use the same name in a nested
-    // node and after that node, they get different values.
-    let old_gensym_key = lctx.gensym_key.get();
-
-    {
-        let id_cache: &mut HashMap<_, _> = &mut lctx.id_cache.borrow_mut();
-
-        if id_cache.contains_key(&expr_id) {
-            panic!("relowering!!!");
-            /*
-            let cached_id = lctx.cached_id.get();
-            if cached_id == 0 {
-                // We're entering a node where we need to track ids, but are not
-                // yet tracking.
-                lctx.cached_id.set(id_cache[&expr_id]);
-            } else {
-                // We're already tracking - check that the tracked id is the same
-                // as the expected id.
-                assert!(cached_id == id_cache[&expr_id], "id mismatch");
-            }
-            lctx.gensym_key.set(id_cache[&expr_id]);
-            */
-        } else {
-            // We've never lowered this node before, remember it for next time.
-            let next_id = lctx.id_assigner.peek_node_id();
-            id_cache.insert(expr_id, next_id);
-            lctx.gensym_key.set(next_id);
-            // self.cached_id is not set when we lower a node for the first time,
-            // only on re-lowering.
-        }
-    }
-
-    let result = op(lctx);
-
-    if reset_cached_id {
-        lctx.cached_id.set(0);
-    }
-    lctx.gensym_key.set(old_gensym_key);
-
-    result
 }
 
 pub fn lower_ident(_lctx: &LoweringContext, ident: Ident) -> hir::Ident {
@@ -1080,7 +978,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
                 //     InPlace::finalize(place)
                 // })
-                return cache_ids(lctx, e.id, |lctx| {
+                return {
                     let placer_expr = lower_expr(lctx, placer);
                     let value_expr = lower_expr(lctx, value_expr);
 
@@ -1175,7 +1073,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                       e.span,
                                       hir::PushUnstableBlock,
                                       e.attrs.clone())
-                });
+                }
             }
 
             ExprKind::Vec(ref exprs) => {
@@ -1229,20 +1127,18 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let else_opt = else_opt.as_ref().map(|els| {
                     match els.node {
                         ExprKind::IfLet(..) => {
-                            cache_ids(lctx, e.id, |lctx| {
-                                // wrap the if-let expr in a block
-                                let span = els.span;
-                                let els = lower_expr(lctx, els);
-                                let id = lctx.next_id();
-                                let blk = P(hir::Block {
-                                    stmts: hir_vec![],
-                                    expr: Some(els),
-                                    id: id,
-                                    rules: hir::DefaultBlock,
-                                    span: span,
-                                });
-                                expr_block(lctx, blk, None)
-                            })
+                            // wrap the if-let expr in a block
+                            let span = els.span;
+                            let els = lower_expr(lctx, els);
+                            let id = lctx.next_id();
+                            let blk = P(hir::Block {
+                                stmts: hir_vec![],
+                                expr: Some(els),
+                                id: id,
+                                rules: hir::DefaultBlock,
+                                span: span,
+                            });
+                            expr_block(lctx, blk, None)
                         }
                         _ => lower_expr(lctx, els),
                     }
@@ -1331,7 +1227,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                       None)
                 }
 
-                return cache_ids(lctx, e.id, |lctx| {
+                return {
                     use syntax::ast::RangeLimits::*;
 
                     match (e1, e2, lims) {
@@ -1362,7 +1258,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         _ => panic!(lctx.diagnostic().span_fatal(e.span,
                                                                  "inclusive range with no end"))
                     }
-                });
+                }
             }
             ExprKind::Path(ref qself, ref path) => {
                 let hir_qself = qself.as_ref().map(|&QSelf { ref ty, position }| {
@@ -1436,7 +1332,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     _ => [<else_opt> | ()]
                 //   }
 
-                return cache_ids(lctx, e.id, |lctx| {
+                return {
                     // `<pat> => <body>`
                     let pat_arm = {
                         let body = lower_block(lctx, body);
@@ -1510,7 +1406,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                             contains_else_clause: contains_else_clause,
                                         }),
                          e.attrs.clone())
-                });
+                }
             }
 
             // Desugar ExprWhileLet
@@ -1525,7 +1421,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     }
                 //   }
 
-                return cache_ids(lctx, e.id, |lctx| {
+                return {
                     // `<pat> => <body>`
                     let pat_arm = {
                         let body = lower_block(lctx, body);
@@ -1556,7 +1452,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                                                   opt_ident.map(|ident| lower_ident(lctx, ident)));
                     // add attributes to the outer returned expr node
                     expr(lctx, e.span, loop_expr, e.attrs.clone())
-                });
+                }
             }
 
             // Desugar ExprForLoop
@@ -1578,7 +1474,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     result
                 //   }
 
-                return cache_ids(lctx, e.id, |lctx| {
+                return {
                     // expand <head>
                     let head = lower_expr(lctx, head);
 
@@ -1677,7 +1573,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     let block = block_all(lctx, e.span, hir_vec![let_stmt], Some(result));
                     // add the attributes to the outer returned expr node
                     expr_block(lctx, block, e.attrs.clone())
-                });
+                }
             }
 
             // Desugar ExprKind::Try
@@ -1694,7 +1590,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     }
                 // }
 
-                return cache_ids(lctx, e.id, |lctx| {
+                return {
                     // expand <expr>
                     let sub_expr = lower_expr(lctx, sub_expr);
 
@@ -1735,7 +1631,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                     expr_match(lctx, e.span, sub_expr, hir_vec![err_arm, ok_arm],
                                hir::MatchSource::TryDesugar, None)
-                })
+                }
             }
 
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
