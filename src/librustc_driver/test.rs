@@ -85,7 +85,8 @@ impl CoreEmitter for ExpectErrorEmitter {
                     msg: &str,
                     _: Option<&str>,
                     lvl: Level,
-                    _is_header: bool) {
+                    _is_header: bool,
+                    _show_snippet: bool) {
         remove_message(self, msg, lvl);
     }
 }
