@@ -16,12 +16,26 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
+
 
 def get(url, path, verbose=False):
-    print("downloading " + url)
     sha_url = url + ".sha256"
-    sha_path = path + ".sha256"
-    for _url, _path in ((url, path), (sha_url, sha_path)):
+    temp_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_path = temp_file.name
+    sha_file = tempfile.NamedTemporaryFile(suffix=".sha256", delete=True)
+    sha_path = sha_file.name
+    download(sha_path, sha_url, temp_path, url, verbose)
+    verify(sha_path, temp_path, verbose)
+    sha_file.close()
+    print("moving " + temp_path + " to " + path)
+    shutil.move(temp_path, path)
+    temp_file.close()
+
+
+def download(sha_path, sha_url, temp_path, url, verbose):
+    for _url, _path in ((url, temp_path), (sha_url, sha_path)):
+        print("downloading " + _url + " to " + _path)
         # see http://serverfault.com/questions/301128/how-to-download
         if sys.platform == 'win32':
             run(["PowerShell.exe", "/nologo", "-Command",
@@ -30,8 +44,11 @@ def get(url, path, verbose=False):
                 verbose=verbose)
         else:
             run(["curl", "-o", _path, _url], verbose=verbose)
-    print("verifying " + path)
-    with open(path, "rb") as f:
+
+
+def verify(sha_path, temp_path, verbose):
+    print("verifying " + temp_path)
+    with open(temp_path, "rb") as f:
         found = hashlib.sha256(f.read()).hexdigest()
     with open(sha_path, "r") as f:
         expected, _ = f.readline().split()
@@ -42,6 +59,7 @@ def get(url, path, verbose=False):
         if verbose:
             raise RuntimeError(err)
         sys.exit(err)
+
 
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
