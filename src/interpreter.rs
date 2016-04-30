@@ -84,7 +84,8 @@ struct Lvalue {
 enum LvalueExtra {
     None,
     Length(u64),
-    // Vtable(memory::AllocId),
+    // TODO(tsion): Vtable(memory::AllocId),
+    DowncastVariant(usize),
 }
 
 #[derive(Clone)]
@@ -231,8 +232,10 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
             SwitchInt { ref discr, ref values, ref targets, .. } => {
                 let discr_ptr = try!(self.eval_lvalue(discr)).to_ptr();
-                let discr_size =
-                    self.lvalue_layout(discr).size(&self.tcx.data_layout).bytes() as usize;
+                let discr_size = self
+                    .type_layout(self.lvalue_ty(discr))
+                    .size(&self.tcx.data_layout)
+                    .bytes() as usize;
                 let discr_val = try!(self.memory.read_uint(discr_ptr, discr_size));
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -252,7 +255,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
 
             Switch { ref discr, ref targets, adt_def } => {
                 let adt_ptr = try!(self.eval_lvalue(discr)).to_ptr();
-                let adt_layout = self.lvalue_layout(discr);
+                let adt_layout = self.type_layout(self.lvalue_ty(discr));
                 let discr_size = match *adt_layout {
                     Layout::General { discr, .. } => discr.size().bytes(),
                     _ => panic!("attmpted to switch on non-aggregate type"),
@@ -590,7 +593,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
     {
         let dest = try!(self.eval_lvalue(lvalue)).to_ptr();
         let dest_ty = self.lvalue_ty(lvalue);
-        let dest_layout = self.lvalue_layout(lvalue);
+        let dest_layout = self.type_layout(dest_ty);
 
         use rustc::mir::repr::Rvalue::*;
         match *rvalue {
@@ -693,6 +696,8 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         let len_ptr = dest.offset(self.memory.pointer_size as isize);
                         try!(self.memory.write_usize(len_ptr, len));
                     }
+                    LvalueExtra::DowncastVariant(..) =>
+                        panic!("attempted to take a reference to an enum downcast lvalue"),
                 }
             }
 
@@ -745,28 +750,12 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
         match *op {
             Consume(ref lvalue) =>
                 Ok(try!(self.eval_lvalue(lvalue)).to_ptr()),
-            Constant(mir::Constant { ref literal, ty, .. }) => {
+            Constant(mir::Constant { ref literal, .. }) => {
                 use rustc::mir::repr::Literal::*;
                 match *literal {
                     Value { ref value } => Ok(try!(self.const_to_ptr(value))),
                     Item { .. } => unimplemented!(),
                 }
-            }
-        }
-    }
-
-    // TODO(tsion): Replace this inefficient hack with a wrapper like LvalueTy (e.g. LvalueLayout).
-    fn lvalue_layout(&self, lvalue: &mir::Lvalue<'tcx>) -> &'tcx Layout {
-        use rustc::mir::tcx::LvalueTy;
-        match self.mir().lvalue_ty(self.tcx, lvalue) {
-            LvalueTy::Ty { ty } => self.type_layout(ty),
-            LvalueTy::Downcast { adt_def, substs, variant_index } => {
-                let field_tys = adt_def.variants[variant_index].fields.iter()
-                    .map(|f| f.ty(self.tcx, substs));
-
-                // FIXME(tsion): Handle LvalueTy::Downcast better somehow...
-                unimplemented!();
-                // self.repr_arena.alloc(self.make_aggregate_layout(iter::once(field_tys)))
             }
         }
     }
@@ -783,32 +772,45 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
             Static(_def_id) => unimplemented!(),
 
             Projection(ref proj) => {
-                let base_ptr = try!(self.eval_lvalue(&proj.base)).ptr;
-                let base_layout = self.lvalue_layout(&proj.base);
+                let base = try!(self.eval_lvalue(&proj.base));
                 let base_ty = self.lvalue_ty(&proj.base);
+                let base_layout = self.type_layout(base_ty);
 
                 use rustc::mir::repr::ProjectionElem::*;
                 match proj.elem {
-                    Field(field, _) => match *base_layout {
-                        Layout::Univariant { ref variant, .. } => {
-                            let offset = variant.field_offset(field.index()).bytes();
-                            base_ptr.offset(offset as isize)
-                        }
-                        _ => panic!("field access on non-product type: {:?}", base_layout),
+                    Field(field, _) => {
+                        let variant = match *base_layout {
+                            Layout::Univariant { ref variant, .. } => variant,
+                            Layout::General { ref variants, .. } => {
+                                if let LvalueExtra::DowncastVariant(variant_idx) = base.extra {
+                                    &variants[variant_idx]
+                                } else {
+                                    panic!("field access on enum had no variant index");
+                                }
+                            }
+                            _ => panic!("field access on non-product type: {:?}", base_layout),
+                        };
+
+                        let offset = variant.field_offset(field.index()).bytes();
+                        base.ptr.offset(offset as isize)
                     },
 
-                    Downcast(..) => match *base_layout {
-                        Layout::General { discr, .. } =>
-                            base_ptr.offset(discr.size().bytes() as isize),
+                    Downcast(_, variant) => match *base_layout {
+                        Layout::General { discr, .. } => {
+                            return Ok(Lvalue {
+                                ptr: base.ptr.offset(discr.size().bytes() as isize),
+                                extra: LvalueExtra::DowncastVariant(variant),
+                            });
+                        }
                         _ => panic!("variant downcast on non-aggregate type: {:?}", base_layout),
                     },
 
                     Deref => {
                         let pointee_ty = pointee_type(base_ty).expect("Deref of non-pointer");
-                        let ptr = try!(self.memory.read_ptr(base_ptr));
+                        let ptr = try!(self.memory.read_ptr(base.ptr));
                         let extra = match pointee_ty.sty {
                             ty::TySlice(_) | ty::TyStr => {
-                                let len_ptr = base_ptr.offset(self.memory.pointer_size as isize);
+                                let len_ptr = base.ptr.offset(self.memory.pointer_size as isize);
                                 let len = try!(self.memory.read_usize(len_ptr));
                                 LvalueExtra::Length(len)
                             }
@@ -826,7 +828,7 @@ impl<'a, 'tcx: 'a> Interpreter<'a, 'tcx> {
                         };
                         let n_ptr = try!(self.eval_operand(operand));
                         let n = try!(self.memory.read_usize(n_ptr));
-                        base_ptr.offset(n as isize * elem_size as isize)
+                        base.ptr.offset(n as isize * elem_size as isize)
                     }
 
                     ConstantIndex { .. } => unimplemented!(),
