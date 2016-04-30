@@ -1453,6 +1453,19 @@ then
     cd ${CFG_BUILD_DIR}
 fi
 
+# Do a sanity check that the submodule source exists. Because GitHub
+# automatically publishes broken tarballs that can't be disabled, and
+# people download them and try to use them.
+if [ ! -e "${CFG_SRC_DIR}/src/liblibc" ]; then
+    err "some submodules are missing. Is this a broken tarball?
+
+If you downloaded this tarball from the GitHub release pages at
+https://github.com/rust-lang/rust/releases,
+then please delete it and instead download the source from
+https://www.rust-lang.org/downloads.html"
+
+fi
+
 # Configure llvm, only if necessary
 step_msg "looking at LLVM"
 CFG_LLVM_SRC_DIR=${CFG_SRC_DIR}src/llvm/
