@@ -683,3 +683,20 @@ pub fn expect<T, M>(diag: &Handler, opt: Option<T>, msg: M) -> T where
         None => diag.bug(&msg()),
     }
 }
+
+/// True if we should use the old-skool error format style. This is
+/// the default setting until the new errors are deemed stable enough
+/// for general use.
+///
+/// FIXME(#33240)
+#[cfg(not(test))]
+fn check_old_skool() -> bool {
+    use std::env;
+    env::var("RUST_NEW_ERROR_FORMAT").is_err()
+}
+
+/// For unit tests, use the new format.
+#[cfg(test)]
+fn check_old_skool() -> bool {
+    false
+}

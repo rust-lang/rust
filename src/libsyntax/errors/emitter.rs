@@ -13,6 +13,7 @@ use self::Destination::*;
 use codemap::{self, COMMAND_LINE_SP, DUMMY_SP, Pos, Span, MultiSpan};
 use diagnostics;
 
+use errors::check_old_skool;
 use errors::{Level, RenderSpan, CodeSuggestion, DiagnosticBuilder};
 use errors::RenderSpan::*;
 use errors::Level::*;
@@ -59,10 +60,7 @@ impl<T: CoreEmitter> Emitter for T {
     }
 
     fn emit_struct(&mut self, db: &DiagnosticBuilder) {
-        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-            Ok(_) => false,
-            Err(_) => true,
-        };
+        let old_school = check_old_skool();
         let db_span = FullSpan(db.span.clone());
         self.emit_message(&FullSpan(db.span.clone()),
                           &db.message,
@@ -198,10 +196,7 @@ impl EmitterWriter {
                   registry: Option<diagnostics::registry::Registry>,
                   code_map: Rc<codemap::CodeMap>)
                   -> EmitterWriter {
-        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-            Ok(_) => false,
-            Err(_) => true,
-        };
+        let old_school = check_old_skool();
         if color_config.use_color() {
             let dst = Destination::from_stderr();
             EmitterWriter { dst: dst,
@@ -222,10 +217,7 @@ impl EmitterWriter {
                registry: Option<diagnostics::registry::Registry>,
                code_map: Rc<codemap::CodeMap>)
                -> EmitterWriter {
-        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-            Ok(_) => false,
-            Err(_) => true,
-        };
+        let old_school = check_old_skool();
         EmitterWriter { dst: Raw(dst),
                         registry: registry,
                         cm: code_map,
@@ -454,10 +446,7 @@ fn print_diagnostic(dst: &mut Destination,
                     code: Option<&str>)
                     -> io::Result<()> {
     if !topic.is_empty() {
-        let old_school = match ::std::env::var("RUST_NEW_ERROR_FORMAT") {
-            Ok(_) => false,
-            Err(_) => true,
-        };
+        let old_school = check_old_skool();
         if !old_school {
             write!(dst, "{}: ", topic)?;
         }
