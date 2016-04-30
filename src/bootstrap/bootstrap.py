@@ -25,7 +25,8 @@ def get(url, path, verbose=False):
     temp_path = temp_file.name
     sha_file = tempfile.NamedTemporaryFile(suffix=".sha256", delete=True)
     sha_path = sha_file.name
-    download(sha_path, sha_url, temp_path, url, verbose)
+    download(sha_path, sha_url, verbose)
+    download(temp_path, url, verbose)
     verify(sha_path, temp_path, verbose)
     sha_file.close()
     print("moving " + temp_path + " to " + path)
@@ -33,17 +34,16 @@ def get(url, path, verbose=False):
     temp_file.close()
 
 
-def download(sha_path, sha_url, temp_path, url, verbose):
-    for _url, _path in ((url, temp_path), (sha_url, sha_path)):
-        print("downloading " + _url + " to " + _path)
-        # see http://serverfault.com/questions/301128/how-to-download
-        if sys.platform == 'win32':
-            run(["PowerShell.exe", "/nologo", "-Command",
-                 "(New-Object System.Net.WebClient)"
-                 ".DownloadFile('{}', '{}')".format(_url, _path)],
-                verbose=verbose)
-        else:
-            run(["curl", "-o", _path, _url], verbose=verbose)
+def download(path, url, verbose):
+    print("downloading " + url + " to " + path)
+    # see http://serverfault.com/questions/301128/how-to-download
+    if sys.platform == 'win32':
+        run(["PowerShell.exe", "/nologo", "-Command",
+             "(New-Object System.Net.WebClient)"
+             ".DownloadFile('{}', '{}')".format(url, path)],
+            verbose=verbose)
+    else:
+        run(["curl", "-o", path, url], verbose=verbose)
 
 
 def verify(sha_path, temp_path, verbose):
