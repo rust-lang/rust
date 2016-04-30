@@ -15,7 +15,6 @@ fn main() {
     i & 1; // no wrapping
     i | 1; 
     i ^ 1;
-    i % 7;
     i >> 1;
     i << 1;
     

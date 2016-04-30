@@ -15,9 +15,8 @@ use utils::span_lint;
 /// ```
 /// a + 1
 /// ```
-declare_lint! {
+declare_restriction_lint! {
     pub INTEGER_ARITHMETIC,
-    Allow,
     "Any integer arithmetic statement"
 }
 
@@ -32,9 +31,8 @@ declare_lint! {
 /// ```
 /// a + 1.0
 /// ```
-declare_lint! {
+declare_restriction_lint! {
     pub FLOAT_ARITHMETIC,
-    Allow,
     "Any floating-point arithmetic statement"
 }
 
@@ -55,32 +53,32 @@ impl LateLintPass for Arithmetic {
         match expr.node {
             hir::ExprBinary(ref op, ref l, ref r) => {
                 match op.node {
-                    hir::BiAnd | hir::BiOr | hir::BiBitAnd | 
-                    hir::BiBitOr | hir::BiBitXor | hir::BiShl | hir::BiShr | 
-                    hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe | 
+                    hir::BiAnd | hir::BiOr | hir::BiBitAnd |
+                    hir::BiBitOr | hir::BiBitXor | hir::BiShl | hir::BiShr |
+                    hir::BiEq | hir::BiLt | hir::BiLe | hir::BiNe | hir::BiGe |
                     hir::BiGt => return,
                     _ => ()
                 }
                 let (l_ty, r_ty) = (cx.tcx.expr_ty(l), cx.tcx.expr_ty(r));
                 if l_ty.is_integral() && r_ty.is_integral() {
-                    span_lint(cx, 
-                              INTEGER_ARITHMETIC, 
+                    span_lint(cx,
+                              INTEGER_ARITHMETIC,
                               expr.span,
                               "integer arithmetic detected");
-                    self.span = Some(expr.span);                    
+                    self.span = Some(expr.span);
                 } else if l_ty.is_floating_point() && r_ty.is_floating_point() {
                     span_lint(cx,
                               FLOAT_ARITHMETIC,
                               expr.span,
                               "floating-point arithmetic detected");
-                    self.span = Some(expr.span);                    
+                    self.span = Some(expr.span);
                 }
             },
             hir::ExprUnary(hir::UnOp::UnNeg, ref arg) => {
                 let ty = cx.tcx.expr_ty(arg);
                 if ty.is_integral() {
-                    span_lint(cx, 
-                              INTEGER_ARITHMETIC, 
+                    span_lint(cx,
+                              INTEGER_ARITHMETIC,
                               expr.span,
                               "integer arithmetic detected");
                     self.span = Some(expr.span);
@@ -95,7 +93,7 @@ impl LateLintPass for Arithmetic {
             _ => ()
         }
     }
-    
+
     fn check_expr_post(&mut self, _: &LateContext, expr: &hir::Expr) {
         if Some(expr.span) == self.span {
             self.span = None;
