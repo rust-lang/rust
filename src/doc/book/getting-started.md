@@ -399,13 +399,13 @@ Let’s convert the Hello World program to Cargo. To Cargo-fy a project, you nee
 to do three things:
 
 1. Put your source file in the right directory.
-2. Get rid of the old executable (`main.exe` on Windows, `main` everywhere else)
-   and make a new one.
+2. Get rid of the old executable (`main.exe` on Windows, `main` everywhere
+   else).
 3. Make a Cargo configuration file.
 
 Let's get started!
 
-### Creating a new Executable and Source Directory
+### Creating a Source Directory and Removing the Old Executable
 
 First, go back to your terminal, move to your *hello_world* directory, and
 enter the following commands:
