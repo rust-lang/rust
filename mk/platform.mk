@@ -169,7 +169,7 @@ ifdef CFG_CCACHE_BASEDIR
   export CCACHE_BASEDIR
 endif
 
-FIND_COMPILER = $(word 1,$(1:ccache=))
+FIND_COMPILER = $(strip $(1:ccache=))
 
 define CFG_MAKE_TOOLCHAIN
   # Prepend the tools with their prefix if cross compiling
@@ -187,7 +187,7 @@ define CFG_MAKE_TOOLCHAIN
     endif
   endif
 
-  CFG_COMPILE_C_$(1) = '$$(CC_$(1))' \
+  CFG_COMPILE_C_$(1) = '$$(call FIND_COMPILER,$$(CC_$(1)))' \
         $$(CFLAGS) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CFLAGS_$(1)) \
@@ -198,7 +198,7 @@ define CFG_MAKE_TOOLCHAIN
         $$(CFG_GCCISH_LINK_FLAGS_$(1)) \
         $$(CFG_GCCISH_DEF_FLAG_$(1))$$(3) $$(2) \
         $$(call CFG_INSTALL_NAME_$(1),$$(4))
-  CFG_COMPILE_CXX_$(1) = '$$(CXX_$(1))' \
+  CFG_COMPILE_CXX_$(1) = '$$(call FIND_COMPILER,$$(CXX_$(1)))' \
         $$(CXXFLAGS) \
         $$(CFG_GCCISH_CFLAGS) \
         $$(CFG_GCCISH_CXXFLAGS) \
