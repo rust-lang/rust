@@ -314,6 +314,82 @@ let c = &i; // still ok!
 ```
 "##,
 
+E0501: r##"
+This error indicates that a mutable variable is being used while it is still
+captured by a closure. Because the closure has borrowed the variable, it is not
+available for use until the closure goes out of scope.
+
+Note that a capture will either move or borrow a variable, but in this
+situation, the closure is borrowing the variable. Take a look at
+http://rustbyexample.com/fn/closures/capture.html for more information about
+capturing.
+
+Example of erroneous code:
+
+```compile_fail
+fn inside_closure(x: &mut i32) {
+    // Actions which require unique access
+}
+
+fn outside_closure(x: &mut i32) {
+    // Actions which require unique access
+}
+
+fn foo(a: &mut i32) {
+    let bar = || {
+        inside_closure(a)
+    };
+    outside_closure(a); // error: cannot borrow `*a` as mutable because previous
+                        //        closure requires unique access.
+}
+```
+
+To fix this error, you can place the closure in its own scope:
+
+```
+fn inside_closure(x: &mut i32) {}
+fn outside_closure(x: &mut i32) {}
+
+fn foo(a: &mut i32) {
+    {
+        let bar = || {
+            inside_closure(a)
+        };
+    } // borrow on `a` ends.
+    outside_closure(a); // ok!
+}
+```
+
+Or you can pass the variable as a parameter to the closure:
+
+```
+fn inside_closure(x: &mut i32) {}
+fn outside_closure(x: &mut i32) {}
+
+fn foo(a: &mut i32) {
+    let bar = |s: &mut i32| {
+        inside_closure(s)
+    };
+    outside_closure(a);
+    bar(a);
+}
+```
+
+It may be possible to define the closure later:
+
+```
+fn inside_closure(x: &mut i32) {}
+fn outside_closure(x: &mut i32) {}
+
+fn foo(a: &mut i32) {
+    outside_closure(a);
+    let bar = || {
+        inside_closure(a)
+    };
+}
+```
+"##,
+
 E0507: r##"
 You tried to move out of a value which was borrowed. Erroneous code example:
 
@@ -436,7 +512,6 @@ register_diagnostics! {
     E0388, // {} in a static location
     E0389, // {} in a `&` reference
     E0500, // closure requires unique access to `..` but .. is already borrowed
-    E0501, // cannot borrow `..`.. as .. because previous closure requires unique access
     E0502, // cannot borrow `..`.. as .. because .. is also borrowed as ...
     E0503, // cannot use `..` because it was mutably borrowed
     E0504, // cannot move `..` into closure because it is borrowed
