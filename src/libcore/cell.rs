@@ -267,7 +267,7 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 #[stable(feature = "cell_eq", since = "1.2.0")]
 impl<T:Eq + Copy> Eq for Cell<T> {}
 
-#[unstable(feature = "cell_ord", issue = "33305")]
+#[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
@@ -295,7 +295,7 @@ impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
     }
 }
 
-#[unstable(feature = "cell_ord", issue = "33305")]
+#[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T:Ord + Copy> Ord for Cell<T> {
     #[inline]
     fn cmp(&self, other: &Cell<T>) -> Ordering {
@@ -526,7 +526,7 @@ impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
 #[stable(feature = "cell_eq", since = "1.2.0")]
 impl<T: ?Sized + Eq> Eq for RefCell<T> {}
 
-#[unstable(feature = "cell_ord", issue = "33305")]
+#[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     #[inline]
     fn partial_cmp(&self, other: &RefCell<T>) -> Option<Ordering> {
@@ -554,7 +554,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     }
 }
 
-#[unstable(feature = "cell_ord", issue = "33305")]
+#[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T: ?Sized + Ord> Ord for RefCell<T> {
     #[inline]
     fn cmp(&self, other: &RefCell<T>) -> Ordering {
