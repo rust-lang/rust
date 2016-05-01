@@ -635,7 +635,17 @@ fn foo(x: u8) -> u8 {
 ```
 
 It is advisable to find out what the unhandled cases are and check for them,
-returning an appropriate value or panicking if necessary.
+returning an appropriate value or panicking if necessary. Check if you need
+to remove a semicolon from the last expression, like in this case:
+
+```ignore
+fn foo(x: u8) -> u8 {
+    inner(2*x + 1);
+}
+```
+
+The semicolon discards the return value of `inner`, instead of returning
+it from `foo`.
 "##,
 
 E0270: r##"
