@@ -65,6 +65,7 @@ pub struct GnuLinker<'a> {
     pub name: &'a str,
     pub cmd: Command,
     pub sess: &'a Session,
+    pub is_lld: bool,
 }
 
 impl<'a> GnuLinker<'a> {
@@ -86,8 +87,24 @@ impl<'a> fmt::Display for GnuLinker<'a> {
 }
 
 impl<'a> Linker for GnuLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.arg("-l").arg(lib); }
-    fn link_staticlib(&mut self, lib: &str) { self.arg("-l").arg(lib); }
+    fn link_dylib(&mut self, lib: &str) {
+        if self.is_lld && self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-l");
+            v.push(lib);
+            self.arg(&v);
+        } else {
+            self.arg("-l").arg(lib);
+        }
+    }
+    fn link_staticlib(&mut self, lib: &str) {
+        if self.is_lld && self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-l");
+            v.push(lib);
+            self.arg(&v);
+        } else {
+            self.arg("-l").arg(lib);
+        }
+    }
     fn link_rlib(&mut self, lib: &Path) { self.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.arg("-L").arg(path); }
     fn framework_path(&mut self, path: &Path) { self.arg("-F").arg(path); }
@@ -95,7 +112,20 @@ impl<'a> Linker for GnuLinker<'a> {
     fn add_object(&mut self, path: &Path) { self.arg(path); }
     fn position_independent_executable(&mut self) { self.arg("-pie"); }
     fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.cmd.arg(arg);
+        if self.is_lld {
+            match arg.as_ref().to_str() {
+                Some(args_str) => {
+                    for arg_str in args_str.trim_left_matches("-Wl,").split(',') {
+                        self.cmd.arg(arg_str);
+                    }
+                },
+                None => {
+                    self.cmd.arg(arg.as_ref());
+                },
+            }
+        } else {
+            self.cmd.arg(arg);
+        }
         self
     }
     fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Self {
@@ -109,7 +139,13 @@ impl<'a> Linker for GnuLinker<'a> {
     }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
-        self.arg("-l").arg(lib);
+        if self.is_lld && self.sess.target.target.options.is_like_osx {
+            let mut v = OsString::from("-l");
+            v.push(lib);
+            self.arg(&v);
+        } else {
+            self.arg("-l").arg(lib);
+        }
     }
 
     fn link_framework(&mut self, framework: &str) {
@@ -124,9 +160,9 @@ impl<'a> Linker for GnuLinker<'a> {
             v.push(&archive::find_library(lib, search_path, &self.sess));
             self.arg(&v);
         } else {
-            self.arg("-Wl,--whole-archive")
-                .arg("-l").arg(lib)
-                .arg("-Wl,--no-whole-archive");
+            self.arg("-Wl,--whole-archive");
+            self.link_staticlib(lib);
+            self.arg("-Wl,--no-whole-archive");
         }
     }
 

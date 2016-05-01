@@ -621,6 +621,18 @@ fn link_natively(sess: &Session, dylib: bool,
     let (pname, mut cmd) = get_linker(sess);
     cmd.env("PATH", command_path(sess));
 
+    let is_lld = pname.ends_with("lld");
+
+    if is_lld {
+        if sess.target.target.options.is_like_msvc {
+            cmd.args(&["-flavor", "link"]);
+        } else if sess.target.target.options.is_like_osx {
+            cmd.args(&["-flavor", "darwin"]);
+        } else {
+            cmd.args(&["-flavor", "gnu"]);
+        }
+    }
+
     if sess.target.target.options.is_like_msvc {
         let mut linker = MsvcLinker {
             name: pname,
@@ -640,6 +652,7 @@ fn link_natively(sess: &Session, dylib: bool,
             name: pname,
             cmd: cmd,
             sess: &sess,
+            is_lld: is_lld,
         };
         link_natively_helper(&mut linker,
                              sess,
