@@ -8,7 +8,7 @@ we’ll talk about Cargo, Rust’s build system and package manager.
 
 The first step to using Rust is to install it. Generally speaking, you’ll need
 an Internet connection to run the commands in this section, as we’ll be
-downloading Rust from the internet.
+downloading Rust from the Internet.
 
 We’ll be showing off a number of commands using a terminal, and those lines all
 start with `$`. We don't need to type in the `$`s, they are there to indicate
