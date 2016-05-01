@@ -9,7 +9,10 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp
+
+// We specify -Z incremental here because we want to test the partitioning for
+// incremental compilation
+// compile-flags:-Zprint-trans-items=lazy -Zincremental=tmp/partitioning-tests/extern-drop-glue
 
 #![allow(dead_code)]
 #![crate_type="lib"]
