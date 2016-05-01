@@ -145,7 +145,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use clone::Clone;
-use cmp::{PartialEq, Eq};
+use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use default::Default;
 use marker::{Copy, Send, Sync, Sized, Unsize};
 use ops::{Deref, DerefMut, Drop, FnOnce, CoerceUnsized};
@@ -266,6 +266,42 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 
 #[stable(feature = "cell_eq", since = "1.2.0")]
 impl<T:Eq + Copy> Eq for Cell<T> {}
+
+#[unstable(feature = "cell_ord", issue = "33305")]
+impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
+        self.get().partial_cmp(&other.get())
+    }
+
+    #[inline]
+    fn lt(&self, other: &Cell<T>) -> bool {
+        self.get() < other.get()
+    }
+
+    #[inline]
+    fn le(&self, other: &Cell<T>) -> bool {
+        self.get() <= other.get()
+    }
+
+    #[inline]
+    fn gt(&self, other: &Cell<T>) -> bool {
+        self.get() > other.get()
+    }
+
+    #[inline]
+    fn ge(&self, other: &Cell<T>) -> bool {
+        self.get() >= other.get()
+    }
+}
+
+#[unstable(feature = "cell_ord", issue = "33305")]
+impl<T:Ord + Copy> Ord for Cell<T> {
+    #[inline]
+    fn cmp(&self, other: &Cell<T>) -> Ordering {
+        self.get().cmp(&other.get())
+    }
+}
 
 /// A mutable memory location with dynamically checked borrow rules
 ///
@@ -489,6 +525,42 @@ impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
 
 #[stable(feature = "cell_eq", since = "1.2.0")]
 impl<T: ?Sized + Eq> Eq for RefCell<T> {}
+
+#[unstable(feature = "cell_ord", issue = "33305")]
+impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &RefCell<T>) -> Option<Ordering> {
+        self.borrow().partial_cmp(&*other.borrow())
+    }
+
+    #[inline]
+    fn lt(&self, other: &RefCell<T>) -> bool {
+        *self.borrow() < *other.borrow()
+    }
+
+    #[inline]
+    fn le(&self, other: &RefCell<T>) -> bool {
+        *self.borrow() <= *other.borrow()
+    }
+
+    #[inline]
+    fn gt(&self, other: &RefCell<T>) -> bool {
+        *self.borrow() > *other.borrow()
+    }
+
+    #[inline]
+    fn ge(&self, other: &RefCell<T>) -> bool {
+        *self.borrow() >= *other.borrow()
+    }
+}
+
+#[unstable(feature = "cell_ord", issue = "33305")]
+impl<T: ?Sized + Ord> Ord for RefCell<T> {
+    #[inline]
+    fn cmp(&self, other: &RefCell<T>) -> Ordering {
+        self.borrow().cmp(&*other.borrow())
+    }
+}
 
 struct BorrowRef<'b> {
     borrow: &'b Cell<BorrowFlag>,
