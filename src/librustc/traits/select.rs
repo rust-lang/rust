@@ -1823,20 +1823,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn collect_predicates_for_types(&mut self,
-                                    obligation: &TraitObligation<'tcx>,
+                                    cause: ObligationCause<'tcx>,
+                                    recursion_depth: usize,
                                     trait_def_id: DefId,
                                     types: ty::Binder<Vec<Ty<'tcx>>>)
                                     -> Vec<PredicateObligation<'tcx>>
     {
-        let derived_cause = match self.tcx().lang_items.to_builtin_kind(trait_def_id) {
-            Some(_) => {
-                self.derived_cause(obligation, BuiltinDerivedObligation)
-            },
-            None => {
-                self.derived_cause(obligation, ImplDerivedObligation)
-            }
-        };
-
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
         // regions. For example, `for<'a> Foo<&'a int> : Copy` would
@@ -1859,14 +1851,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     self.infcx().skolemize_late_bound_regions(&ty, snapshot);
                 let Normalized { value: normalized_ty, mut obligations } =
                     project::normalize_with_depth(self,
-                                                  derived_cause.clone(),
-                                                  obligation.recursion_depth + 1,
+                                                  cause.clone(),
+                                                  recursion_depth,
                                                   &skol_ty);
                 let skol_obligation =
                     util::predicate_for_trait_def(self.tcx(),
-                                                  derived_cause.clone(),
+                                                  cause.clone(),
                                                   trait_def_id,
-                                                  obligation.recursion_depth + 1,
+                                                  recursion_depth,
                                                   normalized_ty,
                                                   vec![]);
                 obligations.push(skol_obligation);
@@ -2013,7 +2005,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                           obligation)
             };
 
-            self.collect_predicates_for_types(obligation, trait_def, nested)
+            let cause = self.derived_cause(obligation, BuiltinDerivedObligation);
+            self.collect_predicates_for_types(cause,
+                                              obligation.recursion_depth+1,
+                                              trait_def,
+                                              nested)
         } else {
             vec![]
         };
@@ -2087,17 +2083,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            nested: ty::Binder<Vec<Ty<'tcx>>>)
                            -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
-        debug!("vtable_default_impl_data: nested={:?}", nested);
+        debug!("vtable_default_impl: nested={:?}", nested);
 
-        let mut obligations = self.collect_predicates_for_types(obligation,
-                                                                trait_def_id,
-                                                                nested);
+        let cause = self.derived_cause(obligation, BuiltinDerivedObligation);
+        let mut obligations = self.collect_predicates_for_types(
+            cause,
+            obligation.recursion_depth+1,
+            trait_def_id,
+            nested);
 
         let trait_obligations = self.infcx.in_snapshot(|snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 self.infcx().skolemize_late_bound_regions(&poly_trait_ref, snapshot);
-            self.impl_or_trait_obligations(obligation.cause.clone(),
+            let cause = self.derived_cause(obligation, ImplDerivedObligation);
+            self.impl_or_trait_obligations(cause,
                                            obligation.recursion_depth + 1,
                                            trait_def_id,
                                            &trait_ref.substs,
@@ -2107,7 +2107,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         obligations.extend(trait_obligations);
 
-        debug!("vtable_default_impl_data: obligations={:?}", obligations);
+        debug!("vtable_default_impl: obligations={:?}", obligations);
 
         VtableDefaultImplData {
             trait_def_id: trait_def_id,
@@ -2131,8 +2131,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.rematch_impl(impl_def_id, obligation,
                                   snapshot);
             debug!("confirm_impl_candidate substs={:?}", substs);
-            self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
-                             obligation.recursion_depth + 1, skol_map, snapshot)
+            let cause = self.derived_cause(obligation, ImplDerivedObligation);
+            self.vtable_impl(impl_def_id, substs, cause,
+                             obligation.recursion_depth + 1,
+                             skol_map, snapshot)
         })
     }
 
