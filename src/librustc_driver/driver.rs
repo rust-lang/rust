@@ -246,9 +246,7 @@ pub fn compile_input(sess: &Session,
 }
 
 fn keep_mtwt_tables(sess: &Session) -> bool {
-    sess.opts.debugging_opts.keep_mtwt_tables ||
-    sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_csv
+    sess.opts.debugging_opts.keep_mtwt_tables
 }
 
 fn keep_ast(sess: &Session) -> bool {
