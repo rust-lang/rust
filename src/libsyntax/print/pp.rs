@@ -61,6 +61,7 @@
 //! line (which it can't) and so naturally place the content on its own line to
 //! avoid combining it with other lines and making matters even worse.
 
+use std::collections::VecDeque;
 use std::fmt;
 use std::io;
 
@@ -164,7 +165,7 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
     debug!("mk_printer {}", linewidth);
     let token = vec![Token::Eof; n];
     let size = vec![0; n];
-    let scan_stack = vec![0; n];
+    let scan_stack = VecDeque::with_capacity(n);
     Printer {
         out: out,
         buf_len: n,
@@ -177,9 +178,6 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
         left_total: 0,
         right_total: 0,
         scan_stack: scan_stack,
-        scan_stack_empty: true,
-        top: 0,
-        bottom: 0,
         print_stack: Vec::new(),
         pending_indentation: 0
     }
@@ -241,9 +239,8 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
 /// approximation for purposes of line breaking).
 ///
 /// The "input side" of the printer is managed as an abstract process called
-/// SCAN, which uses 'scan_stack', 'scan_stack_empty', 'top' and 'bottom', to
-/// manage calculating 'size'. SCAN is, in other words, the process of
-/// calculating 'size' entries.
+/// SCAN, which uses 'scan_stack', to manage calculating 'size'. SCAN is, in
+/// other words, the process of calculating 'size' entries.
 ///
 /// The "output side" of the printer is managed by an abstract process called
 /// PRINT, which uses 'print_stack', 'margin' and 'space' to figure out what to
@@ -286,13 +283,7 @@ pub struct Printer<'a> {
     /// Begin (if there is any) on top of it. Stuff is flushed off the
     /// bottom as it becomes irrelevant due to the primary ring-buffer
     /// advancing.
-    scan_stack: Vec<usize> ,
-    /// Top==bottom disambiguator
-    scan_stack_empty: bool,
-    /// Index of top of scan_stack
-    top: usize,
-    /// Index of bottom of scan_stack
-    bottom: usize,
+    scan_stack: VecDeque<usize> ,
     /// Stack of blocks-in-progress being flushed by print
     print_stack: Vec<PrintStackElem> ,
     /// Buffered indentation to avoid writing trailing whitespace
@@ -311,7 +302,7 @@ impl<'a> Printer<'a> {
         debug!("pp Vec<{},{}>", self.left, self.right);
         match token {
           Token::Eof => {
-            if !self.scan_stack_empty {
+            if !self.scan_stack.is_empty() {
                 self.check_stack(0);
                 self.advance_left()?;
             }
@@ -319,7 +310,7 @@ impl<'a> Printer<'a> {
             Ok(())
           }
           Token::Begin(b) => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 self.left_total = 1;
                 self.right_total = 1;
                 self.left = 0;
@@ -334,7 +325,7 @@ impl<'a> Printer<'a> {
             Ok(())
           }
           Token::End => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 debug!("pp End/print Vec<{},{}>", self.left, self.right);
                 self.print(token, 0)
             } else {
@@ -348,7 +339,7 @@ impl<'a> Printer<'a> {
             }
           }
           Token::Break(b) => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 self.left_total = 1;
                 self.right_total = 1;
                 self.left = 0;
@@ -365,7 +356,7 @@ impl<'a> Printer<'a> {
             Ok(())
           }
           Token::String(s, len) => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 debug!("pp String('{}')/print Vec<{},{}>",
                        s, self.left, self.right);
                 self.print(Token::String(s, len), len)
@@ -387,12 +378,10 @@ impl<'a> Printer<'a> {
         if self.right_total - self.left_total > self.space {
             debug!("scan window is {}, longer than space on line ({})",
                    self.right_total - self.left_total, self.space);
-            if !self.scan_stack_empty {
-                if self.left == self.scan_stack[self.bottom] {
-                    debug!("setting {} to infinity and popping", self.left);
-                    let scanned = self.scan_pop_bottom();
-                    self.size[scanned] = SIZE_INFINITY;
-                }
+            if Some(&self.left) == self.scan_stack.back() {
+                debug!("setting {} to infinity and popping", self.left);
+                let scanned = self.scan_pop_bottom();
+                self.size[scanned] = SIZE_INFINITY;
             }
             self.advance_left()?;
             if self.left != self.right {
@@ -403,38 +392,16 @@ impl<'a> Printer<'a> {
     }
     pub fn scan_push(&mut self, x: usize) {
         debug!("scan_push {}", x);
-        if self.scan_stack_empty {
-            self.scan_stack_empty = false;
-        } else {
-            self.top += 1;
-            self.top %= self.buf_len;
-            assert!(self.top != self.bottom);
-        }
-        self.scan_stack[self.top] = x;
+        self.scan_stack.push_front(x);
     }
     pub fn scan_pop(&mut self) -> usize {
-        assert!(!self.scan_stack_empty);
-        let x = self.scan_stack[self.top];
-        if self.top == self.bottom {
-            self.scan_stack_empty = true;
-        } else {
-            self.top += self.buf_len - 1; self.top %= self.buf_len;
-        }
-        x
+        self.scan_stack.pop_front().unwrap()
     }
     pub fn scan_top(&mut self) -> usize {
-        assert!(!self.scan_stack_empty);
-        self.scan_stack[self.top]
+        *self.scan_stack.front().unwrap()
     }
     pub fn scan_pop_bottom(&mut self) -> usize {
-        assert!(!self.scan_stack_empty);
-        let x = self.scan_stack[self.bottom];
-        if self.top == self.bottom {
-            self.scan_stack_empty = true;
-        } else {
-            self.bottom += 1; self.bottom %= self.buf_len;
-        }
-        x
+        self.scan_stack.pop_back().unwrap()
     }
     pub fn advance_right(&mut self) {
         self.right += 1;
@@ -476,7 +443,7 @@ impl<'a> Printer<'a> {
         Ok(())
     }
     pub fn check_stack(&mut self, k: isize) {
-        if !self.scan_stack_empty {
+        if !self.scan_stack.is_empty() {
             let x = self.scan_top();
             match self.token[x] {
                 Token::Begin(_) => {
