@@ -16,7 +16,7 @@ Read ["Installing Rust"] from [The Book].
 
 1. Make sure you have installed the dependencies:
 
-   * `g++` 4.7 or `clang++` 3.x
+   * `g++` 4.7 or later or `clang++` 3.x
    * `python` 2.7 (but not 3.x)
    * GNU `make` 3.81 or later
    * `curl`
