@@ -814,6 +814,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
+    // Execute `f` in a snapshot, and commit the bindings it creates
+    pub fn in_snapshot<T, F>(&self, f: F) -> T where
+        F: FnOnce(&CombinedSnapshot) -> T
+    {
+        debug!("in_snapshot()");
+        let snapshot = self.start_snapshot();
+        let r = f(&snapshot);
+        self.commit_from(snapshot);
+        r
+    }
+
     /// Execute `f` and commit only the region bindings if successful.
     /// The function f must be very careful not to leak any non-region
     /// variables that get created.
