@@ -61,8 +61,8 @@
 //! line (which it can't) and so naturally place the content on its own line to
 //! avoid combining it with other lines and making matters even worse.
 
+use std::fmt;
 use std::io;
-use std::string;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Breaks {
@@ -112,35 +112,30 @@ impl Token {
     }
 }
 
-pub fn tok_str(token: &Token) -> String {
-    match *token {
-        Token::String(ref s, len) => format!("STR({},{})", s, len),
-        Token::Break(_) => "BREAK".to_string(),
-        Token::Begin(_) => "BEGIN".to_string(),
-        Token::End => "END".to_string(),
-        Token::Eof => "EOF".to_string()
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Token::String(ref s, len) => write!(f, "STR({},{})", s, len),
+            Token::Break(_) => f.write_str("BREAK"),
+            Token::Begin(_) => f.write_str("BEGIN"),
+            Token::End => f.write_str("END"),
+            Token::Eof => f.write_str("EOF"),
+        }
     }
 }
 
-pub fn buf_str(toks: &[Token],
-               szs: &[isize],
-               left: usize,
-               right: usize,
-               lim: usize)
-               -> String {
+fn buf_str(toks: &[Token], szs: &[isize], left: usize, right: usize, lim: usize) -> String {
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
     let mut l = lim;
-    let mut s = string::String::from("[");
+    let mut s = String::from("[");
     while i != right && l != 0 {
         l -= 1;
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(&format!("{}={}",
-                           szs[i],
-                           tok_str(&toks[i])));
+        s.push_str(&format!("{}={}", szs[i], &toks[i]));
         i += 1;
         i %= n;
     }
@@ -413,38 +408,38 @@ impl<'a> Printer<'a> {
         } else {
             self.top += 1;
             self.top %= self.buf_len;
-            assert!((self.top != self.bottom));
+            assert!(self.top != self.bottom);
         }
         self.scan_stack[self.top] = x;
     }
     pub fn scan_pop(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
+        assert!(!self.scan_stack_empty);
         let x = self.scan_stack[self.top];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else {
             self.top += self.buf_len - 1; self.top %= self.buf_len;
         }
-        return x;
+        x
     }
     pub fn scan_top(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
-        return self.scan_stack[self.top];
+        assert!(!self.scan_stack_empty);
+        self.scan_stack[self.top]
     }
     pub fn scan_pop_bottom(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
+        assert!(!self.scan_stack_empty);
         let x = self.scan_stack[self.bottom];
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else {
             self.bottom += 1; self.bottom %= self.buf_len;
         }
-        return x;
+        x
     }
     pub fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_len;
-        assert!((self.right != self.left));
+        assert!(self.right != self.left);
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
@@ -512,19 +507,16 @@ impl<'a> Printer<'a> {
         let ret = write!(self.out, "\n");
         self.pending_indentation = 0;
         self.indent(amount);
-        return ret;
+        ret
     }
     pub fn indent(&mut self, amount: isize) {
         debug!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
     pub fn get_top(&mut self) -> PrintStackElem {
-        let print_stack = &mut self.print_stack;
-        let n = print_stack.len();
-        if n != 0 {
-            (*print_stack)[n - 1]
-        } else {
-            PrintStackElem {
+        match self.print_stack.last() {
+            Some(el) => *el,
+            None => PrintStackElem {
                 offset: 0,
                 pbreak: PrintStackBreak::Broken(Breaks::Inconsistent)
             }
@@ -538,7 +530,7 @@ impl<'a> Printer<'a> {
         write!(self.out, "{}", s)
     }
     pub fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
-        debug!("print {} {} (remaining line space={})", tok_str(&token), l,
+        debug!("print {} {} (remaining line space={})", token, l,
                self.space);
         debug!("{}", buf_str(&self.token,
                              &self.size,
@@ -566,7 +558,7 @@ impl<'a> Printer<'a> {
           Token::End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!((!print_stack.is_empty()));
+            assert!(!print_stack.is_empty());
             print_stack.pop().unwrap();
             Ok(())
           }
@@ -603,12 +595,12 @@ impl<'a> Printer<'a> {
               }
             }
           }
-          Token::String(s, len) => {
+          Token::String(ref s, len) => {
             debug!("print String({})", s);
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(&s[..])
+            self.print_str(s)
           }
           Token::Eof => {
             // Eof should never get here.
@@ -652,15 +644,15 @@ pub fn eof(p: &mut Printer) -> io::Result<()> {
 }
 
 pub fn word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), wrd.len() as isize))
+    p.pretty_print(Token::String(wrd.to_string(), wrd.len() as isize))
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), SIZE_INFINITY))
+    p.pretty_print(Token::String(wrd.to_string(), SIZE_INFINITY))
 }
 
 pub fn zero_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), 0))
+    p.pretty_print(Token::String(wrd.to_string(), 0))
 }
 
 pub fn spaces(p: &mut Printer, n: usize) -> io::Result<()> {
