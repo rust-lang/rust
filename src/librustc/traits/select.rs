@@ -49,7 +49,6 @@ use std::fmt;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
-use util::common::ErrorReported;
 use util::nodemap::FnvHashMap;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
@@ -1402,7 +1401,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.in_snapshot(|snapshot| {
             let (self_ty, _) =
                 self.infcx().skolemize_late_bound_regions(&obligation.self_ty(), snapshot);
             let poly_trait_ref = match self_ty.sty {
@@ -1413,7 +1412,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 debug!("assemble_candidates_from_object_ty: matched builtin bound, \
                                         pushing candidate");
                                 candidates.vec.push(BuiltinObjectCandidate);
-                                return Ok(());
+                                return;
                             }
                         }
                         _ => {}
@@ -1424,10 +1423,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::TyInfer(ty::TyVar(_)) => {
                     debug!("assemble_candidates_from_object_ty: ambiguous");
                     candidates.ambiguous = true; // could wind up being an object type
-                    return Ok(());
+                    return;
                 }
                 _ => {
-                    return Ok(());
+                    return;
                 }
             };
 
@@ -1455,9 +1454,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if upcast_trait_refs == 1 {
                 candidates.vec.push(ObjectCandidate);
             }
-
-            Ok::<(),()>(())
-        }).unwrap();
+        })
     }
 
     /// Search for unsizing that might apply to `obligation`.
@@ -1854,21 +1851,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // 2. Produce something like `&'0 int : Copy`
         // 3. Re-bind the regions back to `for<'a> &'a int : Copy`
 
-        // Move the binder into the individual types
-        let bound_types: Vec<ty::Binder<Ty<'tcx>>> =
-            types.skip_binder()
-                 .iter()
-                 .map(|&nested_ty| ty::Binder(nested_ty))
-                 .collect();
+        types.skip_binder().into_iter().flat_map(|ty| { // binder moved -\
+            let ty: ty::Binder<Ty<'tcx>> = ty::Binder(ty); // <----------/
 
-        // For each type, produce a vector of resulting obligations
-        let obligations: Result<Vec<Vec<_>>, _> = bound_types.iter().map(|nested_ty| {
-            self.infcx.commit_if_ok(|snapshot| {
+            self.infcx.in_snapshot(|snapshot| {
                 let (skol_ty, skol_map) =
-                    self.infcx().skolemize_late_bound_regions(nested_ty, snapshot);
+                    self.infcx().skolemize_late_bound_regions(&ty, snapshot);
                 let Normalized { value: normalized_ty, mut obligations } =
                     project::normalize_with_depth(self,
-                                                  obligation.cause.clone(),
+                                                  derived_cause.clone(),
                                                   obligation.recursion_depth + 1,
                                                   &skol_ty);
                 let skol_obligation =
@@ -1879,15 +1870,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                   normalized_ty,
                                                   vec![]);
                 obligations.push(skol_obligation);
-                Ok(self.infcx().plug_leaks(skol_map, snapshot, &obligations))
+                self.infcx().plug_leaks(skol_map, snapshot, &obligations)
             })
-        }).collect();
-
-        // Flatten those vectors (couldn't do it above due `collect`)
-        match obligations {
-            Ok(obligations) => obligations.into_iter().flat_map(|o| o).collect(),
-            Err(ErrorReported) => Vec::new(),
-        }
+        }).collect()
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1928,9 +1913,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ImplCandidate(impl_def_id) => {
-                let vtable_impl =
-                    self.confirm_impl_candidate(obligation, impl_def_id)?;
-                Ok(VtableImpl(vtable_impl))
+                Ok(VtableImpl(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
             ClosureCandidate(closure_def_id, substs, kind) => {
@@ -1974,14 +1957,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_projection_candidate(&mut self,
                                     obligation: &TraitObligation<'tcx>)
     {
-        let _: Result<(),()> =
-            self.infcx.commit_if_ok(|snapshot| {
-                let result =
-                    self.match_projection_obligation_against_bounds_from_trait(obligation,
-                                                                               snapshot);
-                assert!(result);
-                Ok(())
-            });
+        self.infcx.in_snapshot(|snapshot| {
+            let result =
+                self.match_projection_obligation_against_bounds_from_trait(obligation,
+                                                                           snapshot);
+            assert!(result);
+        })
     }
 
     fn confirm_param_candidate(&mut self,
@@ -2112,20 +2093,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                                 trait_def_id,
                                                                 nested);
 
-        let trait_obligations: Result<Vec<_>,()> = self.infcx.commit_if_ok(|snapshot| {
+        let trait_obligations = self.infcx.in_snapshot(|snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 self.infcx().skolemize_late_bound_regions(&poly_trait_ref, snapshot);
-            Ok(self.impl_or_trait_obligations(obligation.cause.clone(),
-                                              obligation.recursion_depth + 1,
-                                              trait_def_id,
-                                              &trait_ref.substs,
-                                              skol_map,
-                                              snapshot))
+            self.impl_or_trait_obligations(obligation.cause.clone(),
+                                           obligation.recursion_depth + 1,
+                                           trait_def_id,
+                                           &trait_ref.substs,
+                                           skol_map,
+                                           snapshot)
         });
 
-        // no Errors in that code above
-        obligations.append(&mut trait_obligations.unwrap());
+        obligations.extend(trait_obligations);
 
         debug!("vtable_default_impl_data: obligations={:?}", obligations);
 
@@ -2138,8 +2118,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_impl_candidate(&mut self,
                               obligation: &TraitObligation<'tcx>,
                               impl_def_id: DefId)
-                              -> Result<VtableImplData<'tcx, PredicateObligation<'tcx>>,
-                                        SelectionError<'tcx>>
+                              -> VtableImplData<'tcx, PredicateObligation<'tcx>>
     {
         debug!("confirm_impl_candidate({:?},{:?})",
                obligation,
@@ -2147,13 +2126,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.in_snapshot(|snapshot| {
             let (substs, skol_map) =
                 self.rematch_impl(impl_def_id, obligation,
                                   snapshot);
             debug!("confirm_impl_candidate substs={:?}", substs);
-            Ok(self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
-                                obligation.recursion_depth + 1, skol_map, snapshot))
+            self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
+                             obligation.recursion_depth + 1, skol_map, snapshot)
         })
     }
 
