@@ -804,6 +804,9 @@ pub enum Predicate<'tcx> {
     /// would be the parameters in the `TypeSpace`.
     Trait(PolyTraitPredicate<'tcx>),
 
+    /// A predicate created by RFC1592
+    Rfc1592(Box<Predicate<'tcx>>),
+
     /// where `T1 == T2`.
     Equate(PolyEquatePredicate<'tcx>),
 
@@ -904,6 +907,8 @@ impl<'tcx> Predicate<'tcx> {
         match *self {
             Predicate::Trait(ty::Binder(ref data)) =>
                 Predicate::Trait(ty::Binder(data.subst(tcx, substs))),
+            Predicate::Rfc1592(ref pi) =>
+                Predicate::Rfc1592(Box::new(pi.subst_supertrait(tcx, trait_ref))),
             Predicate::Equate(ty::Binder(ref data)) =>
                 Predicate::Equate(ty::Binder(data.subst(tcx, substs))),
             Predicate::RegionOutlives(ty::Binder(ref data)) =>
@@ -1083,6 +1088,9 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::Trait(ref data) => {
                 data.0.trait_ref.substs.types.as_slice().to_vec()
             }
+            ty::Predicate::Rfc1592(ref data) => {
+                return data.walk_tys()
+            }
             ty::Predicate::Equate(ty::Binder(ref data)) => {
                 vec![data.0, data.1]
             }
@@ -1123,6 +1131,7 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::Trait(ref t) => {
                 Some(t.to_poly_trait_ref())
             }
+            Predicate::Rfc1592(..) |
             Predicate::Projection(..) |
             Predicate::Equate(..) |
             Predicate::RegionOutlives(..) |
@@ -1835,7 +1844,8 @@ impl<'tcx> AdtDefData<'tcx, 'tcx> {
             }
 
             TyTuple(ref tys) => {
-                tys.last().into_iter().flat_map(|ty| {
+                // FIXME(#33242) we only need to constrain the last field
+                tys.iter().flat_map(|ty| {
                     self.sized_constraint_for_ty(tcx, stack, ty)
                 }).collect()
             }

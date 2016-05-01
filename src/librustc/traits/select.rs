@@ -419,6 +419,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match obligation.predicate {
+            ty::Predicate::Rfc1592(..) => EvaluatedToOk,
+
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());
                 let obligation = obligation.with(t.clone());
@@ -1661,10 +1663,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::TyStr | ty::TySlice(_) | ty::TyTrait(..) => Never,
 
             ty::TyTuple(ref tys) => {
-                Where(ty::Binder(match tys.last() {
-                    Some(ty) => vec![ty],
-                    _ => vec![]
-                }))
+                // FIXME(#33242) we only need to constrain the last field
+                Where(ty::Binder(tys.clone()))
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
@@ -2408,11 +2408,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // T -> Trait.
             (_, &ty::TyTrait(ref data)) => {
-                let mut object_dids =
-                    data.bounds.builtin_bounds.iter().flat_map(|bound| {
-                        tcx.lang_items.from_builtin_kind(bound).ok()
-                    })
-                    .chain(Some(data.principal_def_id()));
+                let mut object_dids = Some(data.principal_def_id()).into_iter();
+                // FIXME(#33243)
+//                    data.bounds.builtin_bounds.iter().flat_map(|bound| {
+//                        tcx.lang_items.from_builtin_kind(bound).ok()
+//                    })
+//                    .chain(Some(data.principal_def_id()));
                 if let Some(did) = object_dids.find(|did| {
                     !object_safety::is_object_safe(tcx, *did)
                 }) {

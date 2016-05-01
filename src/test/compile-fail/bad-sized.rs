@@ -15,5 +15,4 @@ pub fn main() {
     //~^ ERROR `Trait + Sized: std::marker::Sized` is not satisfied
     //~| ERROR `Trait + Sized: std::marker::Sized` is not satisfied
     //~| ERROR `Trait + Sized: std::marker::Sized` is not satisfied
-    //~| ERROR `std::marker::Sized` cannot be made into an object
 }
