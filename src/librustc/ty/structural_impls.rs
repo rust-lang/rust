@@ -634,6 +634,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
         match *self {
             ty::Predicate::Trait(ref a) =>
                 ty::Predicate::Trait(a.fold_with(folder)),
+            ty::Predicate::Rfc1592(ref a) =>
+                ty::Predicate::Rfc1592(a.fold_with(folder)),
             ty::Predicate::Equate(ref binder) =>
                 ty::Predicate::Equate(binder.fold_with(folder)),
             ty::Predicate::RegionOutlives(ref binder) =>
@@ -654,6 +656,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Predicate<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
             ty::Predicate::Trait(ref a) => a.visit_with(visitor),
+            ty::Predicate::Rfc1592(ref a) => a.visit_with(visitor),
             ty::Predicate::Equate(ref binder) => binder.visit_with(visitor),
             ty::Predicate::RegionOutlives(ref binder) => binder.visit_with(visitor),
             ty::Predicate::TypeOutlives(ref binder) => binder.visit_with(visitor),

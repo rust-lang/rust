@@ -166,6 +166,7 @@ pub fn supertraits_reference_self<'tcx>(tcx: &TyCtxt<'tcx>,
                 ty::Predicate::TypeOutlives(..) |
                 ty::Predicate::RegionOutlives(..) |
                 ty::Predicate::ClosureKind(..) |
+                ty::Predicate::Rfc1592(..) |
                 ty::Predicate::Equate(..) => {
                     false
                 }
@@ -204,6 +205,7 @@ fn generics_require_sized_self<'tcx>(tcx: &TyCtxt<'tcx>,
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::Trait(..) |
+                ty::Predicate::Rfc1592(..) |
                 ty::Predicate::Equate(..) |
                 ty::Predicate::RegionOutlives(..) |
                 ty::Predicate::WellFormed(..) |

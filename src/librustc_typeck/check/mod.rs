@@ -1989,13 +1989,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // upvar inference should have ensured that all deferred call
         // resolutions are handled by now.
         assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
+        let infcx = self.infcx();
 
         self.select_all_obligations_and_apply_defaults();
 
         let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
-        match fulfillment_cx.select_all_or_error(self.infcx()) {
+        match fulfillment_cx.select_all_or_error(infcx) {
             Ok(()) => { }
-            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
+            Err(errors) => { report_fulfillment_errors(infcx, &errors); }
+        }
+
+        if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(infcx) {
+            traits::report_fulfillment_errors_as_warnings(infcx, errors, self.body_id);
         }
     }
 

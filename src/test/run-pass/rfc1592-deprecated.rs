@@ -8,13 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::mem;
+use std::fmt;
 
-trait Misc {}
+trait Foo {
+    fn foo(&self) -> (Self, Self);
+}
 
-fn size_of_copy<T: Copy+?Sized>() -> usize { mem::size_of::<T>() }
+impl<T: Copy> Foo for T {
+    fn foo(&self) -> (Self, Self) {
+        (*self, *self)
+    }
+}
 
 fn main() {
-    size_of_copy::<Misc+Copy>();
-    //~^ ERROR `Misc + Copy: std::marker::Copy` is not satisfied
+    assert_eq!((11).foo(), (11, 11));
+
+    let junk: Box<fmt::Debug+Sized> = Box::new(42);
+    let f = format!("{:?}", junk);
+    assert_eq!(f, "42");
 }

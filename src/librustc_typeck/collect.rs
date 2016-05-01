@@ -450,6 +450,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ty::GenericPredicates<'tcx> {
                     ty::Predicate::TypeOutlives(ref data) => {
                         data.skip_binder().0.is_param(def.space, def.index)
                     }
+                    ty::Predicate::Rfc1592(..) |
                     ty::Predicate::Equate(..) |
                     ty::Predicate::RegionOutlives(..) |
                     ty::Predicate::WellFormed(..) |

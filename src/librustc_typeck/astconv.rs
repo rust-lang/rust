@@ -1143,8 +1143,8 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
         traits::astconv_object_safety_violations(tcx, principal.def_id());
     if !object_safety_violations.is_empty() {
         traits::report_object_safety_error(
-            tcx, span, principal.def_id(), object_safety_violations)
-            .emit();
+            tcx, span, principal.def_id(), None, object_safety_violations)
+            .unwrap().emit();
         return tcx.types.err;
     }
 
