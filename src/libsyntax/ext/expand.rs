@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast::{Block, Crate, DeclKind, PatKind};
-use ast::{Local, Ident, Mac_, Name};
+use ast::{Local, Ident, Mac_, Name, SpannedIdent};
 use ast::{MacStmtStyle, Mrk, Stmt, StmtKind, ItemKind};
 use ast::TokenTree;
 use ast;
@@ -277,12 +277,12 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
 /// body is in a block enclosed by loop head so the renaming of loop label
 /// must be propagated to the enclosed context.
 fn expand_loop_block(loop_block: P<Block>,
-                     opt_ident: Option<Ident>,
-                     fld: &mut MacroExpander) -> (P<Block>, Option<Ident>) {
+                     opt_ident: Option<SpannedIdent>,
+                     fld: &mut MacroExpander) -> (P<Block>, Option<SpannedIdent>) {
     match opt_ident {
         Some(label) => {
-            let new_label = fresh_name(label);
-            let rename = (label, new_label);
+            let new_label = fresh_name(label.node);
+            let rename = (label.node, new_label);
 
             // The rename *must not* be added to the pending list of current
             // syntax context otherwise an unrelated `break` or `continue` in
@@ -290,7 +290,7 @@ fn expand_loop_block(loop_block: P<Block>,
             // and be renamed incorrectly.
             let mut rename_list = vec!(rename);
             let mut rename_fld = IdentRenamer{renames: &mut rename_list};
-            let renamed_ident = rename_fld.fold_ident(label);
+            let renamed_ident = rename_fld.fold_ident(label.node);
 
             // The rename *must* be added to the enclosed syntax context for
             // `break` or `continue` to pick up because by definition they are
@@ -300,7 +300,7 @@ fn expand_loop_block(loop_block: P<Block>,
             let expanded_block = expand_block_elts(loop_block, fld);
             fld.cx.syntax_env.pop_frame();
 
-            (expanded_block, Some(renamed_ident))
+            (expanded_block, Some(Spanned { node: renamed_ident, span: label.span }))
         }
         None => (fld.fold_block(loop_block), opt_ident)
     }

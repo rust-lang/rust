@@ -3086,7 +3086,7 @@ impl<'a> Resolver<'a> {
 
                     {
                         let rib = this.label_ribs.last_mut().unwrap();
-                        rib.bindings.insert(mtwt::resolve(label), def);
+                        rib.bindings.insert(mtwt::resolve(label.node), def);
                     }
 
                     visit::walk_expr(this, expr);
@@ -3131,7 +3131,7 @@ impl<'a> Resolver<'a> {
                 self.value_ribs.push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, RefutableMode, &mut HashMap::new());
 
-                self.resolve_labeled_block(label, expr.id, block);
+                self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
                 self.value_ribs.pop();
             }
@@ -3141,7 +3141,7 @@ impl<'a> Resolver<'a> {
                 self.value_ribs.push(Rib::new(NormalRibKind));
                 self.resolve_pattern(pattern, LocalIrrefutableMode, &mut HashMap::new());
 
-                self.resolve_labeled_block(label, expr.id, block);
+                self.resolve_labeled_block(label.map(|l| l.node), expr.id, block);
 
                 self.value_ribs.pop();
             }
