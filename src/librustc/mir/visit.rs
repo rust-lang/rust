@@ -244,6 +244,7 @@ macro_rules! make_mir_visitor {
                 let Mir {
                     ref $($mutability)* basic_blocks,
                     ref $($mutability)* scopes,
+                    promoted: _, // Visited by passes separately.
                     ref $($mutability)* return_ty,
                     ref $($mutability)* var_decls,
                     ref $($mutability)* arg_decls,
@@ -649,10 +650,11 @@ macro_rules! make_mir_visitor {
                                     ref $($mutability)* substs } => {
                         self.visit_def_id(def_id);
                         self.visit_substs(substs);
-                    },
+                    }
                     Literal::Value { ref $($mutability)* value } => {
                         self.visit_const_val(value);
                     }
+                    Literal::Promoted { index: _ } => {}
                 }
             }
 

@@ -855,6 +855,9 @@ pub fn maybe_get_item_mir<'tcx>(cdata: Cmd,
         };
 
         def_id_and_span_translator.visit_mir(&mut mir);
+        for promoted in &mut mir.promoted {
+            def_id_and_span_translator.visit_mir(promoted);
+        }
 
         mir
     });

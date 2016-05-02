@@ -12,16 +12,16 @@
 #![allow(unreachable_code)]
 
 use rustc::dep_graph::DepNode;
+use rustc::hir::def_id::DefId;
 use rustc::infer::{self, InferCtxt, InferOk};
 use rustc::traits::{self, ProjectionMode};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::mir::tcx::LvalueTy;
-use rustc::mir::transform::{MirPass, Pass};
+use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::visit::{self, Visitor};
 use std::fmt;
-use syntax::ast::NodeId;
 use syntax::codemap::{Span, DUMMY_SP};
 
 macro_rules! span_mirbug {
@@ -578,15 +578,13 @@ impl TypeckMir {
 }
 
 impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, id: NodeId, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-        let def_id = tcx.map.local_def_id(id);
-        let _task = tcx.dep_graph.in_task(DepNode::MirTypeck(def_id));
-        let param_env = ty::ParameterEnvironment::for_item(tcx, id);
+        let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
         let infcx = infer::new_infer_ctxt(tcx,
                                           &tcx.tables,
                                           Some(param_env),
@@ -605,4 +603,8 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
     }
 }
 
-impl Pass for TypeckMir {}
+impl Pass for TypeckMir {
+    fn dep_node(&self, def_id: DefId) -> DepNode<DefId> {
+        DepNode::MirTypeck(def_id)
+    }
+}

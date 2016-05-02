@@ -19,6 +19,7 @@
 use build;
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
+use rustc::mir::transform::MirSource;
 use pretty;
 use hair::cx::Cx;
 
@@ -55,10 +56,10 @@ struct BuildMir<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> BuildMir<'a, 'tcx> {
-    fn build<F>(&mut self, id: ast::NodeId, f: F)
+    fn build<F>(&mut self, src: MirSource, f: F)
         where F: for<'b> FnOnce(Cx<'b, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
     {
-        let param_env = ty::ParameterEnvironment::for_item(self.tcx, id);
+        let param_env = ty::ParameterEnvironment::for_item(self.tcx, src.item_id());
         let infcx = infer::new_infer_ctxt(self.tcx,
                                           &self.tcx.tables,
                                           Some(param_env),
@@ -66,9 +67,9 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
 
         let (mir, scope_auxiliary) = f(Cx::new(&infcx));
 
-        pretty::dump_mir(self.tcx, "mir_map", &0, id, &mir, Some(&scope_auxiliary));
+        pretty::dump_mir(self.tcx, "mir_map", &0, src, &mir, Some(&scope_auxiliary));
 
-        assert!(self.map.map.insert(id, mir).is_none())
+        assert!(self.map.map.insert(src.item_id(), mir).is_none())
     }
 
     fn build_const_integer(&mut self, expr: &'tcx hir::Expr) {
@@ -79,7 +80,9 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
         if let hir::ExprClosure(..) = expr.node {
             return;
         }
-        self.build(expr.id, |cx| build::construct_const(cx, expr.id, expr));
+        self.build(MirSource::Const(expr.id), |cx| {
+            build::construct_const(cx, expr.id, expr)
+        });
     }
 }
 
@@ -87,9 +90,15 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Const and static items.
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         match item.node {
-            hir::ItemConst(_, ref expr) |
-            hir::ItemStatic(_, _, ref expr) => {
-                self.build(item.id, |cx| build::construct_const(cx, item.id, expr));
+            hir::ItemConst(_, ref expr) => {
+                self.build(MirSource::Const(item.id), |cx| {
+                    build::construct_const(cx, item.id, expr)
+                });
+            }
+            hir::ItemStatic(_, m, ref expr) => {
+                self.build(MirSource::Static(item.id, m), |cx| {
+                    build::construct_const(cx, item.id, expr)
+                });
             }
             _ => {}
         }
@@ -99,7 +108,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Trait associated const defaults.
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
         if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
-            self.build(item.id, |cx| build::construct_const(cx, item.id, expr));
+            self.build(MirSource::Const(item.id), |cx| {
+                build::construct_const(cx, item.id, expr)
+            });
         }
         intravisit::walk_trait_item(self, item);
     }
@@ -107,7 +118,9 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     // Impl associated const.
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, ref expr) = item.node {
-            self.build(item.id, |cx| build::construct_const(cx, item.id, expr));
+            self.build(MirSource::Const(item.id), |cx| {
+                build::construct_const(cx, item.id, expr)
+            });
         }
         intravisit::walk_impl_item(self, item);
     }
@@ -166,7 +179,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
                     (fn_sig.inputs[index], Some(&*arg.pat))
                 });
 
-        self.build(id, |cx| {
+        self.build(MirSource::Fn(id), |cx| {
             let arguments = implicit_argument.into_iter().chain(explicit_arguments);
             build::construct_fn(cx, id, arguments, fn_sig.output, body)
         });
