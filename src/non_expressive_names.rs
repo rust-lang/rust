@@ -2,7 +2,8 @@ use rustc::lint::*;
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ast::*;
-use syntax::visit::{self, FnKind};
+use syntax::attr;
+use syntax::visit;
 use utils::{span_lint_and_then, in_macro, span_lint};
 
 /// **What it does:** This lint warns about names that are very similar and thus confusing
@@ -14,7 +15,7 @@ use utils::{span_lint_and_then, in_macro, span_lint};
 /// **Example:** `checked_exp` and `checked_expr`
 declare_lint! {
     pub SIMILAR_NAMES,
-    Warn,
+    Allow,
     "similarly named items and bindings"
 }
 
@@ -237,24 +238,28 @@ impl<'v, 'a, 'b> visit::Visitor<'v> for SimilarNamesLocalVisitor<'a, 'b> {
         });
     }
     fn visit_item(&mut self, _: &'v Item) {
-        // do nothing
+        // do not recurse into inner items
     }
 }
 
 impl EarlyLintPass for NonExpressiveNames {
-    fn check_fn(&mut self, cx: &EarlyContext, _: FnKind, decl: &FnDecl, blk: &Block, _: Span, _: NodeId) {
-        let mut visitor = SimilarNamesLocalVisitor {
-            names: Vec::new(),
-            cx: cx,
-            lint: &self,
-            single_char_names: Vec::new(),
-        };
-        // initialize with function arguments
-        for arg in &decl.inputs {
-            visit::walk_pat(&mut SimilarNamesNameVisitor(&mut visitor), &arg.pat);
+    fn check_item(&mut self, cx: &EarlyContext, item: &Item) {
+        if let ItemKind::Fn(ref decl, _, _, _, _, ref blk) = item.node {
+            if !attr::contains_name(&item.attrs, "test") {
+                let mut visitor = SimilarNamesLocalVisitor {
+                    names: Vec::new(),
+                    cx: cx,
+                    lint: &self,
+                    single_char_names: Vec::new(),
+                };
+                // initialize with function arguments
+                for arg in &decl.inputs {
+                    visit::walk_pat(&mut SimilarNamesNameVisitor(&mut visitor), &arg.pat);
+                }
+                // walk all other bindings
+                visit::walk_block(&mut visitor, blk);
+            }
         }
-        // walk all other bindings
-        visit::walk_block(&mut visitor, blk);
     }
 }
 

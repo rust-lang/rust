@@ -1,6 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
-#![deny(clippy)]
+#![deny(clippy,similar_names)]
 //~^ NOTE: lint level defined here
 //~| NOTE: lint level defined here
 //~| NOTE: lint level defined here

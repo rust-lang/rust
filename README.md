@@ -129,7 +129,7 @@ name                                                                            
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                                           | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                                 | allow   | The name is re-bound without even using the original value
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)                     | warn    | defining a method that should be implementing a std trait
-[similar_names](https://github.com/Manishearth/rust-clippy/wiki#similar_names)                                       | warn    | similarly named items and bindings
+[similar_names](https://github.com/Manishearth/rust-clippy/wiki#similar_names)                                       | allow   | similarly named items and bindings
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                           | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
 [single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                         | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) is used; recommends `if let` instead
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                               | allow   | a match statement with a two arms where the second arm's pattern is a wildcard; recommends `if let` instead
