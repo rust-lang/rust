@@ -71,10 +71,9 @@ macro_rules! supported_targets {
 
         // this would use a match if stringify! were allowed in pattern position
         fn load_specific(target: &str) -> Option<Target> {
-            let target = target.replace("-", "_");
             if false { }
             $(
-                else if target == stringify!($module) {
+                else if target == $triple {
                     let mut t = $module::target();
                     t.options.is_builtin = true;
                     debug!("Got builtin target: {:?}", t);
