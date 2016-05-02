@@ -10,6 +10,7 @@
 
 #![doc(hidden)]
 
+#[cfg(stage0)]
 macro_rules! uint_module { ($T:ty, $bits:expr) => (
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -18,5 +19,17 @@ pub const MIN: $T = 0 as $T;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_docs)]
 pub const MAX: $T = !0 as $T;
+
+) }
+
+#[cfg(not(stage0))]
+macro_rules! uint_module { ($T:ident, $bits:expr) => (
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
+pub const MIN: $T = $T::min_value();
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
+pub const MAX: $T = $T::max_value();
 
 ) }

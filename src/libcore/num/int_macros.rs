@@ -10,6 +10,7 @@
 
 #![doc(hidden)]
 
+#[cfg(stage0)]
 macro_rules! int_module { ($T:ty, $bits:expr) => (
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
@@ -23,5 +24,17 @@ pub const MIN: $T = (-1 as $T) << ($bits - 1);
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_docs)]
 pub const MAX: $T = !MIN;
+
+) }
+
+#[cfg(not(stage0))]
+macro_rules! int_module { ($T:ident, $bits:expr) => (
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
+pub const MIN: $T = $T::min_value();
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow(missing_docs)]
+pub const MAX: $T = $T::max_value();
 
 ) }
