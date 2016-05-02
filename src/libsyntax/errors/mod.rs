@@ -20,6 +20,7 @@ use errors::emitter::{Emitter, EmitterWriter};
 use std::cell::{RefCell, Cell};
 use std::{error, fmt};
 use std::rc::Rc;
+use std::thread::panicking;
 use term;
 
 pub mod emitter;
@@ -352,7 +353,7 @@ impl<'a> fmt::Debug for DiagnosticBuilder<'a> {
 /// we emit a bug.
 impl<'a> Drop for DiagnosticBuilder<'a> {
     fn drop(&mut self) {
-        if !self.cancelled() {
+        if !panicking() && !self.cancelled() {
             self.emitter.borrow_mut().emit(&MultiSpan::new(),
                                            "Error constructed but not emitted",
                                            None,
