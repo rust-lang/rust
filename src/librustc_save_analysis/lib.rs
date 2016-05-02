@@ -28,7 +28,7 @@
 #[macro_use] extern crate syntax;
 extern crate serialize as rustc_serialize;
 
-use rustc::hir::{self, lowering};
+use rustc::hir;
 use rustc::hir::map::NodeItem;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
@@ -75,7 +75,6 @@ pub mod recorder {
 
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: &'l TyCtxt<'tcx>,
-    lcx: &'l lowering::LoweringContext<'l>,
     span_utils: SpanUtils<'tcx>,
 }
 
@@ -84,20 +83,16 @@ macro_rules! option_try(
 );
 
 impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
-    pub fn new(tcx: &'l TyCtxt<'tcx>,
-               lcx: &'l lowering::LoweringContext<'l>)
-               -> SaveContext<'l, 'tcx> {
+    pub fn new(tcx: &'l TyCtxt<'tcx>) -> SaveContext<'l, 'tcx> {
         let span_utils = SpanUtils::new(&tcx.sess);
-        SaveContext::from_span_utils(tcx, lcx, span_utils)
+        SaveContext::from_span_utils(tcx, span_utils)
     }
 
     pub fn from_span_utils(tcx: &'l TyCtxt<'tcx>,
-                           lcx: &'l lowering::LoweringContext<'l>,
                            span_utils: SpanUtils<'tcx>)
                            -> SaveContext<'l, 'tcx> {
         SaveContext {
             tcx: tcx,
-            lcx: lcx,
             span_utils: span_utils,
         }
     }
@@ -378,14 +373,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     pub fn get_expr_data(&self, expr: &ast::Expr) -> Option<Data> {
-        let hir_node = lowering::lower_expr(self.lcx, expr);
+        let hir_node = self.tcx.map.expect_expr(expr.id);
         let ty = self.tcx.expr_ty_adjusted_opt(&hir_node);
         if ty.is_none() || ty.unwrap().sty == ty::TyError {
             return None;
         }
         match expr.node {
             ast::ExprKind::Field(ref sub_ex, ident) => {
-                let hir_node = lowering::lower_expr(self.lcx, sub_ex);
+                let hir_node = self.tcx.map.expect_expr(sub_ex.id);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
                         let f = def.struct_variant().field_named(ident.node.name);
@@ -405,7 +400,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 }
             }
             ast::ExprKind::Struct(ref path, _, _) => {
-                let hir_node = lowering::lower_expr(self.lcx, expr);
+                let hir_node = self.tcx.map.expect_expr(expr.id);
                 match self.tcx.expr_ty_adjusted(&hir_node).sty {
                     ty::TyStruct(def, _) => {
                         let sub_span = self.span_utils.span_for_last_ident(path.span);
@@ -704,7 +699,6 @@ impl Format {
 }
 
 pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
-                               lcx: &'l lowering::LoweringContext<'l>,
                                krate: &ast::Crate,
                                analysis: &'l ty::CrateAnalysis<'l>,
                                cratename: &str,
@@ -755,7 +749,7 @@ pub fn process_crate<'l, 'tcx>(tcx: &'l TyCtxt<'tcx>,
     let output = &mut output_file;
 
     let utils: SpanUtils<'tcx> = SpanUtils::new(&tcx.sess);
-    let save_ctxt = SaveContext::new(tcx, lcx);
+    let save_ctxt = SaveContext::new(tcx);
 
     macro_rules! dump {
         ($new_dumper: expr) => {{

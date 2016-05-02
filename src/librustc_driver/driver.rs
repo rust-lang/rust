@@ -165,8 +165,7 @@ pub fn compile_input(sess: &Session,
                                                                          &hir_map,
                                                                          &expanded_crate,
                                                                          &hir_map.krate(),
-                                                                         &id[..],
-                                                                         &lcx),
+                                                                         &id[..]),
                                     Ok(()));
         }
 
@@ -203,7 +202,6 @@ pub fn compile_input(sess: &Session,
                                                                &analysis,
                                                                mir_map.as_ref(),
                                                                tcx,
-                                                               &lcx,
                                                                &id);
                 (control.after_analysis.callback)(state);
 
@@ -248,9 +246,7 @@ pub fn compile_input(sess: &Session,
 }
 
 fn keep_mtwt_tables(sess: &Session) -> bool {
-    sess.opts.debugging_opts.keep_mtwt_tables ||
-    sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_csv
+    sess.opts.debugging_opts.keep_mtwt_tables
 }
 
 fn keep_ast(sess: &Session) -> bool {
@@ -345,7 +341,6 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub mir_map: Option<&'a MirMap<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
     pub tcx: Option<&'a TyCtxt<'tcx>>,
-    pub lcx: Option<&'a LoweringContext<'a>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -368,7 +363,6 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             analysis: None,
             mir_map: None,
             tcx: None,
-            lcx: None,
             trans: None,
         }
     }
@@ -400,15 +394,13 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                               hir_map: &'a hir_map::Map<'ast>,
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
-                              crate_name: &'a str,
-                              lcx: &'a LoweringContext<'a>)
+                              crate_name: &'a str)
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             ast_map: Some(hir_map),
             krate: Some(krate),
             hir_crate: Some(hir_crate),
-            lcx: Some(lcx),
             ..CompileState::empty(input, session, out_dir)
         }
     }
@@ -421,7 +413,6 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                             analysis: &'a ty::CrateAnalysis,
                             mir_map: Option<&'a MirMap<'tcx>>,
                             tcx: &'a TyCtxt<'tcx>,
-                            lcx: &'a LoweringContext<'a>,
                             crate_name: &'a str)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
@@ -430,7 +421,6 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
             tcx: Some(tcx),
             krate: krate,
             hir_crate: Some(hir_crate),
-            lcx: Some(lcx),
             crate_name: Some(crate_name),
             ..CompileState::empty(input, session, out_dir)
         }
