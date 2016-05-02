@@ -14,8 +14,7 @@ fn main() {
     let x: Option<usize>;
     x = 5;
     //~^ ERROR mismatched types
-    //~| expected `std::option::Option<usize>`
-    //~| found `_`
-    //~| expected enum `std::option::Option`
-    //~| found integral variable
+    //~| expected type `std::option::Option<usize>`
+    //~| found type `_`
+    //~| expected enum `std::option::Option`, found integral variable
 }

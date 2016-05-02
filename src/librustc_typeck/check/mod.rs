@@ -2955,9 +2955,9 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                `{}`", field.node, actual)
                                    },
                                    expr_t, None)
-                .fileline_help(field.span,
-                               "maybe a `()` to call it is missing? \
-                               If not, try an anonymous function")
+                .help(
+                       "maybe a `()` to call it is missing? \
+                       If not, try an anonymous function")
                 .emit();
             fcx.write_error(expr.id);
         } else {

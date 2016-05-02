@@ -22,6 +22,9 @@ pub mod raw {
             callback(path.as_ref();  //~ NOTE: unclosed delimiter
                      //~^ ERROR: expected one of
             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+            //~^ expected (), found enum `std::result::Result`
+            //~| expected type `()`
+            //~| found type `std::result::Result<bool, std::io::Error>`
         } else { //~ ERROR: incorrect close delimiter: `}`
             //~^ ERROR: expected one of
             Ok(false);

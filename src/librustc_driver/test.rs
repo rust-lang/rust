@@ -34,9 +34,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::codemap::{MultiSpan, CodeMap, DUMMY_SP};
+use syntax::codemap::{CodeMap, DUMMY_SP};
 use syntax::errors;
-use syntax::errors::emitter::Emitter;
+use syntax::errors::emitter::{CoreEmitter, Emitter};
 use syntax::errors::{Level, RenderSpan};
 use syntax::parse::token;
 use syntax::feature_gate::UnstableFeatures;
@@ -73,21 +73,20 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
             e.messages.remove(i);
         }
         None => {
+            debug!("Unexpected error: {} Expected: {:?}", msg, e.messages);
             panic!("Unexpected error: {} Expected: {:?}", msg, e.messages);
         }
     }
 }
 
-impl Emitter for ExpectErrorEmitter {
-    fn emit(&mut self,
-            _sp: Option<&MultiSpan>,
-            msg: &str,
-            _: Option<&str>,
-            lvl: Level) {
-        remove_message(self, msg, lvl);
-    }
-
-    fn custom_emit(&mut self, _sp: &RenderSpan, msg: &str, lvl: Level) {
+impl CoreEmitter for ExpectErrorEmitter {
+    fn emit_message(&mut self,
+                    _sp: &RenderSpan,
+                    msg: &str,
+                    _: Option<&str>,
+                    lvl: Level,
+                    _is_header: bool,
+                    _show_snippet: bool) {
         remove_message(self, msg, lvl);
     }
 }
@@ -449,7 +448,7 @@ fn contravariant_region_ptr_ok() {
 
 #[test]
 fn contravariant_region_ptr_err() {
-    test_env(EMPTY_SOURCE_STR, errors(&["lifetime mismatch"]), |env| {
+    test_env(EMPTY_SOURCE_STR, errors(&["mismatched types"]), |env| {
         env.create_simple_region_hierarchy();
         let t_rptr1 = env.t_rptr_scope(1);
         let t_rptr10 = env.t_rptr_scope(10);

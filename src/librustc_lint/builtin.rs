@@ -764,8 +764,8 @@ impl LateLintPass for UnconditionalRecursion {
                 for call in &self_call_spans {
                     db.span_note(*call, "recursive call site");
                 }
-                db.fileline_help(sp, "a `loop` may express intention \
-                                      better if this is on purpose");
+                db.help("a `loop` may express intention \
+                         better if this is on purpose");
             }
             db.emit();
         }

@@ -64,8 +64,8 @@ pub fn check_legal_trait_for_method_call(ccx: &CrateCtxt, span: Span, trait_id: 
         struct_span_err!(tcx.sess, span, E0174,
                          "explicit use of unboxed closure method `{}` is experimental",
                          method)
-            .fileline_help(span, "add `#![feature(unboxed_closures)]` to the crate \
-                                  attributes to enable")
+            .help("add `#![feature(unboxed_closures)]` to the crate \
+                  attributes to enable")
             .emit();
     }
 }

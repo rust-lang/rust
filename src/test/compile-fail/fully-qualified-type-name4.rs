@@ -15,10 +15,9 @@ use std::option::Option;
 fn bar(x: usize) -> Option<usize> {
     return x;
     //~^ ERROR mismatched types
-    //~| expected `std::option::Option<usize>`
-    //~| found `usize`
-    //~| expected enum `std::option::Option`
-    //~| found usize
+    //~| expected type `std::option::Option<usize>`
+    //~| found type `usize`
+    //~| expected enum `std::option::Option`, found usize
 }
 
 fn main() {

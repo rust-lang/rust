@@ -206,18 +206,17 @@ fn find_similar_impl_candidates<'a, 'tcx>(
     impl_candidates
 }
 
-fn report_similar_impl_candidates(span: Span,
-                                  err: &mut DiagnosticBuilder,
+fn report_similar_impl_candidates(err: &mut DiagnosticBuilder,
                                   impl_candidates: &[ty::TraitRef])
 {
-    err.fileline_help(span, &format!("the following implementations were found:"));
+    err.help(&format!("the following implementations were found:"));
 
     let end = cmp::min(4, impl_candidates.len());
     for candidate in &impl_candidates[0..end] {
-        err.fileline_help(span, &format!("  {:?}", candidate));
+        err.help(&format!("  {:?}", candidate));
     }
     if impl_candidates.len() > 4 {
-        err.fileline_help(span, &format!("and {} others", impl_candidates.len()-4));
+        err.help(&format!("and {} others", impl_candidates.len()-4));
     }
 }
 
@@ -240,7 +239,7 @@ pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                    predicate);
 
     if suggest_increasing_limit {
-        suggest_new_overflow_limit(infcx.tcx, &mut err, obligation.cause.span);
+        suggest_new_overflow_limit(infcx.tcx, &mut err);
     }
 
     note_obligation_cause(infcx, &mut err, obligation);
@@ -353,19 +352,15 @@ pub fn try_report_overflow_error_type_of_infinite_size<'a, 'tcx>(
     let mut err = recursive_type_with_infinite_size_error(tcx, main_def_id);
     let len = struct_enum_tys.len();
     if len > 2 {
-        let span = tcx.map.span_if_local(main_def_id).unwrap();
-        err.fileline_note(span,
-                          &format!("type `{}` is embedded within `{}`...",
-                                   struct_enum_tys[0],
-                                   struct_enum_tys[1]));
+        err.note(&format!("type `{}` is embedded within `{}`...",
+                 struct_enum_tys[0],
+                 struct_enum_tys[1]));
         for &next_ty in &struct_enum_tys[1..len-1] {
-            err.fileline_note(span,
-                              &format!("...which in turn is embedded within `{}`...", next_ty));
+            err.note(&format!("...which in turn is embedded within `{}`...", next_ty));
         }
-        err.fileline_note(span,
-                          &format!("...which in turn is embedded within `{}`, \
-                                    completing the cycle.",
-                                   struct_enum_tys[len-1]));
+        err.note(&format!("...which in turn is embedded within `{}`, \
+                           completing the cycle.",
+                          struct_enum_tys[len-1]));
     }
     err.emit();
     infcx.tcx.sess.abort_if_errors();
@@ -380,9 +375,9 @@ pub fn recursive_type_with_infinite_size_error<'tcx>(tcx: &TyCtxt<'tcx>,
     let span = tcx.map.span_if_local(type_def_id).unwrap();
     let mut err = struct_span_err!(tcx.sess, span, E0072, "recursive type `{}` has infinite size",
                                    tcx.item_path_str(type_def_id));
-    err.fileline_help(span, &format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
-                                      at some point to make `{}` representable",
-                                     tcx.item_path_str(type_def_id)));
+    err.help(&format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
+                       at some point to make `{}` representable",
+                      tcx.item_path_str(type_def_id)));
     err
 }
 
@@ -423,15 +418,14 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 // these notes will often be of the form
                                 //     "the type `T` can't be frobnicated"
                                 // which is somewhat confusing.
-                                err.fileline_help(obligation.cause.span, &format!(
-                                    "consider adding a `where {}` bound",
+                                err.help(&format!("consider adding a `where {}` bound",
                                     trait_ref.to_predicate()
                                     ));
                             } else if let Some(s) = on_unimplemented_note(infcx, trait_ref,
                                                                           obligation.cause.span) {
                                 // Otherwise, if there is an on-unimplemented note,
                                 // display it.
-                                err.fileline_note(obligation.cause.span, &s);
+                                err.note(&s);
                             } else {
                                 // If we can't show anything useful, try to find
                                 // similar impls.
@@ -439,8 +433,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                 let impl_candidates =
                                     find_similar_impl_candidates(infcx, trait_ref);
                                 if impl_candidates.len() > 0 {
-                                    report_similar_impl_candidates(obligation.cause.span,
-                                                                   &mut err, &impl_candidates);
+                                    report_similar_impl_candidates(&mut err, &impl_candidates);
                                 }
                             }
                             note_obligation_cause(infcx, &mut err, obligation);
@@ -499,7 +492,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         let found_kind = infcx.closure_kind(closure_def_id).unwrap();
                         let closure_span = infcx.tcx.map.span_if_local(closure_def_id).unwrap();
                         let mut err = struct_span_err!(
-                            infcx.tcx.sess, closure_span, E0524,
+                            infcx.tcx.sess, closure_span, E0525,
                             "expected a closure that implements the `{}` trait, but this closure \
                              only implements `{}`",
                             kind,
@@ -570,41 +563,31 @@ pub fn report_object_safety_error<'tcx>(tcx: &TyCtxt<'tcx>,
         }
         match violation {
             ObjectSafetyViolation::SizedSelf => {
-                err.fileline_note(
-                    span,
-                    "the trait cannot require that `Self : Sized`");
+                err.note("the trait cannot require that `Self : Sized`");
             }
 
             ObjectSafetyViolation::SupertraitSelf => {
-                err.fileline_note(
-                    span,
-                    "the trait cannot use `Self` as a type parameter \
-                     in the supertrait listing");
+                err.note("the trait cannot use `Self` as a type parameter \
+                          in the supertrait listing");
             }
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::StaticMethod) => {
-                err.fileline_note(
-                    span,
-                    &format!("method `{}` has no receiver",
-                             method.name));
+                err.note(&format!("method `{}` has no receiver",
+                         method.name));
             }
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::ReferencesSelf) => {
-                err.fileline_note(
-                    span,
-                    &format!("method `{}` references the `Self` type \
-                              in its arguments or return type",
-                             method.name));
+                err.note(&format!("method `{}` references the `Self` type \
+                                   in its arguments or return type",
+                                  method.name));
             }
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::Generic) => {
-                err.fileline_note(
-                    span,
-                    &format!("method `{}` has generic type parameters",
-                             method.name));
+                err.note(&format!("method `{}` has generic type parameters",
+                                  method.name));
             }
         }
     }
@@ -766,14 +749,12 @@ fn note_obligation_cause<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
     note_obligation_cause_code(infcx,
                                err,
                                &obligation.predicate,
-                               obligation.cause.span,
                                &obligation.cause.code);
 }
 
 fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
                                            err: &mut DiagnosticBuilder,
                                            predicate: &T,
-                                           cause_span: Span,
                                            cause_code: &ObligationCauseCode<'tcx>)
     where T: fmt::Display
 {
@@ -781,101 +762,71 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
     match *cause_code {
         ObligationCauseCode::MiscObligation => { }
         ObligationCauseCode::SliceOrArrayElem => {
-            err.fileline_note(
-                cause_span,
-                "slice and array elements must have `Sized` type");
+            err.note("slice and array elements must have `Sized` type");
         }
         ObligationCauseCode::ProjectionWf(data) => {
-            err.fileline_note(
-                cause_span,
-                &format!("required so that the projection `{}` is well-formed",
-                         data));
+            err.note(&format!("required so that the projection `{}` is well-formed",
+                              data));
         }
         ObligationCauseCode::ReferenceOutlivesReferent(ref_ty) => {
-            err.fileline_note(
-                cause_span,
-                &format!("required so that reference `{}` does not outlive its referent",
-                         ref_ty));
+            err.note(&format!("required so that reference `{}` does not outlive its referent",
+                              ref_ty));
         }
         ObligationCauseCode::ItemObligation(item_def_id) => {
             let item_name = tcx.item_path_str(item_def_id);
-            err.fileline_note(
-                cause_span,
-                &format!("required by `{}`", item_name));
+            err.note(&format!("required by `{}`", item_name));
         }
         ObligationCauseCode::ObjectCastObligation(object_ty) => {
-            err.fileline_note(
-                cause_span,
-                &format!(
-                    "required for the cast to the object type `{}`",
-                    infcx.ty_to_string(object_ty)));
+            err.note(&format!("required for the cast to the object type `{}`",
+                              infcx.ty_to_string(object_ty)));
         }
         ObligationCauseCode::RepeatVec => {
-            err.fileline_note(
-                cause_span,
-                "the `Copy` trait is required because the \
-                 repeated element will be copied");
+            err.note("the `Copy` trait is required because the \
+                      repeated element will be copied");
         }
         ObligationCauseCode::VariableType(_) => {
-            err.fileline_note(
-                cause_span,
-                "all local variables must have a statically known size");
+            err.note("all local variables must have a statically known size");
         }
         ObligationCauseCode::ReturnType => {
-            err.fileline_note(
-                cause_span,
-                "the return type of a function must have a \
-                 statically known size");
+            err.note("the return type of a function must have a \
+                      statically known size");
         }
         ObligationCauseCode::AssignmentLhsSized => {
-            err.fileline_note(
-                cause_span,
-                "the left-hand-side of an assignment must have a statically known size");
+            err.note("the left-hand-side of an assignment must have a statically known size");
         }
         ObligationCauseCode::StructInitializerSized => {
-            err.fileline_note(
-                cause_span,
-                "structs must have a statically known size to be initialized");
+            err.note("structs must have a statically known size to be initialized");
         }
         ObligationCauseCode::ClosureCapture(var_id, _, builtin_bound) => {
             let def_id = tcx.lang_items.from_builtin_kind(builtin_bound).unwrap();
             let trait_name = tcx.item_path_str(def_id);
             let name = tcx.local_var_name_str(var_id);
-            err.fileline_note(
-                cause_span,
+            err.note(
                 &format!("the closure that captures `{}` requires that all captured variables \
                           implement the trait `{}`",
                          name,
                          trait_name));
         }
         ObligationCauseCode::FieldSized => {
-            err.fileline_note(
-                cause_span,
-                "only the last field of a struct or enum variant \
-                 may have a dynamically sized type");
+            err.note("only the last field of a struct or enum variant \
+                      may have a dynamically sized type");
         }
         ObligationCauseCode::SharedStatic => {
-            err.fileline_note(
-                cause_span,
-                "shared static variables must have a type that implements `Sync`");
+            err.note("shared static variables must have a type that implements `Sync`");
         }
         ObligationCauseCode::BuiltinDerivedObligation(ref data) => {
             let parent_trait_ref = infcx.resolve_type_vars_if_possible(&data.parent_trait_ref);
-            err.fileline_note(
-                cause_span,
-                &format!("required because it appears within the type `{}`",
-                         parent_trait_ref.0.self_ty()));
+            err.note(&format!("required because it appears within the type `{}`",
+                              parent_trait_ref.0.self_ty()));
             let parent_predicate = parent_trait_ref.to_predicate();
             note_obligation_cause_code(infcx,
                                        err,
                                        &parent_predicate,
-                                       cause_span,
                                        &data.parent_code);
         }
         ObligationCauseCode::ImplDerivedObligation(ref data) => {
             let parent_trait_ref = infcx.resolve_type_vars_if_possible(&data.parent_trait_ref);
-            err.fileline_note(
-                cause_span,
+            err.note(
                 &format!("required because of the requirements on the impl of `{}` for `{}`",
                          parent_trait_ref,
                          parent_trait_ref.0.self_ty()));
@@ -883,12 +834,10 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
             note_obligation_cause_code(infcx,
                                        err,
                                        &parent_predicate,
-                                       cause_span,
                                        &data.parent_code);
         }
         ObligationCauseCode::CompareImplMethodObligation => {
-            err.fileline_note(
-                cause_span,
+            err.note(
                 &format!("the requirement `{}` appears on the impl method \
                           but not on the corresponding trait method",
                          predicate));
@@ -896,12 +845,10 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn suggest_new_overflow_limit(tcx: &TyCtxt, err:&mut DiagnosticBuilder, span: Span) {
+fn suggest_new_overflow_limit(tcx: &TyCtxt, err:&mut DiagnosticBuilder) {
     let current_limit = tcx.sess.recursion_limit.get();
     let suggested_limit = current_limit * 2;
-    err.fileline_note(
-        span,
-        &format!(
-            "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-            suggested_limit));
+    err.note(&format!(
+                      "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+                      suggested_limit));
 }

@@ -11,9 +11,8 @@
 fn main() {
     while true {
         true //~  ERROR mismatched types
-             //~| expected `()`
-             //~| found `bool`
-             //~| expected ()
-             //~| found bool
+             //~| expected type `()`
+             //~| found type `bool`
+             //~| expected (), found bool
     }
 }

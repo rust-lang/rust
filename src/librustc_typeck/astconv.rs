@@ -206,7 +206,6 @@ pub fn ast_region_to_region(tcx: &TyCtxt, lifetime: &hir::Lifetime)
 
 fn report_elision_failure(
     db: &mut DiagnosticBuilder,
-    default_span: Span,
     params: Vec<ElisionFailureInfo>)
 {
     let mut m = String::new();
@@ -243,29 +242,29 @@ fn report_elision_failure(
     }
 
     if len == 0 {
-        fileline_help!(db, default_span,
-                       "this function's return type contains a borrowed value, but \
-                        there is no value for it to be borrowed from");
-        fileline_help!(db, default_span,
-                       "consider giving it a 'static lifetime");
+        help!(db,
+                   "this function's return type contains a borrowed value, but \
+                    there is no value for it to be borrowed from");
+        help!(db,
+                   "consider giving it a 'static lifetime");
     } else if !any_lifetimes {
-        fileline_help!(db, default_span,
-                       "this function's return type contains a borrowed value with \
-                        an elided lifetime, but the lifetime cannot be derived from \
-                        the arguments");
-        fileline_help!(db, default_span,
-                       "consider giving it an explicit bounded or 'static \
-                        lifetime");
+        help!(db,
+                   "this function's return type contains a borrowed value with \
+                    an elided lifetime, but the lifetime cannot be derived from \
+                    the arguments");
+        help!(db,
+                   "consider giving it an explicit bounded or 'static \
+                    lifetime");
     } else if len == 1 {
-        fileline_help!(db, default_span,
-                       "this function's return type contains a borrowed value, but \
-                        the signature does not say which {} it is borrowed from",
-                       m);
+        help!(db,
+                   "this function's return type contains a borrowed value, but \
+                    the signature does not say which {} it is borrowed from",
+                   m);
     } else {
-        fileline_help!(db, default_span,
-                       "this function's return type contains a borrowed value, but \
-                        the signature does not say whether it is borrowed from {}",
-                       m);
+        help!(db,
+                   "this function's return type contains a borrowed value, but \
+                    the signature does not say whether it is borrowed from {}",
+                   m);
     }
 }
 
@@ -286,7 +285,7 @@ pub fn opt_ast_region_to_region<'tcx>(
                 let mut err = struct_span_err!(this.tcx().sess, default_span, E0106,
                                                "missing lifetime specifier");
                 if let Some(params) = params {
-                    report_elision_failure(&mut err, default_span, params);
+                    report_elision_failure(&mut err, params);
                 }
                 err.emit();
                 ty::ReStatic
@@ -1087,7 +1086,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                 }
 
                 _ => {
-                    fileline_help!(&mut err, ty.span,
+                    help!(&mut err,
                                "perhaps you forgot parentheses? (per RFC 438)");
                 }
             }

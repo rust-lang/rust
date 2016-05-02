@@ -23,6 +23,9 @@ fn main() {
     // Here, F is instantiated with $0=uint
     let x = foo();
     //~^ ERROR: mismatched types
+    //~| expected type `usize`
+    //~| found type `isize`
+    //~| NOTE: conflicting type parameter defaults `usize` and `isize`
     //~| NOTE: conflicting type parameter defaults `usize` and `isize`
     //~| NOTE: ...that was applied to an unconstrained type variable here
 
