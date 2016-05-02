@@ -18,7 +18,7 @@ use ty::TyCtxt;
 use syntax::ast::NodeId;
 
 /// Where a specific Mir comes from.
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum MirSource {
     /// Functions and methods.
     Fn(NodeId),
