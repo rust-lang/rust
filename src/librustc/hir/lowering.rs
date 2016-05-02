@@ -43,7 +43,8 @@
 use hir;
 use hir::map::Definitions;
 use hir::map::definitions::DefPathData;
-use hir::def_id::DefIndex;
+use hir::def_id::{DefIndex, DefId};
+use hir::def::{Def, DefMap, PathResolution};
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -63,19 +64,25 @@ pub struct LoweringContext<'a> {
     crate_root: Option<&'static str>,
     // Use to assign ids to hir nodes that do not directly correspond to an ast node
     id_assigner: &'a NodeIdAssigner,
-    // We must keep the set of definitions up to date as we add nodes that
-    // weren't in the AST.
-    definitions: Option<&'a RefCell<Definitions>>,
     // As we walk the AST we must keep track of the current 'parent' def id (in
     // the form of a DefIndex) so that if we create a new node which introduces
     // a definition, then we can properly create the def id.
     parent_def: Cell<Option<DefIndex>>,
+    resolver: Option<RefCell<&'a mut Resolver>>,
+}
+
+pub trait Resolver {
+    fn resolve_generated_global_path(&mut self, path: &hir::Path, is_value: bool) -> Def;
+
+    fn def_map(&mut self) -> &mut DefMap;
+    // We must keep the set of definitions up to date as we add nodes that weren't in the AST.
+    fn definitions(&mut self) -> &mut Definitions;
 }
 
 impl<'a, 'hir> LoweringContext<'a> {
     pub fn new(id_assigner: &'a NodeIdAssigner,
                c: Option<&Crate>,
-               defs: &'a RefCell<Definitions>)
+               resolver: &'a mut Resolver)
                -> LoweringContext<'a> {
         let crate_root = c.and_then(|c| {
             if std_inject::no_core(c) {
@@ -90,8 +97,8 @@ impl<'a, 'hir> LoweringContext<'a> {
         LoweringContext {
             crate_root: crate_root,
             id_assigner: id_assigner,
-            definitions: Some(defs),
             parent_def: Cell::new(None),
+            resolver: Some(RefCell::new(resolver)),
         }
     }
 
@@ -101,8 +108,8 @@ impl<'a, 'hir> LoweringContext<'a> {
         LoweringContext {
             crate_root: None,
             id_assigner: id_assigner,
-            definitions: None,
             parent_def: Cell::new(None),
+            resolver: None,
         }
     }
 
@@ -120,7 +127,7 @@ impl<'a, 'hir> LoweringContext<'a> {
     }
 
     fn with_parent_def<T, F: FnOnce() -> T>(&self, parent_id: NodeId, f: F) -> T {
-        if self.definitions.is_none() {
+        if self.resolver.is_none() {
             // This should only be used for testing.
             return f();
         }
@@ -134,8 +141,22 @@ impl<'a, 'hir> LoweringContext<'a> {
     }
 
     fn get_def(&self, id: NodeId) -> DefIndex {
-        let defs = self.definitions.unwrap().borrow();
-        defs.opt_def_index(id).unwrap()
+        let mut resolver = self.resolver.as_ref().unwrap().borrow_mut();
+        resolver.definitions().opt_def_index(id).unwrap()
+    }
+
+    fn record_def(&self, id: NodeId, def: Def) {
+        if let Some(ref resolver) = self.resolver {
+            resolver.borrow_mut().def_map().insert(id, PathResolution { base_def: def, depth: 0 });
+        }
+    }
+
+    fn resolve_generated_global_path(&self, path: &hir::Path, is_value: bool) -> Def {
+        if let Some(ref resolver) = self.resolver {
+            resolver.borrow_mut().resolve_generated_global_path(path, is_value)
+        } else {
+            Def::Err
+        }
     }
 }
 
@@ -999,7 +1020,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 };
 
                 // let placer = <placer_expr> ;
-                let s1 = {
+                let (s1, placer_binding) = {
                     let placer_expr = signal_block_expr(lctx,
                                                         hir_vec![],
                                                         placer_expr,
@@ -1010,15 +1031,15 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 };
 
                 // let mut place = Placer::make_place(placer);
-                let s2 = {
-                    let placer = expr_ident(lctx, e.span, placer_ident, None);
+                let (s2, place_binding) = {
+                    let placer = expr_ident(lctx, e.span, placer_ident, None, placer_binding);
                     let call = make_call(lctx, &make_place, hir_vec![placer]);
                     mk_stmt_let_mut(lctx, place_ident, call)
                 };
 
                 // let p_ptr = Place::pointer(&mut place);
-                let s3 = {
-                    let agent = expr_ident(lctx, e.span, place_ident, None);
+                let (s3, p_ptr_binding) = {
+                    let agent = expr_ident(lctx, e.span, place_ident, None, place_binding);
                     let args = hir_vec![expr_mut_addr_of(lctx, e.span, agent, None)];
                     let call = make_call(lctx, &place_pointer, args);
                     mk_stmt_let(lctx, p_ptr_ident, call)
@@ -1044,14 +1065,14 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 //     InPlace::finalize(place)
                 // })
                 let expr = {
-                    let ptr = expr_ident(lctx, e.span, p_ptr_ident, None);
+                    let ptr = expr_ident(lctx, e.span, p_ptr_ident, None, p_ptr_binding);
                     let call_move_val_init =
                         hir::StmtSemi(
                             make_call(lctx, &move_val_init, hir_vec![ptr, pop_unsafe_expr]),
                             lctx.next_id());
                     let call_move_val_init = respan(e.span, call_move_val_init);
 
-                    let place = expr_ident(lctx, e.span, place_ident, None);
+                    let place = expr_ident(lctx, e.span, place_ident, None, place_binding);
                     let call = make_call(lctx, &inplace_finalize, hir_vec![place]);
                     signal_block_expr(lctx,
                                       hir_vec![call_move_val_init],
@@ -1489,6 +1510,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     arm(hir_vec![pat_none(lctx, e.span)], break_expr)
                 };
 
+                // `mut iter`
+                let iter_pat =
+                    pat_ident_binding_mode(lctx, e.span, iter, hir::BindByValue(hir::MutMutable));
+
                 // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                 let match_expr = {
                     let next_path = {
@@ -1496,7 +1521,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
 
                         path_global(e.span, strs)
                     };
-                    let iter = expr_ident(lctx, e.span, iter, None);
+                    let iter = expr_ident(lctx, e.span, iter, None, iter_pat.id);
                     let ref_mut_iter = expr_mut_addr_of(lctx, e.span, iter, None);
                     let next_path = expr_path(lctx, next_path, None);
                     let next_expr = expr_call(lctx,
@@ -1520,13 +1545,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                     P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: None });
 
                 // `mut iter => { ... }`
-                let iter_arm = {
-                    let iter_pat = pat_ident_binding_mode(lctx,
-                                                          e.span,
-                                                          iter,
-                                                          hir::BindByValue(hir::MutMutable));
-                    arm(hir_vec![iter_pat], loop_expr)
-                };
+                let iter_arm = arm(hir_vec![iter_pat], loop_expr);
 
                 // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
                 let into_iter_expr = {
@@ -1550,13 +1569,10 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 // `{ let _result = ...; _result }`
                 // underscore prevents an unused_variables lint if the head diverges
                 let result_ident = lctx.str_to_ident("_result");
-                let let_stmt = stmt_let(lctx,
-                                        e.span,
-                                        false,
-                                        result_ident,
-                                        match_expr,
-                                        None);
-                let result = expr_ident(lctx, e.span, result_ident, None);
+                let (let_stmt, let_stmt_binding) =
+                    stmt_let(lctx, e.span, false, result_ident, match_expr, None);
+
+                let result = expr_ident(lctx, e.span, result_ident, None, let_stmt_binding);
                 let block = block_all(lctx, e.span, hir_vec![let_stmt], Some(result));
                 // add the attributes to the outer returned expr node
                 return expr_block(lctx, block, e.attrs.clone());
@@ -1583,7 +1599,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 let ok_arm = {
                     let val_ident = lctx.str_to_ident("val");
                     let val_pat = pat_ident(lctx, e.span, val_ident);
-                    let val_expr = expr_ident(lctx, e.span, val_ident, None);
+                    let val_expr = expr_ident(lctx, e.span, val_ident, None, val_pat.id);
                     let ok_pat = pat_ok(lctx, e.span, val_pat);
 
                     arm(hir_vec![ok_pat], val_expr)
@@ -1592,11 +1608,12 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                 // Err(err) => return Err(From::from(err))
                 let err_arm = {
                     let err_ident = lctx.str_to_ident("err");
+                    let err_local = pat_ident(lctx, e.span, err_ident);
                     let from_expr = {
                         let path = std_path(lctx, &["convert", "From", "from"]);
                         let path = path_global(e.span, path);
                         let from = expr_path(lctx, path, None);
-                        let err_expr = expr_ident(lctx, e.span, err_ident, None);
+                        let err_expr = expr_ident(lctx, e.span, err_ident, None, err_local.id);
 
                         expr_call(lctx, e.span, from, hir_vec![err_expr], None)
                     };
@@ -1606,8 +1623,7 @@ pub fn lower_expr(lctx: &LoweringContext, e: &Expr) -> P<hir::Expr> {
                         let err_ctor = expr_path(lctx, path, None);
                         expr_call(lctx, e.span, err_ctor, hir_vec![from_expr], None)
                     };
-                    let err_pat = pat_err(lctx, e.span,
-                                          pat_ident(lctx, e.span, err_ident));
+                    let err_pat = pat_err(lctx, e.span, err_local);
                     let ret_expr = expr(lctx, e.span,
                                         hir::Expr_::ExprRet(Some(err_expr)), None);
 
@@ -1747,8 +1763,13 @@ fn expr_call(lctx: &LoweringContext,
 }
 
 fn expr_ident(lctx: &LoweringContext, span: Span, id: hir::Ident,
-              attrs: ThinAttributes) -> P<hir::Expr> {
-    expr_path(lctx, path_ident(span, id), attrs)
+              attrs: ThinAttributes, binding: NodeId) -> P<hir::Expr> {
+    let expr = expr(lctx, span, hir::ExprPath(None, path_ident(span, id)), attrs);
+    if let Some(ref resolver) = lctx.resolver {
+        let def_id = resolver.borrow_mut().definitions().local_def_id(binding);
+        lctx.record_def(expr.id, Def::Local(def_id, binding));
+    }
+    expr
 }
 
 fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>,
@@ -1758,7 +1779,10 @@ fn expr_mut_addr_of(lctx: &LoweringContext, span: Span, e: P<hir::Expr>,
 
 fn expr_path(lctx: &LoweringContext, path: hir::Path,
              attrs: ThinAttributes) -> P<hir::Expr> {
-    expr(lctx, path.span, hir::ExprPath(None, path), attrs)
+    let def = lctx.resolve_generated_global_path(&path, true);
+    let expr = expr(lctx, path.span, hir::ExprPath(None, path), attrs);
+    lctx.record_def(expr.id, def);
+    expr
 }
 
 fn expr_match(lctx: &LoweringContext,
@@ -1787,7 +1811,11 @@ fn expr_struct(lctx: &LoweringContext,
                fields: hir::HirVec<hir::Field>,
                e: Option<P<hir::Expr>>,
                attrs: ThinAttributes) -> P<hir::Expr> {
-    expr(lctx, sp, hir::ExprStruct(path, fields, e), attrs)
+    let def = lctx.resolve_generated_global_path(&path, false);
+    let expr = expr(lctx, sp, hir::ExprStruct(path, fields, e), attrs);
+    lctx.record_def(expr.id, def);
+    expr
+
 }
 
 fn expr(lctx: &LoweringContext, span: Span, node: hir::Expr_,
@@ -1806,12 +1834,13 @@ fn stmt_let(lctx: &LoweringContext,
             ident: hir::Ident,
             ex: P<hir::Expr>,
             attrs: ThinAttributes)
-            -> hir::Stmt {
+            -> (hir::Stmt, NodeId) {
     let pat = if mutbl {
         pat_ident_binding_mode(lctx, sp, ident, hir::BindByValue(hir::MutMutable))
     } else {
         pat_ident(lctx, sp, ident)
     };
+    let pat_id = pat.id;
     let local = P(hir::Local {
         pat: pat,
         ty: None,
@@ -1821,7 +1850,7 @@ fn stmt_let(lctx: &LoweringContext,
         attrs: attrs,
     });
     let decl = respan(sp, hir::DeclLocal(local));
-    respan(sp, hir::StmtDecl(P(decl), lctx.next_id()))
+    (respan(sp, hir::StmtDecl(P(decl), lctx.next_id())), pat_id)
 }
 
 fn block_expr(lctx: &LoweringContext, expr: P<hir::Expr>) -> P<hir::Block> {
@@ -1871,12 +1900,15 @@ fn pat_enum(lctx: &LoweringContext,
             path: hir::Path,
             subpats: hir::HirVec<P<hir::Pat>>)
             -> P<hir::Pat> {
+    let def = lctx.resolve_generated_global_path(&path, true);
     let pt = if subpats.is_empty() {
         hir::PatKind::Path(path)
     } else {
         hir::PatKind::TupleStruct(path, Some(subpats))
     };
-    pat(lctx, span, pt)
+    let pat = pat(lctx, span, pt);
+    lctx.record_def(pat.id, def);
+    pat
 }
 
 fn pat_ident(lctx: &LoweringContext, span: Span, ident: hir::Ident) -> P<hir::Pat> {
@@ -1897,11 +1929,13 @@ fn pat_ident_binding_mode(lctx: &LoweringContext,
 
     let pat = pat(lctx, span, pat_ident);
 
-    if let Some(defs) = lctx.definitions {
-        let mut defs = defs.borrow_mut();
-        defs.create_def_with_parent(lctx.parent_def.get(),
-                                    pat.id,
-                                    DefPathData::Binding(ident.name));
+    if let Some(ref resolver) = lctx.resolver {
+        let def_index =
+            resolver.borrow_mut().definitions()
+                                 .create_def_with_parent(lctx.parent_def.get(),
+                                                         pat.id,
+                                                         DefPathData::Binding(ident.name));
+        lctx.record_def(pat.id, Def::Local(DefId::local(def_index), pat.id));
     }
 
     pat
