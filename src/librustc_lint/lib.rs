@@ -192,7 +192,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(UNSIZED_IN_TUPLE),
-            reference: "RFC PR 1592 <https://github.com/rust-lang/rfcs/pull/1592>",
+            reference: "issue #33242 <https://github.com/rust-lang/rust/issues/33242>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(OBJECT_UNSAFE_FRAGMENT),
+            reference: "issue #33243 <https://github.com/rust-lang/rust/issues/33243>",
         }
         ]);
 

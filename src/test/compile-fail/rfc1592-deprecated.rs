@@ -10,10 +10,9 @@
 
 use std::fmt;
 
-trait Foo {
-    fn foo(&self) -> (Self, Self);
-    //~^ WARNING hard error
-}
+#[deny(warnings)] trait Foo { fn foo(&self) -> (Self, Self); }
+//~^ ERROR the trait bound `Self: std::marker::Sized` is not satisfied
+//~| WARNING hard error
 
 impl<T: Copy> Foo for T {
     fn foo(&self) -> (Self, Self) {
@@ -21,11 +20,13 @@ impl<T: Copy> Foo for T {
     }
 }
 
+#[deny(warnings)]
 fn main() {
     assert_eq!((11).foo(), (11, 11));
 
     let junk: Box<fmt::Debug+Sized> = Box::new(42);
-    //~^ WARNING hard error
+    //~^ ERROR the trait cannot require that `Self : Sized`
+    //~| WARNING hard error
     let f = format!("{:?}", junk);
     assert_eq!(f, "42");
 }
