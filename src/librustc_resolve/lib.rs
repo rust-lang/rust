@@ -68,7 +68,7 @@ use rustc::hir::intravisit::{self, FnKind, Visitor};
 use rustc::hir;
 use rustc::hir::{Arm, BindByRef, BindByValue, BindingMode, Block};
 use rustc::hir::Crate;
-use rustc::hir::{Expr, ExprAgain, ExprBreak, ExprCall, ExprField};
+use rustc::hir::{Expr, ExprAgain, ExprBreak, ExprField};
 use rustc::hir::{ExprLoop, ExprWhile, ExprMethodCall};
 use rustc::hir::{ExprPath, ExprStruct, FnDecl};
 use rustc::hir::{ForeignItemFn, ForeignItemStatic, Generics};
@@ -96,17 +96,6 @@ mod diagnostics;
 mod check_unused;
 mod build_reduced_graph;
 mod resolve_imports;
-
-// Perform the callback, not walking deeper if the return is true
-macro_rules! execute_callback {
-    ($node: expr, $walker: expr) => (
-        if let Some(ref callback) = $walker.callback {
-            if callback($node, &mut $walker.resolved) {
-                return;
-            }
-        }
-    )
-}
 
 enum SuggestionType {
     Macro(String),
@@ -152,7 +141,7 @@ enum ResolutionError<'a> {
     /// error E0413: declaration shadows an enum variant or unit-like struct in scope
     DeclarationShadowsEnumVariantOrUnitLikeStruct(Name),
     /// error E0414: only irrefutable patterns allowed here
-    OnlyIrrefutablePatternsAllowedHere(DefId, Name),
+    OnlyIrrefutablePatternsAllowedHere(Name),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -174,7 +163,7 @@ enum ResolutionError<'a> {
     /// error E0424: `self` is not available in a static method
     SelfNotAvailableInStaticMethod,
     /// error E0425: unresolved name
-    UnresolvedName(&'a str, &'a str, UnresolvedNameContext),
+    UnresolvedName(&'a str, &'a str, UnresolvedNameContext<'a>),
     /// error E0426: use of undeclared label
     UndeclaredLabel(&'a str),
     /// error E0427: cannot use `ref` binding mode with ...
@@ -197,12 +186,12 @@ enum ResolutionError<'a> {
 
 /// Context of where `ResolutionError::UnresolvedName` arose.
 #[derive(Clone, PartialEq, Eq, Debug)]
-enum UnresolvedNameContext {
-    /// `PathIsMod(id)` indicates that a given path, used in
+enum UnresolvedNameContext<'a> {
+    /// `PathIsMod(parent)` indicates that a given path, used in
     /// expression context, actually resolved to a module rather than
-    /// a value. The `id` attached to the variant is the node id of
-    /// the erroneous path expression.
-    PathIsMod(ast::NodeId),
+    /// a value. The optional expression attached to the variant is the
+    /// the parent of the erroneous path expression.
+    PathIsMod(Option<&'a Expr>),
 
     /// `Other` means we have no extra information about the context
     /// of the unresolved name error. (Maybe we could eliminate all
@@ -334,7 +323,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                               or unit-like struct in scope",
                              name)
         }
-        ResolutionError::OnlyIrrefutablePatternsAllowedHere(did, name) => {
+        ResolutionError::OnlyIrrefutablePatternsAllowedHere(name) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0414,
@@ -342,14 +331,10 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
             err.span_note(span,
                           "there already is a constant in scope sharing the same \
                            name as this pattern");
-            if let Some(sp) = resolver.ast_map.span_if_local(did) {
-                err.span_note(sp, "constant defined here");
-            }
             if let Some(binding) = resolver.current_module
                                            .resolve_name_in_lexical_scope(name, ValueNS) {
-                if binding.is_import() {
-                    err.span_note(binding.span, "constant imported here");
-                }
+                let participle = if binding.is_import() { "imported" } else { "defined" };
+                err.span_note(binding.span, &format!("constant {} here", participle));
             }
             err
         }
@@ -434,39 +419,25 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
 
             match context {
                 UnresolvedNameContext::Other => { } // no help available
-                UnresolvedNameContext::PathIsMod(id) => {
-                    let mut help_msg = String::new();
-                    let parent_id = resolver.ast_map.get_parent_node(id);
-                    if let Some(hir_map::Node::NodeExpr(e)) = resolver.ast_map.find(parent_id) {
-                        match e.node {
-                            ExprField(_, ident) => {
-                                help_msg = format!("To reference an item from the \
-                                                    `{module}` module, use \
-                                                    `{module}::{ident}`",
-                                                   module = path,
-                                                   ident = ident.node);
-                            }
-                            ExprMethodCall(ident, _, _) => {
-                                help_msg = format!("To call a function from the \
-                                                    `{module}` module, use \
-                                                    `{module}::{ident}(..)`",
-                                                   module = path,
-                                                   ident = ident.node);
-                            }
-                            ExprCall(_, _) => {
-                                help_msg = format!("No function corresponds to `{module}(..)`",
-                                                   module = path);
-                            }
-                            _ => { } // no help available
+                UnresolvedNameContext::PathIsMod(parent) => {
+                    err.fileline_help(span, &match parent.map(|parent| &parent.node) {
+                        Some(&ExprField(_, ident)) => {
+                            format!("To reference an item from the `{module}` module, \
+                                     use `{module}::{ident}`",
+                                    module = path,
+                                    ident = ident.node)
                         }
-                    } else {
-                        help_msg = format!("Module `{module}` cannot be the value of an expression",
-                                           module = path);
-                    }
-
-                    if !help_msg.is_empty() {
-                        err.fileline_help(span, &help_msg);
-                    }
+                        Some(&ExprMethodCall(ident, _, _)) => {
+                            format!("To call a function from the `{module}` module, \
+                                     use `{module}::{ident}(..)`",
+                                    module = path,
+                                    ident = ident.node)
+                        }
+                        _ => {
+                            format!("Module `{module}` cannot be used as an expression",
+                                    module = path)
+                        }
+                    });
                 }
             }
             err
@@ -559,22 +530,18 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
         self.visit_item(self.ast_map.expect_item(item.id))
     }
     fn visit_item(&mut self, item: &Item) {
-        execute_callback!(hir_map::Node::NodeItem(item), self);
         self.resolve_item(item);
     }
     fn visit_arm(&mut self, arm: &Arm) {
         self.resolve_arm(arm);
     }
     fn visit_block(&mut self, block: &Block) {
-        execute_callback!(hir_map::Node::NodeBlock(block), self);
         self.resolve_block(block);
     }
     fn visit_expr(&mut self, expr: &Expr) {
-        execute_callback!(hir_map::Node::NodeExpr(expr), self);
-        self.resolve_expr(expr);
+        self.resolve_expr(expr, None);
     }
     fn visit_local(&mut self, local: &Local) {
-        execute_callback!(hir_map::Node::NodeLocal(&local.pat), self);
         self.resolve_local(local);
     }
     fn visit_ty(&mut self, ty: &Ty) {
@@ -597,7 +564,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                      variant: &hir::Variant,
                      generics: &Generics,
                      item_id: ast::NodeId) {
-        execute_callback!(hir_map::Node::NodeVariant(variant), self);
         if let Some(ref dis_expr) = variant.node.disr_expr {
             // resolve the discriminator expr as a constant
             self.with_constant_rib(|this| {
@@ -613,7 +579,6 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                                 variant.span);
     }
     fn visit_foreign_item(&mut self, foreign_item: &hir::ForeignItem) {
-        execute_callback!(hir_map::Node::NodeForeignItem(foreign_item), self);
         let type_parameters = match foreign_item.node {
             ForeignItemFn(_, ref generics) => {
                 HasTypeParameters(generics, FnSpace, ItemRibKind)
@@ -1080,11 +1045,6 @@ pub struct Resolver<'a, 'tcx: 'a> {
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
 
-    // Callback function for intercepting walks
-    callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>,
-    // The intention is that the callback modifies this flag.
-    // Once set, the resolver falls out of the walk, preserving the ribs.
-    resolved: bool,
     privacy_errors: Vec<PrivacyError<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
@@ -1186,8 +1146,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
             glob_map: NodeMap(),
 
-            callback: None,
-            resolved: false,
             privacy_errors: Vec::new(),
 
             arenas: arenas,
@@ -1758,13 +1716,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         f(self);
 
-        match type_parameters {
-            HasTypeParameters(..) => {
-                if !self.resolved {
-                    self.type_ribs.pop();
-                }
-            }
-            NoTypeParameters => {}
+        if let HasTypeParameters(..) = type_parameters {
+            self.type_ribs.pop();
         }
     }
 
@@ -1773,9 +1726,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         self.label_ribs.push(Rib::new(NormalRibKind));
         f(self);
-        if !self.resolved {
-            self.label_ribs.pop();
-        }
+        self.label_ribs.pop();
     }
 
     fn with_constant_rib<F>(&mut self, f: F)
@@ -1784,10 +1735,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self.value_ribs.push(Rib::new(ConstantItemRibKind));
         self.type_ribs.push(Rib::new(ConstantItemRibKind));
         f(self);
-        if !self.resolved {
-            self.type_ribs.pop();
-            self.value_ribs.pop();
-        }
+        self.type_ribs.pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_function(&mut self, rib_kind: RibKind<'a>, declaration: &FnDecl, block: &Block) {
@@ -1813,10 +1762,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving function) leaving function");
 
-        if !self.resolved {
-            self.label_ribs.pop();
-            self.value_ribs.pop();
-        }
+        self.label_ribs.pop();
+        self.value_ribs.pop();
     }
 
     fn resolve_trait_reference(&mut self,
@@ -1950,9 +1897,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         self_type_rib.bindings.insert(keywords::SelfType.name(), self_def);
         self.type_ribs.push(self_type_rib);
         f(self);
-        if !self.resolved {
-            self.type_ribs.pop();
-        }
+        self.type_ribs.pop();
     }
 
     fn resolve_implementation(&mut self,
@@ -2117,9 +2062,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         walk_list!(self, visit_expr, &arm.guard);
         self.visit_expr(&arm.body);
 
-        if !self.resolved {
-            self.value_ribs.pop();
-        }
+        self.value_ribs.pop();
     }
 
     fn resolve_block(&mut self, block: &Block) {
@@ -2141,12 +2084,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         intravisit::walk_block(self, block);
 
         // Move back up.
-        if !self.resolved {
-            self.current_module = orig_module;
-            self.value_ribs.pop();
-            if let Some(_) = anonymous_module {
-                self.type_ribs.pop();
-            }
+        self.current_module = orig_module;
+        self.value_ribs.pop();
+        if let Some(_) = anonymous_module {
+            self.type_ribs.pop();
         }
         debug!("(resolving block) leaving block");
     }
@@ -2289,12 +2230,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 depth: 0,
                                             });
                         }
-                        FoundConst(def, name) => {
+                        FoundConst(_, name) => {
                             resolve_error(
                                 self,
                                 pattern.span,
-                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(def.def_id(),
-                                                                                    name)
+                                ResolutionError::OnlyIrrefutablePatternsAllowedHere(name)
                             );
                             self.record_def(pattern.id, err_path_resolution());
                         }
@@ -2896,7 +2836,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } SuggestionType::NotFound
     }
 
-    fn resolve_expr(&mut self, expr: &Expr) {
+    fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
 
@@ -3041,7 +2981,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                    UseLexicalScope,
                                                                    expr.span) {
                                         Success(_) => {
-                                            context = UnresolvedNameContext::PathIsMod(expr.id);
+                                            context = UnresolvedNameContext::PathIsMod(parent);
                                         },
                                         _ => {},
                                     };
@@ -3113,6 +3053,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(_) => {
                         span_bug!(expr.span, "label wasn't mapped to a label def!")
                     }
+                }
+            }
+            ExprField(ref subexpression, _) => {
+                self.resolve_expr(subexpression, Some(expr));
+            }
+            ExprMethodCall(_, ref types, ref arguments) => {
+                let mut arguments = arguments.iter();
+                self.resolve_expr(arguments.next().unwrap(), Some(expr));
+                for argument in arguments {
+                    self.resolve_expr(argument, None);
+                }
+                for ty in types.iter() {
+                    self.visit_ty(ty);
                 }
             }
 
@@ -3588,7 +3541,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
 
     let krate = ast_map.krate();
     let arenas = Resolver::arenas();
-    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas, None);
+    let mut resolver = create_resolver(session, ast_map, krate, make_glob_map, &arenas);
 
     resolver.resolve_crate(krate);
 
@@ -3608,24 +3561,14 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     }
 }
 
-/// Builds a name resolution walker to be used within this module,
-/// or used externally, with an optional callback function.
-///
-/// The callback takes a &mut bool which allows callbacks to end a
-/// walk when set to true, passing through the rest of the walk, while
-/// preserving the ribs + current module. This allows resolve_path
-/// calls to be made with the correct scope info. The node in the
-/// callback corresponds to the current node in the walk.
+/// Builds a name resolution walker.
 fn create_resolver<'a, 'tcx>(session: &'a Session,
                              ast_map: &'a hir_map::Map<'tcx>,
                              krate: &'a Crate,
                              make_glob_map: MakeGlobMap,
-                             arenas: &'a ResolverArenas<'a>,
-                             callback: Option<Box<Fn(hir_map::Node, &mut bool) -> bool>>)
+                             arenas: &'a ResolverArenas<'a>)
                              -> Resolver<'a, 'tcx> {
     let mut resolver = Resolver::new(session, ast_map, make_glob_map, arenas);
-
-    resolver.callback = callback;
 
     resolver.build_reduced_graph(krate);
 
