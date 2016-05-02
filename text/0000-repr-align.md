@@ -65,15 +65,68 @@ Multiple `#[repr(align = "..")]` directives are accepted on a struct
 declaration, and the actual alignment of the structure will be the maximum of
 all `align` directives and the natural alignment of the struct itself.
 
-Semantically, it will be guaranteed (modulo `unsafe` code) that custom alignment
-will always be respected. If a pointer to a non-aligned structure exists and is
-used then it is considered unsafe behavior. Local variables, objects in arrays,
-statics, etc, will all respect the custom alignment specified for a type.
+Semantically, it will be guaranteed (modulo `unsafe` code and `#[repr(packed)`)
+that custom alignment will always be respected. If a pointer to a non-aligned
+structure exists and is used then it is considered unsafe behavior. Local
+variables, objects in arrays, statics, etc, will all respect the custom
+alignment specified for a type.
 
-The `#[repr(align)]` attribute will not interact with `#[repr(packed)]`. That
-is, the `#[repr(packed)]` controls the orthogonal attribute of a structure of
-how the fields are packed, and the `#[repr(align)]` attribute only controls the
-alignment of the overall structure.
+The `#[repr(align)]` attribute will not interact with `#[repr(packed)]` in the
+sense that the `packed` attribute only affects *field alignment* whereas `align`
+affects the *struct alignment*. The `packed` may indirectly lower struct
+alignment by lowering the alignment of fields, and then `align` may raise the
+overal struct alignment.
+
+Some examples of `#[repr(align)]` are:
+
+```rust
+// Raising alignment
+#[repr(align = "16")]
+struct Align16(i32);
+
+assert_eq!(mem::align_of::<Align16>(), 16);
+assert_eq!(mem::size_of::<Align16>(), 16);
+
+// Lowering has no effect
+#[repr(align = "1")]
+struct Align1(i32);
+
+assert_eq!(mem::align_of::<Align1>(), 4);
+assert_eq!(mem::size_of::<Align1>(), 4);
+
+// Multiple attributes take the max
+#[repr(align = "8", align = "4")]
+#[repr(align = "16")]
+struct AlignMany(i32);
+
+assert_eq!(mem::align_of::<AlignMany>(), 16);
+assert_eq!(mem::size_of::<AlignMany>(), 16);
+
+// Raising alignment may not alter size.
+#[repr(align = "8")]
+struct Align8Many {
+    a: i32,
+    b: i32,
+    c: i32,
+    d: u8,
+}
+
+assert_eq!(mem::align_of::<Align8Many>(), 8);
+assert_eq!(mem::size_of::<Align8Many>(), 16);
+
+// Raising alignment beyond the packed value
+#[repr(align = "4", packed = "2")]
+struct AlignAndPacked {
+    a: u16,
+    b: i32,
+}
+
+assert_eq!(mem::align_of::<AlignAndPacked>(), 4);
+assert_eq!(mem::size_of::<AlignAndPacked>(), 8);
+assert_eq!(offset_of!(AlignAndPacked, a), 0);
+assert_eq!(offset_of!(AlignAndPacked, b), 2);
+```
+
 
 # Drawbacks
 [drawbacks]: #drawbacks
