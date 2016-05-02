@@ -356,11 +356,6 @@ pub struct GlobalCtxt<'tcx> {
     // Cache for the type-contents routine. FIXME -- track deps?
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
 
-    // Cache for various types within a method body and so forth.
-    //
-    // FIXME this should be made local to typeck, but it is currently used by one lint
-    pub ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
-
     // FIXME no dep tracking, but we should be able to remove this
     pub ty_param_defs: RefCell<NodeMap<ty::TypeParameterDef<'tcx>>>,
 
@@ -664,7 +659,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             tcache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             rcache: RefCell::new(FnvHashMap()),
             tc_cache: RefCell::new(FnvHashMap()),
-            ast_ty_to_ty_cache: RefCell::new(NodeMap()),
             impl_or_trait_items: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_item_def_ids: RefCell::new(DepTrackingMap::new(dep_graph.clone())),
             trait_items_cache: RefCell::new(DepTrackingMap::new(dep_graph.clone())),

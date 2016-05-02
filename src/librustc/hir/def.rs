@@ -17,8 +17,7 @@ use hir;
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     Fn(DefId),
-    SelfTy(Option<DefId>,                    // trait id
-              Option<(ast::NodeId, ast::NodeId)>),   // (impl id, self type id)
+    SelfTy(Option<DefId> /* trait */, Option<ast::NodeId> /* impl */),
     Mod(DefId),
     ForeignMod(DefId),
     Static(DefId, bool /* is_mutbl */),

@@ -93,10 +93,8 @@ pub enum TypeVariants<'tcx> {
     /// Substs here, possibly against intuition, *may* contain `TyParam`s.
     /// That is, even after substitution it is possible that there are type
     /// variables. This happens when the `TyEnum` corresponds to an enum
-    /// definition and not a concrete use of it. To get the correct `TyEnum`
-    /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
-    /// the `ast_ty_to_ty_cache`. This is probably true for `TyStruct` as
-    /// well.
+    /// definition and not a concrete use of it. This is true for `TyStruct`
+    /// as well.
     TyEnum(AdtDef<'tcx>, &'tcx Substs<'tcx>),
 
     /// A structure type, defined with `struct`.

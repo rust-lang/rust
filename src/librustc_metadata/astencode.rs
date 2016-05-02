@@ -362,11 +362,8 @@ impl tr for Def {
         match *self {
           Def::Fn(did) => Def::Fn(did.tr(dcx)),
           Def::Method(did) => Def::Method(did.tr(dcx)),
-          Def::SelfTy(opt_did, impl_ids) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
-                                                                impl_ids.map(|(nid1, nid2)| {
-                                                                    (dcx.tr_id(nid1),
-                                                                     dcx.tr_id(nid2))
-                                                                })) }
+          Def::SelfTy(opt_did, impl_id) => { Def::SelfTy(opt_did.map(|did| did.tr(dcx)),
+                                                         impl_id.map(|id| dcx.tr_id(id))) }
           Def::Mod(did) => { Def::Mod(did.tr(dcx)) }
           Def::ForeignMod(did) => { Def::ForeignMod(did.tr(dcx)) }
           Def::Static(did, m) => { Def::Static(did.tr(dcx), m) }
