@@ -1009,11 +1009,15 @@ pub fn noop_fold_expr<T: Folder>(Expr { id, node, span, attrs }: Expr, folder: &
             ExprWhile(cond, body, opt_name) => {
                 ExprWhile(folder.fold_expr(cond),
                           folder.fold_block(body),
-                          opt_name.map(|i| folder.fold_name(i)))
+                          opt_name.map(|label| {
+                              respan(folder.new_span(label.span), folder.fold_name(label.node))
+                          }))
             }
             ExprLoop(body, opt_name) => {
                 ExprLoop(folder.fold_block(body),
-                         opt_name.map(|i| folder.fold_name(i)))
+                         opt_name.map(|label| {
+                             respan(folder.new_span(label.span), folder.fold_name(label.node))
+                         }))
             }
             ExprMatch(expr, arms, source) => {
                 ExprMatch(folder.fold_expr(expr),

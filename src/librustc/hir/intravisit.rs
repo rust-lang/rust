@@ -28,7 +28,7 @@
 use syntax::abi::Abi;
 use syntax::ast::{NodeId, CRATE_NODE_ID, Name, Attribute};
 use syntax::attr::ThinAttributesExt;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, Spanned};
 use hir::*;
 
 use std::cmp;
@@ -203,8 +203,14 @@ pub trait Visitor<'v> : Sized {
 }
 
 pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
-    for name in opt_name {
+    if let Some(name) = opt_name {
         visitor.visit_name(span, name);
+    }
+}
+
+pub fn walk_opt_sp_name<'v, V: Visitor<'v>>(visitor: &mut V, opt_sp_name: &Option<Spanned<Name>>) {
+    if let Some(ref sp_name) = *opt_sp_name {
+        visitor.visit_name(sp_name.span, sp_name.node);
     }
 }
 
@@ -737,14 +743,14 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprWhile(ref subexpression, ref block, opt_name) => {
+        ExprWhile(ref subexpression, ref block, ref opt_sp_name) => {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
-            walk_opt_name(visitor, expression.span, opt_name)
+            walk_opt_sp_name(visitor, opt_sp_name);
         }
-        ExprLoop(ref block, opt_name) => {
+        ExprLoop(ref block, ref opt_sp_name) => {
             visitor.visit_block(block);
-            walk_opt_name(visitor, expression.span, opt_name)
+            walk_opt_sp_name(visitor, opt_sp_name);
         }
         ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(subexpression);
@@ -784,9 +790,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_path(path, expression.id)
         }
         ExprBreak(ref opt_sp_name) | ExprAgain(ref opt_sp_name) => {
-            for sp_name in opt_sp_name {
-                visitor.visit_name(sp_name.span, sp_name.node);
-            }
+            walk_opt_sp_name(visitor, opt_sp_name);
         }
         ExprRet(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);

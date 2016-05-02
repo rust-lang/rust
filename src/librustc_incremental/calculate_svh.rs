@@ -251,7 +251,7 @@ mod svh_visitor {
             ExprType(..)             => SawExprType,
             ExprIf(..)               => SawExprIf,
             ExprWhile(..)            => SawExprWhile,
-            ExprLoop(_, id)          => SawExprLoop(id.map(|id| id.as_str())),
+            ExprLoop(_, id)          => SawExprLoop(id.map(|id| id.node.as_str())),
             ExprMatch(..)            => SawExprMatch,
             ExprClosure(..)          => SawExprClosure,
             ExprBlock(..)            => SawExprBlock,
