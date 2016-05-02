@@ -63,11 +63,11 @@ enum CallStep<'tcx> {
     Overloaded(ty::MethodCallee<'tcx>)
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn check_call(&self,
-                  call_expr: &'tcx hir::Expr,
-                  callee_expr: &'tcx hir::Expr,
-                  arg_exprs: &'tcx [P<hir::Expr>],
+                  call_expr: &'gcx hir::Expr,
+                  callee_expr: &'gcx hir::Expr,
+                  arg_exprs: &'gcx [P<hir::Expr>],
                   expected: Expectation<'tcx>)
 {
     self.check_expr(callee_expr);
@@ -104,8 +104,8 @@ pub fn check_call(&self,
 }
 
 fn try_overloaded_call_step(&self,
-                            call_expr: &'tcx hir::Expr,
-                            callee_expr: &'tcx hir::Expr,
+                            call_expr: &'gcx hir::Expr,
+                            callee_expr: &'gcx hir::Expr,
                             adjusted_ty: Ty<'tcx>,
                             autoderefs: usize)
                             -> Option<CallStep<'tcx>>
@@ -205,7 +205,7 @@ fn try_overloaded_call_traits(&self,
 fn confirm_builtin_call(&self,
                         call_expr: &hir::Expr,
                         callee_ty: Ty<'tcx>,
-                        arg_exprs: &'tcx [P<hir::Expr>],
+                        arg_exprs: &'gcx [P<hir::Expr>],
                         expected: Expectation<'tcx>)
 {
     let error_fn_sig;
@@ -275,7 +275,7 @@ fn confirm_builtin_call(&self,
 
 fn confirm_deferred_closure_call(&self,
                                  call_expr: &hir::Expr,
-                                 arg_exprs: &'tcx [P<hir::Expr>],
+                                 arg_exprs: &'gcx [P<hir::Expr>],
                                  expected: Expectation<'tcx>,
                                  fn_sig: ty::FnSig<'tcx>)
 {
@@ -302,8 +302,8 @@ fn confirm_deferred_closure_call(&self,
 
 fn confirm_overloaded_call(&self,
                            call_expr: &hir::Expr,
-                           callee_expr: &'tcx hir::Expr,
-                           arg_exprs: &'tcx [P<hir::Expr>],
+                           callee_expr: &'gcx hir::Expr,
+                           arg_exprs: &'gcx [P<hir::Expr>],
                            expected: Expectation<'tcx>,
                            method_callee: ty::MethodCallee<'tcx>)
 {
@@ -328,17 +328,17 @@ fn write_overloaded_call_method_map(&self,
 }
 
 #[derive(Debug)]
-struct CallResolution<'tcx> {
-    call_expr: &'tcx hir::Expr,
-    callee_expr: &'tcx hir::Expr,
+struct CallResolution<'gcx: 'tcx, 'tcx> {
+    call_expr: &'gcx hir::Expr,
+    callee_expr: &'gcx hir::Expr,
     adjusted_ty: Ty<'tcx>,
     autoderefs: usize,
     fn_sig: ty::FnSig<'tcx>,
     closure_def_id: DefId,
 }
 
-impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
-    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx, 'tcx>) {
+impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tcx> {
+    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}",
                self);
 
@@ -348,7 +348,7 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
 
         // We may now know enough to figure out fn vs fnmut etc.
         match fcx.try_overloaded_call_traits(self.call_expr, self.callee_expr,
-                                         self.adjusted_ty, self.autoderefs) {
+                                             self.adjusted_ty, self.autoderefs) {
             Some(method_callee) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature

@@ -32,7 +32,10 @@ impl<'tcx, A: Lift<'tcx>, B: Lift<'tcx>> Lift<'tcx> for (A, B) {
 impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Option<T> {
     type Lifted = Option<T::Lifted>;
     fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        self.as_ref().map(|x| tcx.lift(x))
+        match *self {
+            Some(ref x) => tcx.lift(x).map(Some),
+            None => Some(None)
+        }
     }
 }
 
@@ -60,6 +63,13 @@ impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for [T] {
             }
         }
         Some(result)
+    }
+}
+
+impl<'tcx, T: Lift<'tcx>> Lift<'tcx> for Vec<T> {
+    type Lifted = Vec<T::Lifted>;
+    fn lift_to_tcx<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self[..])
     }
 }
 
@@ -135,6 +145,71 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
             ty::ClosureSubsts {
                 func_substs: substs,
                 upvar_tys: upvar_tys
+            }
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::ItemSubsts<'a> {
+    type Lifted = ty::ItemSubsts<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.substs).map(|substs| {
+            ty::ItemSubsts {
+                substs: substs
+            }
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::AutoRef<'a> {
+    type Lifted = ty::adjustment::AutoRef<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            ty::adjustment::AutoPtr(r, m) => {
+                tcx.lift(&r).map(|r| ty::adjustment::AutoPtr(r, m))
+            }
+            ty::adjustment::AutoUnsafe(m) => {
+                Some(ty::adjustment::AutoUnsafe(m))
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::FnOutput<'a> {
+    type Lifted = ty::FnOutput<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        match *self {
+            ty::FnConverging(ty) => {
+                tcx.lift(&ty).map(ty::FnConverging)
+            }
+            ty::FnDiverging => Some(ty::FnDiverging)
+        }
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::FnSig<'a> {
+    type Lifted = ty::FnSig<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.inputs[..]).and_then(|inputs| {
+            tcx.lift(&self.output).map(|output| {
+                ty::FnSig {
+                    inputs: inputs,
+                    output: output,
+                    variadic: self.variadic
+                }
+            })
+        })
+    }
+}
+
+impl<'a, 'tcx> Lift<'tcx> for ty::ClosureTy<'a> {
+    type Lifted = ty::ClosureTy<'tcx>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        tcx.lift(&self.sig).map(|sig| {
+            ty::ClosureTy {
+                sig: sig,
+                unsafety: self.unsafety,
+                abi: self.abi
             }
         })
     }

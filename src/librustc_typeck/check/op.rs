@@ -17,13 +17,13 @@ use syntax::ast;
 use syntax::parse::token;
 use rustc::hir;
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// Check a `a <op>= b`
 pub fn check_binop_assign(&self,
-                          expr: &'tcx hir::Expr,
+                          expr: &'gcx hir::Expr,
                           op: hir::BinOp,
-                          lhs_expr: &'tcx hir::Expr,
-                          rhs_expr: &'tcx hir::Expr)
+                          lhs_expr: &'gcx hir::Expr,
+                          rhs_expr: &'gcx hir::Expr)
 {
     self.check_expr_with_lvalue_pref(lhs_expr, PreferMutLvalue);
 
@@ -47,10 +47,10 @@ pub fn check_binop_assign(&self,
 
 /// Check a potentially overloaded binary operator.
 pub fn check_binop(&self,
-                   expr: &'tcx hir::Expr,
+                   expr: &'gcx hir::Expr,
                    op: hir::BinOp,
-                   lhs_expr: &'tcx hir::Expr,
-                   rhs_expr: &'tcx hir::Expr)
+                   lhs_expr: &'gcx hir::Expr,
+                   rhs_expr: &'gcx hir::Expr)
 {
     let tcx = self.tcx;
 
@@ -106,9 +106,9 @@ pub fn check_binop(&self,
 }
 
 fn enforce_builtin_binop_types(&self,
-                               lhs_expr: &'tcx hir::Expr,
+                               lhs_expr: &'gcx hir::Expr,
                                lhs_ty: Ty<'tcx>,
-                               rhs_expr: &'tcx hir::Expr,
+                               rhs_expr: &'gcx hir::Expr,
                                rhs_ty: Ty<'tcx>,
                                op: hir::BinOp)
                                -> Ty<'tcx>
@@ -144,10 +144,10 @@ fn enforce_builtin_binop_types(&self,
 }
 
 fn check_overloaded_binop(&self,
-                          expr: &'tcx hir::Expr,
-                          lhs_expr: &'tcx hir::Expr,
+                          expr: &'gcx hir::Expr,
+                          lhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
-                          rhs_expr: &'tcx hir::Expr,
+                          rhs_expr: &'gcx hir::Expr,
                           op: hir::BinOp,
                           is_assign: IsAssign)
                           -> (Ty<'tcx>, Ty<'tcx>)
@@ -222,8 +222,8 @@ pub fn check_user_unop(&self,
                        op_str: &str,
                        mname: &str,
                        trait_did: Option<DefId>,
-                       ex: &'tcx hir::Expr,
-                       operand_expr: &'tcx hir::Expr,
+                       ex: &'gcx hir::Expr,
+                       operand_expr: &'gcx hir::Expr,
                        operand_ty: Ty<'tcx>,
                        op: hir::UnOp)
                        -> Ty<'tcx>
@@ -294,7 +294,7 @@ fn name_and_trait_def_id(&self,
 }
 
 fn lookup_op_method(&self,
-                    expr: &'tcx hir::Expr,
+                    expr: &'gcx hir::Expr,
                     lhs_ty: Ty<'tcx>,
                     other_tys: Vec<Ty<'tcx>>,
                     opname: ast::Name,

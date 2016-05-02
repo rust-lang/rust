@@ -136,7 +136,7 @@ pub enum Mode {
     Path
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn probe_method(&self,
                     span: Span,
                     mode: Mode,
@@ -241,14 +241,14 @@ fn create_steps(&self,
 }
 }
 
-impl<'a,'tcx> ProbeContext<'a,'tcx, 'tcx> {
-    fn new(fcx: &'a FnCtxt<'a,'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
            mode: Mode,
            item_name: ast::Name,
            steps: Vec<CandidateStep<'tcx>>,
            opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>)
-           -> ProbeContext<'a,'tcx, 'tcx>
+           -> ProbeContext<'a, 'gcx, 'tcx>
     {
         ProbeContext {
             fcx: fcx,
@@ -554,7 +554,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx, 'tcx> {
         mut mk_cand: F,
     ) where
         F: for<'b> FnMut(
-            &mut ProbeContext<'b, 'tcx, 'tcx>,
+            &mut ProbeContext<'b, 'gcx, 'tcx>,
             ty::PolyTraitRef<'tcx>,
             ty::ImplOrTraitItem<'tcx>,
         ),

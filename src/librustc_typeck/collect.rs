@@ -58,7 +58,7 @@ There are some shortcomings in this design:
 
 */
 
-use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
+use astconv::{AstConv, ast_region_to_region, Bounds, PartitionedBounds, partition_bounds};
 use lint;
 use hir::def::Def;
 use hir::def_id::DefId;
@@ -291,7 +291,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
 impl<'a,'tcx> ItemCtxt<'a,'tcx> {
     fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &hir::Ty) -> Ty<'tcx> {
-        ast_ty_to_ty(self, rs, ast_ty)
+        AstConv::ast_ty_to_ty(self, rs, ast_ty)
     }
 }
 
@@ -559,7 +559,7 @@ fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ty_generic_predicates_for_fn(ccx, &sig.generics, rcvr_ty_predicates);
 
     let (fty, explicit_self_category) =
-        astconv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
+        AstConv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
                               sig, untransformed_rcvr_ty);
 
     let def_id = ccx.tcx.map.local_def_id(id);
@@ -712,7 +712,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
         },
         hir::ItemDefaultImpl(_, ref ast_trait_ref) => {
             let trait_ref =
-                astconv::instantiate_mono_trait_ref(&ccx.icx(&()),
+                AstConv::instantiate_mono_trait_ref(&ccx.icx(&()),
                                                     &ExplicitRscope,
                                                     ast_trait_ref,
                                                     None);
@@ -742,7 +742,7 @@ fn convert_item(ccx: &CrateCtxt, it: &hir::Item) {
                                    TypeScheme { generics: ty_generics.clone(),
                                                 ty: selfty });
             let trait_ref = opt_trait_ref.as_ref().map(|ast_trait_ref| {
-                astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
+                AstConv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
                                                     &ExplicitRscope,
                                                     ast_trait_ref,
                                                     Some(selfty))
@@ -1452,7 +1452,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         }
         hir::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
-            let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
+            let tofd = AstConv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &decl);
             let def_id = ccx.tcx.map.local_def_id(it.id);
             let substs = mk_item_substs(ccx, &ty_generics);
             let ty = tcx.mk_fn_def(def_id, substs, tofd);
@@ -1582,7 +1582,7 @@ fn compute_type_scheme_of_foreign_item<'a, 'tcx>(
         hir::ForeignItemStatic(ref t, _) => {
             ty::TypeScheme {
                 generics: ty::Generics::empty(),
-                ty: ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, t)
+                ty: AstConv::ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, t)
             }
         }
     }
@@ -1793,9 +1793,9 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     for predicate in &where_clause.predicates {
         match predicate {
             &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
-                let ty = ast_ty_to_ty(&ccx.icx(&(base_predicates, ast_generics)),
-                                      &ExplicitRscope,
-                                      &bound_pred.bounded_ty);
+                let ty = AstConv::ast_ty_to_ty(&ccx.icx(&(base_predicates, ast_generics)),
+                                               &ExplicitRscope,
+                                               &bound_pred.bounded_ty);
 
                 for bound in bound_pred.bounds.iter() {
                     match bound {
@@ -1887,7 +1887,7 @@ fn convert_default_type_parameter<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             index: u32)
                                             -> Ty<'tcx>
 {
-    let ty = ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, &path);
+    let ty = AstConv::ast_ty_to_ty(&ccx.icx(&()), &ExplicitRscope, &path);
 
     for leaf_ty in ty.walk() {
         if let ty::TyParam(p) = leaf_ty.sty {
@@ -1991,7 +1991,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                       hir::TraitTyParamBound(..) =>
                           None,
                       hir::RegionTyParamBound(ref lifetime) =>
-                          Some(astconv::ast_region_to_region(ccx.tcx, lifetime)),
+                          Some(ast_region_to_region(ccx.tcx, lifetime)),
                   }
               })
               .collect()
@@ -2034,7 +2034,7 @@ fn compute_bounds<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                         ast_bounds: &[hir::TyParamBound],
                         sized_by_default: SizedByDefault,
                         span: Span)
-                        -> astconv::Bounds<'tcx>
+                        -> Bounds<'tcx>
 {
     let mut bounds =
         conv_param_bounds(astconv,
@@ -2090,7 +2090,7 @@ fn conv_poly_trait_ref<'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                              projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
                              -> ty::PolyTraitRef<'tcx>
 {
-    astconv::instantiate_poly_trait_ref(astconv,
+    AstConv::instantiate_poly_trait_ref(astconv,
                                         &ExplicitRscope,
                                         trait_ref,
                                         Some(param_ty),
@@ -2101,14 +2101,14 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                               span: Span,
                               param_ty: ty::Ty<'tcx>,
                               ast_bounds: &[hir::TyParamBound])
-                              -> astconv::Bounds<'tcx>
+                              -> Bounds<'tcx>
 {
     let tcx = astconv.tcx();
-    let astconv::PartitionedBounds {
+    let PartitionedBounds {
         builtin_bounds,
         trait_bounds,
         region_bounds
-    } = astconv::partition_bounds(tcx, span, &ast_bounds);
+    } = partition_bounds(tcx, span, &ast_bounds);
 
     let mut projection_bounds = Vec::new();
 
@@ -2125,7 +2125,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx, 'tcx>,
                      .map(|r| ast_region_to_region(tcx, r))
                      .collect();
 
-    astconv::Bounds {
+    Bounds {
         region_bounds: region_bounds,
         builtin_bounds: builtin_bounds,
         trait_bounds: trait_bounds,
@@ -2157,12 +2157,12 @@ fn compute_type_scheme_of_foreign_fn_decl<'a, 'tcx>(
     let rb = BindingRscope::new();
     let input_tys = decl.inputs
                         .iter()
-                        .map(|a| ty_of_arg(&ccx.icx(ast_generics), &rb, a, None))
+                        .map(|a| AstConv::ty_of_arg(&ccx.icx(ast_generics), &rb, a, None))
                         .collect::<Vec<_>>();
 
     let output = match decl.output {
         hir::Return(ref ty) =>
-            ty::FnConverging(ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &ty)),
+            ty::FnConverging(AstConv::ast_ty_to_ty(&ccx.icx(ast_generics), &rb, &ty)),
         hir::DefaultReturn(..) =>
             ty::FnConverging(ccx.tcx.mk_nil()),
         hir::NoReturn(..) =>

@@ -16,7 +16,6 @@ use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TypeFoldable, LvaluePreference};
 use check::{FnCtxt, Expectation};
 use lint;
-use require_same_types;
 use util::nodemap::FnvHashMap;
 use session::Session;
 
@@ -56,8 +55,8 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
     }
 }
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx, 'tcx> {
-pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
+impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
+pub fn check_pat(&self, pat: &'gcx hir::Pat, expected: Ty<'tcx>) {
     let tcx = self.tcx;
 
     debug!("check_pat(pat={:?},expected={:?})", pat, expected);
@@ -133,10 +132,8 @@ pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
             }
 
             // Check that the types of the end-points can be unified.
-            let types_unify = require_same_types(
-                self.ccx, Some(self), pat.span, rhs_ty, lhs_ty,
-                "mismatched types in range",
-            );
+            let types_unify = self.require_same_types(pat.span, rhs_ty, lhs_ty,
+                                                      "mismatched types in range");
 
             // It's ok to return without a message as `require_same_types` prints an error.
             if !types_unify {
@@ -455,11 +452,11 @@ pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::
 }
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn check_match(&self,
-                   expr: &'tcx hir::Expr,
-                   discrim: &'tcx hir::Expr,
-                   arms: &'tcx [hir::Arm],
+                   expr: &'gcx hir::Expr,
+                   discrim: &'gcx hir::Expr,
+                   arms: &'gcx [hir::Arm],
                    expected: Expectation<'tcx>,
                    match_src: hir::MatchSource) {
     let tcx = self.tcx;
@@ -578,9 +575,9 @@ pub fn check_match(&self,
 }
 }
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx, 'tcx> {
-pub fn check_pat_struct(&self, pat: &'tcx hir::Pat,
-                        path: &hir::Path, fields: &'tcx [Spanned<hir::FieldPat>],
+impl<'a, 'gcx, 'tcx> PatCtxt<'a, 'gcx, 'tcx> {
+pub fn check_pat_struct(&self, pat: &'gcx hir::Pat,
+                        path: &hir::Path, fields: &'gcx [Spanned<hir::FieldPat>],
                         etc: bool, expected: Ty<'tcx>) {
     let tcx = self.tcx;
 
@@ -617,7 +614,7 @@ pub fn check_pat_struct(&self, pat: &'tcx hir::Pat,
 fn check_pat_enum(&self,
                   pat: &hir::Pat,
                   path: &hir::Path,
-                  subpats: Option<&'tcx [P<hir::Pat>]>,
+                  subpats: Option<&'gcx [P<hir::Pat>]>,
                   expected: Ty<'tcx>,
                   is_tuple_struct_pat: bool)
 {
@@ -764,7 +761,7 @@ fn check_pat_enum(&self,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields(&self,
                                span: Span,
-                               fields: &'tcx [Spanned<hir::FieldPat>],
+                               fields: &'gcx [Spanned<hir::FieldPat>],
                                variant: ty::VariantDef<'tcx>,
                                substs: &Substs<'tcx>,
                                etc: bool) {

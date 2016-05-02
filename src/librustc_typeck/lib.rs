@@ -104,7 +104,7 @@ pub use rustc::util;
 use dep_graph::DepNode;
 use hir::map as hir_map;
 use hir::def::Def;
-use rustc::infer::{self, InferCtxt, TypeOrigin};
+use rustc::infer::{InferCtxt, TypeOrigin};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::traits::ProjectionMode;
@@ -192,36 +192,33 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
     }
 }
 
+pub fn emit_type_err<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                     span: Span,
+                                     found_ty: Ty<'tcx>,
+                                     expected_ty: Ty<'tcx>,
+                                     terr: &ty::error::TypeError<'tcx>,
+                                     msg: &str) {
+    let mut err = struct_span_err!(tcx.sess, span, E0211, "{}", msg);
+    err = err.span_label(span, &terr);
+    err = err.note_expected_found(&"type", &expected_ty, &found_ty);
+    tcx.note_and_explain_type_err(&mut err, terr, span);
+    err.emit();
+}
+
 fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx, 'tcx>>,
                                 span: Span,
                                 t1: Ty<'tcx>,
                                 t2: Ty<'tcx>,
                                 msg: &str)
-                                -> bool
-{
-    let err = if let Some(infcx) = maybe_infcx {
-        infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2).err()
-    } else {
-        InferCtxt::enter(ccx.tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
-            infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2).err()
-        })
-    };
-
-    if let Some(ref terr) = err {
-        let mut err = struct_span_err!(ccx.tcx.sess, span, E0211, "{}", msg);
-        err = err.span_label(span, &terr);
-        let (mut expected_ty, mut found_ty) = (t2, t1);
-        if let Some(infcx) = maybe_infcx {
-            expected_ty = infcx.resolve_type_vars_if_possible(&expected_ty);
-            found_ty = infcx.resolve_type_vars_if_possible(&found_ty);
+                                -> bool {
+    InferCtxt::enter(ccx.tcx, None, None, ProjectionMode::AnyFinal, |infcx| {
+        if let Err(err) = infcx.eq_types(false, TypeOrigin::Misc(span), t1, t2) {
+            emit_type_err(infcx.tcx, span, t1, t2, &err, msg);
+            false
+        } else {
+            true
         }
-        err = err.note_expected_found(&"type", &expected_ty, &found_ty);
-        ccx.tcx.note_and_explain_type_err(&mut err, terr, span);
-        err.emit();
-    }
-
-    err.is_none()
+    })
 }
 
 fn check_main_fn_ty(ccx: &CrateCtxt,
@@ -258,7 +255,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 })
             }));
 
-            require_same_types(ccx, None, main_span, main_t, se_ty,
+            require_same_types(ccx, main_span, main_t, se_ty,
                                "main function has wrong type");
         }
         _ => {
@@ -307,7 +304,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 }),
             }));
 
-            require_same_types(ccx, None, start_span, start_t, se_ty,
+            require_same_types(ccx, start_span, start_t, se_ty,
                                "start function has wrong type");
         }
         _ => {

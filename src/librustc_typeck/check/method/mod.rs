@@ -78,7 +78,7 @@ pub enum CandidateSource {
     TraitSource(/* trait id */ DefId),
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
 pub fn method_exists(&self,
                      span: Span,
@@ -116,8 +116,8 @@ pub fn lookup_method(&self,
                      method_name: ast::Name,
                      self_ty: ty::Ty<'tcx>,
                      supplied_method_types: Vec<ty::Ty<'tcx>>,
-                     call_expr: &'tcx hir::Expr,
-                     self_expr: &'tcx hir::Expr)
+                     call_expr: &'gcx hir::Expr,
+                     self_expr: &'gcx hir::Expr)
                      -> Result<ty::MethodCallee<'tcx>, MethodError<'tcx>>
 {
     debug!("lookup(method_name={}, self_ty={:?}, call_expr={:?}, self_expr={:?})",

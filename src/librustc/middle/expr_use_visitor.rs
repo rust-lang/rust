@@ -209,8 +209,7 @@ enum OverloadedCallType {
 }
 
 impl OverloadedCallType {
-    fn from_trait_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_id: DefId)
-                               -> OverloadedCallType {
+    fn from_trait_id(tcx: TyCtxt, trait_id: DefId) -> OverloadedCallType {
         for &(maybe_function_trait, overloaded_call_type) in &[
             (tcx.lang_items.fn_once_trait(), FnOnceOverloadedCall),
             (tcx.lang_items.fn_mut_trait(), FnMutOverloadedCall),
@@ -227,8 +226,7 @@ impl OverloadedCallType {
         bug!("overloaded call didn't map to known function trait")
     }
 
-    fn from_method_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, method_id: DefId)
-                                -> OverloadedCallType {
+    fn from_method_id(tcx: TyCtxt, method_id: DefId) -> OverloadedCallType {
         let method = tcx.impl_or_trait_item(method_id);
         OverloadedCallType::from_trait_id(tcx, method.container().id())
     }
@@ -271,9 +269,9 @@ enum PassArgs {
     ByRef,
 }
 
-impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
-               infcx: &'a InferCtxt<'a, 'tcx, 'tcx>) -> Self
+               infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self
     {
         ExprUseVisitor {
             mc: mc::MemCategorizationContext::new(infcx),
@@ -305,7 +303,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.mc.infcx.tcx
     }
 
@@ -1184,10 +1182,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx, 'tcx> {
     }
 }
 
-fn copy_or_move<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
-                          cmt: &mc::cmt<'tcx>,
-                          move_reason: MoveReason)
-                          -> ConsumeMode
+fn copy_or_move<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                cmt: &mc::cmt<'tcx>,
+                                move_reason: MoveReason)
+                                -> ConsumeMode
 {
     if infcx.type_moves_by_default(cmt.ty, cmt.span) {
         Move(move_reason)

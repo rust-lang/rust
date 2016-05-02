@@ -34,7 +34,7 @@ use rustc::hir;
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
     assert_eq!(self.writeback_errors.get(), false);
     let mut wbcx = WritebackCx::new(self);
@@ -78,12 +78,12 @@ struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
 }
 
-impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
-    fn new(fcx: &'cx FnCtxt<'cx, 'tcx, 'tcx>) -> WritebackCx<'cx, 'tcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
+    fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>) -> WritebackCx<'cx, 'gcx, 'tcx> {
         WritebackCx { fcx: fcx }
     }
 
-    fn tcx(&self) -> TyCtxt<'cx, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
         self.fcx.tcx
     }
 
@@ -134,7 +134,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_stmt(&mut self, s: &hir::Stmt) {
         if self.fcx.writeback_errors.get() {
             return;
@@ -214,7 +214,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_upvar_borrow_map(&self) {
         if self.fcx.writeback_errors.get() {
             return;
@@ -359,8 +359,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
         }
     }
 
-    fn resolve<T:TypeFoldable<'tcx>>(&self, t: &T, reason: ResolveReason) -> T {
-        t.fold_with(&mut Resolver::new(self.fcx, reason))
+    fn resolve<T>(&self, x: &T, reason: ResolveReason) -> T::Lifted
+        where T: TypeFoldable<'tcx> + ty::Lift<'gcx>
+    {
+        let x = x.fold_with(&mut Resolver::new(self.fcx, reason));
+        if let Some(lifted) = self.tcx().lift_to_global(&x) {
+            lifted
+        } else {
+            span_bug!(reason.span(self.tcx()),
+                      "writeback: `{:?}` missing from the global type context", x);
+        }
     }
 }
 
@@ -378,8 +386,8 @@ enum ResolveReason {
     ResolvingFieldTypes(ast::NodeId)
 }
 
-impl ResolveReason {
-    fn span<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Span {
+impl<'a, 'gcx, 'tcx> ResolveReason {
+    fn span(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Span {
         match *self {
             ResolvingExpr(s) => s,
             ResolvingLocal(s) => s,
@@ -415,18 +423,18 @@ struct Resolver<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     reason: ResolveReason,
 }
 
-impl<'cx, 'tcx> Resolver<'cx, 'tcx, 'tcx> {
-    fn new(fcx: &'cx FnCtxt<'cx, 'tcx, 'tcx>,
+impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
+    fn new(fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
            reason: ResolveReason)
-           -> Resolver<'cx, 'tcx, 'tcx>
+           -> Resolver<'cx, 'gcx, 'tcx>
     {
         Resolver::from_infcx(fcx, &fcx.writeback_errors, reason)
     }
 
-    fn from_infcx(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>,
+    fn from_infcx(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
                   writeback_errors: &'cx Cell<bool>,
                   reason: ResolveReason)
-                  -> Resolver<'cx, 'tcx, 'tcx>
+                  -> Resolver<'cx, 'gcx, 'tcx>
     {
         Resolver { infcx: infcx,
                    tcx: infcx.tcx,
@@ -480,8 +488,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx, 'tcx> for Resolver<'cx, 'tcx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.tcx
     }
 

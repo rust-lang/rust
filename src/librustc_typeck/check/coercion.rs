@@ -105,8 +105,8 @@ fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
     }
 }
 
-impl<'f, 'tcx> Coerce<'f, 'tcx, 'tcx> {
-    fn new(fcx: &'f FnCtxt<'f, 'tcx, 'tcx>, origin: TypeOrigin) -> Self {
+impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
+    fn new(fcx: &'f FnCtxt<'f, 'gcx, 'tcx>, origin: TypeOrigin) -> Self {
         Coerce {
             fcx: fcx,
             origin: origin,
@@ -594,11 +594,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx, 'tcx> {
     }
 }
 
-fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx, 'tcx>,
-                             exprs: &E,
-                             a: Ty<'tcx>,
-                             b: Ty<'tcx>)
-                             -> CoerceResult<'tcx>
+fn apply<'a, 'b, 'gcx, 'tcx, E, I>(coerce: &mut Coerce<'a, 'gcx, 'tcx>,
+                                   exprs: &E,
+                                   a: Ty<'tcx>,
+                                   b: Ty<'tcx>)
+                                   -> CoerceResult<'tcx>
     where E: Fn() -> I,
           I: IntoIterator<Item=&'b hir::Expr> {
 
@@ -617,7 +617,7 @@ fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx, 'tcx>,
     Ok((ty, adjustment))
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// Attempt to coerce an expression to a type, and return the
 /// adjusted type of the expression, if successful.
 /// Adjustments are only recorded if the coercion succeeded.

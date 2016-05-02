@@ -16,7 +16,7 @@ use middle::free_region::FreeRegionMap;
 use rustc::infer::{self, InferCtxt};
 use middle::region;
 use rustc::ty::subst::{self, Subst};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::traits::{self, ProjectionMode};
 use util::nodemap::FnvHashSet;
 
@@ -274,10 +274,12 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
 ///
-pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut RegionCtxt<'a, 'tcx, 'tcx>,
-                                                         typ: ty::Ty<'tcx>,
-                                                         span: Span,
-                                                         scope: region::CodeExtent) {
+pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
+    rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
+    typ: ty::Ty<'tcx>,
+    span: Span,
+    scope: region::CodeExtent)
+{
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            typ, scope);
 
@@ -354,8 +356,8 @@ struct DropckContext<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
 }
 
 // `context` is used for reporting overflow errors
-fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
-    cx: &mut DropckContext<'a, 'b, 'tcx, 'tcx>,
+fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'gcx, 'tcx>(
+    cx: &mut DropckContext<'a, 'b, 'gcx, 'tcx>,
     context: TypeContext,
     ty: Ty<'tcx>,
     depth: usize) -> Result<(), Error<'tcx>>
@@ -410,7 +412,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     // unbounded type parameter `T`, we must resume the recursive
     // analysis on `T` (since it would be ignored by
     // type_must_outlive).
-    if has_dtor_of_interest(cx, ty) {
+    if has_dtor_of_interest(tcx, ty) {
         debug!("iterate_over_potentially_unsafe_regions_in_type \
                 {}ty: {} - is a dtorck type!",
                (0..depth).map(|_| ' ').collect::<String>(),
@@ -500,11 +502,11 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     }
 }
 
-fn has_dtor_of_interest<'a, 'b, 'tcx>(cx: &DropckContext<'a, 'b, 'tcx, 'tcx>,
-                                      ty: ty::Ty<'tcx>) -> bool {
+fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                        ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
-            def.is_dtorck(cx.rcx.tcx)
+            def.is_dtorck(tcx)
         }
         ty::TyTrait(..) | ty::TyProjection(..) => {
             debug!("ty: {:?} isn't known, and therefore is a dropck type", ty);
