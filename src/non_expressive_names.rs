@@ -15,7 +15,7 @@ use utils::{span_lint_and_then, in_macro, span_lint};
 /// **Example:** `checked_exp` and `checked_expr`
 declare_lint! {
     pub SIMILAR_NAMES,
-    Warn,
+    Allow,
     "similarly named items and bindings"
 }
 
