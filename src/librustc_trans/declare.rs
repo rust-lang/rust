@@ -69,6 +69,17 @@ fn declare_raw_fn(ccx: &CrateContext, name: &str, callconv: llvm::CallConv, ty: 
         llvm::SetFunctionAttribute(llfn, llvm::Attribute::NoRedZone)
     }
 
+    match ccx.tcx().sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
+        Some("s") => {
+            llvm::SetFunctionAttribute(llfn, llvm::Attribute::OptimizeForSize);
+        },
+        Some("z") => {
+            llvm::SetFunctionAttribute(llfn, llvm::Attribute::MinSize);
+            llvm::SetFunctionAttribute(llfn, llvm::Attribute::OptimizeForSize);
+        },
+        _ => {},
+    }
+
     llfn
 }
 
