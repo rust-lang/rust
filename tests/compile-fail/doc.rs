@@ -7,14 +7,14 @@
 #![deny(doc_markdown)]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-/// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
-/// which should be reported only once despite being __doubly bad__.
-/// be_sure_we_got_to_the_end_of_it
-fn foo_bar() {
 //~^ ERROR: you should put `foo_bar` between ticks
 //~| ERROR: you should put `foo::bar` between ticks
-//~| ERROR: you should put `Foo::some_fun` between ticks
-//~| ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+/// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
+//~^ ERROR: you should put `Foo::some_fun` between ticks
+/// which should be reported only once despite being __doubly bad__.
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn foo_bar() {
 }
 
 /// That one tests multiline ticks.
@@ -23,16 +23,16 @@ fn foo_bar() {
 /// _foo bar_
 /// ```
 /// be_sure_we_got_to_the_end_of_it
-fn multiline_ticks() {
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn multiline_ticks() {
 }
 
 /// This _is a test for
 /// multiline
 /// emphasis_.
 /// be_sure_we_got_to_the_end_of_it
-fn test_emphasis() {
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn test_emphasis() {
 }
 
 /// This tests units. See also #835.
@@ -45,8 +45,8 @@ fn test_emphasis() {
 /// 32kB 32MB 32GB 32TB 32PB 32EB
 /// 32kb 32Mb 32Gb 32Tb 32Pb 32Eb
 /// be_sure_we_got_to_the_end_of_it
-fn test_units() {
 //~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn test_units() {
 }
 
 /// This one checks we don’t try to split unicode codepoints
@@ -55,11 +55,15 @@ fn test_units() {
 /// `💣`
 /// `❤️`
 /// ß_foo
+//~^ ERROR: you should put `ß_foo` between ticks
 /// ℝ_foo
+//~^ ERROR: you should put `ℝ_foo` between ticks
 /// 💣_foo
 /// ❤️_foo
 /// foo_ß
+//~^ ERROR: you should put `foo_ß` between ticks
 /// foo_ℝ
+//~^ ERROR: you should put `foo_ℝ` between ticks
 /// foo_💣
 /// foo_❤️
 /// [ßdummy textß][foo_ß]
@@ -75,18 +79,16 @@ fn test_units() {
 /// [foo_💣]: dummy text
 /// [foo_❤️]: dummy text
 /// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn test_unicode() {
-//~^ ERROR: you should put `ß_foo` between ticks
-//~| ERROR: you should put `ℝ_foo` between ticks
-//~| ERROR: you should put `foo_ß` between ticks
-//~| ERROR: you should put `foo_ℝ` between ticks
-//~| ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 }
 
 /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
+//~^ ERROR: you should put `link_with_underscores` between ticks
 /// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
 /// It can also be [inline_link2].
+//~^ ERROR: you should put `inline_link2` between ticks
 ///
 /// [chunked-example]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
 /// [inline_link]: https://foobar
@@ -98,10 +100,8 @@ fn test_unicode() {
 /// expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
 /// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
 /// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
 fn main() {
-//~^ ERROR: you should put `inline_link2` between ticks
-//~| ERROR: you should put `link_with_underscores` between ticks
-//~| ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
     foo_bar();
     multiline_ticks();
     test_emphasis();
