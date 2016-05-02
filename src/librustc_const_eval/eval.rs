@@ -408,7 +408,7 @@ pub enum ErrKind {
     TypeMismatch(String, ConstInt),
     BadType(ConstVal),
     ErroneousReferencedConstant(Box<ConstEvalErr>),
-    BadCharValue,
+    CharCast(ConstInt),
 }
 
 impl From<ConstMathErr> for ErrKind {
@@ -469,7 +469,9 @@ impl ConstEvalErr {
             },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
             ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
-            BadCharValue => "invalid numeric value for char".into_cow(),
+            CharCast(ref got) => {
+                format!("only `u8` can be cast as `char`, not `{}`", got.description()).into_cow()
+            },
         }
     }
 }
@@ -1080,16 +1082,19 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
         ty::TyFloat(ast::FloatTy::F64) => match val.erase_type() {
             Infer(u) => Ok(Float(u as f64)),
             InferSigned(i) => Ok(Float(i as f64)),
-            _ => unreachable!(),
+            _ => bug!("ConstInt::erase_type returned something other than Infer/InferSigned"),
         },
         ty::TyFloat(ast::FloatTy::F32) => match val.erase_type() {
             Infer(u) => Ok(Float(u as f32 as f64)),
             InferSigned(i) => Ok(Float(i as f32 as f64)),
-            _ => unreachable!(),
+            _ => bug!("ConstInt::erase_type returned something other than Infer/InferSigned"),
         },
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
-        ty::TyChar if v as u32 as u64 == v => ::std::char::from_u32(v as u32).map(Char)
-                                                                             .ok_or(BadCharValue),
+        ty::TyChar => match infer(val, tcx, &ty::TyUint(ast::UintTy::U8)) {
+            Ok(U8(u)) => Ok(Char(u as char)),
+            // can only occur before typeck, typeck blocks `T as char` for `T` != `u8`
+            _ => Err(CharCast(val)),
+        },
         _ => Err(CannotCast),
     }
 }
