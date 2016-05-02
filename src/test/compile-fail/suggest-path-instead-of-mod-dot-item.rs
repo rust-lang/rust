@@ -47,10 +47,14 @@ fn h4() -> i32 {
         //~| HELP To reference an item from the `a::b` module, use `a::b::J`
 }
 
-fn h5() -> i32 {
-    a.b.f()
+fn h5() {
+    a.b.f();
         //~^ ERROR E0425
         //~| HELP To reference an item from the `a` module, use `a::b`
+    let v = Vec::new();
+    v.push(a::b);
+        //~^ ERROR E0425
+        //~| HELP Module `a::b` cannot be used as an expression
 }
 
 fn h6() -> i32 {
@@ -62,11 +66,11 @@ fn h6() -> i32 {
 fn h7() {
     a::b
         //~^ ERROR E0425
-        //~| HELP Module `a::b` cannot be the value of an expression
+        //~| HELP Module `a::b` cannot be used as an expression
 }
 
 fn h8() -> i32 {
     a::b()
         //~^ ERROR E0425
-        //~| HELP No function corresponds to `a::b(..)`
+        //~| HELP Module `a::b` cannot be used as an expression
 }
