@@ -1272,7 +1272,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx, 'tcx>,
     // Find the type of the associated item, and the trait where the associated
     // item is declared.
     let bound = match (&ty.sty, ty_path_def) {
-        (_, Def::SelfTy(Some(trait_did), Some((impl_id, _)))) => {
+        (_, Def::SelfTy(Some(trait_did), Some(impl_id))) => {
             // `Self` in an impl of a trait - we have a concrete self type and a
             // trait reference.
             let trait_ref = tcx.impl_trait_ref(tcx.map.local_def_id(impl_id)).unwrap();
@@ -1479,17 +1479,14 @@ fn base_def_to_ty<'tcx>(this: &AstConv<'tcx, 'tcx>,
             tcx.prohibit_type_params(base_segments);
             tcx.mk_param(space, index, name)
         }
-        Def::SelfTy(_, Some((_, self_ty_id))) => {
+        Def::SelfTy(_, Some(impl_id)) => {
             // Self in impl (we know the concrete type).
             tcx.prohibit_type_params(base_segments);
-            if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&self_ty_id) {
-                if let Some(free_substs) = this.get_free_substs() {
-                    ty.subst(tcx, free_substs)
-                } else {
-                    ty
-                }
+            let ty = tcx.node_id_to_type(impl_id);
+            if let Some(free_substs) = this.get_free_substs() {
+                ty.subst(tcx, free_substs)
             } else {
-                span_bug!(span, "self type has not been fully resolved")
+                ty
             }
         }
         Def::SelfTy(Some(_), None) => {
@@ -1585,12 +1582,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx, 'tcx>,
 
     let tcx = this.tcx();
 
-    if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&ast_ty.id) {
-        debug!("ast_ty_to_ty: id={:?} ty={:?} (cached)", ast_ty.id, ty);
-        return ty;
-    }
-
-    let typ = match ast_ty.node {
+    match ast_ty.node {
         hir::TyVec(ref ty) => {
             tcx.mk_slice(ast_ty_to_ty(this, rscope, &ty))
         }
@@ -1714,11 +1706,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx, 'tcx>,
             // handled specially and will not descend into this routine.
             this.ty_infer(None, None, None, ast_ty.span)
         }
-    };
-
-    debug!("ast_ty_to_ty: id={:?} ty={:?}", ast_ty.id, typ);
-    tcx.ast_ty_to_ty_cache.borrow_mut().insert(ast_ty.id, typ);
-    return typ;
+    }
 }
 
 pub fn ty_of_arg<'tcx>(this: &AstConv<'tcx, 'tcx>,
