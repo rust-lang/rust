@@ -1,7 +1,6 @@
 use rustc::lint::*;
-use std::borrow::Cow;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, BytePos};
 use utils::span_lint;
 
 /// **What it does:** This lint checks for the presence of `_`, `::` or camel-case words outside
@@ -43,48 +42,36 @@ impl LintPass for Doc {
 
 impl EarlyLintPass for Doc {
     fn check_crate(&mut self, cx: &EarlyContext, krate: &ast::Crate) {
-        check_attrs(cx, &self.valid_idents, &krate.attrs, krate.span);
+        check_attrs(cx, &self.valid_idents, &krate.attrs);
     }
 
     fn check_item(&mut self, cx: &EarlyContext, item: &ast::Item) {
-        check_attrs(cx, &self.valid_idents, &item.attrs, item.span);
+        check_attrs(cx, &self.valid_idents, &item.attrs);
     }
 }
 
-/// Collect all doc attributes. Multiple `///` are represented in different attributes. `rustdoc`
-/// has a pass to merge them, but we probably don’t want to invoke that here.
-fn collect_doc(attrs: &[ast::Attribute]) -> (Cow<str>, Option<Span>) {
-    fn doc_and_span(attr: &ast::Attribute) -> Option<(&str, Span)> {
+pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [ast::Attribute]) {
+    let mut in_multiline = false;
+    for attr in attrs {
         if attr.node.is_sugared_doc {
             if let ast::MetaItemKind::NameValue(_, ref doc) = attr.node.value.node {
                 if let ast::LitKind::Str(ref doc, _) = doc.node {
-                    return Some((&doc[..], attr.span));
+                    // doc comments start with `///` or `//!`
+                    let real_doc = &doc[3..];
+                    let mut span = attr.span;
+                    span.lo = span.lo + BytePos(3);
+
+                    // check for multiline code blocks
+                    if real_doc.trim_left().starts_with("```") {
+                        in_multiline = !in_multiline;
+                    }
+                    if !in_multiline {
+                        check_doc(cx, valid_idents, real_doc, span);
+                    }
                 }
             }
         }
-
-        None
     }
-    let doc_and_span: fn(_) -> _ = doc_and_span;
-
-    let mut doc_attrs = attrs.iter().filter_map(doc_and_span);
-
-    let count = doc_attrs.clone().take(2).count();
-
-    match count {
-        0 => ("".into(), None),
-        1 => {
-            let (doc, span) = doc_attrs.next().unwrap_or_else(|| unreachable!());
-            (doc.into(), Some(span))
-        }
-        _ => (doc_attrs.map(|s| format!("{}\n", s.0)).collect::<String>().into(), None),
-    }
-}
-
-pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [ast::Attribute], default_span: Span) {
-    let (doc, span) = collect_doc(attrs);
-    let span = span.unwrap_or(default_span);
-    check_doc(cx, valid_idents, &doc, span);
 }
 
 macro_rules! jump_to {
