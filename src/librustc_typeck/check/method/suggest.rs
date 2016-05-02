@@ -156,10 +156,6 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if let Some(expr) = rcvr_expr {
                     if let Ok (expr_string) = cx.sess.codemap().span_to_snippet(expr.span) {
                         report_function!(expr.span, expr_string);
-                        err.span_suggestion(expr.span,
-                                            "try calling the base function:",
-                                            format!("{}()",
-                                                    expr_string));
                     }
                     else if let Expr_::ExprPath(_, path) = expr.node.clone() {
                         if let Some(segment) = path.segments.last() {
