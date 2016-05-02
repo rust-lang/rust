@@ -414,6 +414,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
             };
 
             visitor.visit_mir(&mir);
+            for promoted in &mir.promoted {
+                visitor.visit_mir(promoted);
+            }
         }
     }
 

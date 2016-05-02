@@ -14,8 +14,7 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::repr::*;
 use rustc::mir::visit::MutVisitor;
-use rustc::mir::transform::{Pass, MirPass};
-use syntax::ast::NodeId;
+use rustc::mir::transform::{Pass, MirPass, MirSource};
 
 pub struct NoLandingPads;
 
@@ -42,7 +41,7 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
 }
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: NodeId, mir: &mut Mir<'tcx>) {
+    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.no_landing_pads() {
             self.visit_mir(mir);
         }

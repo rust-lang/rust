@@ -35,7 +35,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 use std::ptr;
 
 use super::operand::{OperandRef, OperandValue};
-use super::{CachedMir, MirContext};
+use super::MirContext;
 
 /// A sized constant rvalue.
 /// The LLVM type might not be the same for a single Rust type,
@@ -179,7 +179,7 @@ impl<'tcx> ConstLvalue<'tcx> {
 /// FIXME(eddyb) use miri and lower its allocations to LLVM.
 struct MirConstContext<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
-    mir: CachedMir<'a, 'tcx>,
+    mir: &'a mir::Mir<'tcx>,
 
     /// Type parameters for const fn and associated constants.
     substs: &'tcx Substs<'tcx>,
@@ -200,10 +200,25 @@ struct MirConstContext<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn new(ccx: &'a CrateContext<'a, 'tcx>,
-           mut instance: Instance<'tcx>,
+           mir: &'a mir::Mir<'tcx>,
+           substs: &'tcx Substs<'tcx>,
            args: Vec<Const<'tcx>>)
            -> MirConstContext<'a, 'tcx> {
+        MirConstContext {
+            ccx: ccx,
+            mir: mir,
+            substs: substs,
+            args: args,
+            vars: vec![None; mir.var_decls.len()],
+            temps: vec![None; mir.temp_decls.len()],
+            return_value: None
+        }
+    }
 
+    fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
+                 mut instance: Instance<'tcx>,
+                 args: Vec<Const<'tcx>>)
+                 -> Result<Const<'tcx>, ConstEvalFailure> {
         // Try to resolve associated constants.
         if instance.substs.self_ty().is_some() {
             // Only trait items can have a Self parameter.
@@ -226,15 +241,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
         let mir = ccx.get_mir(instance.def).unwrap_or_else(|| {
             bug!("missing constant MIR for {}", instance)
         });
-        MirConstContext {
-            ccx: ccx,
-            substs: instance.substs,
-            args: args,
-            vars: vec![None; mir.var_decls.len()],
-            temps: vec![None; mir.temp_decls.len()],
-            return_value: None,
-            mir: mir
-        }
+        MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }
 
     fn monomorphize<T>(&self, value: &T) -> T
@@ -247,10 +254,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
     fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalFailure> {
         let tcx = self.ccx.tcx();
-        let mir = self.mir.clone();
         let mut bb = mir::START_BLOCK;
         loop {
-            let data = mir.basic_block_data(bb);
+            let data = self.mir.basic_block_data(bb);
             for statement in &data.statements {
                 match statement.kind {
                     mir::StatementKind::Assign(ref dest, ref rvalue) => {
@@ -284,7 +290,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 }
 
                 mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                    let fn_ty = mir.operand_ty(tcx, func);
+                    let fn_ty = self.mir.operand_ty(tcx, func);
                     let fn_ty = self.monomorphize(&fn_ty);
                     let instance = match fn_ty.sty {
                         ty::TyFnDef(def_id, substs, _) => {
@@ -304,7 +310,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     let args = args.iter().map(|arg| {
                         self.const_operand(arg, span)
                     }).collect::<Result<Vec<_>, _>>()?;
-                    let value = MirConstContext::new(self.ccx, instance, args).trans()?;
+                    let value = MirConstContext::trans_def(self.ccx, instance, args)?;
                     if let Some((ref dest, target)) = *destination {
                         self.store(dest, value, span);
                         target
@@ -432,7 +438,11 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
                         let substs = self.ccx.tcx().mk_substs(self.monomorphize(substs));
                         let instance = Instance::new(def_id, substs);
-                        MirConstContext::new(self.ccx, instance, vec![]).trans()
+                        MirConstContext::trans_def(self.ccx, instance, vec![])
+                    }
+                    mir::Literal::Promoted { index } => {
+                        let mir = &self.mir.promoted[index];
+                        MirConstContext::new(self.ccx, mir, self.substs, vec![]).trans()
                     }
                     mir::Literal::Value { value } => {
                         Ok(Const::from_constval(self.ccx, value, ty))
@@ -792,7 +802,7 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                           -> OperandRef<'tcx>
     {
         let ty = bcx.monomorphize(&constant.ty);
-        let val = match constant.literal.clone() {
+        let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
                 // Shortcut for zero-sized types, including function item
                 // types, which would not work with MirConstContext.
@@ -806,22 +816,28 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 
                 let substs = bcx.tcx().mk_substs(bcx.monomorphize(substs));
                 let instance = Instance::new(def_id, substs);
-                match MirConstContext::new(bcx.ccx(), instance, vec![]).trans() {
-                    Ok(v) => v,
-                    Err(ConstEvalFailure::Compiletime(_)) => {
-                        // We've errored, so we don't have to produce working code.
-                        let llty = type_of::type_of(bcx.ccx(), ty);
-                        Const::new(C_undef(llty), ty)
-                    }
-                    Err(ConstEvalFailure::Runtime(err)) => {
-                        span_bug!(constant.span,
-                                  "MIR constant {:?} results in runtime panic: {}",
-                                  constant, err.description())
-                    }
-                }
+                MirConstContext::trans_def(bcx.ccx(), instance, vec![])
+            }
+            mir::Literal::Promoted { index } => {
+                let mir = &self.mir.promoted[index];
+                MirConstContext::new(bcx.ccx(), mir, bcx.fcx().param_substs, vec![]).trans()
             }
             mir::Literal::Value { value } => {
-                Const::from_constval(bcx.ccx(), value, ty)
+                Ok(Const::from_constval(bcx.ccx(), value, ty))
+            }
+        };
+
+        let val = match result {
+            Ok(v) => v,
+            Err(ConstEvalFailure::Compiletime(_)) => {
+                // We've errored, so we don't have to produce working code.
+                let llty = type_of::type_of(bcx.ccx(), ty);
+                Const::new(C_undef(llty), ty)
+            }
+            Err(ConstEvalFailure::Runtime(err)) => {
+                span_bug!(constant.span,
+                          "MIR constant {:?} results in runtime panic: {}",
+                          constant, err.description())
             }
         };
 
@@ -839,5 +855,5 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
 pub fn trans_static_initializer(ccx: &CrateContext, def_id: DefId)
                                 -> Result<ValueRef, ConstEvalFailure> {
     let instance = Instance::mono(ccx.tcx(), def_id);
-    MirConstContext::new(ccx, instance, vec![]).trans().map(|c| c.llval)
+    MirConstContext::trans_def(ccx, instance, vec![]).map(|c| c.llval)
 }

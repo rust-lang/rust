@@ -296,6 +296,7 @@ impl<'a,'tcx> Builder<'a,'tcx> {
         (Mir {
             basic_blocks: self.cfg.basic_blocks,
             scopes: self.scope_datas,
+            promoted: vec![],
             var_decls: self.var_decls,
             arg_decls: arg_decls,
             temp_decls: self.temp_decls,
