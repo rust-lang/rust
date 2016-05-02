@@ -67,10 +67,13 @@ pub fn extra_offset(text: &str, offset: Indent) -> usize {
 }
 
 #[inline]
-pub fn format_visibility(vis: Visibility) -> &'static str {
-    match vis {
-        Visibility::Public => "pub ",
-        Visibility::Inherited => "",
+pub fn format_visibility(vis: &Visibility) -> Option<&'static str> {
+    match *vis {
+        Visibility::Public => Some("pub "),
+        Visibility::Inherited => Some(""),
+        // FIXME(#970): Handle new visibility types.
+        Visibility::Crate => None,
+        Visibility::Restricted { .. } => None,
     }
 }
 

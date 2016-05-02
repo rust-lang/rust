@@ -152,7 +152,7 @@ impl<'a> FmtVisitor<'a> {
                                 sig.unsafety,
                                 sig.constness,
                                 sig.abi,
-                                vis.unwrap_or(ast::Visibility::Inherited),
+                                vis.unwrap_or(&ast::Visibility::Inherited),
                                 codemap::mk_sp(s.lo, b.span.lo),
                                 &b)
             }
@@ -203,7 +203,7 @@ impl<'a> FmtVisitor<'a> {
 
         match item.node {
             ast::ItemKind::Use(ref vp) => {
-                self.format_import(item.vis, vp, item.span);
+                self.format_import(&item.vis, vp, item.span);
             }
             ast::ItemKind::Impl(..) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -234,7 +234,7 @@ impl<'a> FmtVisitor<'a> {
                     ::items::format_struct(&context,
                                            "struct ",
                                            item.ident,
-                                           item.vis,
+                                           &item.vis,
                                            def,
                                            Some(generics),
                                            item.span,
@@ -250,12 +250,12 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Enum(ref def, ref generics) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.visit_enum(item.ident, item.vis, def, generics, item.span);
+                self.visit_enum(item.ident, &item.vis, def, generics, item.span);
                 self.last_pos = item.span.hi;
             }
             ast::ItemKind::Mod(ref module) => {
                 self.format_missing_with_indent(item.span.lo);
-                self.format_mod(module, item.vis, item.span, item.ident);
+                self.format_mod(module, &item.vis, item.span, item.ident);
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.format_missing_with_indent(item.span.lo);
@@ -267,7 +267,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Static(ref ty, mutability, ref expr) => {
                 let rewrite = rewrite_static("static",
-                                             item.vis,
+                                             &item.vis,
                                              item.ident,
                                              ty,
                                              mutability,
@@ -277,7 +277,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static("const",
-                                             item.vis,
+                                             &item.vis,
                                              item.ident,
                                              ty,
                                              ast::Mutability::Immutable,
@@ -294,7 +294,7 @@ impl<'a> FmtVisitor<'a> {
                                                     unsafety,
                                                     constness,
                                                     abi,
-                                                    item.vis),
+                                                    &item.vis),
                               decl,
                               body,
                               item.span,
@@ -306,7 +306,7 @@ impl<'a> FmtVisitor<'a> {
                                                  item.ident,
                                                  ty,
                                                  generics,
-                                                 item.vis,
+                                                 &item.vis,
                                                  item.span);
                 self.push_rewrite(item.span, rewrite);
             }
@@ -321,7 +321,7 @@ impl<'a> FmtVisitor<'a> {
         match ti.node {
             ast::TraitItemKind::Const(ref ty, ref expr_opt) => {
                 let rewrite = rewrite_static("const",
-                                             ast::Visibility::Inherited,
+                                             &ast::Visibility::Inherited,
                                              ti.ident,
                                              ty,
                                              ast::Mutability::Immutable,
@@ -359,7 +359,7 @@ impl<'a> FmtVisitor<'a> {
 
         match ii.node {
             ast::ImplItemKind::Method(ref sig, ref body) => {
-                self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(ii.vis)),
+                self.visit_fn(visit::FnKind::Method(ii.ident, sig, Some(&ii.vis)),
                               &sig.decl,
                               body,
                               ii.span,
@@ -367,7 +367,7 @@ impl<'a> FmtVisitor<'a> {
             }
             ast::ImplItemKind::Const(ref ty, ref expr) => {
                 let rewrite = rewrite_static("const",
-                                             ii.vis,
+                                             &ii.vis,
                                              ii.ident,
                                              ty,
                                              ast::Mutability::Immutable,
@@ -467,12 +467,14 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn format_mod(&mut self, m: &ast::Mod, vis: ast::Visibility, s: Span, ident: ast::Ident) {
+    fn format_mod(&mut self, m: &ast::Mod, vis: &ast::Visibility, s: Span, ident: ast::Ident) {
         // Decide whether this is an inline mod or an external mod.
         let local_file_name = self.codemap.span_to_filename(s);
         let is_internal = local_file_name == self.codemap.span_to_filename(m.inner);
 
-        self.buffer.push_str(utils::format_visibility(vis));
+        if let Some(vis) = utils::format_visibility(vis) {
+            self.buffer.push_str(vis);
+        }
         self.buffer.push_str("mod ");
         self.buffer.push_str(&ident.to_string());
 
@@ -506,8 +508,11 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing(filemap.end_pos);
     }
 
-    fn format_import(&mut self, vis: ast::Visibility, vp: &ast::ViewPath, span: Span) {
-        let vis = utils::format_visibility(vis);
+    fn format_import(&mut self, vis: &ast::Visibility, vp: &ast::ViewPath, span: Span) {
+        let vis = match utils::format_visibility(vis) {
+            Some(s) => s,
+            None => return,
+        };
         let mut offset = self.block_indent;
         offset.alignment += vis.len() + "use ".len();
         // 1 = ";"

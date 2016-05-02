@@ -126,7 +126,7 @@ impl<'a> FmtVisitor<'a> {
                                               // These are not actually rust functions,
                                               // but we format them as such.
                                               abi::Abi::Rust,
-                                              item.vis,
+                                              &item.vis,
                                               span,
                                               false,
                                               false);
@@ -142,15 +142,16 @@ impl<'a> FmtVisitor<'a> {
             ast::ForeignItemKind::Static(ref ty, is_mutable) => {
                 // FIXME(#21): we're dropping potential comments in between the
                 // function keywords here.
+                let vis = match format_visibility(&item.vis) {
+                    Some(s) => s,
+                    None => return,
+                };
                 let mut_str = if is_mutable {
                     "mut "
                 } else {
                     ""
                 };
-                let prefix = format!("{}static {}{}: ",
-                                     format_visibility(item.vis),
-                                     mut_str,
-                                     item.ident);
+                let prefix = format!("{}static {}{}: ", vis, mut_str, item.ident);
                 let offset = self.block_indent + prefix.len();
                 // 1 = ;
                 let width = self.config.max_width - offset.width() - 1;
@@ -179,7 +180,7 @@ impl<'a> FmtVisitor<'a> {
                       unsafety: ast::Unsafety,
                       constness: ast::Constness,
                       abi: abi::Abi,
-                      vis: ast::Visibility,
+                      vis: &ast::Visibility,
                       span: Span,
                       block: &ast::Block)
                       -> Option<String> {
@@ -244,7 +245,7 @@ impl<'a> FmtVisitor<'a> {
                                                        sig.unsafety,
                                                        sig.constness,
                                                        sig.abi,
-                                                       ast::Visibility::Inherited,
+                                                       &ast::Visibility::Inherited,
                                                        span,
                                                        false,
                                                        false));
@@ -303,11 +304,14 @@ impl<'a> FmtVisitor<'a> {
 
     pub fn visit_enum(&mut self,
                       ident: ast::Ident,
-                      vis: ast::Visibility,
+                      vis: &ast::Visibility,
                       enum_def: &ast::EnumDef,
                       generics: &ast::Generics,
                       span: Span) {
-        let header_str = format_header("enum ", ident, vis);
+        let header_str = match format_header("enum ", ident, vis) {
+            Some(s) => s,
+            None => return,
+        };
         self.buffer.push_str(&header_str);
 
         let enum_snippet = self.snippet(span);
@@ -414,7 +418,7 @@ impl<'a> FmtVisitor<'a> {
                 format_struct(&context,
                               "",
                               field.node.name,
-                              ast::Visibility::Inherited,
+                              &ast::Visibility::Inherited,
                               &field.node.data,
                               None,
                               field.span,
@@ -451,7 +455,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                ref self_ty,
                                ref items) = item.node {
         let mut result = String::new();
-        result.push_str(format_visibility(item.vis));
+        result.push_str(try_opt!(format_visibility(&item.vis)));
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
@@ -583,7 +587,7 @@ fn is_impl_single_line(context: &RewriteContext,
 pub fn format_struct(context: &RewriteContext,
                      item_name: &str,
                      ident: ast::Ident,
-                     vis: ast::Visibility,
+                     vis: &ast::Visibility,
                      struct_def: &ast::VariantData,
                      generics: Option<&ast::Generics>,
                      span: Span,
@@ -619,7 +623,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
            item.node {
         let mut result = String::new();
         let header = format!("{}{}trait {}",
-                             format_visibility(item.vis),
+                             try_opt!(format_visibility(&item.vis)),
                              format_unsafety(unsafety),
                              item.ident);
 
@@ -741,10 +745,10 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
     }
 }
 
-fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> Option<String> {
+fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> Option<String> {
     let mut result = String::with_capacity(1024);
 
-    let header_str = format_header(item_name, ident, vis);
+    let header_str = try_opt!(format_header(item_name, ident, vis));
     result.push_str(&header_str);
     result.push(';');
 
@@ -754,7 +758,7 @@ fn format_unit_struct(item_name: &str, ident: ast::Ident, vis: ast::Visibility) 
 fn format_struct_struct(context: &RewriteContext,
                         item_name: &str,
                         ident: ast::Ident,
-                        vis: ast::Visibility,
+                        vis: &ast::Visibility,
                         fields: &[ast::StructField],
                         generics: Option<&ast::Generics>,
                         span: Span,
@@ -762,7 +766,7 @@ fn format_struct_struct(context: &RewriteContext,
                         -> Option<String> {
     let mut result = String::with_capacity(1024);
 
-    let header_str = format_header(item_name, ident, vis);
+    let header_str = try_opt!(format_header(item_name, ident, vis));
     result.push_str(&header_str);
 
     let body_lo = context.codemap.span_after(span, "{");
@@ -804,13 +808,13 @@ fn format_struct_struct(context: &RewriteContext,
                              "}",
                              |field| {
         // Include attributes and doc comments, if present
-        if !field.node.attrs.is_empty() {
-            field.node.attrs[0].span.lo
+        if !field.attrs.is_empty() {
+            field.attrs[0].span.lo
         } else {
             field.span.lo
         }
     },
-                             |field| field.node.ty.span.hi,
+                             |field| field.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
                              context.codemap.span_after(span, "{"),
                              span.hi);
@@ -835,7 +839,7 @@ fn format_struct_struct(context: &RewriteContext,
 fn format_tuple_struct(context: &RewriteContext,
                        item_name: &str,
                        ident: ast::Ident,
-                       vis: ast::Visibility,
+                       vis: &ast::Visibility,
                        fields: &[ast::StructField],
                        generics: Option<&ast::Generics>,
                        span: Span,
@@ -843,7 +847,7 @@ fn format_tuple_struct(context: &RewriteContext,
                        -> Option<String> {
     let mut result = String::with_capacity(1024);
 
-    let header_str = format_header(item_name, ident, vis);
+    let header_str = try_opt!(format_header(item_name, ident, vis));
     result.push_str(&header_str);
 
     // FIXME(#919): don't lose comments on empty tuple structs.
@@ -890,13 +894,13 @@ fn format_tuple_struct(context: &RewriteContext,
                              ")",
                              |field| {
         // Include attributes and doc comments, if present
-        if !field.node.attrs.is_empty() {
-            field.node.attrs[0].span.lo
+        if !field.attrs.is_empty() {
+            field.attrs[0].span.lo
         } else {
             field.span.lo
         }
     },
-                             |field| field.node.ty.span.hi,
+                             |field| field.ty.span.hi,
                              |field| field.rewrite(context, item_budget, item_indent),
                              context.codemap.span_after(span, "("),
                              span.hi);
@@ -924,12 +928,12 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                           ident: ast::Ident,
                           ty: &ast::Ty,
                           generics: &ast::Generics,
-                          vis: ast::Visibility,
+                          vis: &ast::Visibility,
                           span: Span)
                           -> Option<String> {
     let mut result = String::new();
 
-    result.push_str(&format_visibility(vis));
+    result.push_str(&try_opt!(format_visibility(&vis)));
     result.push_str("type ");
     result.push_str(&ident.to_string());
 
@@ -991,21 +995,14 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
 impl Rewrite for ast::StructField {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
-        if contains_skip(&self.node.attrs) {
-            let span = context.snippet(mk_sp(self.node.attrs[0].span.lo, self.span.hi));
+        if contains_skip(&self.attrs) {
+            let span = context.snippet(mk_sp(self.attrs[0].span.lo, self.span.hi));
             return wrap_str(span, context.config.max_width, width, offset);
         }
 
-        let name = match self.node.kind {
-            ast::StructFieldKind::NamedField(ident, _) => Some(ident.to_string()),
-            ast::StructFieldKind::UnnamedField(_) => None,
-        };
-        let vis = match self.node.kind {
-            ast::StructFieldKind::NamedField(_, vis) |
-            ast::StructFieldKind::UnnamedField(vis) => format_visibility(vis),
-        };
-        let mut attr_str = try_opt!(self.node
-            .attrs
+        let name = self.ident;
+        let vis = try_opt!(format_visibility(&self.vis));
+        let mut attr_str = try_opt!(self.attrs
             .rewrite(context, context.config.max_width - offset.width(), offset));
         if !attr_str.is_empty() {
             attr_str.push('\n');
@@ -1019,13 +1016,13 @@ impl Rewrite for ast::StructField {
 
         let last_line_width = last_line_width(&result);
         let budget = try_opt!(width.checked_sub(last_line_width));
-        let rewrite = try_opt!(self.node.ty.rewrite(context, budget, offset + last_line_width));
+        let rewrite = try_opt!(self.ty.rewrite(context, budget, offset + last_line_width));
         Some(result + &rewrite)
     }
 }
 
 pub fn rewrite_static(prefix: &str,
-                      vis: ast::Visibility,
+                      vis: &ast::Visibility,
                       ident: ast::Ident,
                       ty: &ast::Ty,
                       mutability: ast::Mutability,
@@ -1033,7 +1030,7 @@ pub fn rewrite_static(prefix: &str,
                       context: &RewriteContext)
                       -> Option<String> {
     let prefix = format!("{}{} {}{}: ",
-                         format_visibility(vis),
+                         try_opt!(format_visibility(vis)),
                          prefix,
                          format_mutability(mutability),
                          ident);
@@ -1239,7 +1236,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                    unsafety: ast::Unsafety,
                    constness: ast::Constness,
                    abi: abi::Abi,
-                   vis: ast::Visibility,
+                   vis: &ast::Visibility,
                    span: Span,
                    newline_brace: bool,
                    has_body: bool)
@@ -1252,7 +1249,7 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     let mut result = String::with_capacity(1024);
     // Vis unsafety abi.
-    result.push_str(format_visibility(vis));
+    result.push_str(try_opt!(format_visibility(vis)));
 
     if let ast::Constness::Const = constness {
         result.push_str("const ");
@@ -1808,8 +1805,8 @@ fn rewrite_where_clause(context: &RewriteContext,
     }
 }
 
-fn format_header(item_name: &str, ident: ast::Ident, vis: ast::Visibility) -> String {
-    format!("{}{}{}", format_visibility(vis), item_name, ident)
+fn format_header(item_name: &str, ident: ast::Ident, vis: &ast::Visibility) -> Option<String> {
+    Some(format!("{}{}{}", try_opt!(format_visibility(vis)), item_name, ident))
 }
 
 fn format_generics(context: &RewriteContext,
