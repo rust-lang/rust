@@ -408,6 +408,7 @@ pub enum ErrKind {
     TypeMismatch(String, ConstInt),
     BadType(ConstVal),
     ErroneousReferencedConstant(Box<ConstEvalErr>),
+    BadCharValue,
 }
 
 impl From<ConstMathErr> for ErrKind {
@@ -468,6 +469,7 @@ impl ConstEvalErr {
             },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
             ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
+            BadCharValue => "invalid numeric value for char".into_cow(),
         }
     }
 }
@@ -1075,23 +1077,19 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
                 Err(_) => Ok(Integral(Usize(ConstUsize::Us32(v as u32)))),
             }
         },
-        ty::TyFloat(ast::FloatTy::F64) if val.is_negative() => {
-            // FIXME: this could probably be prettier
-            // there's no easy way to turn an `Infer` into a f64
-            let val = (-val).map_err(Math)?;
-            let val = val.to_u64().unwrap() as f64;
-            let val = -val;
-            Ok(Float(val))
+        ty::TyFloat(ast::FloatTy::F64) => match val.erase_type() {
+            Infer(u) => Ok(Float(u as f64)),
+            InferSigned(i) => Ok(Float(i as f64)),
+            _ => unreachable!(),
         },
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64)),
-        ty::TyFloat(ast::FloatTy::F32) if val.is_negative() => {
-            let val = (-val).map_err(Math)?;
-            let val = val.to_u64().unwrap() as f32;
-            let val = -val;
-            Ok(Float(val as f64))
+        ty::TyFloat(ast::FloatTy::F32) => match val.erase_type() {
+            Infer(u) => Ok(Float(u as f32 as f64)),
+            InferSigned(i) => Ok(Float(i as f32 as f64)),
+            _ => unreachable!(),
         },
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(val.to_u64().unwrap() as f32 as f64)),
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
+        ty::TyChar if v as u32 as u64 == v => ::std::char::from_u32(v as u32).map(Char)
+                                                                             .ok_or(BadCharValue),
         _ => Err(CannotCast),
     }
 }
