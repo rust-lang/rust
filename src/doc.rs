@@ -117,6 +117,15 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
         }
     }
 
+    #[allow(cast_possible_truncation)]
+    fn word_span(mut span: Span, begin: usize, end: usize) -> Span {
+        debug_assert_eq!(end as u32 as usize, end);
+        debug_assert_eq!(begin as u32 as usize, begin);
+        span.hi = span.lo + BytePos(end as u32);
+        span.lo = span.lo + BytePos(begin as u32);
+        span
+    }
+
     let len = doc.len();
     let mut chars = doc.char_indices().peekable();
     let mut current_word_begin = 0;
@@ -133,6 +142,7 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                     '[' => {
                         let end = jump_to!(chars, ']', len);
                         let link_text = &doc[current_word_begin + 1..end];
+                        let word_span = word_span(span, current_word_begin + 1, end + 1);
 
                         match chars.peek() {
                             Some(&(_, c)) => {
@@ -143,18 +153,18 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                                 match c {
                                     '(' => { // inline link
                                         current_word_begin = jump_to!(chars, ')', len);
-                                        check_doc(cx, valid_idents, link_text, span);
+                                        check_doc(cx, valid_idents, link_text, word_span);
                                     }
                                     '[' => { // reference link
                                         current_word_begin = jump_to!(chars, ']', len);
-                                        check_doc(cx, valid_idents, link_text, span);
+                                        check_doc(cx, valid_idents, link_text, word_span);
                                     }
                                     ':' => { // reference link
                                         current_word_begin = jump_to!(chars, '\n', len);
                                     }
                                     _ => { // automatic reference link
                                         current_word_begin = jump_to!(@next_char, chars, len);
-                                        check_doc(cx, valid_idents, link_text, span);
+                                        check_doc(cx, valid_idents, link_text, word_span);
                                     }
                                 }
                             }
@@ -166,8 +176,8 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                             Some((end, _)) => end,
                             None => len,
                         };
-
-                        check_word(cx, valid_idents, &doc[current_word_begin..end], span);
+                        let word_span = word_span(span, current_word_begin, end);
+                        check_word(cx, valid_idents, &doc[current_word_begin..end], word_span);
                         current_word_begin = jump_to!(@next_char, chars, len);
                     }
                 }
