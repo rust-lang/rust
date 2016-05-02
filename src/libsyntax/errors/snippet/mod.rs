@@ -38,13 +38,13 @@ pub struct FileInfo {
     lines: Vec<Line>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct Line {
     line_index: usize,
     annotations: Vec<Annotation>,
 }
 
-#[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 struct Annotation {
     /// Start column, 0-based indexing -- counting *characters*, not
     /// utf-8 bytes. Note that it is important that this field goes
@@ -492,6 +492,9 @@ impl FileInfo {
                             let gap_amount =
                                 rendered_lines[0].text[0].text.len() +
                                 rendered_lines[0].text[1].text.len();
+                            assert!(rendered_lines.len() >= 2,
+                                    "no annotations resulted from: {:?}",
+                                    line);
                             for i in 1..rendered_lines.len() {
                                 rendered_lines[i].text.insert(0, StyledString {
                                     text: vec![" "; gap_amount].join(""),
