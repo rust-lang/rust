@@ -814,7 +814,10 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           debug!("const call({:?})", call_args);
           eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
       },
-      hir::ExprLit(ref lit) => lit_to_const(&lit.node, tcx, ety, lit.span)?,
+      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety, lit.span) {
+          Ok(val) => val,
+          Err(err) => signal!(e, err),
+      },
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
@@ -920,7 +923,10 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
     };
 
     match (ety.map(|t| &t.sty), result) {
-        (Some(ref ty_hint), Integral(i)) => Ok(Integral(infer(i, tcx, ty_hint, e.span)?)),
+        (Some(ref ty_hint), Integral(i)) => match infer(i, tcx, ty_hint) {
+            Ok(inferred) => Ok(Integral(inferred)),
+            Err(err) => signal!(e, err),
+        },
         (_, result) => Ok(result),
     }
 }
@@ -929,14 +935,8 @@ fn infer<'tcx>(
     i: ConstInt,
     tcx: &TyCtxt<'tcx>,
     ty_hint: &ty::TypeVariants<'tcx>,
-    span: Span
-) -> Result<ConstInt, ConstEvalErr> {
+) -> Result<ConstInt, ErrKind> {
     use syntax::ast::*;
-
-    let err = |e| ConstEvalErr {
-        span: span,
-        kind: e,
-    };
 
     match (ty_hint, i) {
         (&ty::TyInt(IntTy::I8), result @ I8(_)) => Ok(result),
@@ -983,17 +983,17 @@ fn infer<'tcx>(
                 Err(_) => Ok(Usize(ConstUsize::Us32(i as u32))),
             }
         },
-        (&ty::TyUint(_), InferSigned(_)) => Err(err(IntermediateUnsignedNegative)),
+        (&ty::TyUint(_), InferSigned(_)) => Err(IntermediateUnsignedNegative),
 
-        (&ty::TyInt(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
-        (&ty::TyUint(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
+        (&ty::TyInt(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
+        (&ty::TyUint(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
 
         (&ty::TyEnum(ref adt, _), i) => {
             let hints = tcx.lookup_repr_hints(adt.did);
             let int_ty = tcx.enum_repr_type(hints.iter().next());
-            infer(i, tcx, &int_ty.to_ty(tcx).sty, span)
+            infer(i, tcx, &int_ty.to_ty(tcx).sty)
         },
-        (_, i) => Err(err(BadType(ConstVal::Integral(i)))),
+        (_, i) => Err(BadType(ConstVal::Integral(i))),
     }
 }
 
@@ -1125,7 +1125,7 @@ fn lit_to_const<'tcx>(lit: &ast::LitKind,
                       tcx: &TyCtxt<'tcx>,
                       ty_hint: Option<Ty<'tcx>>,
                       span: Span,
-                      ) -> Result<ConstVal, ConstEvalErr> {
+                      ) -> Result<ConstVal, ErrKind> {
     use syntax::ast::*;
     use syntax::ast::LitIntType::*;
     match *lit {
@@ -1133,28 +1133,28 @@ fn lit_to_const<'tcx>(lit: &ast::LitKind,
         LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
         LitKind::Byte(n) => Ok(Integral(U8(n))),
         LitKind::Int(n, Signed(ity)) => {
-            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
+            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity)).map(Integral)
         },
 
         LitKind::Int(n, Unsuffixed) => {
             match ty_hint.map(|t| &t.sty) {
                 Some(&ty::TyInt(ity)) => {
-                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
+                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity)).map(Integral)
                 },
                 Some(&ty::TyUint(uty)) => {
-                    infer(Infer(n), tcx, &ty::TyUint(uty), span).map(Integral)
+                    infer(Infer(n), tcx, &ty::TyUint(uty)).map(Integral)
                 },
                 None => Ok(Integral(Infer(n))),
                 Some(&ty::TyEnum(ref adt, _)) => {
                     let hints = tcx.lookup_repr_hints(adt.did);
                     let int_ty = tcx.enum_repr_type(hints.iter().next());
-                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty, span).map(Integral)
+                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty).map(Integral)
                 },
                 Some(ty_hint) => bug!("bad ty_hint: {:?}, {:?}", ty_hint, lit),
             }
         },
         LitKind::Int(n, Unsigned(ity)) => {
-            infer(Infer(n), tcx, &ty::TyUint(ity), span).map(Integral)
+            infer(Infer(n), tcx, &ty::TyUint(ity)).map(Integral)
         },
 
         LitKind::Float(ref n, _) |
