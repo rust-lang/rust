@@ -24,6 +24,8 @@ fn f10() {
     };
 
     touch(&x); //~ ERROR use of partially moved value: `x`
+    //~^ value used here after move
+    //~| move occurs because `x.f` has type `std::string::String`
 }
 
 fn main() {}

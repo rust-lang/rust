@@ -12,7 +12,9 @@ struct NoCopy;
 fn main() {
    let x = NoCopy;
    let f = move || { let y = x; };
-   //~^ NOTE `x` moved into closure environment here because it has type `NoCopy`
+   //~^ value moved (into closure) here
    let z = x;
    //~^ ERROR use of moved value: `x`
+   //~| value used here after move
+   //~| move occurs because `x` has type `NoCopy`
 }

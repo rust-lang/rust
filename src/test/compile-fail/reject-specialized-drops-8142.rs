@@ -38,8 +38,8 @@ impl<'ml>               Drop for M<'ml>         { fn drop(&mut self) { } } // AC
 
 impl                    Drop for N<'static>     { fn drop(&mut self) { } } // REJECT
 //~^ ERROR mismatched types
-//~| expected `N<'n>`
-//~|    found `N<'static>`
+//~| expected type `N<'n>`
+//~|    found type `N<'static>`
 
 impl<Cok_nobound> Drop for O<Cok_nobound> { fn drop(&mut self) { } } // ACCEPT
 

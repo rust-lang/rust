@@ -11,9 +11,8 @@
 fn main() {
     let a = if true { true };
     //~^ ERROR if may be missing an else clause
-    //~| expected `()`
-    //~| found `bool`
-    //~| expected ()
-    //~| found bool
+    //~| expected type `()`
+    //~| found type `bool`
+    //~| expected (), found bool
     println!("{}", a);
 }

@@ -764,15 +764,14 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn suggest_macro_name(&mut self,
                               name: &str,
-                              span: Span,
                               err: &mut DiagnosticBuilder<'a>) {
         let names = &self.syntax_env.names;
         if let Some(suggestion) = find_best_match_for_name(names.iter(), name, None) {
             if suggestion != name {
-                err.fileline_help(span, &format!("did you mean `{}!`?", suggestion));
+                err.help(&format!("did you mean `{}!`?", suggestion));
             } else {
-                err.fileline_help(span, &format!("have you added the `#[macro_use]` on the \
-                                                  module/import?"));
+                err.help(&format!("have you added the `#[macro_use]` on the \
+                                   module/import?"));
             }
         }
     }

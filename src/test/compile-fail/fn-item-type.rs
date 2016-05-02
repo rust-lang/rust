@@ -22,26 +22,22 @@ impl<T> Foo for T { /* `foo` is still default here */ }
 fn main() {
     eq(foo::<u8>, bar::<u8>);
     //~^ ERROR mismatched types
-    //~|  expected `fn(isize) -> isize {foo::<u8>}`
-    //~|  found `fn(isize) -> isize {bar::<u8>}`
-    //~|  expected fn item
-    //~|  found a different fn item
+    //~|  expected type `fn(isize) -> isize {foo::<u8>}`
+    //~|  found type `fn(isize) -> isize {bar::<u8>}`
+    //~|  expected fn item, found a different fn item
 
     eq(foo::<u8>, foo::<i8>);
     //~^ ERROR mismatched types
-    //~|  expected `fn(isize) -> isize {foo::<u8>}`
-    //~|  found `fn(isize) -> isize {foo::<i8>}`
+    //~| expected u8, found i8
 
     eq(bar::<String>, bar::<Vec<u8>>);
     //~^ ERROR mismatched types
-    //~|  expected `fn(isize) -> isize {bar::<std::string::String>}`
-    //~|  found `fn(isize) -> isize {bar::<std::vec::Vec<u8>>}`
-    //~|  expected struct `std::string::String`
-    //~|  found struct `std::vec::Vec`
+    //~|  expected type `fn(isize) -> isize {bar::<std::string::String>}`
+    //~|  found type `fn(isize) -> isize {bar::<std::vec::Vec<u8>>}`
+    //~|  expected struct `std::string::String`, found struct `std::vec::Vec`
 
     // Make sure we distinguish between trait methods correctly.
     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
     //~^ ERROR mismatched types
-    //~|  expected `fn() {<u8 as Foo>::foo}`
-    //~|  found `fn() {<u16 as Foo>::foo}`
+    //~| expected u8, found u16
 }

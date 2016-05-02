@@ -155,8 +155,7 @@ impl<'tcx> CastCheck<'tcx> {
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None)
-                    .fileline_help(self.span,
-                        &format!("cast through {} first", match e {
+                    .help(&format!("cast through {} first", match e {
                             CastError::NeedViaPtr => "a raw pointer",
                             CastError::NeedViaThinPtr => "a thin pointer",
                             CastError::NeedViaInt => "an integer",
@@ -167,7 +166,7 @@ impl<'tcx> CastCheck<'tcx> {
             }
             CastError::CastToBool => {
                 struct_span_err!(fcx.tcx().sess, self.span, E0054, "cannot cast as `bool`")
-                    .fileline_help(self.span, "compare with zero instead")
+                    .help("compare with zero instead")
                     .emit();
             }
             CastError::CastToChar => {
@@ -202,7 +201,7 @@ impl<'tcx> CastCheck<'tcx> {
                             actual,
                             fcx.infcx().ty_to_string(self.cast_ty))
                 }, self.expr_ty, None)
-                    .fileline_note(self.span, "vtable kinds may not match")
+                    .note("vtable kinds may not match")
                     .emit();
             }
         }

@@ -222,7 +222,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac,
                 pth.span,
                 &format!("macro undefined: '{}!'",
                         &extname));
-            fld.cx.suggest_macro_name(&extname.as_str(), pth.span, &mut err);
+            fld.cx.suggest_macro_name(&extname.as_str(), &mut err);
             err.emit();
 
             // let compilation continue
@@ -355,8 +355,8 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
                                         "macro_escape is a deprecated synonym for macro_use");
             is_use = true;
             if let ast::AttrStyle::Inner = attr.node.style {
-                err.fileline_help(attr.span, "consider an outer attribute, \
-                                              #[macro_use] mod ...").emit();
+                err.help("consider an outer attribute, \
+                          #[macro_use] mod ...").emit();
             } else {
                 err.emit();
             }

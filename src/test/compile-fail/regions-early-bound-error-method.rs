@@ -29,8 +29,8 @@ impl<'a> Box<'a> {
     fn or<'b,G:GetRef<'b>>(&self, g2: G) -> &'a isize {
         g2.get()
         //~^ ERROR mismatched types
-        //~| expected `&'a isize`
-        //~| found `&'b isize`
+        //~| expected type `&'a isize`
+        //~| found type `&'b isize`
         //~| lifetime mismatch
 
     }
