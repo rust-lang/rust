@@ -29,12 +29,6 @@
 // are unique). Every new node must have a unique id. Avoid cloning HIR nodes.
 // If you do, you must then set the new node's id to a fresh one.
 //
-// We must also cache gensym'ed Idents to ensure that we get the same Ident
-// every time we lower a node with gensym'ed names. One consequence of this is
-// that you can only gensym a name once in a lowering (you don't need to worry
-// about nested lowering though). That's because we cache based on the name and
-// the currently cached node id, which is unique per lowered node.
-//
 // Spans are used for error messages and for tools to map semantics back to
 // source code. It is therefore not as important with spans as ids to be strict
 // about use (you can't break the compiler by screwing up a span). Obviously, a
