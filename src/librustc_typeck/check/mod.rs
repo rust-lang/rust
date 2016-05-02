@@ -3045,12 +3045,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = self.tcx().item_path_str(did);
-            let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
-            self.tcx().sess.span_err(expr.span, &msg);
             self.write_ty(expr.id, field_ty);
+            let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
+            let mut err = self.tcx().sess.struct_span_err(expr.span, &msg);
+            // Also check if an accessible method exists, which is often what is meant.
+            if self.method_exists(field.span, field.node, expr_t, expr.id, false) {
+                err.note(&format!("a method `{}` also exists, perhaps you wish to call it",
+                                  field.node));
+            }
+            err.emit();
         } else if field.node == keywords::Invalid.name() {
             self.write_error(expr.id);
-        } else if self.method_exists(field.span, field.node, expr_t, expr.id) {
+        } else if self.method_exists(field.span, field.node, expr_t, expr.id, true) {
             self.type_error_struct(field.span, |actual| {
                 format!("attempted to take value of method `{}` on type \
                          `{}`", field.node, actual)
