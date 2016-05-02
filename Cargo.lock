@@ -9,7 +9,7 @@ dependencies = [
  "regex 0.1.63 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "strings 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "syntex_syntax 0.31.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "syntex_syntax 0.32.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "term 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "toml 0.1.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-segmentation 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -111,7 +111,7 @@ dependencies = [
 
 [[package]]
 name = "syntex_syntax"
-version = "0.31.0"
+version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "bitflags 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",

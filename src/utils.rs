@@ -72,7 +72,7 @@ pub fn format_visibility(vis: &Visibility) -> Option<&'static str> {
         Visibility::Public => Some("pub "),
         Visibility::Inherited => Some(""),
         // FIXME(#970): Handle new visibility types.
-        Visibility::Crate => None,
+        Visibility::Crate(_) => None,
         Visibility::Restricted { .. } => None,
     }
 }
