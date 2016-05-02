@@ -177,14 +177,19 @@ impl<'a> FmtVisitor<'a> {
     }
 
     fn visit_item(&mut self, item: &ast::Item) {
-        // Don't look at attributes for modules (except for rustfmt_skip).
-        // We want to avoid looking at attributes in another file, which the AST
-        // doesn't distinguish.
-        // FIXME This is overly conservative and means we miss attributes on
-        // inline modules.
+        // Only look at attributes for modules (except for rustfmt_skip) if the
+        // module is inline. We want to avoid looking at attributes in another
+        // file, which the AST doesn't distinguish.
         match item.node {
-            ast::ItemKind::Mod(_) => {
-                if utils::contains_skip(&item.attrs) {
+            ast::ItemKind::Mod(ref m) => {
+                let outer_file = self.codemap.lookup_char_pos(item.span.lo).file;
+                let inner_file = self.codemap.lookup_char_pos(m.inner.lo).file;
+                if outer_file.name == inner_file.name {
+                    if self.visit_attrs(&item.attrs) {
+                        self.push_rewrite(item.span, None);
+                        return;
+                    }
+                } else if utils::contains_skip(&item.attrs) {
                     return;
                 }
             }
@@ -551,7 +556,7 @@ impl<'a> Rewrite for [ast::Attribute] {
         let indent = offset.to_string(context.config);
 
         for (i, a) in self.iter().enumerate() {
-            let a_str = context.snippet(a.span);
+            let mut a_str = context.snippet(a.span);
 
             // Write comments and blank lines between attributes.
             if i > 0 {
@@ -564,7 +569,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                 if !comment.is_empty() {
                     let comment = try_opt!(rewrite_comment(comment,
                                                            false,
-                                                           context.config.max_width -
+                                                           context.config.ideal_width -
                                                            offset.width(),
                                                            offset,
                                                            context.config));
@@ -575,6 +580,14 @@ impl<'a> Rewrite for [ast::Attribute] {
                     result.push('\n');
                 }
                 result.push_str(&indent);
+            }
+
+            if a_str.starts_with("//") {
+                a_str = try_opt!(rewrite_comment(&a_str,
+                                                 false,
+                                                 context.config.ideal_width - offset.width(),
+                                                 offset,
+                                                 context.config));
             }
 
             // Write the attribute itself.

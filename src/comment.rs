@@ -82,7 +82,7 @@ pub fn rewrite_comment(orig: &str,
         })
         .map(left_trim_comment_line)
         .map(|line| {
-            if line_breaks == 0 {
+            if orig.starts_with("/*") && line_breaks == 0 {
                 line.trim_left()
             } else {
                 line
@@ -529,10 +529,10 @@ pub fn recover_comment_removed(new: String,
 
 /// Return true if the two strings of code have the same payload of comments.
 /// The payload of comments is everything in the string except:
-/// 	- actual code (not comments)
-/// 	- comment start/end marks
-///		- whitespace
-///		- '*' at the beginning of lines in block comments
+///     - actual code (not comments)
+///     - comment start/end marks
+///     - whitespace
+///     - '*' at the beginning of lines in block comments
 fn changed_comment_content(orig: &str, new: &str) -> bool {
     // Cannot write this as a fn since we cannot return types containing closures
     let code_comment_content = |code| {
