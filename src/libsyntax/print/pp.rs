@@ -61,8 +61,9 @@
 //! line (which it can't) and so naturally place the content on its own line to
 //! avoid combining it with other lines and making matters even worse.
 
+use std::collections::VecDeque;
+use std::fmt;
 use std::io;
-use std::string;
 
 #[derive(Clone, Copy, PartialEq)]
 pub enum Breaks {
@@ -112,35 +113,30 @@ impl Token {
     }
 }
 
-pub fn tok_str(token: &Token) -> String {
-    match *token {
-        Token::String(ref s, len) => format!("STR({},{})", s, len),
-        Token::Break(_) => "BREAK".to_string(),
-        Token::Begin(_) => "BEGIN".to_string(),
-        Token::End => "END".to_string(),
-        Token::Eof => "EOF".to_string()
+impl fmt::Display for Token {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Token::String(ref s, len) => write!(f, "STR({},{})", s, len),
+            Token::Break(_) => f.write_str("BREAK"),
+            Token::Begin(_) => f.write_str("BEGIN"),
+            Token::End => f.write_str("END"),
+            Token::Eof => f.write_str("EOF"),
+        }
     }
 }
 
-pub fn buf_str(toks: &[Token],
-               szs: &[isize],
-               left: usize,
-               right: usize,
-               lim: usize)
-               -> String {
+fn buf_str(toks: &[Token], szs: &[isize], left: usize, right: usize, lim: usize) -> String {
     let n = toks.len();
     assert_eq!(n, szs.len());
     let mut i = left;
     let mut l = lim;
-    let mut s = string::String::from("[");
+    let mut s = String::from("[");
     while i != right && l != 0 {
         l -= 1;
         if i != left {
             s.push_str(", ");
         }
-        s.push_str(&format!("{}={}",
-                           szs[i],
-                           tok_str(&toks[i])));
+        s.push_str(&format!("{}={}", szs[i], &toks[i]));
         i += 1;
         i %= n;
     }
@@ -169,7 +165,7 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
     debug!("mk_printer {}", linewidth);
     let token = vec![Token::Eof; n];
     let size = vec![0; n];
-    let scan_stack = vec![0; n];
+    let scan_stack = VecDeque::with_capacity(n);
     Printer {
         out: out,
         buf_len: n,
@@ -182,9 +178,6 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
         left_total: 0,
         right_total: 0,
         scan_stack: scan_stack,
-        scan_stack_empty: true,
-        top: 0,
-        bottom: 0,
         print_stack: Vec::new(),
         pending_indentation: 0
     }
@@ -246,9 +239,8 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
 /// approximation for purposes of line breaking).
 ///
 /// The "input side" of the printer is managed as an abstract process called
-/// SCAN, which uses 'scan_stack', 'scan_stack_empty', 'top' and 'bottom', to
-/// manage calculating 'size'. SCAN is, in other words, the process of
-/// calculating 'size' entries.
+/// SCAN, which uses 'scan_stack', to manage calculating 'size'. SCAN is, in
+/// other words, the process of calculating 'size' entries.
 ///
 /// The "output side" of the printer is managed by an abstract process called
 /// PRINT, which uses 'print_stack', 'margin' and 'space' to figure out what to
@@ -291,13 +283,7 @@ pub struct Printer<'a> {
     /// Begin (if there is any) on top of it. Stuff is flushed off the
     /// bottom as it becomes irrelevant due to the primary ring-buffer
     /// advancing.
-    scan_stack: Vec<usize> ,
-    /// Top==bottom disambiguator
-    scan_stack_empty: bool,
-    /// Index of top of scan_stack
-    top: usize,
-    /// Index of bottom of scan_stack
-    bottom: usize,
+    scan_stack: VecDeque<usize> ,
     /// Stack of blocks-in-progress being flushed by print
     print_stack: Vec<PrintStackElem> ,
     /// Buffered indentation to avoid writing trailing whitespace
@@ -316,7 +302,7 @@ impl<'a> Printer<'a> {
         debug!("pp Vec<{},{}>", self.left, self.right);
         match token {
           Token::Eof => {
-            if !self.scan_stack_empty {
+            if !self.scan_stack.is_empty() {
                 self.check_stack(0);
                 self.advance_left()?;
             }
@@ -324,7 +310,7 @@ impl<'a> Printer<'a> {
             Ok(())
           }
           Token::Begin(b) => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 self.left_total = 1;
                 self.right_total = 1;
                 self.left = 0;
@@ -339,7 +325,7 @@ impl<'a> Printer<'a> {
             Ok(())
           }
           Token::End => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 debug!("pp End/print Vec<{},{}>", self.left, self.right);
                 self.print(token, 0)
             } else {
@@ -353,7 +339,7 @@ impl<'a> Printer<'a> {
             }
           }
           Token::Break(b) => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 self.left_total = 1;
                 self.right_total = 1;
                 self.left = 0;
@@ -370,7 +356,7 @@ impl<'a> Printer<'a> {
             Ok(())
           }
           Token::String(s, len) => {
-            if self.scan_stack_empty {
+            if self.scan_stack.is_empty() {
                 debug!("pp String('{}')/print Vec<{},{}>",
                        s, self.left, self.right);
                 self.print(Token::String(s, len), len)
@@ -392,12 +378,10 @@ impl<'a> Printer<'a> {
         if self.right_total - self.left_total > self.space {
             debug!("scan window is {}, longer than space on line ({})",
                    self.right_total - self.left_total, self.space);
-            if !self.scan_stack_empty {
-                if self.left == self.scan_stack[self.bottom] {
-                    debug!("setting {} to infinity and popping", self.left);
-                    let scanned = self.scan_pop_bottom();
-                    self.size[scanned] = SIZE_INFINITY;
-                }
+            if Some(&self.left) == self.scan_stack.back() {
+                debug!("setting {} to infinity and popping", self.left);
+                let scanned = self.scan_pop_bottom();
+                self.size[scanned] = SIZE_INFINITY;
             }
             self.advance_left()?;
             if self.left != self.right {
@@ -408,43 +392,21 @@ impl<'a> Printer<'a> {
     }
     pub fn scan_push(&mut self, x: usize) {
         debug!("scan_push {}", x);
-        if self.scan_stack_empty {
-            self.scan_stack_empty = false;
-        } else {
-            self.top += 1;
-            self.top %= self.buf_len;
-            assert!((self.top != self.bottom));
-        }
-        self.scan_stack[self.top] = x;
+        self.scan_stack.push_front(x);
     }
     pub fn scan_pop(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
-        let x = self.scan_stack[self.top];
-        if self.top == self.bottom {
-            self.scan_stack_empty = true;
-        } else {
-            self.top += self.buf_len - 1; self.top %= self.buf_len;
-        }
-        return x;
+        self.scan_stack.pop_front().unwrap()
     }
     pub fn scan_top(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
-        return self.scan_stack[self.top];
+        *self.scan_stack.front().unwrap()
     }
     pub fn scan_pop_bottom(&mut self) -> usize {
-        assert!((!self.scan_stack_empty));
-        let x = self.scan_stack[self.bottom];
-        if self.top == self.bottom {
-            self.scan_stack_empty = true;
-        } else {
-            self.bottom += 1; self.bottom %= self.buf_len;
-        }
-        return x;
+        self.scan_stack.pop_back().unwrap()
     }
     pub fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_len;
-        assert!((self.right != self.left));
+        assert!(self.right != self.left);
     }
     pub fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
@@ -481,7 +443,7 @@ impl<'a> Printer<'a> {
         Ok(())
     }
     pub fn check_stack(&mut self, k: isize) {
-        if !self.scan_stack_empty {
+        if !self.scan_stack.is_empty() {
             let x = self.scan_top();
             match self.token[x] {
                 Token::Begin(_) => {
@@ -512,19 +474,16 @@ impl<'a> Printer<'a> {
         let ret = write!(self.out, "\n");
         self.pending_indentation = 0;
         self.indent(amount);
-        return ret;
+        ret
     }
     pub fn indent(&mut self, amount: isize) {
         debug!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
     pub fn get_top(&mut self) -> PrintStackElem {
-        let print_stack = &mut self.print_stack;
-        let n = print_stack.len();
-        if n != 0 {
-            (*print_stack)[n - 1]
-        } else {
-            PrintStackElem {
+        match self.print_stack.last() {
+            Some(el) => *el,
+            None => PrintStackElem {
                 offset: 0,
                 pbreak: PrintStackBreak::Broken(Breaks::Inconsistent)
             }
@@ -538,7 +497,7 @@ impl<'a> Printer<'a> {
         write!(self.out, "{}", s)
     }
     pub fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
-        debug!("print {} {} (remaining line space={})", tok_str(&token), l,
+        debug!("print {} {} (remaining line space={})", token, l,
                self.space);
         debug!("{}", buf_str(&self.token,
                              &self.size,
@@ -566,7 +525,7 @@ impl<'a> Printer<'a> {
           Token::End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!((!print_stack.is_empty()));
+            assert!(!print_stack.is_empty());
             print_stack.pop().unwrap();
             Ok(())
           }
@@ -603,12 +562,12 @@ impl<'a> Printer<'a> {
               }
             }
           }
-          Token::String(s, len) => {
+          Token::String(ref s, len) => {
             debug!("print String({})", s);
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(&s[..])
+            self.print_str(s)
           }
           Token::Eof => {
             // Eof should never get here.
@@ -652,15 +611,15 @@ pub fn eof(p: &mut Printer) -> io::Result<()> {
 }
 
 pub fn word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), wrd.len() as isize))
+    p.pretty_print(Token::String(wrd.to_string(), wrd.len() as isize))
 }
 
 pub fn huge_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), SIZE_INFINITY))
+    p.pretty_print(Token::String(wrd.to_string(), SIZE_INFINITY))
 }
 
 pub fn zero_word(p: &mut Printer, wrd: &str) -> io::Result<()> {
-    p.pretty_print(Token::String(/* bad */ wrd.to_string(), 0))
+    p.pretty_print(Token::String(wrd.to_string(), 0))
 }
 
 pub fn spaces(p: &mut Printer, n: usize) -> io::Result<()> {
