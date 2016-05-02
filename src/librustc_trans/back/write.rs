@@ -140,6 +140,15 @@ fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
       config::OptLevel::Less => llvm::CodeGenLevelLess,
       config::OptLevel::Default => llvm::CodeGenLevelDefault,
       config::OptLevel::Aggressive => llvm::CodeGenLevelAggressive,
+      _ => llvm::CodeGenLevelDefault,
+    }
+}
+
+fn get_llvm_opt_size(optimize: config::OptLevel) -> llvm::CodeGenOptSize {
+    match optimize {
+      config::OptLevel::Size => llvm::CodeGenOptSizeDefault,
+      config::OptLevel::SizeMin => llvm::CodeGenOptSizeAggressive,
+      _ => llvm::CodeGenOptSizeNone,
     }
 }
 
@@ -237,6 +246,9 @@ pub struct ModuleConfig {
     /// absolutely no optimizations (used for the metadata module).
     opt_level: Option<llvm::CodeGenOptLevel>,
 
+    /// Some(level) to optimize binary size, or None to not affect program size.
+    opt_size: Option<llvm::CodeGenOptSize>,
+
     // Flags indicating which outputs to produce.
     emit_no_opt_bc: bool,
     emit_bc: bool,
@@ -268,6 +280,7 @@ impl ModuleConfig {
             tm: tm,
             passes: passes,
             opt_level: None,
+            opt_size: None,
 
             emit_no_opt_bc: false,
             emit_bc: false,
@@ -637,6 +650,7 @@ pub fn run_passes(sess: &Session,
     let mut metadata_config = ModuleConfig::new(tm, vec!());
 
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
+    modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
 
     // Save all versions of the bytecode if we're saving our temporaries.
     if sess.opts.cg.save_temps {
@@ -991,13 +1005,19 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     // reasonable defaults and prepare it to actually populate the pass
     // manager.
     let builder = llvm::LLVMPassManagerBuilderCreate();
-    let opt = config.opt_level.unwrap_or(llvm::CodeGenLevelNone);
+    let opt_level = config.opt_level.unwrap_or(llvm::CodeGenLevelNone);
+    let opt_size = config.opt_size.unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
-    llvm::LLVMRustConfigurePassManagerBuilder(builder, opt,
+    llvm::LLVMRustConfigurePassManagerBuilder(builder, opt_level,
                                               config.merge_functions,
                                               config.vectorize_slp,
                                               config.vectorize_loop);
+    llvm::LLVMPassManagerBuilderSetSizeLevel(builder, opt_size as u32);
+
+    if opt_size != llvm::CodeGenOptSizeNone {
+        llvm::LLVMPassManagerBuilderSetDisableUnrollLoops(builder, 1);
+    }
 
     llvm::LLVMRustAddBuilderLibraryInfo(builder, llmod, config.no_builtins);
 
@@ -1005,21 +1025,27 @@ pub unsafe fn with_llvm_pmb(llmod: ModuleRef,
     // always-inline functions (but don't add lifetime intrinsics), at O1 we
     // inline with lifetime intrinsics, and O2+ we add an inliner with a
     // thresholds copied from clang.
-    match (opt, inline_threshold) {
-        (_, Some(t)) => {
+    match (opt_level, opt_size, inline_threshold) {
+        (_, _, Some(t)) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, t as u32);
         }
-        (llvm::CodeGenLevelNone, _) => {
+        (llvm::CodeGenLevelAggressive, _, _) => {
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
+        }
+        (_, llvm::CodeGenOptSizeDefault, _) => {
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 75);
+        }
+        (_, llvm::CodeGenOptSizeAggressive, _) => {
+            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 25);
+        }
+        (llvm::CodeGenLevelNone, _, _) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, false);
         }
-        (llvm::CodeGenLevelLess, _) => {
+        (llvm::CodeGenLevelLess, _, _) => {
             llvm::LLVMRustAddAlwaysInlinePass(builder, true);
         }
-        (llvm::CodeGenLevelDefault, _) => {
+        (llvm::CodeGenLevelDefault, _, _) => {
             llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 225);
-        }
-        (llvm::CodeGenLevelAggressive, _) => {
-            llvm::LLVMPassManagerBuilderUseInlinerWithThreshold(builder, 275);
         }
     }
 
