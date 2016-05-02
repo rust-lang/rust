@@ -195,7 +195,7 @@
 //!
 //! ## Functions
 //!
-//! There are a number of [functions][functions] that offer access to various
+//! There are a number of [functions][functions-list] that offer access to various
 //! features. For example, we can use three of these functions to copy everything
 //! from standard input to standard output:
 //!
@@ -208,7 +208,7 @@
 //! # }
 //! ```
 //!
-//! [functions]: #functions
+//! [functions-list]: #functions-1
 //!
 //! ## io::Result
 //!
