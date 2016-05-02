@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use hair::cx::Cx;
-use rustc::middle::region::{CodeExtent, CodeExtentData};
+use rustc::middle::region::{CodeExtent, CodeExtentData, ROOT_CODE_EXTENT};
 use rustc::ty::{self, Ty};
 use rustc::mir::repr::*;
 use rustc_data_structures::fnv::FnvHashMap;
@@ -230,6 +230,33 @@ pub fn construct_fn<'a, 'tcx, A>(hir: Cx<'a,'tcx>,
     });
 
     builder.finish(upvar_decls, arg_decls, return_ty)
+}
+
+pub fn construct_const<'a, 'tcx>(hir: Cx<'a,'tcx>,
+                                 item_id: ast::NodeId,
+                                 ast_expr: &'tcx hir::Expr)
+                                 -> (Mir<'tcx>, ScopeAuxiliaryVec) {
+    let tcx = hir.tcx();
+    let span = tcx.map.span(item_id);
+    let mut builder = Builder::new(hir, span);
+
+    let extent = ROOT_CODE_EXTENT;
+    let mut block = START_BLOCK;
+    let _ = builder.in_scope(extent, block, |builder, call_site_scope_id| {
+        let expr = builder.hir.mirror(ast_expr);
+        unpack!(block = builder.into(&Lvalue::ReturnPointer, block, expr));
+
+        let return_block = builder.return_block();
+        builder.cfg.terminate(block, call_site_scope_id, span,
+                              TerminatorKind::Goto { target: return_block });
+        builder.cfg.terminate(return_block, call_site_scope_id, span,
+                              TerminatorKind::Return);
+
+        return_block.unit()
+    });
+
+    let ty = tcx.expr_ty_adjusted(ast_expr);
+    builder.finish(vec![], vec![], ty::FnConverging(ty))
 }
 
 impl<'a,'tcx> Builder<'a,'tcx> {

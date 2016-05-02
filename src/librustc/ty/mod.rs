@@ -25,7 +25,7 @@ use middle::cstore::{self, LOCAL_CRATE};
 use hir::def::{self, Def, ExportMap};
 use hir::def_id::DefId;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::region::{CodeExtent};
+use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use traits;
 use ty;
 use ty::subst::{Subst, Substs, VecPerParamSpace};
@@ -1376,6 +1376,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
+                    hir::ItemTy(..) |
                     hir::ItemImpl(..) |
                     hir::ItemConst(..) |
                     hir::ItemStatic(..) => {
@@ -1407,6 +1408,15 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             Some(ast_map::NodeExpr(..)) => {
                 // This is a convenience to allow closures to work.
                 ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
+            }
+            Some(ast_map::NodeForeignItem(item)) => {
+                let def_id = cx.map.local_def_id(id);
+                let scheme = cx.lookup_item_type(def_id);
+                let predicates = cx.lookup_predicates(def_id);
+                cx.construct_parameter_environment(item.span,
+                                                   &scheme.generics,
+                                                   &predicates,
+                                                   ROOT_CODE_EXTENT)
             }
             _ => {
                 bug!("ParameterEnvironment::from_item(): \

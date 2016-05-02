@@ -97,6 +97,31 @@ impl<'ast> DefCollector<'ast> {
         f(self);
         self.parent_def = parent;
     }
+
+    fn visit_ast_const_integer(&mut self, expr: &'ast Expr) {
+        // Find the node which will be used after lowering.
+        if let ExprKind::Paren(ref inner) = expr.node {
+            return self.visit_ast_const_integer(inner);
+        }
+
+        // FIXME(eddyb) Closures should have separate
+        // function definition IDs and expression IDs.
+        if let ExprKind::Closure(..) = expr.node {
+            return;
+        }
+
+        self.create_def(expr.id, DefPathData::Initializer);
+    }
+
+    fn visit_hir_const_integer(&mut self, expr: &'ast hir::Expr) {
+        // FIXME(eddyb) Closures should have separate
+        // function definition IDs and expression IDs.
+        if let hir::ExprClosure(..) = expr.node {
+            return;
+        }
+
+        self.create_def(expr.id, DefPathData::Initializer);
+    }
 }
 
 impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
@@ -126,14 +151,17 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
                         let variant_def_index =
                             this.create_def(v.node.data.id(),
                                             DefPathData::EnumVariant(v.node.name.name));
+                        this.with_parent(variant_def_index, |this| {
+                            for (index, field) in v.node.data.fields().iter().enumerate() {
+                                let name = field.ident.map(|ident| ident.name)
+                                    .unwrap_or_else(|| token::intern(&index.to_string()));
+                                this.create_def(field.id, DefPathData::Field(name));
+                            }
 
-                        for (index, field) in v.node.data.fields().iter().enumerate() {
-                            let name = field.ident.map(|ident| ident.name)
-                                .unwrap_or(token::intern(&index.to_string()));
-                            this.create_def_with_parent(Some(variant_def_index),
-                                                        field.id,
-                                                        DefPathData::Field(name));
-                        }
+                            if let Some(ref expr) = v.node.disr_expr {
+                                this.visit_ast_const_integer(expr);
+                            }
+                        });
                     }
                 }
                 ItemKind::Struct(ref struct_def, _) => {
@@ -221,6 +249,10 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_expr(&mut self, expr: &'ast Expr) {
         let parent_def = self.parent_def;
 
+        if let ExprKind::Repeat(_, ref count) = expr.node {
+            self.visit_ast_const_integer(count);
+        }
+
         if let ExprKind::Closure(..) = expr.node {
             let def = self.create_def(expr.id, DefPathData::ClosureExpr);
             self.parent_def = Some(def);
@@ -228,6 +260,13 @@ impl<'ast> visit::Visitor<'ast> for DefCollector<'ast> {
 
         visit::walk_expr(self, expr);
         self.parent_def = parent_def;
+    }
+
+    fn visit_ty(&mut self, ty: &'ast Ty) {
+        if let TyKind::FixedLengthVec(_, ref length) = ty.node {
+            self.visit_ast_const_integer(length);
+        }
+        visit::walk_ty(self, ty);
     }
 
     fn visit_lifetime_def(&mut self, def: &'ast LifetimeDef) {
@@ -276,11 +315,15 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
                             this.create_def(v.node.data.id(),
                                             DefPathData::EnumVariant(v.node.name));
 
-                        for field in v.node.data.fields() {
-                            this.create_def_with_parent(Some(variant_def_index),
-                                                        field.id,
-                                                        DefPathData::Field(field.name));
-                        }
+                        this.with_parent(variant_def_index, |this| {
+                            for field in v.node.data.fields() {
+                                this.create_def(field.id,
+                                                DefPathData::Field(field.name));
+                            }
+                            if let Some(ref expr) = v.node.disr_expr {
+                                this.visit_hir_const_integer(expr);
+                            }
+                        });
                     }
                 }
                 hir::ItemStruct(ref struct_def, _) => {
@@ -365,6 +408,10 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
     fn visit_expr(&mut self, expr: &'ast hir::Expr) {
         let parent_def = self.parent_def;
 
+        if let hir::ExprRepeat(_, ref count) = expr.node {
+            self.visit_hir_const_integer(count);
+        }
+
         if let hir::ExprClosure(..) = expr.node {
             let def = self.create_def(expr.id, DefPathData::ClosureExpr);
             self.parent_def = Some(def);
@@ -372,6 +419,13 @@ impl<'ast> intravisit::Visitor<'ast> for DefCollector<'ast> {
 
         intravisit::walk_expr(self, expr);
         self.parent_def = parent_def;
+    }
+
+    fn visit_ty(&mut self, ty: &'ast hir::Ty) {
+        if let hir::TyFixedLengthVec(_, ref length) = ty.node {
+            self.visit_hir_const_integer(length);
+        }
+        intravisit::walk_ty(self, ty);
     }
 
     fn visit_lifetime_def(&mut self, def: &'ast hir::LifetimeDef) {

@@ -16,8 +16,6 @@
 //! - `#[rustc_mir(graphviz="file.gv")]`
 //! - `#[rustc_mir(pretty="file.mir")]`
 
-extern crate syntax;
-
 use build;
 use rustc::dep_graph::DepNode;
 use rustc::mir::repr::Mir;
@@ -72,9 +70,73 @@ impl<'a, 'tcx> BuildMir<'a, 'tcx> {
 
         assert!(self.map.map.insert(id, mir).is_none())
     }
+
+    fn build_const_integer(&mut self, expr: &'tcx hir::Expr) {
+        // FIXME(eddyb) Closures should have separate
+        // function definition IDs and expression IDs.
+        // Type-checking should not let closures get
+        // this far in an integer constant position.
+        if let hir::ExprClosure(..) = expr.node {
+            return;
+        }
+        self.build(expr.id, |cx| build::construct_const(cx, expr.id, expr));
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
+    // Const and static items.
+    fn visit_item(&mut self, item: &'tcx hir::Item) {
+        match item.node {
+            hir::ItemConst(_, ref expr) |
+            hir::ItemStatic(_, _, ref expr) => {
+                self.build(item.id, |cx| build::construct_const(cx, item.id, expr));
+            }
+            _ => {}
+        }
+        intravisit::walk_item(self, item);
+    }
+
+    // Trait associated const defaults.
+    fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem) {
+        if let hir::ConstTraitItem(_, Some(ref expr)) = item.node {
+            self.build(item.id, |cx| build::construct_const(cx, item.id, expr));
+        }
+        intravisit::walk_trait_item(self, item);
+    }
+
+    // Impl associated const.
+    fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem) {
+        if let hir::ImplItemKind::Const(_, ref expr) = item.node {
+            self.build(item.id, |cx| build::construct_const(cx, item.id, expr));
+        }
+        intravisit::walk_impl_item(self, item);
+    }
+
+    // Repeat counts, i.e. [expr; constant].
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+        if let hir::ExprRepeat(_, ref count) = expr.node {
+            self.build_const_integer(count);
+        }
+        intravisit::walk_expr(self, expr);
+    }
+
+    // Array lengths, i.e. [T; constant].
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+        if let hir::TyFixedLengthVec(_, ref length) = ty.node {
+            self.build_const_integer(length);
+        }
+        intravisit::walk_ty(self, ty);
+    }
+
+    // Enum variant discriminant values.
+    fn visit_variant(&mut self, v: &'tcx hir::Variant,
+                     g: &'tcx hir::Generics, item_id: ast::NodeId) {
+        if let Some(ref expr) = v.node.disr_expr {
+            self.build_const_integer(expr);
+        }
+        intravisit::walk_variant(self, v, g, item_id);
+    }
+
     fn visit_fn(&mut self,
                 fk: intravisit::FnKind<'tcx>,
                 decl: &'tcx hir::FnDecl,
