@@ -2021,7 +2021,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::While(ref test, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
-                    self.print_ident(ident)?;
+                    self.print_ident(ident.node)?;
                     self.word_space(":")?;
                 }
                 self.head("while")?;
@@ -2031,7 +2031,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::WhileLet(ref pat, ref expr, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
-                    self.print_ident(ident)?;
+                    self.print_ident(ident.node)?;
                     self.word_space(":")?;
                 }
                 self.head("while let")?;
@@ -2044,7 +2044,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::ForLoop(ref pat, ref iter, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
-                    self.print_ident(ident)?;
+                    self.print_ident(ident.node)?;
                     self.word_space(":")?;
                 }
                 self.head("for")?;
@@ -2057,7 +2057,7 @@ impl<'a> State<'a> {
             }
             ast::ExprKind::Loop(ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
-                    self.print_ident(ident)?;
+                    self.print_ident(ident.node)?;
                     self.word_space(":")?;
                 }
                 self.head("loop")?;

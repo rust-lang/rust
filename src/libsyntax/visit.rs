@@ -26,7 +26,7 @@
 use abi::Abi;
 use ast::*;
 use attr::ThinAttributesExt;
-use codemap::Span;
+use codemap::{Span, Spanned};
 
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum FnKind<'a> {
@@ -149,14 +149,21 @@ macro_rules! walk_list {
 }
 
 pub fn walk_opt_name<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_name: Option<Name>) {
-    for name in opt_name {
+    if let Some(name) = opt_name {
         visitor.visit_name(span, name);
     }
 }
 
 pub fn walk_opt_ident<'v, V: Visitor<'v>>(visitor: &mut V, span: Span, opt_ident: Option<Ident>) {
-    for ident in opt_ident {
+    if let Some(ident) = opt_ident {
         visitor.visit_ident(span, ident);
+    }
+}
+
+pub fn walk_opt_sp_ident<'v, V: Visitor<'v>>(visitor: &mut V,
+                                             opt_sp_ident: &Option<Spanned<Ident>>) {
+    if let Some(ref sp_ident) = *opt_sp_ident {
+        visitor.visit_ident(sp_ident.span, sp_ident.node);
     }
 }
 
@@ -712,10 +719,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprKind::While(ref subexpression, ref block, opt_ident) => {
+        ExprKind::While(ref subexpression, ref block, ref opt_sp_ident) => {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
-            walk_opt_ident(visitor, expression.span, opt_ident)
+            walk_opt_sp_ident(visitor, opt_sp_ident);
         }
         ExprKind::IfLet(ref pattern, ref subexpression, ref if_block, ref optional_else) => {
             visitor.visit_pat(pattern);
@@ -723,21 +730,21 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_block(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprKind::WhileLet(ref pattern, ref subexpression, ref block, opt_ident) => {
+        ExprKind::WhileLet(ref pattern, ref subexpression, ref block, ref opt_sp_ident) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
-            walk_opt_ident(visitor, expression.span, opt_ident)
+            walk_opt_sp_ident(visitor, opt_sp_ident);
         }
-        ExprKind::ForLoop(ref pattern, ref subexpression, ref block, opt_ident) => {
+        ExprKind::ForLoop(ref pattern, ref subexpression, ref block, ref opt_sp_ident) => {
             visitor.visit_pat(pattern);
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
-            walk_opt_ident(visitor, expression.span, opt_ident)
+            walk_opt_sp_ident(visitor, opt_sp_ident);
         }
-        ExprKind::Loop(ref block, opt_ident) => {
+        ExprKind::Loop(ref block, ref opt_sp_ident) => {
             visitor.visit_block(block);
-            walk_opt_ident(visitor, expression.span, opt_ident)
+            walk_opt_sp_ident(visitor, opt_sp_ident);
         }
         ExprKind::Match(ref subexpression, ref arms) => {
             visitor.visit_expr(subexpression);
@@ -781,9 +788,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_path(path, expression.id)
         }
         ExprKind::Break(ref opt_sp_ident) | ExprKind::Again(ref opt_sp_ident) => {
-            for sp_ident in opt_sp_ident {
-                visitor.visit_ident(sp_ident.span, sp_ident.node);
-            }
+            walk_opt_sp_ident(visitor, opt_sp_ident);
         }
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);

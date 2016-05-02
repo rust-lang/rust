@@ -192,6 +192,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    fn lower_opt_sp_ident(&mut self, o_id: Option<Spanned<Ident>>) -> Option<Spanned<Name>> {
+        o_id.map(|sp_ident| respan(sp_ident.span, self.lower_ident(sp_ident.node)))
+    }
+
     fn lower_attrs(&mut self, attrs: &Vec<Attribute>) -> hir::HirVec<Attribute> {
         attrs.clone().into()
     }
@@ -1122,11 +1126,10 @@ impl<'a> LoweringContext<'a> {
                 }
                 ExprKind::While(ref cond, ref body, opt_ident) => {
                     hir::ExprWhile(self.lower_expr(cond), self.lower_block(body),
-                                   opt_ident.map(|ident| self.lower_ident(ident)))
+                                   self.lower_opt_sp_ident(opt_ident))
                 }
                 ExprKind::Loop(ref body, opt_ident) => {
-                    hir::ExprLoop(self.lower_block(body),
-                                  opt_ident.map(|ident| self.lower_ident(ident)))
+                    hir::ExprLoop(self.lower_block(body), self.lower_opt_sp_ident(opt_ident))
                 }
                 ExprKind::Match(ref expr, ref arms) => {
                     hir::ExprMatch(self.lower_expr(expr),
@@ -1243,12 +1246,8 @@ impl<'a> LoweringContext<'a> {
                     };
                     hir::ExprPath(hir_qself, self.lower_path_full(path, rename))
                 }
-                ExprKind::Break(opt_ident) => hir::ExprBreak(opt_ident.map(|sp_ident| {
-                    respan(sp_ident.span, self.lower_ident(sp_ident.node))
-                })),
-                ExprKind::Again(opt_ident) => hir::ExprAgain(opt_ident.map(|sp_ident| {
-                    respan(sp_ident.span, self.lower_ident(sp_ident.node))
-                })),
+                ExprKind::Break(opt_ident) => hir::ExprBreak(self.lower_opt_sp_ident(opt_ident)),
+                ExprKind::Again(opt_ident) => hir::ExprAgain(self.lower_opt_sp_ident(opt_ident)),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| self.lower_expr(x))),
                 ExprKind::InlineAsm(InlineAsm {
                         ref inputs,
@@ -1422,8 +1421,7 @@ impl<'a> LoweringContext<'a> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = self.block_expr(match_expr);
-                    let loop_expr = hir::ExprLoop(loop_block,
-                                                  opt_ident.map(|ident| self.lower_ident(ident)));
+                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident));
                     // add attributes to the outer returned expr node
                     let attrs = e.attrs.clone();
                     return P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: attrs });
@@ -1503,8 +1501,7 @@ impl<'a> LoweringContext<'a> {
 
                     // `[opt_ident]: loop { ... }`
                     let loop_block = self.block_expr(match_expr);
-                    let loop_expr = hir::ExprLoop(loop_block,
-                                                  opt_ident.map(|ident| self.lower_ident(ident)));
+                    let loop_expr = hir::ExprLoop(loop_block, self.lower_opt_sp_ident(opt_ident));
                     let loop_expr =
                         P(hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: None });
 
