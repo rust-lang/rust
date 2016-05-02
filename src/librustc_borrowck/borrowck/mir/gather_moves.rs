@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use rustc::ty::TyCtxt;
+use rustc::ty::{FnOutput, TyCtxt};
 use rustc::mir::repr::*;
 use rustc::util::nodemap::FnvHashMap;
 
@@ -419,6 +419,11 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
         self.rev_lookup.lookup_proj(proj, base_index)
     }
 
+    fn create_move_path(&mut self, lval: &Lvalue<'tcx>) {
+        // Create MovePath for `lval`, discarding returned index.
+        self.move_path_for(lval);
+    }
+
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>) -> MovePathIndex {
         let lookup: Lookup<MovePathIndex> = self.lookup(lval);
 
@@ -491,7 +496,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
 #[derive(Debug)]
 enum StmtKind {
     Use, Repeat, Cast, BinaryOp, UnaryOp, Box,
-    Aggregate, Drop, CallFn, CallArg, Return,
+    Aggregate, Drop, CallFn, CallArg, Return, If,
 }
 
 fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveData<'tcx> {
@@ -510,6 +515,27 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
         pre_move_paths: Vec::new(),
         rev_lookup: MovePathLookup::new(),
     };
+
+    // Before we analyze the program text, we create the MovePath's
+    // for all of the vars, args, and temps. (This enforces a basic
+    // property that even if the MIR body doesn't contain any
+    // references to a var/arg/temp, it will still be a valid
+    // operation to lookup the MovePath associated with it.)
+    assert!(mir.var_decls.len() <= ::std::u32::MAX as usize);
+    assert!(mir.arg_decls.len() <= ::std::u32::MAX as usize);
+    assert!(mir.temp_decls.len() <= ::std::u32::MAX as usize);
+    for var_idx in 0..mir.var_decls.len() {
+        let path_idx = builder.move_path_for(&Lvalue::Var(var_idx as u32));
+        path_map.fill_to(path_idx.idx());
+    }
+    for arg_idx in 0..mir.arg_decls.len() {
+        let path_idx = builder.move_path_for(&Lvalue::Arg(arg_idx as u32));
+        path_map.fill_to(path_idx.idx());
+    }
+    for temp_idx in 0..mir.temp_decls.len() {
+        let path_idx = builder.move_path_for(&Lvalue::Temp(temp_idx as u32));
+        path_map.fill_to(path_idx.idx());
+    }
 
     for bb in bbs {
         let loc_map_bb = &mut loc_map[bb.index()];
@@ -532,8 +558,12 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             let source = Location { block: bb, index: i };
             match stmt.kind {
                 StatementKind::Assign(ref lval, ref rval) => {
-                    // ensure MovePath created for `lval`.
-                    bb_ctxt.builder.move_path_for(lval);
+                    bb_ctxt.builder.create_move_path(lval);
+
+                    // Ensure that the path_map contains entries even
+                    // if the lvalue is assigned and never read.
+                    let assigned_path = bb_ctxt.builder.move_path_for(lval);
+                    bb_ctxt.path_map.fill_to(assigned_path.idx());
 
                     match *rval {
                         Rvalue::Use(ref operand) => {
@@ -569,7 +599,26 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                         Rvalue::InlineAsm { .. } => {}
 
                         Rvalue::Slice {..} => {
-                            bug!("cannot move out of slice");
+                            // A slice pattern `x..` binds `x` to a
+                            // reference; thus no move occurs.
+                            //
+                            // FIXME: I recall arielb1 questioning
+                            // whether this is even a legal thing to
+                            // have as an R-value. The particular
+                            // example where I am seeing this arise is
+                            // `TargetDataLayout::parse(&Session)` in
+                            // `rustc::ty::layout`.
+                            debug!("encountered Rvalue::Slice as RHS of Assign, source: {:?} \n{}",
+                                   source, {
+                                       let mut out = Vec::new();
+                                       {
+                                           use std::io::Write;
+                                           use rustc_mir::pretty::write_mir_named;
+                                           let mut w: &mut Write = &mut out;
+                                           write_mir_named(tcx, "boo_attempt_move_out_of_slice", mir, &mut w, None).unwrap();
+                                       }
+                                       String::from_utf8(out).unwrap()
+                                   });
                         }
                     }
                 }
@@ -582,14 +631,19 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             TerminatorKind::Return => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
-                let lval = &Lvalue::ReturnPointer.deref();
-                bb_ctxt.on_move_out_lval(SK::Return, lval, source);
+                if let FnOutput::FnConverging(_) = bb_ctxt.builder.mir.return_ty {
+                    debug!("gather_moves Return on_move_out_lval return {:?}", source);
+                    bb_ctxt.on_move_out_lval(SK::Return, &Lvalue::ReturnPointer, source);
+                } else {
+                    debug!("gather_moves Return on_move_out_lval assuming unreachable return {:?}", source);
+                }
             }
 
             TerminatorKind::If { ref cond, targets: _ } => {
-                // The `cond` is always of (copyable) type `bool`,
-                // so there will never be anything to move.
-                let _ = cond;
+                let source = Location { block: bb,
+                                        index: bb_data.statements.len() };
+                debug!("gather_moves If on_operand {:?} {:?}", cond, source);
+                bb_ctxt.on_operand(SK::If, cond, source);
             }
 
             TerminatorKind::SwitchInt { switch_ty: _, values: _, targets: _, ref discr } |
@@ -604,6 +658,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             TerminatorKind::Drop { value: ref lval, target: _, unwind: _ } => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
+                debug!("gather_moves Drop on_move_out_lval {:?} {:?}", lval, source);
                 bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
             }
 
@@ -612,12 +667,18 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                                         index: bb_data.statements.len() };
                 bb_ctxt.on_operand(SK::CallFn, func, source);
                 for arg in args {
+                    debug!("gather_moves Call on_operand {:?} {:?}", arg, source);
                     bb_ctxt.on_operand(SK::CallArg, arg, source);
                 }
                 if let Some((ref destination, _bb)) = *destination {
-                    // Create MovePath for `destination`, then
-                    // discard returned index.
-                    bb_ctxt.builder.move_path_for(destination);
+                    debug!("gather_moves Call create_move_path {:?} {:?}", destination, source);
+
+                    // Ensure that the path_map contains entries even
+                    // if the lvalue is assigned and never read.
+                    let assigned_path = bb_ctxt.builder.move_path_for(destination);
+                    bb_ctxt.path_map.fill_to(assigned_path.idx());
+
+                    bb_ctxt.builder.create_move_path(destination);
                 }
             }
         }
@@ -635,7 +696,6 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
     //
     // well you know, lets actually try just asserting that the path map *is* complete.
     assert_eq!(path_map.len(), builder.pre_move_paths.len());
-    path_map.fill_to(builder.pre_move_paths.len() - 1);
 
     let pre_move_paths = builder.pre_move_paths;
     let move_paths: Vec<_> = pre_move_paths.into_iter()
@@ -680,24 +740,6 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
                         lval: &Lvalue<'tcx>,
                         source: Location) {
         let tcx = self.tcx;
-        let lval_ty = self.builder.mir.lvalue_ty(tcx, lval);
-
-        // FIXME: does lvalue_ty ever return TyError, or is it
-        // guaranteed to always return non-Infer/non-Error values?
-
-        // This code is just trying to avoid creating a MoveOut
-        // entry for values that do not need move semantics.
-        //
-        // type_contents is imprecise (may claim needs drop for
-        // types that in fact have no destructor). But that is
-        // still usable for our purposes here.
-        let consumed = lval_ty.to_ty(tcx).type_contents(tcx).needs_drop(tcx);
-
-        if !consumed {
-            debug!("ctxt: {:?} no consume of lval: {:?} of type {:?}",
-                   stmt_kind, lval, lval_ty);
-            return;
-        }
         let i = source.index;
         let index = MoveOutIndex::new(self.moves.len());
 
