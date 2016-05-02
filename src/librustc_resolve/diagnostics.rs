@@ -916,11 +916,14 @@ An import was unresolved. Erroneous code example:
 use something::Foo; // error: unresolved import `something::Foo`.
 ```
 
-Please verify you didn't misspell the import name or the import does exist
-in the module from where you tried to import it. Example:
+Paths in `use` statements are relative to the crate root. To import items
+relative to the current and parent modules, use the `self::` and `super::`
+prefixes, respectively. Also verify that you didn't misspell the import
+name and that the import exists in the module from where you tried to
+import it. Example:
 
 ```ignore
-use something::Foo; // ok!
+use self::something::Foo; // ok!
 
 mod something {
     pub struct Foo;
@@ -928,7 +931,7 @@ mod something {
 ```
 
 Or, if you tried to use a module from an external crate, you may have missed
-the `extern crate` declaration:
+the `extern crate` declaration (which is usually placed in the crate root):
 
 ```ignore
 extern crate homura; // Required to use the `homura` crate
