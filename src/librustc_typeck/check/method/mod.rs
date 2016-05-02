@@ -84,7 +84,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          span: Span,
                          method_name: ast::Name,
                          self_ty: ty::Ty<'tcx>,
-                         call_expr_id: ast::NodeId)
+                         call_expr_id: ast::NodeId,
+                         allow_private: bool)
                          -> bool
     {
         let mode = probe::Mode::MethodCall;
@@ -93,7 +94,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
             Err(ClosureAmbiguity(..)) => true,
-            Err(PrivateMatch(..)) => true,
+            Err(PrivateMatch(..)) => allow_private,
         }
     }
 
