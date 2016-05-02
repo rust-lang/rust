@@ -1590,7 +1590,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
         }
     }
 
-    fn calculate_dtorck(&'gcx self, tcx: TyCtxt<'a, 'gcx, 'tcx>) {
+    fn calculate_dtorck(&'gcx self, tcx: TyCtxt) {
         if tcx.is_adt_dtorck(self) {
             self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
         }
@@ -1611,7 +1611,7 @@ impl<'a, 'gcx, 'tcx, 'container> AdtDefData<'gcx, 'container> {
     /// true, this type being safe for destruction requires it to be
     /// alive; Otherwise, only the contents are required to be.
     #[inline]
-    pub fn is_dtorck(&'gcx self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+    pub fn is_dtorck(&'gcx self, tcx: TyCtxt) -> bool {
         if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
             self.calculate_dtorck(tcx)
         }
@@ -2932,7 +2932,7 @@ pub enum ExplicitSelfCategory {
     ByBox,
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {

@@ -39,7 +39,7 @@ use std::cmp::Ordering;
 use super::{MethodError, NoMatchData, CandidateSource};
 use super::probe::Mode;
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 fn is_fn_ty(&self, ty: &Ty<'tcx>, span: Span) -> bool {
     let tcx = self.tcx;
     match ty.sty {

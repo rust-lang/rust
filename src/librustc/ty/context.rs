@@ -92,7 +92,7 @@ struct CtxtInterners<'tcx> {
     type_list: RefCell<FnvHashSet<InternedTyList<'tcx>>>,
     substs: RefCell<FnvHashSet<InternedSubsts<'tcx>>>,
     bare_fn: RefCell<FnvHashSet<&'tcx BareFnTy<'tcx>>>,
-    region: RefCell<FnvHashSet<&'tcx Region>>,
+    region: RefCell<FnvHashSet<InternedRegion<'tcx>>>,
     stability: RefCell<FnvHashSet<&'tcx attr::Stability>>,
     layout: RefCell<FnvHashSet<&'tcx Layout>>,
 }
@@ -740,6 +740,23 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a Region {
+    type Lifted = &'tcx Region;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx Region> {
+        if let Some(&InternedRegion { region }) = tcx.interners.region.borrow().get(*self) {
+            if *self as *const _ == region as *const _ {
+                return Some(region);
+            }
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 impl<'a, 'tcx> Lift<'tcx> for &'a [Ty<'a>] {
     type Lifted = &'tcx [Ty<'tcx>];
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<&'tcx [Ty<'tcx>]> {
@@ -953,6 +970,18 @@ impl<'tcx: 'lcx, 'lcx> Borrow<Substs<'lcx>> for InternedSubsts<'tcx> {
     }
 }
 
+/// An entry in the region interner.
+#[derive(PartialEq, Eq, Hash)]
+struct InternedRegion<'tcx> {
+    region: &'tcx Region
+}
+
+impl<'tcx> Borrow<Region> for InternedRegion<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a Region {
+        self.region
+    }
+}
+
 fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
     bounds.is_empty() ||
         bounds[1..].iter().enumerate().all(
@@ -1006,12 +1035,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_region(self, region: Region) -> &'tcx Region {
-        if let Some(region) = self.interners.region.borrow().get(&region) {
-            return *region;
+        if let Some(interned) = self.interners.region.borrow().get(&region) {
+            return interned.region;
         }
 
         let region = self.interners.arenas.region.alloc(region);
-        self.interners.region.borrow_mut().insert(region);
+        self.interners.region.borrow_mut().insert(InternedRegion {
+            region: region
+        });
         region
     }
 

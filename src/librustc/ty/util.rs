@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `adt` that do not strictly outlive the adt value itself.
     /// (This allows programs to make cyclic structures without
     /// resorting to unasfe means; see RFCs 769 and 1238).
-    pub fn is_adt_dtorck(self, adt: ty::AdtDef<'tcx>) -> bool {
+    pub fn is_adt_dtorck(self, adt: ty::AdtDef) -> bool {
         let dtor_method = match adt.destructor() {
             Some(dtor) => dtor,
             None => return false

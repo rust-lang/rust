@@ -12,19 +12,19 @@
 
 use super::{check_fn, Expectation, FnCtxt};
 
-use astconv;
+use astconv::AstConv;
 use rustc::ty::subst;
 use rustc::ty::{self, ToPolyTraitRef, Ty};
 use std::cmp;
 use syntax::abi::Abi;
 use rustc::hir;
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn check_expr_closure(&self,
                           expr: &hir::Expr,
                           _capture: hir::CaptureClause,
-                          decl: &'tcx hir::FnDecl,
-                          body: &'tcx hir::Block,
+                          decl: &'gcx hir::FnDecl,
+                          body: &'gcx hir::Block,
                           expected: Expectation<'tcx>) {
     debug!("check_expr_closure(expr={:?},expected={:?})",
            expr,
@@ -43,8 +43,8 @@ pub fn check_expr_closure(&self,
 fn check_closure(&self,
                  expr: &hir::Expr,
                  opt_kind: Option<ty::ClosureKind>,
-                 decl: &'tcx hir::FnDecl,
-                 body: &'tcx hir::Block,
+                 decl: &'gcx hir::FnDecl,
+                 body: &'gcx hir::Block,
                  expected_sig: Option<ty::FnSig<'tcx>>) {
     let expr_def_id = self.tcx.map.local_def_id(expr.id);
 
@@ -52,7 +52,7 @@ fn check_closure(&self,
            opt_kind,
            expected_sig);
 
-    let mut fn_ty = astconv::ty_of_closure(self,
+    let mut fn_ty = AstConv::ty_of_closure(self,
                                            hir::Unsafety::Normal,
                                            decl,
                                            Abi::RustCall,
@@ -68,7 +68,7 @@ fn check_closure(&self,
            expr.id, upvar_tys);
 
     let closure_type = self.tcx.mk_closure(expr_def_id,
-        self.tcx.mk_substs(self.parameter_environment.free_substs.clone()),
+        self.parameter_environment.free_substs,
         upvar_tys);
 
     self.write_ty(expr.id, closure_type);
@@ -76,14 +76,7 @@ fn check_closure(&self,
     let fn_sig = self.tcx.liberate_late_bound_regions(
         self.tcx.region_maps.call_site_extent(expr.id, body.id), &fn_ty.sig);
 
-    check_fn(self.ccx,
-             hir::Unsafety::Normal,
-             expr.id,
-             &fn_sig,
-             decl,
-             expr.id,
-             &body,
-             self);
+    check_fn(self, hir::Unsafety::Normal, expr.id, &fn_sig, decl, expr.id, &body);
 
     // Tuple up the arguments and insert the resulting function type into
     // the `closures` table.

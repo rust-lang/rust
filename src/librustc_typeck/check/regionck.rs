@@ -113,7 +113,7 @@ macro_rules! ignore_err {
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn regionck_expr(&self, e: &hir::Expr) {
     let mut rcx = RegionCtxt::new(self, RepeatingScope(e.id), e.id, Subject(e.id));
     if self.err_count_since_creation() == 0 {
@@ -198,11 +198,11 @@ impl<'a, 'gcx, 'tcx> Deref for RegionCtxt<'a, 'gcx, 'tcx> {
 pub struct RepeatingScope(ast::NodeId);
 pub enum SubjectNode { Subject(ast::NodeId), None }
 
-impl<'a, 'tcx> RegionCtxt<'a, 'tcx, 'tcx> {
-    pub fn new(fcx: &'a FnCtxt<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
+    pub fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
                initial_repeating_scope: RepeatingScope,
                initial_body_id: ast::NodeId,
-               subject: SubjectNode) -> RegionCtxt<'a, 'tcx, 'tcx> {
+               subject: SubjectNode) -> RegionCtxt<'a, 'gcx, 'tcx> {
         let RepeatingScope(initial_repeating_scope) = initial_repeating_scope;
         RegionCtxt {
             fcx: fcx,
@@ -487,7 +487,7 @@ fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
 }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'gcx, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
@@ -794,7 +794,7 @@ fn visit_expr(&mut self, expr: &hir::Expr) {
 }
 }
 
-impl<'a, 'tcx> RegionCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 fn constrain_cast(&mut self,
                   cast_expr: &hir::Expr,
                   source_expr: &hir::Expr)
@@ -1151,7 +1151,7 @@ fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
 fn link_pattern<'t>(&self,
-                    mc: mc::MemCategorizationContext<'a, 'tcx, 'tcx>,
+                    mc: mc::MemCategorizationContext<'a, 'gcx, 'tcx>,
                     discr_cmt: mc::cmt<'tcx>,
                     root_pat: &hir::Pat) {
     debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",

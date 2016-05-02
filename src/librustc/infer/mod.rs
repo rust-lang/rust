@@ -89,7 +89,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_vars: RegionVarBindings<'a, 'tcx>,
+    region_vars: RegionVarBindings<'a, 'gcx, 'tcx>,
 
     pub parameter_environment: ty::ParameterEnvironment<'gcx>,
 

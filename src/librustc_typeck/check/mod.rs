@@ -80,7 +80,7 @@ pub use self::Expectation::*;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
-use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
+use astconv::{AstConv, ast_region_to_region, PathParamMode};
 use check::_match::PatCtxt;
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
@@ -168,7 +168,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // decision. We keep these deferred resolutions grouped by the
     // def-id of the closure, so that once we decide, we can easily go
     // back and process them.
-    deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'tcx>>>>,
+    deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'gcx, 'tcx>>>>,
 
     deferred_cast_checks: RefCell<Vec<cast::CastCheck<'tcx>>>,
 }
@@ -180,11 +180,11 @@ impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
     }
 }
 
-trait DeferredCallResolution<'tcx> {
-    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx, 'tcx>);
+trait DeferredCallResolution<'gcx, 'tcx> {
+    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>);
 }
 
-type DeferredCallResolutionHandler<'tcx> = Box<DeferredCallResolution<'tcx>+'tcx>;
+type DeferredCallResolutionHandler<'gcx, 'tcx> = Box<DeferredCallResolution<'gcx, 'tcx>+'tcx>;
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
@@ -204,7 +204,7 @@ pub enum Expectation<'tcx> {
     ExpectRvalueLikeUnsized(Ty<'tcx>),
 }
 
-impl<'a, 'tcx> Expectation<'tcx> {
+impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     // Disregard "castable to" expectations because they
     // can lead us astray. Consider for example `if cond
     // {22} else {c} as u8` -- if we propagate the
@@ -221,7 +221,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // an expected type. Otherwise, we might write parts of the type
     // when checking the 'then' block which are incompatible with the
     // 'else' branch.
-    fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Expectation<'tcx> {
+    fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
                 let ety = fcx.shallow_resolve(ety);
@@ -257,7 +257,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
+    fn rvalue_hint(fcx: &FnCtxt<'a, 'gcx, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx.struct_tail(ty).sty {
             ty::TySlice(_) | ty::TyStr | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
@@ -269,7 +269,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // Resolves `expected` by a single level if it is a variable. If
     // there is no expected type or resolution is not possible (e.g.,
     // no constraints yet present), just returns `None`.
-    fn resolve(self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Expectation<'tcx> {
+    fn resolve(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Expectation<'tcx> {
         match self {
             NoExpectation => {
                 NoExpectation
@@ -286,7 +286,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
         }
     }
 
-    fn to_option(self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn to_option(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation => None,
             ExpectCastableToType(ty) |
@@ -295,7 +295,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
         }
     }
 
-    fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
+    fn only_has_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
             _ => None
@@ -372,7 +372,7 @@ impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Inherited<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
     fn enter<F, R>(ccx: &'a CrateCtxt<'a, 'tcx>,
                    param_env: ty::ParameterEnvironment<'tcx>,
                    f: F) -> R
@@ -493,16 +493,15 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     Inherited::enter(ccx, param_env, |inh| {
         // Compute the fty from point of view of inside fn.
-        let fn_scope = ccx.tcx.region_maps.call_site_extent(fn_id, body.id);
+        let fn_scope = inh.tcx.region_maps.call_site_extent(fn_id, body.id);
         let fn_sig =
-            fn_ty.sig.subst(ccx.tcx, &inh.parameter_environment.free_substs);
+            fn_ty.sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
         let fn_sig =
-            ccx.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
+            inh.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
         let fn_sig =
             inh.normalize_associated_types_in(body.span, body.id, &fn_sig);
 
-        let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
-                           decl, fn_id, body, &inh);
+        let fcx = check_fn(&inh, fn_ty.unsafety, fn_id, &fn_sig, decl, fn_id, body);
 
         fcx.select_all_obligations_and_apply_defaults();
         fcx.closure_analyze_fn(body);
@@ -519,7 +518,7 @@ struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> GatherLocalsVisitor<'a, 'gcx, 'tcx> {
     fn assign(&mut self, _span: Span, nid: ast::NodeId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
@@ -537,9 +536,9 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
     // Add explicitly-declared locals.
-    fn visit_local(&mut self, local: &'tcx hir::Local) {
+    fn visit_local(&mut self, local: &'gcx hir::Local) {
         let o_ty = match local.ty {
             Some(ref ty) => Some(self.fcx.to_ty(&ty)),
             None => None
@@ -553,7 +552,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
     }
 
     // Add pattern bindings.
-    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'gcx hir::Pat) {
         if let PatKind::Ident(_, ref path1, _) = p.node {
             if pat_util::pat_is_binding(&self.fcx.tcx.def_map.borrow(), p) {
                 let var_ty = self.assign(p.span, p.id, None);
@@ -571,7 +570,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
         intravisit::walk_pat(self, p);
     }
 
-    fn visit_block(&mut self, b: &'tcx hir::Block) {
+    fn visit_block(&mut self, b: &'gcx hir::Block) {
         // non-obvious: the `blk` variable maps to region lb, so
         // we have to keep this up-to-date.  This
         // is... unfortunate.  It'd be nice to not need this.
@@ -580,7 +579,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
 
     // Since an expr occurs as part of the type fixed size arrays we
     // need to record the type for that node
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, t: &'gcx hir::Ty) {
         match t.node {
             hir::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&ty);
@@ -595,8 +594,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
     }
 
     // Don't descend into the bodies of nested closures
-    fn visit_fn(&mut self, _: intravisit::FnKind<'tcx>, _: &'tcx hir::FnDecl,
-                _: &'tcx hir::Block, _: Span, _: ast::NodeId) { }
+    fn visit_fn(&mut self, _: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
+                _: &'gcx hir::Block, _: Span, _: ast::NodeId) { }
 }
 
 /// Helper used by check_bare_fn and check_expr_fn. Does the grungy work of checking a function
@@ -605,17 +604,16 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
 ///
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
-fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
-                      unsafety: hir::Unsafety,
-                      unsafety_id: ast::NodeId,
-                      fn_sig: &ty::FnSig<'tcx>,
-                      decl: &'tcx hir::FnDecl,
-                      fn_id: ast::NodeId,
-                      body: &'tcx hir::Block,
-                      inherited: &'a Inherited<'a, 'tcx, 'tcx>)
-                      -> FnCtxt<'a, 'tcx, 'tcx>
+fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
+                            unsafety: hir::Unsafety,
+                            unsafety_id: ast::NodeId,
+                            fn_sig: &ty::FnSig<'tcx>,
+                            decl: &'gcx hir::FnDecl,
+                            fn_id: ast::NodeId,
+                            body: &'gcx hir::Block)
+                            -> FnCtxt<'a, 'gcx, 'tcx>
 {
-    let tcx = ccx.tcx;
+    let tcx = inherited.tcx;
 
     let arg_tys = &fn_sig.inputs;
     let ret_ty = fn_sig.output;
@@ -1244,8 +1242,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     check_representable(ccx.tcx, sp, id, "enum");
 }
 
-impl<'a, 'tcx> AstConv<'tcx, 'tcx> for FnCtxt<'a, 'tcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.tcx }
+impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn get_item_type_scheme(&self, _: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
@@ -1356,7 +1354,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for FnCtxt<'a, 'tcx, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> RegionScope for FnCtxt<'a, 'gcx, 'tcx> {
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
         Some(self.base_object_lifetime_default(span))
     }
@@ -1413,11 +1411,11 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
-    pub fn new(inh: &'a Inherited<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+    pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
                rty: ty::FnOutput<'tcx>,
                body_id: ast::NodeId)
-               -> FnCtxt<'a, 'tcx, 'tcx> {
+               -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
             body_id: body_id,
             writeback_errors: Cell::new(false),
@@ -1473,14 +1471,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 
     fn record_deferred_call_resolution(&self,
                                        closure_def_id: DefId,
-                                       r: DeferredCallResolutionHandler<'tcx>) {
+                                       r: DeferredCallResolutionHandler<'gcx, 'tcx>) {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.entry(closure_def_id).or_insert(vec![]).push(r);
     }
 
     fn remove_deferred_call_resolutions(&self,
                                         closure_def_id: DefId)
-                                        -> Vec<DeferredCallResolutionHandler<'tcx>>
+                                        -> Vec<DeferredCallResolutionHandler<'gcx, 'tcx>>
     {
         let mut deferred_call_resolutions = self.deferred_call_resolutions.borrow_mut();
         deferred_call_resolutions.remove(&closure_def_id).unwrap_or(Vec::new())
@@ -1619,7 +1617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
             self.tcx.lookup_item_type(did);
         let type_predicates =
             self.tcx.lookup_predicates(did);
-        let substs = astconv::ast_path_substs_for_ty(self, self,
+        let substs = AstConv::ast_path_substs_for_ty(self, self,
                                                      path.span,
                                                      PathParamMode::Optional,
                                                      &type_scheme.generics,
@@ -1723,7 +1721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
-        let t = ast_ty_to_ty(self, self, ast_t);
+        let t = AstConv::ast_ty_to_ty(self, self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
         t
     }
@@ -2325,7 +2323,7 @@ fn make_overloaded_lvalue_return_type(&self,
 
 fn lookup_indexing(&self,
                    expr: &hir::Expr,
-                   base_expr: &'tcx hir::Expr,
+                   base_expr: &'gcx hir::Expr,
                    base_ty: Ty<'tcx>,
                    idx_ty: Ty<'tcx>,
                    lvalue_pref: LvaluePreference)
@@ -2367,7 +2365,7 @@ fn lookup_indexing(&self,
 fn try_index_step(&self,
                   method_call: MethodCall,
                   expr: &hir::Expr,
-                  base_expr: &'tcx hir::Expr,
+                  base_expr: &'gcx hir::Expr,
                   adjusted_ty: Ty<'tcx>,
                   autoderefs: usize,
                   unsize: bool,
@@ -2442,8 +2440,8 @@ fn try_index_step(&self,
 fn check_method_argument_types(&self,
                                sp: Span,
                                method_fn_ty: Ty<'tcx>,
-                               callee_expr: &'tcx hir::Expr,
-                               args_no_rcvr: &'tcx [P<hir::Expr>],
+                               callee_expr: &'gcx hir::Expr,
+                               args_no_rcvr: &'gcx [P<hir::Expr>],
                                tuple_arguments: TupleArgumentsFlag,
                                expected: Expectation<'tcx>)
                                -> ty::FnOutput<'tcx> {
@@ -2482,7 +2480,7 @@ fn check_argument_types(&self,
                         sp: Span,
                         fn_inputs: &[Ty<'tcx>],
                         expected_arg_tys: &[Ty<'tcx>],
-                        args: &'tcx [P<hir::Expr>],
+                        args: &'gcx [P<hir::Expr>],
                         variadic: bool,
                         tuple_arguments: TupleArgumentsFlag) {
     let tcx = self.tcx;
@@ -2756,42 +2754,42 @@ fn check_lit(&self,
 }
 
 fn check_expr_eq_type(&self,
-                      expr: &'tcx hir::Expr,
+                      expr: &'gcx hir::Expr,
                       expected: Ty<'tcx>) {
     self.check_expr_with_hint(expr, expected);
     self.demand_eqtype(expr.span, expected, self.expr_ty(expr));
 }
 
 pub fn check_expr_has_type(&self,
-                           expr: &'tcx hir::Expr,
+                           expr: &'gcx hir::Expr,
                            expected: Ty<'tcx>) {
     self.check_expr_with_hint(expr, expected);
     self.demand_suptype(expr.span, expected, self.expr_ty(expr));
 }
 
 fn check_expr_coercable_to_type(&self,
-                                expr: &'tcx hir::Expr,
+                                expr: &'gcx hir::Expr,
                                 expected: Ty<'tcx>) {
     self.check_expr_with_hint(expr, expected);
     self.demand_coerce(expr, expected);
 }
 
-fn check_expr_with_hint(&self, expr: &'tcx hir::Expr,
+fn check_expr_with_hint(&self, expr: &'gcx hir::Expr,
                         expected: Ty<'tcx>) {
     self.check_expr_with_expectation(expr, ExpectHasType(expected))
 }
 
 fn check_expr_with_expectation(&self,
-                               expr: &'tcx hir::Expr,
+                               expr: &'gcx hir::Expr,
                                expected: Expectation<'tcx>) {
     self.check_expr_with_expectation_and_lvalue_pref(expr, expected, NoPreference)
 }
 
-fn check_expr(&self, expr: &'tcx hir::Expr)  {
+fn check_expr(&self, expr: &'gcx hir::Expr)  {
     self.check_expr_with_expectation(expr, NoExpectation)
 }
 
-fn check_expr_with_lvalue_pref(&self, expr: &'tcx hir::Expr,
+fn check_expr_with_lvalue_pref(&self, expr: &'gcx hir::Expr,
                                lvalue_pref: LvaluePreference)  {
     self.check_expr_with_expectation_and_lvalue_pref(expr, NoExpectation, lvalue_pref)
 }
@@ -2867,9 +2865,9 @@ fn expected_types_for_fn_args(&self,
 
     // Checks a method call.
     fn check_method_call(&self,
-                         expr: &'tcx hir::Expr,
+                         expr: &'gcx hir::Expr,
                          method_name: Spanned<ast::Name>,
-                         args: &'tcx [P<hir::Expr>],
+                         args: &'gcx [P<hir::Expr>],
                          tps: &[P<hir::Ty>],
                          expected: Expectation<'tcx>,
                          lvalue_pref: LvaluePreference) {
@@ -2914,9 +2912,9 @@ fn expected_types_for_fn_args(&self,
     // A generic function for checking the then and else in an if
     // or if-else.
     fn check_then_else(&self,
-                       cond_expr: &'tcx hir::Expr,
-                       then_blk: &'tcx hir::Block,
-                       opt_else_expr: Option<&'tcx hir::Expr>,
+                       cond_expr: &'gcx hir::Expr,
+                       then_blk: &'gcx hir::Block,
+                       opt_else_expr: Option<&'gcx hir::Expr>,
                        id: ast::NodeId,
                        sp: Span,
                        expected: Expectation<'tcx>) {
@@ -2989,9 +2987,9 @@ fn expected_types_for_fn_args(&self,
 
     // Check field access expressions
     fn check_field(&self,
-                   expr: &'tcx hir::Expr,
+                   expr: &'gcx hir::Expr,
                    lvalue_pref: LvaluePreference,
-                   base: &'tcx hir::Expr,
+                   base: &'gcx hir::Expr,
                    field: &Spanned<ast::Name>) {
         self.check_expr_with_lvalue_pref(base, lvalue_pref);
         let expr_t = self.structurally_resolved_type(expr.span,
@@ -3080,9 +3078,9 @@ fn expected_types_for_fn_args(&self,
 
     // Check tuple index expressions
     fn check_tup_field(&self,
-                       expr: &'tcx hir::Expr,
+                       expr: &'gcx hir::Expr,
                        lvalue_pref: LvaluePreference,
-                       base: &'tcx hir::Expr,
+                       base: &'gcx hir::Expr,
                        idx: codemap::Spanned<usize>) {
         self.check_expr_with_lvalue_pref(base, lvalue_pref);
         let expr_t = self.structurally_resolved_type(expr.span,
@@ -3180,7 +3178,7 @@ fn expected_types_for_fn_args(&self,
                                 adt_ty: Ty<'tcx>,
                                 span: Span,
                                 variant: ty::VariantDef<'tcx>,
-                                ast_fields: &'tcx [hir::Field],
+                                ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
         let substs = match adt_ty.sty {
@@ -3237,8 +3235,8 @@ fn expected_types_for_fn_args(&self,
 
     fn check_struct_fields_on_error(&self,
                                     id: ast::NodeId,
-                                    fields: &'tcx [hir::Field],
-                                    base_expr: &'tcx Option<P<hir::Expr>>) {
+                                    fields: &'gcx [hir::Field],
+                                    base_expr: &'gcx Option<P<hir::Expr>>) {
         // Make sure to still write the types
         // otherwise we might ICE
         self.write_error(id);
@@ -3254,8 +3252,8 @@ fn expected_types_for_fn_args(&self,
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
                          path: &hir::Path,
-                         fields: &'tcx [hir::Field],
-                         base_expr: &'tcx Option<P<hir::Expr>>)
+                         fields: &'gcx [hir::Field],
+                         base_expr: &'gcx Option<P<hir::Expr>>)
     {
         let tcx = self.tcx;
 
@@ -3315,7 +3313,7 @@ fn expected_types_for_fn_args(&self,
 /// that there are actually multiple representations for `TyError`, so avoid
 /// that when err needs to be handled differently.
 fn check_expr_with_expectation_and_lvalue_pref(&self,
-                                               expr: &'tcx hir::Expr,
+                                               expr: &'gcx hir::Expr,
                                                expected: Expectation<'tcx>,
                                                lvalue_pref: LvaluePreference) {
     debug!(">> typechecking: expr={:?} expected={:?}",
@@ -3666,7 +3664,7 @@ fn check_expr_with_expectation_and_lvalue_pref(&self,
       }
       hir::ExprRepeat(ref element, ref count_expr) => {
         self.check_expr_has_type(&count_expr, tcx.types.usize);
-        let count = eval_repeat_count(self.tcx, &count_expr);
+        let count = eval_repeat_count(self.tcx.global_tcx(), &count_expr);
 
         let uty = match expected {
             ExpectHasType(uty) => {
@@ -3827,7 +3825,7 @@ pub fn resolve_ty_and_def_ufcs<'b>(&self,
         let mut def = path_res.base_def;
         let ty_segments = path.segments.split_last().unwrap().1;
         let base_ty_end = path.segments.len() - path_res.depth;
-        let ty = astconv::finish_resolving_def_to_ty(self, self, span,
+        let ty = AstConv::finish_resolving_def_to_ty(self, self, span,
                                                      PathParamMode::Optional,
                                                      &mut def,
                                                      opt_self_ty,
@@ -3864,8 +3862,8 @@ pub fn resolve_ty_and_def_ufcs<'b>(&self,
 }
 
 pub fn check_decl_initializer(&self,
-                              local: &'tcx hir::Local,
-                              init: &'tcx hir::Expr)
+                              local: &'gcx hir::Local,
+                              init: &'gcx hir::Expr)
 {
     let ref_bindings = self.tcx.pat_contains_ref_binding(&local.pat);
 
@@ -3887,7 +3885,7 @@ pub fn check_decl_initializer(&self,
     };
 }
 
-pub fn check_decl_local(&self, local: &'tcx hir::Local)  {
+pub fn check_decl_local(&self, local: &'gcx hir::Local)  {
     let tcx = self.tcx;
 
     let t = self.local_ty(local.span, local.id);
@@ -3912,7 +3910,7 @@ pub fn check_decl_local(&self, local: &'tcx hir::Local)  {
     }
 }
 
-pub fn check_stmt(&self, stmt: &'tcx hir::Stmt)  {
+pub fn check_stmt(&self, stmt: &'gcx hir::Stmt)  {
     let node_id;
     let mut saw_bot = false;
     let mut saw_err = false;
@@ -3956,7 +3954,7 @@ pub fn check_stmt(&self, stmt: &'tcx hir::Stmt)  {
     }
 }
 
-pub fn check_block_no_value(&self, blk: &'tcx hir::Block)  {
+pub fn check_block_no_value(&self, blk: &'gcx hir::Block)  {
     self.check_block_with_expected(blk, ExpectHasType(self.tcx.mk_nil()));
     let blkty = self.node_ty(blk.id);
     if blkty.references_error() {
@@ -3968,7 +3966,7 @@ pub fn check_block_no_value(&self, blk: &'tcx hir::Block)  {
 }
 
 fn check_block_with_expected(&self,
-                             blk: &'tcx hir::Block,
+                             blk: &'gcx hir::Block,
                              expected: Expectation<'tcx>) {
     let prev = {
         let mut fcx_ps = self.ps.borrow_mut();
@@ -4047,7 +4045,7 @@ fn check_block_with_expected(&self,
 
 fn check_const_with_ty(&self,
                        _: Span,
-                       e: &'tcx hir::Expr,
+                       e: &'gcx hir::Expr,
                        declty: Ty<'tcx>) {
     // Gather locals in statics (because of block expressions).
     // This is technically unnecessary because locals in static items are forbidden,

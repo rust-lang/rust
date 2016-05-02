@@ -72,7 +72,7 @@ enum UnsizeKind<'tcx> {
     OfParam(&'tcx ty::ParamTy)
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// Returns the kind of unsize information of t, or None
 /// if t is sized or it is unknown.
 fn unsize_kind(&self, t: Ty<'tcx>) -> Option<UnsizeKind<'tcx>> {
@@ -109,8 +109,8 @@ enum CastError {
     NonScalar,
 }
 
-impl<'a, 'tcx> CastCheck<'tcx> {
-    pub fn new(fcx: &FnCtxt<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
+    pub fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                expr: &'tcx hir::Expr,
                expr_ty: Ty<'tcx>,
                cast_ty: Ty<'tcx>,
@@ -139,7 +139,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn report_cast_error(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>, e: CastError) {
+    fn report_cast_error(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, e: CastError) {
         match e {
             CastError::NeedViaPtr |
             CastError::NeedViaThinPtr |
@@ -202,7 +202,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn report_cast_to_unsized_type(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) {
+    fn report_cast_to_unsized_type(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         if
             self.cast_ty.references_error() ||
             self.expr_ty.references_error()
@@ -256,7 +256,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         err.emit();
     }
 
-    fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) {
+    fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
         if t_cast.is_numeric() && t_expr.is_numeric() {
@@ -281,7 +281,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
     }
 
-    pub fn check(mut self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) {
+    pub fn check(mut self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 
@@ -309,7 +309,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     /// Check a cast, and report an error if one exists. In some cases, this
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
-    fn do_check(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Result<CastKind, CastError> {
+    fn do_check(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Result<CastKind, CastError> {
         use rustc::ty::cast::IntTy::*;
         use rustc::ty::cast::CastTy::*;
 
@@ -376,7 +376,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn check_ptr_ptr_cast(&self,
-                          fcx: &FnCtxt<'a, 'tcx, 'tcx>,
+                          fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                           m_expr: &'tcx ty::TypeAndMut<'tcx>,
                           m_cast: &'tcx ty::TypeAndMut<'tcx>)
                           -> Result<CastKind, CastError>
@@ -403,7 +403,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn check_fptr_ptr_cast(&self,
-                           fcx: &FnCtxt<'a, 'tcx, 'tcx>,
+                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                            m_cast: &'tcx ty::TypeAndMut<'tcx>)
                            -> Result<CastKind, CastError>
     {
@@ -417,7 +417,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn check_ptr_addr_cast(&self,
-                           fcx: &FnCtxt<'a, 'tcx, 'tcx>,
+                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                            m_expr: &'tcx ty::TypeAndMut<'tcx>)
                            -> Result<CastKind, CastError>
     {
@@ -431,7 +431,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn check_ref_cast(&self,
-                      fcx: &FnCtxt<'a, 'tcx, 'tcx>,
+                      fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                       m_expr: &'tcx ty::TypeAndMut<'tcx>,
                       m_cast: &'tcx ty::TypeAndMut<'tcx>)
                       -> Result<CastKind, CastError>
@@ -457,7 +457,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn check_addr_ptr_cast(&self,
-                           fcx: &FnCtxt<'a, 'tcx, 'tcx>,
+                           fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                            m_cast: &'tcx ty::TypeAndMut<'tcx>)
                            -> Result<CastKind, CastError>
     {
@@ -469,13 +469,13 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> bool {
+    fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
         fcx.try_coerce(self.expr, self.cast_ty).is_ok()
     }
 
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_is_known_to_be_sized(&self,
                                  ty: Ty<'tcx>,
                                  span: Span)

@@ -56,7 +56,6 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
              i_n_tps, n_tps);
     } else {
         require_same_types(ccx,
-                           None,
                            it.span,
                            i_ty.ty,
                            fty,

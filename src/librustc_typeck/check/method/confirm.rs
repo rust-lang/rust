@@ -52,11 +52,11 @@ struct InstantiatedMethodSig<'tcx> {
     method_predicates: ty::InstantiatedPredicates<'tcx>,
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub fn confirm_method(&self,
                       span: Span,
-                      self_expr: &'tcx hir::Expr,
-                      call_expr: &'tcx hir::Expr,
+                      self_expr: &'gcx hir::Expr,
+                      call_expr: &'gcx hir::Expr,
                       unadjusted_self_ty: Ty<'tcx>,
                       pick: probe::Pick<'tcx>,
                       supplied_method_types: Vec<Ty<'tcx>>)
@@ -72,12 +72,12 @@ pub fn confirm_method(&self,
 }
 }
 
-impl<'a,'tcx> ConfirmContext<'a,'tcx, 'tcx> {
-    fn new(fcx: &'a FnCtxt<'a, 'tcx, 'tcx>,
+impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
            span: Span,
-           self_expr: &'tcx hir::Expr,
-           call_expr: &'tcx hir::Expr)
-           -> ConfirmContext<'a, 'tcx, 'tcx>
+           self_expr: &'gcx hir::Expr,
+           call_expr: &'gcx hir::Expr)
+           -> ConfirmContext<'a, 'gcx, 'tcx>
     {
         ConfirmContext { fcx: fcx, span: span, self_expr: self_expr, call_expr: call_expr }
     }
@@ -286,7 +286,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx, 'tcx> {
     }
 
     fn extract_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R where
-        F: FnMut(&mut ConfirmContext<'a, 'tcx, 'tcx>, Ty<'tcx>, &ty::TraitTy<'tcx>) -> R,
+        F: FnMut(&mut ConfirmContext<'a, 'gcx, 'tcx>, Ty<'tcx>, &ty::TraitTy<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to

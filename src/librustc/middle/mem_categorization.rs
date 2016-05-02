@@ -302,9 +302,7 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            id: ast::NodeId)
-                            -> MutabilityCategory {
+    fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) => match p.node {
                 PatKind::Ident(bind_mode, _, _) => {
@@ -360,13 +358,13 @@ impl MutabilityCategory {
     }
 }
 
-impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>)
-               -> MemCategorizationContext<'a, 'tcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
+               -> MemCategorizationContext<'a, 'gcx, 'tcx> {
         MemCategorizationContext { infcx: infcx }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -1074,9 +1072,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
                              slice_pat: &hir::Pat)
                              -> McResult<(cmt<'tcx>, hir::Mutability, ty::Region)> {
         let slice_ty = self.node_ty(slice_pat.id)?;
-        let (slice_mutbl, slice_r) = vec_slice_info(self.tcx(),
-                                                    slice_pat,
-                                                    slice_ty);
+        let (slice_mutbl, slice_r) = vec_slice_info(slice_pat, slice_ty);
         let context = InteriorOffsetKind::Pattern;
         let cmt_vec = self.deref_vec(slice_pat, vec_cmt, context)?;
         let cmt_slice = self.cat_index(slice_pat, cmt_vec, context)?;
@@ -1085,14 +1081,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
         /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
         /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
         /// have to recurse through rptrs.
-        fn vec_slice_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    pat: &hir::Pat,
-                                    slice_ty: Ty)
-                                    -> (hir::Mutability, ty::Region) {
+        fn vec_slice_info(pat: &hir::Pat, slice_ty: Ty)
+                          -> (hir::Mutability, ty::Region) {
             match slice_ty.sty {
                 ty::TyRef(r, ref mt) => match mt.ty.sty {
                     ty::TySlice(_) => (mt.mutbl, *r),
-                    _ => vec_slice_info(tcx, pat, mt.ty),
+                    _ => vec_slice_info(pat, mt.ty),
                 },
 
                 _ => {
@@ -1140,7 +1134,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     }
 
     pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&MemCategorizationContext<'a, 'tcx, 'tcx>, cmt<'tcx>, &hir::Pat),
+        where F: FnMut(&MemCategorizationContext<'a, 'gcx, 'tcx>, cmt<'tcx>, &hir::Pat),
     {
         self.cat_pattern_(cmt, pat, &mut op)
     }
@@ -1148,7 +1142,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F)
                        -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'a, 'tcx, 'tcx>, cmt<'tcx>, &hir::Pat),
+        where F : FnMut(&MemCategorizationContext<'a, 'gcx, 'tcx>, cmt<'tcx>, &hir::Pat),
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1466,7 +1460,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 
 
-    pub fn descriptive_string<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    pub fn descriptive_string(&self, tcx: TyCtxt) -> String {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".to_string()
