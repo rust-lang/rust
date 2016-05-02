@@ -2947,12 +2947,18 @@ fn check_expr_with_expectation_and_lvalue_pref<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         if let Some((did, field_ty)) = private_candidate {
             let struct_path = fcx.tcx().item_path_str(did);
-            let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
-            fcx.tcx().sess.span_err(expr.span, &msg);
             fcx.write_ty(expr.id, field_ty);
+            let msg = format!("field `{}` of struct `{}` is private", field.node, struct_path);
+            let mut err = fcx.tcx().sess.struct_span_err(expr.span, &msg);
+            // Also check if an accessible method exists, which is often what is meant.
+            if method::exists(fcx, field.span, field.node, expr_t, expr.id, false) {
+                err.note(&format!("a method `{}` also exists, \
+                                   perhaps you wish to call it", field.node));
+            }
+            err.emit();
         } else if field.node == keywords::Invalid.name() {
             fcx.write_error(expr.id);
-        } else if method::exists(fcx, field.span, field.node, expr_t, expr.id) {
+        } else if method::exists(fcx, field.span, field.node, expr_t, expr.id, true) {
             fcx.type_error_struct(field.span,
                                   |actual| {
                                        format!("attempted to take value of method `{}` on type \
