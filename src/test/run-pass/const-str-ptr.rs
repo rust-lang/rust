@@ -8,17 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
-// ignore-pretty : (#23623) problems when  ending with // comments
-
 use std::{str, string};
 
 const A: [u8; 2] = ['h' as u8, 'i' as u8];
 const B: &'static [u8; 2] = &A;
 const C: *const u8 = B as *const u8;
 
-#[rustc_no_mir] // FIXME #27840 MIR can't do rvalue promotion yet.
 pub fn main() {
     unsafe {
         let foo = &A as *const u8;

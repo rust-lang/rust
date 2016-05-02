@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static ARRAY: &'static [u8] = &[1];
+pub static ARRAY: [u8; 1] = [1];
