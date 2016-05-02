@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Implementation of the various distribution aspects of the compiler.
+//!
+//! This module is responsible for creating tarballs of the standard library,
+//! compiler, and documentation. This ends up being what we distribute to
+//! everyone as well.
+//!
+//! No tarball is actually created literally in this file, but rather we shell
+//! out to `rust-installer` still. This may one day be replaced with bits and
+//! pieces of `rustup.rs`!
+
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::{PathBuf, Path};
@@ -33,6 +43,9 @@ fn tmpdir(build: &Build) -> PathBuf {
     build.out.join("tmp/dist")
 }
 
+/// Builds the `rust-docs` installer component.
+///
+/// Slurps up documentation from the `stage`'s `host`.
 pub fn docs(build: &Build, stage: u32, host: &str) {
     println!("Dist docs stage{} ({})", stage, host);
     let name = format!("rust-docs-{}", package_vers(build));
@@ -68,6 +81,12 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     }
 }
 
+/// Build the `rust-mingw` installer component.
+///
+/// This contains all the bits and pieces to run the MinGW Windows targets
+/// without any extra installed software (e.g. we bundle gcc, libraries, etc).
+/// Currently just shells out to a python script, but that should be rewritten
+/// in Rust.
 pub fn mingw(build: &Build, host: &str) {
     println!("Dist mingw ({})", host);
     let name = format!("rust-mingw-{}", package_vers(build));
@@ -102,6 +121,7 @@ pub fn mingw(build: &Build, host: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+/// Creates the `rustc` installer component.
 pub fn rustc(build: &Build, stage: u32, host: &str) {
     println!("Dist rustc stage{} ({})", stage, host);
     let name = format!("rustc-{}", package_vers(build));
@@ -209,6 +229,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     }
 }
 
+/// Copies debugger scripts for `host` into the `sysroot` specified.
 pub fn debugger_scripts(build: &Build,
                         sysroot: &Path,
                         host: &str) {
@@ -237,7 +258,8 @@ pub fn debugger_scripts(build: &Build,
     }
 }
 
-
+/// Creates the `rust-std` installer component as compiled by `compiler` for the
+/// target `target`.
 pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist std stage{} ({} -> {})", compiler.stage, compiler.host,
              target);

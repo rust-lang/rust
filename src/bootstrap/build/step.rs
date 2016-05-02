@@ -8,6 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Major workhorse of rustbuild, definition and dependencies between stages of
+//! the copmile.
+//!
+//! The primary purpose of this module is to define the various `Step`s of
+//! execution of the build. Each `Step` has a corresponding `Source` indicating
+//! what it's actually doing along with a number of dependencies which must be
+//! executed first.
+//!
+//! This module will take the CLI as input and calculate the steps required for
+//! the build requested, ensuring that all intermediate pieces are in place.
+//! Essentially this module is a `make`-replacement, but not as good.
+
 use std::collections::HashSet;
 
 use build::{Build, Compiler};
@@ -18,6 +30,15 @@ pub struct Step<'a> {
     pub target: &'a str,
 }
 
+/// Macro used to iterate over all targets that are recognized by the build
+/// system.
+///
+/// Whenever a new step is added it will involve adding an entry here, updating
+/// the dependencies section below, and then adding an implementation of the
+/// step in `build/mod.rs`.
+///
+/// This macro takes another macro as an argument and then calls that macro with
+/// all steps that the build system knows about.
 macro_rules! targets {
     ($m:ident) => {
         $m! {
@@ -110,6 +131,9 @@ macro_rules! targets {
     }
 }
 
+// Define the `Source` enum by iterating over all the steps and peeling out just
+// the types that we want to define.
+
 macro_rules! item { ($a:item) => ($a) }
 
 macro_rules! define_source {
@@ -125,6 +149,12 @@ macro_rules! define_source {
 
 targets!(define_source);
 
+/// Calculate a list of all steps described by `build`.
+///
+/// This will inspect the flags passed in on the command line and use that to
+/// build up a list of steps to execute. These steps will then be transformed
+/// into a topologically sorted list which when executed left-to-right will
+/// correctly sequence the entire build.
 pub fn all(build: &Build) -> Vec<Step> {
     let mut ret = Vec::new();
     let mut all = HashSet::new();
@@ -146,6 +176,8 @@ pub fn all(build: &Build) -> Vec<Step> {
     }
 }
 
+/// Determines what top-level targets are requested as part of this build,
+/// returning them as a list.
 fn top_level(build: &Build) -> Vec<Step> {
     let mut targets = Vec::new();
     let stage = build.flags.stage.unwrap_or(2);
@@ -161,8 +193,10 @@ fn top_level(build: &Build) -> Vec<Step> {
                      .unwrap_or(host.target)
     };
 
+    // First, try to find steps on the command line.
     add_steps(build, stage, &host, &target, &mut targets);
 
+    // If none are specified, then build everything.
     if targets.len() == 0 {
         let t = Step {
             src: Source::Llvm { _dummy: () },
@@ -260,8 +294,14 @@ impl<'a> Step<'a> {
         Step { target: target, src: self.src.clone() }
     }
 
+    // Define ergonomic constructors for each step defined above so they can be
+    // easily constructed.
     targets!(constructors);
 
+    /// Mapping of all dependencies for rustbuild.
+    ///
+    /// This function receives a step, the build that we're building for, and
+    /// then returns a list of all the dependencies of that step.
     pub fn deps(&self, build: &'a Build) -> Vec<Step<'a>> {
         match self.src {
             Source::Rustc { stage: 0 } => {

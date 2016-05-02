@@ -8,6 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Compilation of native dependencies like LLVM.
+//!
+//! Native projects like LLVM unfortunately aren't suited just yet for
+//! compilation in build scripts that Cargo has. This is because thie
+//! compilation takes a *very* long time but also because we don't want to
+//! compile LLVM 3 times as part of a normal bootstrap (we want it cached).
+//!
+//! LLVM and compiler-rt are essentially just wired up to everything else to
+//! ensure that they're always in place if needed.
+
 use std::path::Path;
 use std::process::Command;
 use std::fs;
@@ -19,6 +29,7 @@ use gcc;
 use build::Build;
 use build::util::{exe, staticlib, up_to_date};
 
+/// Compile LLVM for `target`.
 pub fn llvm(build: &Build, target: &str) {
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
@@ -116,6 +127,10 @@ fn check_llvm_version(build: &Build, llvm_config: &Path) {
     panic!("\n\nbad LLVM version: {}, need >=3.5\n\n", version)
 }
 
+/// Compiles the `compiler-rt` library, or at least the builtins part of it.
+///
+/// This uses the CMake build system and an existing LLVM build directory to
+/// compile the project.
 pub fn compiler_rt(build: &Build, target: &str) {
     let dst = build.compiler_rt_out(target);
     let arch = target.split('-').next().unwrap();
@@ -171,6 +186,8 @@ pub fn compiler_rt(build: &Build, target: &str) {
     cfg.build();
 }
 
+/// Compiles the `rust_test_helpers.c` library which we used in various
+/// `run-pass` test suites for ABI testing.
 pub fn test_helpers(build: &Build, target: &str) {
     let dst = build.test_helpers_out(target);
     let src = build.src.join("src/rt/rust_test_helpers.c");
