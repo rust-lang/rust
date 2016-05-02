@@ -154,10 +154,17 @@ pub fn compile_input(sess: &Session,
              "early lint checks",
              || lint::check_ast_crate(sess, &expanded_crate));
 
-        let (analysis, resolutions) = {
-            resolve::with_resolver(sess, &defs.borrow(), control.make_glob_map, |mut resolver| {
+        let (analysis, resolutions, mut hir_forest) = {
+            let defs = &mut *defs.borrow_mut();
+            resolve::with_resolver(sess, defs, control.make_glob_map, |mut resolver| {
                 time(sess.time_passes(), "name resolution", || {
                     resolve::resolve_crate(&mut resolver, &expanded_crate);
+                });
+
+                // Lower ast -> hir.
+                let hir_forest = time(sess.time_passes(), "lowering ast -> hir", || {
+                    let lcx = LoweringContext::new(sess, Some(&expanded_crate), &mut resolver);
+                    hir_map::Forest::new(lower_crate(&lcx, &expanded_crate), dep_graph)
                 });
 
                 (ty::CrateAnalysis {
@@ -171,16 +178,9 @@ pub fn compile_input(sess: &Session,
                     freevars: resolver.freevars,
                     trait_map: resolver.trait_map,
                     maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-                })
+                }, hir_forest)
             })
         };
-
-        // Lower ast -> hir.
-        let lcx = LoweringContext::new(sess, Some(&expanded_crate), defs);
-        let hir_forest = &mut time(sess.time_passes(),
-                                   "lowering ast -> hir",
-                                   || hir_map::Forest::new(lower_crate(&lcx, &expanded_crate),
-                                                           dep_graph));
 
         // Discard MTWT tables that aren't required past lowering to HIR.
         if !keep_mtwt_tables(sess) {
@@ -190,6 +190,7 @@ pub fn compile_input(sess: &Session,
         let arenas = ty::CtxtArenas::new();
 
         // Construct the HIR map
+        let hir_forest = &mut hir_forest;
         let hir_map = time(sess.time_passes(),
                            "indexing hir",
                            move || hir_map::map_crate(hir_forest, defs));

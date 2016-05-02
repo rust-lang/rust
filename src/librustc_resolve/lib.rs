@@ -44,7 +44,7 @@ use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
 
 use rustc::hir::map::Definitions;
-use rustc::hir::{PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
+use rustc::hir::{self, PrimTy, TyBool, TyChar, TyFloat, TyInt, TyUint, TyStr};
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::*;
@@ -962,7 +962,7 @@ impl PrimitiveTypeTable {
 pub struct Resolver<'a> {
     session: &'a Session,
 
-    definitions: &'a Definitions,
+    definitions: &'a mut Definitions,
 
     graph_root: Module<'a>,
 
@@ -1082,9 +1082,49 @@ impl<'a> ty::NodeIdTree for Resolver<'a> {
     }
 }
 
+impl<'a> hir::lowering::Resolver for Resolver<'a> {
+    fn resolve_generated_global_path(&mut self, path: &hir::Path, is_value: bool) -> Def {
+        let namespace = if is_value { ValueNS } else { TypeNS };
+        match self.resolve_crate_relative_path(path.span, &path.segments, namespace) {
+            Ok(binding) => binding.def().unwrap(),
+            Err(true) => Def::Err,
+            Err(false) => {
+                let path_name = &format!("{}", path);
+                let error =
+                    ResolutionError::UnresolvedName(path_name, "", UnresolvedNameContext::Other);
+                resolve_error(self, path.span, error);
+                Def::Err
+            }
+        }
+    }
+
+    fn def_map(&mut self) -> &mut DefMap {
+        &mut self.def_map
+    }
+    fn definitions(&mut self) -> &mut Definitions {
+        self.definitions
+    }
+}
+
+trait Named {
+    fn name(&self) -> Name;
+}
+
+impl Named for ast::PathSegment {
+    fn name(&self) -> Name {
+        self.identifier.name
+    }
+}
+
+impl Named for hir::PathSegment {
+    fn name(&self) -> Name {
+        self.identifier.name
+    }
+}
+
 impl<'a> Resolver<'a> {
     fn new(session: &'a Session,
-           definitions: &'a Definitions,
+           definitions: &'a mut Definitions,
            make_glob_map: MakeGlobMap,
            arenas: &'a ResolverArenas<'a>)
            -> Resolver<'a> {
@@ -2721,19 +2761,12 @@ impl<'a> Resolver<'a> {
 
     /// Invariant: This must be called only during main resolution, not during
     /// import resolution.
-    fn resolve_crate_relative_path(&mut self,
-                                   span: Span,
-                                   segments: &[ast::PathSegment],
-                                   namespace: Namespace)
-                                   -> Result<&'a NameBinding<'a>,
-                                             bool /* true if an error was reported */> {
-        let module_path = segments.split_last()
-                                  .unwrap()
-                                  .1
-                                  .iter()
-                                  .map(|ps| ps.identifier.name)
-                                  .collect::<Vec<_>>();
-
+    fn resolve_crate_relative_path<T>(&mut self, span: Span, segments: &[T], namespace: Namespace)
+                                      -> Result<&'a NameBinding<'a>,
+                                                bool /* true if an error was reported */>
+        where T: Named,
+    {
+        let module_path = segments.split_last().unwrap().1.iter().map(T::name).collect::<Vec<_>>();
         let root_module = self.graph_root;
 
         let containing_module;
@@ -2762,7 +2795,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let name = segments.last().unwrap().identifier.name;
+        let name = segments.last().unwrap().name();
         let result = self.resolve_name_in_module(containing_module, name, namespace, false, true);
         result.success().map(|binding| {
             self.check_privacy(name, binding, span);
@@ -3588,7 +3621,7 @@ pub fn resolve_crate<'a, 'b>(resolver: &'b mut Resolver<'a>, krate: &'b Crate) {
 }
 
 pub fn with_resolver<'a, T, F>(session: &'a Session,
-                               definitions: &'a Definitions,
+                               definitions: &'a mut Definitions,
                                make_glob_map: MakeGlobMap,
                                f: F) -> T
     where F: for<'b> FnOnce(Resolver<'b>) -> T,
