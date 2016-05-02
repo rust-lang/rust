@@ -19,7 +19,6 @@ use std::fmt;
 use std::iter;
 use std::ops::Index;
 
-use super::dataflow::BitDenotation;
 use super::abs_domain::{AbstractElem, Lift};
 
 // This submodule holds some newtype'd Index wrappers that are using
@@ -32,7 +31,7 @@ mod indexes {
 
     macro_rules! new_index {
         ($Index:ident) => {
-            #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+            #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
             pub struct $Index(NonZero<usize>);
 
             impl $Index {
@@ -55,6 +54,12 @@ mod indexes {
 
 pub use self::indexes::MovePathIndex;
 pub use self::indexes::MoveOutIndex;
+
+impl self::indexes::MoveOutIndex {
+    pub fn move_path_index(&self, move_data: &MoveData) -> MovePathIndex {
+        move_data.moves[self.idx()].path
+    }
+}
 
 /// `MovePath` is a canonicalized representation of a path that is
 /// moved or assigned to.
@@ -125,6 +130,7 @@ impl<'tcx> fmt::Debug for MovePath<'tcx> {
     }
 }
 
+#[derive(Debug)]
 pub struct MoveData<'tcx> {
     pub move_paths: MovePathData<'tcx>,
     pub moves: Vec<MoveOut>,
@@ -133,6 +139,7 @@ pub struct MoveData<'tcx> {
     pub rev_lookup: MovePathLookup<'tcx>,
 }
 
+#[derive(Debug)]
 pub struct LocMap {
     /// Location-indexed (BasicBlock for outer index, index within BB
     /// for inner index) map to list of MoveOutIndex's.
@@ -153,6 +160,7 @@ impl Index<Location> for LocMap {
     }
 }
 
+#[derive(Debug)]
 pub struct PathMap {
     /// Path-indexed map to list of MoveOutIndex's.
     ///
@@ -187,7 +195,7 @@ impl fmt::Debug for MoveOut {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Location {
     /// block where action is located
     pub block: BasicBlock,
@@ -202,8 +210,13 @@ impl fmt::Debug for Location {
     }
 }
 
+#[derive(Debug)]
 pub struct MovePathData<'tcx> {
     move_paths: Vec<MovePath<'tcx>>,
+}
+
+impl<'tcx> MovePathData<'tcx> {
+    pub fn len(&self) -> usize { self.move_paths.len() }
 }
 
 impl<'tcx> Index<MovePathIndex> for MovePathData<'tcx> {
@@ -224,6 +237,7 @@ struct MovePathDataBuilder<'a, 'tcx: 'a> {
 }
 
 /// Tables mapping from an l-value to its MovePathIndex.
+#[derive(Debug)]
 pub struct MovePathLookup<'tcx> {
     vars: MovePathInverseMap,
     temps: MovePathInverseMap,
@@ -272,6 +286,7 @@ impl<T:Clone> FillTo for Vec<T> {
 
 #[derive(Clone, Debug)]
 enum LookupKind { Generate, Reuse }
+#[derive(Clone, Debug)]
 struct Lookup<T>(LookupKind, T);
 
 impl Lookup<MovePathIndex> {
@@ -425,6 +440,8 @@ impl<'a, 'tcx> MovePathDataBuilder<'a, 'tcx> {
     }
 
     fn move_path_for(&mut self, lval: &Lvalue<'tcx>) -> MovePathIndex {
+        debug!("move_path_for({:?})", lval);
+
         let lookup: Lookup<MovePathIndex> = self.lookup(lval);
 
         // `lookup` is either the previously assigned index or a
@@ -547,7 +564,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
         debug_assert!(loc_map_bb.len() == len + 1);
 
         let mut bb_ctxt = BlockContext {
-            tcx: tcx,
+            _tcx: tcx,
             moves: &mut moves,
             builder: builder,
             path_map: &mut path_map,
@@ -608,23 +625,17 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
                             // example where I am seeing this arise is
                             // `TargetDataLayout::parse(&Session)` in
                             // `rustc::ty::layout`.
-                            debug!("encountered Rvalue::Slice as RHS of Assign, source: {:?} \n{}",
-                                   source, {
-                                       let mut out = Vec::new();
-                                       {
-                                           use std::io::Write;
-                                           use rustc_mir::pretty::write_mir_named;
-                                           let mut w: &mut Write = &mut out;
-                                           write_mir_named(tcx, "boo_attempt_move_out_of_slice", mir, &mut w, None).unwrap();
-                                       }
-                                       String::from_utf8(out).unwrap()
-                                   });
+                            //
+                            // this should be removed soon.
+                            debug!("encountered Rvalue::Slice as RHS of Assign, source: {:?}",
+                                   source);
                         }
                     }
                 }
             }
         }
 
+        debug!("gather_moves({:?})", bb_data.terminator());
         match bb_data.terminator().kind {
             TerminatorKind::Goto { target: _ } | TerminatorKind::Resume => { }
 
@@ -642,7 +653,6 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             TerminatorKind::If { ref cond, targets: _ } => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
-                debug!("gather_moves If on_operand {:?} {:?}", cond, source);
                 bb_ctxt.on_operand(SK::If, cond, source);
             }
 
@@ -658,10 +668,8 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
             TerminatorKind::Drop { value: ref lval, target: _, unwind: _ } => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
-                debug!("gather_moves Drop on_move_out_lval {:?} {:?}", lval, source);
                 bb_ctxt.on_move_out_lval(SK::Drop, lval, source);
             }
-
             TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
                 let source = Location { block: bb,
                                         index: bb_data.statements.len() };
@@ -727,7 +735,7 @@ fn gather_moves<'a, 'tcx>(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MoveD
 }
 
 struct BlockContext<'b, 'a: 'b, 'tcx: 'a> {
-    tcx: TyCtxt<'b, 'tcx, 'tcx>,
+    _tcx: TyCtxt<'b, 'tcx, 'tcx>,
     moves: &'b mut Vec<MoveOut>,
     builder: MovePathDataBuilder<'a, 'tcx>,
     path_map: &'b mut Vec<Vec<MoveOutIndex>>,
@@ -739,7 +747,6 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
                         stmt_kind: StmtKind,
                         lval: &Lvalue<'tcx>,
                         source: Location) {
-        let tcx = self.tcx;
         let i = source.index;
         let index = MoveOutIndex::new(self.moves.len());
 
@@ -772,15 +779,5 @@ impl<'b, 'a: 'b, 'tcx: 'a> BlockContext<'b, 'a, 'tcx> {
                 self.on_move_out_lval(stmt_kind, lval, source);
             }
         }
-    }
-}
-
-impl<'tcx> BitDenotation for MoveData<'tcx>{
-    type Bit = MoveOut;
-    fn bits_per_block(&self) -> usize {
-        self.moves.len()
-    }
-    fn interpret(&self, idx: usize) -> &Self::Bit {
-        &self.moves[idx]
     }
 }
