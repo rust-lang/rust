@@ -26,6 +26,7 @@ use rustc::hir;
 use clean;
 use core::DocAccessLevels;
 use html::item_type::ItemType;
+use html::escape::Escape;
 use html::render;
 use html::render::{cache, CURRENT_LOCATION_KEY};
 
@@ -496,7 +497,7 @@ impl fmt::Display for clean::Type {
                 primitive_link(f, clean::PrimitiveType::Array, "[")?;
                 write!(f, "{}", t)?;
                 primitive_link(f, clean::PrimitiveType::Array,
-                               &format!("; {}]", *s))
+                               &format!("; {}]", Escape(s)))
             }
             clean::Bottom => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
