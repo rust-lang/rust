@@ -145,14 +145,19 @@ pub struct Implementor {
 /// Metadata about implementations for a type.
 #[derive(Clone)]
 pub struct Impl {
-    pub impl_: clean::Impl,
-    pub dox: Option<String>,
-    pub stability: Option<clean::Stability>,
+    pub impl_item: clean::Item,
 }
 
 impl Impl {
+    fn inner_impl(&self) -> &clean::Impl {
+        match self.impl_item.inner {
+            clean::ImplItem(ref impl_) => impl_,
+            _ => panic!("non-impl item found in impl")
+        }
+    }
+
     fn trait_did(&self) -> Option<DefId> {
-        self.impl_.trait_.def_id()
+        self.inner_impl().trait_.def_id()
     }
 }
 
@@ -1189,31 +1194,34 @@ impl DocFolder for Cache {
         // Once we've recursively found all the generics, then hoard off all the
         // implementations elsewhere
         let ret = self.fold_item_recur(item).and_then(|item| {
-            if let clean::Item { attrs, inner: clean::ImplItem(i), .. } = item {
+            if let clean::Item { inner: clean::ImplItem(_), .. } = item {
                 // Figure out the id of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
-                let did = match i.for_ {
-                    clean::ResolvedPath { did, .. } |
-                    clean::BorrowedRef {
-                        type_: box clean::ResolvedPath { did, .. }, ..
-                    } => {
-                        Some(did)
-                    }
-                    ref t => {
-                        t.primitive_type().and_then(|t| {
-                            self.primitive_locations.get(&t).map(|n| {
-                                let id = t.to_def_index();
-                                DefId { krate: *n, index: id }
+                // Note: matching twice to restrict the lifetime of the `i` borrow.
+                let did = if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
+                    match i.for_ {
+                        clean::ResolvedPath { did, .. } |
+                        clean::BorrowedRef {
+                            type_: box clean::ResolvedPath { did, .. }, ..
+                        } => {
+                            Some(did)
+                        }
+                        ref t => {
+                            t.primitive_type().and_then(|t| {
+                                self.primitive_locations.get(&t).map(|n| {
+                                    let id = t.to_def_index();
+                                    DefId { krate: *n, index: id }
+                                })
                             })
-                        })
+                        }
                     }
+                } else {
+                    unreachable!()
                 };
                 if !self.seen_mod {
                     if let Some(did) = did {
                         self.impls.entry(did).or_insert(vec![]).push(Impl {
-                            impl_: i,
-                            dox: attrs.value("doc").map(|s|s.to_owned()),
-                            stability: item.stability.clone(),
+                            impl_item: item,
                         });
                     }
                 }
@@ -1510,11 +1518,15 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache();
-            let path = &cache.external_paths[&self.item.def_id];
-            let root = match cache.extern_locations[&self.item.def_id.krate] {
-                (_, Remote(ref s)) => s.to_string(),
-                (_, Local) => self.cx.root_path.clone(),
-                (_, Unknown) => return None,
+            let path = match cache.external_paths.get(&self.item.def_id) {
+                Some(path) => path,
+                None => return None,
+            };
+            let root = match cache.extern_locations.get(&self.item.def_id.krate) {
+                Some(&(_, Remote(ref s))) => s.to_string(),
+                Some(&(_, Local)) => self.cx.root_path.clone(),
+                Some(&(_, Unknown)) => return None,
+                None => return None,
             };
             Some(format!("{root}{path}/{file}?gotosrc={goto}",
                          root = root,
@@ -2449,7 +2461,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         None => return Ok(()),
     };
     let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
-        i.impl_.trait_.is_none()
+        i.inner_impl().trait_.is_none()
     });
     if !non_trait.is_empty() {
         let render_header = match what {
@@ -2473,7 +2485,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
     }
     if !traits.is_empty() {
         let deref_impl = traits.iter().find(|t| {
-            t.impl_.trait_.def_id() == c.deref_trait_did
+            t.inner_impl().trait_.def_id() == c.deref_trait_did
         });
         if let Some(impl_) = deref_impl {
             render_deref_methods(w, cx, impl_, containing_item)?;
@@ -2481,11 +2493,11 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         write!(w, "<h2 id='implementations'>Trait \
                    Implementations</h2>")?;
         let (derived, manual): (Vec<_>, Vec<&Impl>) = traits.iter().partition(|i| {
-            i.impl_.derived
+            i.inner_impl().derived
         });
         for i in &manual {
             let did = i.trait_did().unwrap();
-            let assoc_link = AssocItemLink::GotoSource(did, &i.impl_.provided_trait_methods);
+            let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
             render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
         }
         if !derived.is_empty() {
@@ -2494,7 +2506,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
                        </h3>")?;
             for i in &derived {
                 let did = i.trait_did().unwrap();
-                let assoc_link = AssocItemLink::GotoSource(did, &i.impl_.provided_trait_methods);
+                let assoc_link = AssocItemLink::GotoSource(did,
+                                                           &i.inner_impl().provided_trait_methods);
                 render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
             }
         }
@@ -2504,8 +2517,8 @@ fn render_assoc_items(w: &mut fmt::Formatter,
 
 fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
                         container_item: &clean::Item) -> fmt::Result {
-    let deref_type = impl_.impl_.trait_.as_ref().unwrap();
-    let target = impl_.impl_.items.iter().filter_map(|item| {
+    let deref_type = impl_.inner_impl().trait_.as_ref().unwrap();
+    let target = impl_.inner_impl().items.iter().filter_map(|item| {
         match item.inner {
             clean::TypedefItem(ref t, true) => Some(&t.type_),
             _ => None,
@@ -2531,11 +2544,18 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
                render_header: bool, outer_version: Option<&str>) -> fmt::Result {
     if render_header {
-        write!(w, "<h3 class='impl'><code>{}</code>", i.impl_)?;
-        let since = i.stability.as_ref().map(|s| &s.since[..]);
+        write!(w, "<h3 class='impl'><span class='in-band'><code>{}</code>", i.inner_impl())?;
+        let since = i.impl_item.stability.as_ref().map(|s| &s.since[..]);
         render_stability_since_raw(w, since, outer_version)?;
-        write!(w, "</h3>")?;
-        if let Some(ref dox) = i.dox {
+        write!(w, "</span><span class='out-of-band'>")?;
+        if let Some(l) = (Item { item: &i.impl_item, cx: cx }).href() {
+            write!(w, "<a id='src-{}' class='srclink' \
+                       href='{}' title='{}'>[src]</a>",
+                   i.impl_item.def_id.index.as_usize(), l, "goto source code")?;
+        }
+        write!(w, "</span>")?;
+        write!(w, "</h3>\n")?;
+        if let Some(ref dox) = i.impl_item.attrs.value("doc") {
             write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
         }
     }
@@ -2601,7 +2621,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     write!(w, "<div class='impl-items'>")?;
-    for trait_item in &i.impl_.items {
+    for trait_item in &i.inner_impl().items {
         doctraititem(w, cx, trait_item, link, render_header, false, outer_version)?;
     }
 
@@ -2629,7 +2649,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // default items which weren't overridden in the implementation block.
     if let Some(did) = i.trait_did() {
         if let Some(t) = cache().traits.get(&did) {
-            render_default_items(w, cx, t, &i.impl_, render_header, outer_version)?;
+            render_default_items(w, cx, t, &i.inner_impl(), render_header, outer_version)?;
         }
     }
     write!(w, "</div>")?;
