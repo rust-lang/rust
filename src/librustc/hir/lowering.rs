@@ -966,7 +966,7 @@ impl<'a> LoweringContext<'a> {
                     let inplace_finalize = ["ops", "InPlace", "finalize"];
 
                     let make_call = |this: &mut LoweringContext, p, args| {
-                        let path = this.core_path(e.span, p);
+                        let path = this.std_path(e.span, p);
                         let path = this.expr_path(path, ThinVec::new());
                         this.expr_call(e.span, path, args)
                     };
@@ -1159,15 +1159,13 @@ impl<'a> LoweringContext<'a> {
                                    ast_expr: &Expr,
                                    path: &[&str],
                                    fields: &[(&str, &P<Expr>)]) -> P<hir::Expr> {
-                        let strs = this.std_path(&iter::once(&"ops")
-                                                        .chain(path)
-                                                        .map(|s| *s)
-                                                        .collect::<Vec<_>>());
-
-                        let structpath = this.path_global(ast_expr.span, strs);
+                        let struct_path = this.std_path(ast_expr.span,
+                                                        &iter::once(&"ops").chain(path)
+                                                                           .map(|s| *s)
+                                                                           .collect::<Vec<_>>());
 
                         let hir_expr = if fields.len() == 0 {
-                            this.expr_path(structpath, ast_expr.attrs.clone())
+                            this.expr_path(struct_path, ast_expr.attrs.clone())
                         } else {
                             let fields = fields.into_iter().map(|&(s, e)| {
                                 let expr = this.lower_expr(&e);
@@ -1180,7 +1178,7 @@ impl<'a> LoweringContext<'a> {
                             }).collect();
                             let attrs = ast_expr.attrs.clone();
 
-                            this.expr_struct(ast_expr.span, structpath, fields, None, attrs)
+                            this.expr_struct(ast_expr.span, struct_path, fields, None, attrs)
                         };
 
                         this.signal_block_expr(hir_vec![],
@@ -1463,11 +1461,7 @@ impl<'a> LoweringContext<'a> {
 
                     // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                     let match_expr = {
-                        let next_path = {
-                            let strs = self.std_path(&["iter", "Iterator", "next"]);
-
-                            self.path_global(e.span, strs)
-                        };
+                        let next_path = self.std_path(e.span, &["iter", "Iterator", "next"]);
                         let iter = self.expr_ident(e.span, iter, iter_pat.id);
                         let ref_mut_iter = self.expr_mut_addr_of(e.span, iter);
                         let next_path = self.expr_path(next_path, ThinVec::new());
@@ -1494,11 +1488,8 @@ impl<'a> LoweringContext<'a> {
 
                     // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
                     let into_iter_expr = {
-                        let into_iter_path = {
-                            let strs = self.std_path(&["iter", "IntoIterator", "into_iter"]);
-
-                            self.path_global(e.span, strs)
-                        };
+                        let into_iter_path = self.std_path(e.span,
+                                                           &["iter", "IntoIterator", "into_iter"]);
 
                         let into_iter = self.expr_path(into_iter_path, ThinVec::new());
                         self.expr_call(e.span, into_iter, hir_vec![head])
@@ -1527,16 +1518,32 @@ impl<'a> LoweringContext<'a> {
                     // to:
                     //
                     // {
-                    //     match <expr> {
+                    //     match { Carrier::translate( { <expr> } ) } {
                     //         Ok(val) => val,
-                    //         Err(err) => {
-                    //             return Err(From::from(err))
-                    //         }
+                    //         Err(err) => { return Carrier::from_error(From::from(err)); }
                     //     }
                     // }
 
-                    // expand <expr>
-                    let sub_expr = self.lower_expr(sub_expr);
+                    // { Carrier::translate( { <expr> } ) }
+                    let discr = {
+                        // expand <expr>
+                        let sub_expr = self.lower_expr(sub_expr);
+                        let sub_expr = self.signal_block_expr(hir_vec![],
+                                                              sub_expr,
+                                                              e.span,
+                                                              hir::PopUnstableBlock,
+                                                              ThinVec::new());
+
+                        let path = self.std_path(e.span, &["ops", "Carrier", "translate"]);
+                        let path = self.expr_path(path, ThinVec::new());
+                        let call = self.expr_call(e.span, path, hir_vec![sub_expr]);
+
+                        self.signal_block_expr(hir_vec![],
+                                               call,
+                                               e.span,
+                                               hir::PushUnstableBlock,
+                                               ThinVec::new())
+                    };
 
                     // Ok(val) => val
                     let ok_arm = {
@@ -1548,32 +1555,35 @@ impl<'a> LoweringContext<'a> {
                         self.arm(hir_vec![ok_pat], val_expr)
                     };
 
-                    // Err(err) => return Err(From::from(err))
+                    // Err(err) => { return Carrier::from_error(From::from(err)); }
                     let err_arm = {
                         let err_ident = self.str_to_ident("err");
                         let err_local = self.pat_ident(e.span, err_ident);
                         let from_expr = {
-                            let path = self.std_path(&["convert", "From", "from"]);
-                            let path = self.path_global(e.span, path);
+                            let path = self.std_path(e.span, &["convert", "From", "from"]);
                             let from = self.expr_path(path, ThinVec::new());
                             let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
 
                             self.expr_call(e.span, from, hir_vec![err_expr])
                         };
-                        let err_expr = {
-                            let path = self.std_path(&["result", "Result", "Err"]);
-                            let path = self.path_global(e.span, path);
-                            let err_ctor = self.expr_path(path, ThinVec::new());
-                            self.expr_call(e.span, err_ctor, hir_vec![from_expr])
+                        let from_err_expr = {
+                            let path = self.std_path(e.span, &["ops", "Carrier", "from_error"]);
+                            let from_err = self.expr_path(path, ThinVec::new());
+                            self.expr_call(e.span, from_err, hir_vec![from_expr])
                         };
-                        let err_pat = self.pat_err(e.span, err_local);
+
                         let ret_expr = self.expr(e.span,
-                                                 hir::Expr_::ExprRet(Some(err_expr)),
-                                                 ThinVec::new());
-                        self.arm(hir_vec![err_pat], ret_expr)
+                                                 hir::Expr_::ExprRet(Some(from_err_expr)),
+                                                                     ThinVec::new());
+                        let ret_stmt = self.stmt_expr(ret_expr);
+                        let block = self.signal_block_stmt(ret_stmt, e.span,
+                                                           hir::PushUnstableBlock, ThinVec::new());
+
+                        let err_pat = self.pat_err(e.span, err_local);
+                        self.arm(hir_vec![err_pat], block)
                     };
 
-                    return self.expr_match(e.span, sub_expr, hir_vec![err_arm, ok_arm],
+                    return self.expr_match(e.span, discr, hir_vec![err_arm, ok_arm],
                                            hir::MatchSource::TryDesugar);
                 }
 
@@ -1787,6 +1797,15 @@ impl<'a> LoweringContext<'a> {
         (respan(sp, hir::StmtDecl(P(decl), self.next_id())), pat_id)
     }
 
+    // Turns `<expr>` into `<expr>;`, note that this produces a StmtSemi, not a
+    // StmtExpr.
+    fn stmt_expr(&self, expr: P<hir::Expr>) -> hir::Stmt {
+        hir::Stmt {
+            span: expr.span,
+            node: hir::StmtSemi(expr, self.next_id()),
+        }
+    }
+
     fn block_expr(&mut self, expr: P<hir::Expr>) -> P<hir::Block> {
         self.block_all(expr.span, hir::HirVec::new(), Some(expr))
     }
@@ -1803,26 +1822,22 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn pat_ok(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        let ok = self.std_path(&["result", "Result", "Ok"]);
-        let path = self.path_global(span, ok);
+        let path = self.std_path(span, &["result", "Result", "Ok"]);
         self.pat_enum(span, path, hir_vec![pat])
     }
 
     fn pat_err(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        let err = self.std_path(&["result", "Result", "Err"]);
-        let path = self.path_global(span, err);
+        let path = self.std_path(span, &["result", "Result", "Err"]);
         self.pat_enum(span, path, hir_vec![pat])
     }
 
     fn pat_some(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
-        let some = self.std_path(&["option", "Option", "Some"]);
-        let path = self.path_global(span, some);
+        let path = self.std_path(span, &["option", "Option", "Some"]);
         self.pat_enum(span, path, hir_vec![pat])
     }
 
     fn pat_none(&mut self, span: Span) -> P<hir::Pat> {
-        let none = self.std_path(&["option", "Option", "None"]);
-        let path = self.path_global(span, none);
+        let path = self.std_path(span, &["option", "Option", "None"]);
         self.pat_enum(span, path, hir_vec![])
     }
 
@@ -1920,7 +1935,7 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn std_path(&mut self, components: &[&str]) -> Vec<Name> {
+    fn std_path_components(&mut self, components: &[&str]) -> Vec<Name> {
         let mut v = Vec::new();
         if let Some(s) = self.crate_root {
             v.push(token::intern(s));
@@ -1931,8 +1946,8 @@ impl<'a> LoweringContext<'a> {
 
     // Given suffix ["b","c","d"], returns path `::std::b::c::d` when
     // `fld.cx.use_std`, and `::core::b::c::d` otherwise.
-    fn core_path(&mut self, span: Span, components: &[&str]) -> hir::Path {
-        let idents = self.std_path(components);
+    fn std_path(&mut self, span: Span, components: &[&str]) -> hir::Path {
+        let idents = self.std_path_components(components);
         self.path_global(span, idents)
     }
 
@@ -1950,6 +1965,23 @@ impl<'a> LoweringContext<'a> {
             id: id,
             stmts: stmts,
             expr: Some(expr),
+        });
+        self.expr_block(block, attrs)
+    }
+
+    fn signal_block_stmt(&mut self,
+                         stmt: hir::Stmt,
+                         span: Span,
+                         rule: hir::BlockCheckMode,
+                         attrs: ThinVec<Attribute>)
+                         -> P<hir::Expr> {
+        let id = self.next_id();
+        let block = P(hir::Block {
+            rules: rule,
+            span: span,
+            id: id,
+            stmts: hir_vec![stmt],
+            expr: None,
         });
         self.expr_block(block, attrs)
     }

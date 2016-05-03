@@ -75,6 +75,8 @@
 use cmp::PartialOrd;
 use fmt;
 use marker::{Sized, Unsize};
+use result::Result::{self, Ok, Err};
+use option::Option::{self, Some, None};
 
 /// The `Drop` trait is used to run some code when a value goes out of scope.
 /// This is sometimes called a 'destructor'.
@@ -2149,4 +2151,127 @@ pub trait Boxed {
 pub trait BoxPlace<Data: ?Sized> : Place<Data> {
     /// Creates a globally fresh place.
     fn make_place() -> Self;
+}
+
+/// A trait for types which have success and error states and are meant to work
+/// with the question mark operator.
+/// When the `?` operator is used with a value, whether the value is in the
+/// success or error state is determined by calling `translate`.
+///
+/// This trait is **very** experimental, it will probably be iterated on heavily
+/// before it is stabilised. Implementors should expect change. Users of `?`
+/// should not rely on any implementations of `Carrier` other than `Result`,
+/// i.e., you should not expect `?` to continue to work with `Option`, etc.
+#[unstable(feature = "question_mark_carrier", issue = "31436")]
+pub trait Carrier {
+    /// The type of the value when computation succeeds.
+    type Success;
+    /// The type of the value when computation errors out.
+    type Error;
+
+    /// Create a `Carrier` from a success value.
+    fn from_success(Self::Success) -> Self;
+
+    /// Create a `Carrier` from an error value.
+    fn from_error(Self::Error) -> Self;
+
+    /// Translate this `Carrier` to another implementation of `Carrier` with the
+    /// same associated types.
+    fn translate<T>(self) -> T where T: Carrier<Success=Self::Success, Error=Self::Error>;
+}
+
+#[unstable(feature = "question_mark_carrier", issue = "31436")]
+impl<U, V> Carrier for Result<U, V> {
+    type Success = U;
+    type Error = V;
+
+    fn from_success(u: U) -> Result<U, V> {
+        Ok(u)
+    }
+
+    fn from_error(e: V) -> Result<U, V> {
+        Err(e)
+    }
+
+    fn translate<T>(self) -> T
+        where T: Carrier<Success=U, Error=V>
+    {
+        match self {
+            Ok(u) => T::from_success(u),
+            Err(e) => T::from_error(e),
+        }
+    }
+}
+
+#[unstable(feature = "question_mark_carrier", issue = "31436")]
+impl<U> Carrier for Option<U> {
+    type Success = U;
+    type Error = ();
+
+    fn from_success(u: U) -> Option<U> {
+        Some(u)
+    }
+
+    fn from_error(_: ()) -> Option<U> {
+        None
+    }
+
+    fn translate<T>(self) -> T
+        where T: Carrier<Success=U, Error=()>
+    {
+        match self {
+            Some(u) => T::from_success(u),
+            None => T::from_error(()),
+        }
+    }
+}
+
+// Implementing Carrier for bools means it's easy to write short-circuiting
+// functions. E.g.,
+// ```
+// fn foo() -> bool {
+//     if !(f() || g()) {
+//         return false;
+//     }
+//
+//     some_computation();
+//     if h() {
+//         return false;
+//     }
+//
+//     more_computation();
+//     i()
+// }
+// ```
+// becomes
+// ```
+// fn foo() -> bool {
+//     (f() || g())?;
+//     some_computation();
+//     (!h())?;
+//     more_computation();
+//     i()
+// }
+// ```
+#[unstable(feature = "question_mark_carrier", issue = "31436")]
+impl Carrier for bool {
+    type Success = ();
+    type Error = ();
+
+    fn from_success(_: ()) -> bool {
+        true
+    }
+
+    fn from_error(_: ()) -> bool {
+        false
+    }
+
+    fn translate<T>(self) -> T
+        where T: Carrier<Success=(), Error=()>
+    {
+        match self {
+            true => T::from_success(()),
+            false => T::from_error(()),
+        }
+    }
 }
