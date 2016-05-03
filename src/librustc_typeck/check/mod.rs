@@ -4791,7 +4791,7 @@ pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(cx: &TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
+pub fn may_break(tcx: &TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(&b, |e| {
@@ -4804,7 +4804,7 @@ pub fn may_break(cx: &TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
     // <id> nested anywhere inside the loop?
     (block_query(b, |e| {
         if let hir::ExprBreak(Some(_)) = e.node {
-            lookup_full_def(cx, e.span, e.id) == Def::Label(id)
+            lookup_full_def(tcx, e.span, e.id) == Def::Label(id)
         } else {
             false
         }

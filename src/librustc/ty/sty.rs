@@ -974,18 +974,18 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn sequence_element_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn sequence_element_type(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => ty,
-            TyStr => cx.mk_mach_uint(ast::UintTy::U8),
+            TyStr => tcx.mk_mach_uint(ast::UintTy::U8),
             _ => bug!("sequence_element_type called on non-sequence value: {}", self),
         }
     }
 
-    pub fn simd_type(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn simd_type(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.sty {
             TyStruct(def, substs) => {
-                def.struct_variant().fields[0].ty(cx, substs)
+                def.struct_variant().fields[0].ty(tcx, substs)
             }
             _ => bug!("simd_type called on invalid type")
         }

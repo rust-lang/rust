@@ -211,13 +211,13 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
-    fn sort_string(&self, cx: &TyCtxt) -> String {
+    fn sort_string(&self, tcx: &TyCtxt) -> String {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr => self.to_string(),
             ty::TyTuple(ref tys) if tys.is_empty() => self.to_string(),
 
-            ty::TyEnum(def, _) => format!("enum `{}`", cx.item_path_str(def.did)),
+            ty::TyEnum(def, _) => format!("enum `{}`", tcx.item_path_str(def.did)),
             ty::TyBox(_) => "box".to_string(),
             ty::TyArray(_, n) => format!("array of {} elements", n),
             ty::TySlice(_) => "slice".to_string(),
@@ -226,10 +226,10 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::TyFnDef(..) => format!("fn item"),
             ty::TyFnPtr(_) => "fn pointer".to_string(),
             ty::TyTrait(ref inner) => {
-                format!("trait {}", cx.item_path_str(inner.principal_def_id()))
+                format!("trait {}", tcx.item_path_str(inner.principal_def_id()))
             }
             ty::TyStruct(def, _) => {
-                format!("struct `{}`", cx.item_path_str(def.did))
+                format!("struct `{}`", tcx.item_path_str(def.did))
             }
             ty::TyClosure(..) => "closure".to_string(),
             ty::TyTuple(_) => "tuple".to_string(),

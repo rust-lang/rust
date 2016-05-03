@@ -32,25 +32,25 @@ use syntax::codemap::Span;
 use hir;
 
 pub trait IntTypeExt {
-    fn to_ty<'tcx>(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx>;
+    fn to_ty<'tcx>(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx>;
     fn disr_incr(&self, val: Disr) -> Option<Disr>;
     fn assert_ty_matches(&self, val: Disr);
     fn initial_discriminant(&self, tcx: &TyCtxt) -> Disr;
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'tcx>(&self, cx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    fn to_ty<'tcx>(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
-            SignedInt(ast::IntTy::I8)      => cx.types.i8,
-            SignedInt(ast::IntTy::I16)     => cx.types.i16,
-            SignedInt(ast::IntTy::I32)     => cx.types.i32,
-            SignedInt(ast::IntTy::I64)     => cx.types.i64,
-            SignedInt(ast::IntTy::Is)   => cx.types.isize,
-            UnsignedInt(ast::UintTy::U8)    => cx.types.u8,
-            UnsignedInt(ast::UintTy::U16)   => cx.types.u16,
-            UnsignedInt(ast::UintTy::U32)   => cx.types.u32,
-            UnsignedInt(ast::UintTy::U64)   => cx.types.u64,
-            UnsignedInt(ast::UintTy::Us) => cx.types.usize,
+            SignedInt(ast::IntTy::I8)      => tcx.types.i8,
+            SignedInt(ast::IntTy::I16)     => tcx.types.i16,
+            SignedInt(ast::IntTy::I32)     => tcx.types.i32,
+            SignedInt(ast::IntTy::I64)     => tcx.types.i64,
+            SignedInt(ast::IntTy::Is)   => tcx.types.isize,
+            UnsignedInt(ast::UintTy::U8)    => tcx.types.u8,
+            UnsignedInt(ast::UintTy::U16)   => tcx.types.u16,
+            UnsignedInt(ast::UintTy::U32)   => tcx.types.u32,
+            UnsignedInt(ast::UintTy::U64)   => tcx.types.u64,
+            UnsignedInt(ast::UintTy::Us) => tcx.types.usize,
         }
     }
 
@@ -620,35 +620,35 @@ impl<'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, cx: &TyCtxt<'tcx>, sp: Span) -> Representability {
+    pub fn is_representable(&'tcx self, tcx: &TyCtxt<'tcx>, sp: Span) -> Representability {
 
         // Iterate until something non-representable is found
-        fn find_nonrepresentable<'tcx, It: Iterator<Item=Ty<'tcx>>>(cx: &TyCtxt<'tcx>,
+        fn find_nonrepresentable<'tcx, It: Iterator<Item=Ty<'tcx>>>(tcx: &TyCtxt<'tcx>,
                                                                     sp: Span,
                                                                     seen: &mut Vec<Ty<'tcx>>,
                                                                     iter: It)
                                                                     -> Representability {
             iter.fold(Representability::Representable,
-                      |r, ty| cmp::max(r, is_type_structurally_recursive(cx, sp, seen, ty)))
+                      |r, ty| cmp::max(r, is_type_structurally_recursive(tcx, sp, seen, ty)))
         }
 
-        fn are_inner_types_recursive<'tcx>(cx: &TyCtxt<'tcx>, sp: Span,
+        fn are_inner_types_recursive<'tcx>(tcx: &TyCtxt<'tcx>, sp: Span,
                                            seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
                                            -> Representability {
             match ty.sty {
                 TyTuple(ref ts) => {
-                    find_nonrepresentable(cx, sp, seen, ts.iter().cloned())
+                    find_nonrepresentable(tcx, sp, seen, ts.iter().cloned())
                 }
                 // Fixed-length vectors.
                 // FIXME(#11924) Behavior undecided for zero-length vectors.
                 TyArray(ty, _) => {
-                    is_type_structurally_recursive(cx, sp, seen, ty)
+                    is_type_structurally_recursive(tcx, sp, seen, ty)
                 }
                 TyStruct(def, substs) | TyEnum(def, substs) => {
-                    find_nonrepresentable(cx,
+                    find_nonrepresentable(tcx,
                                           sp,
                                           seen,
-                                          def.all_fields().map(|f| f.ty(cx, substs)))
+                                          def.all_fields().map(|f| f.ty(tcx, substs)))
                 }
                 TyClosure(..) => {
                     // this check is run on type definitions, so we don't expect
@@ -691,7 +691,7 @@ impl<'tcx> ty::TyS<'tcx> {
 
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
-        fn is_type_structurally_recursive<'tcx>(cx: &TyCtxt<'tcx>,
+        fn is_type_structurally_recursive<'tcx>(tcx: &TyCtxt<'tcx>,
                                                 sp: Span,
                                                 seen: &mut Vec<Ty<'tcx>>,
                                                 ty: Ty<'tcx>) -> Representability {
@@ -746,13 +746,13 @@ impl<'tcx> ty::TyS<'tcx> {
                     // For structs and enums, track all previously seen types by pushing them
                     // onto the 'seen' stack.
                     seen.push(ty);
-                    let out = are_inner_types_recursive(cx, sp, seen, ty);
+                    let out = are_inner_types_recursive(tcx, sp, seen, ty);
                     seen.pop();
                     out
                 }
                 _ => {
                     // No need to push in other cases.
-                    are_inner_types_recursive(cx, sp, seen, ty)
+                    are_inner_types_recursive(tcx, sp, seen, ty)
                 }
             }
         }
@@ -763,7 +763,7 @@ impl<'tcx> ty::TyS<'tcx> {
         // contains a different, structurally recursive type, maintain a stack
         // of seen types and check recursion for each of them (issues #3008, #3779).
         let mut seen: Vec<Ty> = Vec::new();
-        let r = is_type_structurally_recursive(cx, sp, &mut seen, self);
+        let r = is_type_structurally_recursive(tcx, sp, &mut seen, self);
         debug!("is_type_representable: {:?} is {:?}", self, r);
         r
     }
