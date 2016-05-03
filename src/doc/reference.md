@@ -846,15 +846,15 @@ extern crate std as ruststd; // linking to 'std' under another name
 ```
 
 When naming Rust crates, hyphens are disallowed. However, Cargo packages may
-make use of them. In such case, when `cargo.toml` doesn't specify a crate name,
+make use of them. In such case, when `Cargo.toml` doesn't specify a crate name,
 Cargo will transparently replace `-` with `_` (Refer to [RFC 940] for more
 details).
 
 Here is an example:
 
 ```{.ignore}
-// Importing the Cargo package hello-world/
-extern crate hello_world; // The crate name replaced the hyphen
+// Importing the Cargo package hello-world
+extern crate hello_world; // hyphen replaced with an underscore
 ```
 
 [RFC 940]: https://github.com/rust-lang/rfcs/blob/master/text/0940-hyphens-considered-harmful.md
