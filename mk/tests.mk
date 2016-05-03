@@ -636,11 +636,11 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
         --host-rustcflags "$(RUSTC_FLAGS_$(3)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(3))" \
         --lldb-python-dir=$(CFG_LLDB_PYTHON_DIR) \
         --target-rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
-	--cc '$$(CC_$(3))' \
-	--cxx '$$(CXX_$(3))' \
-	--cflags "$$(CFG_GCCISH_CFLAGS_$(3))" \
-	--llvm-components "$$(LLVM_ALL_COMPONENTS_$(3))" \
-	--llvm-cxxflags "$$(LLVM_CXXFLAGS_$(3))" \
+	--cc '$$(CC_$(2))' \
+	--cxx '$$(CXX_$(2))' \
+	--cflags "$$(CFG_GCCISH_CFLAGS_$(2))" \
+	--llvm-components "$$(LLVM_ALL_COMPONENTS_$(2))" \
+	--llvm-cxxflags "$$(LLVM_CXXFLAGS_$(2))" \
         $$(CTEST_TESTARGS)
 
 ifdef CFG_VALGRIND_RPASS
