@@ -33,7 +33,6 @@ use macros::rewrite_macro;
 use syntax::{ast, ptr};
 use syntax::codemap::{CodeMap, Span, BytePos, mk_sp};
 use syntax::parse::classify;
-use syntax::visit::Visitor;
 
 impl Rewrite for ast::Expr {
     fn rewrite(&self, context: &RewriteContext, width: usize, offset: Indent) -> Option<String> {
