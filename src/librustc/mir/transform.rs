@@ -33,8 +33,8 @@ pub enum MirSource {
     Promoted(NodeId, usize)
 }
 
-impl MirSource {
-    pub fn from_node(tcx: TyCtxt, id: NodeId) -> MirSource {
+impl<'a, 'tcx> MirSource {
+    pub fn from_node(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> MirSource {
         use hir::*;
 
         // Handle constants in enum discriminants, types, and repeat expressions.
@@ -79,21 +79,22 @@ pub trait Pass {
 
 /// A pass which inspects the whole MirMap.
 pub trait MirMapPass<'tcx>: Pass {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, map: &mut MirMap<'tcx>);
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>);
 }
 
 /// A pass which inspects Mir of functions in isolation.
 pub trait MirPass<'tcx>: Pass {
-    fn run_pass_on_promoted<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>,
+    fn run_pass_on_promoted<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 item_id: NodeId, index: usize,
                                 mir: &mut Mir<'tcx>) {
         self.run_pass(tcx, MirSource::Promoted(item_id, index), mir);
     }
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>);
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    src: MirSource, mir: &mut Mir<'tcx>);
 }
 
 impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, map: &mut MirMap<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
         for (&id, mir) in &mut map.map {
             let def_id = tcx.map.local_def_id(id);
             let _task = tcx.dep_graph.in_task(self.dep_node(def_id));
@@ -123,7 +124,7 @@ impl<'a, 'tcx> Passes {
         passes
     }
 
-    pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx>, map: &mut MirMap<'tcx>) {
+    pub fn run_passes(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
         for pass in &mut self.plugin_passes {
             pass.run_pass(tcx, map);
         }

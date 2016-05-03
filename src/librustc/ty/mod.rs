@@ -166,7 +166,7 @@ pub struct ImplHeader<'tcx> {
 }
 
 impl<'a, 'tcx> ImplHeader<'tcx> {
-    pub fn with_fresh_ty_vars(selcx: &mut traits::SelectionContext<'a, 'tcx>,
+    pub fn with_fresh_ty_vars(selcx: &mut traits::SelectionContext<'a, 'tcx, 'tcx>,
                               impl_def_id: DefId)
                               -> ImplHeader<'tcx>
     {
@@ -780,14 +780,14 @@ impl<'a, 'tcx> GenericPredicates<'tcx> {
         }
     }
 
-    pub fn instantiate(&self, tcx: TyCtxt<'a, 'tcx>, substs: &Substs<'tcx>)
+    pub fn instantiate(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, substs: &Substs<'tcx>)
                        -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
             predicates: self.predicates.subst(tcx, substs),
         }
     }
 
-    pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'tcx>,
+    pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   poly_trait_ref: &ty::PolyTraitRef<'tcx>)
                                   -> InstantiatedPredicates<'tcx>
     {
@@ -838,7 +838,7 @@ impl<'a, 'tcx> Predicate<'tcx> {
     /// poly-trait-ref holds. This is slightly different from a normal
     /// substitution in terms of what happens with bound regions.  See
     /// lengthy comment below for details.
-    pub fn subst_supertrait(&self, tcx: TyCtxt<'a, 'tcx>,
+    pub fn subst_supertrait(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             trait_ref: &ty::PolyTraitRef<'tcx>)
                             -> ty::Predicate<'tcx>
     {
@@ -1210,7 +1210,7 @@ impl<'tcx> TraitRef<'tcx> {
 /// more distinctions clearer.
 #[derive(Clone)]
 pub struct ParameterEnvironment<'a, 'tcx:'a> {
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// See `construct_free_substs` for details.
     pub free_substs: Substs<'tcx>,
@@ -1260,7 +1260,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     }
 
     /// Construct a parameter environment given an item, impl item, or trait item
-    pub fn for_item(tcx: TyCtxt<'a, 'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
+    pub fn for_item(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
         match tcx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
@@ -1569,7 +1569,7 @@ impl VariantKind {
 }
 
 impl<'a, 'tcx, 'container> AdtDefData<'tcx, 'container> {
-    fn new(tcx: TyCtxt<'a, 'tcx>,
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
            variants: Vec<VariantDefData<'tcx, 'container>>) -> Self {
@@ -1599,7 +1599,7 @@ impl<'a, 'tcx, 'container> AdtDefData<'tcx, 'container> {
         }
     }
 
-    fn calculate_dtorck(&'tcx self, tcx: TyCtxt<'a, 'tcx>) {
+    fn calculate_dtorck(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         if tcx.is_adt_dtorck(self) {
             self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
         }
@@ -1620,7 +1620,7 @@ impl<'a, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     /// true, this type being safe for destruction requires it to be
     /// alive; Otherwise, only the contents are required to be.
     #[inline]
-    pub fn is_dtorck(&'tcx self, tcx: TyCtxt<'a, 'tcx>) -> bool {
+    pub fn is_dtorck(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
         if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
             self.calculate_dtorck(tcx)
         }
@@ -1661,12 +1661,12 @@ impl<'a, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     }
 
     #[inline]
-    pub fn type_scheme(&self, tcx: TyCtxt<'a, 'tcx>) -> TypeScheme<'tcx> {
+    pub fn type_scheme(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeScheme<'tcx> {
         tcx.lookup_item_type(self.did)
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'tcx>) -> GenericPredicates<'tcx> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> GenericPredicates<'tcx> {
         tcx.lookup_predicates(self.did)
     }
 
@@ -1754,7 +1754,7 @@ impl<'a, 'tcx, 'container> AdtDefData<'tcx, 'container> {
     ///
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
-    pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         let dep_node = DepNode::SizedConstraint(self.did);
         match self.sized_constraint.get(dep_node) {
             None => {
@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
     ///       such.
     ///     - a TyError, if a type contained itself. The representability
     ///       check should catch this case.
-    fn calculate_sized_constraint_inner(&'tcx self, tcx: TyCtxt<'a, 'tcx>,
+    fn calculate_sized_constraint_inner(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         stack: &mut Vec<AdtDefMaster<'tcx>>)
     {
 
@@ -1836,7 +1836,7 @@ impl<'a, 'tcx> AdtDefData<'tcx, 'tcx> {
 
     fn sized_constraint_for_ty(
         &'tcx self,
-        tcx: TyCtxt<'a, 'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         stack: &mut Vec<AdtDefMaster<'tcx>>,
         ty: Ty<'tcx>
     ) -> Vec<Ty<'tcx>> {
@@ -1963,7 +1963,7 @@ impl<'a, 'tcx, 'container> FieldDefData<'tcx, 'container> {
         }
     }
 
-    pub fn ty(&self, tcx: TyCtxt<'a, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
+    pub fn ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, subst: &Substs<'tcx>) -> Ty<'tcx> {
         self.unsubst_ty().subst(tcx, subst)
     }
 
@@ -1993,8 +1993,8 @@ pub enum ClosureKind {
     FnOnce,
 }
 
-impl ClosureKind {
-    pub fn trait_did(&self, tcx: TyCtxt) -> DefId {
+impl<'a, 'tcx> ClosureKind {
+    pub fn trait_did(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefId {
         let result = match *self {
             ClosureKind::Fn => tcx.lang_items.require(FnTraitLangItem),
             ClosureKind::FnMut => {
@@ -2144,7 +2144,7 @@ impl BorrowKind {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn node_id_to_type(self, id: NodeId) -> Ty<'tcx> {
         match self.node_id_to_type_opt(id) {
            Some(ty) => ty,
@@ -2941,7 +2941,7 @@ pub enum ExplicitSelfCategory {
     ByBox,
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn with_freevars<T, F>(self, fid: NodeId, f: F) -> T where
         F: FnOnce(&[hir::Freevar]) -> T,
     {

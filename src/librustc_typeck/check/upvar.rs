@@ -56,7 +56,7 @@ use rustc::hir::intravisit::{self, Visitor};
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn closure_analyze_fn(&self, body: &hir::Block) {
     let mut seed = SeedBorrowKind::new(self);
     seed.visit_block(body);
@@ -85,12 +85,12 @@ pub fn closure_analyze_const(&self, body: &hir::Expr) {
 ///////////////////////////////////////////////////////////////////////////
 // SEED BORROW KIND
 
-struct SeedBorrowKind<'a,'tcx:'a> {
-    fcx: &'a FnCtxt<'a,'tcx>,
+struct SeedBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     closures_with_inferred_kinds: HashSet<ast::NodeId>,
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         match expr.node {
             hir::ExprClosure(cc, _, ref body, _) => {
@@ -104,16 +104,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
     }
 }
 
-impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
-    fn new(fcx: &'a FnCtxt<'a,'tcx>) -> SeedBorrowKind<'a,'tcx> {
+impl<'a,'tcx> SeedBorrowKind<'a,'tcx, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a,'tcx, 'tcx>) -> SeedBorrowKind<'a,'tcx, 'tcx> {
         SeedBorrowKind { fcx: fcx, closures_with_inferred_kinds: HashSet::new() }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.fcx.tcx()
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a,'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a,'tcx, 'tcx> {
         self.fcx.infcx()
     }
 
@@ -160,15 +160,15 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // ADJUST BORROW KIND
 
-struct AdjustBorrowKind<'a,'tcx:'a> {
-    fcx: &'a FnCtxt<'a,'tcx>,
+struct AdjustBorrowKind<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     closures_with_inferred_kinds: &'a HashSet<ast::NodeId>,
 }
 
-impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
-    fn new(fcx: &'a FnCtxt<'a,'tcx>,
+impl<'a,'tcx> AdjustBorrowKind<'a,'tcx, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a,'tcx, 'tcx>,
            closures_with_inferred_kinds: &'a HashSet<ast::NodeId>)
-           -> AdjustBorrowKind<'a,'tcx> {
+           -> AdjustBorrowKind<'a,'tcx, 'tcx> {
         AdjustBorrowKind { fcx: fcx, closures_with_inferred_kinds: closures_with_inferred_kinds }
     }
 
@@ -500,7 +500,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx, 'tcx> {
     fn visit_fn(&mut self,
                 fn_kind: intravisit::FnKind<'v>,
                 decl: &'v hir::FnDecl,
@@ -513,7 +513,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for AdjustBorrowKind<'a, 'tcx> {
     }
 }
 
-impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
+impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx, 'tcx> {
     fn consume(&mut self,
                _consume_id: ast::NodeId,
                _consume_span: Span,

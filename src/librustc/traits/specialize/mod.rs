@@ -31,8 +31,8 @@ use syntax::codemap::DUMMY_SP;
 pub mod specialization_graph;
 
 /// Information pertinent to an overlapping impl error.
-pub struct Overlap<'a, 'tcx: 'a> {
-    pub in_context: InferCtxt<'a, 'tcx>,
+pub struct Overlap<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub in_context: InferCtxt<'a, 'gcx, 'tcx>,
     pub with_impl: DefId,
     pub on_trait_ref: ty::TraitRef<'tcx>,
 }
@@ -72,7 +72,7 @@ pub struct Overlap<'a, 'tcx: 'a> {
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
-pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
                                   source_impl: DefId,
                                   source_substs: &'tcx Substs<'tcx>,
                                   target_node: specialization_graph::Node)
@@ -108,7 +108,9 @@ pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 /// Specialization is determined by the sets of types to which the impls apply;
 /// impl1 specializes impl2 if it applies to a subset of the types impl2 applies
 /// to.
-pub fn specializes(tcx: TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
+pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             impl1_def_id: DefId,
+                             impl2_def_id: DefId) -> bool {
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
     if !tcx.sess.features.borrow().specialization &&
@@ -165,7 +167,7 @@ pub fn specializes(tcx: TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> boo
 /// generics of `target_impl`, including both those needed to unify with
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
-fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+fn fulfill_implication<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
                                  source_trait_ref: ty::TraitRef<'tcx>,
                                  target_impl: DefId)
                                  -> Result<Substs<'tcx>, ()> {

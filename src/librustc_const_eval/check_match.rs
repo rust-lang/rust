@@ -106,7 +106,7 @@ impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
 
 //NOTE: appears to be the only place other then InferCtxt to contain a ParamEnv
 pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub param_env: ParameterEnvironment<'a, 'tcx>,
 }
 
@@ -153,7 +153,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MatchCheckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate(tcx: TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_items_in_krate(DepNode::MatchCheck, &mut MatchCheckCtxt {
         tcx: tcx,
         param_env: tcx.empty_parameter_environment(),
@@ -455,13 +455,13 @@ fn const_val_to_expr(value: &ConstVal) -> P<hir::Expr> {
 }
 
 pub struct StaticInliner<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub failed: bool,
     pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx>,
+    pub fn new<'b>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                    renaming_map: Option<&'b mut FnvHashMap<(NodeId, Span), NodeId>>)
                    -> StaticInliner<'b, 'tcx> {
         StaticInliner {

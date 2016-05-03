@@ -40,7 +40,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'ccx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'ccx, 'tcx, 'tcx> {
         self.ccx.tcx
     }
 
@@ -168,14 +168,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn with_item_fcx<F>(&mut self, item: &hir::Item, f: F) where
-        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>,
+        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx, 'tcx>,
                            &mut CheckTypeWellFormedVisitor<'ccx,'tcx>) -> Vec<Ty<'tcx>>,
     {
         self.with_fcx(item.id, item.span, f)
     }
 
     fn with_fcx<F>(&mut self, id: ast::NodeId, span: Span, mut f: F) where
-        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>,
+        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx, 'tcx>,
                            &mut CheckTypeWellFormedVisitor<'ccx,'tcx>) -> Vec<Ty<'tcx>>,
     {
         let ccx = self.ccx;
@@ -190,7 +190,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     /// In a type definition, we check that to ensure that the types of the fields are well-formed.
     fn check_type_defn<F>(&mut self, item: &hir::Item, mut lookup_fields: F) where
-        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
+        F: for<'fcx> FnMut(&FnCtxt<'fcx, 'tcx, 'tcx>) -> Vec<AdtVariant<'tcx>>,
     {
         self.with_item_fcx(item, |fcx, this| {
             let variants = lookup_fields(fcx);
@@ -332,7 +332,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_where_clauses<'fcx>(&mut self,
-                                 fcx: &FnCtxt<'fcx,'tcx>,
+                                 fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
                                  span: Span,
                                  predicates: &ty::InstantiatedPredicates<'tcx>)
     {
@@ -350,7 +350,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_fn_or_method<'fcx>(&mut self,
-                                fcx: &FnCtxt<'fcx,'tcx>,
+                                fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
                                 span: Span,
                                 fty: &ty::BareFnTy<'tcx>,
                                 predicates: &ty::InstantiatedPredicates<'tcx>,
@@ -380,7 +380,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn check_method_receiver<'fcx>(&mut self,
-                                   fcx: &FnCtxt<'fcx,'tcx>,
+                                   fcx: &FnCtxt<'fcx,'tcx, 'tcx>,
                                    span: Span,
                                    method: &ty::Method<'tcx>,
                                    free_id_outlive: CodeExtent,
@@ -554,7 +554,7 @@ struct AdtField<'tcx> {
     span: Span,
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 fn struct_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
     let fields =
         struct_def.fields().iter()

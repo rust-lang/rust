@@ -37,14 +37,14 @@ use std::collections::hash_map::{self, Entry};
 use super::InferCtxt;
 use super::unify_key::ToType;
 
-pub struct TypeFreshener<'a, 'tcx:'a> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct TypeFreshener<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     freshen_count: u32,
     freshen_map: hash_map::HashMap<ty::InferTy, Ty<'tcx>>,
 }
 
-impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> TypeFreshener<'a, 'tcx> {
+impl<'a, 'tcx> TypeFreshener<'a, 'tcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>) -> TypeFreshener<'a, 'tcx, 'tcx> {
         TypeFreshener {
             infcx: infcx,
             freshen_count: 0,
@@ -77,8 +77,8 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> {
+impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.infcx.tcx
     }
 

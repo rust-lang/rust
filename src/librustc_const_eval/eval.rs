@@ -54,7 +54,7 @@ macro_rules! math {
     }
 }
 
-fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   enum_def: DefId,
                                   variant_def: DefId)
                                   -> Option<&'tcx Expr> {
@@ -90,7 +90,7 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
 ///
 /// `substs` is optional and is used for associated constants.
 /// This generally happens in late/trans const evaluation.
-pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx>,
+pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         substs: Option<subst::Substs<'tcx>>)
                                         -> Option<(&'tcx Expr, Option<ty::Ty<'tcx>>)> {
@@ -182,8 +182,9 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx>,
     }
 }
 
-fn inline_const_fn_from_external_crate(tcx: TyCtxt, def_id: DefId)
-                                       -> Option<ast::NodeId> {
+fn inline_const_fn_from_external_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                 def_id: DefId)
+                                                 -> Option<ast::NodeId> {
     match tcx.extern_const_fns.borrow().get(&def_id) {
         Some(&ast::DUMMY_NODE_ID) => return None,
         Some(&fn_id) => return Some(fn_id),
@@ -205,7 +206,7 @@ fn inline_const_fn_from_external_crate(tcx: TyCtxt, def_id: DefId)
     fn_id
 }
 
-pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, def_id: DefId)
+pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                                        -> Option<FnLikeNode<'tcx>>
 {
     let fn_id = if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
@@ -238,8 +239,11 @@ pub fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, def_id: DefId)
     }
 }
 
-pub fn const_expr_to_pat(tcx: TyCtxt, expr: &Expr, pat_id: ast::NodeId, span: Span)
-                         -> Result<P<hir::Pat>, DefId> {
+pub fn const_expr_to_pat<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   expr: &Expr,
+                                   pat_id: ast::NodeId,
+                                   span: Span)
+                                   -> Result<P<hir::Pat>, DefId> {
     let pat_ty = tcx.expr_ty(expr);
     debug!("expr={:?} pat_ty={:?} pat_id={}", expr, pat_ty, pat_id);
     match pat_ty.sty {
@@ -339,7 +343,8 @@ pub fn const_expr_to_pat(tcx: TyCtxt, expr: &Expr, pat_id: ast::NodeId, span: Sp
     Ok(P(hir::Pat { id: expr.id, node: pat, span: span }))
 }
 
-pub fn eval_const_expr(tcx: TyCtxt, e: &Expr) -> ConstVal {
+pub fn eval_const_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 e: &Expr) -> ConstVal {
     match eval_const_expr_partial(tcx, e, ExprTypeChecked, None) {
         Ok(r) => r,
         // non-const path still needs to be a fatal error, because enums are funky
@@ -526,7 +531,7 @@ macro_rules! signal {
 /// guaranteed to be evaluatable. `ty_hint` is usually ExprTypeChecked,
 /// but a few places need to evaluate constants during type-checking, like
 /// computing the length of an array. (See also the FIXME above EvalHint.)
-pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                          e: &Expr,
                                          ty_hint: EvalHint<'tcx>,
                                          fn_args: FnArgMap) -> EvalResult {
@@ -932,7 +937,7 @@ pub fn eval_const_expr_partial<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
 }
 
 fn infer<'a, 'tcx>(i: ConstInt,
-                   tcx: TyCtxt<'a, 'tcx>,
+                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
                    ty_hint: &ty::TypeVariants<'tcx>)
                    -> Result<ConstInt, ErrKind> {
     use syntax::ast::*;
@@ -996,7 +1001,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
     }
 }
 
-fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx>,
+fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 ti: &'tcx hir::TraitItem,
                                                 trait_id: DefId,
                                                 rcvr_substs: subst::Substs<'tcx>)
@@ -1053,7 +1058,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx>,
     }
 }
 
-fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, val: ConstInt, ty: ty::Ty) -> CastResult {
+fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstInt, ty: ty::Ty) -> CastResult {
     let v = val.to_u64_unchecked();
     match ty.sty {
         ty::TyBool if v == 0 => Ok(Bool(false)),
@@ -1098,7 +1103,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, val: ConstInt, ty: ty::Ty) ->
     }
 }
 
-fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, f: f64, ty: ty::Ty) -> CastResult {
+fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, f: f64, ty: ty::Ty) -> CastResult {
     match ty.sty {
         ty::TyInt(_) if f >= 0.0 => cast_const_int(tcx, Infer(f as u64), ty),
         ty::TyInt(_) => cast_const_int(tcx, InferSigned(f as i64), ty),
@@ -1109,7 +1114,7 @@ fn cast_const_float<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, f: f64, ty: ty::Ty) -> Cast
     }
 }
 
-fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
+fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, val: ConstVal, ty: ty::Ty) -> CastResult {
     match val {
         Integral(i) => cast_const_int(tcx, i, ty),
         Bool(b) => cast_const_int(tcx, Infer(b as u64), ty),
@@ -1127,7 +1132,7 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, val: ConstVal, ty: ty::Ty) -> Cas
 }
 
 fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
-                          tcx: TyCtxt<'a, 'tcx>,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty_hint: Option<Ty<'tcx>>,
                           span: Span)
                           -> Result<ConstVal, ErrKind> {
@@ -1197,7 +1202,7 @@ pub fn compare_const_vals(a: &ConstVal, b: &ConstVal) -> Option<Ordering> {
     }
 }
 
-pub fn compare_lit_exprs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn compare_lit_exprs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    a: &Expr,
                                    b: &Expr) -> Option<Ordering> {
     let a = match eval_const_expr_partial(tcx, a, ExprTypeChecked, None) {
@@ -1219,7 +1224,8 @@ pub fn compare_lit_exprs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
 
 
 /// Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count(tcx: TyCtxt, count_expr: &hir::Expr) -> usize {
+pub fn eval_repeat_count<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   count_expr: &hir::Expr) -> usize {
     let hint = UncheckedExprHint(tcx.types.usize);
     match eval_const_expr_partial(tcx, count_expr, hint, None) {
         Ok(Integral(Usize(count))) => {

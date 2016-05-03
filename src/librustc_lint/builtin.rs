@@ -792,9 +792,9 @@ impl LateLintPass for UnconditionalRecursion {
         }
 
         // Check if the expression `id` performs a call to `method`.
-        fn expr_refers_to_this_method(tcx: TyCtxt,
-                                      method: &ty::Method,
-                                      id: ast::NodeId) -> bool {
+        fn expr_refers_to_this_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                method: &ty::Method,
+                                                id: ast::NodeId) -> bool {
             // Check for method calls and overloaded operators.
             let opt_m = tcx.tables.borrow().method_map.get(&ty::MethodCall::expr(id)).cloned();
             if let Some(m) = opt_m {
@@ -840,7 +840,7 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
-        fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+        fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   method: &ty::Method,
                                                   callee_id: DefId,
                                                   callee_substs: &Substs<'tcx>,

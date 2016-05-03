@@ -78,7 +78,7 @@ enum InsertResult<'a, 'tcx: 'a> {
 
     /// The impl has an unresolvable overlap with an existing child (neither
     /// specializes the other).
-    Overlapped(Overlap<'a, 'tcx>),
+    Overlapped(Overlap<'a, 'tcx, 'tcx>),
 }
 
 impl<'a, 'tcx> Children {
@@ -90,7 +90,9 @@ impl<'a, 'tcx> Children {
     }
 
     /// Insert an impl into this set of children without comparing to any existing impls
-    fn insert_blindly(&mut self, tcx: TyCtxt, impl_def_id: DefId) {
+    fn insert_blindly(&mut self,
+                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                      impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             self.nonblanket_impls.entry(sty).or_insert(vec![]).push(impl_def_id)
@@ -102,7 +104,7 @@ impl<'a, 'tcx> Children {
     /// Attempt to insert an impl into this set of children, while comparing for
     /// specialiation relationships.
     fn insert(&mut self,
-              tcx: TyCtxt<'a, 'tcx>,
+              tcx: TyCtxt<'a, 'tcx, 'tcx>,
               impl_def_id: DefId,
               simplified_self: Option<SimplifiedType>)
               -> InsertResult<'a, 'tcx>
@@ -174,9 +176,9 @@ impl<'a, 'tcx> Graph {
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
     pub fn insert(&mut self,
-                  tcx: TyCtxt<'a, 'tcx>,
+                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                   impl_def_id: DefId)
-                  -> Result<(), Overlap<'a, 'tcx>> {
+                  -> Result<(), Overlap<'a, 'tcx, 'tcx>> {
         assert!(impl_def_id.is_local());
 
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -235,7 +237,10 @@ impl<'a, 'tcx> Graph {
     }
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    pub fn record_impl_from_cstore(&mut self, tcx: TyCtxt, parent: DefId, child: DefId) {
+    pub fn record_impl_from_cstore(&mut self,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   parent: DefId,
+                                   child: DefId) {
         if self.parent.insert(child, parent).is_some() {
             bug!("When recording an impl from the crate store, information about its parent \
                   was already present.");
@@ -269,7 +274,7 @@ impl<'a, 'tcx> Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items(&self, tcx: TyCtxt<'a, 'tcx>) -> NodeItems<'a, 'tcx> {
+    pub fn items(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeItems<'a, 'tcx> {
         match *self {
             Node::Impl(impl_def_id) => {
                 NodeItems::Impl {
@@ -299,7 +304,7 @@ impl<'a, 'tcx> Node {
 /// An iterator over the items defined within a trait or impl.
 pub enum NodeItems<'a, 'tcx: 'a> {
     Impl {
-        tcx: TyCtxt<'a, 'tcx>,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         items: cell::Ref<'a, Vec<ty::ImplOrTraitItemId>>,
         idx: usize,
     },
@@ -411,7 +416,7 @@ impl<'a, 'tcx> Iterator for ConstDefs<'a, 'tcx> {
 impl<'a, 'tcx> Ancestors<'a, 'tcx> {
     /// Search the items from the given ancestors, returning each type definition
     /// with the given name.
-    pub fn type_defs(self, tcx: TyCtxt<'a, 'tcx>, name: Name) -> TypeDefs<'a, 'tcx> {
+    pub fn type_defs(self, tcx: TyCtxt<'a, 'tcx, 'tcx>, name: Name) -> TypeDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {
@@ -432,7 +437,7 @@ impl<'a, 'tcx> Ancestors<'a, 'tcx> {
 
     /// Search the items from the given ancestors, returning each fn definition
     /// with the given name.
-    pub fn fn_defs(self, tcx: TyCtxt<'a, 'tcx>, name: Name) -> FnDefs<'a, 'tcx> {
+    pub fn fn_defs(self, tcx: TyCtxt<'a, 'tcx, 'tcx>, name: Name) -> FnDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {
@@ -453,7 +458,7 @@ impl<'a, 'tcx> Ancestors<'a, 'tcx> {
 
     /// Search the items from the given ancestors, returning each const
     /// definition with the given name.
-    pub fn const_defs(self, tcx: TyCtxt<'a, 'tcx>, name: Name) -> ConstDefs<'a, 'tcx> {
+    pub fn const_defs(self, tcx: TyCtxt<'a, 'tcx, 'tcx>, name: Name) -> ConstDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {

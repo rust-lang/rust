@@ -20,7 +20,7 @@ use super::data::*;
 use super::directory::*;
 use super::util::*;
 
-pub fn save_dep_graph(tcx: TyCtxt) {
+pub fn save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if let Some(dep_graph) = dep_graph_path(tcx) {
@@ -68,7 +68,9 @@ pub fn save_dep_graph(tcx: TyCtxt) {
     }
 }
 
-pub fn encode_dep_graph(tcx: TyCtxt, encoder: &mut Encoder) -> io::Result<()> {
+pub fn encode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  encoder: &mut Encoder)
+                                  -> io::Result<()> {
     // Here we take advantage of how RBML allows us to skip around
     // and encode the depgraph as a two-part structure:
     //

@@ -46,17 +46,17 @@ mod orphan;
 mod overlap;
 mod unsafety;
 
-struct CoherenceChecker<'a, 'tcx: 'a> {
-    crate_context: &'a CrateCtxt<'a, 'tcx>,
-    inference_context: InferCtxt<'a, 'tcx>,
+struct CoherenceChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    crate_context: &'a CrateCtxt<'a, 'gcx>,
+    inference_context: InferCtxt<'a, 'gcx, 'tcx>,
     inherent_impls: RefCell<DefIdMap<Rc<RefCell<Vec<DefId>>>>>,
 }
 
-struct CoherenceCheckVisitor<'a, 'tcx: 'a> {
-    cc: &'a CoherenceChecker<'a, 'tcx>
+struct CoherenceCheckVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    cc: &'a CoherenceChecker<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
         if let ItemImpl(..) = item.node {
             self.cc.check_implementation(item)
@@ -64,7 +64,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for CoherenceCheckVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
+impl<'a, 'tcx> CoherenceChecker<'a, 'tcx, 'tcx> {
 
 // Returns the def ID of the base type, if there is one.
 fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {

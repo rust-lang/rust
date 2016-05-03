@@ -469,7 +469,7 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 
 
 struct TypedAnnotation<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'b, 'tcx> HirPrinterSupport<'tcx> for TypedAnnotation<'b, 'tcx> {
@@ -690,7 +690,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
 }
 
 fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
-                                       tcx: TyCtxt<'a, 'tcx>,
+                                       tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        mir_map: Option<&MirMap<'tcx>>,
                                        code: blocks::Code,
                                        mode: PpFlowGraphMode,

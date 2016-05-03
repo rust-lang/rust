@@ -53,7 +53,7 @@ pub enum MethodViolationCode {
     Generic,
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 pub fn is_object_safe(self, trait_def_id: DefId) -> bool {
     // Because we query yes/no results frequently, we keep a cache:
     let def = self.lookup_trait_def(trait_def_id);

@@ -140,10 +140,10 @@ impl fmt::Debug for TypeContents {
 }
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
-    pub fn type_contents(&'tcx self, tcx: TyCtxt<'a, 'tcx>) -> TypeContents {
+    pub fn type_contents(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeContents {
         return tcx.tc_cache.memoize(self, || tc_ty(tcx, self, &mut FnvHashMap()));
 
-        fn tc_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+        fn tc_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            ty: Ty<'tcx>,
                            cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
@@ -255,8 +255,9 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             result
         }
 
-        fn apply_lang_items(tcx: TyCtxt, did: DefId, tc: TypeContents)
-                            -> TypeContents {
+        fn apply_lang_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      did: DefId, tc: TypeContents)
+                                      -> TypeContents {
             if Some(did) == tcx.lang_items.unsafe_cell_type() {
                 tc | TC::InteriorUnsafe
             } else {

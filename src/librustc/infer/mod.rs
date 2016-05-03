@@ -73,8 +73,8 @@ pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
-pub struct InferCtxt<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx>,
+pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     pub tables: &'a RefCell<ty::Tables<'tcx>>,
 
@@ -384,8 +384,8 @@ impl fmt::Display for FixupError {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx>,
+impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                tables: &'a RefCell<ty::Tables<'tcx>>,
                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
                projection_mode: ProjectionMode)
@@ -406,7 +406,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn normalizing(tcx: TyCtxt<'a, 'tcx>,
+    pub fn normalizing(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        tables: &'a RefCell<ty::Tables<'tcx>>,
                        projection_mode: ProjectionMode)
                        -> Self {
@@ -441,7 +441,7 @@ pub struct CombinedSnapshot {
 }
 
 // NOTE: Callable from trans only!
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn normalize_associated_type<T>(self, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
@@ -473,7 +473,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'a, 'tcx> InferCtxt<'a, 'tcx, 'tcx> {
 pub fn drain_fulfillment_cx_or_panic<T>(&self,
                                         span: Span,
                                         fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
@@ -532,7 +532,7 @@ pub fn drain_fulfillment_cx<T>(&self,
         }
     }
 
-    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx> {
+    pub fn freshener<'b>(&'b self) -> TypeFreshener<'b, 'tcx, 'tcx> {
         freshen::TypeFreshener::new(self)
     }
 
@@ -603,8 +603,7 @@ pub fn drain_fulfillment_cx<T>(&self,
     }
 
     fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-        -> CombineFields<'a, 'tcx>
-    {
+                      -> CombineFields<'a, 'tcx, 'tcx> {
         CombineFields {
             infcx: self,
             a_is_expected: a_is_expected,
@@ -1539,7 +1538,7 @@ impl<'a, 'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: TyCtxt<'a, 'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(ExpectedFound {

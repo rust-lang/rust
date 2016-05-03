@@ -35,11 +35,11 @@ use syntax::ptr::P;
 /// }
 /// ```
 struct PatCx<'patcx, 'cx: 'patcx, 'tcx: 'cx> {
-    cx: &'patcx mut Cx<'cx, 'tcx>,
+    cx: &'patcx mut Cx<'cx, 'tcx, 'tcx>,
     binding_map: Option<&'patcx FnvHashMap<ast::Name, ast::NodeId>>,
 }
 
-impl<'cx, 'tcx> Cx<'cx, 'tcx> {
+impl<'cx, 'tcx> Cx<'cx, 'tcx, 'tcx> {
     pub fn irrefutable_pat(&mut self, pat: &hir::Pat) -> Pattern<'tcx> {
         PatCx::new(self, None).to_pattern(pat)
     }
@@ -53,7 +53,7 @@ impl<'cx, 'tcx> Cx<'cx, 'tcx> {
 }
 
 impl<'patcx, 'cx, 'tcx> PatCx<'patcx, 'cx, 'tcx> {
-    fn new(cx: &'patcx mut Cx<'cx, 'tcx>,
+    fn new(cx: &'patcx mut Cx<'cx, 'tcx, 'tcx>,
                binding_map: Option<&'patcx FnvHashMap<ast::Name, ast::NodeId>>)
                -> PatCx<'patcx, 'cx, 'tcx> {
         PatCx {

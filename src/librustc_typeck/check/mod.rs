@@ -154,8 +154,8 @@ mod op;
 /// Here, the function `foo()` and the closure passed to
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
-pub struct Inherited<'a, 'tcx: 'a> {
-    infcx: InferCtxt<'a, 'tcx>,
+pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: InferCtxt<'a, 'gcx, 'tcx>,
     locals: RefCell<NodeMap<Ty<'tcx>>>,
 
     fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
@@ -175,7 +175,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
 }
 
 trait DeferredCallResolution<'tcx> {
-    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx>);
+    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx, 'tcx>);
 }
 
 type DeferredCallResolutionHandler<'tcx> = Box<DeferredCallResolution<'tcx>+'tcx>;
@@ -215,7 +215,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // an expected type. Otherwise, we might write parts of the type
     // when checking the 'then' block which are incompatible with the
     // 'else' branch.
-    fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
+    fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
                 let ety = fcx.infcx().shallow_resolve(ety);
@@ -251,7 +251,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
+    fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         match fcx.tcx().struct_tail(ty).sty {
             ty::TySlice(_) | ty::TyStr | ty::TyTrait(..) => {
                 ExpectRvalueLikeUnsized(ty)
@@ -263,7 +263,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
     // Resolves `expected` by a single level if it is a variable. If
     // there is no expected type or resolution is not possible (e.g.,
     // no constraints yet present), just returns `None`.
-    fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
+    fn resolve(self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Expectation<'tcx> {
         match self {
             NoExpectation => {
                 NoExpectation
@@ -283,7 +283,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
         }
     }
 
-    fn to_option(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
+    fn to_option(self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             NoExpectation => None,
             ExpectCastableToType(ty) |
@@ -292,7 +292,7 @@ impl<'a, 'tcx> Expectation<'tcx> {
         }
     }
 
-    fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx>) -> Option<Ty<'tcx>> {
+    fn only_has_type(self, fcx: &FnCtxt<'a, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
             _ => None
@@ -342,7 +342,7 @@ impl UnsafetyState {
 }
 
 #[derive(Clone)]
-pub struct FnCtxt<'a, 'tcx: 'a> {
+pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     body_id: ast::NodeId,
 
     // This flag is set to true if, during the writeback phase, we encounter
@@ -359,16 +359,16 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
 
     ps: RefCell<UnsafetyState>,
 
-    inh: &'a Inherited<'a, 'tcx>,
+    inh: &'a Inherited<'a, 'gcx, 'tcx>,
 
-    ccx: &'a CrateCtxt<'a, 'tcx>,
+    ccx: &'a CrateCtxt<'a, 'gcx>,
 }
 
-impl<'a, 'tcx> Inherited<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx>,
+impl<'a, 'tcx> Inherited<'a, 'tcx, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            tables: &'a RefCell<ty::Tables<'tcx>>,
            param_env: ty::ParameterEnvironment<'a, 'tcx>)
-           -> Inherited<'a, 'tcx> {
+           -> Inherited<'a, 'tcx, 'tcx> {
 
         Inherited {
             infcx: InferCtxt::new(tcx, tables, Some(param_env), ProjectionMode::AnyFinal),
@@ -398,7 +398,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
 
 fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                                      tables: &'a RefCell<ty::Tables<'tcx>>)
-                                    -> Inherited<'a, 'tcx> {
+                                    -> Inherited<'a, 'tcx, 'tcx> {
     // It's kind of a kludge to manufacture a fake function context
     // and statement context, but we might as well do write the code only once
     let param_env = ccx.tcx.empty_parameter_environment();
@@ -513,11 +513,11 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-struct GatherLocalsVisitor<'a, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'tcx>
+struct GatherLocalsVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx, 'tcx> {
     fn assign(&mut self, _span: Span, nid: ast::NodeId, ty_opt: Option<Ty<'tcx>>) -> Ty<'tcx> {
         match ty_opt {
             None => {
@@ -535,7 +535,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx, 'tcx> {
     // Add explicitly-declared locals.
     fn visit_local(&mut self, local: &'tcx hir::Local) {
         let o_ty = match local.ty {
@@ -610,8 +610,8 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
                       decl: &'tcx hir::FnDecl,
                       fn_id: ast::NodeId,
                       body: &'tcx hir::Block,
-                      inherited: &'a Inherited<'a, 'tcx>)
-                      -> FnCtxt<'a, 'tcx>
+                      inherited: &'a Inherited<'a, 'tcx, 'tcx>)
+                      -> FnCtxt<'a, 'tcx, 'tcx>
 {
     let tcx = ccx.tcx;
 
@@ -902,9 +902,9 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     check_bare_fn(ccx, &sig.decl, body, id, span, fty, param_env);
 }
 
-fn report_forbidden_specialization(tcx: TyCtxt,
-                                   impl_item: &hir::ImplItem,
-                                   parent_impl: DefId)
+fn report_forbidden_specialization<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                             impl_item: &hir::ImplItem,
+                                             parent_impl: DefId)
 {
     let mut err = struct_span_err!(
         tcx.sess, impl_item.span, E0520,
@@ -925,8 +925,10 @@ fn report_forbidden_specialization(tcx: TyCtxt,
     err.emit();
 }
 
-fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, trait_def: &ty::TraitDef<'tcx>,
-                                           impl_id: DefId, impl_item: &hir::ImplItem)
+fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                           trait_def: &ty::TraitDef<'tcx>,
+                                           impl_id: DefId,
+                                           impl_item: &hir::ImplItem)
 {
     let ancestors = trait_def.ancestors(impl_id);
 
@@ -1143,10 +1145,10 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
 /// pointer, which would mean their size is unbounded.
-pub fn check_representable(tcx: TyCtxt,
-                           sp: Span,
-                           item_id: ast::NodeId,
-                           _designation: &str) -> bool {
+pub fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     sp: Span,
+                                     item_id: ast::NodeId,
+                                     _designation: &str) -> bool {
     let rty = tcx.node_id_to_type(item_id);
 
     // Check that it is possible to represent this type. This call identifies
@@ -1165,7 +1167,7 @@ pub fn check_representable(tcx: TyCtxt,
     return true
 }
 
-pub fn check_simd(tcx: TyCtxt, sp: Span, id: ast::NodeId) {
+pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, id: ast::NodeId) {
     let t = tcx.node_id_to_type(id);
     match t.sty {
         ty::TyStruct(def, substs) => {
@@ -1252,8 +1254,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     check_representable(ccx.tcx, sp, id, "enum");
 }
 
-impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.infcx().tcx }
+impl<'a, 'tcx> AstConv<'tcx, 'tcx> for FnCtxt<'a, 'tcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.infcx().tcx }
 
     fn get_item_type_scheme(&self, _: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
@@ -1364,7 +1366,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx, 'tcx> {
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
         Some(self.base_object_lifetime_default(span))
     }
@@ -1421,12 +1423,12 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
     pub fn new(ccx: &'a CrateCtxt<'a, 'tcx>,
-               inh: &'a Inherited<'a, 'tcx>,
+               inh: &'a Inherited<'a, 'tcx, 'tcx>,
                rty: ty::FnOutput<'tcx>,
                body_id: ast::NodeId)
-               -> FnCtxt<'a, 'tcx> {
+               -> FnCtxt<'a, 'tcx, 'tcx> {
         FnCtxt {
             body_id: body_id,
             writeback_errors: Cell::new(false),
@@ -1438,9 +1440,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.infcx().tcx }
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.infcx().tcx }
 
-    pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
+    pub fn infcx(&self) -> &InferCtxt<'a,'tcx, 'tcx> {
         &self.inh.infcx
     }
 

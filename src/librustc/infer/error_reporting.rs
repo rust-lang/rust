@@ -95,7 +95,7 @@ use syntax::codemap::{self, Pos, Span};
 use syntax::parse::token;
 use syntax::ptr::P;
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn note_and_explain_region(self,
                                    err: &mut DiagnosticBuilder,
                                    prefix: &str,
@@ -112,8 +112,9 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
             }
         }
 
-        fn explain_span(tcx: TyCtxt, heading: &str, span: Span)
-                        -> (String, Option<Span>) {
+        fn explain_span<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  heading: &str, span: Span)
+                                  -> (String, Option<Span>) {
             let lo = tcx.sess.codemap().lookup_char_pos_adj(span.lo);
             (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
              Some(span))
@@ -301,7 +302,7 @@ trait ErrorReportingHelpers<'tcx> {
                                 span: Span);
 }
 
-impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx, 'tcx> {
     fn report_region_errors(&self,
                             errors: &Vec<RegionResolutionError<'tcx>>) {
         debug!("report_region_errors(): {} errors to start", errors.len());
@@ -474,10 +475,10 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         }
 
-        fn free_regions_from_same_fn(tcx: TyCtxt,
-                                     sub: Region,
-                                     sup: Region)
-                                     -> Option<FreeRegionsFromSameFn> {
+        fn free_regions_from_same_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               sub: Region,
+                                               sup: Region)
+                                               -> Option<FreeRegionsFromSameFn> {
             debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
             let (scope_id, fr1, fr2) = match (sub, sup) {
                 (ReFree(fr1), ReFree(fr2)) => {
@@ -1109,7 +1110,7 @@ struct RebuildPathInfo<'a> {
 }
 
 struct Rebuilder<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn_decl: &'a hir::FnDecl,
     expl_self_opt: Option<&'a hir::ExplicitSelf_>,
     generics: &'a hir::Generics,
@@ -1125,7 +1126,7 @@ enum FreshOrKept {
 }
 
 impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx>,
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            fn_decl: &'a hir::FnDecl,
            expl_self_opt: Option<&'a hir::ExplicitSelf_>,
            generics: &'a hir::Generics,
@@ -1641,7 +1642,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
+impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx, 'tcx> {
     fn give_expl_lifetime_param(&self,
                                 err: &mut DiagnosticBuilder,
                                 decl: &hir::FnDecl,
@@ -1904,17 +1905,17 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
 }
 
 pub trait Resolvable<'tcx> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Self;
+    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx, 'tcx>) -> Self;
 }
 
 impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         infcx.resolve_type_vars_if_possible(self)
     }
 }
 
 impl<'tcx> Resolvable<'tcx> for ty::TraitRef<'tcx> {
-    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
+    fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx, 'tcx>)
                    -> ty::TraitRef<'tcx> {
         infcx.resolve_type_vars_if_possible(self)
     }
@@ -1922,16 +1923,16 @@ impl<'tcx> Resolvable<'tcx> for ty::TraitRef<'tcx> {
 
 impl<'tcx> Resolvable<'tcx> for ty::PolyTraitRef<'tcx> {
     fn resolve<'a>(&self,
-                   infcx: &InferCtxt<'a, 'tcx>)
+                   infcx: &InferCtxt<'a, 'tcx, 'tcx>)
                    -> ty::PolyTraitRef<'tcx>
     {
         infcx.resolve_type_vars_if_possible(self)
     }
 }
 
-fn lifetimes_in_scope(tcx: TyCtxt,
-                      scope_id: ast::NodeId)
-                      -> Vec<hir::LifetimeDef> {
+fn lifetimes_in_scope<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                scope_id: ast::NodeId)
+                                -> Vec<hir::LifetimeDef> {
     let mut taken = Vec::new();
     let parent = tcx.map.get_parent(scope_id);
     let method_id_opt = match tcx.map.find(parent) {

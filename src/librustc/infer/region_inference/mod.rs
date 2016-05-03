@@ -191,7 +191,7 @@ impl SameRegions {
 pub type CombineMap = FnvHashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     // Constraints of the form `A <= B` introduced by the region
@@ -254,7 +254,7 @@ pub struct RegionSnapshot {
 }
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx>) -> RegionVarBindings<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> RegionVarBindings<'a, 'tcx> {
         RegionVarBindings {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
@@ -1363,7 +1363,7 @@ impl<'tcx> fmt::Display for GenericKind<'tcx> {
 }
 
 impl<'a, 'tcx> GenericKind<'tcx> {
-    pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
             GenericKind::Projection(ref p) => tcx.mk_projection(p.trait_ref.clone(), p.item_name),
@@ -1371,7 +1371,7 @@ impl<'a, 'tcx> GenericKind<'tcx> {
     }
 }
 
-impl VerifyBound {
+impl<'a, 'tcx> VerifyBound {
     fn for_each_region(&self, f: &mut FnMut(ty::Region)) {
         match self {
             &VerifyBound::AnyRegion(ref rs) |
@@ -1424,7 +1424,7 @@ impl VerifyBound {
         }
     }
 
-    fn is_met(&self, tcx: TyCtxt,
+    fn is_met(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
               free_regions: &FreeRegionMap,
               var_values: &Vec<VarValue>,
               min: ty::Region)

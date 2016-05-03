@@ -662,7 +662,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn build_diverge_scope<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  cfg: &mut CFG<'tcx>,
                                  unit_temp: &Lvalue<'tcx>,
                                  scope: &mut Scope<'tcx>,
@@ -721,7 +721,7 @@ fn build_diverge_scope<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
     target
 }
 
-fn build_free<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn build_free<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         unit_temp: &Lvalue<'tcx>,
                         data: &FreeData<'tcx>,
                         target: BasicBlock)

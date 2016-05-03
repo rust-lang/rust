@@ -239,7 +239,7 @@ use syntax::ptr::P;
 struct ConstantExpr<'a>(&'a hir::Expr);
 
 impl<'a> ConstantExpr<'a> {
-    fn eq(self, other: ConstantExpr<'a>, tcx: TyCtxt) -> bool {
+    fn eq<'b, 'tcx>(self, other: ConstantExpr<'a>, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> bool {
         match compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
             None => bug!("compare_list_exprs: type mismatch"),
@@ -260,7 +260,7 @@ enum Opt<'a, 'tcx> {
 }
 
 impl<'a, 'b, 'tcx> Opt<'a, 'tcx> {
-    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: TyCtxt<'b, 'tcx>) -> bool {
+    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> bool {
         match (self, other) {
             (&ConstantValue(a, _), &ConstantValue(b, _)) => a.eq(b, tcx),
             (&ConstantRange(a1, a2, _), &ConstantRange(b1, b2, _)) => {

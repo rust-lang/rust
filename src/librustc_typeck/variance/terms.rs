@@ -59,7 +59,7 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
 // The first pass over the crate simply builds up the set of inferreds.
 
 pub struct TermsContext<'a, 'tcx: 'a> {
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub arena: &'a TypedArena<VarianceTerm<'a>>,
 
     pub empty_variances: Rc<ty::ItemVariances>,
@@ -98,7 +98,7 @@ pub struct InferredInfo<'a> {
 }
 
 pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     arena: &'a mut TypedArena<VarianceTerm<'a>>)
     -> TermsContext<'a, 'tcx>
 {

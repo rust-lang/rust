@@ -149,7 +149,7 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
     /// Note that these cycles can cross multiple items.
     pub stack: RefCell<Vec<collect::AstConvRequest>>,
 
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 // Functions that write types into the node type table
@@ -193,7 +193,7 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
 }
 
 fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx>>,
+                                maybe_infcx: Option<&infer::InferCtxt<'a, 'tcx, 'tcx>>,
                                 span: Span,
                                 t1: Ty<'tcx>,
                                 t2: Ty<'tcx>,
@@ -329,7 +329,9 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             trait_map: hir::TraitMap)
+                             -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,

@@ -1308,7 +1308,9 @@ impl<'v> Visitor<'v> for FindNestedReturn {
     }
 }
 
-fn build_cfg(tcx: TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
+fn build_cfg<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                       id: ast::NodeId)
+                       -> (ast::NodeId, Option<cfg::CFG>) {
     let blk = match tcx.map.find(id) {
         Some(hir_map::NodeItem(i)) => {
             match i.node {
@@ -2688,7 +2690,7 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
     }).collect()
 }
 
-pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              mir_map: &MirMap<'tcx>,
                              analysis: ty::CrateAnalysis)
                              -> CrateTranslation {

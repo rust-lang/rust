@@ -119,7 +119,7 @@ impl ClosureEnv {
     }
 }
 
-fn get_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn get_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            closure_id: DefId,
                            fn_ty: Ty<'tcx>)
                            -> Ty<'tcx> {

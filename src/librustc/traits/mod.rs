@@ -316,7 +316,7 @@ pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
 /// `bound` or is not known to meet bound (note that this is
 /// conservative towards *no impl*, which is the opposite of the
 /// `evaluate` methods).
-pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
+pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx, 'tcx>,
                                                  ty: Ty<'tcx>,
                                                  bound: ty::BuiltinBound,
                                                  span: Span)
@@ -460,7 +460,7 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     infcx.parameter_environment.with_caller_bounds(predicates)
 }
 
-pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
+pub fn fully_normalize<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx, 'tcx>,
                                   cause: ObligationCause<'tcx>,
                                   value: &T)
                                   -> Result<T, Vec<FulfillmentError<'tcx>>>

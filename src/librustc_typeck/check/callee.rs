@@ -63,7 +63,7 @@ enum CallStep<'tcx> {
     Overloaded(ty::MethodCallee<'tcx>)
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn check_call(&self,
                   call_expr: &'tcx hir::Expr,
                   callee_expr: &'tcx hir::Expr,
@@ -338,7 +338,7 @@ struct CallResolution<'tcx> {
 }
 
 impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
-    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx>) {
+    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx, 'tcx>) {
         debug!("DeferredCallResolution::resolve() {:?}",
                self);
 

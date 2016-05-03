@@ -30,13 +30,13 @@ use syntax::ptr::P;
 use rustc::hir::{self, PatKind};
 use rustc::hir::print as pprust;
 
-pub struct PatCtxt<'a, 'tcx: 'a> {
-    pub fcx: &'a FnCtxt<'a, 'tcx>,
+pub struct PatCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     pub map: PatIdMap,
 }
 
-impl<'a, 'tcx> Deref for PatCtxt<'a, 'tcx> {
-    type Target = FnCtxt<'a, 'tcx>;
+impl<'a, 'gcx, 'tcx> Deref for PatCtxt<'a, 'gcx, 'tcx> {
+    type Target = FnCtxt<'a, 'gcx, 'tcx>;
     fn deref(&self) -> &Self::Target {
         self.fcx
     }
@@ -56,7 +56,7 @@ fn bad_struct_kind_err(sess: &Session, pat: &hir::Pat, path: &hir::Path, lint: b
     }
 }
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
+impl<'a, 'tcx> PatCtxt<'a, 'tcx, 'tcx> {
 pub fn check_pat(&self, pat: &'tcx hir::Pat, expected: Ty<'tcx>) {
     let tcx = self.tcx();
 
@@ -456,7 +456,7 @@ pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::
 }
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn check_match(&self,
                    expr: &'tcx hir::Expr,
                    discrim: &'tcx hir::Expr,
@@ -579,7 +579,7 @@ pub fn check_match(&self,
 }
 }
 
-impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
+impl<'a, 'tcx> PatCtxt<'a, 'tcx, 'tcx> {
 pub fn check_pat_struct(&self, pat: &'tcx hir::Pat,
                         path: &hir::Path, fields: &'tcx [Spanned<hir::FieldPat>],
                         etc: bool, expected: Ty<'tcx>) {

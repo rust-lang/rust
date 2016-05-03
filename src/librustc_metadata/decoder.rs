@@ -223,14 +223,15 @@ fn variant_disr_val(d: rbml::Doc) -> Option<u64> {
     })
 }
 
-fn doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
+fn doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
     let tp = reader::get_doc(doc, tag_items_data_item_type);
     TyDecoder::with_doc(tcx, cdata.cnum, tp,
                         &mut |did| translate_def_id(cdata, did))
         .parse_ty()
 }
 
-fn maybe_doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx>, cdata: Cmd) -> Option<Ty<'tcx>> {
+fn maybe_doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
+                            -> Option<Ty<'tcx>> {
     reader::maybe_get_doc(doc, tag_items_data_item_type).map(|tp| {
         TyDecoder::with_doc(tcx, cdata.cnum, tp,
                             &mut |did| translate_def_id(cdata, did))
@@ -239,18 +240,18 @@ fn maybe_doc_type<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx>, cdata: Cmd) -
 }
 
 pub fn item_type<'a, 'tcx>(_item_id: DefId, item: rbml::Doc,
-                           tcx: TyCtxt<'a, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd) -> Ty<'tcx> {
     doc_type(item, tcx, cdata)
 }
 
-fn doc_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx>, cdata: Cmd)
+fn doc_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
                            -> ty::TraitRef<'tcx> {
     TyDecoder::with_doc(tcx, cdata.cnum, doc,
                         &mut |did| translate_def_id(cdata, did))
         .parse_trait_ref()
 }
 
-fn item_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx>, cdata: Cmd)
+fn item_trait_ref<'a, 'tcx>(doc: rbml::Doc, tcx: TyCtxt<'a, 'tcx, 'tcx>, cdata: Cmd)
                             -> ty::TraitRef<'tcx> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
@@ -352,7 +353,7 @@ fn parse_associated_type_names(item_doc: rbml::Doc) -> Vec<ast::Name> {
 
 pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
                                item_id: DefIndex,
-                               tcx: TyCtxt<'a, 'tcx>) -> ty::TraitDef<'tcx>
+                               tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::TraitDef<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
@@ -370,7 +371,7 @@ pub fn get_trait_def<'a, 'tcx>(cdata: Cmd,
 pub fn get_adt_def<'a, 'tcx>(intr: &IdentInterner,
                              cdata: Cmd,
                              item_id: DefIndex,
-                             tcx: TyCtxt<'a, 'tcx>)
+                             tcx: TyCtxt<'a, 'tcx, 'tcx>)
                              -> ty::AdtDefMaster<'tcx>
 {
     fn expect_variant_kind(family: Family) -> ty::VariantKind {
@@ -498,7 +499,7 @@ pub fn get_adt_def<'a, 'tcx>(intr: &IdentInterner,
 
 pub fn get_predicates<'a, 'tcx>(cdata: Cmd,
                                 item_id: DefIndex,
-                                tcx: TyCtxt<'a, 'tcx>)
+                                tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                 -> ty::GenericPredicates<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
@@ -507,14 +508,14 @@ pub fn get_predicates<'a, 'tcx>(cdata: Cmd,
 
 pub fn get_super_predicates<'a, 'tcx>(cdata: Cmd,
                                       item_id: DefIndex,
-                                      tcx: TyCtxt<'a, 'tcx>)
+                                      tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                       -> ty::GenericPredicates<'tcx>
 {
     let item_doc = cdata.lookup_item(item_id);
     doc_predicates(item_doc, tcx, cdata, tag_item_super_predicates)
 }
 
-pub fn get_type<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx>)
+pub fn get_type<'a, 'tcx>(cdata: Cmd, id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                           -> ty::TypeScheme<'tcx>
 {
     let item_doc = cdata.lookup_item(id);
@@ -593,7 +594,7 @@ pub fn get_custom_coerce_unsized_kind<'tcx>(
 
 pub fn get_impl_trait<'a, 'tcx>(cdata: Cmd,
                                 id: DefIndex,
-                                tcx: TyCtxt<'a, 'tcx>)
+                                tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                 -> Option<ty::TraitRef<'tcx>>
 {
     let item_doc = cdata.lookup_item(id);
@@ -776,7 +777,7 @@ pub fn get_item_name(intr: &IdentInterner, cdata: Cmd, id: DefIndex) -> ast::Nam
     item_name(intr, cdata.lookup_item(id))
 }
 
-pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx>, id: DefIndex)
+pub fn maybe_get_item_ast<'a, 'tcx>(cdata: Cmd, tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefIndex)
                                     -> FoundAst<'tcx> {
     debug!("Looking up item: {:?}", id);
     let item_doc = cdata.lookup_item(id);
@@ -829,7 +830,7 @@ pub fn is_item_mir_available<'tcx>(cdata: Cmd, id: DefIndex) -> bool {
 }
 
 pub fn maybe_get_item_mir<'a, 'tcx>(cdata: Cmd,
-                                    tcx: TyCtxt<'a, 'tcx>,
+                                    tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     id: DefIndex)
                                     -> Option<mir::repr::Mir<'tcx>> {
     let item_doc = cdata.lookup_item(id);
@@ -947,7 +948,7 @@ pub fn is_static_method(cdata: Cmd, id: DefIndex) -> bool {
 pub fn get_impl_or_trait_item<'a, 'tcx>(intr: Rc<IdentInterner>,
                                         cdata: Cmd,
                                         id: DefIndex,
-                                        tcx: TyCtxt<'a, 'tcx>)
+                                        tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                         -> Option<ty::ImplOrTraitItem<'tcx>> {
     let item_doc = cdata.lookup_item(id);
 
@@ -1042,7 +1043,7 @@ pub fn get_item_variances(cdata: Cmd, id: DefIndex) -> ty::ItemVariances {
 pub fn get_provided_trait_methods<'a, 'tcx>(intr: Rc<IdentInterner>,
                                             cdata: Cmd,
                                             id: DefIndex,
-                                            tcx: TyCtxt<'a, 'tcx>)
+                                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                             -> Vec<Rc<ty::Method<'tcx>>> {
     let item = cdata.lookup_item(id);
 
@@ -1069,7 +1070,7 @@ pub fn get_provided_trait_methods<'a, 'tcx>(intr: Rc<IdentInterner>,
 pub fn get_associated_consts<'a, 'tcx>(intr: Rc<IdentInterner>,
                                        cdata: Cmd,
                                        id: DefIndex,
-                                       tcx: TyCtxt<'a, 'tcx>)
+                                       tcx: TyCtxt<'a, 'tcx, 'tcx>)
                                        -> Vec<Rc<ty::AssociatedConst<'tcx>>> {
     let item = cdata.lookup_item(id);
 
@@ -1443,8 +1444,10 @@ pub fn each_implementation_for_trait<F>(cdata: Cmd,
     }
 }
 
-pub fn get_trait_of_item(cdata: Cmd, id: DefIndex, tcx: TyCtxt)
-                         -> Option<DefId> {
+pub fn get_trait_of_item<'a, 'tcx>(cdata: Cmd,
+                                   id: DefIndex,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                   -> Option<DefId> {
     let item_doc = cdata.lookup_item(id);
     let parent_item_id = match item_parent_item(cdata, item_doc) {
         None => return None,
@@ -1578,7 +1581,10 @@ pub fn is_const_fn(cdata: Cmd, id: DefIndex) -> bool {
     }
 }
 
-pub fn is_extern_item(cdata: Cmd, id: DefIndex, tcx: TyCtxt) -> bool {
+pub fn is_extern_item<'a, 'tcx>(cdata: Cmd,
+                                id: DefIndex,
+                                tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                -> bool {
     let item_doc = match cdata.get_item(id) {
         Some(doc) => doc,
         None => return false,
@@ -1614,7 +1620,7 @@ pub fn is_impl(cdata: Cmd, id: DefIndex) -> bool {
 }
 
 fn doc_generics<'a, 'tcx>(base_doc: rbml::Doc,
-                          tcx: TyCtxt<'a, 'tcx>,
+                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           cdata: Cmd,
                           tag: usize)
                           -> ty::Generics<'tcx>
@@ -1663,7 +1669,7 @@ fn doc_generics<'a, 'tcx>(base_doc: rbml::Doc,
 
 fn doc_predicate<'a, 'tcx>(cdata: Cmd,
                            doc: rbml::Doc,
-                           tcx: TyCtxt<'a, 'tcx>)
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>)
                            -> ty::Predicate<'tcx>
 {
     let predicate_pos = cdata.xref_index.lookup(
@@ -1675,7 +1681,7 @@ fn doc_predicate<'a, 'tcx>(cdata: Cmd,
 }
 
 fn doc_predicates<'a, 'tcx>(base_doc: rbml::Doc,
-                            tcx: TyCtxt<'a, 'tcx>,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             cdata: Cmd,
                             tag: usize)
                             -> ty::GenericPredicates<'tcx>
@@ -1730,7 +1736,7 @@ pub fn closure_kind(cdata: Cmd, closure_id: DefIndex) -> ty::ClosureKind {
     ty::ClosureKind::decode(&mut decoder).unwrap()
 }
 
-pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 'tcx>)
+pub fn closure_ty<'a, 'tcx>(cdata: Cmd, closure_id: DefIndex, tcx: TyCtxt<'a, 'tcx, 'tcx>)
                             -> ty::ClosureTy<'tcx> {
     let closure_doc = cdata.lookup_item(closure_id);
     let closure_ty_doc = reader::get_doc(closure_doc, tag_items_closure_ty);

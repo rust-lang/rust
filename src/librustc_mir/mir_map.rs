@@ -34,7 +34,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use syntax::ast;
 use syntax::codemap::Span;
 
-pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>) -> MirMap<'tcx> {
+pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> MirMap<'tcx> {
     let mut map = MirMap {
         map: NodeMap(),
     };
@@ -52,13 +52,13 @@ pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>) -> MirMap<'tcx> {
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
 struct BuildMir<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     map: &'a mut MirMap<'tcx>,
 }
 
 impl<'a, 'tcx> BuildMir<'a, 'tcx> {
     fn build<F>(&mut self, src: MirSource, f: F)
-        where F: for<'b> FnOnce(Cx<'b, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
+        where F: for<'b> FnOnce(Cx<'b, 'tcx, 'tcx>) -> (Mir<'tcx>, build::ScopeAuxiliaryVec)
     {
         let constness = match src {
             MirSource::Const(_) |
@@ -202,7 +202,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     }
 }
 
-fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              closure_expr_id: ast::NodeId,
                              body_id: ast::NodeId)
                              -> Ty<'tcx> {

@@ -19,7 +19,7 @@ use hir::pat_util;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
-use rustc::infer;
+use rustc::infer::{InferCtxt, FixupError};
 use write_substs_to_tcx;
 use write_ty_to_tcx;
 
@@ -34,7 +34,7 @@ use rustc::hir;
 ///////////////////////////////////////////////////////////////////////////
 // Entry point functions
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn resolve_type_vars_in_expr(&self, e: &hir::Expr) {
     assert_eq!(self.writeback_errors.get(), false);
     let mut wbcx = WritebackCx::new(self);
@@ -74,16 +74,16 @@ pub fn resolve_type_vars_in_fn(&self, decl: &hir::FnDecl, blk: &hir::Block) {
 // there, it applies a few ad-hoc checks that were not convenient to
 // do elsewhere.
 
-struct WritebackCx<'cx, 'tcx: 'cx> {
-    fcx: &'cx FnCtxt<'cx, 'tcx>,
+struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
+    fcx: &'cx FnCtxt<'cx, 'gcx, 'tcx>,
 }
 
-impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
-    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>) -> WritebackCx<'cx, 'tcx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
+    fn new(fcx: &'cx FnCtxt<'cx, 'tcx, 'tcx>) -> WritebackCx<'cx, 'tcx, 'tcx> {
         WritebackCx { fcx: fcx }
     }
 
-    fn tcx(&self) -> TyCtxt<'cx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'tcx, 'tcx> {
         self.fcx.tcx()
     }
 
@@ -134,7 +134,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 // below. In general, a function is made into a `visitor` if it must
 // traffic in node-ids or update tables in the type context etc.
 
-impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
+impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx, 'tcx> {
     fn visit_stmt(&mut self, s: &hir::Stmt) {
         if self.fcx.writeback_errors.get() {
             return;
@@ -214,7 +214,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
+impl<'cx, 'tcx> WritebackCx<'cx, 'tcx, 'tcx> {
     fn visit_upvar_borrow_map(&self) {
         if self.fcx.writeback_errors.get() {
             return;
@@ -379,7 +379,7 @@ enum ResolveReason {
 }
 
 impl ResolveReason {
-    fn span(&self, tcx: TyCtxt) -> Span {
+    fn span<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Span {
         match *self {
             ResolvingExpr(s) => s,
             ResolvingLocal(s) => s,
@@ -408,25 +408,25 @@ impl ResolveReason {
 // The Resolver. This is the type folding engine that detects
 // unresolved types and so forth.
 
-struct Resolver<'cx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'tcx>,
-    infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
+struct Resolver<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
+    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     writeback_errors: &'cx Cell<bool>,
     reason: ResolveReason,
 }
 
-impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
-    fn new(fcx: &'cx FnCtxt<'cx, 'tcx>,
+impl<'cx, 'tcx> Resolver<'cx, 'tcx, 'tcx> {
+    fn new(fcx: &'cx FnCtxt<'cx, 'tcx, 'tcx>,
            reason: ResolveReason)
-           -> Resolver<'cx, 'tcx>
+           -> Resolver<'cx, 'tcx, 'tcx>
     {
         Resolver::from_infcx(fcx.infcx(), &fcx.writeback_errors, reason)
     }
 
-    fn from_infcx(infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
+    fn from_infcx(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>,
                   writeback_errors: &'cx Cell<bool>,
                   reason: ResolveReason)
-                  -> Resolver<'cx, 'tcx>
+                  -> Resolver<'cx, 'tcx, 'tcx>
     {
         Resolver { infcx: infcx,
                    tcx: infcx.tcx,
@@ -434,7 +434,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                    reason: reason }
     }
 
-    fn report_error(&self, e: infer::FixupError) {
+    fn report_error(&self, e: FixupError) {
         self.writeback_errors.set(true);
         if !self.tcx.sess.has_errors() {
             match self.reason {
@@ -480,8 +480,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 }
 
-impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx> {
+impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
 

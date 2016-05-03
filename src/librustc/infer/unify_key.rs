@@ -13,7 +13,7 @@ use ty::{self, IntVarValue, Ty, TyCtxt};
 use rustc_data_structures::unify::{Combine, UnifyKey};
 
 pub trait ToType<'tcx> {
-    fn to_type<'a>(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx>;
+    fn to_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
 }
 
 impl UnifyKey for ty::IntVid {
@@ -51,7 +51,7 @@ impl UnifyKey for ty::RegionVid {
 }
 
 impl<'tcx> ToType<'tcx> for IntVarValue {
-    fn to_type<'a>(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    fn to_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             ty::IntType(i) => tcx.mk_mach_int(i),
             ty::UintType(i) => tcx.mk_mach_uint(i),
@@ -69,7 +69,7 @@ impl UnifyKey for ty::FloatVid {
 }
 
 impl<'tcx> ToType<'tcx> for ast::FloatTy {
-    fn to_type<'a>(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    fn to_type<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         tcx.mk_mach_float(*self)
     }
 }

@@ -459,7 +459,7 @@ impl<D: BitDenotation> DataflowState<D> {
 
 
 impl<'a, 'tcx> DataflowState<MoveData<'tcx>> {
-    pub fn new_move_analysis(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx>) -> Self {
+    pub fn new_move_analysis(mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         let move_data = MoveData::gather_moves(mir, tcx);
         DataflowState::new(mir, move_data)
     }

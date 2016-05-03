@@ -32,14 +32,15 @@ use syntax::codemap::Span;
 use hir;
 
 pub trait IntTypeExt {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx>;
-    fn disr_incr(&self, tcx: TyCtxt, val: Option<Disr>) -> Option<Disr>;
+    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
+    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
+                           -> Option<Disr>;
     fn assert_ty_matches(&self, val: Disr);
-    fn initial_discriminant(&self, tcx: TyCtxt) -> Disr;
+    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx> {
+    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             SignedInt(ast::IntTy::I8)      => tcx.types.i8,
             SignedInt(ast::IntTy::I16)     => tcx.types.i16,
@@ -54,7 +55,7 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn initial_discriminant(&self, tcx: TyCtxt) -> Disr {
+    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
         match *self {
             SignedInt(ast::IntTy::I8)    => ConstInt::I8(0),
             SignedInt(ast::IntTy::I16)   => ConstInt::I16(0),
@@ -93,7 +94,8 @@ impl IntTypeExt for attr::IntType {
         }
     }
 
-    fn disr_incr(&self, tcx: TyCtxt, val: Option<Disr>) -> Option<Disr> {
+    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
+                           -> Option<Disr> {
         if let Some(val) = val {
             self.assert_ty_matches(val);
             (val + ConstInt::Infer(1)).ok()
@@ -170,7 +172,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn pat_contains_ref_binding(self, pat: &hir::Pat) -> Option<hir::Mutability> {
         pat_util::pat_contains_ref_binding(&self.def_map, pat)
     }
@@ -337,7 +339,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
         helper(self, ty, svh, &mut state);
         return state.finish();
 
-        fn helper<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ty: Ty<'tcx>, svh: &Svh,
+        fn helper<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>, svh: &Svh,
                         state: &mut SipHasher) {
             macro_rules! byte { ($b:expr) => { ($b as u8).hash(state) } }
             macro_rules! hash { ($e:expr) => { $e.hash(state) }  }
@@ -600,7 +602,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     }
 
     #[inline]
-    pub fn layout(&'tcx self, infcx: &InferCtxt<'a, 'tcx>)
+    pub fn layout(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'tcx>)
                   -> Result<&'tcx Layout, LayoutError<'tcx>> {
         let can_cache = !self.has_param_types() && !self.has_self_ty();
         if can_cache {
@@ -620,10 +622,11 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
     /// Check whether a type is representable. This means it cannot contain unboxed
     /// structural recursion. This check is needed for structs and enums.
-    pub fn is_representable(&'tcx self, tcx: TyCtxt<'a, 'tcx>, sp: Span) -> Representability {
+    pub fn is_representable(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span)
+                            -> Representability {
 
         // Iterate until something non-representable is found
-        fn find_nonrepresentable<'a, 'tcx, It>(tcx: TyCtxt<'a, 'tcx>,
+        fn find_nonrepresentable<'a, 'tcx, It>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                sp: Span,
                                                seen: &mut Vec<Ty<'tcx>>,
                                                iter: It)
@@ -633,7 +636,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                       |r, ty| cmp::max(r, is_type_structurally_recursive(tcx, sp, seen, ty)))
         }
 
-        fn are_inner_types_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, sp: Span,
+        fn are_inner_types_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span,
                                                seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
                                                -> Representability {
             match ty.sty {
@@ -692,7 +695,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
         // Does the type `ty` directly (without indirection through a pointer)
         // contain any types on stack `seen`?
-        fn is_type_structurally_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+        fn is_type_structurally_recursive<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                     sp: Span,
                                                     seen: &mut Vec<Ty<'tcx>>,
                                                     ty: Ty<'tcx>) -> Representability {

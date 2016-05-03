@@ -20,7 +20,7 @@ use ty::{Ty, TyCtxt};
 use syntax::codemap::Span;
 use hir as ast;
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 pub fn prohibit_type_params(self, segments: &[ast::PathSegment]) {
     for segment in segments {
         for typ in segment.parameters.types() {

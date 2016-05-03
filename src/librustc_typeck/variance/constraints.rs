@@ -127,7 +127,7 @@ fn is_lifetime(map: &hir_map::Map, param_id: ast::NodeId) -> bool {
 }
 
 impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.terms_cx.tcx
     }
 

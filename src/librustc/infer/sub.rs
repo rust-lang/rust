@@ -20,12 +20,12 @@ use traits::PredicateObligations;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
-pub struct Sub<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>,
+pub struct Sub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'tcx> Sub<'a, 'tcx> {
-    pub fn new(f: CombineFields<'a, 'tcx>) -> Sub<'a, 'tcx> {
+impl<'a, 'tcx> Sub<'a, 'tcx, 'tcx> {
+    pub fn new(f: CombineFields<'a, 'tcx, 'tcx>) -> Sub<'a, 'tcx, 'tcx> {
         Sub { fields: f }
     }
 
@@ -34,9 +34,9 @@ impl<'a, 'tcx> Sub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx, 'tcx> {
     fn tag(&self) -> &'static str { "Sub" }
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.infcx.tcx }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.fields.infcx.tcx }
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
     fn with_cause<F,R>(&mut self, cause: Cause, f: F) -> R

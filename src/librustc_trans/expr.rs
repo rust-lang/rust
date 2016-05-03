@@ -722,7 +722,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                               base: &hir::Expr,
                               get_idx: F)
                               -> DatumBlock<'blk, 'tcx, Expr> where
-    F: FnOnce(TyCtxt<'blk, 'tcx>, &VariantInfo<'tcx>) -> usize,
+    F: FnOnce(TyCtxt<'blk, 'tcx, 'tcx>, &VariantInfo<'tcx>) -> usize,
 {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -1826,7 +1826,7 @@ fn trans_binary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn cast_is_noop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn cast_is_noop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               expr: &hir::Expr,
                               t_in: Ty<'tcx>,
                               t_out: Ty<'tcx>)
@@ -2377,7 +2377,7 @@ enum ExprKind {
     RvalueStmt
 }
 
-fn expr_kind(tcx: TyCtxt, expr: &hir::Expr) -> ExprKind {
+fn expr_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, expr: &hir::Expr) -> ExprKind {
     if tcx.is_method_call(expr.id) {
         // Overloaded operations are generally calls, and hence they are
         // generated via DPS, but there are a few exceptions:

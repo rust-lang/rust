@@ -29,16 +29,16 @@ use rustc::hir;
 use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]
-pub struct Cx<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct Cx<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     constness: hir::Constness
 }
 
-impl<'a,'tcx> Cx<'a,'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'tcx>,
+impl<'a, 'tcx> Cx<'a, 'tcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
                constness: hir::Constness)
-               -> Cx<'a, 'tcx> {
+               -> Cx<'a, 'tcx, 'tcx> {
         Cx {
             tcx: infcx.tcx,
             infcx: infcx,
@@ -47,7 +47,7 @@ impl<'a,'tcx> Cx<'a,'tcx> {
     }
 }
 
-impl<'a,'tcx:'a> Cx<'a, 'tcx> {
+impl<'a, 'tcx: 'a> Cx<'a, 'tcx, 'tcx> {
     /// Normalizes `ast` into the appropriate `mirror` type.
     pub fn mirror<M: Mirror<'tcx>>(&mut self, ast: M) -> M::Output {
         ast.make_mirror(self)
@@ -144,7 +144,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
     }
 
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
 }

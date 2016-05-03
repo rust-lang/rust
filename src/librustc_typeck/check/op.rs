@@ -17,7 +17,7 @@ use syntax::ast;
 use syntax::parse::token;
 use rustc::hir;
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 /// Check a `a <op>= b`
 pub fn check_binop_assign(&self,
                           expr: &'tcx hir::Expr,

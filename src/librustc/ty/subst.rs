@@ -122,7 +122,7 @@ impl<'a, 'tcx> Substs<'tcx> {
     }
 
     /// Creates a trait-ref out of this substs, ignoring the FnSpace substs
-    pub fn to_trait_ref(&self, tcx: TyCtxt<'a, 'tcx>, trait_id: DefId)
+    pub fn to_trait_ref(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_id: DefId)
                         -> ty::TraitRef<'tcx> {
         let Substs { mut types, mut regions } = self.clone();
         types.truncate(FnSpace, 0);
@@ -532,18 +532,18 @@ impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
 // there is more information available (for better errors).
 
 pub trait Subst<'tcx> : Sized {
-    fn subst<'a>(&self, tcx: TyCtxt<'a, 'tcx>, substs: &Substs<'tcx>) -> Self {
+    fn subst<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, substs: &Substs<'tcx>) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
-    fn subst_spanned<'a>(&self, tcx: TyCtxt<'a, 'tcx>,
+    fn subst_spanned<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          substs: &Substs<'tcx>,
                          span: Option<Span>)
                          -> Self;
 }
 
 impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
-    fn subst_spanned<'a>(&self, tcx: TyCtxt<'a, 'tcx>,
+    fn subst_spanned<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          substs: &Substs<'tcx>,
                          span: Option<Span>)
                          -> T
@@ -562,7 +562,7 @@ impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
 // The actual substitution engine itself is a type folder.
 
 struct SubstFolder<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     substs: &'a Substs<'tcx>,
 
     // The location for which the substitution is performed, if available.
@@ -579,7 +579,7 @@ struct SubstFolder<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for SubstFolder<'a, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.region_binders_passed += 1;

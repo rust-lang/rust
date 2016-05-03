@@ -54,14 +54,14 @@ enum FieldAccessError {
 /// The sanitize_XYZ methods here take an MIR object and compute its
 /// type, calling `span_mirbug` and returning an error type if there
 /// is a problem.
-struct TypeVerifier<'a, 'b: 'a, 'tcx: 'b> {
-    cx: &'a mut TypeChecker<'b, 'tcx>,
+struct TypeVerifier<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
+    cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
     mir: &'a Mir<'tcx>,
     last_span: Span,
     errors_reported: bool
 }
 
-impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx, 'tcx> {
     fn visit_span(&mut self, span: &Span) {
         if *span != DUMMY_SP {
             self.last_span = *span;
@@ -104,8 +104,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
+impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx, 'tcx> {
+    fn new(cx: &'a mut TypeChecker<'b, 'tcx, 'tcx>, mir: &'a Mir<'tcx>) -> Self {
         TypeVerifier {
             cx: cx,
             mir: mir,
@@ -114,11 +114,11 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.cx.infcx.tcx
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx, 'tcx> {
         self.cx.infcx
     }
 
@@ -318,14 +318,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     }
 }
 
-pub struct TypeChecker<'a, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span
 }
 
-impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
-    fn new(infcx: &'a InferCtxt<'a, 'tcx>) -> Self {
+impl<'a, 'tcx> TypeChecker<'a, 'tcx, 'tcx> {
+    fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>) -> Self {
         TypeChecker {
             infcx: infcx,
             fulfillment_cx: traits::FulfillmentContext::new(),
@@ -349,7 +349,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -576,7 +576,8 @@ impl TypeckMir {
 }
 
 impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    src: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.

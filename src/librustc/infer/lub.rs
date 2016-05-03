@@ -19,12 +19,12 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 /// "Least upper bound" (common supertype)
-pub struct Lub<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Lub<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> Lub<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Lub<'a, 'tcx> {
+impl<'a, 'tcx> Lub<'a, 'tcx, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'tcx, 'tcx>) -> Lub<'a, 'tcx, 'tcx> {
         Lub { fields: fields }
     }
 
@@ -33,10 +33,10 @@ impl<'a, 'tcx> Lub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx, 'tcx> {
     fn tag(&self) -> &'static str { "Lub" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
@@ -76,8 +76,8 @@ impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LatticeDir<'a,'tcx> for Lub<'a, 'tcx> {
-    fn infcx(&self) -> &'a InferCtxt<'a,'tcx> {
+impl<'a, 'tcx> LatticeDir<'a,'tcx> for Lub<'a, 'tcx, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx, 'tcx> {
         self.fields.infcx
     }
 

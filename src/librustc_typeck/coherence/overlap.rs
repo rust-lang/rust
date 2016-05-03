@@ -23,7 +23,7 @@ use rustc::hir::intravisit;
 use util::nodemap::DefIdMap;
 use lint;
 
-pub fn check(tcx: TyCtxt) {
+pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut overlap = OverlapChecker { tcx: tcx,
                                        default_impls: DefIdMap() };
 
@@ -33,7 +33,7 @@ pub fn check(tcx: TyCtxt) {
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
-    tcx: TyCtxt<'cx, 'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 
     // maps from a trait def-id to an impl id
     default_impls: DefIdMap<ast::NodeId>,
@@ -44,8 +44,9 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         #[derive(Copy, Clone, PartialEq)]
         enum Namespace { Type, Value }
 
-        fn name_and_namespace(tcx: TyCtxt, item: &ty::ImplOrTraitItemId)
-                              -> (ast::Name, Namespace)
+        fn name_and_namespace<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                        item: &ty::ImplOrTraitItemId)
+                                        -> (ast::Name, Namespace)
         {
             let name = tcx.impl_or_trait_item(item.def_id()).name();
             (name, match *item {
