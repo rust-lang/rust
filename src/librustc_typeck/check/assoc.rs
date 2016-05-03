@@ -16,7 +16,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 
 //FIXME(@jroesch): Ideally we should be able to drop the fulfillment_cx argument.
-pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
+pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx, 'tcx>,
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,
                                                 span: Span,
                                                 body_id: ast::NodeId,

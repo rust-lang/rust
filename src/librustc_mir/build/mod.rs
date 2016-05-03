@@ -22,7 +22,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::keywords;
 
 pub struct Builder<'a, 'tcx: 'a> {
-    hir: Cx<'a, 'tcx>,
+    hir: Cx<'a, 'tcx, 'tcx>,
     cfg: CFG<'tcx>,
 
     fn_span: Span,
@@ -160,7 +160,7 @@ macro_rules! unpack {
 ///////////////////////////////////////////////////////////////////////////
 /// the main entry point for building MIR for a function
 
-pub fn construct_fn<'a, 'tcx, A>(hir: Cx<'a,'tcx>,
+pub fn construct_fn<'a, 'tcx, A>(hir: Cx<'a, 'tcx, 'tcx>,
                                  fn_id: ast::NodeId,
                                  arguments: A,
                                  return_ty: ty::FnOutput<'tcx>,
@@ -232,7 +232,7 @@ pub fn construct_fn<'a, 'tcx, A>(hir: Cx<'a,'tcx>,
     builder.finish(upvar_decls, arg_decls, return_ty)
 }
 
-pub fn construct_const<'a, 'tcx>(hir: Cx<'a,'tcx>,
+pub fn construct_const<'a, 'tcx>(hir: Cx<'a, 'tcx, 'tcx>,
                                  item_id: ast::NodeId,
                                  ast_expr: &'tcx hir::Expr)
                                  -> (Mir<'tcx>, ScopeAuxiliaryVec) {
@@ -260,7 +260,7 @@ pub fn construct_const<'a, 'tcx>(hir: Cx<'a,'tcx>,
 }
 
 impl<'a,'tcx> Builder<'a,'tcx> {
-    fn new(hir: Cx<'a, 'tcx>, span: Span) -> Builder<'a, 'tcx> {
+    fn new(hir: Cx<'a, 'tcx, 'tcx>, span: Span) -> Builder<'a, 'tcx> {
         let mut builder = Builder {
             hir: hir,
             cfg: CFG { basic_blocks: vec![] },

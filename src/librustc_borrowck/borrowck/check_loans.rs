@@ -233,7 +233,7 @@ fn compatible_borrow_kinds(borrow_kind1: ty::BorrowKind,
 }
 
 impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.bccx.tcx }
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.bccx.tcx }
 
     pub fn each_issued_loan<F>(&self, node: ast::NodeId, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,

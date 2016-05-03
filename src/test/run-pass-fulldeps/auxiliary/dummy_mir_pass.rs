@@ -30,7 +30,8 @@ struct Pass;
 
 impl transform::Pass for Pass {}
 impl<'tcx> MirPass<'tcx> for Pass {
-    fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx>, _: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, _: TyCtxt<'a, 'tcx, 'tcx>,
+                    _: MirSource, mir: &mut Mir<'tcx>) {
         Visitor.visit_mir(mir)
     }
 }

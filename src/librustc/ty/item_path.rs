@@ -14,7 +14,7 @@ use hir::def_id::{DefId, CRATE_DEF_INDEX};
 use ty::{self, Ty, TyCtxt};
 use syntax::ast;
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     /// Returns a string identifying this def-id. This string is
     /// suitable for user output. It is relative to the current crate
     /// root.

@@ -63,13 +63,13 @@ impl RetracedDefIdDirectory {
 }
 
 pub struct DefIdDirectoryBuilder<'a,'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     hash: DefIdMap<Option<DefPathIndex>>,
     directory: DefIdDirectory,
 }
 
 impl<'a,'tcx> DefIdDirectoryBuilder<'a,'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx>) -> DefIdDirectoryBuilder<'a, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> DefIdDirectoryBuilder<'a, 'tcx> {
         DefIdDirectoryBuilder {
             tcx: tcx,
             hash: DefIdMap(),

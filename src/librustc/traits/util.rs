@@ -18,7 +18,7 @@ use util::nodemap::FnvHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
-fn anonymize_predicate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, pred: &ty::Predicate<'tcx>)
+fn anonymize_predicate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, pred: &ty::Predicate<'tcx>)
                                  -> ty::Predicate<'tcx> {
     match *pred {
         ty::Predicate::Trait(ref data) =>
@@ -52,12 +52,12 @@ fn anonymize_predicate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, pred: &ty::Predicate<'tc
 
 
 struct PredicateSet<'a,'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     set: FnvHashSet<ty::Predicate<'tcx>>,
 }
 
 impl<'a,'tcx> PredicateSet<'a,'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx>) -> PredicateSet<'a,'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PredicateSet<'a,'tcx> {
         PredicateSet { tcx: tcx, set: FnvHashSet() }
     }
 
@@ -88,13 +88,13 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
 /// Foo : 'static`, and we know that `T : Foo`, then we know that `T :
 /// 'static`.
 pub struct Elaborator<'cx, 'tcx:'cx> {
-    tcx: TyCtxt<'cx, 'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     stack: Vec<ty::Predicate<'tcx>>,
     visited: PredicateSet<'cx,'tcx>,
 }
 
 pub fn elaborate_trait_ref<'cx, 'tcx>(
-    tcx: TyCtxt<'cx, 'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
     -> Elaborator<'cx, 'tcx>
 {
@@ -102,7 +102,7 @@ pub fn elaborate_trait_ref<'cx, 'tcx>(
 }
 
 pub fn elaborate_trait_refs<'cx, 'tcx>(
-    tcx: TyCtxt<'cx, 'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     trait_refs: &[ty::PolyTraitRef<'tcx>])
     -> Elaborator<'cx, 'tcx>
 {
@@ -113,7 +113,7 @@ pub fn elaborate_trait_refs<'cx, 'tcx>(
 }
 
 pub fn elaborate_predicates<'cx, 'tcx>(
-    tcx: TyCtxt<'cx, 'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     mut predicates: Vec<ty::Predicate<'tcx>>)
     -> Elaborator<'cx, 'tcx>
 {
@@ -222,14 +222,14 @@ impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
 
 pub type Supertraits<'cx, 'tcx> = FilterToTraits<Elaborator<'cx, 'tcx>>;
 
-pub fn supertraits<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>,
+pub fn supertraits<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx, 'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
                               -> Supertraits<'cx, 'tcx>
 {
     elaborate_trait_ref(tcx, trait_ref).filter_to_traits()
 }
 
-pub fn transitive_bounds<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>,
+pub fn transitive_bounds<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx, 'tcx>,
                                     bounds: &[ty::PolyTraitRef<'tcx>])
                                     -> Supertraits<'cx, 'tcx>
 {
@@ -240,12 +240,12 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>,
 // Iterator over def-ids of supertraits
 
 pub struct SupertraitDefIds<'cx, 'tcx:'cx> {
-    tcx: TyCtxt<'cx, 'tcx>,
+    tcx: TyCtxt<'cx, 'tcx, 'tcx>,
     stack: Vec<DefId>,
     visited: FnvHashSet<DefId>,
 }
 
-pub fn supertrait_def_ids<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx>,
+pub fn supertrait_def_ids<'cx, 'tcx>(tcx: TyCtxt<'cx, 'tcx, 'tcx>,
                                      trait_def_id: DefId)
                                      -> SupertraitDefIds<'cx, 'tcx>
 {
@@ -319,7 +319,7 @@ impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
 /// Instantiate all bound parameters of the impl with the given substs,
 /// returning the resulting trait ref and all obligations that arise.
 /// The obligations are closed under normalization.
-pub fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
+pub fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx, 'tcx>,
                                          impl_def_id: DefId,
                                          impl_substs: &Substs<'tcx>)
                                          -> (ty::TraitRef<'tcx>,
@@ -352,7 +352,7 @@ pub fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
 // declared on the impl declaration e.g., `impl<A,B> for Box<[(A,B)]>`
 // would return ($0, $1) where $0 and $1 are freshly instantiated type
 // variables.
-pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
                                           span: Span,
                                           impl_def_id: DefId)
                                           -> Substs<'tcx>
@@ -391,7 +391,7 @@ pub fn predicate_for_trait_ref<'tcx>(
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
 pub fn trait_ref_for_builtin_bound(self,
     builtin_bound: ty::BuiltinBound,
     param_ty: Ty<'tcx>)

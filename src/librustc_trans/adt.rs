@@ -237,7 +237,7 @@ fn dtor_to_init_u8(dtor: bool) -> u8 {
 }
 
 pub trait GetDtorType<'tcx> { fn dtor_type(self) -> Ty<'tcx>; }
-impl<'a, 'tcx> GetDtorType<'tcx> for TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> GetDtorType<'tcx> for TyCtxt<'a, 'tcx, 'tcx> {
     fn dtor_type(self) -> Ty<'tcx> { self.types.u8 }
 }
 
@@ -442,7 +442,7 @@ struct Case<'tcx> {
 /// This represents the (GEP) indices to follow to get to the discriminant field
 pub type DiscrField = Vec<usize>;
 
-fn find_discr_field_candidate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn find_discr_field_candidate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         ty: Ty<'tcx>,
                                         mut path: DiscrField)
                                         -> Option<DiscrField> {
@@ -545,7 +545,7 @@ impl<'tcx> Case<'tcx> {
     }
 }
 
-fn get_cases<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn get_cases<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        adt: ty::AdtDef<'tcx>,
                        substs: &subst::Substs<'tcx>)
                        -> Vec<Case<'tcx>> {
@@ -669,7 +669,7 @@ fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
     }
 }
 
-pub fn ty_of_inttype<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ity: IntType) -> Ty<'tcx> {
+pub fn ty_of_inttype<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ity: IntType) -> Ty<'tcx> {
     match ity {
         attr::SignedInt(t) => tcx.mk_mach_int(t),
         attr::UnsignedInt(t) => tcx.mk_mach_uint(t)

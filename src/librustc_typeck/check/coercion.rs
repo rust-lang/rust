@@ -77,8 +77,8 @@ use std::cell::RefCell;
 use std::collections::VecDeque;
 use rustc::hir;
 
-struct Coerce<'a, 'tcx: 'a> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
+struct Coerce<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     origin: TypeOrigin,
     use_lub: bool,
     unsizing_obligations: RefCell<Vec<traits::PredicateObligation<'tcx>>>,
@@ -97,8 +97,8 @@ fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
     }
 }
 
-impl<'f, 'tcx> Coerce<'f, 'tcx> {
-    fn new(fcx: &'f FnCtxt<'f, 'tcx>, origin: TypeOrigin) -> Self {
+impl<'f, 'tcx> Coerce<'f, 'tcx, 'tcx> {
+    fn new(fcx: &'f FnCtxt<'f, 'tcx, 'tcx>, origin: TypeOrigin) -> Self {
         Coerce {
             fcx: fcx,
             origin: origin,
@@ -107,7 +107,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> TyCtxt<'f, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'f, 'tcx, 'tcx> {
         self.fcx.tcx()
     }
 
@@ -591,7 +591,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 }
 
-fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx>,
+fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx, 'tcx>,
                              exprs: &E,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
@@ -614,7 +614,7 @@ fn apply<'a, 'b, 'tcx, E, I>(coerce: &mut Coerce<'a, 'tcx>,
     Ok((ty, adjustment))
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 /// Attempt to coerce an expression to a type, and return the
 /// adjusted type of the expression, if successful.
 /// Adjustments are only recorded if the coercion succeeded.

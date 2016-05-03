@@ -73,7 +73,7 @@ use self::Aliasability::*;
 
 use hir::def_id::DefId;
 use hir::map as ast_map;
-use infer;
+use infer::InferCtxt;
 use middle::const_qualif::ConstQualif;
 use hir::def::Def;
 use ty::adjustment;
@@ -256,8 +256,8 @@ impl ast_node for hir::Pat {
 }
 
 #[derive(Copy, Clone)]
-pub struct MemCategorizationContext<'t, 'a: 't, 'tcx : 'a> {
-    pub typer: &'t infer::InferCtxt<'a, 'tcx>,
+pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 pub type McResult<T> = Result<T, ()>;
@@ -302,7 +302,9 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
+    fn from_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            id: ast::NodeId)
+                            -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) => match p.node {
                 PatKind::Ident(bind_mode, _, _) => {
@@ -358,17 +360,18 @@ impl MutabilityCategory {
     }
 }
 
-impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
-    pub fn new(typer: &'t infer::InferCtxt<'a, 'tcx>) -> MemCategorizationContext<'t, 'a, 'tcx> {
-        MemCategorizationContext { typer: typer }
+impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx, 'tcx> {
+    pub fn new(infcx: &'a InferCtxt<'a, 'tcx, 'tcx>)
+               -> MemCategorizationContext<'a, 'tcx, 'tcx> {
+        MemCategorizationContext { infcx: infcx }
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
-        self.typer.tcx
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
+        self.infcx.tcx
     }
 
     fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
-        match self.typer.node_ty(expr.id) {
+        match self.infcx.node_ty(expr.id) {
             Ok(t) => Ok(t),
             Err(()) => {
                 debug!("expr_ty({:?}) yielded Err", expr);
@@ -381,16 +384,16 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         let unadjusted_ty = self.expr_ty(expr)?;
         Ok(unadjusted_ty.adjust(
             self.tcx(), expr.span, expr.id,
-            self.typer.adjustments().get(&expr.id),
-            |method_call| self.typer.node_method_ty(method_call)))
+            self.infcx.adjustments().get(&expr.id),
+            |method_call| self.infcx.node_method_ty(method_call)))
     }
 
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
-        self.typer.node_ty(id)
+        self.infcx.node_ty(id)
     }
 
     fn pat_ty(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
-        let base_ty = self.typer.node_ty(pat.id)?;
+        let base_ty = self.infcx.node_ty(pat.id)?;
         // FIXME (Issue #18207): This code detects whether we are
         // looking at a `ref x`, and if so, figures out what the type
         // *being borrowed* is.  But ideally we would put in a more
@@ -413,7 +416,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     }
 
     pub fn cat_expr(&self, expr: &hir::Expr) -> McResult<cmt<'tcx>> {
-        match self.typer.adjustments().get(&expr.id) {
+        match self.infcx.adjustments().get(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)
@@ -485,7 +488,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
           hir::ExprIndex(ref base, _) => {
             let method_call = ty::MethodCall::expr(expr.id());
             let context = InteriorOffsetKind::Index;
-            match self.typer.node_method_ty(method_call) {
+            match self.infcx.node_method_ty(method_call) {
                 Some(method_ty) => {
                     // If this is an index implemented by a method call, then it
                     // will include an implicit deref of the result.
@@ -578,7 +581,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
               let ty = self.node_ty(fn_node_id)?;
               match ty.sty {
                   ty::TyClosure(closure_id, _) => {
-                      match self.typer.closure_kind(closure_id) {
+                      match self.infcx.closure_kind(closure_id) {
                           Some(kind) => {
                               self.cat_upvar(id, span, var_id, fn_node_id, kind)
                           }
@@ -687,7 +690,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         // for that.
         let upvar_id = ty::UpvarId { var_id: var_id,
                                      closure_expr_id: fn_node_id };
-        let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
+        let upvar_capture = self.infcx.upvar_capture(upvar_id).unwrap();
         let cmt_result = match upvar_capture {
             ty::UpvarCapture::ByValue => {
                 cmt_result
@@ -785,7 +788,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
     pub fn temporary_scope(&self, id: ast::NodeId) -> ty::Region {
-        match self.typer.temporary_scope(id) {
+        match self.infcx.temporary_scope(id) {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic
         }
@@ -882,7 +885,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
             expr_id: node.id(),
             autoderef: deref_cnt as u32
         };
-        let method_ty = self.typer.node_method_ty(method_call);
+        let method_ty = self.infcx.node_method_ty(method_call);
 
         debug!("cat_deref: method_call={:?} method_ty={:?}",
                method_call, method_ty.map(|ty| ty));
@@ -977,7 +980,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         //! - `base_cmt`: the cmt of `elt`
 
         let method_call = ty::MethodCall::expr(elt.id());
-        let method_ty = self.typer.node_method_ty(method_call);
+        let method_ty = self.infcx.node_method_ty(method_call);
 
         let element_ty = match method_ty {
             Some(method_ty) => {
@@ -1082,10 +1085,10 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
         /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
         /// have to recurse through rptrs.
-        fn vec_slice_info(tcx: TyCtxt,
-                          pat: &hir::Pat,
-                          slice_ty: Ty)
-                          -> (hir::Mutability, ty::Region) {
+        fn vec_slice_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    pat: &hir::Pat,
+                                    slice_ty: Ty)
+                                    -> (hir::Mutability, ty::Region) {
             match slice_ty.sty {
                 ty::TyRef(r, ref mt) => match mt.ty.sty {
                     ty::TySlice(_) => (mt.mutbl, *r),
@@ -1137,7 +1140,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     }
 
     pub fn cat_pattern<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
-        where F: FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &hir::Pat),
+        where F: FnMut(&MemCategorizationContext<'a, 'tcx, 'tcx>, cmt<'tcx>, &hir::Pat),
     {
         self.cat_pattern_(cmt, pat, &mut op)
     }
@@ -1145,7 +1148,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
     fn cat_pattern_<F>(&self, cmt: cmt<'tcx>, pat: &hir::Pat, op: &mut F)
                        -> McResult<()>
-        where F : FnMut(&MemCategorizationContext<'t, 'a, 'tcx>, cmt<'tcx>, &hir::Pat),
+        where F : FnMut(&MemCategorizationContext<'a, 'tcx, 'tcx>, cmt<'tcx>, &hir::Pat),
     {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
@@ -1463,7 +1466,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 
 
-    pub fn descriptive_string(&self, tcx: TyCtxt) -> String {
+    pub fn descriptive_string<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".to_string()

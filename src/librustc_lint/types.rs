@@ -294,8 +294,10 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn check_limits(tcx: TyCtxt, binop: hir::BinOp,
-                        l: &hir::Expr, r: &hir::Expr) -> bool {
+        fn check_limits<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  binop: hir::BinOp,
+                                  l: &hir::Expr,
+                                  r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprLit(_), _) => (l, r, true),
                 (_, &hir::ExprLit(_)) => (r, l, false),
@@ -375,7 +377,7 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def: ty::AdtDef<'tcx>,
                                   substs: &Substs<'tcx>)
                                   -> bool {

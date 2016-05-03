@@ -37,7 +37,7 @@ type CleanEdges = Vec<(DepNode<DefId>, DepNode<DefId>)>;
 /// early in compilation, before we've really done any work, but
 /// actually it doesn't matter all that much.) See `README.md` for
 /// more general overview.
-pub fn load_dep_graph(tcx: TyCtxt) {
+pub fn load_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     if let Some(dep_graph) = dep_graph_path(tcx) {
@@ -47,7 +47,7 @@ pub fn load_dep_graph(tcx: TyCtxt) {
     }
 }
 
-pub fn load_dep_graph_if_exists(tcx: TyCtxt, path: &Path) {
+pub fn load_dep_graph_if_exists<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, path: &Path) {
     if !path.exists() {
         return;
     }
@@ -74,7 +74,9 @@ pub fn load_dep_graph_if_exists(tcx: TyCtxt, path: &Path) {
     }
 }
 
-pub fn decode_dep_graph(tcx: TyCtxt, data: &[u8]) -> Result<(), Error>
+pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  data: &[u8])
+                                  -> Result<(), Error>
 {
     // Deserialize the directory and dep-graph.
     let mut decoder = Decoder::new(data, 0);
@@ -128,10 +130,10 @@ pub fn decode_dep_graph(tcx: TyCtxt, data: &[u8]) -> Result<(), Error>
     Ok(())
 }
 
-fn initial_dirty_nodes(tcx: TyCtxt,
-                       hashed_items: &[SerializedHash],
-                       retraced: &RetracedDefIdDirectory)
-                       -> DirtyNodes {
+fn initial_dirty_nodes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 hashed_items: &[SerializedHash],
+                                 retraced: &RetracedDefIdDirectory)
+                                 -> DirtyNodes {
     let mut items_removed = false;
     let mut dirty_nodes = FnvHashSet();
     for hashed_item in hashed_items {

@@ -367,7 +367,7 @@ pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
     pub resolutions: Option<&'a Resolutions>,
     pub mir_map: Option<&'b MirMap<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
-    pub tcx: Option<TyCtxt<'b, 'tcx>>,
+    pub tcx: Option<TyCtxt<'b, 'tcx, 'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
@@ -464,7 +464,7 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                             hir_crate: &'a hir::Crate,
                             analysis: &'a ty::CrateAnalysis<'a>,
                             mir_map: Option<&'b MirMap<'tcx>>,
-                            tcx: TyCtxt<'b, 'tcx>,
+                            tcx: TyCtxt<'b, 'tcx, 'tcx>,
                             crate_name: &'a str)
                             -> CompileState<'a, 'b, 'ast, 'tcx> {
         CompileState {
@@ -817,7 +817,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                name: &str,
                                                f: F)
                                                -> Result<R, usize>
-    where F: for<'a> FnOnce(TyCtxt<'a, 'tcx>,
+    where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
                             Option<MirMap<'tcx>>,
                             ty::CrateAnalysis,
                             CompileResult) -> R
@@ -992,7 +992,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
-pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            mut mir_map: MirMap<'tcx>,
                                            analysis: ty::CrateAnalysis)
                                            -> trans::CrateTranslation {

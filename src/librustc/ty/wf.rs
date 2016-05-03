@@ -25,7 +25,7 @@ use util::common::ErrorReported;
 /// inference variable, returns `None`, because we are not able to
 /// make any progress at all. This is to prevent "livelock" where we
 /// say "$0 is WF if $0 is WF".
-pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
                             body_id: ast::NodeId,
                             ty: Ty<'tcx>,
                             span: Span)
@@ -49,7 +49,7 @@ pub fn obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 /// well-formed.  For example, if there is a trait `Set` defined like
 /// `trait Set<K:Eq>`, then the trait reference `Foo: Set<Bar>` is WF
 /// if `Bar: Eq`.
-pub fn trait_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+pub fn trait_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
                                   body_id: ast::NodeId,
                                   trait_ref: &ty::TraitRef<'tcx>,
                                   span: Span)
@@ -60,7 +60,7 @@ pub fn trait_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     wf.normalize()
 }
 
-pub fn predicate_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+pub fn predicate_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
                                       body_id: ast::NodeId,
                                       predicate: &ty::Predicate<'tcx>,
                                       span: Span)
@@ -123,8 +123,8 @@ pub enum ImpliedBound<'tcx> {
 /// Compute the implied bounds that a callee/impl can assume based on
 /// the fact that caller/projector has ensured that `ty` is WF.  See
 /// the `ImpliedBound` type for more details.
-pub fn implied_bounds<'a,'tcx>(
-    infcx: &'a InferCtxt<'a,'tcx>,
+pub fn implied_bounds<'a, 'tcx>(
+    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
     body_id: ast::NodeId,
     ty: Ty<'tcx>,
     span: Span)
@@ -228,7 +228,7 @@ fn implied_bounds_from_components<'tcx>(sub_region: ty::Region,
 }
 
 struct WfPredicates<'a,'tcx:'a> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'a, 'tcx, 'tcx>,
     body_id: ast::NodeId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
@@ -526,7 +526,7 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'a, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     principal: &ty::PolyTraitRef<'tcx>,
     others: ty::BuiltinBounds)
     -> Vec<ty::Region>

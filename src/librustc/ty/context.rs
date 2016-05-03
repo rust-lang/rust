@@ -210,7 +210,7 @@ impl<'a, 'tcx> Tables<'tcx> {
     }
 
     pub fn closure_kind(this: &RefCell<Self>,
-                        tcx: TyCtxt<'a, 'tcx>,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         def_id: DefId)
                         -> ty::ClosureKind {
         // If this is a local def-id, it should be inserted into the
@@ -226,7 +226,7 @@ impl<'a, 'tcx> Tables<'tcx> {
     }
 
     pub fn closure_type(this: &RefCell<Self>,
-                        tcx: TyCtxt<'a, 'tcx>,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         def_id: DefId,
                         substs: &ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
@@ -271,14 +271,14 @@ impl<'tcx> CommonTypes<'tcx> {
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
 #[derive(Copy, Clone)]
-pub struct TyCtxt<'a, 'tcx: 'a> {
-    gcx: &'a GlobalCtxt<'tcx>,
+pub struct TyCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    gcx: &'a GlobalCtxt<'gcx>,
     interners: &'a CtxtInterners<'tcx>
 }
 
-impl<'a, 'tcx> Deref for TyCtxt<'a, 'tcx> {
-    type Target = &'a GlobalCtxt<'tcx>;
-    fn deref(&self) -> &&'a GlobalCtxt<'tcx> {
+impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
+    type Target = &'a GlobalCtxt<'gcx>;
+    fn deref(&self) -> &Self::Target {
         &self.gcx
     }
 }
@@ -486,7 +486,7 @@ pub struct GlobalCtxt<'tcx> {
 
 impl<'tcx> GlobalCtxt<'tcx> {
     /// Get the global TyCtxt.
-    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx> {
+    pub fn global_tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         TyCtxt {
             gcx: self,
             interners: &self.global_interners
@@ -494,7 +494,7 @@ impl<'tcx> GlobalCtxt<'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn crate_name(self, cnum: ast::CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.crate_name.clone()
@@ -617,7 +617,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
                                   stability: stability::Index<'tcx>,
                                  crate_name: &str,
                                   f: F) -> R
-                                  where F: for<'b> FnOnce(TyCtxt<'b, 'tcx>) -> R
+                                  where F: for<'b> FnOnce(TyCtxt<'b, 'tcx, 'tcx>) -> R
     {
         let data_layout = TargetDataLayout::parse(s);
         let interners = CtxtInterners::new(arenas);
@@ -693,12 +693,12 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
     type Lifted;
-    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx>) -> Option<Self::Lifted>;
+    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Self::Lifted>;
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<Ty<'tcx>> {
+    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<Ty<'tcx>> {
         if let Some(&InternedTy { ty }) = tcx.interners.type_.borrow().get(&self.sty) {
             if *self as *const _ == ty as *const _ {
                 return Some(ty);
@@ -710,7 +710,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
-    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
+    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
         if let Some(&InternedSubsts { substs }) = tcx.interners.substs.borrow().get(*self) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
@@ -744,7 +744,7 @@ pub mod tls {
     }
 
     pub fn enter<'tcx, F, R>(gcx: GlobalCtxt<'tcx>, f: F) -> R
-        where F: for<'a> FnOnce(TyCtxt<'a, 'tcx>) -> R
+        where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>) -> R
     {
         codemap::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
@@ -762,7 +762,9 @@ pub mod tls {
         })
     }
 
-    pub fn with<F: FnOnce(TyCtxt) -> R, R>(f: F) -> R {
+    pub fn with<F, R>(f: F) -> R
+        where F: for<'a, 'tcx> FnOnce(TyCtxt<'a, 'tcx, 'tcx>) -> R
+    {
         TLS_TCX.with(|gcx| {
             let gcx = gcx.get().unwrap();
             let gcx = unsafe { &*(gcx as *const GlobalCtxt) };
@@ -773,7 +775,9 @@ pub mod tls {
         })
     }
 
-    pub fn with_opt<F: FnOnce(Option<TyCtxt>) -> R, R>(f: F) -> R {
+    pub fn with_opt<F, R>(f: F) -> R
+        where F: for<'a, 'tcx> FnOnce(Option<TyCtxt<'a, 'tcx, 'tcx>>) -> R
+    {
         if TLS_TCX.with(|gcx| gcx.get().is_some()) {
             with(|v| f(Some(v)))
         } else {
@@ -846,7 +850,7 @@ macro_rules! sty_debug_print {
     }}
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
@@ -906,7 +910,7 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
             |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
 }
 
-impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     // Type constructors
     pub fn mk_substs(self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
         if let Some(interned) = self.interners.substs.borrow().get(&substs) {

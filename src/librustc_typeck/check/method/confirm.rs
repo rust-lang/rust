@@ -23,11 +23,11 @@ use rustc::infer::{InferCtxt, InferOk, TypeOrigin};
 use syntax::codemap::Span;
 use rustc::hir;
 
-struct ConfirmContext<'a, 'tcx:'a> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
+struct ConfirmContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a>{
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
-    self_expr: &'tcx hir::Expr,
-    call_expr: &'tcx hir::Expr,
+    self_expr: &'gcx hir::Expr,
+    call_expr: &'gcx hir::Expr,
 }
 
 struct InstantiatedMethodSig<'tcx> {
@@ -44,7 +44,7 @@ struct InstantiatedMethodSig<'tcx> {
     method_predicates: ty::InstantiatedPredicates<'tcx>,
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn confirm_method(&self,
                       span: Span,
                       self_expr: &'tcx hir::Expr,
@@ -64,12 +64,12 @@ pub fn confirm_method(&self,
 }
 }
 
-impl<'a,'tcx> ConfirmContext<'a,'tcx> {
-    fn new(fcx: &'a FnCtxt<'a, 'tcx>,
+impl<'a,'tcx> ConfirmContext<'a,'tcx, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a, 'tcx, 'tcx>,
            span: Span,
            self_expr: &'tcx hir::Expr,
            call_expr: &'tcx hir::Expr)
-           -> ConfirmContext<'a, 'tcx>
+           -> ConfirmContext<'a, 'tcx, 'tcx>
     {
         ConfirmContext { fcx: fcx, span: span, self_expr: self_expr, call_expr: call_expr }
     }
@@ -278,7 +278,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     }
 
     fn extract_trait_ref<R, F>(&mut self, self_ty: Ty<'tcx>, mut closure: F) -> R where
-        F: FnMut(&mut ConfirmContext<'a, 'tcx>, Ty<'tcx>, &ty::TraitTy<'tcx>) -> R,
+        F: FnMut(&mut ConfirmContext<'a, 'tcx, 'tcx>, Ty<'tcx>, &ty::TraitTy<'tcx>) -> R,
     {
         // If we specified that this is an object method, then the
         // self-type ought to be something that can be dereferenced to
@@ -617,11 +617,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.fcx.tcx()
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx, 'tcx> {
         self.fcx.infcx()
     }
 

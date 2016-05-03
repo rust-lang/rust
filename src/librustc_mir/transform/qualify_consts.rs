@@ -126,13 +126,13 @@ fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     }
 }
 
-struct Qualifier<'a, 'tcx: 'a> {
+struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     mode: Mode,
     span: Span,
     def_id: DefId,
     mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     param_env: ty::ParameterEnvironment<'a, 'tcx>,
     qualif_map: &'a mut DefIdMap<Qualif>,
     mir_map: Option<&'a MirMap<'tcx>>,
@@ -145,14 +145,14 @@ struct Qualifier<'a, 'tcx: 'a> {
     promotion_candidates: Vec<Candidate>
 }
 
-impl<'a, 'tcx> Qualifier<'a, 'tcx> {
+impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn new(param_env: ty::ParameterEnvironment<'a, 'tcx>,
            qualif_map: &'a mut DefIdMap<Qualif>,
            mir_map: Option<&'a MirMap<'tcx>>,
            def_id: DefId,
            mir: &'a Mir<'tcx>,
            mode: Mode)
-           -> Qualifier<'a, 'tcx> {
+           -> Qualifier<'a, 'tcx, 'tcx> {
         let mut rpo = traversal::reverse_postorder(mir);
         let temps = promote_consts::collect_temps(mir, &mut rpo);
         rpo.reset();
@@ -492,7 +492,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
 /// Accumulates an Rvalue or Call's effects in self.qualif.
 /// For functions (constant or not), it also records
 /// candidates for promotion in promotion_candidates.
-impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     fn visit_lvalue(&mut self, lvalue: &Lvalue<'tcx>, context: LvalueContext) {
         match *lvalue {
             Lvalue::Arg(_) => {
@@ -908,7 +908,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx> {
     }
 }
 
-fn qualify_const_item_cached<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn qualify_const_item_cached<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        qualif_map: &mut DefIdMap<Qualif>,
                                        mir_map: Option<&MirMap<'tcx>>,
                                        def_id: DefId)
@@ -951,7 +951,7 @@ pub struct QualifyAndPromoteConstants;
 impl Pass for QualifyAndPromoteConstants {}
 
 impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, map: &mut MirMap<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, map: &mut MirMap<'tcx>) {
         let mut qualif_map = DefIdMap();
 
         // First, visit `const` items, potentially recursing, to get

@@ -37,9 +37,9 @@ use encoder;
 pub struct ctxt<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
     // Def -> str Callback:
-    pub ds: for<'b> fn(TyCtxt<'b, 'tcx>, DefId) -> String,
+    pub ds: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String,
     // The type context.
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub abbrevs: &'a abbrev_map<'tcx>
 }
 

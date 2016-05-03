@@ -43,7 +43,7 @@ use syntax::feature_gate::UnstableFeatures;
 use rustc::hir;
 
 struct Env<'a, 'tcx: 'a> {
-    infcx: &'a infer::InferCtxt<'a, 'tcx>,
+    infcx: &'a infer::InferCtxt<'a, 'tcx, 'tcx>,
 }
 
 struct RH<'a> {
@@ -160,7 +160,7 @@ fn test_env<F>(source_string: &str,
 }
 
 impl<'a, 'tcx> Env<'a, 'tcx> {
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -354,25 +354,25 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         infer::TypeTrace::dummy(self.tcx())
     }
 
-    pub fn sub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    pub fn sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
-        self.infcx.sub(true, trace, t1, t2)
+        self.infcx.sub(true, trace, &t1, &t2)
     }
 
-    pub fn lub(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    pub fn lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
-        self.infcx.lub(true, trace, t1, t2)
+        self.infcx.lub(true, trace, &t1, &t2)
     }
 
-    pub fn glb(&self, t1: &Ty<'tcx>, t2: &Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
+    pub fn glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> InferResult<'tcx, Ty<'tcx>> {
         let trace = self.dummy_type_trace();
-        self.infcx.glb(true, trace, t1, t2)
+        self.infcx.glb(true, trace, &t1, &t2)
     }
 
     /// Checks that `t1 <: t2` is true (this may register additional
     /// region checks).
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub(&t1, &t2) {
+        match self.sub(t1, t2) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) once obligations are being propagated, assert the right thing.
                 assert!(obligations.is_empty());
@@ -386,7 +386,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `t1 <: t2` is false (this may register additional
     /// region checks).
     pub fn check_not_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
-        match self.sub(&t1, &t2) {
+        match self.sub(t1, t2) {
             Err(_) => {}
             Ok(_) => {
                 panic!("unexpected success computing sub({:?},{:?})", t1, t2);
@@ -396,7 +396,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     /// Checks that `LUB(t1,t2) == t_lub`
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
-        match self.lub(&t1, &t2) {
+        match self.lub(t1, t2) {
             Ok(InferOk { obligations, value: t }) => {
                 // FIXME(#32730) once obligations are being propagated, assert the right thing.
                 assert!(obligations.is_empty());
@@ -412,7 +412,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     /// Checks that `GLB(t1,t2) == t_glb`
     pub fn check_glb(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_glb: Ty<'tcx>) {
         debug!("check_glb(t1={}, t2={}, t_glb={})", t1, t2, t_glb);
-        match self.glb(&t1, &t2) {
+        match self.glb(t1, t2) {
             Err(e) => {
                 panic!("unexpected error computing LUB: {:?}", e)
             }

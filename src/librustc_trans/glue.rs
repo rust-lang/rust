@@ -89,11 +89,12 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 ty: Ty<'tcx>) -> bool {
     tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
 }
 
-pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     t: Ty<'tcx>) -> Ty<'tcx> {
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.

@@ -36,7 +36,7 @@ use ty::{self, Ty};
 use ty::relate::{RelateResult, TypeRelation};
 
 pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
-    fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
+    fn infcx(&self) -> &'f InferCtxt<'f, 'tcx, 'tcx>;
 
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.

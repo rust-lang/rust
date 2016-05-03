@@ -24,7 +24,7 @@ struct InferIsLocal(bool);
 
 /// If there are types that satisfy both impls, returns a suitably-freshened
 /// `ImplHeader` with those types substituted
-pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
+pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx, 'tcx>,
                                     impl1_def_id: DefId,
                                     impl2_def_id: DefId)
                                     -> Option<ty::ImplHeader<'tcx>>
@@ -41,7 +41,7 @@ pub fn overlapping_impls<'cx, 'tcx>(infcx: &InferCtxt<'cx, 'tcx>,
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
+fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx, 'tcx>,
                       a_def_id: DefId,
                       b_def_id: DefId)
                       -> Option<ty::ImplHeader<'tcx>>
@@ -86,7 +86,7 @@ fn overlap<'cx, 'tcx>(selcx: &mut SelectionContext<'cx, 'tcx>,
     Some(selcx.infcx().resolve_type_vars_if_possible(&a_impl_header))
 }
 
-pub fn trait_ref_is_knowable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn trait_ref_is_knowable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        trait_ref: &ty::TraitRef<'tcx>) -> bool
 {
     debug!("trait_ref_is_knowable(trait_ref={:?})", trait_ref);
@@ -129,7 +129,7 @@ pub enum OrphanCheckErr<'tcx> {
 ///
 /// 1. All type parameters in `Self` must be "covered" by some local type constructor.
 /// 2. Some local type must appear in `Self`.
-pub fn orphan_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn orphan_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               impl_def_id: DefId)
                               -> Result<(), OrphanCheckErr<'tcx>>
 {
@@ -150,7 +150,7 @@ pub fn orphan_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
     orphan_check_trait_ref(tcx, &trait_ref, InferIsLocal(false))
 }
 
-fn orphan_check_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn orphan_check_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     trait_ref: &ty::TraitRef<'tcx>,
                                     infer_is_local: InferIsLocal)
                                     -> Result<(), OrphanCheckErr<'tcx>>
@@ -198,7 +198,7 @@ fn orphan_check_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
     return Err(OrphanCheckErr::NoLocalInputType);
 }
 
-fn uncovered_tys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn uncovered_tys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            ty: Ty<'tcx>,
                            infer_is_local: InferIsLocal)
                            -> Vec<Ty<'tcx>>
@@ -222,13 +222,15 @@ fn is_type_parameter<'tcx>(ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn ty_is_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ty: Ty<'tcx>, infer_is_local: InferIsLocal) -> bool
+fn ty_is_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                         ty: Ty<'tcx>,
+                         infer_is_local: InferIsLocal) -> bool
 {
     ty_is_local_constructor(tcx, ty, infer_is_local) ||
         fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, infer_is_local))
 }
 
-fn fundamental_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> bool
+fn fundamental_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool
 {
     match ty.sty {
         ty::TyBox(..) | ty::TyRef(..) =>
@@ -242,7 +244,7 @@ fn fundamental_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> bool
     }
 }
 
-fn ty_is_local_constructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn ty_is_local_constructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      ty: Ty<'tcx>,
                                      infer_is_local: InferIsLocal)
                                      -> bool

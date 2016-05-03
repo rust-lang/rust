@@ -112,7 +112,7 @@ macro_rules! ignore_err {
 ///////////////////////////////////////////////////////////////////////////
 // PUBLIC ENTRY POINTS
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn regionck_expr(&self, e: &hir::Expr) {
     let mut rcx = RegionCtxt::new(self, RepeatingScope(e.id), e.id, Subject(e.id));
     if self.err_count_since_creation() == 0 {
@@ -166,8 +166,8 @@ pub fn regionck_fn(&self,
 ///////////////////////////////////////////////////////////////////////////
 // INTERNALS
 
-pub struct RegionCtxt<'a, 'tcx: 'a> {
-    pub fcx: &'a FnCtxt<'a, 'tcx>,
+pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
     region_bound_pairs: Vec<(ty::Region, GenericKind<'tcx>)>,
 
@@ -190,11 +190,11 @@ pub struct RegionCtxt<'a, 'tcx: 'a> {
 pub struct RepeatingScope(ast::NodeId);
 pub enum SubjectNode { Subject(ast::NodeId), None }
 
-impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
-    pub fn new(fcx: &'a FnCtxt<'a, 'tcx>,
+impl<'a, 'tcx> RegionCtxt<'a, 'tcx, 'tcx> {
+    pub fn new(fcx: &'a FnCtxt<'a, 'tcx, 'tcx>,
                initial_repeating_scope: RepeatingScope,
                initial_body_id: ast::NodeId,
-               subject: SubjectNode) -> RegionCtxt<'a, 'tcx> {
+               subject: SubjectNode) -> RegionCtxt<'a, 'tcx, 'tcx> {
         let RepeatingScope(initial_repeating_scope) = initial_repeating_scope;
         RegionCtxt {
             fcx: fcx,
@@ -207,11 +207,11 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.fcx.tcx()
     }
 
-    pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
+    pub fn infcx(&self) -> &InferCtxt<'a,'tcx, 'tcx> {
         self.fcx.infcx()
     }
 
@@ -489,7 +489,7 @@ fn constrain_bindings_in_pat(&mut self, pat: &hir::Pat) {
 }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for RegionCtxt<'a, 'tcx, 'tcx> {
     // (..) FIXME(#3238) should use visit_pat, not visit_arm/visit_local,
     // However, right now we run into an issue whereby some free
     // regions are not properly related if they appear within the
@@ -798,7 +798,7 @@ fn visit_expr(&mut self, expr: &hir::Expr) {
 }
 }
 
-impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
+impl<'a, 'tcx> RegionCtxt<'a, 'tcx, 'tcx> {
 fn constrain_cast(&mut self,
                   cast_expr: &hir::Expr,
                   source_expr: &hir::Expr)
@@ -1155,7 +1155,7 @@ fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
 /// Link lifetimes of any ref bindings in `root_pat` to the pointers found in the discriminant, if
 /// needed.
 fn link_pattern<'t>(&self,
-                    mc: mc::MemCategorizationContext<'t, 'a, 'tcx>,
+                    mc: mc::MemCategorizationContext<'a, 'tcx, 'tcx>,
                     discr_cmt: mc::cmt<'tcx>,
                     root_pat: &hir::Pat) {
     debug!("link_pattern(discr_cmt={:?}, root_pat={:?})",

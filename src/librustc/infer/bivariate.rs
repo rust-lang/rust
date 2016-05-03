@@ -32,20 +32,20 @@ use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
 use ty::relate::{Relate, RelateResult, TypeRelation};
 
-pub struct Bivariate<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Bivariate<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> Bivariate<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Bivariate<'a, 'tcx> {
+impl<'a, 'tcx> Bivariate<'a, 'tcx, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'tcx, 'tcx>) -> Bivariate<'a, 'tcx, 'tcx> {
         Bivariate { fields: fields }
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx, 'tcx> {
     fn tag(&self) -> &'static str { "Bivariate" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

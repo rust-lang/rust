@@ -275,7 +275,7 @@ impl<'tcx> Callee<'tcx> {
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     def_id: DefId,
                     substs: &'tcx subst::Substs<'tcx>)
                     -> Ty<'tcx> {

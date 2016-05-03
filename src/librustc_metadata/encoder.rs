@@ -56,7 +56,7 @@ use rustc::hir::map::DefKey;
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
-    pub tcx: TyCtxt<'a, 'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
@@ -1697,7 +1697,7 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
 
 
 struct ImplVisitor<'a, 'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     impls: FnvHashMap<DefId, Vec<DefId>>
 }
 
@@ -2016,9 +2016,9 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn encoded_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             t: Ty<'tcx>,
-                            def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx>, DefId) -> String)
+                            def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx, 'tcx>, DefId) -> String)
                             -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {

@@ -111,12 +111,12 @@ use std::fmt::Write;
 use syntax::parse::token::{self, InternedString};
 use serialize::hex::ToHex;
 
-pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, def_id: DefId) -> String {
+pub fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> String {
     let def_path = tcx.def_path(def_id);
     def_path_to_string(tcx, &def_path)
 }
 
-pub fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, def_path: &DefPath) -> String {
+pub fn def_path_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_path: &DefPath) -> String {
     let mut s = String::with_capacity(def_path.data.len() * 16);
 
     s.push_str(&tcx.crate_name(def_path.krate));

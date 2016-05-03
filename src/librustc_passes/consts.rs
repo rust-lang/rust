@@ -68,7 +68,7 @@ enum Mode {
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mode: Mode,
     qualif: ConstQualif,
     rvalue_borrows: NodeMap<hir::Mutability>
@@ -88,7 +88,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     }
 
     fn with_euv<'b, F, R>(&'b mut self, item_id: Option<ast::NodeId>, f: F) -> R where
-        F: for<'t> FnOnce(&mut euv::ExprUseVisitor<'b, 't, 'b, 'tcx>) -> R,
+        F: for<'c> FnOnce(&mut euv::ExprUseVisitor<'b, 'c, 'tcx, 'tcx>) -> R,
     {
         let param_env = match item_id {
             Some(item_id) => ty::ParameterEnvironment::for_item(self.tcx, item_id),
@@ -663,7 +663,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
     }
 }
 
-pub fn check_crate(tcx: TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_items_in_krate(DepNode::CheckConst, &mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,

@@ -31,7 +31,7 @@ pub trait HigherRankedRelations<'a,'tcx> {
         where T: Relate<'a,'tcx>;
 }
 
-impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
+impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a, 'tcx, 'tcx> {
     fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
                             -> RelateResult<'tcx, Binder<T>>
         where T: Relate<'a,'tcx>
@@ -119,14 +119,14 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             Ok(ty::Binder(result1))
         });
 
-        fn generalize_region(infcx: &InferCtxt,
-                             span: Span,
-                             snapshot: &CombinedSnapshot,
-                             debruijn: ty::DebruijnIndex,
-                             new_vars: &[ty::RegionVid],
-                             a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
-                             r0: ty::Region)
-                             -> ty::Region {
+        fn generalize_region<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
+                                       span: Span,
+                                       snapshot: &CombinedSnapshot,
+                                       debruijn: ty::DebruijnIndex,
+                                       new_vars: &[ty::RegionVid],
+                                       a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
+                                       r0: ty::Region)
+                                       -> ty::Region {
             // Regions that pre-dated the LUB computation stay as they are.
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
@@ -214,15 +214,15 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
             Ok(ty::Binder(result1))
         });
 
-        fn generalize_region(infcx: &InferCtxt,
-                             span: Span,
-                             snapshot: &CombinedSnapshot,
-                             debruijn: ty::DebruijnIndex,
-                             new_vars: &[ty::RegionVid],
-                             a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
-                             a_vars: &[ty::RegionVid],
-                             b_vars: &[ty::RegionVid],
-                             r0: ty::Region) -> ty::Region {
+        fn generalize_region<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx, 'tcx>,
+                                       span: Span,
+                                       snapshot: &CombinedSnapshot,
+                                       debruijn: ty::DebruijnIndex,
+                                       new_vars: &[ty::RegionVid],
+                                       a_map: &FnvHashMap<ty::BoundRegion, ty::Region>,
+                                       a_vars: &[ty::RegionVid],
+                                       b_vars: &[ty::RegionVid],
+                                       r0: ty::Region) -> ty::Region {
             if !is_var_in_set(new_vars, r0) {
                 assert!(!r0.is_bound());
                 return r0;
@@ -306,7 +306,7 @@ impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
     }
 }
 
-fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx>,
+fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx, 'tcx>,
                       map: &FnvHashMap<ty::BoundRegion, ty::Region>)
                      -> Vec<ty::RegionVid> {
     map.iter()
@@ -329,7 +329,7 @@ fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     }
 }
 
-fn fold_regions_in<'a, 'tcx, T, F>(tcx: TyCtxt<'a, 'tcx>,
+fn fold_regions_in<'a, 'tcx, T, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    unbound_value: &T,
                                    mut fldr: F)
                                    -> T
@@ -349,7 +349,7 @@ fn fold_regions_in<'a, 'tcx, T, F>(tcx: TyCtxt<'a, 'tcx>,
     })
 }
 
-impl<'a,'tcx> InferCtxt<'a,'tcx> {
+impl<'a,'tcx> InferCtxt<'a,'tcx, 'tcx> {
     fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region> {
         self.region_vars.tainted(&snapshot.region_vars_snapshot, r)
     }

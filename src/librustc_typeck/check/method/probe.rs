@@ -31,8 +31,8 @@ use std::rc::Rc;
 use self::CandidateKind::*;
 pub use self::PickKind::*;
 
-struct ProbeContext<'a, 'tcx:'a> {
-    fcx: &'a FnCtxt<'a, 'tcx>,
+struct ProbeContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     span: Span,
     mode: Mode,
     item_name: ast::Name,
@@ -128,7 +128,7 @@ pub enum Mode {
     Path
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn probe_method(&self,
                     span: Span,
                     mode: Mode,
@@ -233,14 +233,14 @@ fn create_steps(&self,
 }
 }
 
-impl<'a,'tcx> ProbeContext<'a,'tcx> {
-    fn new(fcx: &'a FnCtxt<'a,'tcx>,
+impl<'a,'tcx> ProbeContext<'a,'tcx, 'tcx> {
+    fn new(fcx: &'a FnCtxt<'a,'tcx, 'tcx>,
            span: Span,
            mode: Mode,
            item_name: ast::Name,
            steps: Vec<CandidateStep<'tcx>>,
            opt_simplified_steps: Option<Vec<ty::fast_reject::SimplifiedType>>)
-           -> ProbeContext<'a,'tcx>
+           -> ProbeContext<'a,'tcx, 'tcx>
     {
         ProbeContext {
             fcx: fcx,
@@ -267,11 +267,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.private_candidate = None;
     }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.fcx.tcx()
     }
 
-    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx> {
+    fn infcx(&self) -> &'a InferCtxt<'a, 'tcx, 'tcx> {
         self.fcx.infcx()
     }
 
@@ -554,7 +554,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         mut mk_cand: F,
     ) where
         F: for<'b> FnMut(
-            &mut ProbeContext<'b, 'tcx>,
+            &mut ProbeContext<'b, 'tcx, 'tcx>,
             ty::PolyTraitRef<'tcx>,
             ty::ImplOrTraitItem<'tcx>,
         ),

@@ -38,7 +38,7 @@ const CLEAN: &'static str = "rustc_clean";
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
 
-pub fn check_dirty_clean_annotations(tcx: TyCtxt) {
+pub fn check_dirty_clean_annotations<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();
     let query = tcx.dep_graph.query();
     let krate = tcx.map.krate();
@@ -49,7 +49,7 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt) {
 }
 
 pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     query: &'a DepGraphQuery<DefId>,
 }
 

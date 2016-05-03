@@ -49,15 +49,15 @@ use syntax::abi::Abi;
 use hir;
 use util::nodemap::FnvHashMap;
 
-pub struct SelectionContext<'cx, 'tcx:'cx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+pub struct SelectionContext<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
+    infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
 
     /// Freshener used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
     /// at one time will have the same set of skolemized entries,
     /// which is important for checking for trait bounds that
     /// recursively require themselves.
-    freshener: TypeFreshener<'cx, 'tcx>,
+    freshener: TypeFreshener<'cx, 'tcx, 'tcx>,
 
     /// If true, indicates that the evaluation should be conservative
     /// and consider the possibility of types outside this crate.
@@ -262,8 +262,8 @@ pub struct EvaluationCache<'tcx> {
     hashmap: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, EvaluationResult>>
 }
 
-impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+impl<'cx, 'tcx> SelectionContext<'cx, 'tcx, 'tcx> {
+    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>) -> SelectionContext<'cx, 'tcx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
@@ -271,7 +271,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>) -> SelectionContext<'cx, 'tcx> {
+    pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx, 'tcx>) -> SelectionContext<'cx, 'tcx, 'tcx> {
         SelectionContext {
             infcx: infcx,
             freshener: infcx.freshener(),
@@ -279,11 +279,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx> {
+    pub fn infcx(&self) -> &'cx InferCtxt<'cx, 'tcx, 'tcx> {
         self.infcx
     }
 
-    pub fn tcx(&self) -> TyCtxt<'cx, 'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'cx, 'tcx, 'tcx> {
         self.infcx.tcx
     }
 
@@ -291,7 +291,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx.param_env()
     }
 
-    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx> {
+    pub fn closure_typer(&self) -> &'cx InferCtxt<'cx, 'tcx, 'tcx> {
         self.infcx
     }
 

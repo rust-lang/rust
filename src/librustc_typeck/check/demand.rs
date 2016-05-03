@@ -16,7 +16,7 @@ use rustc::infer::{InferOk, TypeOrigin};
 use syntax::codemap::Span;
 use rustc::hir;
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 // Requires that the two types unify, and prints an error message if
 // they don't.
 pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {

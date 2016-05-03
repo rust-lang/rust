@@ -78,7 +78,7 @@ pub enum CandidateSource {
     TraitSource(/* trait id */ DefId),
 }
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
 pub fn method_exists(&self,
                      span: Span,

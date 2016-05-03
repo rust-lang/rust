@@ -19,12 +19,12 @@ use ty::relate::{Relate, RelateResult, TypeRelation};
 use traits::PredicateObligations;
 
 /// Ensures `a` is made equal to `b`. Returns `a` on success.
-pub struct Equate<'a, 'tcx: 'a> {
-    fields: CombineFields<'a, 'tcx>
+pub struct Equate<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    fields: CombineFields<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> Equate<'a, 'tcx> {
-    pub fn new(fields: CombineFields<'a, 'tcx>) -> Equate<'a, 'tcx> {
+impl<'a, 'tcx> Equate<'a, 'tcx, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'tcx, 'tcx>) -> Equate<'a, 'tcx, 'tcx> {
         Equate { fields: fields }
     }
 
@@ -33,10 +33,10 @@ impl<'a, 'tcx> Equate<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
+impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx, 'tcx> {
     fn tag(&self) -> &'static str { "Equate" }
 
-    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

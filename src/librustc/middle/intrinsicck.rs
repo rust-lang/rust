@@ -22,7 +22,7 @@ use syntax::codemap::Span;
 use hir::intravisit::{self, Visitor, FnKind};
 use hir;
 
-pub fn check_crate(tcx: TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut visitor = ItemVisitor {
         tcx: tcx
     };
@@ -30,7 +30,7 @@ pub fn check_crate(tcx: TyCtxt) {
 }
 
 struct ItemVisitor<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
 
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
@@ -46,11 +46,11 @@ impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {
     }
 }
 
-struct ExprVisitor<'a, 'tcx: 'a> {
-    infcx: &'a InferCtxt<'a, 'tcx>
+struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>
 }
 
-impl<'a, 'tcx> ExprVisitor<'a, 'tcx> {
+impl<'a, 'tcx> ExprVisitor<'a, 'tcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match self.infcx.tcx.lookup_item_type(def_id).ty.sty {
             ty::TyFnDef(_, _, ref bfty) => bfty.abi == RustIntrinsic,
@@ -159,7 +159,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ItemVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'tcx> {
+impl<'a, 'tcx, 'v> Visitor<'v> for ExprVisitor<'a, 'tcx, 'tcx> {
     fn visit_expr(&mut self, expr: &hir::Expr) {
         if let hir::ExprPath(..) = expr.node {
             match self.infcx.tcx.resolve_expr(expr) {

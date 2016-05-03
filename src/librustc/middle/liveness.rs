@@ -195,7 +195,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &hir::Arm) { visit_arm(self, a); }
 }
 
-pub fn check_crate(tcx: TyCtxt) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
@@ -263,7 +263,7 @@ enum VarKind {
 }
 
 struct IrMaps<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     num_live_nodes: usize,
     num_vars: usize,
@@ -275,7 +275,7 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx: tcx,
             num_live_nodes: 0,

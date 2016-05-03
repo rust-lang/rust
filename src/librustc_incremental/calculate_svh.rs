@@ -27,7 +27,7 @@ pub trait SvhCalculate {
     fn calculate_item_hash(self, def_id: DefId) -> u64;
 }
 
-impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx> {
+impl<'a, 'tcx> SvhCalculate for TyCtxt<'a, 'tcx, 'tcx> {
     fn calculate_krate_hash(self) -> Svh {
         // FIXME (#14132): This is better than it used to be, but it still not
         // ideal. We now attempt to hash only the relevant portions of the
@@ -118,13 +118,13 @@ mod svh_visitor {
     use std::hash::{Hash, SipHasher};
 
     pub struct StrictVersionHashVisitor<'a, 'tcx: 'a> {
-        pub tcx: TyCtxt<'a, 'tcx>,
+        pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
         pub st: &'a mut SipHasher,
     }
 
     impl<'a, 'tcx> StrictVersionHashVisitor<'a, 'tcx> {
         pub fn new(st: &'a mut SipHasher,
-                   tcx: TyCtxt<'a, 'tcx>)
+                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
                    -> Self {
             StrictVersionHashVisitor { st: st, tcx: tcx }
         }

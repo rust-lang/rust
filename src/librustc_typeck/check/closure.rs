@@ -19,7 +19,7 @@ use std::cmp;
 use syntax::abi::Abi;
 use rustc::hir;
 
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+impl<'a, 'tcx> FnCtxt<'a, 'tcx, 'tcx> {
 pub fn check_expr_closure(&self,
                           expr: &hir::Expr,
                           _capture: hir::CaptureClause,

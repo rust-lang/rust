@@ -182,14 +182,14 @@ impl<'tcx> Instance<'tcx> {
         assert!(substs.regions.iter().all(|&r| r == ty::ReStatic));
         Instance { def: def_id, substs: substs }
     }
-    pub fn mono<'a>(tcx: TyCtxt<'a, 'tcx>, def_id: DefId) -> Instance<'tcx> {
+    pub fn mono<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Instance<'tcx> {
         Instance::new(def_id, tcx.mk_substs(Substs::empty()))
     }
 }
 
 /// Monomorphizes a type from the AST by first applying the in-scope
 /// substitutions and then normalizing any associated types.
-pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx>,
+pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                        param_substs: &Substs<'tcx>,
                                        value: &T)
                                        -> T
@@ -201,7 +201,7 @@ pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx>,
 
 
 /// Returns the normalized type of a struct field
-pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_substs: &Substs<'tcx>,
                           f: ty::FieldDef<'tcx>)
                           -> Ty<'tcx>

@@ -274,7 +274,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 /// ensuring that they do not access data nor invoke methods of
 /// values that have been previously dropped).
 ///
-pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut RegionCtxt<'a, 'tcx>,
+pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut RegionCtxt<'a, 'tcx, 'tcx>,
                                                          typ: ty::Ty<'tcx>,
                                                          span: Span,
                                                          scope: region::CodeExtent) {
@@ -343,8 +343,8 @@ enum TypeContext {
     }
 }
 
-struct DropckContext<'a, 'b: 'a, 'tcx: 'b> {
-    rcx: &'a mut RegionCtxt<'b, 'tcx>,
+struct DropckContext<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
+    rcx: &'a mut RegionCtxt<'b, 'gcx, 'tcx>,
     /// types that have already been traversed
     breadcrumbs: FnvHashSet<Ty<'tcx>>,
     /// span for error reporting
@@ -355,7 +355,7 @@ struct DropckContext<'a, 'b: 'a, 'tcx: 'b> {
 
 // `context` is used for reporting overflow errors
 fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
-    cx: &mut DropckContext<'a, 'b, 'tcx>,
+    cx: &mut DropckContext<'a, 'b, 'tcx, 'tcx>,
     context: TypeContext,
     ty: Ty<'tcx>,
     depth: usize) -> Result<(), Error<'tcx>>
@@ -500,7 +500,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'b, 'tcx>(
     }
 }
 
-fn has_dtor_of_interest<'a, 'b, 'tcx>(cx: &DropckContext<'a, 'b, 'tcx>,
+fn has_dtor_of_interest<'a, 'b, 'tcx>(cx: &DropckContext<'a, 'b, 'tcx, 'tcx>,
                                       ty: ty::Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyEnum(def, _) | ty::TyStruct(def, _) => {
