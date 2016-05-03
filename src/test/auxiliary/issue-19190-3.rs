@@ -25,9 +25,25 @@ pub struct Baz;
 impl Baz {
     pub fn baz(&self) {}
     pub fn static_baz() {}
+    pub fn value_baz(self) {}
 }
 
 impl Deref for Bar {
     type Target = Baz;
     fn deref(&self) -> &Baz { loop {} }
+}
+
+pub struct CopyBar;
+#[derive(Clone, Copy)]
+pub struct CopyBaz;
+
+impl CopyBaz {
+    pub fn baz(&self) {}
+    pub fn static_baz() {}
+    pub fn value_baz(self) {}
+}
+
+impl Deref for CopyBar {
+    type Target = CopyBaz;
+    fn deref(&self) -> &CopyBaz { loop {} }
 }

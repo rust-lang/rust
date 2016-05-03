@@ -262,6 +262,7 @@ pub struct Cache {
     seen_mod: bool,
     stripped_mod: bool,
     deref_trait_did: Option<DefId>,
+    copy_trait_did: Option<DefId>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -279,6 +280,7 @@ pub struct RenderInfo {
     pub external_paths: ::core::ExternalPaths,
     pub external_typarams: HashMap<DefId, String>,
     pub deref_trait_did: Option<DefId>,
+    pub copy_trait_did: Option<DefId>,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -505,6 +507,7 @@ pub fn run(mut krate: clean::Crate,
         external_paths,
         external_typarams,
         deref_trait_did,
+        copy_trait_did,
     } = renderinfo;
 
     let paths = external_paths.into_iter()
@@ -529,6 +532,7 @@ pub fn run(mut krate: clean::Crate,
         orphan_methods: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, HashMap::new()),
         deref_trait_did: deref_trait_did,
+        copy_trait_did: copy_trait_did,
         typarams: external_typarams,
         inlined: inlined,
     };
@@ -2435,7 +2439,7 @@ impl<'a> AssocItemLink<'a> {
 
 enum AssocItemRender<'a> {
     All,
-    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type },
+    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type, target_is_copy: bool },
 }
 
 fn render_assoc_items(w: &mut fmt::Formatter,
@@ -2452,19 +2456,17 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         i.impl_.trait_.is_none()
     });
     if !non_trait.is_empty() {
-        let render_header = match what {
+        match what {
             AssocItemRender::All => {
                 write!(w, "<h2 id='methods'>Methods</h2>")?;
-                true
             }
-            AssocItemRender::DerefFor { trait_, type_ } => {
+            AssocItemRender::DerefFor { trait_, type_, .. } => {
                 write!(w, "<h2 id='deref-methods'>Methods from \
-                               {}&lt;Target={}&gt;</h2>", trait_, type_)?;
-                false
+                           {}&lt;Target={}&gt;</h2>", trait_, type_)?;
             }
-        };
+        }
         for i in &non_trait {
-            render_impl(w, cx, i, AssocItemLink::Anchor(None), render_header,
+            render_impl(w, cx, i, AssocItemLink::Anchor(None), &what,
                         containing_item.stable_since())?;
         }
     }
@@ -2486,7 +2488,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
         for i in &manual {
             let did = i.trait_did().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.impl_.provided_trait_methods);
-            render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
+            render_impl(w, cx, i, assoc_link, &what, containing_item.stable_since())?;
         }
         if !derived.is_empty() {
             write!(w, "<h3 id='derived_implementations'>\
@@ -2495,7 +2497,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             for i in &derived {
                 let did = i.trait_did().unwrap();
                 let assoc_link = AssocItemLink::GotoSource(did, &i.impl_.provided_trait_methods);
-                render_impl(w, cx, i, assoc_link, true, containing_item.stable_since())?;
+                render_impl(w, cx, i, assoc_link, &what, containing_item.stable_since())?;
             }
         }
     }
@@ -2511,10 +2513,20 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
             _ => None,
         }
     }).next().expect("Expected associated type binding");
-    let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
     if let Some(did) = target.def_id() {
+        // Check if the target type is not Copy, in which case we should not
+        // render methods that take self by value.
+        let c = cache();
+        let target_is_copy = c.impls.get(&did).map(|v| {
+            v.iter().any(|i| i.impl_.trait_.def_id() == c.copy_trait_did)
+        }).unwrap_or(false);
+        let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target,
+                                               target_is_copy: target_is_copy };
         render_assoc_items(w, cx, container_item, did, what)
     } else {
+        // Primitive types are always Copy.
+        let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target,
+                                               target_is_copy: true };
         if let Some(prim) = target.primitive_type() {
             if let Some(c) = cache().primitive_locations.get(&prim) {
                 let did = DefId { krate: *c, index: prim.to_def_index() };
@@ -2525,12 +2537,12 @@ fn render_deref_methods(w: &mut fmt::Formatter, cx: &Context, impl_: &Impl,
     }
 }
 
-// Render_header is false when we are rendering a `Deref` impl and true
-// otherwise. If render_header is false, we will avoid rendering static
-// methods, since they are not accessible for the type implementing `Deref`
+// For Deref methods, we will avoid rendering some methods, since they are not
+// accessible for the type implementing `Deref`.  We also don't render the
+// header, it has already been rendered with a special format.
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
-               render_header: bool, outer_version: Option<&str>) -> fmt::Result {
-    if render_header {
+               what: &AssocItemRender, outer_version: Option<&str>) -> fmt::Result {
+    if let AssocItemRender::All = *what {
         write!(w, "<h3 class='impl'><code>{}</code>", i.impl_)?;
         let since = i.stability.as_ref().map(|s| &s.since[..]);
         render_stability_since_raw(w, since, outer_version)?;
@@ -2541,21 +2553,32 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     }
 
     fn doctraititem(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item,
-                    link: AssocItemLink, render_static: bool, is_default_item: bool,
+                    link: AssocItemLink, what: &AssocItemRender, is_default_item: bool,
                     outer_version: Option<&str>) -> fmt::Result {
         let shortty = shortty(item);
         let name = item.name.as_ref().unwrap();
 
-        let is_static = match item.inner {
-            clean::MethodItem(ref method) => method.self_ == SelfTy::SelfStatic,
-            clean::TyMethodItem(ref method) => method.self_ == SelfTy::SelfStatic,
-            _ => false
+        // Prevent rendering static and self-by-value methods on Deref trait
+        // (the latter only if the target isn't Copy)
+        let prevent_render = if let AssocItemRender::DerefFor { target_is_copy, .. } = *what {
+            match item.inner {
+                clean::MethodItem(ref method) => {
+                    (method.self_ == SelfTy::SelfStatic) ||
+                        (method.self_ == SelfTy::SelfValue && !target_is_copy)
+                }
+                clean::TyMethodItem(ref method) => {
+                    (method.self_ == SelfTy::SelfStatic) ||
+                        (method.self_ == SelfTy::SelfValue && !target_is_copy)
+                }
+                _ => false
+            }
+        } else {
+            false
         };
 
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
-                // Only render when the method is not static or we allow static methods
-                if !is_static || render_static {
+                if !prevent_render {
                     let id = derive_id(format!("{}.{}", shortty, name));
                     write!(w, "<h4 id='{}' class='{}'>", id, shortty)?;
                     write!(w, "<code>")?;
@@ -2593,7 +2616,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
 
-        if !is_default_item && (!is_static || render_static) {
+        if !is_default_item && !prevent_render {
             document(w, cx, item)
         } else {
             Ok(())
@@ -2602,14 +2625,14 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 
     write!(w, "<div class='impl-items'>")?;
     for trait_item in &i.impl_.items {
-        doctraititem(w, cx, trait_item, link, render_header, false, outer_version)?;
+        doctraititem(w, cx, trait_item, link, &what, false, outer_version)?;
     }
 
     fn render_default_items(w: &mut fmt::Formatter,
                             cx: &Context,
                             t: &clean::Trait,
                             i: &clean::Impl,
-                            render_static: bool,
+                            what: &AssocItemRender,
                             outer_version: Option<&str>) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
@@ -2619,8 +2642,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             let did = i.trait_.as_ref().unwrap().def_id().unwrap();
             let assoc_link = AssocItemLink::GotoSource(did, &i.provided_trait_methods);
 
-            doctraititem(w, cx, trait_item, assoc_link, render_static, true,
-                         outer_version)?;
+            doctraititem(w, cx, trait_item, assoc_link, &what, true, outer_version)?;
         }
         Ok(())
     }
@@ -2629,7 +2651,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
     // default items which weren't overridden in the implementation block.
     if let Some(did) = i.trait_did() {
         if let Some(t) = cache().traits.get(&did) {
-            render_default_items(w, cx, t, &i.impl_, render_header, outer_version)?;
+            render_default_items(w, cx, t, &i.impl_, &what, outer_version)?;
         }
     }
     write!(w, "</div>")?;

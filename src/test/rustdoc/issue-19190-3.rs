@@ -24,15 +24,22 @@ pub use issue_19190_3::Foo;
 // @has issue_19190_3/struct.Bar.html
 // @has - '//*[@id="method.baz"]' 'fn baz(&self)'
 // @!has - '//*[@id="method.static_baz"]' 'fn static_baz()'
+// @!has - '//*[@id="method.value_baz"]' 'fn value_baz()'
 pub use issue_19190_3::Bar;
+
+// @has issue_19190_3/struct.Bar.html
+// @has - '//*[@id="method.baz"]' 'fn baz(&self)'
+// @!has - '//*[@id="method.static_baz"]' 'fn static_baz()'
+// @has - '//*[@id="method.value_baz"]' 'fn value_baz()'
+pub use issue_19190_3::CopyBar;
 
 // @has issue_19190_3/struct.MyBar.html
 // @has - '//*[@id="method.baz"]' 'fn baz(&self)'
 // @!has - '//*[@id="method.static_baz"]' 'fn static_baz()'
+// @!has - '//*[@id="method.value_baz"]' 'fn value_baz()'
 pub struct MyBar;
 
 impl Deref for MyBar {
     type Target = Baz;
     fn deref(&self) -> &Baz { loop {} }
 }
-
