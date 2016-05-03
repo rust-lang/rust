@@ -192,11 +192,8 @@ extern "rust-intrinsic" {
 
     /// The size of a type in bytes.
     ///
-    /// This is the exact number of bytes in memory taken up by a
-    /// value of the given type. In other words, a memset of this size
-    /// would *exactly* overwrite a value. When laid out in vectors
-    /// and structures there may be additional padding between
-    /// elements.
+    /// More specifically, this is the offset in bytes between successive
+    /// items of the same type, including alignment padding.
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.

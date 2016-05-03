@@ -9,14 +9,16 @@
 // except according to those terms.
 
 use rustc::ty;
+
 use std::fs;
-use std::path::PathBuf;
+use std::io;
+use std::path::{PathBuf, Path};
 
 pub fn dep_graph_path<'tcx>(tcx: &ty::TyCtxt<'tcx>) -> Option<PathBuf> {
     // For now, just save/load dep-graph from
     // directory/dep_graph.rbml
     tcx.sess.opts.incremental.as_ref().and_then(|incr_dir| {
-        match fs::create_dir_all(&incr_dir){
+        match create_dir_racy(&incr_dir) {
             Ok(()) => {}
             Err(err) => {
                 tcx.sess.err(
@@ -30,3 +32,23 @@ pub fn dep_graph_path<'tcx>(tcx: &ty::TyCtxt<'tcx>) -> Option<PathBuf> {
     })
 }
 
+// Like std::fs::create_dir_all, except handles concurrent calls among multiple
+// threads or processes.
+fn create_dir_racy(path: &Path) -> io::Result<()> {
+    match fs::create_dir(path) {
+        Ok(()) => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
+    match path.parent() {
+        Some(p) => try!(create_dir_racy(p)),
+        None => return Err(io::Error::new(io::ErrorKind::Other,
+                                          "failed to create whole tree")),
+    }
+    match fs::create_dir(path) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(e),
+    }
+}
