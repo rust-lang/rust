@@ -45,7 +45,7 @@ impl TTMacroExpander for Expander {
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
-    let args = reg.args().clone();
+    let args = reg.args().to_owned();
     reg.register_syntax_extension(token::intern("plugin_args"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         NormalTT(Box::new(Expander { args: args, }), None, false));
