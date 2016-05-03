@@ -53,8 +53,8 @@ pub enum MethodViolationCode {
     Generic,
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-pub fn is_object_safe(&self, trait_def_id: DefId) -> bool {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+pub fn is_object_safe(self, trait_def_id: DefId) -> bool {
     // Because we query yes/no results frequently, we keep a cache:
     let def = self.lookup_trait_def(trait_def_id);
 
@@ -78,7 +78,7 @@ pub fn is_object_safe(&self, trait_def_id: DefId) -> bool {
 /// astconv - currently, Self in supertraits. This is needed
 /// because `object_safety_violations` can't be used during
 /// type collection.
-pub fn astconv_object_safety_violations(&self, trait_def_id: DefId)
+pub fn astconv_object_safety_violations(self, trait_def_id: DefId)
                                         -> Vec<ObjectSafetyViolation<'tcx>>
 {
     let mut violations = vec![];
@@ -94,7 +94,7 @@ pub fn astconv_object_safety_violations(&self, trait_def_id: DefId)
     violations
 }
 
-pub fn object_safety_violations(&self, trait_def_id: DefId)
+pub fn object_safety_violations(self, trait_def_id: DefId)
                                 -> Vec<ObjectSafetyViolation<'tcx>>
 {
     traits::supertrait_def_ids(self, trait_def_id)
@@ -102,7 +102,7 @@ pub fn object_safety_violations(&self, trait_def_id: DefId)
         .collect()
 }
 
-fn object_safety_violations_for_trait(&self, trait_def_id: DefId)
+fn object_safety_violations_for_trait(self, trait_def_id: DefId)
                                       -> Vec<ObjectSafetyViolation<'tcx>>
 {
     // Check methods for violations.
@@ -134,7 +134,7 @@ fn object_safety_violations_for_trait(&self, trait_def_id: DefId)
     violations
 }
 
-fn supertraits_reference_self(&self, trait_def_id: DefId) -> bool {
+fn supertraits_reference_self(self, trait_def_id: DefId) -> bool {
     let trait_def = self.lookup_trait_def(trait_def_id);
     let trait_ref = trait_def.trait_ref.clone();
     let trait_ref = trait_ref.to_poly_trait_ref();
@@ -166,13 +166,13 @@ fn supertraits_reference_self(&self, trait_def_id: DefId) -> bool {
         })
 }
 
-fn trait_has_sized_self(&self, trait_def_id: DefId) -> bool {
+fn trait_has_sized_self(self, trait_def_id: DefId) -> bool {
     let trait_def = self.lookup_trait_def(trait_def_id);
     let trait_predicates = self.lookup_predicates(trait_def_id);
     self.generics_require_sized_self(&trait_def.generics, &trait_predicates)
 }
 
-fn generics_require_sized_self(&self,
+fn generics_require_sized_self(self,
                                generics: &ty::Generics<'tcx>,
                                predicates: &ty::GenericPredicates<'tcx>)
                                -> bool
@@ -208,7 +208,7 @@ fn generics_require_sized_self(&self,
 }
 
 /// Returns `Some(_)` if this method makes the containing trait not object safe.
-fn object_safety_violation_for_method(&self,
+fn object_safety_violation_for_method(self,
                                       trait_def_id: DefId,
                                       method: &ty::Method<'tcx>)
                                       -> Option<MethodViolationCode>
@@ -226,7 +226,7 @@ fn object_safety_violation_for_method(&self,
 /// object.  Note that object-safe traits can have some
 /// non-vtable-safe methods, so long as they require `Self:Sized` or
 /// otherwise ensure that they cannot be used when `Self=Trait`.
-pub fn is_vtable_safe_method(&self,
+pub fn is_vtable_safe_method(self,
                              trait_def_id: DefId,
                              method: &ty::Method<'tcx>)
                              -> bool
@@ -238,7 +238,7 @@ pub fn is_vtable_safe_method(&self,
 /// object; this does not necessarily imply that the enclosing trait
 /// is not object safe, because the method might have a where clause
 /// `Self:Sized`.
-fn virtual_call_violation_for_method(&self,
+fn virtual_call_violation_for_method(self,
                                      trait_def_id: DefId,
                                      method: &ty::Method<'tcx>)
                                      -> Option<MethodViolationCode>
@@ -279,7 +279,7 @@ fn virtual_call_violation_for_method(&self,
     None
 }
 
-fn contains_illegal_self_type_reference(&self,
+fn contains_illegal_self_type_reference(self,
                                         trait_def_id: DefId,
                                         ty: Ty<'tcx>)
                                         -> bool

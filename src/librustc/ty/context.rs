@@ -41,6 +41,7 @@ use arena::TypedArena;
 use std::borrow::Borrow;
 use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
+use std::ops::Deref;
 use std::rc::Rc;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
@@ -138,7 +139,7 @@ pub struct Tables<'tcx> {
     pub fru_field_types: NodeMap<Vec<Ty<'tcx>>>
 }
 
-impl<'tcx> Tables<'tcx> {
+impl<'a, 'tcx> Tables<'tcx> {
     pub fn empty() -> Tables<'tcx> {
         Tables {
             node_types: FnvHashMap(),
@@ -154,7 +155,7 @@ impl<'tcx> Tables<'tcx> {
     }
 
     pub fn closure_kind(this: &RefCell<Self>,
-                        tcx: &TyCtxt<'tcx>,
+                        tcx: TyCtxt<'a, 'tcx>,
                         def_id: DefId)
                         -> ty::ClosureKind {
         // If this is a local def-id, it should be inserted into the
@@ -164,13 +165,13 @@ impl<'tcx> Tables<'tcx> {
             return kind;
         }
 
-        let kind = tcx.sess.cstore.closure_kind(tcx, def_id);
+        let kind = tcx.sess.cstore.closure_kind(def_id);
         this.borrow_mut().closure_kinds.insert(def_id, kind);
         kind
     }
 
     pub fn closure_type(this: &RefCell<Self>,
-                        tcx: &TyCtxt<'tcx>,
+                        tcx: TyCtxt<'a, 'tcx>,
                         def_id: DefId,
                         substs: &ClosureSubsts<'tcx>)
                         -> ty::ClosureTy<'tcx>
@@ -217,7 +218,19 @@ impl<'tcx> CommonTypes<'tcx> {
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
-pub struct TyCtxt<'tcx> {
+#[derive(Copy, Clone)]
+pub struct TyCtxt<'a, 'tcx: 'a> {
+    gcx: &'a GlobalCtxt<'tcx>
+}
+
+impl<'a, 'tcx> Deref for TyCtxt<'a, 'tcx> {
+    type Target = &'a GlobalCtxt<'tcx>;
+    fn deref(&self) -> &&'a GlobalCtxt<'tcx> {
+        &self.gcx
+    }
+}
+
+pub struct GlobalCtxt<'tcx> {
     /// The arenas that types etc are allocated from.
     arenas: &'tcx CtxtArenas<'tcx>,
 
@@ -432,8 +445,8 @@ pub struct TyCtxt<'tcx> {
     pub layout_cache: RefCell<FnvHashMap<Ty<'tcx>, &'tcx Layout>>,
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn crate_name(&self, cnum: ast::CrateNum) -> token::InternedString {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+    pub fn crate_name(self, cnum: ast::CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.crate_name.clone()
         } else {
@@ -441,7 +454,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn crate_disambiguator(&self, cnum: ast::CrateNum) -> token::InternedString {
+    pub fn crate_disambiguator(self, cnum: ast::CrateNum) -> token::InternedString {
         if cnum == LOCAL_CRATE {
             self.sess.crate_disambiguator.get().as_str()
         } else {
@@ -449,14 +462,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn type_parameter_def(&self,
+    pub fn type_parameter_def(self,
                               node_id: NodeId)
                               -> ty::TypeParameterDef<'tcx>
     {
         self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
     }
 
-    pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> {
+    pub fn node_types(self) -> Ref<'a, NodeMap<Ty<'tcx>>> {
         fn projection<'a, 'tcx>(tables: &'a Tables<'tcx>) -> &'a NodeMap<Ty<'tcx>> {
             &tables.node_types
         }
@@ -464,11 +477,11 @@ impl<'tcx> TyCtxt<'tcx> {
         Ref::map(self.tables.borrow(), projection)
     }
 
-    pub fn node_type_insert(&self, id: NodeId, ty: Ty<'tcx>) {
+    pub fn node_type_insert(self, id: NodeId, ty: Ty<'tcx>) {
         self.tables.borrow_mut().node_types.insert(id, ty);
     }
 
-    pub fn intern_trait_def(&self, def: ty::TraitDef<'tcx>)
+    pub fn intern_trait_def(self, def: ty::TraitDef<'tcx>)
                             -> &'tcx ty::TraitDef<'tcx> {
         let did = def.trait_ref.def_id;
         let interned = self.arenas.trait_defs.alloc(def);
@@ -478,12 +491,12 @@ impl<'tcx> TyCtxt<'tcx> {
         interned
     }
 
-    pub fn alloc_trait_def(&self, def: ty::TraitDef<'tcx>)
+    pub fn alloc_trait_def(self, def: ty::TraitDef<'tcx>)
                            -> &'tcx ty::TraitDef<'tcx> {
         self.arenas.trait_defs.alloc(def)
     }
 
-    pub fn intern_adt_def(&self,
+    pub fn intern_adt_def(self,
                           did: DefId,
                           kind: ty::AdtKind,
                           variants: Vec<ty::VariantDefData<'tcx, 'tcx>>)
@@ -497,7 +510,7 @@ impl<'tcx> TyCtxt<'tcx> {
         interned
     }
 
-    pub fn intern_stability(&self, stab: attr::Stability) -> &'tcx attr::Stability {
+    pub fn intern_stability(self, stab: attr::Stability) -> &'tcx attr::Stability {
         if let Some(st) = self.stability_interner.borrow().get(&stab) {
             return st;
         }
@@ -511,7 +524,7 @@ impl<'tcx> TyCtxt<'tcx> {
         interned
     }
 
-    pub fn intern_layout(&self, layout: Layout) -> &'tcx Layout {
+    pub fn intern_layout(self, layout: Layout) -> &'tcx Layout {
         if let Some(layout) = self.layout_interner.borrow().get(&layout) {
             return layout;
         }
@@ -525,44 +538,44 @@ impl<'tcx> TyCtxt<'tcx> {
         interned
     }
 
-    pub fn store_free_region_map(&self, id: NodeId, map: FreeRegionMap) {
+    pub fn store_free_region_map(self, id: NodeId, map: FreeRegionMap) {
         if self.free_region_maps.borrow_mut().insert(id, map).is_some() {
             bug!("Tried to overwrite interned FreeRegionMap for NodeId {:?}", id)
         }
     }
 
-    pub fn free_region_map(&self, id: NodeId) -> FreeRegionMap {
+    pub fn free_region_map(self, id: NodeId) -> FreeRegionMap {
         self.free_region_maps.borrow()[&id].clone()
     }
 
-    pub fn lift<T: ?Sized + Lift<'tcx>>(&self, value: &T) -> Option<T::Lifted> {
+    pub fn lift<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
     }
 
-    /// Create a type context and call the closure with a `&TyCtxt` reference
+    /// Create a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
     /// reference to the context, to allow formatting values that need it.
     pub fn create_and_enter<F, R>(s: &'tcx Session,
-                                 arenas: &'tcx CtxtArenas<'tcx>,
-                                 def_map: RefCell<DefMap>,
-                                 named_region_map: resolve_lifetime::NamedRegionMap,
-                                 map: ast_map::Map<'tcx>,
-                                 freevars: FreevarMap,
+                                  arenas: &'tcx CtxtArenas<'tcx>,
+                                  def_map: RefCell<DefMap>,
+                                  named_region_map: resolve_lifetime::NamedRegionMap,
+                                  map: ast_map::Map<'tcx>,
+                                  freevars: FreevarMap,
                                  maybe_unused_trait_imports: NodeSet,
-                                 region_maps: RegionMaps,
-                                 lang_items: middle::lang_items::LanguageItems,
-                                 stability: stability::Index<'tcx>,
+                                  region_maps: RegionMaps,
+                                  lang_items: middle::lang_items::LanguageItems,
+                                  stability: stability::Index<'tcx>,
                                  crate_name: &str,
-                                 f: F) -> R
-                                 where F: FnOnce(&TyCtxt<'tcx>) -> R
+                                  f: F) -> R
+                                  where F: for<'b> FnOnce(TyCtxt<'b, 'tcx>) -> R
     {
         let data_layout = TargetDataLayout::parse(s);
         let interner = RefCell::new(FnvHashMap());
         let common_types = CommonTypes::new(&arenas.type_, &interner);
         let dep_graph = map.dep_graph.clone();
         let fulfilled_predicates = traits::GlobalFulfilledPredicates::new(dep_graph.clone());
-        tls::enter(TyCtxt {
+        tls::enter(GlobalCtxt {
             arenas: arenas,
             interner: interner,
             substs_interner: RefCell::new(FnvHashMap()),
@@ -637,12 +650,12 @@ impl<'tcx> TyCtxt<'tcx> {
 /// e.g. `()` or `u8`, was interned in a different context.
 pub trait Lift<'tcx> {
     type Lifted;
-    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Self::Lifted>;
+    fn lift_to_tcx<'a>(&self, tcx: TyCtxt<'a, 'tcx>) -> Option<Self::Lifted>;
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
     type Lifted = Ty<'tcx>;
-    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<Ty<'tcx>> {
+    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<Ty<'tcx>> {
         if let Some(&ty) = tcx.interner.borrow().get(&self.sty) {
             if *self as *const _ == ty as *const _ {
                 return Some(ty);
@@ -654,7 +667,7 @@ impl<'a, 'tcx> Lift<'tcx> for Ty<'a> {
 
 impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
     type Lifted = &'tcx Substs<'tcx>;
-    fn lift_to_tcx(&self, tcx: &TyCtxt<'tcx>) -> Option<&'tcx Substs<'tcx>> {
+    fn lift_to_tcx<'b>(&self, tcx: TyCtxt<'b, 'tcx>) -> Option<&'tcx Substs<'tcx>> {
         if let Some(&substs) = tcx.substs_interner.borrow().get(*self) {
             if *self as *const _ == substs as *const _ {
                 return Some(substs);
@@ -666,7 +679,7 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Substs<'a> {
 
 
 pub mod tls {
-    use ty::TyCtxt;
+    use super::{GlobalCtxt, TyCtxt};
 
     use std::cell::Cell;
     use std::fmt;
@@ -675,10 +688,10 @@ pub mod tls {
     /// Marker type used for the scoped TLS slot.
     /// The type context cannot be used directly because the scoped TLS
     /// in libstd doesn't allow types generic over lifetimes.
-    struct ThreadLocalTyCx;
+    enum ThreadLocalGlobalCtxt {}
 
     thread_local! {
-        static TLS_TCX: Cell<Option<*const ThreadLocalTyCx>> = Cell::new(None)
+        static TLS_TCX: Cell<Option<*const ThreadLocalGlobalCtxt>> = Cell::new(None)
     }
 
     fn span_debug(span: codemap::Span, f: &mut fmt::Formatter) -> fmt::Result {
@@ -687,15 +700,18 @@ pub mod tls {
         })
     }
 
-    pub fn enter<'tcx, F: FnOnce(&TyCtxt<'tcx>) -> R, R>(tcx: TyCtxt<'tcx>, f: F) -> R {
+    pub fn enter<'tcx, F: for<'a> FnOnce(TyCtxt<'a, 'tcx>) -> R, R>(gcx: GlobalCtxt<'tcx>,
+                                                                    f: F) -> R {
         codemap::SPAN_DEBUG.with(|span_dbg| {
             let original_span_debug = span_dbg.get();
             span_dbg.set(span_debug);
-            let tls_ptr = &tcx as *const _ as *const ThreadLocalTyCx;
+            let tls_ptr = &gcx as *const _ as *const ThreadLocalGlobalCtxt;
             let result = TLS_TCX.with(|tls| {
                 let prev = tls.get();
                 tls.set(Some(tls_ptr));
-                let ret = f(&tcx);
+                let ret = f(TyCtxt {
+                    gcx: &gcx
+                });
                 tls.set(prev);
                 ret
             });
@@ -704,14 +720,16 @@ pub mod tls {
         })
     }
 
-    pub fn with<F: FnOnce(&TyCtxt) -> R, R>(f: F) -> R {
+    pub fn with<F: FnOnce(TyCtxt) -> R, R>(f: F) -> R {
         TLS_TCX.with(|tcx| {
             let tcx = tcx.get().unwrap();
-            f(unsafe { &*(tcx as *const TyCtxt) })
+            f(TyCtxt {
+                gcx: unsafe { &*(tcx as *const GlobalCtxt) }
+            })
         })
     }
 
-    pub fn with_opt<F: FnOnce(Option<&TyCtxt>) -> R, R>(f: F) -> R {
+    pub fn with_opt<F: FnOnce(Option<TyCtxt>) -> R, R>(f: F) -> R {
         if TLS_TCX.with(|tcx| tcx.get().is_some()) {
             with(|v| f(Some(v)))
         } else {
@@ -735,7 +753,7 @@ macro_rules! sty_debug_print {
                 both_infer: usize,
             }
 
-            pub fn go(tcx: &TyCtxt) {
+            pub fn go(tcx: TyCtxt) {
                 let mut total = DebugStat {
                     total: 0,
                     region_infer: 0, ty_infer: 0, both_infer: 0,
@@ -782,8 +800,8 @@ macro_rules! sty_debug_print {
     }}
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn print_debug_stats(&self) {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+    pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
             TyEnum, TyBox, TyArray, TySlice, TyRawPtr, TyRef, TyFnDef, TyFnPtr,
@@ -830,9 +848,9 @@ fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
             |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
 }
 
-impl<'tcx> TyCtxt<'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     // Type constructors
-    pub fn mk_substs(&self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
+    pub fn mk_substs(self, substs: Substs<'tcx>) -> &'tcx Substs<'tcx> {
         if let Some(substs) = self.substs_interner.borrow().get(&substs) {
             return *substs;
         }
@@ -843,7 +861,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Create an unsafe fn ty based on a safe fn ty.
-    pub fn safe_to_unsafe_fn_ty(&self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
+    pub fn safe_to_unsafe_fn_ty(self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
         assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
         self.mk_fn_ptr(ty::BareFnTy {
             unsafety: hir::Unsafety::Unsafe,
@@ -852,7 +870,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
+    pub fn mk_bare_fn(self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
         if let Some(bare_fn) = self.bare_fn_interner.borrow().get(&bare_fn) {
             return *bare_fn;
         }
@@ -862,7 +880,7 @@ impl<'tcx> TyCtxt<'tcx> {
         bare_fn
     }
 
-    pub fn mk_region(&self, region: Region) -> &'tcx Region {
+    pub fn mk_region(self, region: Region) -> &'tcx Region {
         if let Some(region) = self.region_interner.borrow().get(&region) {
             return *region;
         }
@@ -902,11 +920,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Interns a type/name combination, stores the resulting box in cx.interner,
     // and returns the box as cast to an unsafe ptr (see comments for Ty above).
-    pub fn mk_ty(&self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ty(self, st: TypeVariants<'tcx>) -> Ty<'tcx> {
         TyCtxt::intern_ty(&self.arenas.type_, &self.interner, st)
     }
 
-    pub fn mk_mach_int(&self, tm: ast::IntTy) -> Ty<'tcx> {
+    pub fn mk_mach_int(self, tm: ast::IntTy) -> Ty<'tcx> {
         match tm {
             ast::IntTy::Is   => self.types.isize,
             ast::IntTy::I8   => self.types.i8,
@@ -916,7 +934,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn mk_mach_uint(&self, tm: ast::UintTy) -> Ty<'tcx> {
+    pub fn mk_mach_uint(self, tm: ast::UintTy) -> Ty<'tcx> {
         match tm {
             ast::UintTy::Us   => self.types.usize,
             ast::UintTy::U8   => self.types.u8,
@@ -926,89 +944,89 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn mk_mach_float(&self, tm: ast::FloatTy) -> Ty<'tcx> {
+    pub fn mk_mach_float(self, tm: ast::FloatTy) -> Ty<'tcx> {
         match tm {
             ast::FloatTy::F32  => self.types.f32,
             ast::FloatTy::F64  => self.types.f64,
         }
     }
 
-    pub fn mk_str(&self) -> Ty<'tcx> {
+    pub fn mk_str(self) -> Ty<'tcx> {
         self.mk_ty(TyStr)
     }
 
-    pub fn mk_static_str(&self) -> Ty<'tcx> {
+    pub fn mk_static_str(self) -> Ty<'tcx> {
         self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
     }
 
-    pub fn mk_enum(&self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_enum(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(TyEnum(def, substs))
     }
 
-    pub fn mk_box(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyBox(ty))
     }
 
-    pub fn mk_ptr(&self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRawPtr(tm))
     }
 
-    pub fn mk_ref(&self, r: &'tcx Region, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
+    pub fn mk_ref(self, r: &'tcx Region, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyRef(r, tm))
     }
 
-    pub fn mk_mut_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_mut_ref(self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
-    pub fn mk_imm_ref(&self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_imm_ref(self, r: &'tcx Region, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
-    pub fn mk_mut_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
-    pub fn mk_imm_ptr(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
-    pub fn mk_nil_ptr(&self) -> Ty<'tcx> {
+    pub fn mk_nil_ptr(self) -> Ty<'tcx> {
         self.mk_imm_ptr(self.mk_nil())
     }
 
-    pub fn mk_array(&self, ty: Ty<'tcx>, n: usize) -> Ty<'tcx> {
+    pub fn mk_array(self, ty: Ty<'tcx>, n: usize) -> Ty<'tcx> {
         self.mk_ty(TyArray(ty, n))
     }
 
-    pub fn mk_slice(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+    pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TySlice(ty))
     }
 
-    pub fn mk_tup(&self, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
+    pub fn mk_tup(self, ts: Vec<Ty<'tcx>>) -> Ty<'tcx> {
         self.mk_ty(TyTuple(ts))
     }
 
-    pub fn mk_nil(&self) -> Ty<'tcx> {
+    pub fn mk_nil(self) -> Ty<'tcx> {
         self.mk_tup(Vec::new())
     }
 
-    pub fn mk_bool(&self) -> Ty<'tcx> {
+    pub fn mk_bool(self) -> Ty<'tcx> {
         self.mk_ty(TyBool)
     }
 
-    pub fn mk_fn_def(&self, def_id: DefId,
+    pub fn mk_fn_def(self, def_id: DefId,
                      substs: &'tcx Substs<'tcx>,
                      fty: BareFnTy<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyFnDef(def_id, substs, self.mk_bare_fn(fty)))
     }
 
-    pub fn mk_fn_ptr(&self, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
+    pub fn mk_fn_ptr(self, fty: BareFnTy<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyFnPtr(self.mk_bare_fn(fty)))
     }
 
-    pub fn mk_trait(&self,
+    pub fn mk_trait(self,
                     principal: ty::PolyTraitRef<'tcx>,
                     bounds: ExistentialBounds<'tcx>)
                     -> Ty<'tcx>
@@ -1022,7 +1040,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(TyTrait(inner))
     }
 
-    pub fn mk_projection(&self,
+    pub fn mk_projection(self,
                          trait_ref: TraitRef<'tcx>,
                          item_name: Name)
                          -> Ty<'tcx> {
@@ -1031,12 +1049,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.mk_ty(TyProjection(inner))
     }
 
-    pub fn mk_struct(&self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+    pub fn mk_struct(self, def: AdtDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(TyStruct(def, substs))
     }
 
-    pub fn mk_closure(&self,
+    pub fn mk_closure(self,
                       closure_id: DefId,
                       substs: &'tcx Substs<'tcx>,
                       tys: Vec<Ty<'tcx>>)
@@ -1047,45 +1065,45 @@ impl<'tcx> TyCtxt<'tcx> {
         }))
     }
 
-    pub fn mk_closure_from_closure_substs(&self,
+    pub fn mk_closure_from_closure_substs(self,
                                           closure_id: DefId,
                                           closure_substs: Box<ClosureSubsts<'tcx>>)
                                           -> Ty<'tcx> {
         self.mk_ty(TyClosure(closure_id, closure_substs))
     }
 
-    pub fn mk_var(&self, v: TyVid) -> Ty<'tcx> {
+    pub fn mk_var(self, v: TyVid) -> Ty<'tcx> {
         self.mk_infer(TyVar(v))
     }
 
-    pub fn mk_int_var(&self, v: IntVid) -> Ty<'tcx> {
+    pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
         self.mk_infer(IntVar(v))
     }
 
-    pub fn mk_float_var(&self, v: FloatVid) -> Ty<'tcx> {
+    pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
         self.mk_infer(FloatVar(v))
     }
 
-    pub fn mk_infer(&self, it: InferTy) -> Ty<'tcx> {
+    pub fn mk_infer(self, it: InferTy) -> Ty<'tcx> {
         self.mk_ty(TyInfer(it))
     }
 
-    pub fn mk_param(&self,
+    pub fn mk_param(self,
                     space: subst::ParamSpace,
                     index: u32,
                     name: Name) -> Ty<'tcx> {
         self.mk_ty(TyParam(ParamTy { space: space, idx: index, name: name }))
     }
 
-    pub fn mk_self_type(&self) -> Ty<'tcx> {
+    pub fn mk_self_type(self) -> Ty<'tcx> {
         self.mk_param(subst::SelfSpace, 0, keywords::SelfType.name())
     }
 
-    pub fn mk_param_from_def(&self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
+    pub fn mk_param_from_def(self, def: &ty::TypeParameterDef) -> Ty<'tcx> {
         self.mk_param(def.space, def.index, def.name)
     }
 
-    pub fn trait_items(&self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> {
+    pub fn trait_items(self, trait_did: DefId) -> Rc<Vec<ty::ImplOrTraitItem<'tcx>>> {
         self.trait_items_cache.memoize(trait_did, || {
             let def_ids = self.trait_item_def_ids(trait_did);
             Rc::new(def_ids.iter()
@@ -1095,7 +1113,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Obtain the representation annotation for a struct definition.
-    pub fn lookup_repr_hints(&self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
+    pub fn lookup_repr_hints(self, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
         self.repr_hint_cache.memoize(did, || {
             Rc::new(if did.is_local() {
                 self.get_attrs(did).iter().flat_map(|meta| {

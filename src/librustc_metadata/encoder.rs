@@ -56,7 +56,7 @@ use rustc::hir::map::DefKey;
 
 pub struct EncodeContext<'a, 'tcx: 'a> {
     pub diag: &'a Handler,
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx>,
     pub reexports: &'a def::ExportMap,
     pub item_symbols: &'a RefCell<NodeMap<String>>,
     pub link_meta: &'a LinkMeta,
@@ -139,7 +139,7 @@ pub fn def_to_u64(did: DefId) -> u64 {
     (did.krate as u64) << 32 | (did.index.as_usize() as u64)
 }
 
-pub fn def_to_string(_tcx: &TyCtxt, did: DefId) -> String {
+pub fn def_to_string(_tcx: TyCtxt, did: DefId) -> String {
     format!("{}:{}", did.krate, did.index.as_usize())
 }
 
@@ -252,7 +252,7 @@ fn encode_enum_variant_info<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     debug!("encode_enum_variant_info(did={:?})", did);
     let repr_hints = ecx.tcx.lookup_repr_hints(did);
     let repr_type = ecx.tcx.enum_repr_type(repr_hints.get(0));
-    let mut disr_val = repr_type.initial_discriminant(&ecx.tcx);
+    let mut disr_val = repr_type.initial_discriminant(ecx.tcx);
     let def = ecx.tcx.lookup_adt_def(did);
     for variant in &def.variants {
         let vid = variant.did;
@@ -1697,7 +1697,7 @@ fn encode_struct_field_attrs(ecx: &EncodeContext,
 
 
 struct ImplVisitor<'a, 'tcx:'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     impls: FnvHashMap<DefId, Vec<DefId>>
 }
 
@@ -2016,10 +2016,10 @@ fn encode_metadata_inner(rbml_w: &mut Encoder,
 }
 
 // Get the encoded string for a type
-pub fn encoded_ty<'tcx>(tcx: &TyCtxt<'tcx>,
-                        t: Ty<'tcx>,
-                        def_id_to_string: fn(&TyCtxt<'tcx>, DefId) -> String)
-                        -> Vec<u8> {
+pub fn encoded_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                            t: Ty<'tcx>,
+                            def_id_to_string: for<'b> fn(TyCtxt<'b, 'tcx>, DefId) -> String)
+                            -> Vec<u8> {
     let mut wr = Cursor::new(Vec::new());
     tyencode::enc_ty(&mut wr, &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),

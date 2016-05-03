@@ -211,7 +211,7 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
 }
 
 impl<'tcx> ty::TyS<'tcx> {
-    fn sort_string(&self, tcx: &TyCtxt) -> String {
+    fn sort_string(&self, tcx: TyCtxt) -> String {
         match self.sty {
             ty::TyBool | ty::TyChar | ty::TyInt(_) |
             ty::TyUint(_) | ty::TyFloat(_) | ty::TyStr => self.to_string(),
@@ -252,8 +252,8 @@ impl<'tcx> ty::TyS<'tcx> {
     }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn note_and_explain_type_err(&self,
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+    pub fn note_and_explain_type_err(self,
                                      db: &mut DiagnosticBuilder,
                                      err: &TypeError<'tcx>,
                                      sp: Span) {

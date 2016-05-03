@@ -296,7 +296,7 @@ impl<'a,'tcx> ItemCtxt<'a,'tcx> {
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> { self.ccx.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.ccx.tcx }
 
     fn get_item_type_scheme(&self, span: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
@@ -498,10 +498,10 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for hir::Generics {
 /// parameter with id `param_id`. We use this so as to avoid running
 /// `ast_ty_to_ty`, because we want to avoid triggering an all-out
 /// conversion of the type to avoid inducing unnecessary cycles.
-fn is_param<'tcx>(tcx: &TyCtxt<'tcx>,
-                  ast_ty: &hir::Ty,
-                  param_id: ast::NodeId)
-                  -> bool
+fn is_param<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                      ast_ty: &hir::Ty,
+                      param_id: ast::NodeId)
+                      -> bool
 {
     if let hir::TyPath(None, _) = ast_ty.node {
         let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();

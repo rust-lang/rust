@@ -109,7 +109,7 @@ impl fmt::Display for Mode {
     }
 }
 
-fn is_const_fn(tcx: &TyCtxt, def_id: DefId) -> bool {
+fn is_const_fn(tcx: TyCtxt, def_id: DefId) -> bool {
     if let Some(node_id) = tcx.map.as_local_node_id(def_id) {
         let fn_like = FnLikeNode::from_node(tcx.map.get(node_id));
         match fn_like.map(|f| f.kind()) {
@@ -132,7 +132,7 @@ struct Qualifier<'a, 'tcx: 'a> {
     def_id: DefId,
     mir: &'a Mir<'tcx>,
     rpo: ReversePostorder<'a, 'tcx>,
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     param_env: ty::ParameterEnvironment<'a, 'tcx>,
     qualif_map: &'a mut DefIdMap<Qualif>,
     mir_map: Option<&'a MirMap<'tcx>>,
@@ -908,11 +908,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx> {
     }
 }
 
-fn qualify_const_item_cached<'tcx>(tcx: &TyCtxt<'tcx>,
-                                   qualif_map: &mut DefIdMap<Qualif>,
-                                   mir_map: Option<&MirMap<'tcx>>,
-                                   def_id: DefId)
-                                   -> Qualif {
+fn qualify_const_item_cached<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                       qualif_map: &mut DefIdMap<Qualif>,
+                                       mir_map: Option<&MirMap<'tcx>>,
+                                       def_id: DefId)
+                                       -> Qualif {
     match qualif_map.entry(def_id) {
         Entry::Occupied(entry) => return *entry.get(),
         Entry::Vacant(entry) => {
@@ -951,7 +951,7 @@ pub struct QualifyAndPromoteConstants;
 impl Pass for QualifyAndPromoteConstants {}
 
 impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, map: &mut MirMap<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, map: &mut MirMap<'tcx>) {
         let mut qualif_map = DefIdMap();
 
         // First, visit `const` items, potentially recursing, to get

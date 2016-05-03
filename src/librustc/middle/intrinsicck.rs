@@ -22,7 +22,7 @@ use syntax::codemap::Span;
 use hir::intravisit::{self, Visitor, FnKind};
 use hir;
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate(tcx: TyCtxt) {
     let mut visitor = ItemVisitor {
         tcx: tcx
     };
@@ -30,7 +30,7 @@ pub fn check_crate(tcx: &TyCtxt) {
 }
 
 struct ItemVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>
+    tcx: TyCtxt<'a, 'tcx>
 }
 
 impl<'a, 'tcx> ItemVisitor<'a, 'tcx> {

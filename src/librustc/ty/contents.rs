@@ -89,7 +89,7 @@ impl TypeContents {
         self.intersects(TC::InteriorUnsafe)
     }
 
-    pub fn needs_drop(&self, _: &TyCtxt) -> bool {
+    pub fn needs_drop(&self, _: TyCtxt) -> bool {
         self.intersects(TC::NeedsDrop)
     }
 
@@ -139,13 +139,13 @@ impl fmt::Debug for TypeContents {
     }
 }
 
-impl<'tcx> ty::TyS<'tcx> {
-    pub fn type_contents(&'tcx self, tcx: &TyCtxt<'tcx>) -> TypeContents {
+impl<'a, 'tcx> ty::TyS<'tcx> {
+    pub fn type_contents(&'tcx self, tcx: TyCtxt<'a, 'tcx>) -> TypeContents {
         return tcx.tc_cache.memoize(self, || tc_ty(tcx, self, &mut FnvHashMap()));
 
-        fn tc_ty<'tcx>(tcx: &TyCtxt<'tcx>,
-                       ty: Ty<'tcx>,
-                       cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
+        fn tc_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                           ty: Ty<'tcx>,
+                           cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
         {
             // Subtle: Note that we are *not* using tcx.tc_cache here but rather a
             // private cache for this walk.  This is needed in the case of cyclic
@@ -255,7 +255,7 @@ impl<'tcx> ty::TyS<'tcx> {
             result
         }
 
-        fn apply_lang_items(tcx: &TyCtxt, did: DefId, tc: TypeContents)
+        fn apply_lang_items(tcx: TyCtxt, did: DefId, tc: TypeContents)
                             -> TypeContents {
             if Some(did) == tcx.lang_items.unsafe_cell_type() {
                 tc | TC::InteriorUnsafe

@@ -81,7 +81,7 @@ enum InsertResult<'a, 'tcx: 'a> {
     Overlapped(Overlap<'a, 'tcx>),
 }
 
-impl Children {
+impl<'a, 'tcx> Children {
     fn new() -> Children {
         Children {
             nonblanket_impls: FnvHashMap(),
@@ -90,7 +90,7 @@ impl Children {
     }
 
     /// Insert an impl into this set of children without comparing to any existing impls
-    fn insert_blindly(&mut self, tcx: &TyCtxt, impl_def_id: DefId) {
+    fn insert_blindly(&mut self, tcx: TyCtxt, impl_def_id: DefId) {
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
         if let Some(sty) = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false) {
             self.nonblanket_impls.entry(sty).or_insert(vec![]).push(impl_def_id)
@@ -101,11 +101,11 @@ impl Children {
 
     /// Attempt to insert an impl into this set of children, while comparing for
     /// specialiation relationships.
-    fn insert<'a, 'tcx>(&mut self,
-                        tcx: &'a TyCtxt<'tcx>,
-                        impl_def_id: DefId,
-                        simplified_self: Option<SimplifiedType>)
-                        -> InsertResult<'a, 'tcx>
+    fn insert(&mut self,
+              tcx: TyCtxt<'a, 'tcx>,
+              impl_def_id: DefId,
+              simplified_self: Option<SimplifiedType>)
+              -> InsertResult<'a, 'tcx>
     {
         for slot in match simplified_self {
             Some(sty) => self.filtered_mut(sty),
@@ -150,19 +150,19 @@ impl Children {
         InsertResult::BecameNewSibling
     }
 
-    fn iter_mut<'a>(&'a mut self) -> Box<Iterator<Item = &'a mut DefId> + 'a> {
+    fn iter_mut(&'a mut self) -> Box<Iterator<Item = &'a mut DefId> + 'a> {
         let nonblanket = self.nonblanket_impls.iter_mut().flat_map(|(_, v)| v.iter_mut());
         Box::new(self.blanket_impls.iter_mut().chain(nonblanket))
     }
 
-    fn filtered_mut<'a>(&'a mut self, sty: SimplifiedType)
-                        -> Box<Iterator<Item = &'a mut DefId> + 'a> {
+    fn filtered_mut(&'a mut self, sty: SimplifiedType)
+                    -> Box<Iterator<Item = &'a mut DefId> + 'a> {
         let nonblanket = self.nonblanket_impls.entry(sty).or_insert(vec![]).iter_mut();
         Box::new(self.blanket_impls.iter_mut().chain(nonblanket))
     }
 }
 
-impl Graph {
+impl<'a, 'tcx> Graph {
     pub fn new() -> Graph {
         Graph {
             parent: Default::default(),
@@ -173,10 +173,10 @@ impl Graph {
     /// Insert a local impl into the specialization graph. If an existing impl
     /// conflicts with it (has overlap, but neither specializes the other),
     /// information about the area of overlap is returned in the `Err`.
-    pub fn insert<'a, 'tcx>(&mut self,
-                            tcx: &'a TyCtxt<'tcx>,
-                            impl_def_id: DefId)
-                            -> Result<(), Overlap<'a, 'tcx>> {
+    pub fn insert(&mut self,
+                  tcx: TyCtxt<'a, 'tcx>,
+                  impl_def_id: DefId)
+                  -> Result<(), Overlap<'a, 'tcx>> {
         assert!(impl_def_id.is_local());
 
         let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
@@ -235,7 +235,7 @@ impl Graph {
     }
 
     /// Insert cached metadata mapping from a child impl back to its parent.
-    pub fn record_impl_from_cstore(&mut self, tcx: &TyCtxt, parent: DefId, child: DefId) {
+    pub fn record_impl_from_cstore(&mut self, tcx: TyCtxt, parent: DefId, child: DefId) {
         if self.parent.insert(child, parent).is_some() {
             bug!("When recording an impl from the crate store, information about its parent \
                   was already present.");
@@ -260,7 +260,7 @@ pub enum Node {
     Trait(DefId),
 }
 
-impl Node {
+impl<'a, 'tcx> Node {
     pub fn is_from_trait(&self) -> bool {
         match *self {
             Node::Trait(..) => true,
@@ -269,7 +269,7 @@ impl Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items<'a, 'tcx>(&self, tcx: &'a TyCtxt<'tcx>) -> NodeItems<'a, 'tcx> {
+    pub fn items(&self, tcx: TyCtxt<'a, 'tcx>) -> NodeItems<'a, 'tcx> {
         match *self {
             Node::Impl(impl_def_id) => {
                 NodeItems::Impl {
@@ -299,7 +299,7 @@ impl Node {
 /// An iterator over the items defined within a trait or impl.
 pub enum NodeItems<'a, 'tcx: 'a> {
     Impl {
-        tcx: &'a TyCtxt<'tcx>,
+        tcx: TyCtxt<'a, 'tcx>,
         items: cell::Ref<'a, Vec<ty::ImplOrTraitItemId>>,
         idx: usize,
     },
@@ -411,7 +411,7 @@ impl<'a, 'tcx> Iterator for ConstDefs<'a, 'tcx> {
 impl<'a, 'tcx> Ancestors<'a, 'tcx> {
     /// Search the items from the given ancestors, returning each type definition
     /// with the given name.
-    pub fn type_defs(self, tcx: &'a TyCtxt<'tcx>, name: Name) -> TypeDefs<'a, 'tcx> {
+    pub fn type_defs(self, tcx: TyCtxt<'a, 'tcx>, name: Name) -> TypeDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {
@@ -432,7 +432,7 @@ impl<'a, 'tcx> Ancestors<'a, 'tcx> {
 
     /// Search the items from the given ancestors, returning each fn definition
     /// with the given name.
-    pub fn fn_defs(self, tcx: &'a TyCtxt<'tcx>, name: Name) -> FnDefs<'a, 'tcx> {
+    pub fn fn_defs(self, tcx: TyCtxt<'a, 'tcx>, name: Name) -> FnDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {
@@ -453,7 +453,7 @@ impl<'a, 'tcx> Ancestors<'a, 'tcx> {
 
     /// Search the items from the given ancestors, returning each const
     /// definition with the given name.
-    pub fn const_defs(self, tcx: &'a TyCtxt<'tcx>, name: Name) -> ConstDefs<'a, 'tcx> {
+    pub fn const_defs(self, tcx: TyCtxt<'a, 'tcx>, name: Name) -> ConstDefs<'a, 'tcx> {
         let iter = self.flat_map(move |node| {
             node.items(tcx)
                 .filter_map(move |item| {

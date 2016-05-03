@@ -160,7 +160,7 @@ fn test_env<F>(source_string: &str,
 }
 
 impl<'a, 'tcx> Env<'a, 'tcx> {
-    pub fn tcx(&self) -> &TyCtxt<'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.infcx.tcx
     }
 

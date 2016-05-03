@@ -74,7 +74,7 @@ pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type FixupResult<T> = Result<T, FixupError>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx>,
 
     pub tables: &'a RefCell<ty::Tables<'tcx>>,
 
@@ -385,7 +385,7 @@ impl fmt::Display for FixupError {
 }
 
 impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
-    pub fn new(tcx: &'a TyCtxt<'tcx>,
+    pub fn new(tcx: TyCtxt<'a, 'tcx>,
                tables: &'a RefCell<ty::Tables<'tcx>>,
                param_env: Option<ty::ParameterEnvironment<'a, 'tcx>>,
                projection_mode: ProjectionMode)
@@ -406,7 +406,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn normalizing(tcx: &'a TyCtxt<'tcx>,
+    pub fn normalizing(tcx: TyCtxt<'a, 'tcx>,
                        tables: &'a RefCell<ty::Tables<'tcx>>,
                        projection_mode: ProjectionMode)
                        -> Self {
@@ -441,8 +441,8 @@ pub struct CombinedSnapshot {
 }
 
 // NOTE: Callable from trans only!
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn normalize_associated_type<T>(&self, value: &T) -> T
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+    pub fn normalize_associated_type<T>(self, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
         debug!("normalize_associated_type(t={:?})", value);
@@ -1523,7 +1523,7 @@ pub fn drain_fulfillment_cx<T>(&self,
     }
 }
 
-impl<'tcx> TypeTrace<'tcx> {
+impl<'a, 'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.origin.span()
     }
@@ -1539,7 +1539,7 @@ impl<'tcx> TypeTrace<'tcx> {
         }
     }
 
-    pub fn dummy(tcx: &TyCtxt<'tcx>) -> TypeTrace<'tcx> {
+    pub fn dummy(tcx: TyCtxt<'a, 'tcx>) -> TypeTrace<'tcx> {
         TypeTrace {
             origin: TypeOrigin::Misc(codemap::DUMMY_SP),
             values: Types(ExpectedFound {

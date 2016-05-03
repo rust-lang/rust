@@ -149,7 +149,7 @@ pub struct CrateCtxt<'a, 'tcx: 'a> {
     /// Note that these cycles can cross multiple items.
     pub stack: RefCell<Vec<collect::AstConvRequest>>,
 
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx>,
 }
 
 // Functions that write types into the node type table
@@ -173,7 +173,7 @@ fn write_substs_to_tcx<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn lookup_full_def(tcx: &TyCtxt, sp: Span, id: ast::NodeId) -> Def {
+fn lookup_full_def(tcx: TyCtxt, sp: Span, id: ast::NodeId) -> Def {
     match tcx.def_map.borrow().get(&id) {
         Some(x) => x.full_def(),
         None => {
@@ -182,7 +182,7 @@ fn lookup_full_def(tcx: &TyCtxt, sp: Span, id: ast::NodeId) -> Def {
     }
 }
 
-fn require_c_abi_if_variadic(tcx: &TyCtxt,
+fn require_c_abi_if_variadic(tcx: TyCtxt,
                              decl: &hir::FnDecl,
                              abi: Abi,
                              span: Span) {
@@ -329,7 +329,7 @@ fn check_for_entry_fn(ccx: &CrateCtxt) {
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
+pub fn check_crate(tcx: TyCtxt, trait_map: hir::TraitMap) -> CompileResult {
     let time_passes = tcx.sess.time_passes();
     let ccx = CrateCtxt {
         trait_map: trait_map,

@@ -354,7 +354,7 @@ impl<'a,'b,'tcx> AssociatedTypeNormalizer<'a,'b,'tcx> {
 }
 
 impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx> {
         self.selcx.tcx()
     }
 

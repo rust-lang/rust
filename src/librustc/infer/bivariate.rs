@@ -45,7 +45,7 @@ impl<'a, 'tcx> Bivariate<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Bivariate" }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

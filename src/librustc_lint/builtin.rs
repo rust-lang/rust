@@ -776,7 +776,7 @@ impl LateLintPass for UnconditionalRecursion {
         // Functions for identifying if the given Expr NodeId `id`
         // represents a call to the function `fn_id`/method `method`.
 
-        fn expr_refers_to_this_fn(tcx: &TyCtxt,
+        fn expr_refers_to_this_fn(tcx: TyCtxt,
                                   fn_id: ast::NodeId,
                                   id: ast::NodeId) -> bool {
             match tcx.map.get(id) {
@@ -792,7 +792,7 @@ impl LateLintPass for UnconditionalRecursion {
         }
 
         // Check if the expression `id` performs a call to `method`.
-        fn expr_refers_to_this_method(tcx: &TyCtxt,
+        fn expr_refers_to_this_method(tcx: TyCtxt,
                                       method: &ty::Method,
                                       id: ast::NodeId) -> bool {
             // Check for method calls and overloaded operators.
@@ -840,11 +840,11 @@ impl LateLintPass for UnconditionalRecursion {
 
         // Check if the method call to the method with the ID `callee_id`
         // and instantiated with `callee_substs` refers to method `method`.
-        fn method_call_refers_to_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                                              method: &ty::Method,
-                                              callee_id: DefId,
-                                              callee_substs: &Substs<'tcx>,
-                                              expr_id: ast::NodeId) -> bool {
+        fn method_call_refers_to_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                                  method: &ty::Method,
+                                                  callee_id: DefId,
+                                                  callee_substs: &Substs<'tcx>,
+                                                  expr_id: ast::NodeId) -> bool {
             let callee_item = tcx.impl_or_trait_item(callee_id);
 
             match callee_item.container() {

@@ -41,12 +41,12 @@ pub struct TyDecoder<'a, 'tcx: 'a> {
     data: &'a [u8],
     krate: ast::CrateNum,
     pos: usize,
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     conv_def_id: DefIdConvert<'a>,
 }
 
 impl<'a,'tcx> TyDecoder<'a,'tcx> {
-    pub fn with_doc(tcx: &'a TyCtxt<'tcx>,
+    pub fn with_doc(tcx: TyCtxt<'a, 'tcx>,
                     crate_num: ast::CrateNum,
                     doc: rbml::Doc<'a>,
                     conv: DefIdConvert<'a>)
@@ -57,7 +57,7 @@ impl<'a,'tcx> TyDecoder<'a,'tcx> {
     pub fn new(data: &'a [u8],
                crate_num: ast::CrateNum,
                pos: usize,
-               tcx: &'a TyCtxt<'tcx>,
+               tcx: TyCtxt<'a, 'tcx>,
                conv: DefIdConvert<'a>)
                -> TyDecoder<'a, 'tcx> {
         TyDecoder {

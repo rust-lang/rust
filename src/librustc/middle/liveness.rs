@@ -169,7 +169,7 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: &TyCtxt) -> String {
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt) -> String {
     let cm = tcx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
@@ -195,7 +195,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for IrMaps<'a, 'tcx> {
     fn visit_arm(&mut self, a: &hir::Arm) { visit_arm(self, a); }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate(tcx: TyCtxt) {
     let _task = tcx.dep_graph.in_task(DepNode::Liveness);
     tcx.map.krate().visit_all_items(&mut IrMaps::new(tcx));
     tcx.sess.abort_if_errors();
@@ -263,7 +263,7 @@ enum VarKind {
 }
 
 struct IrMaps<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
 
     num_live_nodes: usize,
     num_vars: usize,
@@ -275,7 +275,7 @@ struct IrMaps<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> IrMaps<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>) -> IrMaps<'a, 'tcx> {
+    fn new(tcx: TyCtxt<'a, 'tcx>) -> IrMaps<'a, 'tcx> {
         IrMaps {
             tcx: tcx,
             num_live_nodes: 0,
@@ -1486,9 +1486,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             ty::FnConverging(t_ret)
                     if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() => {
 
-                let param_env = ParameterEnvironment::for_item(&self.ir.tcx, id);
-                let t_ret_subst = t_ret.subst(&self.ir.tcx, &param_env.free_substs);
-                let infcx = InferCtxt::new(&self.ir.tcx,
+                let param_env = ParameterEnvironment::for_item(self.ir.tcx, id);
+                let t_ret_subst = t_ret.subst(self.ir.tcx, &param_env.free_substs);
+                let infcx = InferCtxt::new(self.ir.tcx,
                                            &self.ir.tcx.tables,
                                            Some(param_env),
                                            ProjectionMode::Any);

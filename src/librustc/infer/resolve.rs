@@ -30,7 +30,7 @@ impl<'a, 'tcx> OpportunisticTypeResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeResolver<'a, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> {
         self.infcx.tcx
     }
 
@@ -58,7 +58,7 @@ impl<'a, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for OpportunisticTypeAndRegionResolver<'a, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> {
         self.infcx.tcx
     }
 
@@ -104,7 +104,7 @@ struct FullTypeResolver<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> ty::fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> {
         self.infcx.tcx
     }
 

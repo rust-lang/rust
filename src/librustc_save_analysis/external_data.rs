@@ -19,7 +19,7 @@ use super::data;
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
 pub trait Lower {
     type Target;
-    fn lower(self, tcx: &TyCtxt) -> Self::Target;
+    fn lower(self, tcx: TyCtxt) -> Self::Target;
 }
 
 fn make_def_id(id: NodeId, map: &Map) -> DefId {
@@ -71,7 +71,7 @@ pub struct CratePreludeData {
 impl Lower for data::CratePreludeData {
     type Target = CratePreludeData;
 
-    fn lower(self, tcx: &TyCtxt) -> CratePreludeData {
+    fn lower(self, tcx: TyCtxt) -> CratePreludeData {
         CratePreludeData {
             crate_name: self.crate_name,
             crate_root: self.crate_root,
@@ -94,7 +94,7 @@ pub struct EnumData {
 impl Lower for data::EnumData {
     type Target = EnumData;
 
-    fn lower(self, tcx: &TyCtxt) -> EnumData {
+    fn lower(self, tcx: TyCtxt) -> EnumData {
         EnumData {
             id: make_def_id(self.id, &tcx.map),
             value: self.value,
@@ -119,7 +119,7 @@ pub struct ExternCrateData {
 impl Lower for data::ExternCrateData {
     type Target = ExternCrateData;
 
-    fn lower(self, tcx: &TyCtxt) -> ExternCrateData {
+    fn lower(self, tcx: TyCtxt) -> ExternCrateData {
         ExternCrateData {
             id: make_def_id(self.id, &tcx.map),
             name: self.name,
@@ -142,7 +142,7 @@ pub struct FunctionCallData {
 impl Lower for data::FunctionCallData {
     type Target = FunctionCallData;
 
-    fn lower(self, tcx: &TyCtxt) -> FunctionCallData {
+    fn lower(self, tcx: TyCtxt) -> FunctionCallData {
         FunctionCallData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
@@ -165,7 +165,7 @@ pub struct FunctionData {
 impl Lower for data::FunctionData {
     type Target = FunctionData;
 
-    fn lower(self, tcx: &TyCtxt) -> FunctionData {
+    fn lower(self, tcx: TyCtxt) -> FunctionData {
         FunctionData {
             id: make_def_id(self.id, &tcx.map),
             name: self.name,
@@ -188,7 +188,7 @@ pub struct FunctionRefData {
 impl Lower for data::FunctionRefData {
     type Target = FunctionRefData;
 
-    fn lower(self, tcx: &TyCtxt) -> FunctionRefData {
+    fn lower(self, tcx: TyCtxt) -> FunctionRefData {
         FunctionRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
@@ -208,7 +208,7 @@ pub struct ImplData {
 impl Lower for data::ImplData {
     type Target = ImplData;
 
-    fn lower(self, tcx: &TyCtxt) -> ImplData {
+    fn lower(self, tcx: TyCtxt) -> ImplData {
         ImplData {
             id: make_def_id(self.id, &tcx.map),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
@@ -229,7 +229,7 @@ pub struct InheritanceData {
 impl Lower for data::InheritanceData {
     type Target = InheritanceData;
 
-    fn lower(self, tcx: &TyCtxt) -> InheritanceData {
+    fn lower(self, tcx: TyCtxt) -> InheritanceData {
         InheritanceData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             base_id: self.base_id,
@@ -249,7 +249,7 @@ pub struct MacroData {
 impl Lower for data::MacroData {
     type Target = MacroData;
 
-    fn lower(self, tcx: &TyCtxt) -> MacroData {
+    fn lower(self, tcx: TyCtxt) -> MacroData {
         MacroData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
@@ -274,7 +274,7 @@ pub struct MacroUseData {
 impl Lower for data::MacroUseData {
     type Target = MacroUseData;
 
-    fn lower(self, tcx: &TyCtxt) -> MacroUseData {
+    fn lower(self, tcx: TyCtxt) -> MacroUseData {
         MacroUseData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             name: self.name,
@@ -298,7 +298,7 @@ pub struct MethodCallData {
 impl Lower for data::MethodCallData {
     type Target = MethodCallData;
 
-    fn lower(self, tcx: &TyCtxt) -> MethodCallData {
+    fn lower(self, tcx: TyCtxt) -> MethodCallData {
         MethodCallData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
@@ -320,7 +320,7 @@ pub struct MethodData {
 impl Lower for data::MethodData {
     type Target = MethodData;
 
-    fn lower(self, tcx: &TyCtxt) -> MethodData {
+    fn lower(self, tcx: TyCtxt) -> MethodData {
         MethodData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
@@ -344,7 +344,7 @@ pub struct ModData {
 impl Lower for data::ModData {
     type Target = ModData;
 
-    fn lower(self, tcx: &TyCtxt) -> ModData {
+    fn lower(self, tcx: TyCtxt) -> ModData {
         ModData {
             id: make_def_id(self.id, &tcx.map),
             name: self.name,
@@ -368,7 +368,7 @@ pub struct ModRefData {
 impl Lower for data::ModRefData {
     type Target = ModRefData;
 
-    fn lower(self, tcx: &TyCtxt) -> ModRefData {
+    fn lower(self, tcx: TyCtxt) -> ModRefData {
         ModRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
@@ -391,7 +391,7 @@ pub struct StructData {
 impl Lower for data::StructData {
     type Target = StructData;
 
-    fn lower(self, tcx: &TyCtxt) -> StructData {
+    fn lower(self, tcx: TyCtxt) -> StructData {
         StructData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             id: make_def_id(self.id, &tcx.map),
@@ -416,7 +416,7 @@ pub struct StructVariantData {
 impl Lower for data::StructVariantData {
     type Target = StructVariantData;
 
-    fn lower(self, tcx: &TyCtxt) -> StructVariantData {
+    fn lower(self, tcx: TyCtxt) -> StructVariantData {
         StructVariantData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             id: make_def_id(self.id, &tcx.map),
@@ -440,7 +440,7 @@ pub struct TraitData {
 impl Lower for data::TraitData {
     type Target = TraitData;
 
-    fn lower(self, tcx: &TyCtxt) -> TraitData {
+    fn lower(self, tcx: TyCtxt) -> TraitData {
         TraitData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             id: make_def_id(self.id, &tcx.map),
@@ -465,7 +465,7 @@ pub struct TupleVariantData {
 impl Lower for data::TupleVariantData {
     type Target = TupleVariantData;
 
-    fn lower(self, tcx: &TyCtxt) -> TupleVariantData {
+    fn lower(self, tcx: TyCtxt) -> TupleVariantData {
         TupleVariantData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             id: make_def_id(self.id, &tcx.map),
@@ -490,7 +490,7 @@ pub struct TypedefData {
 impl Lower for data::TypedefData {
     type Target = TypedefData;
 
-    fn lower(self, tcx: &TyCtxt) -> TypedefData {
+    fn lower(self, tcx: TyCtxt) -> TypedefData {
         TypedefData {
             id: make_def_id(self.id, &tcx.map),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
@@ -512,7 +512,7 @@ pub struct TypeRefData {
 impl Lower for data::TypeRefData {
     type Target = TypeRefData;
 
-    fn lower(self, tcx: &TyCtxt) -> TypeRefData {
+    fn lower(self, tcx: TyCtxt) -> TypeRefData {
         TypeRefData {
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
             scope: make_def_id(self.scope, &tcx.map),
@@ -534,7 +534,7 @@ pub struct UseData {
 impl Lower for data::UseData {
     type Target = UseData;
 
-    fn lower(self, tcx: &TyCtxt) -> UseData {
+    fn lower(self, tcx: TyCtxt) -> UseData {
         UseData {
             id: make_def_id(self.id, &tcx.map),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
@@ -556,7 +556,7 @@ pub struct UseGlobData {
 impl Lower for data::UseGlobData {
     type Target = UseGlobData;
 
-    fn lower(self, tcx: &TyCtxt) -> UseGlobData {
+    fn lower(self, tcx: TyCtxt) -> UseGlobData {
         UseGlobData {
             id: make_def_id(self.id, &tcx.map),
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
@@ -581,7 +581,7 @@ pub struct VariableData {
 impl Lower for data::VariableData {
     type Target = VariableData;
 
-    fn lower(self, tcx: &TyCtxt) -> VariableData {
+    fn lower(self, tcx: TyCtxt) -> VariableData {
         VariableData {
             id: make_def_id(self.id, &tcx.map),
             name: self.name,
@@ -607,7 +607,7 @@ pub struct VariableRefData {
 impl Lower for data::VariableRefData {
     type Target = VariableRefData;
 
-    fn lower(self, tcx: &TyCtxt) -> VariableRefData {
+    fn lower(self, tcx: TyCtxt) -> VariableRefData {
         VariableRefData {
             name: self.name,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),

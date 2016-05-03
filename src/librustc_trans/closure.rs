@@ -119,10 +119,10 @@ impl ClosureEnv {
     }
 }
 
-fn get_self_type<'tcx>(tcx: &TyCtxt<'tcx>,
-                       closure_id: DefId,
-                       fn_ty: Ty<'tcx>)
-                       -> Ty<'tcx> {
+fn get_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                           closure_id: DefId,
+                           fn_ty: Ty<'tcx>)
+                           -> Ty<'tcx> {
     match tcx.closure_kind(closure_id) {
         ty::ClosureKind::Fn => {
             tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic), fn_ty)

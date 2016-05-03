@@ -121,7 +121,7 @@ impl FreeRegionMap {
     /// Determines whether one region is a subregion of another.  This is intended to run *after
     /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
     pub fn is_subregion_of(&self,
-                           tcx: &TyCtxt,
+                           tcx: TyCtxt,
                            sub_region: ty::Region,
                            super_region: ty::Region)
                            -> bool {

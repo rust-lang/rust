@@ -485,7 +485,7 @@ fn get_base_type_def_id(&self, span: Span, ty: Ty<'tcx>) -> Option<DefId> {
     }
 }
 
-fn enforce_trait_manually_implementable(tcx: &TyCtxt, sp: Span, trait_def_id: DefId) {
+fn enforce_trait_manually_implementable(tcx: TyCtxt, sp: Span, trait_def_id: DefId) {
     if tcx.sess.features.borrow().unboxed_closures {
         // the feature gate allows all of them
         return

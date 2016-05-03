@@ -275,10 +275,10 @@ impl<'tcx> Callee<'tcx> {
 }
 
 /// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'tcx>(tcx: &TyCtxt<'tcx>,
-                def_id: DefId,
-                substs: &'tcx subst::Substs<'tcx>)
-                -> Ty<'tcx> {
+fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                    def_id: DefId,
+                    substs: &'tcx subst::Substs<'tcx>)
+                    -> Ty<'tcx> {
     let ty = tcx.lookup_item_type(def_id).ty;
     monomorphize::apply_param_substs(tcx, substs, &ty)
 }
@@ -442,7 +442,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // def_id to the local id of the inlined copy.
     let def_id = inline::maybe_instantiate_inline(ccx, def_id);
 
-    fn is_named_tuple_constructor(tcx: &TyCtxt, def_id: DefId) -> bool {
+    fn is_named_tuple_constructor(tcx: TyCtxt, def_id: DefId) -> bool {
         let node_id = match tcx.map.as_local_node_id(def_id) {
             Some(n) => n,
             None => { return false; }

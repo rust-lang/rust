@@ -109,7 +109,7 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
         SeedBorrowKind { fcx: fcx, closures_with_inferred_kinds: HashSet::new() }
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.fcx.tcx()
     }
 

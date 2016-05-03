@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty;
+use rustc::ty::TyCtxt;
 
 use std::fs;
 use std::io;
 use std::path::{PathBuf, Path};
 
-pub fn dep_graph_path<'tcx>(tcx: &ty::TyCtxt<'tcx>) -> Option<PathBuf> {
+pub fn dep_graph_path(tcx: TyCtxt) -> Option<PathBuf> {
     // For now, just save/load dep-graph from
     // directory/dep_graph.rbml
     tcx.sess.opts.incremental.as_ref().and_then(|incr_dir| {

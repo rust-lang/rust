@@ -23,7 +23,7 @@ use rustc::hir::intravisit;
 use util::nodemap::DefIdMap;
 use lint;
 
-pub fn check(tcx: &TyCtxt) {
+pub fn check(tcx: TyCtxt) {
     let mut overlap = OverlapChecker { tcx: tcx,
                                        default_impls: DefIdMap() };
 
@@ -33,7 +33,7 @@ pub fn check(tcx: &TyCtxt) {
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx TyCtxt<'tcx>,
+    tcx: TyCtxt<'cx, 'tcx>,
 
     // maps from a trait def-id to an impl id
     default_impls: DefIdMap<ast::NodeId>,
@@ -44,7 +44,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         #[derive(Copy, Clone, PartialEq)]
         enum Namespace { Type, Value }
 
-        fn name_and_namespace(tcx: &TyCtxt, item: &ty::ImplOrTraitItemId)
+        fn name_and_namespace(tcx: TyCtxt, item: &ty::ImplOrTraitItemId)
                               -> (ast::Name, Namespace)
         {
             let name = tcx.impl_or_trait_item(item.def_id()).name();
@@ -58,10 +58,10 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
         let impl_items = self.tcx.impl_items.borrow();
 
         for item1 in &impl_items[&impl1] {
-            let (name, namespace) = name_and_namespace(&self.tcx, item1);
+            let (name, namespace) = name_and_namespace(self.tcx, item1);
 
             for item2 in &impl_items[&impl2] {
-                if (name, namespace) == name_and_namespace(&self.tcx, item2) {
+                if (name, namespace) == name_and_namespace(self.tcx, item2) {
                     let msg = format!("duplicate definitions with name `{}`", name);
                     let node_id = self.tcx.map.as_local_node_id(item1.def_id()).unwrap();
                     self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,

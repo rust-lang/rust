@@ -617,7 +617,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.fcx.tcx()
     }
 

@@ -207,7 +207,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.fcx.tcx()
     }
 

@@ -525,8 +525,8 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 /// they declare `trait SomeTrait : 'static`, for example, then
 /// `'static` would appear in the list. The hard work is done by
 /// `ty::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'tcx>(
-    tcx: &TyCtxt<'tcx>,
+pub fn object_region_bounds<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx>,
     principal: &ty::PolyTraitRef<'tcx>,
     others: ty::BuiltinBounds)
     -> Vec<ty::Region>

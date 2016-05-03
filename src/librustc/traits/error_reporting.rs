@@ -558,8 +558,8 @@ pub fn report_selection_error(&self,
 }
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-pub fn recursive_type_with_infinite_size_error(&self,
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+pub fn recursive_type_with_infinite_size_error(self,
                                                type_def_id: DefId)
                                                -> DiagnosticBuilder<'tcx>
 {
@@ -573,7 +573,7 @@ pub fn recursive_type_with_infinite_size_error(&self,
     err
 }
 
-pub fn report_object_safety_error(&self,
+pub fn report_object_safety_error(self,
                                   span: Span,
                                   trait_def_id: DefId,
                                   warning_node_id: Option<ast::NodeId>,
@@ -744,7 +744,7 @@ fn predicate_can_apply(&self, pred: ty::PolyTraitRef<'tcx>) -> bool {
 
     impl<'a, 'tcx> TypeFolder<'tcx> for ParamToVarFolder<'a, 'tcx>
     {
-        fn tcx(&self) -> &TyCtxt<'tcx> { self.infcx.tcx }
+        fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.infcx.tcx }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             if let ty::TyParam(..) = ty.sty {

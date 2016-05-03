@@ -89,12 +89,12 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn type_needs_drop<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     tcx.type_needs_drop_given_env(ty, &tcx.empty_parameter_environment())
 }
 
-pub fn get_drop_glue_type<'tcx>(tcx: &TyCtxt<'tcx>,
-                                t: Ty<'tcx>) -> Ty<'tcx> {
+pub fn get_drop_glue_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                    t: Ty<'tcx>) -> Ty<'tcx> {
     // Even if there is no dtor for t, there might be one deeper down and we
     // might need to pass in the vtable ptr.
     if !type_is_sized(tcx, t) {
@@ -110,11 +110,11 @@ pub fn get_drop_glue_type<'tcx>(tcx: &TyCtxt<'tcx>,
     // returned `tcx.types.i8` does not appear unsound. The impact on
     // code quality is unknown at this time.)
 
-    if !type_needs_drop(&tcx, t) {
+    if !type_needs_drop(tcx, t) {
         return tcx.types.i8;
     }
     match t.sty {
-        ty::TyBox(typ) if !type_needs_drop(&tcx, typ)
+        ty::TyBox(typ) if !type_needs_drop(tcx, typ)
                          && type_is_sized(tcx, typ) => {
             let infcx = InferCtxt::normalizing(tcx,
                                                &tcx.tables,

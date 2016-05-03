@@ -36,7 +36,7 @@ impl<'a, 'tcx> Lub<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Lub<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Lub" }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

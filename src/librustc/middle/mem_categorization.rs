@@ -302,7 +302,7 @@ impl MutabilityCategory {
         ret
     }
 
-    fn from_local(tcx: &TyCtxt, id: ast::NodeId) -> MutabilityCategory {
+    fn from_local(tcx: TyCtxt, id: ast::NodeId) -> MutabilityCategory {
         let ret = match tcx.map.get(id) {
             ast_map::NodeLocal(p) => match p.node {
                 PatKind::Ident(bind_mode, _, _) => {
@@ -363,7 +363,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         MemCategorizationContext { typer: typer }
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.typer.tcx
     }
 
@@ -1082,7 +1082,7 @@ impl<'t, 'a,'tcx> MemCategorizationContext<'t, 'a, 'tcx> {
         /// In a pattern like [a, b, ..c], normally `c` has slice type, but if you have [a, b,
         /// ..ref c], then the type of `ref c` will be `&&[]`, so to extract the slice details we
         /// have to recurse through rptrs.
-        fn vec_slice_info(tcx: &TyCtxt,
+        fn vec_slice_info(tcx: TyCtxt,
                           pat: &hir::Pat,
                           slice_ty: Ty)
                           -> (hir::Mutability, ty::Region) {
@@ -1463,7 +1463,7 @@ impl<'tcx> cmt_<'tcx> {
     }
 
 
-    pub fn descriptive_string(&self, tcx: &TyCtxt) -> String {
+    pub fn descriptive_string(&self, tcx: TyCtxt) -> String {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".to_string()

@@ -151,7 +151,7 @@ fn unify_float_variable(&self,
 }
 
 impl<'a, 'tcx> CombineFields<'a, 'tcx> {
-    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.infcx.tcx
     }
 
@@ -300,7 +300,7 @@ struct Generalizer<'cx, 'tcx:'cx> {
 }
 
 impl<'cx, 'tcx> ty::fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx> {
         self.infcx.tcx
     }
 
