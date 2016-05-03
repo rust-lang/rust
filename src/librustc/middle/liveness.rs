@@ -169,8 +169,8 @@ enum LiveNodeKind {
     ExitNode
 }
 
-fn live_node_kind_to_string(lnk: LiveNodeKind, cx: &TyCtxt) -> String {
-    let cm = cx.sess.codemap();
+fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: &TyCtxt) -> String {
+    let cm = tcx.sess.codemap();
     match lnk {
         FreeVarNode(s) => {
             format!("Free var node [{}]", cm.span_to_string(s))

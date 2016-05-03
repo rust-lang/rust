@@ -1262,42 +1262,42 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     }
 
     /// Construct a parameter environment given an item, impl item, or trait item
-    pub fn for_item(cx: &'a TyCtxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
-        match cx.map.find(id) {
+    pub fn for_item(tcx: &'a TyCtxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
+        match tcx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
                     hir::ImplItemKind::Type(_) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the impl
-                        let impl_id = cx.map.get_parent(id);
-                        let impl_def_id = cx.map.local_def_id(impl_id);
-                        let scheme = cx.lookup_item_type(impl_def_id);
-                        let predicates = cx.lookup_predicates(impl_def_id);
-                        cx.construct_parameter_environment(impl_item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let impl_id = tcx.map.get_parent(id);
+                        let impl_def_id = tcx.map.local_def_id(impl_id);
+                        let scheme = tcx.lookup_item_type(impl_def_id);
+                        let predicates = tcx.lookup_predicates(impl_def_id);
+                        tcx.construct_parameter_environment(impl_item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Const(_, _) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let scheme = cx.lookup_item_type(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(impl_item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let scheme = tcx.lookup_item_type(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(impl_item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ImplItemKind::Method(_, ref body) => {
-                        let method_def_id = cx.map.local_def_id(id);
-                        match cx.impl_or_trait_item(method_def_id) {
+                        let method_def_id = tcx.map.local_def_id(id);
+                        match tcx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
                                 let method_bounds = &method_ty.predicates;
-                                cx.construct_parameter_environment(
+                                tcx.construct_parameter_environment(
                                     impl_item.span,
                                     method_generics,
                                     method_bounds,
-                                    cx.region_maps.call_site_extent(id, body.id))
+                                    tcx.region_maps.call_site_extent(id, body.id))
                             }
                             _ => {
                                 bug!("ParameterEnvironment::for_item(): \
@@ -1312,41 +1312,41 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     hir::TypeTraitItem(..) => {
                         // associated types don't have their own entry (for some reason),
                         // so for now just grab environment for the trait
-                        let trait_id = cx.map.get_parent(id);
-                        let trait_def_id = cx.map.local_def_id(trait_id);
-                        let trait_def = cx.lookup_trait_def(trait_def_id);
-                        let predicates = cx.lookup_predicates(trait_def_id);
-                        cx.construct_parameter_environment(trait_item.span,
-                                                           &trait_def.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let trait_id = tcx.map.get_parent(id);
+                        let trait_def_id = tcx.map.local_def_id(trait_id);
+                        let trait_def = tcx.lookup_trait_def(trait_def_id);
+                        let predicates = tcx.lookup_predicates(trait_def_id);
+                        tcx.construct_parameter_environment(trait_item.span,
+                                                            &trait_def.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ConstTraitItem(..) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let scheme = cx.lookup_item_type(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(trait_item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let scheme = tcx.lookup_item_type(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(trait_item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::MethodTraitItem(_, ref body) => {
                         // Use call-site for extent (unless this is a
                         // trait method with no default; then fallback
                         // to the method id).
-                        let method_def_id = cx.map.local_def_id(id);
-                        match cx.impl_or_trait_item(method_def_id) {
+                        let method_def_id = tcx.map.local_def_id(id);
+                        match tcx.impl_or_trait_item(method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
                                 let method_bounds = &method_ty.predicates;
                                 let extent = if let Some(ref body) = *body {
                                     // default impl: use call_site extent as free_id_outlive bound.
-                                    cx.region_maps.call_site_extent(id, body.id)
+                                    tcx.region_maps.call_site_extent(id, body.id)
                                 } else {
                                     // no default impl: use item extent as free_id_outlive bound.
-                                    cx.region_maps.item_extent(id)
+                                    tcx.region_maps.item_extent(id)
                                 };
-                                cx.construct_parameter_environment(
+                                tcx.construct_parameter_environment(
                                     trait_item.span,
                                     method_generics,
                                     method_bounds,
@@ -1365,15 +1365,15 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                 match item.node {
                     hir::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
-                        let fn_def_id = cx.map.local_def_id(id);
-                        let fn_scheme = cx.lookup_item_type(fn_def_id);
-                        let fn_predicates = cx.lookup_predicates(fn_def_id);
+                        let fn_def_id = tcx.map.local_def_id(id);
+                        let fn_scheme = tcx.lookup_item_type(fn_def_id);
+                        let fn_predicates = tcx.lookup_predicates(fn_def_id);
 
-                        cx.construct_parameter_environment(item.span,
-                                                           &fn_scheme.generics,
-                                                           &fn_predicates,
-                                                           cx.region_maps.call_site_extent(id,
-                                                                                           body.id))
+                        tcx.construct_parameter_environment(
+                            item.span,
+                            &fn_scheme.generics,
+                            &fn_predicates,
+                            tcx.region_maps.call_site_extent(id, body.id))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1381,22 +1381,22 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     hir::ItemImpl(..) |
                     hir::ItemConst(..) |
                     hir::ItemStatic(..) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let scheme = cx.lookup_item_type(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(item.span,
-                                                           &scheme.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let scheme = tcx.lookup_item_type(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(item.span,
+                                                            &scheme.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     hir::ItemTrait(..) => {
-                        let def_id = cx.map.local_def_id(id);
-                        let trait_def = cx.lookup_trait_def(def_id);
-                        let predicates = cx.lookup_predicates(def_id);
-                        cx.construct_parameter_environment(item.span,
-                                                           &trait_def.generics,
-                                                           &predicates,
-                                                           cx.region_maps.item_extent(id))
+                        let def_id = tcx.map.local_def_id(id);
+                        let trait_def = tcx.lookup_trait_def(def_id);
+                        let predicates = tcx.lookup_predicates(def_id);
+                        tcx.construct_parameter_environment(item.span,
+                                                            &trait_def.generics,
+                                                            &predicates,
+                                                            tcx.region_maps.item_extent(id))
                     }
                     _ => {
                         span_bug!(item.span,
@@ -1408,21 +1408,21 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeExpr(..)) => {
                 // This is a convenience to allow closures to work.
-                ParameterEnvironment::for_item(cx, cx.map.get_parent(id))
+                ParameterEnvironment::for_item(tcx, tcx.map.get_parent(id))
             }
             Some(ast_map::NodeForeignItem(item)) => {
-                let def_id = cx.map.local_def_id(id);
-                let scheme = cx.lookup_item_type(def_id);
-                let predicates = cx.lookup_predicates(def_id);
-                cx.construct_parameter_environment(item.span,
-                                                   &scheme.generics,
-                                                   &predicates,
-                                                   ROOT_CODE_EXTENT)
+                let def_id = tcx.map.local_def_id(id);
+                let scheme = tcx.lookup_item_type(def_id);
+                let predicates = tcx.lookup_predicates(def_id);
+                tcx.construct_parameter_environment(item.span,
+                                                    &scheme.generics,
+                                                    &predicates,
+                                                    ROOT_CODE_EXTENT)
             }
             _ => {
                 bug!("ParameterEnvironment::from_item(): \
                       `{}` is not an item",
-                     cx.map.node_to_string(id))
+                     tcx.map.node_to_string(id))
             }
         }
     }
@@ -1996,19 +1996,19 @@ pub enum ClosureKind {
 }
 
 impl ClosureKind {
-    pub fn trait_did(&self, cx: &TyCtxt) -> DefId {
+    pub fn trait_did(&self, tcx: &TyCtxt) -> DefId {
         let result = match *self {
-            ClosureKind::Fn => cx.lang_items.require(FnTraitLangItem),
+            ClosureKind::Fn => tcx.lang_items.require(FnTraitLangItem),
             ClosureKind::FnMut => {
-                cx.lang_items.require(FnMutTraitLangItem)
+                tcx.lang_items.require(FnMutTraitLangItem)
             }
             ClosureKind::FnOnce => {
-                cx.lang_items.require(FnOnceTraitLangItem)
+                tcx.lang_items.require(FnOnceTraitLangItem)
             }
         };
         match result {
             Ok(trait_did) => trait_did,
-            Err(err) => cx.sess.fatal(&err[..]),
+            Err(err) => tcx.sess.fatal(&err[..]),
         }
     }
 
@@ -2092,7 +2092,7 @@ impl LvaluePreference {
 }
 
 /// Helper for looking things up in the various maps that are populated during
-/// typeck::collect (e.g., `cx.impl_or_trait_items`, `cx.tcache`, etc).  All of
+/// typeck::collect (e.g., `tcx.impl_or_trait_items`, `tcx.tcache`, etc).  All of
 /// these share the pattern that if the id is local, it should have been loaded
 /// into the map by the `typeck::collect` phase.  If the def-id is external,
 /// then we have to go consult the crate loading code (and cache the result for

@@ -62,12 +62,12 @@ pub fn type_is_sized<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_sized(&tcx.empty_parameter_environment(), DUMMY_SP)
 }
 
-pub fn type_is_fat_ptr<'tcx>(cx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+pub fn type_is_fat_ptr<'tcx>(tcx: &TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::TyRawPtr(ty::TypeAndMut{ty, ..}) |
         ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
         ty::TyBox(ty) => {
-            !type_is_sized(cx, ty)
+            !type_is_sized(tcx, ty)
         }
         _ => {
             false
