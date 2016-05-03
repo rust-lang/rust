@@ -1866,7 +1866,7 @@ impl<'a> fmt::Display for Initializer<'a> {
         let Initializer(s) = *self;
         if s.is_empty() { return Ok(()); }
         write!(f, "<code> = </code>")?;
-        write!(f, "<code>{}</code>", s)
+        write!(f, "<code>{}</code>", Escape(s))
     }
 }
 
@@ -2106,7 +2106,7 @@ fn assoc_const(w: &mut fmt::Formatter,
 
     write!(w, ": {}", ty)?;
     if let Some(default) = default {
-        write!(w, " = {}", default)?;
+        write!(w, " = {}", Escape(default))?;
     }
     Ok(())
 }
