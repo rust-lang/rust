@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::data::*;
+use super::external_data::*;
 
 pub trait Dump {
     fn crate_prelude(&mut self, CratePreludeData) {}
