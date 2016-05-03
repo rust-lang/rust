@@ -1009,7 +1009,7 @@ pub struct Resolver<'a, 'tcx: 'a> {
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    def_map: RefCell<DefMap>,
+    def_map: DefMap,
     freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
     export_map: ExportMap,
@@ -1133,7 +1133,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
-            def_map: RefCell::new(NodeMap()),
+            def_map: NodeMap(),
             freevars: NodeMap(),
             freevars_seen: NodeMap(),
             export_map: NodeMap(),
@@ -2001,7 +2001,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+        let def_map = RefCell::new(::std::mem::replace(&mut self.def_map, NodeMap()));
+        pat_bindings(&def_map, pat, |binding_mode, _id, sp, path1| {
             let name = path1.node;
             result.insert(name,
                           BindingInfo {
@@ -2009,6 +2010,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               binding_mode: binding_mode,
                           });
         });
+        self.def_map = def_map.into_inner();
         return result;
     }
 
@@ -2799,7 +2801,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
             // Look for a field with the same name in the current self_type.
-            match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
+            match self.def_map.get(&node_id).map(|d| d.full_def()) {
                 Some(Def::Enum(did)) |
                 Some(Def::TyAlias(did)) |
                 Some(Def::Struct(did)) |
@@ -3273,7 +3275,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
-        if let Some(prev_res) = self.def_map.borrow_mut().insert(node_id, resolution) {
+        if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
             let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
             span_bug!(span,
                       "path resolved multiple times ({:?} before, {:?} now)",
@@ -3314,7 +3316,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             Success(module) => {
                 let def = module.def.unwrap();
                 let path_resolution = PathResolution { base_def: def, depth: 0 };
-                self.def_map.borrow_mut().insert(id, path_resolution);
+                self.def_map.insert(id, path_resolution);
                 ty::Visibility::Restricted(self.ast_map.as_local_node_id(def.def_id()).unwrap())
             }
             Failed(Some((span, msg))) => {
@@ -3568,7 +3570,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     resolver.report_privacy_errors();
 
     CrateMap {
-        def_map: resolver.def_map,
+        def_map: RefCell::new(resolver.def_map),
         freevars: resolver.freevars,
         maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
         export_map: resolver.export_map,
