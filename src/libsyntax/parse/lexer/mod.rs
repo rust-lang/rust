@@ -931,11 +931,10 @@ impl<'a> StringReader<'a> {
             _ => {
                 if ascii_only && first_source_char > '\x7F' {
                     let last_pos = self.last_pos;
-                    self.err_span_char(start,
-                                       last_pos,
-                                       "byte constant must be ASCII. Use a \\xHH escape for a \
-                                        non-ASCII byte",
-                                       first_source_char);
+                    self.err_span_(start,
+                                   last_pos,
+                                   "byte constant must be ASCII. Use a \\xHH escape for a \
+                                    non-ASCII byte");
                     return false;
                 }
             }

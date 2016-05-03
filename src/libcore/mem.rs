@@ -117,6 +117,9 @@ pub fn forget<T>(t: T) {
 
 /// Returns the size of a type in bytes.
 ///
+/// More specifically, this is the offset in bytes between successive
+/// items of the same type, including alignment padding.
+///
 /// # Examples
 ///
 /// ```
