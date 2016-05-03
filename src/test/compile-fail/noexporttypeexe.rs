@@ -19,8 +19,7 @@ fn main() {
     // not convertible to a path.
   let x: isize = noexporttypelib::foo();
     //~^ ERROR mismatched types
-    //~| expected `isize`
-    //~| found `std::option::Option<isize>`
-    //~| expected isize
-    //~| found enum `std::option::Option`
+    //~| expected type `isize`
+    //~| found type `std::option::Option<isize>`
+    //~| expected isize, found enum `std::option::Option`
 }

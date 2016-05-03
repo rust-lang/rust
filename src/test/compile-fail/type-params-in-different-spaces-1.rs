@@ -13,10 +13,9 @@ use std::ops::Add;
 trait BrokenAdd: Copy + Add<Output=Self> {
     fn broken_add<T>(&self, rhs: T) -> Self {
         *self + rhs //~  ERROR mismatched types
-                    //~| expected `Self`
-                    //~| found `T`
-                    //~| expected Self
-                    //~| found type parameter
+                    //~| expected type `Self`
+                    //~| found type `T`
+                    //~| expected Self, found type parameter
     }
 }
 

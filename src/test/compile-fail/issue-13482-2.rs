@@ -17,10 +17,9 @@ fn main() {
     let y = match x {
         [] => None,
 //~^ ERROR mismatched types
-//~| expected `[_#1i; 2]`
-//~| found `[_#7t; 0]`
-//~| expected an array with a fixed size of 2 elements
-//~| found one with 0 elements
+//~| expected type `[_#1i; 2]`
+//~| found type `[_#7t; 0]`
+//~| expected an array with a fixed size of 2 elements, found one with 0 elements
         [a,_] => Some(a)
     };
 }

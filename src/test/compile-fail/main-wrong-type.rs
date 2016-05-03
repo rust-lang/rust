@@ -14,5 +14,5 @@ struct S {
 }
 
 fn main(foo: S) {
-//~^ ERROR: main function expects type
+//~^ ERROR: main function has wrong type
 }

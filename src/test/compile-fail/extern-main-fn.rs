@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern fn main() {} //~ ERROR: main function expects type
+extern fn main() {} //~ ERROR: main function has wrong type

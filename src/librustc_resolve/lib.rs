@@ -244,7 +244,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                            E0405,
                                            "trait `{}` is not in scope",
                                            name);
-            show_candidates(&mut err, span, &candidates);
+            show_candidates(&mut err, &candidates);
             err
         }
         ResolutionError::UndeclaredAssociatedType => {
@@ -312,7 +312,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                                            "{} `{}` is undefined or not in scope",
                                            kind,
                                            name);
-            show_candidates(&mut err, span, &candidates);
+            show_candidates(&mut err, &candidates);
             err
         }
         ResolutionError::DeclarationShadowsEnumVariantOrUnitLikeStruct(name) => {
@@ -420,7 +420,7 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
             match context {
                 UnresolvedNameContext::Other => { } // no help available
                 UnresolvedNameContext::PathIsMod(parent) => {
-                    err.fileline_help(span, &match parent.map(|parent| &parent.node) {
+                    err.help(&match parent.map(|parent| &parent.node) {
                         Some(&ExprField(_, ident)) => {
                             format!("To reference an item from the `{module}` module, \
                                      use `{module}::{ident}`",
@@ -1784,8 +1784,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 // If it's a typedef, give a note
                 if let Def::TyAlias(..) = path_res.base_def {
-                    err.fileline_note(trait_path.span,
-                                  "`type` aliases cannot be used for traits");
+                    err.note("`type` aliases cannot be used for traits");
 
                     let definition_site = {
                         let segments = &trait_path.segments;
@@ -2880,7 +2879,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let msg = format!("did you mean to write: `{} {{ /* fields */ }}`?",
                                           path_name);
                         if self.emit_errors {
-                            err.fileline_help(expr.span, &msg);
+                            err.help(&msg);
                         } else {
                             err.span_help(expr.span, &msg);
                         }
@@ -2922,7 +2921,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                           path_name);
 
                         if self.emit_errors {
-                            err.fileline_help(expr.span, &msg);
+                            err.help(&msg);
                         } else {
                             err.span_help(expr.span, &msg);
                         }
@@ -3420,7 +3419,6 @@ fn path_names_to_string(path: &Path, depth: usize) -> String {
 /// entities with that name in all crates. This method allows outputting the
 /// results of this search in a programmer-friendly way
 fn show_candidates(session: &mut DiagnosticBuilder,
-                   span: syntax::codemap::Span,
                    candidates: &SuggestedCandidates) {
 
     let paths = &candidates.candidates;
@@ -3440,26 +3438,23 @@ fn show_candidates(session: &mut DiagnosticBuilder,
         // behave differently based on how many candidates we have:
         if !paths.is_empty() {
             if paths.len() == 1 {
-                session.fileline_help(
-                    span,
+                session.help(
                     &format!("you can import it into scope: `use {};`.",
                         &path_strings[0]),
                 );
             } else {
-                session.fileline_help(span, "you can import several candidates \
+                session.help("you can import several candidates \
                     into scope (`use ...;`):");
                 let count = path_strings.len() as isize - MAX_CANDIDATES as isize + 1;
 
                 for (idx, path_string) in path_strings.iter().enumerate() {
                     if idx == MAX_CANDIDATES - 1 && count > 1 {
-                        session.fileline_help(
-                            span,
+                        session.help(
                             &format!("  and {} other candidates", count).to_string(),
                         );
                         break;
                     } else {
-                        session.fileline_help(
-                            span,
+                        session.help(
                             &format!("  `{}`", path_string).to_string(),
                         );
                     }
@@ -3468,8 +3463,7 @@ fn show_candidates(session: &mut DiagnosticBuilder,
         }
     } else {
         // nothing found:
-        session.fileline_help(
-            span,
+        session.help(
             &format!("no candidates by the name of `{}` found in your \
             project; maybe you misspelled the name or forgot to import \
             an external crate?", candidates.name.to_string()),

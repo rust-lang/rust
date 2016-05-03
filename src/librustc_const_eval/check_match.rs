@@ -255,7 +255,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
                                 ident.node, ty_path);
-                            fileline_help!(err, p.span,
+                            help!(err,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
                                 ty_path, ident.node);

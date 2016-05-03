@@ -92,7 +92,7 @@ use std::thread;
 use rustc::session::early_error;
 
 use syntax::{ast, errors, diagnostics};
-use syntax::codemap::{CodeMap, FileLoader, RealFileLoader};
+use syntax::codemap::{CodeMap, FileLoader, RealFileLoader, MultiSpan};
 use syntax::errors::emitter::Emitter;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
 use syntax::parse::{self, PResult, token};
@@ -136,7 +136,8 @@ pub fn run(args: Vec<String>) -> isize {
                     None => {
                         let mut emitter =
                             errors::emitter::BasicEmitter::stderr(errors::ColorConfig::Auto);
-                        emitter.emit(None, &abort_msg(err_count), None, errors::Level::Fatal);
+                        emitter.emit(&MultiSpan::new(), &abort_msg(err_count), None,
+                            errors::Level::Fatal);
                         exit_on_err();
                     }
                 }
@@ -379,7 +380,7 @@ fn check_cfg(sopts: &config::Options,
         match item.node {
             ast::MetaItemKind::List(ref pred, _) => {
                 saw_invalid_predicate = true;
-                emitter.emit(None,
+                emitter.emit(&MultiSpan::new(),
                              &format!("invalid predicate in --cfg command line argument: `{}`",
                                       pred),
                              None,
@@ -1028,19 +1029,19 @@ pub fn monitor<F: FnOnce() + Send + 'static>(f: F) {
             // a .span_bug or .bug call has already printed what
             // it wants to print.
             if !value.is::<errors::ExplicitBug>() {
-                emitter.emit(None, "unexpected panic", None, errors::Level::Bug);
+                emitter.emit(&MultiSpan::new(), "unexpected panic", None, errors::Level::Bug);
             }
 
             let xs = ["the compiler unexpectedly panicked. this is a bug.".to_string(),
                       format!("we would appreciate a bug report: {}", BUG_REPORT_URL)];
             for note in &xs {
-                emitter.emit(None, &note[..], None, errors::Level::Note)
+                emitter.emit(&MultiSpan::new(), &note[..], None, errors::Level::Note)
             }
             if match env::var_os("RUST_BACKTRACE") {
                 Some(val) => &val != "0",
                 None => false,
             } {
-                emitter.emit(None,
+                emitter.emit(&MultiSpan::new(),
                              "run with `RUST_BACKTRACE=1` for a backtrace",
                              None,
                              errors::Level::Note);

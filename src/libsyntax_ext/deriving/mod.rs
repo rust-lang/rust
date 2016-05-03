@@ -204,9 +204,9 @@ macro_rules! derive_traits {
                                         sp, feature_gate::EXPLAIN_DERIVE_UNDERSCORE,
                                     );
                                     if option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_none() {
-                                        w.fileline_help(
-                                            sp, &format!("add #![feature(custom_derive)] to \
-                                                          the crate attributes to enable")
+                                        w.help(
+                                            &format!("add #![feature(custom_derive)] to \
+                                                      the crate attributes to enable")
                                         );
                                     }
                                     w.emit();
