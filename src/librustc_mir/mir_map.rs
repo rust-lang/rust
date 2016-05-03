@@ -34,7 +34,7 @@ use rustc::hir::map::blocks::FnLikeNode;
 use syntax::ast;
 use syntax::codemap::Span;
 
-pub fn build_mir_for_crate<'tcx>(tcx: &TyCtxt<'tcx>) -> MirMap<'tcx> {
+pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>) -> MirMap<'tcx> {
     let mut map = MirMap {
         map: NodeMap(),
     };
@@ -52,7 +52,7 @@ pub fn build_mir_for_crate<'tcx>(tcx: &TyCtxt<'tcx>) -> MirMap<'tcx> {
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
 struct BuildMir<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     map: &'a mut MirMap<'tcx>,
 }
 
@@ -180,7 +180,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
         };
 
         let implicit_argument = if let FnKind::Closure(..) = fk {
-            Some((closure_self_ty(&self.tcx, id, body.id), None))
+            Some((closure_self_ty(self.tcx, id, body.id), None))
         } else {
             None
         };
@@ -202,10 +202,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
     }
 }
 
-fn closure_self_ty<'tcx>(tcx: &TyCtxt<'tcx>,
-                         closure_expr_id: ast::NodeId,
-                         body_id: ast::NodeId)
-                         -> Ty<'tcx> {
+fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                             closure_expr_id: ast::NodeId,
+                             body_id: ast::NodeId)
+                             -> Ty<'tcx> {
     let closure_ty = tcx.node_id_to_type(closure_expr_id);
 
     // We're just hard-coding the idea that the signature will be

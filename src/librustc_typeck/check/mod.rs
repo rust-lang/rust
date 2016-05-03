@@ -365,7 +365,7 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Inherited<'a, 'tcx> {
-    fn new(tcx: &'a TyCtxt<'tcx>,
+    fn new(tcx: TyCtxt<'a, 'tcx>,
            tables: &'a RefCell<ty::Tables<'tcx>>,
            param_env: ty::ParameterEnvironment<'a, 'tcx>)
            -> Inherited<'a, 'tcx> {
@@ -902,7 +902,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     check_bare_fn(ccx, &sig.decl, body, id, span, fty, param_env);
 }
 
-fn report_forbidden_specialization(tcx: &TyCtxt,
+fn report_forbidden_specialization(tcx: TyCtxt,
                                    impl_item: &hir::ImplItem,
                                    parent_impl: DefId)
 {
@@ -925,8 +925,8 @@ fn report_forbidden_specialization(tcx: &TyCtxt,
     err.emit();
 }
 
-fn check_specialization_validity<'tcx>(tcx: &TyCtxt<'tcx>, trait_def: &ty::TraitDef<'tcx>,
-                                       impl_id: DefId, impl_item: &hir::ImplItem)
+fn check_specialization_validity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, trait_def: &ty::TraitDef<'tcx>,
+                                           impl_id: DefId, impl_item: &hir::ImplItem)
 {
     let ancestors = trait_def.ancestors(impl_id);
 
@@ -1143,7 +1143,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 /// Checks whether a type can be represented in memory. In particular, it
 /// identifies types that contain themselves without indirection through a
 /// pointer, which would mean their size is unbounded.
-pub fn check_representable(tcx: &TyCtxt,
+pub fn check_representable(tcx: TyCtxt,
                            sp: Span,
                            item_id: ast::NodeId,
                            _designation: &str) -> bool {
@@ -1165,7 +1165,7 @@ pub fn check_representable(tcx: &TyCtxt,
     return true
 }
 
-pub fn check_simd(tcx: &TyCtxt, sp: Span, id: ast::NodeId) {
+pub fn check_simd(tcx: TyCtxt, sp: Span, id: ast::NodeId) {
     let t = tcx.node_id_to_type(id);
     match t.sty {
         ty::TyStruct(def, substs) => {
@@ -1253,7 +1253,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx(&self) -> &TyCtxt<'tcx> { self.infcx().tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.infcx().tcx }
 
     fn get_item_type_scheme(&self, _: Span, id: DefId)
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
@@ -1438,7 +1438,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn tcx(&self) -> &TyCtxt<'tcx> { self.infcx().tcx }
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.infcx().tcx }
 
     pub fn infcx(&self) -> &InferCtxt<'a,'tcx> {
         &self.inh.infcx
@@ -4688,7 +4688,7 @@ pub fn structurally_resolved_type(&self, sp: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
 }
 
 // Returns true if b contains a break that can exit from b
-pub fn may_break(tcx: &TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
+pub fn may_break(tcx: TyCtxt, id: ast::NodeId, b: &hir::Block) -> bool {
     // First: is there an unlabeled break immediately
     // inside the loop?
     (loop_query(&b, |e| {

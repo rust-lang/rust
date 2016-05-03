@@ -124,9 +124,7 @@ pub fn find_crate_name(sess: Option<&Session>,
 
 }
 
-pub fn build_link_meta(tcx: &TyCtxt,
-                       name: &str)
-                       -> LinkMeta {
+pub fn build_link_meta(tcx: TyCtxt, name: &str) -> LinkMeta {
     let r = LinkMeta {
         crate_name: name.to_owned(),
         crate_hash: tcx.calculate_krate_hash(),

@@ -239,7 +239,7 @@ use syntax::ptr::P;
 struct ConstantExpr<'a>(&'a hir::Expr);
 
 impl<'a> ConstantExpr<'a> {
-    fn eq(self, other: ConstantExpr<'a>, tcx: &TyCtxt) -> bool {
+    fn eq(self, other: ConstantExpr<'a>, tcx: TyCtxt) -> bool {
         match compare_lit_exprs(tcx, self.0, other.0) {
             Some(result) => result == Ordering::Equal,
             None => bug!("compare_list_exprs: type mismatch"),
@@ -259,8 +259,8 @@ enum Opt<'a, 'tcx> {
                               DebugLoc),
 }
 
-impl<'a, 'tcx> Opt<'a, 'tcx> {
-    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: &TyCtxt<'tcx>) -> bool {
+impl<'a, 'b, 'tcx> Opt<'a, 'tcx> {
+    fn eq(&self, other: &Opt<'a, 'tcx>, tcx: TyCtxt<'b, 'tcx>) -> bool {
         match (self, other) {
             (&ConstantValue(a, _), &ConstantValue(b, _)) => a.eq(b, tcx),
             (&ConstantRange(a1, a2, _), &ConstantRange(b1, b2, _)) => {
@@ -789,7 +789,7 @@ fn any_region_pat(m: &[Match], col: usize) -> bool {
     any_pat!(m, col, PatKind::Ref(..))
 }
 
-fn any_irrefutable_adt_pat(tcx: &TyCtxt, m: &[Match], col: usize) -> bool {
+fn any_irrefutable_adt_pat(tcx: TyCtxt, m: &[Match], col: usize) -> bool {
     m.iter().any(|br| {
         let pat = br.pats[col];
         match pat.node {

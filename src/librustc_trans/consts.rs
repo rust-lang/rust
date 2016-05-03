@@ -472,7 +472,7 @@ fn check_unary_expr_validity(cx: &CrateContext, e: &hir::Expr, t: Ty,
     Ok(())
 }
 
-pub fn to_const_int(value: ValueRef, t: Ty, tcx: &TyCtxt) -> Option<ConstInt> {
+pub fn to_const_int(value: ValueRef, t: Ty, tcx: TyCtxt) -> Option<ConstInt> {
     match t.sty {
         ty::TyInt(int_type) => const_to_opt_int(value).and_then(|input| match int_type {
             ast::IntTy::I8 => {

@@ -46,11 +46,11 @@ pub fn borrowck_mir<'b, 'a: 'b, 'tcx: 'a>(
     }
 
     let mut mbcx = MirBorrowckCtxt {
+        flow_state: DataflowState::new_move_analysis(mir, bcx.tcx),
         bcx: bcx,
         mir: mir,
         node_id: id,
         attributes: attributes,
-        flow_state: DataflowState::new_move_analysis(mir, bcx.tcx),
     };
 
     for bb in mir.all_basic_blocks() {

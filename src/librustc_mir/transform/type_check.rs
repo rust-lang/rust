@@ -114,7 +114,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.cx.infcx.tcx
     }
 
@@ -349,7 +349,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .map(|InferOk { obligations, .. }| assert!(obligations.is_empty()))
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.infcx.tcx
     }
 
@@ -576,7 +576,7 @@ impl TypeckMir {
 }
 
 impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass(&mut self, tcx: &TyCtxt<'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx>, src: MirSource, mir: &mut Mir<'tcx>) {
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.

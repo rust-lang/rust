@@ -114,7 +114,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
 /// identity fold, it should invoke `foo.fold_with(self)` to fold each
 /// sub-item.
 pub trait TypeFolder<'tcx> : Sized {
-    fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx>;
 
     fn fold_binder<T>(&mut self, t: &Binder<T>) -> Binder<T>
         where T : TypeFoldable<'tcx>
@@ -202,14 +202,14 @@ pub trait TypeVisitor<'tcx> : Sized {
 // Some sample folders
 
 pub struct BottomUpFolder<'a, 'tcx: 'a, F> where F: FnMut(Ty<'tcx>) -> Ty<'tcx> {
-    pub tcx: &'a TyCtxt<'tcx>,
+    pub tcx: TyCtxt<'a, 'tcx>,
     pub fldop: F,
 }
 
 impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
     F: FnMut(Ty<'tcx>) -> Ty<'tcx>,
 {
-    fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.tcx }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let t1 = ty.super_fold_with(self);
@@ -220,10 +220,10 @@ impl<'a, 'tcx, F> TypeFolder<'tcx> for BottomUpFolder<'a, 'tcx, F> where
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
 
-impl<'tcx> TyCtxt<'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     /// Collects the free and escaping regions in `value` into `region_set`. Returns
     /// whether any late-bound regions were skipped
-    pub fn collect_regions<T>(&self,
+    pub fn collect_regions<T>(self,
         value: &T,
         region_set: &mut FnvHashSet<ty::Region>)
         -> bool
@@ -238,7 +238,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Folds the escaping and free regions in `value` using `f`, and
     /// sets `skipped_regions` to true if any late-bound region was found
     /// and skipped.
-    pub fn fold_regions<T,F>(&self,
+    pub fn fold_regions<T,F>(self,
         value: &T,
         skipped_regions: &mut bool,
         mut f: F)
@@ -260,14 +260,14 @@ impl<'tcx> TyCtxt<'tcx> {
 /// visited by `fld_r`.
 
 pub struct RegionFolder<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     skipped_regions: &'a mut bool,
     current_depth: u32,
     fld_r: &'a mut (FnMut(ty::Region, u32) -> ty::Region + 'a),
 }
 
 impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
-    pub fn new<F>(tcx: &'a TyCtxt<'tcx>,
+    pub fn new<F>(tcx: TyCtxt<'a, 'tcx>,
                   skipped_regions: &'a mut bool,
                   fld_r: &'a mut F) -> RegionFolder<'a, 'tcx>
         where F : FnMut(ty::Region, u32) -> ty::Region
@@ -283,7 +283,7 @@ impl<'a, 'tcx> RegionFolder<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 {
-    fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_depth += 1;
@@ -315,14 +315,14 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionFolder<'a, 'tcx>
 // Replaces the escaping regions in a type.
 
 struct RegionReplacer<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     current_depth: u32,
     fld_r: &'a mut (FnMut(ty::BoundRegion) -> ty::Region + 'a),
     map: FnvHashMap<ty::BoundRegion, ty::Region>
 }
 
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn replace_late_bound_regions<T,F>(&self,
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
+    pub fn replace_late_bound_regions<T,F>(self,
         value: &Binder<T>,
         mut f: F)
         -> (T, FnvHashMap<ty::BoundRegion, ty::Region>)
@@ -337,7 +337,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
     /// `scope_id`.
-    pub fn liberate_late_bound_regions<T>(&self,
+    pub fn liberate_late_bound_regions<T>(self,
         all_outlive_scope: region::CodeExtent,
         value: &Binder<T>)
         -> T
@@ -350,7 +350,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
     /// becomes `for<'a,'b> Foo`.
-    pub fn flatten_late_bound_regions<T>(&self, bound2_value: &Binder<Binder<T>>)
+    pub fn flatten_late_bound_regions<T>(self, bound2_value: &Binder<Binder<T>>)
                                          -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
@@ -371,7 +371,7 @@ impl<'tcx> TyCtxt<'tcx> {
         Binder(value)
     }
 
-    pub fn no_late_bound_regions<T>(&self, value: &Binder<T>) -> Option<T>
+    pub fn no_late_bound_regions<T>(self, value: &Binder<T>) -> Option<T>
         where T : TypeFoldable<'tcx>
     {
         if value.0.has_escaping_regions() {
@@ -383,7 +383,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
     /// method lookup and a few other places where precise region relationships are not required.
-    pub fn erase_late_bound_regions<T>(&self, value: &Binder<T>) -> T
+    pub fn erase_late_bound_regions<T>(self, value: &Binder<T>) -> T
         where T : TypeFoldable<'tcx>
     {
         self.replace_late_bound_regions(value, |_| ty::ReStatic).0
@@ -397,7 +397,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
     /// structurally identical.  For example, `for<'a, 'b> fn(&'a isize, &'b isize)` and
     /// `for<'a, 'b> fn(&'b isize, &'a isize)` will become identical after anonymization.
-    pub fn anonymize_late_bound_regions<T>(&self, sig: &Binder<T>) -> Binder<T>
+    pub fn anonymize_late_bound_regions<T>(self, sig: &Binder<T>) -> Binder<T>
         where T : TypeFoldable<'tcx>,
     {
         let mut counter = 0;
@@ -409,7 +409,7 @@ impl<'tcx> TyCtxt<'tcx> {
 }
 
 impl<'a, 'tcx> RegionReplacer<'a, 'tcx> {
-    fn new<F>(tcx: &'a TyCtxt<'tcx>, fld_r: &'a mut F) -> RegionReplacer<'a, 'tcx>
+    fn new<F>(tcx: TyCtxt<'a, 'tcx>, fld_r: &'a mut F) -> RegionReplacer<'a, 'tcx>
         where F : FnMut(ty::BoundRegion) -> ty::Region
     {
         RegionReplacer {
@@ -423,7 +423,7 @@ impl<'a, 'tcx> RegionReplacer<'a, 'tcx> {
 
 impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
 {
-    fn tcx(&self) -> &TyCtxt<'tcx> { self.tcx }
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
         self.current_depth += 1;
@@ -463,11 +463,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for RegionReplacer<'a, 'tcx>
 ///////////////////////////////////////////////////////////////////////////
 // Region eraser
 
-impl<'tcx> TyCtxt<'tcx> {
+impl<'a, 'tcx> TyCtxt<'a, 'tcx> {
     /// Returns an equivalent value with all free regions removed (note
     /// that late-bound regions remain, because they are important for
     /// subtyping, but they are anonymized and normalized as well)..
-    pub fn erase_regions<T>(&self, value: &T) -> T
+    pub fn erase_regions<T>(self, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
         let value1 = value.fold_with(&mut RegionEraser(self));
@@ -475,10 +475,10 @@ impl<'tcx> TyCtxt<'tcx> {
                value, value1);
         return value1;
 
-        struct RegionEraser<'a, 'tcx: 'a>(&'a TyCtxt<'tcx>);
+        struct RegionEraser<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx>);
 
         impl<'a, 'tcx> TypeFolder<'tcx> for RegionEraser<'a, 'tcx> {
-            fn tcx(&self) -> &TyCtxt<'tcx> { self.0 }
+            fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx> { self.0 }
 
             fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
                 match self.tcx().normalized_cache.borrow().get(&ty).cloned() {
@@ -543,8 +543,8 @@ pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
     }
 }
 
-pub fn shift_regions<'tcx, T:TypeFoldable<'tcx>>(tcx: &TyCtxt<'tcx>,
-                                                 amount: u32, value: &T) -> T {
+pub fn shift_regions<'a, 'tcx, T:TypeFoldable<'tcx>>(tcx: TyCtxt<'a, 'tcx>,
+                                                     amount: u32, value: &T) -> T {
     debug!("shift_regions(value={:?}, amount={})",
            value, amount);
 

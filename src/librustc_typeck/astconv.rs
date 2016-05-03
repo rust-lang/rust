@@ -79,7 +79,7 @@ use rustc::hir;
 use rustc_back::slice;
 
 pub trait AstConv<'tcx> {
-    fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx>;
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx>;
 
     /// Identify the type scheme for an item with a type, like a type
     /// alias, fn, or struct. This allows you to figure out the set of
@@ -162,7 +162,7 @@ pub trait AstConv<'tcx> {
     fn set_tainted_by_errors(&self);
 }
 
-pub fn ast_region_to_region(tcx: &TyCtxt, lifetime: &hir::Lifetime)
+pub fn ast_region_to_region(tcx: TyCtxt, lifetime: &hir::Lifetime)
                             -> ty::Region {
     let r = match tcx.named_region_map.get(&lifetime.id) {
         None => {
@@ -1175,7 +1175,7 @@ fn make_object_type<'tcx>(this: &AstConv<'tcx>,
     tcx.mk_trait(object.principal, object.bounds)
 }
 
-fn report_ambiguous_associated_type(tcx: &TyCtxt,
+fn report_ambiguous_associated_type(tcx: TyCtxt,
                                     span: Span,
                                     type_str: &str,
                                     trait_str: &str,
@@ -2159,7 +2159,7 @@ pub struct PartitionedBounds<'a> {
 
 /// Divides a list of bounds from the AST into three groups: builtin bounds (Copy, Sized etc),
 /// general trait bounds, and region bounds.
-pub fn partition_bounds<'a>(tcx: &TyCtxt,
+pub fn partition_bounds<'a>(tcx: TyCtxt,
                             _span: Span,
                             ast_bounds: &'a [hir::TyParamBound])
                             -> PartitionedBounds<'a>
@@ -2208,7 +2208,7 @@ pub fn partition_bounds<'a>(tcx: &TyCtxt,
     }
 }
 
-fn check_type_argument_count(tcx: &TyCtxt, span: Span, supplied: usize,
+fn check_type_argument_count(tcx: TyCtxt, span: Span, supplied: usize,
                              required: usize, accepted: usize) {
     if supplied < required {
         let expected = if required < accepted {
@@ -2233,7 +2233,7 @@ fn check_type_argument_count(tcx: &TyCtxt, span: Span, supplied: usize,
     }
 }
 
-fn report_lifetime_number_error(tcx: &TyCtxt, span: Span, number: usize, expected: usize) {
+fn report_lifetime_number_error(tcx: TyCtxt, span: Span, number: usize, expected: usize) {
     span_err!(tcx.sess, span, E0107,
               "wrong number of lifetime parameters: expected {}, found {}",
               expected, number);
@@ -2249,11 +2249,9 @@ pub struct Bounds<'tcx> {
     pub projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
 }
 
-impl<'tcx> Bounds<'tcx> {
-    pub fn predicates(&self,
-        tcx: &TyCtxt<'tcx>,
-        param_ty: Ty<'tcx>)
-        -> Vec<ty::Predicate<'tcx>>
+impl<'a, 'tcx> Bounds<'tcx> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'tcx>, param_ty: Ty<'tcx>)
+                      -> Vec<ty::Predicate<'tcx>>
     {
         let mut vec = Vec::new();
 

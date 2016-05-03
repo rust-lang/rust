@@ -215,10 +215,10 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-pub fn get_vtable_methods<'tcx>(tcx: &TyCtxt<'tcx>,
-                                impl_id: DefId,
-                                substs: &'tcx subst::Substs<'tcx>)
-                                -> Vec<Option<ImplMethod<'tcx>>>
+pub fn get_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                    impl_id: DefId,
+                                    substs: &'tcx subst::Substs<'tcx>)
+                                    -> Vec<Option<ImplMethod<'tcx>>>
 {
     debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 
@@ -304,11 +304,11 @@ pub struct ImplMethod<'tcx> {
 }
 
 /// Locates the applicable definition of a method, given its name.
-pub fn get_impl_method<'tcx>(tcx: &TyCtxt<'tcx>,
-                             impl_def_id: DefId,
-                             substs: &'tcx Substs<'tcx>,
-                             name: Name)
-                             -> ImplMethod<'tcx>
+pub fn get_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                 impl_def_id: DefId,
+                                 substs: &'tcx Substs<'tcx>,
+                                 name: Name)
+                                 -> ImplMethod<'tcx>
 {
     assert!(!substs.types.needs_infer());
 

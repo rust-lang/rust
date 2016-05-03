@@ -30,12 +30,12 @@ pub enum LvalueTy<'tcx> {
                variant_index: usize },
 }
 
-impl<'tcx> LvalueTy<'tcx> {
+impl<'a, 'tcx> LvalueTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> LvalueTy<'tcx> {
         LvalueTy::Ty { ty: ty }
     }
 
-    pub fn to_ty(&self, tcx: &TyCtxt<'tcx>) -> Ty<'tcx> {
+    pub fn to_ty(&self, tcx: TyCtxt<'a, 'tcx>) -> Ty<'tcx> {
         match *self {
             LvalueTy::Ty { ty } =>
                 ty,
@@ -44,8 +44,7 @@ impl<'tcx> LvalueTy<'tcx> {
         }
     }
 
-    pub fn projection_ty(self,
-                         tcx: &TyCtxt<'tcx>,
+    pub fn projection_ty(self, tcx: TyCtxt<'a, 'tcx>,
                          elem: &LvalueElem<'tcx>)
                          -> LvalueTy<'tcx>
     {
@@ -101,9 +100,8 @@ impl<'tcx> TypeFoldable<'tcx> for LvalueTy<'tcx> {
     }
 }
 
-impl<'tcx> Mir<'tcx> {
-    pub fn operand_ty(&self,
-                      tcx: &TyCtxt<'tcx>,
+impl<'a, 'tcx> Mir<'tcx> {
+    pub fn operand_ty(&self, tcx: TyCtxt<'a, 'tcx>,
                       operand: &Operand<'tcx>)
                       -> Ty<'tcx>
     {
@@ -113,8 +111,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn binop_ty(&self,
-                    tcx: &TyCtxt<'tcx>,
+    pub fn binop_ty(&self, tcx: TyCtxt<'a, 'tcx>,
                     op: BinOp,
                     lhs_ty: Ty<'tcx>,
                     rhs_ty: Ty<'tcx>)
@@ -138,8 +135,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn lvalue_ty(&self,
-                     tcx: &TyCtxt<'tcx>,
+    pub fn lvalue_ty(&self, tcx: TyCtxt<'a, 'tcx>,
                      lvalue: &Lvalue<'tcx>)
                      -> LvalueTy<'tcx>
     {
@@ -159,8 +155,7 @@ impl<'tcx> Mir<'tcx> {
         }
     }
 
-    pub fn rvalue_ty(&self,
-                     tcx: &TyCtxt<'tcx>,
+    pub fn rvalue_ty(&self, tcx: TyCtxt<'a, 'tcx>,
                      rvalue: &Rvalue<'tcx>)
                      -> Option<Ty<'tcx>>
     {

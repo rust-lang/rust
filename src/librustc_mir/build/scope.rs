@@ -662,12 +662,12 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
-                             cfg: &mut CFG<'tcx>,
-                             unit_temp: &Lvalue<'tcx>,
-                             scope: &mut Scope<'tcx>,
-                             mut target: BasicBlock)
-                             -> BasicBlock
+fn build_diverge_scope<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                 cfg: &mut CFG<'tcx>,
+                                 unit_temp: &Lvalue<'tcx>,
+                                 scope: &mut Scope<'tcx>,
+                                 mut target: BasicBlock)
+                                 -> BasicBlock
 {
     // Build up the drops in **reverse** order. The end result will
     // look like:
@@ -721,11 +721,11 @@ fn build_diverge_scope<'tcx>(tcx: &TyCtxt<'tcx>,
     target
 }
 
-fn build_free<'tcx>(tcx: &TyCtxt<'tcx>,
-                    unit_temp: &Lvalue<'tcx>,
-                    data: &FreeData<'tcx>,
-                    target: BasicBlock)
-                    -> TerminatorKind<'tcx> {
+fn build_free<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                        unit_temp: &Lvalue<'tcx>,
+                        data: &FreeData<'tcx>,
+                        target: BasicBlock)
+                        -> TerminatorKind<'tcx> {
     let free_func = tcx.lang_items.require(lang_items::BoxFreeFnLangItem)
                        .unwrap_or_else(|e| tcx.sess.fatal(&e));
     let substs = tcx.mk_substs(Substs::new(

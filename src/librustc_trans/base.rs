@@ -1308,7 +1308,7 @@ impl<'v> Visitor<'v> for FindNestedReturn {
     }
 }
 
-fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
+fn build_cfg(tcx: TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
     let blk = match tcx.map.find(id) {
         Some(hir_map::NodeItem(i)) => {
             match i.node {
@@ -1364,7 +1364,7 @@ fn build_cfg(tcx: &TyCtxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>) {
 // part of a larger expression that may have already partially-filled the
 // return slot alloca. This can cause errors related to clean-up due to
 // the clobbering of the existing value in the return slot.
-fn has_nested_returns(tcx: &TyCtxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
+fn has_nested_returns(tcx: TyCtxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
     for index in cfg.graph.depth_traverse(cfg.entry) {
         let n = cfg.graph.node_data(index);
         match tcx.map.find(n.id()) {
@@ -2688,10 +2688,10 @@ pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
     }).collect()
 }
 
-pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
-                         mir_map: &MirMap<'tcx>,
-                         analysis: ty::CrateAnalysis)
-                         -> CrateTranslation {
+pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                             mir_map: &MirMap<'tcx>,
+                             analysis: ty::CrateAnalysis)
+                             -> CrateTranslation {
     let _task = tcx.dep_graph.in_task(DepNode::TransCrate);
 
     // Be careful with this krate: obviously it gives access to the
@@ -2714,7 +2714,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         tcx.sess.opts.debug_assertions
     };
 
-    let link_meta = link::build_link_meta(&tcx, name);
+    let link_meta = link::build_link_meta(tcx, name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              &mir_map,

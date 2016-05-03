@@ -83,7 +83,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         WritebackCx { fcx: fcx }
     }
 
-    fn tcx(&self) -> &'cx TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'tcx> {
         self.fcx.tcx()
     }
 
@@ -379,7 +379,7 @@ enum ResolveReason {
 }
 
 impl ResolveReason {
-    fn span(&self, tcx: &TyCtxt) -> Span {
+    fn span(&self, tcx: TyCtxt) -> Span {
         match *self {
             ResolvingExpr(s) => s,
             ResolvingLocal(s) => s,
@@ -409,7 +409,7 @@ impl ResolveReason {
 // unresolved types and so forth.
 
 struct Resolver<'cx, 'tcx: 'cx> {
-    tcx: &'cx TyCtxt<'tcx>,
+    tcx: TyCtxt<'cx, 'tcx>,
     infcx: &'cx infer::InferCtxt<'cx, 'tcx>,
     writeback_errors: &'cx Cell<bool>,
     reason: ResolveReason,
@@ -481,7 +481,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> TypeFolder<'tcx> for Resolver<'cx, 'tcx> {
-    fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx> {
         self.tcx
     }
 

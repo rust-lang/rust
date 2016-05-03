@@ -36,7 +36,7 @@ impl<'a, 'tcx> Glb<'a, 'tcx> {
 impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Glb<'a, 'tcx> {
     fn tag(&self) -> &'static str { "Glb" }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> { self.fields.tcx() }
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> { self.fields.tcx() }
 
     fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 

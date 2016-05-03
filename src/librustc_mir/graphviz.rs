@@ -10,13 +10,15 @@
 
 use dot;
 use rustc::mir::repr::*;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use std::fmt::Debug;
 use std::io::{self, Write};
 use syntax::ast::NodeId;
 
 /// Write a graphviz DOT graph of a list of MIRs.
-pub fn write_mir_graphviz<'a, 't, W, I>(tcx: &ty::TyCtxt<'t>, iter: I, w: &mut W) -> io::Result<()>
+pub fn write_mir_graphviz<'a, 'b, 'tcx, W, I>(tcx: TyCtxt<'b, 'tcx>,
+                                              iter: I, w: &mut W)
+                                              -> io::Result<()>
 where W: Write, I: Iterator<Item=(&'a NodeId, &'a Mir<'a>)> {
     for (&nodeid, mir) in iter {
         writeln!(w, "digraph Mir_{} {{", nodeid)?;
@@ -116,7 +118,7 @@ fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result
 /// Write the graphviz DOT label for the overall graph. This is essentially a block of text that
 /// will appear below the graph, showing the type of the `fn` this MIR represents and the types of
 /// all the variables and temporaries.
-fn write_graph_label<W: Write>(tcx: &ty::TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
+fn write_graph_label<W: Write>(tcx: TyCtxt, nid: NodeId, mir: &Mir, w: &mut W)
 -> io::Result<()> {
     write!(w, "    label=<fn {}(", dot::escape_html(&tcx.node_path_str(nid)))?;
 

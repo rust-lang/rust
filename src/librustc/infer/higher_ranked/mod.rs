@@ -329,10 +329,10 @@ fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
     }
 }
 
-fn fold_regions_in<'tcx, T, F>(tcx: &TyCtxt<'tcx>,
-                               unbound_value: &T,
-                               mut fldr: F)
-                               -> T
+fn fold_regions_in<'a, 'tcx, T, F>(tcx: TyCtxt<'a, 'tcx>,
+                                   unbound_value: &T,
+                                   mut fldr: F)
+                                   -> T
     where T: TypeFoldable<'tcx>,
           F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {

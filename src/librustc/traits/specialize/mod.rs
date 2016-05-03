@@ -108,7 +108,7 @@ pub fn translate_substs<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 /// Specialization is determined by the sets of types to which the impls apply;
 /// impl1 specializes impl2 if it applies to a subset of the types impl2 applies
 /// to.
-pub fn specializes(tcx: &TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
+pub fn specializes(tcx: TyCtxt, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
     if !tcx.sess.features.borrow().specialization &&

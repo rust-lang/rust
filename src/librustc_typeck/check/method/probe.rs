@@ -267,7 +267,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.private_candidate = None;
     }
 
-    fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.fcx.tcx()
     }
 

@@ -68,7 +68,7 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Name>)
     })
 }
 
-fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
+fn try_inline_def(cx: &DocContext, tcx: TyCtxt,
                   def: Def) -> Option<Vec<clean::Item>> {
     let mut ret = Vec::new();
     let did = def.def_id();
@@ -130,7 +130,7 @@ fn try_inline_def(cx: &DocContext, tcx: &TyCtxt,
     Some(ret)
 }
 
-pub fn load_attrs(cx: &DocContext, tcx: &TyCtxt,
+pub fn load_attrs(cx: &DocContext, tcx: TyCtxt,
                   did: DefId) -> Vec<clean::Attribute> {
     tcx.get_attrs(did).iter().map(|a| a.clean(cx)).collect()
 }
@@ -150,7 +150,7 @@ pub fn record_extern_fqn(cx: &DocContext, did: DefId, kind: clean::TypeKind) {
     }
 }
 
-pub fn build_external_trait(cx: &DocContext, tcx: &TyCtxt,
+pub fn build_external_trait(cx: &DocContext, tcx: TyCtxt,
                             did: DefId) -> clean::Trait {
     let def = tcx.lookup_trait_def(did);
     let trait_items = tcx.trait_items(did).clean(cx);
@@ -166,7 +166,7 @@ pub fn build_external_trait(cx: &DocContext, tcx: &TyCtxt,
     }
 }
 
-fn build_external_function(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Function {
+fn build_external_function(cx: &DocContext, tcx: TyCtxt, did: DefId) -> clean::Function {
     let t = tcx.lookup_item_type(did);
     let (decl, style, abi) = match t.ty.sty {
         ty::TyFnDef(_, _, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
@@ -189,7 +189,7 @@ fn build_external_function(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::
     }
 }
 
-fn build_struct(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Struct {
+fn build_struct(cx: &DocContext, tcx: TyCtxt, did: DefId) -> clean::Struct {
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     let variant = tcx.lookup_adt_def(did).struct_variant();
@@ -207,7 +207,7 @@ fn build_struct(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::Struct {
     }
 }
 
-fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
+fn build_type(cx: &DocContext, tcx: TyCtxt, did: DefId) -> clean::ItemEnum {
     let t = tcx.lookup_item_type(did);
     let predicates = tcx.lookup_predicates(did);
     match t.ty.sty {
@@ -228,7 +228,7 @@ fn build_type(cx: &DocContext, tcx: &TyCtxt, did: DefId) -> clean::ItemEnum {
 }
 
 pub fn build_impls(cx: &DocContext,
-                   tcx: &TyCtxt,
+                   tcx: TyCtxt,
                    did: DefId) -> Vec<clean::Item> {
     tcx.populate_inherent_implementations_for_type_if_necessary(did);
     let mut impls = Vec::new();
@@ -252,7 +252,7 @@ pub fn build_impls(cx: &DocContext,
             populate_impls(cx, tcx, item.def, &mut impls);
         }
 
-        fn populate_impls(cx: &DocContext, tcx: &TyCtxt,
+        fn populate_impls(cx: &DocContext, tcx: TyCtxt,
                           def: cstore::DefLike,
                           impls: &mut Vec<clean::Item>) {
             match def {
@@ -271,7 +271,7 @@ pub fn build_impls(cx: &DocContext,
 }
 
 pub fn build_impl(cx: &DocContext,
-                  tcx: &TyCtxt,
+                  tcx: TyCtxt,
                   did: DefId,
                   ret: &mut Vec<clean::Item>) {
     if !cx.renderinfo.borrow_mut().inlined.insert(did) {
@@ -441,7 +441,7 @@ pub fn build_impl(cx: &DocContext,
     });
 }
 
-fn build_module(cx: &DocContext, tcx: &TyCtxt,
+fn build_module(cx: &DocContext, tcx: TyCtxt,
                 did: DefId) -> clean::Module {
     let mut items = Vec::new();
     fill_in(cx, tcx, did, &mut items);
@@ -450,7 +450,7 @@ fn build_module(cx: &DocContext, tcx: &TyCtxt,
         is_crate: false,
     };
 
-    fn fill_in(cx: &DocContext, tcx: &TyCtxt, did: DefId,
+    fn fill_in(cx: &DocContext, tcx: TyCtxt, did: DefId,
                items: &mut Vec<clean::Item>) {
         // If we're reexporting a reexport it may actually reexport something in
         // two namespaces, so the target may be listed twice. Make sure we only
@@ -476,7 +476,7 @@ fn build_module(cx: &DocContext, tcx: &TyCtxt,
     }
 }
 
-fn build_const(cx: &DocContext, tcx: &TyCtxt,
+fn build_const(cx: &DocContext, tcx: TyCtxt,
                did: DefId) -> clean::Constant {
     let (expr, ty) = lookup_const_by_id(tcx, did, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
@@ -491,7 +491,7 @@ fn build_const(cx: &DocContext, tcx: &TyCtxt,
     }
 }
 
-fn build_static(cx: &DocContext, tcx: &TyCtxt,
+fn build_static(cx: &DocContext, tcx: TyCtxt,
                 did: DefId,
                 mutable: bool) -> clean::Static {
     clean::Static {

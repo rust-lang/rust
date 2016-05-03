@@ -68,12 +68,12 @@ pub enum Ns {
     Value
 }
 
-fn number_of_supplied_defaults<'tcx, GG>(tcx: &ty::TyCtxt<'tcx>,
-                                         substs: &subst::Substs,
-                                         space: subst::ParamSpace,
-                                         get_generics: GG)
-                                         -> usize
-    where GG: FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
+fn number_of_supplied_defaults<'a, 'tcx, GG>(tcx: TyCtxt<'a, 'tcx>,
+                                             substs: &subst::Substs,
+                                             space: subst::ParamSpace,
+                                             get_generics: GG)
+                                             -> usize
+    where GG: FnOnce(TyCtxt<'a, 'tcx>) -> ty::Generics<'tcx>
 {
     let generics = get_generics(tcx);
 
@@ -114,7 +114,7 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
                          projections: &[ty::ProjectionPredicate],
                          get_generics: GG)
                          -> fmt::Result
-    where GG: for<'tcx> FnOnce(&TyCtxt<'tcx>) -> ty::Generics<'tcx>
+    where GG: for<'a, 'tcx> FnOnce(TyCtxt<'a, 'tcx>) -> ty::Generics<'tcx>
 {
     if let (Ns::Value, Some(self_ty)) = (ns, substs.self_ty()) {
         write!(f, "<{} as ", self_ty)?;
@@ -230,10 +230,10 @@ pub fn parameterized<GG>(f: &mut fmt::Formatter,
     Ok(())
 }
 
-fn in_binder<'tcx, T, U>(f: &mut fmt::Formatter,
-                         tcx: &TyCtxt<'tcx>,
-                         original: &ty::Binder<T>,
-                         lifted: Option<ty::Binder<U>>) -> fmt::Result
+fn in_binder<'a, 'tcx, T, U>(f: &mut fmt::Formatter,
+                             tcx: TyCtxt<'a, 'tcx>,
+                             original: &ty::Binder<T>,
+                             lifted: Option<ty::Binder<U>>) -> fmt::Result
     where T: fmt::Display, U: fmt::Display + TypeFoldable<'tcx>
 {
     // Replace any anonymous late-bound regions with named

@@ -23,13 +23,13 @@ use rustc::hir::intravisit;
 use syntax::ast;
 use syntax::codemap::Span;
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate(tcx: TyCtxt) {
     let mut rvcx = RvalueContext { tcx: tcx };
     tcx.visit_all_items_in_krate(DepNode::RvalueCheck, &mut rvcx);
 }
 
 struct RvalueContext<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
 }
 
 impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
@@ -54,7 +54,7 @@ impl<'a, 'tcx, 'v> intravisit::Visitor<'v> for RvalueContext<'a, 'tcx> {
 }
 
 struct RvalueContextDelegate<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     param_env: &'a ty::ParameterEnvironment<'a,'tcx>,
 }
 

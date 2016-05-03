@@ -58,7 +58,7 @@ pub type CFGNode = graph::Node<CFGNodeData>;
 pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
-    pub fn new(tcx: &TyCtxt,
+    pub fn new(tcx: TyCtxt,
                blk: &hir::Block) -> CFG {
         construct::construct(tcx, blk)
     }

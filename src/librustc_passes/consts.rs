@@ -68,7 +68,7 @@ enum Mode {
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     mode: Mode,
     qualif: ConstQualif,
     rvalue_borrows: NodeMap<hir::Mutability>
@@ -663,7 +663,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
     }
 }
 
-pub fn check_crate(tcx: &TyCtxt) {
+pub fn check_crate(tcx: TyCtxt) {
     tcx.visit_all_items_in_krate(DepNode::CheckConst, &mut CheckCrateVisitor {
         tcx: tcx,
         mode: Mode::Var,

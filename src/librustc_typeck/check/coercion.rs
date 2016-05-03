@@ -107,7 +107,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'f, 'tcx> {
         self.fcx.tcx()
     }
 

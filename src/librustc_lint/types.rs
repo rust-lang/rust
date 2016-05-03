@@ -294,7 +294,7 @@ impl LateLintPass for TypeLimits {
             }
         }
 
-        fn check_limits(tcx: &TyCtxt, binop: hir::BinOp,
+        fn check_limits(tcx: TyCtxt, binop: hir::BinOp,
                         l: &hir::Expr, r: &hir::Expr) -> bool {
             let (lit, expr, swap) = match (&l.node, &r.node) {
                 (&hir::ExprLit(_), _) => (l, r, true),
@@ -375,10 +375,10 @@ enum FfiResult {
 /// to function pointers and references, but could be
 /// expanded to cover NonZero raw pointers and newtypes.
 /// FIXME: This duplicates code in trans.
-fn is_repr_nullable_ptr<'tcx>(tcx: &TyCtxt<'tcx>,
-                              def: ty::AdtDef<'tcx>,
-                              substs: &Substs<'tcx>)
-                              -> bool {
+fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>,
+                                  def: ty::AdtDef<'tcx>,
+                                  substs: &Substs<'tcx>)
+                                  -> bool {
     if def.variants.len() == 2 {
         let data_idx;
 
@@ -409,7 +409,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                           ty: Ty<'tcx>)
                           -> FfiResult {
         use self::FfiResult::*;
-        let cx = &self.cx.tcx;
+        let cx = self.cx.tcx;
 
         // Protect against infinite recursion, for example
         // `struct S(*mut S);`.

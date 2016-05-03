@@ -40,7 +40,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         }
     }
 
-    fn tcx(&self) -> &TyCtxt<'tcx> {
+    fn tcx(&self) -> TyCtxt<'ccx, 'tcx> {
         self.ccx.tcx
     }
 
@@ -511,7 +511,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 }
 
-fn reject_shadowing_type_parameters(tcx: &TyCtxt, span: Span, generics: &ty::Generics) {
+fn reject_shadowing_type_parameters(tcx: TyCtxt, span: Span, generics: &ty::Generics) {
     let impl_params = generics.types.get_slice(subst::TypeSpace).iter()
         .map(|tp| tp.name).collect::<HashSet<_>>();
 
@@ -615,7 +615,7 @@ fn error_392<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, span: Span, param_name: ast::N
                      "parameter `{}` is never used", param_name)
 }
 
-fn error_194(tcx: &TyCtxt, span: Span, name: ast::Name) {
+fn error_194(tcx: TyCtxt, span: Span, name: ast::Name) {
     span_err!(tcx.sess, span, E0194,
               "type parameter `{}` shadows another type parameter of the same name",
               name);

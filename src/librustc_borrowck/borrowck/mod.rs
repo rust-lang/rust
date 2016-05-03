@@ -100,7 +100,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'tcx>(tcx: &TyCtxt<'tcx>, mir_map: &MirMap<'tcx>) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx>, mir_map: &MirMap<'tcx>) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         mir_map: Some(mir_map),
@@ -244,7 +244,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// Accessor for introspective clients inspecting `AnalysisData` and
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     mir_map: Option<&'a MirMap<'tcx>>,
     fn_parts: FnParts<'a>,
     cfg: &cfg::CFG)
@@ -278,7 +278,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 // Type definitions
 
 pub struct BorrowckCtxt<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
 
     // Hacky. As we visit various fns, we have to load up the
     // free-region map for each one. This map is computed by during
@@ -412,7 +412,7 @@ pub enum LoanPathElem {
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,
-                        tcx: &TyCtxt) -> ast::NodeId {
+                        tcx: TyCtxt) -> ast::NodeId {
     match tcx.map.get(closure_id) {
         hir_map::NodeExpr(expr) => match expr.node {
             hir::ExprClosure(_, _, ref block, _) => {
@@ -426,8 +426,8 @@ pub fn closure_to_block(closure_id: ast::NodeId,
     }
 }
 
-impl<'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, tcx: &TyCtxt<'tcx>) -> region::CodeExtent {
+impl<'a, 'tcx> LoanPath<'tcx> {
+    pub fn kill_scope(&self, tcx: TyCtxt<'a, 'tcx>) -> region::CodeExtent {
         match self.kind {
             LpVar(local_id) => tcx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
@@ -1109,7 +1109,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 }
 
-fn statement_scope_span(tcx: &TyCtxt, region: ty::Region) -> Option<Span> {
+fn statement_scope_span(tcx: TyCtxt, region: ty::Region) -> Option<Span> {
     match region {
         ty::ReScope(scope) => {
             match tcx.map.find(scope.node_id(&tcx.region_maps)) {

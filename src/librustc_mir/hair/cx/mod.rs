@@ -30,7 +30,7 @@ use rustc_const_math::{ConstInt, ConstUsize};
 
 #[derive(Copy, Clone)]
 pub struct Cx<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'tcx>,
+    tcx: TyCtxt<'a, 'tcx>,
     infcx: &'a InferCtxt<'a, 'tcx>,
     constness: hir::Constness
 }
@@ -144,7 +144,7 @@ impl<'a,'tcx:'a> Cx<'a, 'tcx> {
         self.tcx.type_needs_drop_given_env(ty, &self.infcx.parameter_environment)
     }
 
-    pub fn tcx(&self) -> &'a TyCtxt<'tcx> {
+    pub fn tcx(&self) -> TyCtxt<'a, 'tcx> {
         self.tcx
     }
 }
