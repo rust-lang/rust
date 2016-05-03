@@ -14,7 +14,7 @@ fn main() {
     let x = 0;
     f(&x);
     //~^ ERROR mismatched types
-    //~| expected `&mut i32`
-    //~| found `&_`
+    //~| expected type `&mut i32`
+    //~| found type `&_`
     //~| values differ in mutability
 }

@@ -14,10 +14,9 @@ fn main() {
     match () {
         Slice { data: data, len: len } => (),
         //~^ ERROR mismatched types
-        //~| expected `()`
-        //~| found `std::raw::Slice<_>`
-        //~| expected ()
-        //~| found struct `std::raw::Slice`
+        //~| expected type `()`
+        //~| found type `std::raw::Slice<_>`
+        //~| expected (), found struct `std::raw::Slice`
         _ => unreachable!()
     }
 }

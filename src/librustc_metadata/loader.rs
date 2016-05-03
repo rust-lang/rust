@@ -346,39 +346,33 @@ impl<'a> Context<'a> {
         if !self.rejected_via_triple.is_empty() {
             let mismatches = self.rejected_via_triple.iter();
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
-                err.fileline_note(self.span,
-                    &format!("crate `{}`, path #{}, triple {}: {}",
-                            self.ident, i+1, got, path.display()));
+                err.note(&format!("crate `{}`, path #{}, triple {}: {}",
+                                  self.ident, i+1, got, path.display()));
             }
         }
         if !self.rejected_via_hash.is_empty() {
-            err.span_note(self.span, "perhaps this crate needs \
-                                            to be recompiled?");
+            err.note("perhaps this crate needs to be recompiled?");
             let mismatches = self.rejected_via_hash.iter();
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
-                err.fileline_note(self.span,
-                    &format!("crate `{}` path #{}: {}",
-                            self.ident, i+1, path.display()));
+                err.note(&format!("crate `{}` path #{}: {}",
+                                  self.ident, i+1, path.display()));
             }
             match self.root {
                 &None => {}
                 &Some(ref r) => {
                     for (i, path) in r.paths().iter().enumerate() {
-                        err.fileline_note(self.span,
-                            &format!("crate `{}` path #{}: {}",
-                                    r.ident, i+1, path.display()));
+                        err.note(&format!("crate `{}` path #{}: {}",
+                                          r.ident, i+1, path.display()));
                     }
                 }
             }
         }
         if !self.rejected_via_kind.is_empty() {
-            err.fileline_help(self.span, "please recompile this crate using \
-                                          --crate-type lib");
+            err.help("please recompile this crate using --crate-type lib");
             let mismatches = self.rejected_via_kind.iter();
             for (i, &CrateMismatch { ref path, .. }) in mismatches.enumerate() {
-                err.fileline_note(self.span,
-                                  &format!("crate `{}` path #{}: {}",
-                                           self.ident, i+1, path.display()));
+                err.note(&format!("crate `{}` path #{}: {}",
+                                  self.ident, i+1, path.display()));
             }
         }
 

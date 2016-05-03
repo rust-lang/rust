@@ -10,7 +10,7 @@
 
 fn main() {
     static foo: Fn() -> u32 = || -> u32 {
-        //~^ ERROR: mismatched types:
+        //~^ ERROR: mismatched types
         0
     };
 }

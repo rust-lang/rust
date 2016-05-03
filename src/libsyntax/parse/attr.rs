@@ -69,9 +69,8 @@ impl<'a> Parser<'a> {
                         self.diagnostic()
                             .struct_span_err(span,
                                              "an inner attribute is not permitted in this context")
-                            .fileline_help(span,
-                                           "place inner attribute at the top of the module or \
-                                            block")
+                            .help("place inner attribute at the top of the module or \
+                                   block")
                             .emit()
                     }
                     ast::AttrStyle::Inner

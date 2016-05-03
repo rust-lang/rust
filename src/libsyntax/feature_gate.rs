@@ -770,9 +770,9 @@ pub fn emit_feature_err(diag: &Handler, feature: &str, span: Span, issue: GateIs
         err.emit();
         return;
     }
-    err.fileline_help(span, &format!("add #![feature({})] to the \
-                                      crate attributes to enable",
-                                     feature));
+    err.help(&format!("add #![feature({})] to the \
+                       crate attributes to enable",
+                      feature));
     err.emit();
 }
 

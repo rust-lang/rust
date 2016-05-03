@@ -167,8 +167,7 @@ fn note_move_destination(err: &mut DiagnosticBuilder,
         err.span_note(
             move_to_span,
             "attempting to move value to here");
-        err.fileline_help(
-            move_to_span,
+        err.help(
             &format!("to prevent the move, \
                       use `ref {0}` or `ref mut {0}` to capture value by \
                       reference",

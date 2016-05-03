@@ -40,20 +40,17 @@ fn main() {
     // n > m
     let &&x = &1isize as &T;
     //~^ ERROR mismatched types
-    //~| expected `T`
-    //~| found `&_`
-    //~| expected trait T
-    //~| found &-ptr
+    //~| expected type `T`
+    //~| found type `&_`
+    //~| expected trait T, found &-ptr
     let &&&x = &(&1isize as &T);
     //~^ ERROR mismatched types
-    //~| expected `T`
-    //~| found `&_`
-    //~| expected trait T
-    //~| found &-ptr
+    //~| expected type `T`
+    //~| found type `&_`
+    //~| expected trait T, found &-ptr
     let box box x = box 1isize as Box<T>;
     //~^ ERROR mismatched types
-    //~| expected `T`
-    //~| found `Box<_>`
-    //~| expected trait T
-    //~| found box
+    //~| expected type `T`
+    //~| found type `Box<_>`
+    //~| expected trait T, found box
 }

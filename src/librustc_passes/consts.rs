@@ -198,9 +198,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                 let mut err = self.tcx.sess.struct_span_err(
                     expr.span,
                     "const fns are an unstable feature");
-                fileline_help!(
+                help!(
                     &mut err,
-                    expr.span,
                     "in Nightly builds, add `#![feature(const_fn)]` to the crate \
                      attributes to enable");
                 err.emit();
