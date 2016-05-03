@@ -110,6 +110,7 @@ pub use intrinsics::transmute;
 ///     }
 /// }
 /// ```
+#[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
     unsafe { intrinsics::forget(t) }
