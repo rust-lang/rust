@@ -33,7 +33,7 @@ pub fn rewrite_path(context: &RewriteContext,
                     -> Option<String> {
     let skip_count = qself.map_or(0, |x| x.position);
 
-    let mut result = if path.global {
+    let mut result = if path.global && qself.is_none() {
         "::".to_owned()
     } else {
         String::new()
@@ -48,6 +48,9 @@ pub fn rewrite_path(context: &RewriteContext,
 
         if skip_count > 0 {
             result.push_str(" as ");
+            if path.global {
+                result.push_str("::");
+            }
 
             let extra_offset = extra_offset(&result, offset);
             // 3 = ">::".len()
