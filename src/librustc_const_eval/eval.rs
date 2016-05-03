@@ -377,13 +377,6 @@ pub enum ErrKind {
     NotOn(ConstVal),
     CallOn(ConstVal),
 
-    NegateWithOverflow(i64),
-    AddiWithOverflow(i64, i64),
-    SubiWithOverflow(i64, i64),
-    MuliWithOverflow(i64, i64),
-    AdduWithOverflow(u64, u64),
-    SubuWithOverflow(u64, u64),
-    MuluWithOverflow(u64, u64),
     DivideByZero,
     DivideWithOverflow,
     ModuloByZero,
@@ -415,6 +408,7 @@ pub enum ErrKind {
     TypeMismatch(String, ConstInt),
     BadType(ConstVal),
     ErroneousReferencedConstant(Box<ConstEvalErr>),
+    CharCast(ConstInt),
 }
 
 impl From<ConstMathErr> for ErrKind {
@@ -439,13 +433,6 @@ impl ConstEvalErr {
             NotOn(ref const_val) => format!("not on {}", const_val.description()).into_cow(),
             CallOn(ref const_val) => format!("call on {}", const_val.description()).into_cow(),
 
-            NegateWithOverflow(..) => "attempted to negate with overflow".into_cow(),
-            AddiWithOverflow(..) => "attempted to add with overflow".into_cow(),
-            SubiWithOverflow(..) => "attempted to sub with overflow".into_cow(),
-            MuliWithOverflow(..) => "attempted to mul with overflow".into_cow(),
-            AdduWithOverflow(..) => "attempted to add with overflow".into_cow(),
-            SubuWithOverflow(..) => "attempted to sub with overflow".into_cow(),
-            MuluWithOverflow(..) => "attempted to mul with overflow".into_cow(),
             DivideByZero         => "attempted to divide by zero".into_cow(),
             DivideWithOverflow   => "attempted to divide with overflow".into_cow(),
             ModuloByZero         => "attempted remainder with a divisor of zero".into_cow(),
@@ -482,6 +469,9 @@ impl ConstEvalErr {
             },
             BadType(ref i) => format!("value of wrong type: {:?}", i).into_cow(),
             ErroneousReferencedConstant(_) => "could not evaluate referenced constant".into_cow(),
+            CharCast(ref got) => {
+                format!("only `u8` can be cast as `char`, not `{}`", got.description()).into_cow()
+            },
         }
     }
 }
@@ -824,7 +814,10 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
           debug!("const call({:?})", call_args);
           eval_const_expr_partial(tcx, &result, ty_hint, Some(&call_args))?
       },
-      hir::ExprLit(ref lit) => lit_to_const(&lit.node, tcx, ety, lit.span)?,
+      hir::ExprLit(ref lit) => match lit_to_const(&lit.node, tcx, ety, lit.span) {
+          Ok(val) => val,
+          Err(err) => signal!(e, err),
+      },
       hir::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &expr, ty_hint, fn_args)?,
@@ -930,7 +923,10 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &TyCtxt<'tcx>,
     };
 
     match (ety.map(|t| &t.sty), result) {
-        (Some(ref ty_hint), Integral(i)) => Ok(Integral(infer(i, tcx, ty_hint, e.span)?)),
+        (Some(ref ty_hint), Integral(i)) => match infer(i, tcx, ty_hint) {
+            Ok(inferred) => Ok(Integral(inferred)),
+            Err(err) => signal!(e, err),
+        },
         (_, result) => Ok(result),
     }
 }
@@ -939,14 +935,8 @@ fn infer<'tcx>(
     i: ConstInt,
     tcx: &TyCtxt<'tcx>,
     ty_hint: &ty::TypeVariants<'tcx>,
-    span: Span
-) -> Result<ConstInt, ConstEvalErr> {
+) -> Result<ConstInt, ErrKind> {
     use syntax::ast::*;
-
-    let err = |e| ConstEvalErr {
-        span: span,
-        kind: e,
-    };
 
     match (ty_hint, i) {
         (&ty::TyInt(IntTy::I8), result @ I8(_)) => Ok(result),
@@ -993,17 +983,17 @@ fn infer<'tcx>(
                 Err(_) => Ok(Usize(ConstUsize::Us32(i as u32))),
             }
         },
-        (&ty::TyUint(_), InferSigned(_)) => Err(err(IntermediateUnsignedNegative)),
+        (&ty::TyUint(_), InferSigned(_)) => Err(IntermediateUnsignedNegative),
 
-        (&ty::TyInt(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
-        (&ty::TyUint(ity), i) => Err(err(TypeMismatch(ity.to_string(), i))),
+        (&ty::TyInt(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
+        (&ty::TyUint(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
 
         (&ty::TyEnum(ref adt, _), i) => {
             let hints = tcx.lookup_repr_hints(adt.did);
             let int_ty = tcx.enum_repr_type(hints.iter().next());
-            infer(i, tcx, &int_ty.to_ty(tcx).sty, span)
+            infer(i, tcx, &int_ty.to_ty(tcx).sty)
         },
-        (_, i) => Err(err(BadType(ConstVal::Integral(i)))),
+        (_, i) => Err(BadType(ConstVal::Integral(i))),
     }
 }
 
@@ -1089,23 +1079,22 @@ fn cast_const_int<'tcx>(tcx: &TyCtxt<'tcx>, val: ConstInt, ty: ty::Ty) -> CastRe
                 Err(_) => Ok(Integral(Usize(ConstUsize::Us32(v as u32)))),
             }
         },
-        ty::TyFloat(ast::FloatTy::F64) if val.is_negative() => {
-            // FIXME: this could probably be prettier
-            // there's no easy way to turn an `Infer` into a f64
-            let val = (-val).map_err(Math)?;
-            let val = val.to_u64().unwrap() as f64;
-            let val = -val;
-            Ok(Float(val))
+        ty::TyFloat(ast::FloatTy::F64) => match val.erase_type() {
+            Infer(u) => Ok(Float(u as f64)),
+            InferSigned(i) => Ok(Float(i as f64)),
+            _ => bug!("ConstInt::erase_type returned something other than Infer/InferSigned"),
         },
-        ty::TyFloat(ast::FloatTy::F64) => Ok(Float(val.to_u64().unwrap() as f64)),
-        ty::TyFloat(ast::FloatTy::F32) if val.is_negative() => {
-            let val = (-val).map_err(Math)?;
-            let val = val.to_u64().unwrap() as f32;
-            let val = -val;
-            Ok(Float(val as f64))
+        ty::TyFloat(ast::FloatTy::F32) => match val.erase_type() {
+            Infer(u) => Ok(Float(u as f32 as f64)),
+            InferSigned(i) => Ok(Float(i as f32 as f64)),
+            _ => bug!("ConstInt::erase_type returned something other than Infer/InferSigned"),
         },
-        ty::TyFloat(ast::FloatTy::F32) => Ok(Float(val.to_u64().unwrap() as f32 as f64)),
         ty::TyRawPtr(_) => Err(ErrKind::UnimplementedConstVal("casting an address to a raw ptr")),
+        ty::TyChar => match infer(val, tcx, &ty::TyUint(ast::UintTy::U8)) {
+            Ok(U8(u)) => Ok(Char(u as char)),
+            // can only occur before typeck, typeck blocks `T as char` for `T` != `u8`
+            _ => Err(CharCast(val)),
+        },
         _ => Err(CannotCast),
     }
 }
@@ -1136,7 +1125,7 @@ fn lit_to_const<'tcx>(lit: &ast::LitKind,
                       tcx: &TyCtxt<'tcx>,
                       ty_hint: Option<Ty<'tcx>>,
                       span: Span,
-                      ) -> Result<ConstVal, ConstEvalErr> {
+                      ) -> Result<ConstVal, ErrKind> {
     use syntax::ast::*;
     use syntax::ast::LitIntType::*;
     match *lit {
@@ -1144,28 +1133,28 @@ fn lit_to_const<'tcx>(lit: &ast::LitKind,
         LitKind::ByteStr(ref data) => Ok(ByteStr(data.clone())),
         LitKind::Byte(n) => Ok(Integral(U8(n))),
         LitKind::Int(n, Signed(ity)) => {
-            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
+            infer(InferSigned(n as i64), tcx, &ty::TyInt(ity)).map(Integral)
         },
 
         LitKind::Int(n, Unsuffixed) => {
             match ty_hint.map(|t| &t.sty) {
                 Some(&ty::TyInt(ity)) => {
-                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity), span).map(Integral)
+                    infer(InferSigned(n as i64), tcx, &ty::TyInt(ity)).map(Integral)
                 },
                 Some(&ty::TyUint(uty)) => {
-                    infer(Infer(n), tcx, &ty::TyUint(uty), span).map(Integral)
+                    infer(Infer(n), tcx, &ty::TyUint(uty)).map(Integral)
                 },
                 None => Ok(Integral(Infer(n))),
                 Some(&ty::TyEnum(ref adt, _)) => {
                     let hints = tcx.lookup_repr_hints(adt.did);
                     let int_ty = tcx.enum_repr_type(hints.iter().next());
-                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty, span).map(Integral)
+                    infer(Infer(n), tcx, &int_ty.to_ty(tcx).sty).map(Integral)
                 },
                 Some(ty_hint) => bug!("bad ty_hint: {:?}, {:?}", ty_hint, lit),
             }
         },
         LitKind::Int(n, Unsigned(ity)) => {
-            infer(Infer(n), tcx, &ty::TyUint(ity), span).map(Integral)
+            infer(Infer(n), tcx, &ty::TyUint(ity)).map(Integral)
         },
 
         LitKind::Float(ref n, _) |
