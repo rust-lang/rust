@@ -69,7 +69,10 @@ impl<'a> CompilerCalls<'a> for TestCalls {
         panic!("This shouldn't happen");
     }
 
-    fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
+    fn build_controller(&mut self,
+                        _: &Session,
+                        _: &getopts::Matches)
+                        -> driver::CompileController<'a> {
         panic!("This shouldn't be called");
     }
 }

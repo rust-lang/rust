@@ -15,8 +15,6 @@ pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
 
-use rustc_trans::back::link;
-
 use {driver, abort_on_err};
 
 use rustc::dep_graph::DepGraph;
@@ -28,8 +26,6 @@ use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_resolve as resolve;
-use rustc_metadata::cstore::CStore;
-use rustc_metadata::creader::LocalCrateReader;
 
 use rustc_mir::pretty::write_mir_pretty;
 use rustc_mir::graphviz::write_mir_graphviz;
@@ -44,18 +40,16 @@ use syntax::util::small_vector::SmallVector;
 
 use graphviz as dot;
 
-use std::cell::RefCell;
 use std::fs::File;
 use std::io::{self, Write};
 use std::iter;
 use std::option;
-use std::path::PathBuf;
+use std::path::Path;
 use std::str::FromStr;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::map::{blocks, NodePrinter};
 use rustc::hir;
-use rustc::hir::lowering::{lower_crate, LoweringContext};
 use rustc::hir::print as pprust_hir;
 
 use rustc::mir::mir_map::MirMap;
@@ -87,6 +81,32 @@ pub enum PpMode {
     PpmFlowGraph(PpFlowGraphMode),
     PpmMir,
     PpmMirCFG,
+}
+
+impl PpMode {
+    pub fn needs_ast_map(&self, opt_uii: &Option<UserIdentifiedItem>) -> bool {
+        match *self {
+            PpmSource(PpmNormal) |
+            PpmSource(PpmEveryBodyLoops) |
+            PpmSource(PpmIdentified) => opt_uii.is_some(),
+
+            PpmSource(PpmExpanded) |
+            PpmSource(PpmExpandedIdentified) |
+            PpmSource(PpmExpandedHygiene) |
+            PpmHir(_) |
+            PpmMir |
+            PpmMirCFG |
+            PpmFlowGraph(_) => true,
+            PpmSource(PpmTyped) => panic!("invalid state"),
+        }
+    }
+
+    pub fn needs_analysis(&self) -> bool {
+        match *self {
+             PpmMir | PpmMirCFG | PpmFlowGraph(_) => true,
+             _ => false,
+        }
+    }
 }
 
 pub fn parse_pretty(sess: &Session,
@@ -147,7 +167,7 @@ impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
     fn call_with_pp_support<'tcx, A, B, F>(&self,
                                            sess: &'tcx Session,
-                                           ast_map: Option<hir_map::Map<'tcx>>,
+                                           ast_map: Option<&hir_map::Map<'tcx>>,
                                            payload: B,
                                            f: F)
                                            -> A
@@ -157,7 +177,7 @@ impl PpSourceMode {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                 let annotation = NoAnn {
                     sess: sess,
-                    ast_map: ast_map,
+                    ast_map: ast_map.map(|m| m.clone()),
                 };
                 f(&annotation, payload)
             }
@@ -165,14 +185,14 @@ impl PpSourceMode {
             PpmIdentified | PpmExpandedIdentified => {
                 let annotation = IdentifiedAnnotation {
                     sess: sess,
-                    ast_map: ast_map,
+                    ast_map: ast_map.map(|m| m.clone()),
                 };
                 f(&annotation, payload)
             }
             PpmExpandedHygiene => {
                 let annotation = HygieneAnnotation {
                     sess: sess,
-                    ast_map: ast_map,
+                    ast_map: ast_map.map(|m| m.clone()),
                 };
                 f(&annotation, payload)
             }
@@ -582,40 +602,6 @@ impl UserIdentifiedItem {
     }
 }
 
-fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
-    match *ppm {
-        PpmSource(PpmNormal) |
-        PpmSource(PpmEveryBodyLoops) |
-        PpmSource(PpmIdentified) => opt_uii.is_some(),
-
-        PpmSource(PpmExpanded) |
-        PpmSource(PpmExpandedIdentified) |
-        PpmSource(PpmExpandedHygiene) |
-        PpmHir(_) |
-        PpmMir |
-        PpmMirCFG |
-        PpmFlowGraph(_) => true,
-        PpmSource(PpmTyped) => panic!("invalid state"),
-    }
-}
-
-fn needs_expansion(ppm: &PpMode) -> bool {
-    match *ppm {
-        PpmSource(PpmNormal) |
-        PpmSource(PpmEveryBodyLoops) |
-        PpmSource(PpmIdentified) => false,
-
-        PpmSource(PpmExpanded) |
-        PpmSource(PpmExpandedIdentified) |
-        PpmSource(PpmExpandedHygiene) |
-        PpmHir(_) |
-        PpmMir |
-        PpmMirCFG |
-        PpmFlowGraph(_) => true,
-        PpmSource(PpmTyped) => panic!("invalid state"),
-    }
-}
-
 struct ReplaceBodyWithLoop {
     within_static_or_const: bool,
 }
@@ -700,235 +686,6 @@ impl fold::Folder for ReplaceBodyWithLoop {
     }
 }
 
-pub fn pretty_print_input(sess: Session,
-                          cstore: &CStore,
-                          cfg: ast::CrateConfig,
-                          input: &Input,
-                          ppm: PpMode,
-                          opt_uii: Option<UserIdentifiedItem>,
-                          ofile: Option<PathBuf>) {
-    let krate = panictry!(driver::phase_1_parse_input(&sess, cfg, input));
-
-    let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
-        let mut fold = ReplaceBodyWithLoop::new();
-        fold.fold_crate(krate)
-    } else {
-        krate
-    };
-
-    let id = link::find_crate_name(Some(&sess), &krate.attrs, input);
-
-    let is_expanded = needs_expansion(&ppm);
-    let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
-    let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, &cstore, krate, &id, None) {
-            Err(_) => return,
-            Ok(k) => driver::assign_node_ids(&sess, k),
-        }
-    } else {
-        krate
-    };
-
-    // There is some twisted, god-forsaken tangle of lifetimes here which makes
-    // the ordering of stuff super-finicky.
-    let mut hir_forest;
-    let mut _defs = None;
-    let dep_graph = DepGraph::new(false);
-    let arenas = ty::CtxtArenas::new();
-    let _ignore = dep_graph.in_ignore();
-    let ast_map = if compute_ast_map {
-        _defs = Some(RefCell::new(hir_map::collect_definitions(&krate)));
-        let defs = _defs.as_ref().unwrap();
-        LocalCrateReader::new(&sess, &cstore, defs, &krate, &id).read_crates(&dep_graph);
-        let lcx = LoweringContext::new(&sess, Some(&krate), defs);
-
-        hir_forest = hir_map::Forest::new(lower_crate(&lcx, &krate), dep_graph.clone());
-        Some(hir_map::map_crate(&mut hir_forest, defs))
-    } else {
-        None
-    };
-
-    let src_name = driver::source_name(input);
-    let src = sess.codemap()
-                  .get_filemap(&src_name[..])
-                  .src
-                  .as_ref()
-                  .unwrap()
-                  .as_bytes()
-                  .to_vec();
-    let mut rdr = &*src;
-
-    let mut out = Vec::new();
-
-    match (ppm, opt_uii) {
-        (PpmSource(s), _) => {
-            // Silently ignores an identified node.
-            let out: &mut Write = &mut out;
-            s.call_with_pp_support(&sess, ast_map, box out, |annotation, out| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                pprust::print_crate(sess.codemap(),
-                                    sess.diagnostic(),
-                                    &krate,
-                                    src_name.to_string(),
-                                    &mut rdr,
-                                    out,
-                                    annotation.pp_ann(),
-                                    is_expanded)
-            })
-        }
-
-        (PpmHir(s), None) => {
-            let out: &mut Write = &mut out;
-            s.call_with_pp_support_hir(&sess,
-                                       &ast_map.unwrap(),
-                                       &arenas,
-                                       &id,
-                                       box out,
-                                       |annotation, out, krate| {
-                                           debug!("pretty printing source code {:?}", s);
-                                           let sess = annotation.sess();
-                                           pprust_hir::print_crate(sess.codemap(),
-                                                                   sess.diagnostic(),
-                                                                   krate,
-                                                                   src_name.to_string(),
-                                                                   &mut rdr,
-                                                                   out,
-                                                                   annotation.pp_ann(),
-                                                                   is_expanded)
-                                       })
-        }
-
-        (PpmHir(s), Some(uii)) => {
-            let out: &mut Write = &mut out;
-            s.call_with_pp_support_hir(&sess,
-                                       &ast_map.unwrap(),
-                                       &arenas,
-                                       &id,
-                                       (out,uii),
-                                       |annotation, (out,uii), _| {
-                debug!("pretty printing source code {:?}", s);
-                let sess = annotation.sess();
-                let ast_map = annotation.ast_map().expect("--unpretty missing HIR map");
-                let mut pp_state =
-                    pprust_hir::State::new_from_input(sess.codemap(),
-                                                      sess.diagnostic(),
-                                                      src_name.to_string(),
-                                                      &mut rdr,
-                                                      box out,
-                                                      annotation.pp_ann(),
-                                                      true,
-                                                      Some(ast_map.krate()));
-                for node_id in uii.all_matching_node_ids(ast_map) {
-                    let node = ast_map.get(node_id);
-                    pp_state.print_node(&node)?;
-                    pp::space(&mut pp_state.s)?;
-                    let path = annotation.node_path(node_id)
-                                         .expect("--unpretty missing node paths");
-                    pp_state.synth_comment(path)?;
-                    pp::hardbreak(&mut pp_state.s)?;
-                }
-                pp::eof(&mut pp_state.s)
-            })
-        }
-
-        (pp_type@PpmMir, uii) | (pp_type@PpmMirCFG, uii) => {
-            let ast_map = ast_map.expect("--unpretty missing ast_map");
-            let nodeid = if let Some(uii) = uii {
-                debug!("pretty printing MIR for {:?}", uii);
-                Some(uii.to_one_node_id("--unpretty", &sess, &ast_map))
-            } else {
-                debug!("pretty printing MIR for whole crate");
-                None
-            };
-            abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                             ast_map,
-                                                             &arenas,
-                                                             &id,
-                                                             resolve::MakeGlobMap::No,
-                                                             |tcx, mir_map, _, _| {
-                if let Some(mir_map) = mir_map {
-                    if let Some(nodeid) = nodeid {
-                        let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
-                            sess.fatal(&format!("no MIR map entry for node {}", nodeid))
-                        });
-                        match pp_type {
-                            PpmMir => write_mir_pretty(tcx, iter::once((&nodeid, mir)), &mut out),
-                            _ => write_mir_graphviz(tcx, iter::once((&nodeid, mir)), &mut out)
-                        }?;
-                    } else {
-                        match pp_type {
-                            PpmMir => write_mir_pretty(tcx, mir_map.map.iter(), &mut out),
-                            _ => write_mir_graphviz(tcx, mir_map.map.iter(), &mut out)
-                        }?;
-                    }
-                }
-                Ok(())
-            }), &sess)
-        }
-
-        (PpmFlowGraph(mode), opt_uii) => {
-            debug!("pretty printing flow graph for {:?}", opt_uii);
-            let uii = opt_uii.unwrap_or_else(|| {
-                sess.fatal(&format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     \
-                                     unique path suffix (b::c::d)"))
-
-            });
-            let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
-            let nodeid = uii.to_one_node_id("--pretty", &sess, &ast_map);
-
-            let node = ast_map.find(nodeid).unwrap_or_else(|| {
-                sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
-            });
-
-            let code = blocks::Code::from_node(node);
-            let out: &mut Write = &mut out;
-            match code {
-                Some(code) => {
-                    let variants = gather_flowgraph_variants(&sess);
-                    abort_on_err(driver::phase_3_run_analysis_passes(&sess,
-                                                                     ast_map,
-                                                                     &arenas,
-                                                                     &id,
-                                                                     resolve::MakeGlobMap::No,
-                                                                     |tcx, mir_map, _, _| {
-                        print_flowgraph(variants,
-                                        tcx,
-                                        mir_map.as_ref(),
-                                        code,
-                                        mode,
-                                        out)
-                    }), &sess)
-                }
-                None => {
-                    let message = format!("--pretty=flowgraph needs block, fn, or method; got \
-                                           {:?}",
-                                          node);
-
-                    // point to what was found, if there's an
-                    // accessible span.
-                    match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, &message[..]),
-                        None => sess.fatal(&message[..]),
-                    }
-                }
-            }
-        }
-    }
-    .unwrap();
-
-    match ofile {
-        None => print!("{}", String::from_utf8(out).unwrap()),
-        Some(p) => {
-            match File::create(&p) {
-                Ok(mut w) => w.write_all(&out).unwrap(),
-                Err(e) => panic!("print-print failed to open {} due to {}", p.display(), e),
-            }
-        }
-    }
-}
-
 fn print_flowgraph<'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                    tcx: &TyCtxt<'tcx>,
                                    mir_map: Option<&MirMap<'tcx>>,
@@ -982,4 +739,263 @@ fn print_flowgraph<'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                            &format!("graphviz::render failed: {}", ioerr)[..])
         })
     }
+}
+
+pub fn fold_crate(krate: ast::Crate, ppm: PpMode) -> ast::Crate {
+    if let PpmSource(PpmEveryBodyLoops) = ppm {
+        let mut fold = ReplaceBodyWithLoop::new();
+        fold.fold_crate(krate)
+    } else {
+        krate
+    }
+}
+
+fn get_source(input: &Input, sess: &Session) -> (Vec<u8>, String) {
+    let src_name = driver::source_name(input);
+    let src = sess.codemap()
+                  .get_filemap(&src_name)
+                  .src
+                  .as_ref()
+                  .unwrap()
+                  .as_bytes()
+                  .to_vec();
+    (src, src_name)
+}
+
+fn write_output(out: Vec<u8>, ofile: Option<&Path>) {
+    match ofile {
+        None => print!("{}", String::from_utf8(out).unwrap()),
+        Some(p) => {
+            match File::create(p) {
+                Ok(mut w) => w.write_all(&out).unwrap(),
+                Err(e) => panic!("print-print failed to open {} due to {}", p.display(), e),
+            }
+        }
+    }
+}
+
+pub fn print_after_parsing(sess: &Session,
+                           input: &Input,
+                           krate: &ast::Crate,
+                           ppm: PpMode,
+                           ofile: Option<&Path>) {
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+
+    let (src, src_name) = get_source(input, sess);
+
+    let mut rdr = &*src;
+    let mut out = Vec::new();
+
+    if let PpmSource(s) = ppm {
+        // Silently ignores an identified node.
+        let out: &mut Write = &mut out;
+        s.call_with_pp_support(sess, None, box out, |annotation, out| {
+            debug!("pretty printing source code {:?}", s);
+            let sess = annotation.sess();
+            pprust::print_crate(sess.codemap(),
+                                sess.diagnostic(),
+                                krate,
+                                src_name.to_string(),
+                                &mut rdr,
+                                out,
+                                annotation.pp_ann(),
+                                false)
+        }).unwrap()
+    } else {
+        unreachable!();
+    };
+
+    write_output(out, ofile);
+}
+
+pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                              ast_map: &hir_map::Map<'tcx>,
+                                              input: &Input,
+                                              krate: &ast::Crate,
+                                              crate_name: &str,
+                                              ppm: PpMode,
+                                              arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                              opt_uii: Option<UserIdentifiedItem>,
+                                              ofile: Option<&Path>) {
+    let dep_graph = DepGraph::new(false);
+    let _ignore = dep_graph.in_ignore();
+
+    if ppm.needs_analysis() {
+        print_with_analysis(sess, ast_map, crate_name, arenas, ppm, opt_uii, ofile);
+        return;
+    }
+
+    let (src, src_name) = get_source(input, sess);
+
+    let mut rdr = &src[..];
+    let mut out = Vec::new();
+
+    match (ppm, opt_uii) {
+        (PpmSource(s), _) => {
+            // Silently ignores an identified node.
+            let out: &mut Write = &mut out;
+            s.call_with_pp_support(sess, Some(ast_map), box out, |annotation, out| {
+                debug!("pretty printing source code {:?}", s);
+                let sess = annotation.sess();
+                pprust::print_crate(sess.codemap(),
+                                    sess.diagnostic(),
+                                    krate,
+                                    src_name.to_string(),
+                                    &mut rdr,
+                                    out,
+                                    annotation.pp_ann(),
+                                    true)
+            })
+        }
+
+        (PpmHir(s), None) => {
+            let out: &mut Write = &mut out;
+            s.call_with_pp_support_hir(sess,
+                                       ast_map,
+                                       arenas,
+                                       crate_name,
+                                       box out,
+                                       |annotation, out, krate| {
+                                           debug!("pretty printing source code {:?}", s);
+                                           let sess = annotation.sess();
+                                           pprust_hir::print_crate(sess.codemap(),
+                                                                   sess.diagnostic(),
+                                                                   krate,
+                                                                   src_name.to_string(),
+                                                                   &mut rdr,
+                                                                   out,
+                                                                   annotation.pp_ann(),
+                                                                   true)
+                                       })
+        }
+
+        (PpmHir(s), Some(uii)) => {
+            let out: &mut Write = &mut out;
+            s.call_with_pp_support_hir(sess,
+                                       ast_map,
+                                       arenas,
+                                       crate_name,
+                                       (out,uii),
+                                       |annotation, (out,uii), _| {
+                debug!("pretty printing source code {:?}", s);
+                let sess = annotation.sess();
+                let ast_map = annotation.ast_map().expect("--unpretty missing HIR map");
+                let mut pp_state =
+                    pprust_hir::State::new_from_input(sess.codemap(),
+                                                      sess.diagnostic(),
+                                                      src_name.to_string(),
+                                                      &mut rdr,
+                                                      box out,
+                                                      annotation.pp_ann(),
+                                                      true,
+                                                      Some(ast_map.krate()));
+                for node_id in uii.all_matching_node_ids(ast_map) {
+                    let node = ast_map.get(node_id);
+                    pp_state.print_node(&node)?;
+                    pp::space(&mut pp_state.s)?;
+                    let path = annotation.node_path(node_id)
+                                         .expect("--unpretty missing node paths");
+                    pp_state.synth_comment(path)?;
+                    pp::hardbreak(&mut pp_state.s)?;
+                }
+                pp::eof(&mut pp_state.s)
+            })
+       }
+       _ => unreachable!(),
+    }.unwrap();
+
+    write_output(out, ofile);
+}
+
+// In an ideal world, this would be a public function called by the driver after
+// analsysis is performed. However, we want to call `phase_3_run_analysis_passes`
+// with a different callback than the standard driver, so that isn't easy.
+// Instead, we call that function ourselves.
+fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
+                                       ast_map: &hir_map::Map<'tcx>,
+                                       crate_name: &str,
+                                       arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                       ppm: PpMode,
+                                       uii: Option<UserIdentifiedItem>,
+                                       ofile: Option<&Path>) {
+    let nodeid = if let Some(uii) = uii {
+        debug!("pretty printing for {:?}", uii);
+        Some(uii.to_one_node_id("--unpretty", sess, &ast_map))
+    } else {
+        debug!("pretty printing for whole crate");
+        None
+    };
+
+    let mut out = Vec::new();
+
+    abort_on_err(driver::phase_3_run_analysis_passes(sess,
+                                                     ast_map.clone(),
+                                                     arenas,
+                                                     crate_name,
+                                                     resolve::MakeGlobMap::No,
+                                                     |tcx, mir_map, _, _| {
+        match ppm {
+            PpmMir | PpmMirCFG => {
+                if let Some(mir_map) = mir_map {
+                    if let Some(nodeid) = nodeid {
+                        let mir = mir_map.map.get(&nodeid).unwrap_or_else(|| {
+                            sess.fatal(&format!("no MIR map entry for node {}", nodeid))
+                        });
+                        match ppm {
+                            PpmMir => write_mir_pretty(tcx, iter::once((&nodeid, mir)), &mut out),
+                            PpmMirCFG => {
+                                write_mir_graphviz(tcx, iter::once((&nodeid, mir)), &mut out)
+                            }
+                            _ => unreachable!(),
+                        }?;
+                    } else {
+                        match ppm {
+                            PpmMir => write_mir_pretty(tcx, mir_map.map.iter(), &mut out),
+                            PpmMirCFG => write_mir_graphviz(tcx, mir_map.map.iter(), &mut out),
+                            _ => unreachable!(),
+                        }?;
+                    }
+                }
+                Ok(())
+            }
+            PpmFlowGraph(mode) => {
+                let nodeid = nodeid.expect("`pretty flowgraph=..` needs NodeId (int) or \
+                                            unique path suffix (b::c::d)");
+                let node = tcx.map.find(nodeid).unwrap_or_else(|| {
+                    tcx.sess.fatal(&format!("--pretty flowgraph couldn't find id: {}", nodeid))
+                });
+
+                let code = blocks::Code::from_node(node);
+                match code {
+                    Some(code) => {
+                        let variants = gather_flowgraph_variants(tcx.sess);
+
+                        let out: &mut Write = &mut out;
+
+                        print_flowgraph(variants,
+                                        tcx,
+                                        mir_map.as_ref(),
+                                        code,
+                                        mode,
+                                        out)
+                    }
+                    None => {
+                        let message = format!("--pretty=flowgraph needs block, fn, or method; got \
+                                               {:?}",
+                                              node);
+
+                        // Point to what was found, if there's an accessible span.
+                        match tcx.map.opt_span(nodeid) {
+                            Some(sp) => tcx.sess.span_fatal(sp, &message),
+                            None => tcx.sess.fatal(&message),
+                        }
+                    }
+                }
+            }
+            _ => unreachable!(),
+        }
+    }), sess).unwrap();
+
+    write_output(out, ofile);
 }
