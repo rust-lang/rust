@@ -26,6 +26,27 @@ name. Example:
 ```
 "##,
 
+E0455: r##"
+Linking with `kind=framework` is only supported when targeting OS X,
+as frameworks are specific to that operating system.
+
+Erroneous code example:
+
+```compile_fail"
+#[link(name = "FooCoreServices",  kind = "framework")] extern {}
+// OS used to compile is Linux for example
+```
+
+To solve this error you can use conditional compilation:
+
+```
+#[cfg_attr(target="macos", link(name = "FooCoreServices", kind = "framework"))]
+extern {}
+```
+
+See more: https://doc.rust-lang.org/book/conditional-compilation.html
+"##,
+
 E0458: r##"
 An unknown "kind" was specified for a link attribute. Erroneous code example:
 
@@ -73,7 +94,6 @@ well, and you link to them the same way.
 }
 
 register_diagnostics! {
-    E0455, // native frameworks are only available on OSX targets
     E0456, // plugin `..` is not available for triple `..`
     E0457, // plugin `..` only found in rlib format, but must be available...
     E0514, // metadata version mismatch
