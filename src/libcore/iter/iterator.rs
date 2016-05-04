@@ -214,7 +214,7 @@ pub trait Iterator {
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
     /// returns the first value, `nth(1)` the second, and so on.
     ///
-    /// `nth()` will return `None` if `n` >= the length of the
+    /// `nth()` will return `None` if `n` is greater than or equal to the length of the
     /// iterator.
     ///
     /// # Examples
