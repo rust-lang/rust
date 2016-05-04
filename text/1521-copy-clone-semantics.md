@@ -1,7 +1,7 @@
 - Feature Name: N/A
 - Start Date: 01 March, 2016
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1521](https://github.com/rust-lang/rfcs/pull/1521)
+- Rust Issue: [rust-lang/rust#33416](https://github.com/rust-lang/rust/issues/33416)
 
 # Summary
 [summary]: #summary
@@ -24,7 +24,7 @@ would allow us to simply `memcpy` the values from the old `Vec` to the new
 `Vec` in the case of `T: Copy`. However, if we don't specify this, we will not
 be able to, and we will be stuck looping over every value.
 
-It's always been the intention that `Clone::clone == ptr::read for T: Copy`; see 
+It's always been the intention that `Clone::clone == ptr::read for T: Copy`; see
 [issue #23790][issue-copy]: "It really makes sense for `Clone` to be a
 supertrait of `Copy` -- `Copy` is a refinement of `Clone` where `memcpy`
 suffices, basically." This idea was also implicit in accepting
