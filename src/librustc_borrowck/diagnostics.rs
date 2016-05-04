@@ -286,6 +286,70 @@ You can read more about cell types in the API documentation:
 https://doc.rust-lang.org/std/cell/
 "##,
 
+E0389: r##"
+An attempt was made to mutate data using a non-mutable reference. This
+commonly occurs when attempting to assign to a non-mutable reference of a
+mutable reference (`&(&mut T)`).
+
+Example of erroneous code:
+
+```compile_fail
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy = FancyNum{ num: 5 };
+    let fancy_ref = &(&mut fancy);
+    fancy_ref.num = 6; // error: cannot assign to data in a `&` reference
+    println!("{}", fancy_ref.num);
+}
+```
+
+Here, `&mut fancy` is mutable, but `&(&mut fancy)` is not. Creating an
+immutable reference to a value borrows it immutably. There can be multiple
+references of type `&(&mut T)` that point to the same value, so they must be
+immutable to prevent multiple mutable references to the same value.
+
+To fix this, either remove the outer reference:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy = FancyNum{ num: 5 };
+
+    let fancy_ref = &mut fancy;
+    // `fancy_ref` is now &mut FancyNum, rather than &(&mut FancyNum)
+
+    fancy_ref.num = 6; // No error!
+
+    println!("{}", fancy_ref.num);
+}
+```
+
+Or make the outer reference mutable:
+
+```
+struct FancyNum {
+    num: u8
+}
+
+fn main() {
+    let mut fancy = FancyNum{ num: 5 };
+
+    let fancy_ref = &mut (&mut fancy);
+    // `fancy_ref` is now &mut(&mut FancyNum), rather than &(&mut FancyNum)
+
+    fancy_ref.num = 6; // No error!
+
+    println!("{}", fancy_ref.num);
+}
+```
+"##,
+
 E0499: r##"
 A variable was borrowed as mutable more than once. Erroneous code example:
 
@@ -434,7 +498,6 @@ http://doc.rust-lang.org/stable/book/references-and-borrowing.html
 register_diagnostics! {
     E0385, // {} in an aliasable location
     E0388, // {} in a static location
-    E0389, // {} in a `&` reference
     E0500, // closure requires unique access to `..` but .. is already borrowed
     E0501, // cannot borrow `..`.. as .. because previous closure requires unique access
     E0502, // cannot borrow `..`.. as .. because .. is also borrowed as ...
