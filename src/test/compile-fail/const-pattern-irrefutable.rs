@@ -19,10 +19,10 @@ use foo::d; //~ NOTE constant imported here
 const a: u8 = 2; //~ NOTE constant defined here
 
 fn main() {
-    let a = 4; //~ ERROR only irrefutable
+    let a = 4; //~ ERROR variable bindings cannot
                //~^ NOTE there already is a constant in scope
-    let c = 4; //~ ERROR only irrefutable
+    let c = 4; //~ ERROR variable bindings cannot
                //~^ NOTE there already is a constant in scope
-    let d = 4; //~ ERROR only irrefutable
+    let d = 4; //~ ERROR variable bindings cannot
                //~^ NOTE there already is a constant in scope
 }
