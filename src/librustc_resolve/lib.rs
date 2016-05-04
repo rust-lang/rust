@@ -995,11 +995,11 @@ pub struct Resolver<'a> {
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    def_map: DefMap,
-    freevars: FreevarMap,
+    pub def_map: DefMap,
+    pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
-    export_map: ExportMap,
-    trait_map: TraitMap,
+    pub export_map: ExportMap,
+    pub trait_map: TraitMap,
 
     // A map from nodes to modules, both normal (`mod`) modules and anonymous modules.
     // Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1022,14 +1022,14 @@ pub struct Resolver<'a> {
     // so as to avoid printing duplicate errors
     emit_errors: bool,
 
-    make_glob_map: bool,
+    pub make_glob_map: bool,
     // Maps imports to the names of items actually imported (this actually maps
     // all imports, but only glob imports are actually interesting).
-    glob_map: GlobMap,
+    pub glob_map: GlobMap,
 
     used_imports: HashSet<(NodeId, Namespace)>,
     used_crates: HashSet<CrateNum>,
-    maybe_unused_trait_imports: NodeSet,
+    pub maybe_unused_trait_imports: NodeSet,
 
     privacy_errors: Vec<PrivacyError<'a>>,
 
@@ -3563,15 +3563,6 @@ fn err_path_resolution() -> PathResolution {
 }
 
 
-pub struct CrateMap {
-    pub def_map: RefCell<DefMap>,
-    pub freevars: FreevarMap,
-    pub maybe_unused_trait_imports: NodeSet,
-    pub export_map: ExportMap,
-    pub trait_map: TraitMap,
-    pub glob_map: Option<GlobMap>,
-}
-
 #[derive(PartialEq,Copy, Clone)]
 pub enum MakeGlobMap {
     Yes,
@@ -3579,11 +3570,7 @@ pub enum MakeGlobMap {
 }
 
 /// Entry point to crate resolution.
-pub fn resolve_crate<'a>(session: &'a Session,
-                         krate: &'a Crate,
-                         definitions: &'a Definitions,
-                         make_glob_map: MakeGlobMap)
-                         -> CrateMap {
+pub fn resolve_crate<'a, 'b>(resolver: &'b mut Resolver<'a>, krate: &'b Crate) {
     // Currently, we ignore the name resolution data structures for
     // the purposes of dependency tracking. Instead we will run name
     // resolution and include its output in the hash of each item,
@@ -3592,42 +3579,23 @@ pub fn resolve_crate<'a>(session: &'a Session,
     // resolution on those contents. Hopefully we'll push this back at
     // some point.
 
-    let arenas = Resolver::arenas();
-    let mut resolver = create_resolver(session, definitions, krate, make_glob_map, &arenas);
-
+    resolver.build_reduced_graph(krate);
+    resolve_imports::resolve_imports(resolver);
     resolver.resolve_crate(krate);
 
-    check_unused::check_crate(&mut resolver, krate);
+    check_unused::check_crate(resolver, krate);
     resolver.report_privacy_errors();
-
-    CrateMap {
-        def_map: RefCell::new(resolver.def_map),
-        freevars: resolver.freevars,
-        maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
-        export_map: resolver.export_map,
-        trait_map: resolver.trait_map,
-        glob_map: if resolver.make_glob_map {
-            Some(resolver.glob_map)
-        } else {
-            None
-        },
-    }
 }
 
-/// Builds a name resolution walker.
-fn create_resolver<'a>(session: &'a Session,
-                       definitions: &'a Definitions,
-                       krate: &'a Crate,
-                       make_glob_map: MakeGlobMap,
-                       arenas: &'a ResolverArenas<'a>)
-                       -> Resolver<'a> {
-    let mut resolver = Resolver::new(session, definitions, make_glob_map, arenas);
-
-    resolver.build_reduced_graph(krate);
-
-    resolve_imports::resolve_imports(&mut resolver);
-
-    resolver
+pub fn with_resolver<'a, T, F>(session: &'a Session,
+                               definitions: &'a Definitions,
+                               make_glob_map: MakeGlobMap,
+                               f: F) -> T
+    where F: for<'b> FnOnce(Resolver<'b>) -> T,
+{
+    let arenas = Resolver::arenas();
+    let resolver = Resolver::new(session, definitions, make_glob_map, &arenas);
+    f(resolver)
 }
 
 __build_diagnostic_array! { librustc_resolve, DIAGNOSTICS }
