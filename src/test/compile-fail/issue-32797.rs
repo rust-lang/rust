@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
+pub use bar::*;
+mod bar {
+    pub use super::*;
 }
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: transmute called with differently sized types
+pub use baz::*; //~ ERROR already been imported
+mod baz {
+    pub use main as f;
 }
 
-fn main() { }
+pub fn main() {}

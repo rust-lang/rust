@@ -17,6 +17,7 @@ use abi::FnType;
 use adt;
 use common::*;
 use machine;
+use rustc::traits::ProjectionMode;
 use rustc::ty::{self, Ty, TypeFoldable};
 
 use type_::Type;
@@ -121,6 +122,37 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     debug!("--> mapped t={:?} to llsizingty={:?}", t, llsizingty);
 
     cx.llsizingtypes().borrow_mut().insert(t, llsizingty);
+
+    // FIXME(eddyb) Temporary sanity check for ty::layout.
+    let infcx = infer::normalizing_infer_ctxt(cx.tcx(), &cx.tcx().tables, ProjectionMode::Any);
+    match t.layout(&infcx) {
+        Ok(layout) => {
+            if !type_is_sized(cx.tcx(), t) {
+                if !layout.is_unsized() {
+                    bug!("layout should be unsized for type `{}` / {:#?}",
+                         t, layout);
+                }
+
+                // Unsized types get turned into a fat pointer for LLVM.
+                return llsizingty;
+            }
+            let r = layout.size(&cx.tcx().data_layout).bytes();
+            let l = machine::llsize_of_alloc(cx, llsizingty);
+            if r != l {
+                bug!("size differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
+                     r, l, t, layout);
+            }
+            let r = layout.align(&cx.tcx().data_layout).abi();
+            let l = machine::llalign_of_min(cx, llsizingty) as u64;
+            if r != l {
+                bug!("align differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
+                     r, l, t, layout);
+            }
+        }
+        Err(e) => {
+            bug!("failed to get layout for `{}`: {}", t, e);
+        }
+    }
     llsizingty
 }
 

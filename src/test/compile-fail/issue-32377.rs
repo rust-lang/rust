@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait<'a> {
-    type A;
-    type B;
+use std::mem;
+use std::marker::PhantomData;
+
+trait Foo {
+    type Error;
 }
 
-fn foo<'a, T: Trait<'a>>(value: T::A) {
-    let new: T::B = unsafe { std::mem::transmute(value) };
-//~^ ERROR: transmute called with differently sized types
+struct Bar<U: Foo> {
+    stream: PhantomData<U::Error>,
 }
 
-fn main() { }
+fn foo<U: Foo>(x: [usize; 2]) -> Bar<U> {
+    unsafe { mem::transmute(x) }
+    //~^ ERROR transmute called with differently sized types
+}
+
+fn main() {}
