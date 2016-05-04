@@ -33,7 +33,7 @@ use std::process::{Command, Output, ExitStatus};
 pub fn run(config: Config, testpaths: &TestPaths) {
     match &*config.target {
 
-        "arm-linux-androideabi" | "aarch64-linux-android" => {
+        "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
             if !config.adb_device_status {
                 panic!("android device not available");
             }
@@ -424,7 +424,7 @@ actual:\n\
 
         let debugger_run_result;
         match &*self.config.target {
-            "arm-linux-androideabi" | "aarch64-linux-android" => {
+            "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
 
                 cmds = cmds.replace("run", "continue");
 
@@ -1132,7 +1132,7 @@ actual:\n\
 
         match &*self.config.target {
 
-            "arm-linux-androideabi" | "aarch64-linux-android" => {
+            "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
                 self._arm_exec_compiled_test(env)
             }
 
@@ -1230,7 +1230,7 @@ actual:\n\
             }
 
             match &*self.config.target {
-                "arm-linux-androideabi"  | "aarch64-linux-android" => {
+                "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
                     self._arm_push_aux_shared_library();
                 }
                 _ => {}
