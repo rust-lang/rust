@@ -39,6 +39,7 @@ use rustc::middle::cstore::{self, CrateStore};
 use rustc::middle::privacy::AccessLevels;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
+use rustc::hir::print as pprust;
 use rustc::ty::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::ty;
 use rustc::middle::stability;
@@ -1285,8 +1286,7 @@ impl Clean<Item> for hir::TraitItem {
         let inner = match self.node {
             hir::ConstTraitItem(ref ty, ref default) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    default.as_ref().map(|expr|
-                                                         expr.span.to_src(cx)))
+                                    default.as_ref().map(|e| pprust::expr_to_string(&e)))
             }
             hir::MethodTraitItem(ref sig, Some(_)) => {
                 MethodItem(sig.clean(cx))
@@ -1316,7 +1316,7 @@ impl Clean<Item> for hir::ImplItem {
         let inner = match self.node {
             hir::ImplItemKind::Const(ref ty, ref expr) => {
                 AssociatedConstItem(ty.clean(cx),
-                                    Some(expr.span.to_src(cx)))
+                                    Some(pprust::expr_to_string(expr)))
             }
             hir::ImplItemKind::Method(ref sig, _) => {
                 MethodItem(sig.clean(cx))
@@ -1635,8 +1635,8 @@ impl Clean<Type> for hir::Ty {
                 BorrowedRef {lifetime: l.clean(cx), mutability: m.mutbl.clean(cx),
                              type_: box m.ty.clean(cx)},
             TyVec(ref ty) => Vector(box ty.clean(cx)),
-            TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
-                                                           e.span.to_src(cx)),
+            TyFixedLengthVec(ref ty, ref e) =>
+                FixedVector(box ty.clean(cx), pprust::expr_to_string(e)),
             TyTup(ref tys) => Tuple(tys.clean(cx)),
             TyPath(None, ref p) => {
                 resolve_type(cx, p.clean(cx), self.id)
@@ -2185,7 +2185,7 @@ impl Clean<Item> for doctree::Static {
             inner: StaticItem(Static {
                 type_: self.type_.clean(cx),
                 mutability: self.mutability.clean(cx),
-                expr: self.expr.span.to_src(cx),
+                expr: pprust::expr_to_string(&self.expr),
             }),
         }
     }
@@ -2209,7 +2209,7 @@ impl Clean<Item> for doctree::Constant {
             deprecation: self.depr.clean(cx),
             inner: ConstantItem(Constant {
                 type_: self.type_.clean(cx),
-                expr: self.expr.span.to_src(cx),
+                expr: pprust::expr_to_string(&self.expr),
             }),
         }
     }
