@@ -95,7 +95,7 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                                    if !what.is_empty() {
                                        db.span_suggestion(span, "try",
                                                           format!("std::mem::swap(&mut {}, &mut {})", lhs, rhs));
-                                       db.fileline_note(span, "or maybe you should use `std::mem::replace`?");
+                                       db.note("or maybe you should use `std::mem::replace`?");
                                    }
                                });
         }}
@@ -130,7 +130,7 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
                                    if !what.is_empty() {
                                        db.span_suggestion(span, "try",
                                                           format!("std::mem::swap(&mut {}, &mut {})", lhs, rhs));
-                                       db.fileline_note(span, "or maybe you should use `std::mem::replace`?");
+                                       db.note("or maybe you should use `std::mem::replace`?");
                                    }
                                });
         }}
