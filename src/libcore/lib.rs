@@ -61,7 +61,9 @@
 #![cfg_attr(not(stage0), deny(warnings))]
 
 #![feature(allow_internal_unstable)]
+#![feature(asm)]
 #![feature(associated_type_defaults)]
+#![feature(cfg_target_feature)]
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(cfg_target_has_atomic)]
