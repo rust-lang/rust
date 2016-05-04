@@ -72,7 +72,8 @@ fn parse_line(file_name: &str, line: &str) -> Vec<Error> {
                 expected_errors
             }
             Err(error) => {
-                panic!("failed to decode compiler output as json: `{}`", error);
+                panic!("failed to decode compiler output as json: `{}` when parsing: {}", error,
+                    line);
             }
         }
     } else {
