@@ -32,19 +32,49 @@ fn power_of_ten(e: i16) -> Fp {
     Fp { f: sig, e: exp }
 }
 
+#[cfg(any(not(target_arch="x86"), target_feature="sse2"))]
+mod fpu_precision {
+    pub fn set_precision<T>() { }
+}
+
+#[cfg(all(target_arch="x86", not(target_feature="sse2")))]
+mod fpu_precision {
+    use mem::size_of;
+    use ops::Drop;
+
+    pub struct FPUControlWord(u16);
+
+    fn set_cw(cw: u16) {
+        unsafe { asm!("fldcw $0" :: "m" (cw)) :: "volatile" }
+    }
+
+    pub fn set_precision<T>() -> FPUControlWord {
+        let cw = 0u16;
+        let cw_precision = match size_of::<T>() {
+            4 => 0x0000, // 32 bits
+            8 => 0x0200, // 64 bits
+            _ => 0x0300, // default, 80 bits
+        };
+        unsafe { asm!("fnstcw $0" : "=*m" (&cw)) ::: "volatile" }
+        set_cw((cw & 0xFCFF) | cw_precision);
+        FPUControlWord(cw)
+    }
+
+    impl Drop for FPUControlWord {
+        fn drop(&mut self) {
+            set_cw(self.0)
+        }
+    }
+}
+
 /// The fast path of Bellerophon using machine-sized integers and floats.
 ///
 /// This is extracted into a separate function so that it can be attempted before constructing
 /// a bignum.
 ///
 /// The fast path crucially depends on arithmetic being correctly rounded, so on x86
-/// without SSE or SSE2 it will be **wrong** (as in, off by one ULP occasionally), because the x87
-/// FPU stack will round to 80 bit first before rounding to 64/32 bit. However, as such hardware
-/// is extremely rare nowadays and in fact all in-tree target triples assume an SSE2-capable
-/// microarchitecture, there is little incentive to deal with that. There's a test that will fail
-/// when SSE or SSE2 is disabled, so people building their own non-SSE copy will get a heads up.
-///
-/// FIXME: It would nevertheless be nice if we had a good way to detect and deal with x87.
+/// without SSE or SSE2 it requires the precision of the x87 FPU stack to be changed
+/// so that it directly rounds to 64/32 bit.
 pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Option<T> {
     let num_digits = integral.len() + fractional.len();
     // log_10(f64::max_sig) ~ 15.95. We compare the exact value to max_sig near the end,
@@ -60,6 +90,9 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
     if f > T::max_sig() {
         return None;
     }
+
+    let _cw = fpu_precision::set_precision::<T>();
+
     // The case e < 0 cannot be folded into the other branch. Negative powers result in
     // a repeating fractional part in binary, which are rounded, which causes real
     // (and occasioally quite significant!) errors in the final result.
