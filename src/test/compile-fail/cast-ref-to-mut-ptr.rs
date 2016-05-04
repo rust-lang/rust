@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let my_num = &[10, 20] as *mut i32;
+    let x = &[10, 20] as *mut i32;
     //~^ ERROR casting `&[i32; 2]` as `*mut i32` is invalid
 }
