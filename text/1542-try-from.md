@@ -1,7 +1,7 @@
-- Feature Name: try_from
+- Feature Name: `try_from`
 - Start Date: 2016-03-10
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1542](https://github.com/rust-lang/rfcs/pull/1542)
+- Rust Issue: [rust-lang/rfcs#33147](https://github.com/rust-lang/rust/issues/33417)
 
 # Summary
 [summary]: #summary
