@@ -7,7 +7,7 @@ Rust Issue: N/A
 
 # Summary
 
-Long error codes explanations haven't been normalized yet. This RFC intends to do it in order to uniformize them.
+Rust has extend error messages that explain each error in more detail. We've been writing lots of them, which is good, but they're written in different styles, which is bad. This RFC intends to fix this inconsistency by providing a template for these long-form explanations to follow.
 
 # Motivation
 
@@ -15,101 +15,128 @@ Long error codes explanations are a very important part of Rust. Having an expla
 
 # Detailed design
 
-Here is the template I propose:
+Here is what I propose:
 
-## First point
+## Error description
 
-Giving a little more detailed error message. For example, the `E0109` says "type parameters are not allowed on this type" and the error explanation says: "You tried to give a type parameter to a type which doesn't need it.".
+Provide a more detailed error message. For example:
 
-## Second point
+```rust
+extern crate a;
+extern crate b as a;
+```
 
-Giving an erroneous code example which directly follows `First point`. It'll be helpful for the `Forth point`. Making it as simple as possible is really important in order to help readers to understand what the error is about. A comment should be added with the error on the same line that the errors happen. Example:
+We get the `E0259` error code which says "an extern crate named `a` has already been imported in this module" and the error explanation says: "The name chosen for an external crate conflicts with another external crate that has been imported into the current module.".
 
- ```Rust
- type X = u32<i32>; // error: type parameters are not allowed on this type
- ```
- 
- If the error comments is too long to fit 80 columns, split it up like this, so the next line start at the same column of the previous line:
- 
- ```Rust
- type X = u32<'static>; // error: lifetime parameters are not allowed on
-                        //        this type
- ```
- 
- And if the code line is just too long to make a correct comment, put your comment before it:
- 
-```Rust
+## Minimal example
+
+Provide an erroneous code example which directly follows `Error description`. The erroneous example will be helpful for the `How to fix the problem`. Making it as simple as possible is really important in order to help readers to understand what the error is about. A comment should be added with the error on the same line where the errors occur. Example:
+
+```rust
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+If the error comments is too long to fit 80 columns, split it up like this, so the next line start at the same column of the previous line:
+
+```rust
+type X = u32<'static>; // error: lifetime parameters are not allowed on
+                       //        this type
+```
+
+And if the sample code is too long to write an effective comment, place your comment on the line before the sample code:
+
+```rust
 // error: lifetime parameters are not allowed on this type
 fn super_long_function_name_and_thats_problematic() {}
 ```
- 
+
 Of course, it the comment is too long, the split rules still applies.
 
-## Third point
+## Error explanation
 
-Providing a full explanation about "__why__ you get the error" and some leads on __how__ to fix it. If needed, add little code examples to improve your explanations.
+Provide a full explanation about "__why__ you get the error" and some leads on __how__ to fix it. If needed, use additional code snippets to improve your explanations.
 
-## Fourth point
+## How to fix the problem
 
-This part will show how to fix the error that we saw previously in the `Second point`, with comments explaining how it was fixed.
+This part will show how to fix the error that we saw previously in the `Minimal example`, with comments explaining how it was fixed.
 
-## Fifth point
+## Additional information
 
 Some details which might be useful for the users, let's take back `E0109` example. At the end, the supplementary explanation is the following: "Note that type parameters for enum-variant constructors go after the variant, not after the enum (`Option::None::<u32>`, not `Option::<u32>::None`).". It provides more information, not directly linked to the error, but it might help user to avoid doing another error.
 
 ## Template
 
-So in final, it should like this:
+In summary, the template looks like this:
 
-```Rust
+```rust
 E000: r##"
-[First point] Example of erroneous code:
+[Error description]
+
+Example of erroneous code:
 
 \```compile_fail
-[Second point]
+[Minimal example]
 \```
 
-[Third point]
+[Error explanation]
 
 \```
-[Fourth point]
+[How to fix the problem]
 \```
 
-[Optional Fifth point]
+[Optional Additional information]
 ```
 
 Now let's take a full example:
 
-> E0264: r##"
-> An unknown external lang item was used. Example of erroneous code:
+> E0409: r##"
+> An "or" pattern was used where the variable bindings are not consistently bound
+> across patterns.
+>
+> Example of erroneous code:
 >
 > ```compile_fail
-> #![feature(lang_items)]
-> extern "C" {
->     #[lang = "cake"] // error: unknown external lang item: `cake`
->     fn cake();
+> let x = (0, 2);
+> match x {
+>     (0, ref y) | (y, 0) => { /* use y */} // error: variable `y` is bound with
+>                                           //        different mode in pattern #2
+>                                           //        than in pattern #1
+>     _ => ()
 > }
 > ```
 >
-> A list of available external lang items is available in
-> `src/librustc/middle/weak_lang_items.rs`. Example:
+> Here, `y` is bound by-value in one case and by-reference in the other.
+>
+> To fix this error, just use the same mode in both cases.
+> Generally using `ref` or `ref mut` where not already used will fix this:
+>
+> ```ignore
+> let x = (0, 2);
+> match x {
+>     (0, ref y) | (ref y, 0) => { /* use y */}
+>     _ => ()
+> }
+> ```
+>
+> Alternatively, split the pattern:
 >
 > ```
-> #![feature(lang_items)]
-> extern "C" {
->     #[lang = "panic_fmt"] // ok!
->     fn cake();
+> let x = (0, 2);
+> match x {
+>     (y, 0) => { /* use y */ }
+>     (0, ref y) => { /* use y */}
+>     _ => ()
 > }
 > ```
 > "##,
 
 # Drawbacks
 
-None.
+This will make contributing slighty more complex, as there are rules to follow, whereas right now there are none.
 
 # Alternatives
 
-Not having error codes explanations uniformized.
+Not having error codes explanations following a common template.
 
 # Unresolved questions
 
