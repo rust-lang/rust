@@ -4419,11 +4419,7 @@ impl<'a> Parser<'a> {
                 p.forbid_lifetime()?;
                 let lo = p.span.lo;
                 let ident = p.parse_ident()?;
-                let found_eq = p.eat(&token::Eq);
-                if !found_eq {
-                    let span = p.span;
-                    p.span_warn(span, "whoops, no =?");
-                }
+                p.expect(&token::Eq)?;
                 let ty = p.parse_ty()?;
                 let hi = ty.span.hi;
                 let span = mk_sp(lo, hi);
