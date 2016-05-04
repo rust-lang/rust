@@ -128,31 +128,48 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
     }
 }
 
-unsafe fn inner_try(f: fn(*mut u8), data: *mut u8)
-                    -> Result<(), Box<Any + Send>> {
-    PANIC_COUNT.with(|s| {
-        let prev = s.get();
-        s.set(0);
+unsafe fn inner_try(f: fn(*mut u8), data: *mut u8) -> Result<(), Box<Any + Send>> {
+    // Coroutines make it a possibility that the execution inside `f`
+    // is parked and transferred to another thread.
+    // Thus it's important to keep in mind that we do not hold
+    // any references to the current thread while calling `f`.
+    // This requires an additional `inline(never)` attribute to
+    // prevent the compiler from caching the TLS access.
+    #[inline(never)]
+    fn panic_count_swap(val: usize) -> usize {
+        PANIC_COUNT.with(|s| {
+            let prev = s.get();
+            s.set(val);
+            prev
+        })
+    }
 
-        // The "payload" here is a platform-specific region of memory which is
-        // used to transmit information about the exception being thrown from
-        // the point-of-throw back to this location.
-        //
-        // A pointer to this data is passed to the `try` intrinsic itself,
-        // allowing this function, the `try` intrinsic, imp::payload(), and
-        // imp::cleanup() to all work in concert to transmit this information.
-        //
-        // More information about what this pointer actually is can be found in
-        // each implementation as well as browsing the compiler source itself.
-        let mut payload = imp::payload();
-        let r = intrinsics::try(f, data, &mut payload as *mut _ as *mut _);
-        s.set(prev);
-        if r == 0 {
-            Ok(())
-        } else {
-            Err(imp::cleanup(payload))
-        }
-    })
+    // It is possible to safely use this method with coroutines under the condition
+    // that `panicking()` is false when this method is called and false whenever
+    // the current stack is transferred to another thread.
+    // This ensures that `PANIC_COUNT` will consistently be overwritten with 0.
+    let prev = panic_count_swap(0);
+
+    // The "payload" here is a platform-specific region of memory which is
+    // used to transmit information about the exception being thrown from
+    // the point-of-throw back to this location.
+    //
+    // A pointer to this data is passed to the `try` intrinsic itself,
+    // allowing this function, the `try` intrinsic, imp::payload(), and
+    // imp::cleanup() to all work in concert to transmit this information.
+    //
+    // More information about what this pointer actually is can be found in
+    // each implementation as well as browsing the compiler source itself.
+    let mut payload = imp::payload();
+    let r = intrinsics::try(f, data, &mut payload as *mut _ as *mut _);
+
+    panic_count_swap(prev);
+
+    if r == 0 {
+        Ok(())
+    } else {
+        Err(imp::cleanup(payload))
+    }
 }
 
 /// Determines whether the current thread is unwinding because of panic.
