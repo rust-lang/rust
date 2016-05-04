@@ -632,6 +632,7 @@ valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "" "Android NDK standalone path (deprecated)"
 valopt i686-linux-android-ndk "" "i686-linux-android NDK standalone path"
 valopt arm-linux-androideabi-ndk "" "arm-linux-androideabi NDK standalone path"
+valopt armv7-linux-androideabi-ndk "" "armv7-linux-androideabi NDK standalone path"
 valopt aarch64-linux-android-ndk "" "aarch64-linux-android NDK standalone path"
 valopt nacl-cross-path  "" "NaCl SDK path (Pepper Canary is recommended). Must be absolute!"
 valopt release-channel "dev" "the name of the release channel to build"
@@ -1144,6 +1145,15 @@ do
 
     case $i in
         *android*)
+            case $i in
+                armv7-linux-androideabi)
+                    cmd_prefix="arm-linux-androideabi"
+                    ;;
+                *)
+                    cmd_prefix=$i
+                    ;;
+            esac
+
             upper_snake_target=$(echo "$i" | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
             eval ndk=\$"CFG_${upper_snake_target}_NDK"
             if [ -z "$ndk" ]
@@ -1154,7 +1164,7 @@ do
             fi
 
             # Perform a basic sanity check of the NDK
-            for android_ndk_tool in "$ndk/bin/$i-gcc" "$ndk/bin/$i-g++" "$ndk/bin/$i-ar"
+            for android_ndk_tool in "$ndk/bin/$cmd_prefix-gcc" "$ndk/bin/$cmd_prefix-g++" "$ndk/bin/$cmd_prefix-ar"
             do
                 if [ ! -f $android_ndk_tool ]
                 then
@@ -1786,6 +1796,7 @@ putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_AARCH64_LINUX_ANDROID_NDK
 putvar CFG_ARM_LINUX_ANDROIDEABI_NDK
+putvar CFG_ARMV7_LINUX_ANDROIDEABI_NDK
 putvar CFG_I686_LINUX_ANDROID_NDK
 putvar CFG_NACL_CROSS_PATH
 putvar CFG_MANDIR
