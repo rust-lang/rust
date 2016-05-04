@@ -1,7 +1,7 @@
 - Feature Name: N/A
 - Start Date: 2015-09-15
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1525](https://github.com/rust-lang/rfcs/pull/1525)
+- Rust Issue: [rust-lang/cargo#2122](https://github.com/rust-lang/cargo/issues/2122)
 
 # Summary
 
