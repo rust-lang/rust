@@ -98,6 +98,7 @@ unofficial locations.
 |  Target                       | std |rustc|cargo| notes                      |
 |-------------------------------|-----|-----|-----|----------------------------|
 | `aarch64-linux-android`       |  ✓  |     |     | ARM64 Android              |
+| `armv7-linux-androideabi`     |  ✓  |     |     | ARM-v7a Android            |
 | `i686-linux-android`          |  ✓  |     |     | 32-bit x86 Android         |
 | `i686-pc-windows-msvc` (XP)   |  ✓  |     |     | Windows XP support         |
 | `i686-unknown-freebsd`        |  ✓  |  ✓  |  ✓  | 32-bit FreeBSD             |
