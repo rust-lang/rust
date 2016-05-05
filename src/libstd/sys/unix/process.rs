@@ -147,7 +147,7 @@ impl Command {
         let new_key = pair_to_key(key, val, &mut self.saw_nul);
         let (map, envp) = self.init_env_map();
 
-        // If `key` is already present then we we just update `envp` in place
+        // If `key` is already present then we just update `envp` in place
         // (and store the owned value), but if it's not there we override the
         // trailing NULL pointer, add a new NULL pointer, and store where we
         // were located.
