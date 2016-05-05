@@ -15,7 +15,8 @@ pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
 
-use {driver, abort_on_err};
+use abort_on_err;
+use driver::{self, Resolutions};
 
 use rustc::dep_graph::DepGraph;
 use rustc::ty::{self, TyCtxt};
@@ -25,7 +26,6 @@ use rustc::session::Session;
 use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
-use rustc_resolve as resolve;
 
 use rustc_mir::pretty::write_mir_pretty;
 use rustc_mir::graphviz::write_mir_graphviz;
@@ -202,6 +202,8 @@ impl PpSourceMode {
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: &'tcx Session,
                                                ast_map: &hir_map::Map<'tcx>,
+                                               analysis: &ty::CrateAnalysis,
+                                               resolutions: &Resolutions,
                                                arenas: &'tcx ty::CtxtArenas<'tcx>,
                                                id: &str,
                                                payload: B,
@@ -226,12 +228,12 @@ impl PpSourceMode {
                 f(&annotation, payload, ast_map.forest.krate())
             }
             PpmTyped => {
-                /*
                 abort_on_err(driver::phase_3_run_analysis_passes(sess,
                                                                  ast_map.clone(),
+                                                                 analysis.clone(),
+                                                                 resolutions.clone(),
                                                                  arenas,
                                                                  id,
-                                                                 resolve::MakeGlobMap::No,
                                                                  |tcx, _, _, _| {
                     let annotation = TypedAnnotation {
                         tcx: tcx,
@@ -241,8 +243,6 @@ impl PpSourceMode {
                       payload,
                       ast_map.forest.krate())
                 }), sess)
-                */
-                unimplemented!()
             }
             _ => panic!("Should use call_with_pp_support"),
         }
@@ -814,6 +814,8 @@ pub fn print_after_parsing(sess: &Session,
 
 pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
                                               ast_map: &hir_map::Map<'tcx>,
+                                              analysis: &ty::CrateAnalysis,
+                                              resolutions: &Resolutions,
                                               input: &Input,
                                               krate: &ast::Crate,
                                               crate_name: &str,
@@ -825,7 +827,8 @@ pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
     let _ignore = dep_graph.in_ignore();
 
     if ppm.needs_analysis() {
-        print_with_analysis(sess, ast_map, crate_name, arenas, ppm, opt_uii, ofile);
+        print_with_analysis(sess, ast_map, analysis, resolutions,
+                            crate_name, arenas, ppm, opt_uii, ofile);
         return;
     }
 
@@ -856,6 +859,8 @@ pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(sess,
                                        ast_map,
+                                       analysis,
+                                       resolutions,
                                        arenas,
                                        crate_name,
                                        box out,
@@ -877,6 +882,8 @@ pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
             let out: &mut Write = &mut out;
             s.call_with_pp_support_hir(sess,
                                        ast_map,
+                                       analysis,
+                                       resolutions,
                                        arenas,
                                        crate_name,
                                        (out,uii),
@@ -917,6 +924,8 @@ pub fn print_after_write_deps<'tcx, 'a: 'tcx>(sess: &'a Session,
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        ast_map: &hir_map::Map<'tcx>,
+                                       analysis: &ty::CrateAnalysis,
+                                       resolutions: &Resolutions,
                                        crate_name: &str,
                                        arenas: &'tcx ty::CtxtArenas<'tcx>,
                                        ppm: PpMode,
@@ -930,14 +939,14 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
         None
     };
 
-    /*
     let mut out = Vec::new();
 
     abort_on_err(driver::phase_3_run_analysis_passes(sess,
                                                      ast_map.clone(),
+                                                     analysis.clone(),
+                                                     resolutions.clone(),
                                                      arenas,
                                                      crate_name,
-                                                     resolve::MakeGlobMap::No,
                                                      |tcx, mir_map, _, _| {
         match ppm {
             PpmMir | PpmMirCFG => {
@@ -1002,6 +1011,4 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
     }), sess).unwrap();
 
     write_output(out, ofile);
-    */
-    unimplemented!()
 }
