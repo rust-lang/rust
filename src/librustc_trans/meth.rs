@@ -157,7 +157,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     substs,
                     nested: _ }) => {
                 let nullptr = C_null(Type::nil(ccx).ptr_to());
-                get_vtable_methods(ccx, id, substs)
+                get_vtable_methods(tcx, id, substs)
                     .into_iter()
                     .map(|opt_mth| opt_mth.map_or(nullptr, |mth| {
                         Callee::def(ccx, mth.method.def_id, &mth.substs).reify(ccx).val
@@ -215,13 +215,11 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                    impl_id: DefId,
-                                    substs: &'tcx subst::Substs<'tcx>)
-                                    -> Vec<Option<ImplMethod<'tcx>>>
+pub fn get_vtable_methods<'tcx>(tcx: &TyCtxt<'tcx>,
+                                impl_id: DefId,
+                                substs: &'tcx subst::Substs<'tcx>)
+                                -> Vec<Option<ImplMethod<'tcx>>>
 {
-    let tcx = ccx.tcx();
-
     debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 
     let trt_id = match tcx.impl_trait_ref(impl_id) {
