@@ -469,6 +469,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 control.after_write_deps.callback = box move |state| {
                     pretty::print_after_write_deps(state.session,
                                                    state.ast_map.unwrap(),
+                                                   state.analysis.unwrap(),
+                                                   state.resolutions.unwrap(),
                                                    state.input,
                                                    &state.expanded_crate.take().unwrap(),
                                                    state.crate_name.unwrap(),

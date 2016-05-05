@@ -61,6 +61,7 @@ use syntax::visit;
 use syntax;
 use syntax_ext;
 
+#[derive(Clone)]
 pub struct Resolutions {
     pub def_map: RefCell<DefMap>,
     pub freevars: FreevarMap,
@@ -209,6 +210,8 @@ pub fn compile_input(sess: &Session,
                                                                          &arenas,
                                                                          &cstore,
                                                                          &hir_map,
+                                                                         &analysis,
+                                                                         &resolutions,
                                                                          &expanded_crate,
                                                                          &hir_map.krate(),
                                                                          &id),
@@ -384,6 +387,7 @@ pub struct CompileState<'a, 'b, 'ast: 'a, 'tcx: 'b> where 'ast: 'tcx {
     pub expanded_crate: Option<&'a ast::Crate>,
     pub hir_crate: Option<&'a hir::Crate>,
     pub ast_map: Option<&'a hir_map::Map<'ast>>,
+    pub resolutions: Option<&'a Resolutions>,
     pub mir_map: Option<&'b MirMap<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'a>>,
     pub tcx: Option<&'b TyCtxt<'tcx>>,
@@ -408,6 +412,7 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
             expanded_crate: None,
             hir_crate: None,
             ast_map: None,
+            resolutions: None,
             analysis: None,
             mir_map: None,
             tcx: None,
@@ -454,6 +459,8 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
                               arenas: &'ast ty::CtxtArenas<'ast>,
                               cstore: &'a CStore,
                               hir_map: &'a hir_map::Map<'ast>,
+                              analysis: &'a ty::CrateAnalysis,
+                              resolutions: &'a Resolutions,
                               krate: &'a ast::Crate,
                               hir_crate: &'a hir::Crate,
                               crate_name: &'a str)
@@ -463,6 +470,8 @@ impl<'a, 'b, 'ast, 'tcx> CompileState<'a, 'b, 'ast, 'tcx> {
             arenas: Some(arenas),
             cstore: Some(cstore),
             ast_map: Some(hir_map),
+            analysis: Some(analysis),
+            resolutions: Some(resolutions),
             expanded_crate: Some(krate),
             hir_crate: Some(hir_crate),
             out_file: out_file.as_ref().map(|s| &**s),

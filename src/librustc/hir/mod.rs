@@ -1639,6 +1639,7 @@ pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 
+#[derive(Clone)]
 pub struct TraitCandidate {
     pub def_id: DefId,
     pub import_id: Option<NodeId>,
