@@ -265,6 +265,77 @@ pub fn construct<'a,'tcx>(hir: Cx<'a,'tcx>,
     )
 }
 
+
+///////////////////////////////////////////////////////////////////////////
+/// the main entry point for building MIR for an arbitrary expression
+
+pub fn construct_expr<'a,'tcx>(hir: Cx<'a,'tcx>,
+                          id: ast::NodeId,
+                          span: Span,
+                          expr: &'tcx hir::Expr)
+                          -> (Mir<'tcx>, ScopeAuxiliaryVec) {
+    let tcx = hir.tcx();
+    let cfg = CFG { basic_blocks: vec![] };
+    let ty = tcx.node_id_to_type(id);
+
+    let mut builder = Builder {
+        hir: hir,
+        cfg: cfg,
+        fn_span: span,
+        scopes: vec![],
+        scope_datas: vec![],
+        scope_auxiliary: ScopeAuxiliaryVec { vec: vec![] },
+        loop_scopes: vec![],
+        temp_decls: vec![],
+        var_decls: vec![],
+        var_indices: FnvHashMap(),
+        unit_temp: None,
+        cached_resume_block: None,
+    };
+
+    assert_eq!(builder.cfg.start_new_block(), START_BLOCK);
+    assert_eq!(builder.cfg.start_new_block(), END_BLOCK);
+
+    let call_site_extent = tcx.region_maps.item_extent(id);
+    let _ = builder.in_scope(call_site_extent, START_BLOCK, |builder, call_site_scope_id| {
+        let mut block = START_BLOCK;
+        let expr = builder.hir.mirror(expr);
+        unpack!(block = builder.into(&Lvalue::ReturnPointer, block, expr));
+        builder.cfg.terminate(block, call_site_scope_id, span,
+                              TerminatorKind::Goto { target: END_BLOCK });
+        builder.cfg.terminate(END_BLOCK, call_site_scope_id, span,
+                              TerminatorKind::Return);
+
+        END_BLOCK.unit()
+    });
+
+    assert!(
+        builder.cfg.basic_blocks
+                   .iter()
+                   .enumerate()
+                   .all(|(index, block)| {
+                       if block.terminator.is_none() {
+                           bug!("no terminator on block {:?} in fn {:?}",
+                                index, id)
+                       }
+                       true
+                   }));
+
+    (
+        Mir {
+            basic_blocks: builder.cfg.basic_blocks,
+            scopes: builder.scope_datas,
+            var_decls: builder.var_decls,
+            arg_decls: Vec::new(),
+            temp_decls: builder.temp_decls,
+            upvar_decls: Vec::new(),
+            return_ty: FnOutput::FnConverging(ty),
+            span: span
+        },
+        builder.scope_auxiliary,
+    )
+}
+
 impl<'a,'tcx> Builder<'a,'tcx> {
     fn args_and_body(&mut self,
                      mut block: BasicBlock,

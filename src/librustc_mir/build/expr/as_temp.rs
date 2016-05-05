@@ -35,13 +35,11 @@ impl<'a,'tcx> Builder<'a,'tcx> {
 
         let expr_ty = expr.ty.clone();
         let temp = this.temp(expr_ty.clone());
-        let temp_lifetime = match expr.temp_lifetime {
-            Some(t) => t,
-            None => {
-                span_bug!(expr.span, "no temp_lifetime for expr");
-            }
-        };
-        this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
+        if let Some(temp_lifetime) = expr.temp_lifetime {
+            this.schedule_drop(expr.span, temp_lifetime, &temp, expr_ty);
+        }
+        // if expression is inside a constant then
+        // there's no temp_lifetime and no need to drop
 
         // Careful here not to cause an infinite cycle. If we always
         // called `into`, then for lvalues like `x.f`, it would
