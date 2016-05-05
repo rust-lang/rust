@@ -185,8 +185,7 @@
 //! let reader = BufReader::new(f);
 //!
 //! for line in reader.lines() {
-//!     let line = try!(line);
-//!     println!("{}", line);
+//!     println!("{}", try!(line));
 //! }
 //!
 //! # Ok(())
