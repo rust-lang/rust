@@ -397,7 +397,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
         }
         TransItem::Fn(instance) => {
             // Keep track of the monomorphization recursion depth
-            recursion_depth_reset = Some(check_recursion_limit(ccx,
+            recursion_depth_reset = Some(check_recursion_limit(ccx.tcx(),
                                                                instance,
                                                                recursion_depths));
 
@@ -420,7 +420,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    record_references(ccx, starting_point, &neighbors[..], reference_map);
+    record_references(ccx.tcx(), starting_point, &neighbors[..], reference_map);
 
     for neighbour in neighbors {
         collect_items_rec(ccx, neighbour, visited, recursion_depths, reference_map);
@@ -433,23 +433,23 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     debug!("END collect_items_rec({})", starting_point.to_string(ccx.tcx()));
 }
 
-fn record_references<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                               caller: TransItem<'tcx>,
-                               callees: &[TransItem<'tcx>],
-                               reference_map: &mut ReferenceMap<'tcx>) {
+fn record_references<'tcx>(tcx: &TyCtxt<'tcx>,
+                           caller: TransItem<'tcx>,
+                           callees: &[TransItem<'tcx>],
+                           reference_map: &mut ReferenceMap<'tcx>) {
     let iter = callees.into_iter()
                       .map(|callee| {
                         let is_inlining_candidate = callee.is_from_extern_crate() ||
-                                                    callee.requests_inline(ccx.tcx());
+                                                    callee.requests_inline(tcx);
                         (*callee, is_inlining_candidate)
                       });
     reference_map.record_references(caller, iter);
 }
 
-fn check_recursion_limit<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
-                                       instance: Instance<'tcx>,
-                                       recursion_depths: &mut DefIdMap<usize>)
-                                       -> (DefId, usize) {
+fn check_recursion_limit<'tcx>(tcx: &TyCtxt<'tcx>,
+                               instance: Instance<'tcx>,
+                               recursion_depths: &mut DefIdMap<usize>)
+                               -> (DefId, usize) {
     let recursion_depth = recursion_depths.get(&instance.def)
                                           .map(|x| *x)
                                           .unwrap_or(0);
@@ -458,13 +458,13 @@ fn check_recursion_limit<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
     // Code that needs to instantiate the same function recursively
     // more than the recursion limit is assumed to be causing an
     // infinite expansion.
-    if recursion_depth > ccx.sess().recursion_limit.get() {
+    if recursion_depth > tcx.sess.recursion_limit.get() {
         let error = format!("reached the recursion limit while instantiating `{}`",
                             instance);
-        if let Some(node_id) = ccx.tcx().map.as_local_node_id(instance.def) {
-            ccx.sess().span_fatal(ccx.tcx().map.span(node_id), &error);
+        if let Some(node_id) = tcx.map.as_local_node_id(instance.def) {
+            tcx.sess.span_fatal(tcx.map.span(node_id), &error);
         } else {
-            ccx.sess().fatal(&error);
+            tcx.sess.fatal(&error);
         }
     }
 
@@ -488,8 +488,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *rvalue {
             mir::Rvalue::Aggregate(mir::AggregateKind::Closure(def_id,
                                                                ref substs), _) => {
-                assert!(can_have_local_instance(self.ccx, def_id));
-                let trans_item = create_fn_trans_item(self.ccx,
+                assert!(can_have_local_instance(self.ccx.tcx(), def_id));
+                let trans_item = create_fn_trans_item(self.ccx.tcx(),
                                                       def_id,
                                                       substs.func_substs,
                                                       self.param_substs);
@@ -527,9 +527,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         .require(ExchangeMallocFnLangItem)
                         .unwrap_or_else(|e| self.ccx.sess().fatal(&e));
 
-                assert!(can_have_local_instance(self.ccx, exchange_malloc_fn_def_id));
+                assert!(can_have_local_instance(self.ccx.tcx(), exchange_malloc_fn_def_id));
                 let exchange_malloc_fn_trans_item =
-                    create_fn_trans_item(self.ccx,
+                    create_fn_trans_item(self.ccx.tcx(),
                                          exchange_malloc_fn_def_id,
                                          &Substs::empty(),
                                          self.param_substs);
@@ -596,7 +596,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 // result in a translation item ...
                 if can_result_in_trans_item(self.ccx, callee_def_id) {
                     // ... and create one if it does.
-                    let trans_item = create_fn_trans_item(self.ccx,
+                    let trans_item = create_fn_trans_item(self.ccx.tcx(),
                                                           callee_def_id,
                                                           callee_substs,
                                                           self.param_substs);
@@ -631,18 +631,18 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 return false;
             }
 
-            can_have_local_instance(ccx, def_id)
+            can_have_local_instance(ccx.tcx(), def_id)
         }
     }
 }
 
-fn can_have_local_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     def_id: DefId)
-                                     -> bool {
+fn can_have_local_instance<'tcx>(tcx: &TyCtxt<'tcx>,
+                                 def_id: DefId)
+                                 -> bool {
     // Take a look if we have the definition available. If not, we
     // will not emit code for this item in the local crate, and thus
     // don't create a translation item for it.
-    def_id.is_local() || ccx.sess().cstore.is_item_mir_available(def_id)
+    def_id.is_local() || tcx.sess.cstore.is_item_mir_available(def_id)
 }
 
 fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -667,9 +667,9 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          .require(ExchangeFreeFnLangItem)
                                          .unwrap_or_else(|e| ccx.sess().fatal(&e));
 
-        assert!(can_have_local_instance(ccx, exchange_free_fn_def_id));
+        assert!(can_have_local_instance(ccx.tcx(), exchange_free_fn_def_id));
         let exchange_free_fn_trans_item =
-            create_fn_trans_item(ccx,
+            create_fn_trans_item(ccx.tcx(),
                                  exchange_free_fn_def_id,
                                  &Substs::empty(),
                                  &Substs::empty());
@@ -706,8 +706,8 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             _ => bug!()
         };
 
-        if can_have_local_instance(ccx, destructor_did) {
-            let trans_item = create_fn_trans_item(ccx,
+        if can_have_local_instance(ccx.tcx(), destructor_did) {
+            let trans_item = create_fn_trans_item(ccx.tcx(),
                                                   destructor_did,
                                                   substs,
                                                   &Substs::empty());
@@ -961,29 +961,27 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn create_fn_trans_item<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                  def_id: DefId,
-                                  fn_substs: &Substs<'tcx>,
-                                  param_substs: &Substs<'tcx>)
-                                  -> TransItem<'tcx>
-{
+fn create_fn_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
+                              def_id: DefId,
+                              fn_substs: &Substs<'tcx>,
+                              param_substs: &Substs<'tcx>)
+                              -> TransItem<'tcx> {
     debug!("create_fn_trans_item(def_id={}, fn_substs={:?}, param_substs={:?})",
-            def_id_to_string(ccx.tcx(), def_id),
+            def_id_to_string(tcx, def_id),
             fn_substs,
             param_substs);
 
     // We only get here, if fn_def_id either designates a local item or
     // an inlineable external item. Non-inlineable external items are
     // ignored because we don't want to generate any code for them.
-    let concrete_substs = monomorphize::apply_param_substs(ccx.tcx(),
+    let concrete_substs = monomorphize::apply_param_substs(tcx,
                                                            param_substs,
                                                            fn_substs);
-    let concrete_substs = ccx.tcx().erase_regions(&concrete_substs);
+    let concrete_substs = tcx.erase_regions(&concrete_substs);
 
     let trans_item =
         TransItem::Fn(Instance::new(def_id,
-                                    &ccx.tcx().mk_substs(concrete_substs)));
-
+                                    &tcx.mk_substs(concrete_substs)));
     return trans_item;
 }
 
@@ -1014,8 +1012,8 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                         .filter_map(|opt_impl_method| opt_impl_method)
                         // create translation items
                         .filter_map(|impl_method| {
-                            if can_have_local_instance(ccx, impl_method.method.def_id) {
-                                Some(create_fn_trans_item(ccx,
+                            if can_have_local_instance(ccx.tcx(), impl_method.method.def_id) {
+                                Some(create_fn_trans_item(ccx.tcx(),
                                                           impl_method.method.def_id,
                                                           &impl_method.substs,
                                                           &Substs::empty()))
@@ -1063,7 +1061,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
 
             hir::ItemImpl(..) => {
                 if self.mode == TransItemCollectionMode::Eager {
-                    create_trans_items_for_default_impls(self.ccx,
+                    create_trans_items_for_default_impls(self.ccx.tcx(),
                                                          item,
                                                          self.output);
                 }
@@ -1149,9 +1147,9 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
     }
 }
 
-fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                  item: &'tcx hir::Item,
-                                                  output: &mut Vec<TransItem<'tcx>>) {
+fn create_trans_items_for_default_impls<'tcx>(tcx: &TyCtxt<'tcx>,
+                                              item: &'tcx hir::Item,
+                                              output: &mut Vec<TransItem<'tcx>>) {
     match item.node {
         hir::ItemImpl(_,
                       _,
@@ -1163,11 +1161,10 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 return
             }
 
-            let tcx = ccx.tcx();
             let impl_def_id = tcx.map.local_def_id(item.id);
 
             debug!("create_trans_items_for_default_impls(item={})",
-                   def_id_to_string(ccx.tcx(), impl_def_id));
+                   def_id_to_string(tcx, impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let default_impls = tcx.provided_trait_methods(trait_ref.def_id);
@@ -1194,13 +1191,13 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     assert!(mth.is_provided);
 
                     let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
-                    if !normalize_and_test_predicates(ccx.tcx(), predicates.into_vec()) {
+                    if !normalize_and_test_predicates(tcx, predicates.into_vec()) {
                         continue;
                     }
 
-                    if can_have_local_instance(ccx, default_impl.def_id) {
-                        let empty_substs = ccx.tcx().mk_substs(ccx.tcx().erase_regions(mth.substs));
-                        let item = create_fn_trans_item(ccx,
+                    if can_have_local_instance(tcx, default_impl.def_id) {
+                        let empty_substs = tcx.mk_substs(tcx.erase_regions(mth.substs));
+                        let item = create_fn_trans_item(tcx,
                                                         default_impl.def_id,
                                                         callee_substs,
                                                         empty_substs);
