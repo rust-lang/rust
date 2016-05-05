@@ -107,3 +107,37 @@ fn main() {
     test_emphasis();
     test_units();
 }
+
+/// ## CamelCaseThing
+/// Talks about `CamelCaseThing`. Titles should be ignored, see issue #897.
+///
+/// # CamelCaseThing
+///
+/// Not a title #897 CamelCaseThing
+//~^ ERROR: you should put `CamelCaseThing` between ticks
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue897() {
+}
+
+/// I am confused by brackets? (`x_y`)
+/// I am confused by brackets? (foo `x_y`)
+/// I am confused by brackets? (`x_y` foo)
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue900() {
+}
+
+/// Diesel queries also have a similar problem to [Iterator][iterator], where
+/// /// More talking
+/// returning them from a function requires exposing the implementation of that
+/// function. The [`helper_types`][helper_types] module exists to help with this,
+/// but you might want to hide the return type or have it conditionally change.
+/// Boxing can achieve both.
+///
+/// [iterator]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+/// [helper_types]: ../helper_types/index.html
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue883() {
+}
