@@ -145,7 +145,7 @@ enum ResolutionError<'a> {
     /// error E0416: identifier is bound more than once in the same pattern
     IdentifierBoundMoreThanOnceInSamePattern(&'a str),
     /// error E0417: static variables cannot be referenced in a pattern
-    StaticVariableReference(DefId, Option<Name>),
+    StaticVariableReference(&'a NameBinding<'a>),
     /// error E0418: is not an enum variant, struct or const
     NotAnEnumVariantStructOrConst(&'a str),
     /// error E0419: unresolved enum variant, struct or const
@@ -197,16 +197,16 @@ enum UnresolvedNameContext<'a> {
     Other,
 }
 
-fn resolve_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
-                                       span: syntax::codemap::Span,
-                                       resolution_error: ResolutionError<'b>) {
+fn resolve_error<'b, 'a: 'b, 'tcx: 'a, 'c>(resolver: &'b Resolver<'a, 'tcx>,
+                                           span: syntax::codemap::Span,
+                                           resolution_error: ResolutionError<'c>) {
     resolve_struct_error(resolver, span, resolution_error).emit();
 }
 
-fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
-                                              span: syntax::codemap::Span,
-                                              resolution_error: ResolutionError<'b>)
-                                              -> DiagnosticBuilder<'a> {
+fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a, 'c>(resolver: &'b Resolver<'a, 'tcx>,
+                                                  span: syntax::codemap::Span,
+                                                  resolution_error: ResolutionError<'b>)
+                                                  -> DiagnosticBuilder<'c> {
     if !resolver.emit_errors {
         return resolver.session.diagnostic().struct_dummy();
     }
@@ -350,22 +350,15 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              "identifier `{}` is bound more than once in the same pattern",
                              identifier)
         }
-        ResolutionError::StaticVariableReference(did, name) => {
+        ResolutionError::StaticVariableReference(binding) => {
             let mut err = struct_span_err!(resolver.session,
                                            span,
                                            E0417,
                                            "static variables cannot be referenced in a \
                                             pattern, use a `const` instead");
-            if let Some(sp) = resolver.ast_map.span_if_local(did) {
-                err.span_note(sp, "static variable defined here");
-            }
-            if let Some(name) = name {
-                if let Some(binding) = resolver.current_module
-                                               .resolve_name_in_lexical_scope(name, ValueNS) {
-                    if binding.is_import() {
-                        err.span_note(binding.span, "static variable imported here");
-                    }
-                }
+            if binding.span != codemap::DUMMY_SP {
+                let participle = if binding.is_import() { "imported" } else { "defined" };
+                err.span_note(binding.span, &format!("static variable {} here", participle));
             }
             err
         }
@@ -764,10 +757,6 @@ impl<'a> LexicalScopeBinding<'a> {
             LexicalScopeBinding::LocalDef(local_def) => local_def,
             LexicalScopeBinding::Item(binding) => LocalDef::from_def(binding.def().unwrap()),
         }
-    }
-
-    fn def(self) -> Def {
-        self.local_def().def
     }
 
     fn module(self) -> Option<Module<'a>> {
@@ -2328,11 +2317,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             Def::Variant(..) | Def::Const(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
-                            Def::Static(did, _) => {
-                                resolve_error(&self,
-                                              path.span,
-                                              ResolutionError::StaticVariableReference(
-                                                  did, None));
+                            Def::Static(..) => {
+                                let segments = &path.segments;
+                                let binding = if path.global {
+                                    self.resolve_crate_relative_path(path.span, segments, ValueNS)
+                                } else {
+                                    self.resolve_module_relative_path(path.span, segments, ValueNS)
+                                }.unwrap();
+
+                                let error = ResolutionError::StaticVariableReference(binding);
+                                resolve_error(self, path.span, error);
                                 self.record_def(pattern.id, err_path_resolution());
                             }
                             _ => {
@@ -2464,17 +2458,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_bare_identifier_pattern(&mut self, ident: hir::Ident, span: Span)
                                        -> BareIdentifierPatternResolution {
-        match self.resolve_ident_in_lexical_scope(ident, ValueNS, true)
-                  .map(LexicalScopeBinding::def) {
-            Some(def @ Def::Variant(..)) | Some(def @ Def::Struct(..)) => {
-                FoundStructOrEnumVariant(def)
-            }
-            Some(def @ Def::Const(..)) | Some(def @ Def::AssociatedConst(..)) => {
-                FoundConst(def, ident.unhygienic_name)
-            }
-            Some(Def::Static(did, _)) => {
-                resolve_error(self, span, ResolutionError::StaticVariableReference(
-                    did, Some(ident.unhygienic_name)));
+        let binding = match self.resolve_ident_in_lexical_scope(ident, ValueNS, true) {
+            Some(LexicalScopeBinding::Item(binding)) => binding,
+            _ => return BareIdentifierPatternUnresolved,
+        };
+        let def = binding.def().unwrap();
+
+        match def {
+            Def::Variant(..) | Def::Struct(..) => FoundStructOrEnumVariant(def),
+            Def::Const(..) | Def::AssociatedConst(..) => FoundConst(def, ident.unhygienic_name),
+            Def::Static(..) => {
+                let error = ResolutionError::StaticVariableReference(binding);
+                resolve_error(self, span, error);
                 BareIdentifierPatternUnresolved
             }
             _ => BareIdentifierPatternUnresolved,

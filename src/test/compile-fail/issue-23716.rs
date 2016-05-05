@@ -16,7 +16,6 @@ fn bar(foo: i32) {}
 
 mod submod {
     pub static answer: i32 = 42;
-    //~^ NOTE static variable defined here
 }
 
 use self::submod::answer;
