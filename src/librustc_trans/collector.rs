@@ -1194,7 +1194,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     assert!(mth.is_provided);
 
                     let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
-                    if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
+                    if !normalize_and_test_predicates(ccx.tcx(), predicates.into_vec()) {
                         continue;
                     }
 

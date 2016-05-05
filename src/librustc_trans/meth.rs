@@ -287,7 +287,7 @@ pub fn get_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // try and trans it, in that case. Issue #23435.
             if mth.is_provided {
                 let predicates = mth.method.predicates.predicates.subst(tcx, &mth.substs);
-                if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
+                if !normalize_and_test_predicates(tcx, predicates.into_vec()) {
                     debug!("get_vtable_methods: predicates do not hold");
                     return None;
                 }

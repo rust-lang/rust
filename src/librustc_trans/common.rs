@@ -1129,14 +1129,13 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 /// returns false, then either normalize encountered an error or one
 /// of the predicates did not hold. Used when creating vtables to
 /// check for unsatisfiable methods.
-pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                               predicates: Vec<ty::Predicate<'tcx>>)
-                                               -> bool
+pub fn normalize_and_test_predicates<'tcx>(tcx: &TyCtxt<'tcx>,
+                                           predicates: Vec<ty::Predicate<'tcx>>)
+                                           -> bool
 {
     debug!("normalize_and_test_predicates(predicates={:?})",
            predicates);
 
-    let tcx = ccx.tcx();
     let infcx = infer::normalizing_infer_ctxt(tcx, &tcx.tables, ProjectionMode::Any);
     let mut selcx = SelectionContext::new(&infcx);
     let mut fulfill_cx = traits::FulfillmentContext::new();
