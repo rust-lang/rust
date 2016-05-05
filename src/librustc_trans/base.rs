@@ -2964,7 +2964,7 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(ccx);
+                let mut output = i.to_string(ccx.tcx());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let mut cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
