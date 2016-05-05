@@ -108,6 +108,18 @@ fn main() {
     test_units();
 }
 
+/// ## CamelCaseThing
+/// Talks about `CamelCaseThing`. Titles should be ignored, see issue #897.
+///
+/// # CamelCaseThing
+///
+/// Not a title #897 CamelCaseThing
+//~^ ERROR: you should put `CamelCaseThing` between ticks
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue897() {
+}
+
 /// I am confused by brackets? (`x_y`)
 /// I am confused by brackets? (foo `x_y`)
 /// I am confused by brackets? (`x_y` foo)

@@ -126,6 +126,7 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
         span
     }
 
+    let mut new_line = true;
     let len = doc.len();
     let mut chars = doc.char_indices().peekable();
     let mut current_word_begin = 0;
@@ -133,6 +134,9 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
         match chars.next() {
             Some((_, c)) => {
                 match c {
+                    '#' if new_line => { // don’t warn on titles
+                        current_word_begin = jump_to!(chars, '\n', len);
+                    }
                     '`' => {
                         current_word_begin = jump_to!(chars, '`', len);
                     }
@@ -182,6 +186,8 @@ pub fn check_doc(cx: &EarlyContext, valid_idents: &[String], doc: &str, span: Sp
                         current_word_begin = jump_to!(@next_char, chars, len);
                     }
                 }
+
+                new_line = c == '\n' || (new_line && c.is_whitespace());
             }
             None => break,
         }
