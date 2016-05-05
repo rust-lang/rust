@@ -16,6 +16,9 @@
 
 #include "llvm/IR/CallSite.h"
 
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Support/Signals.h"
+
 //===----------------------------------------------------------------------===
 //
 // This file defines alternate interfaces to core functions that are more
@@ -39,6 +42,10 @@ LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
       return nullptr;
   }
   return wrap(buf_or.get().release());
+}
+
+extern "C" void LLVMRemoveFatalErrorHandler() {
+    llvm::remove_fatal_error_handler();
 }
 
 extern "C" char *LLVMRustGetLastError(void) {
@@ -75,6 +82,10 @@ extern "C" LLVMValueRef LLVMRustConstInt(LLVMTypeRef IntTy,
 extern "C" void LLVMRustPrintPassTimings() {
   raw_fd_ostream OS (2, false); // stderr.
   TimerGroup::printAll(OS);
+}
+
+extern "C" void LLVMSysRunInterruptHandlers() {
+    sys::RunInterruptHandlers();
 }
 
 extern "C" LLVMValueRef LLVMGetNamedValue(LLVMModuleRef M,
