@@ -53,26 +53,28 @@ impl Duration {
     /// in a second), then it will carry over into the seconds provided.
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn new(secs: u64, nanos: u32) -> Duration {
-        let secs = secs + (nanos / NANOS_PER_SEC) as u64;
-        let nanos = nanos % NANOS_PER_SEC;
-        Duration { secs: secs, nanos: nanos }
+    pub const fn new(secs: u64, nanos: u32) -> Duration {
+        Duration {
+            secs: secs + (nanos / NANOS_PER_SEC) as u64,
+            nanos: nanos % NANOS_PER_SEC,
+        }
     }
 
     /// Creates a new `Duration` from the specified number of seconds.
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn from_secs(secs: u64) -> Duration {
+    pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs: secs, nanos: 0 }
     }
 
     /// Creates a new `Duration` from the specified number of milliseconds.
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn from_millis(millis: u64) -> Duration {
-        let secs = millis / MILLIS_PER_SEC;
-        let nanos = ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI;
-        Duration { secs: secs, nanos: nanos }
+    pub const fn from_millis(millis: u64) -> Duration {
+        Duration {
+            secs: millis / MILLIS_PER_SEC,
+            nanos: ((millis % MILLIS_PER_SEC) as u32) * NANOS_PER_MILLI,
+        }
     }
 
     /// Returns the number of whole seconds represented by this duration.
@@ -81,7 +83,7 @@ impl Duration {
     /// nanoseconds are not represented in the returned value).
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn as_secs(&self) -> u64 { self.secs }
+    pub const fn as_secs(&self) -> u64 { self.secs }
 
     /// Returns the nanosecond precision represented by this duration.
     ///
@@ -90,7 +92,7 @@ impl Duration {
     /// fractional portion of a second (e.g. it is less than one billion).
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    pub fn subsec_nanos(&self) -> u32 { self.nanos }
+    pub const fn subsec_nanos(&self) -> u32 { self.nanos }
 }
 
 #[stable(feature = "duration", since = "1.3.0")]
