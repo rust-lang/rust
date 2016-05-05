@@ -159,6 +159,13 @@ impl Error for num::ParseIntError {
     }
 }
 
+#[unstable(feature = "try_from", issue = "33417")]
+impl Error for num::TryFromIntError {
+    fn description(&self) -> &str {
+        self.__description()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for num::ParseFloatError {
     fn description(&self) -> &str {
