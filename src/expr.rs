@@ -145,7 +145,7 @@ impl Rewrite for ast::Expr {
                 };
                 wrap_str(format!("break{}", id_str), context.config.max_width, width, offset)
             }
-            ast::ExprKind::Closure(capture, ref fn_decl, ref body) => {
+            ast::ExprKind::Closure(capture, ref fn_decl, ref body, _) => {
                 rewrite_closure(capture, fn_decl, body, self.span, context, width, offset)
             }
             ast::ExprKind::Field(..) |

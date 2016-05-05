@@ -1061,7 +1061,7 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let prefix = format!("type {}", ident);
 
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
-        let bounds: &[_] = &ty_param_bounds.as_slice();
+        let bounds: &[_] = &ty_param_bounds;
         let bound_str = bounds.iter()
             .filter_map(|ty_bound| ty_bound.rewrite(context, context.config.max_width, indent))
             .collect::<Vec<String>>()
@@ -1188,7 +1188,7 @@ pub fn span_hi_for_arg(arg: &ast::Arg) -> BytePos {
 
 pub fn is_named_arg(arg: &ast::Arg) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
-        ident.node != token::special_idents::invalid
+        ident.node != token::keywords::Invalid.ident()
     } else {
         true
     }
@@ -1704,7 +1704,7 @@ fn rewrite_trait_bounds(context: &RewriteContext,
                         indent: Indent,
                         width: usize)
                         -> Option<String> {
-    let bounds: &[_] = &type_param_bounds.as_slice();
+    let bounds: &[_] = &type_param_bounds;
 
     if bounds.is_empty() {
         return Some(String::new());
