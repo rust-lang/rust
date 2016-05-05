@@ -222,13 +222,40 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx> {
     }
 
     /// Check for NEEDS_DROP (from an ADT or const fn call) and
-    /// error, unless we're in a function.
+    /// error, unless we're in a function, or the feature-gate
+    /// for globals with destructors is enabled.
     fn deny_drop(&self) {
-        if self.mode != Mode::Fn && self.qualif.intersects(Qualif::NEEDS_DROP) {
-            span_err!(self.tcx.sess, self.span, E0493,
-                      "{}s are not allowed to have destructors",
-                      self.mode);
+        if self.mode == Mode::Fn || !self.qualif.intersects(Qualif::NEEDS_DROP) {
+            return;
         }
+
+        // Static and const fn's allow destructors, but they're feature-gated.
+        let msg = if self.mode != Mode::Const {
+            // Feature-gate for globals with destructors is enabled.
+            if self.tcx.sess.features.borrow().drop_types_in_const {
+                return;
+            }
+
+            // This comes from a macro that has #[allow_internal_unstable].
+            if self.tcx.sess.codemap().span_allows_unstable(self.span) {
+                return;
+            }
+
+            format!("destructors in {}s are an unstable feature",
+                    self.mode)
+        } else {
+            format!("{}s are not allowed to have destructors",
+                    self.mode)
+        };
+
+        let mut err =
+            struct_span_err!(self.tcx.sess, self.span, E0493, "{}", msg);
+        if self.mode != Mode::Const {
+            help!(&mut err,
+                  "in Nightly builds, add `#![feature(drop_types_in_const)]` \
+                   to the crate attributes to enable");
+        }
+        err.emit();
     }
 
     /// Check if an Lvalue with the current qualifications could

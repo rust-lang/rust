@@ -345,7 +345,7 @@ impl Drop for Foo {
 const F : Foo = Foo { a : 0 };
 // error: constants are not allowed to have destructors
 static S : Foo = Foo { a : 0 };
-// error: statics are not allowed to have destructors
+// error: destructors in statics are an unstable feature
 ```
 
 To solve this issue, please use a type which does allow the usage of type with
