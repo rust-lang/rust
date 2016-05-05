@@ -77,6 +77,7 @@ $(PKG_TAR): $(PKG_FILES)
 	$(Q)mkdir -p tmp/dist/$(PKG_NAME)
 	$(Q)tar \
          -C $(S) \
+         -f - \
          --exclude-vcs \
          --exclude=*~ \
          --exclude=*.pyc \
@@ -86,7 +87,7 @@ $(PKG_TAR): $(PKG_FILES)
          --exclude=*/llvm/test/*/*/*.ll \
          --exclude=*/llvm/test/*/*/*.td \
          --exclude=*/llvm/test/*/*/*.s \
-         -c $(UNROOTED_PKG_FILES) | tar -x -C tmp/dist/$(PKG_NAME)
+         -c $(UNROOTED_PKG_FILES) | tar -x -f - -C tmp/dist/$(PKG_NAME)
 	@$(call E, making $@)
 	$(Q)tar -czf $(PKG_TAR) -C tmp/dist $(PKG_NAME)
 	$(Q)rm -Rf tmp/dist/$(PKG_NAME)
