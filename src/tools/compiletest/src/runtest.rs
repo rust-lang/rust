@@ -63,10 +63,6 @@ pub fn run(config: Config, testpaths: &TestPaths) {
         for revision in &base_props.revisions {
             let mut revision_props = base_props.clone();
             revision_props.load_from(&testpaths.file, Some(&revision));
-            revision_props.compile_flags.extend(vec![
-                format!("--cfg"),
-                format!("{}", revision),
-            ]);
             let rev_cx = TestCx {
                 config: &config,
                 props: &revision_props,
@@ -383,6 +379,12 @@ actual:\n\
                             self.config.build_base.to_str().unwrap().to_owned(),
                             "-L".to_owned(),
                             aux_dir.to_str().unwrap().to_owned());
+        if let Some(revision) = self.revision {
+            args.extend(vec![
+                format!("--cfg"),
+                format!("{}", revision),
+            ]);
+        }
         args.extend(self.split_maybe_args(&self.config.target_rustcflags));
         args.extend(self.props.compile_flags.iter().cloned());
         // FIXME (#9639): This needs to handle non-utf8 paths
@@ -1102,7 +1104,7 @@ actual:\n\
         if self.props.build_aux_docs {
             for rel_ab in &self.props.aux_builds {
                 let aux_testpaths = self.compute_aux_test_paths(rel_ab);
-                let aux_props = TestProps::from_file(&aux_testpaths.file);
+                let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision);
                 let aux_cx = TestCx {
                     config: self.config,
                     props: &aux_props,
@@ -1186,7 +1188,7 @@ actual:\n\
 
         for rel_ab in &self.props.aux_builds {
             let aux_testpaths = self.compute_aux_test_paths(rel_ab);
-            let aux_props = TestProps::from_file(&aux_testpaths.file);
+            let aux_props = self.props.from_aux_file(&aux_testpaths.file, self.revision);
             let mut crate_type = if aux_props.no_prefer_dynamic {
                 Vec::new()
             } else {
@@ -1290,6 +1292,21 @@ actual:\n\
                             "-L".to_owned(),
                             self.config.build_base.to_str().unwrap().to_owned(),
                             format!("--target={}", target));
+
+        if let Some(revision) = self.revision {
+            args.extend(vec![
+                format!("--cfg"),
+                format!("{}", revision),
+            ]);
+        }
+
+        if let Some(ref incremental_dir) = self.props.incremental_dir {
+            args.extend(vec![
+                format!("-Z"),
+                format!("incremental={}", incremental_dir.display()),
+            ]);
+        }
+
 
         match self.config.mode {
             CompileFail |
@@ -1980,10 +1997,7 @@ actual:\n\
 
         // Add an extra flag pointing at the incremental directory.
         let mut revision_props = self.props.clone();
-        revision_props.compile_flags.extend(vec![
-            format!("-Z"),
-            format!("incremental={}", incremental_dir.display()),
-        ]);
+        revision_props.incremental_dir = Some(incremental_dir);
 
         let revision_cx = TestCx {
             config: self.config,
