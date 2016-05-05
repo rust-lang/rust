@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Test a corner case of LUB coercion. In this case, one arm of the
-// match requires a deref coercion and other other doesn't, and there
+// match requires a deref coercion and the other doesn't, and there
 // is an extra `&` on the `rc`. We want to be sure that the lifetime
 // assigned to this `&rc` value is not `'a` but something smaller.  In
 // other words, the type from `rc` is `&'a Rc<String>` and the type
