@@ -1153,7 +1153,7 @@ actual:\n\
         let test_ab = self.testpaths.file
                                     .parent()
                                     .expect("test file path has no parent")
-                                    .join("aux")
+                                    .join("auxiliary")
                                     .join(rel_ab);
         if !test_ab.exists() {
             self.fatal(&format!("aux-build `{}` source not found", test_ab.display()))
@@ -1163,7 +1163,7 @@ actual:\n\
             file: test_ab,
             base: self.testpaths.base.clone(),
             relative_dir: self.testpaths.relative_dir
-                                        .join("aux")
+                                        .join("auxiliary")
                                         .join(rel_ab)
                                         .parent()
                                         .expect("aux-build path has no parent")
