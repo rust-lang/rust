@@ -1008,7 +1008,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                         impl_def_id,
                         substs,
                         nested: _ }) => {
-                    let items = meth::get_vtable_methods(ccx, impl_def_id, substs)
+                    let items = meth::get_vtable_methods(ccx.tcx(), impl_def_id, substs)
                         .into_iter()
                         // filter out None values
                         .filter_map(|opt_impl_method| opt_impl_method)
