@@ -162,6 +162,11 @@ pub struct TestProps {
     pub forbid_output: Vec<String>,
     // Revisions to test for incremental compilation.
     pub revisions: Vec<String>,
+    // Directory (if any) to use for incremental compilation.  This is
+    // not set by end-users; rather it is set by the incremental
+    // testing harness and used when generating compilation
+    // arguments. (In particular, it propagates to the aux-builds.)
+    pub incremental_dir: Option<PathBuf>,
 }
 
 impl TestProps {
@@ -197,7 +202,18 @@ impl TestProps {
             pretty_mode: format!("normal"),
             pretty_compare_only: pretty_compare_only,
             forbid_output: forbid_output,
+            incremental_dir: None,
         }
+    }
+
+    pub fn from_aux_file(&self, testfile: &Path, cfg: Option<&str>) -> Self {
+        let mut props = TestProps::new();
+
+        // copy over select properties to the aux build:
+        props.incremental_dir = self.incremental_dir.clone();
+        props.load_from(testfile, cfg);
+
+        props
     }
 
     pub fn from_file(testfile: &Path) -> Self {
