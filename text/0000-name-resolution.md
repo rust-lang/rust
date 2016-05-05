@@ -190,6 +190,34 @@ mod boz {
 }
 ```
 
+Caveat: an explicit name which is defined by the expansion of a macro does **not**
+shadow glob imports. Example:
+
+```
+macro_rules! foo {
+    () => {
+        fn foo() {}
+    }
+}
+
+mod a {
+    fn foo() {}
+}
+
+mod b {
+    use a::*;
+
+    foo!(); // Expands to `fn foo() {}`, this `foo` does not shadow the `foo`
+            // imported from `a` and therefore there is a duplicate name error.
+}
+```
+
+The rationale for this caveat is so that during import resolution, if we have a
+glob import we can be sure that any imported names will not be shadowed, either
+the name will continue to be valid, or there will be an error. Without this
+caveat, a name could be valid, and then after further expansion, become shadowed
+by a higher priority name.
+
 This change is discussed in [issue 31337](https://github.com/rust-lang/rust/issues/31337).
 
 
@@ -302,6 +330,12 @@ fn process_work_list() {
     }
 }
 ```
+
+Note that this pseudo-code elides some details: that names are imported into
+distinct namespaces (the type and value namespaces, and with changes to macro
+naming, also the macro namespace), and that we must record whether a name is due
+to macro expansion or not to abide by the caveat to the 'explicit names shadow
+glob names' rule.
 
 In order to keep macro expansion comprehensible to programmers, we must enforce
 that all macro uses resolve to the same binding at the end of resolution as they
