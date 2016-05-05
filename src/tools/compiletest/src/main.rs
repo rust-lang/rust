@@ -360,7 +360,7 @@ fn collect_tests_from_dir(config: &Config,
             tests.push(make_test(config, &paths))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
-            if &file_name == "aux" {
+            if &file_name == "auxiliary" {
                 // `aux` directories contain other crates used for
                 // cross-crate tests. Don't search them for tests, but
                 // do create a directory in the build dir for them,
