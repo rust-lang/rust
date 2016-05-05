@@ -12,7 +12,7 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::windows_base::opts();
-    base.cpu = "pentium4".to_string();
+    base.cpu = "i686".to_string();
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
