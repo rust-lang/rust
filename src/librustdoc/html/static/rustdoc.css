@@ -270,6 +270,11 @@ nav.sub {
     padding: 0px;
     text-align: right;
     display: inline-block;
+    font-weight: normal;
+}
+
+h3.impl > .out-of-band {
+    font-size: 21px;
 }
 
 .content .in-band {
