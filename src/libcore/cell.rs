@@ -232,6 +232,18 @@ impl<T:Copy> Cell<T> {
     pub fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
     }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows `Cell` mutably (at compile-time) which guarantees
+    /// that we possess the only reference.
+    #[inline]
+    #[unstable(feature = "cell_get_mut", issue = "33444")]
+    pub fn get_mut(&mut self) -> &mut T {
+        unsafe {
+            &mut *self.value.get()
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -454,6 +466,18 @@ impl<T: ?Sized> RefCell<T> {
     #[unstable(feature = "as_unsafe_cell", issue = "27708")]
     pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
         &self.value
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows `RefCell` mutably (at compile-time) so there is no
+    /// need for dynamic checks.
+    #[inline]
+    #[unstable(feature = "cell_get_mut", issue="33444")]
+    pub fn get_mut(&mut self) -> &mut T {
+        unsafe {
+            &mut *self.value.get()
+        }
     }
 }
 
