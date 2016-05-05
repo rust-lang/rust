@@ -85,7 +85,7 @@ use fmt;
 /// A boolean type which can be safely shared between threads.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicBool {
-    v: UnsafeCell<usize>,
+    v: UnsafeCell<bool>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -198,9 +198,6 @@ pub const ATOMIC_ISIZE_INIT: AtomicIsize = AtomicIsize::new(0);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const ATOMIC_USIZE_INIT: AtomicUsize = AtomicUsize::new(0);
 
-// NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
-const UINT_TRUE: usize = !0;
-
 impl AtomicBool {
     /// Creates a new `AtomicBool`.
     ///
@@ -215,7 +212,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn new(v: bool) -> AtomicBool {
-        AtomicBool { v: UnsafeCell::new(-(v as isize) as usize) }
+        AtomicBool { v: UnsafeCell::new(v) }
     }
 
     /// Loads a value from the bool.
@@ -238,7 +235,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> bool {
-        unsafe { atomic_load(self.v.get(), order) > 0 }
+        unsafe { atomic_load(self.v.get(), order) }
     }
 
     /// Stores a value into the bool.
@@ -262,8 +259,6 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, val: bool, order: Ordering) {
-        let val = if val { UINT_TRUE } else { 0 };
-
         unsafe { atomic_store(self.v.get(), val, order); }
     }
 
@@ -284,9 +279,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&self, val: bool, order: Ordering) -> bool {
-        let val = if val { UINT_TRUE } else { 0 };
-
-        unsafe { atomic_swap(self.v.get(), val, order) > 0 }
+        unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
     /// Stores a value into the `bool` if the current value is the same as the `current` value.
@@ -357,13 +350,7 @@ impl AtomicBool {
                             new: bool,
                             success: Ordering,
                             failure: Ordering) -> Result<bool, bool> {
-        let current = if current { UINT_TRUE } else { 0 };
-        let new = if new { UINT_TRUE } else { 0 };
-
-        match unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) } {
-            Ok(x) => Ok(x > 0),
-            Err(x) => Err(x > 0),
-        }
+        unsafe { atomic_compare_exchange(self.v.get(), current, new, success, failure) }
     }
 
     /// Stores a value into the `bool` if the current value is the same as the `current` value.
@@ -403,14 +390,7 @@ impl AtomicBool {
                                  new: bool,
                                  success: Ordering,
                                  failure: Ordering) -> Result<bool, bool> {
-        let current = if current { UINT_TRUE } else { 0 };
-        let new = if new { UINT_TRUE } else { 0 };
-
-        match unsafe { atomic_compare_exchange_weak(self.v.get(), current, new,
-                                                    success, failure) } {
-            Ok(x) => Ok(x > 0),
-            Err(x) => Err(x > 0),
-        }
+        unsafe { atomic_compare_exchange_weak(self.v.get(), current, new, success, failure) }
     }
 
     /// Logical "and" with a boolean value.
@@ -440,9 +420,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_and(&self, val: bool, order: Ordering) -> bool {
-        let val = if val { UINT_TRUE } else { 0 };
-
-        unsafe { atomic_and(self.v.get(), val, order) > 0 }
+        unsafe { atomic_and(self.v.get(), val, order) }
     }
 
     /// Logical "nand" with a boolean value.
@@ -473,9 +451,20 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_nand(&self, val: bool, order: Ordering) -> bool {
-        let val = if val { UINT_TRUE } else { 0 };
-
-        unsafe { atomic_nand(self.v.get(), val, order) > 0 }
+        // We can't use atomic_nand here because it can result in a bool with
+        // an invalid value. This happens because the atomic operation is done
+        // with an 8-bit integer internally, which would set the upper 7 bits.
+        // So we just use a compare-exchange loop instead, which is what the
+        // intrinsic actually expands to anyways on many platforms.
+        let mut old = self.load(Relaxed);
+        loop {
+            let new = !(old && val);
+            match self.compare_exchange_weak(old, new, order, Relaxed) {
+                Ok(_) => break,
+                Err(x) => old = x,
+            }
+        }
+        old
     }
 
     /// Logical "or" with a boolean value.
@@ -505,9 +494,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_or(&self, val: bool, order: Ordering) -> bool {
-        let val = if val { UINT_TRUE } else { 0 };
-
-        unsafe { atomic_or(self.v.get(), val, order) > 0 }
+        unsafe { atomic_or(self.v.get(), val, order) }
     }
 
     /// Logical "xor" with a boolean value.
@@ -537,9 +524,7 @@ impl AtomicBool {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_xor(&self, val: bool, order: Ordering) -> bool {
-        let val = if val { UINT_TRUE } else { 0 };
-
-        unsafe { atomic_xor(self.v.get(), val, order) > 0 }
+        unsafe { atomic_xor(self.v.get(), val, order) }
     }
 }
 
@@ -1445,18 +1430,6 @@ unsafe fn atomic_and<T>(dst: *mut T, val: T, order: Ordering) -> T {
 }
 
 #[inline]
-unsafe fn atomic_nand<T>(dst: *mut T, val: T, order: Ordering) -> T {
-    match order {
-        Acquire => intrinsics::atomic_nand_acq(dst, val),
-        Release => intrinsics::atomic_nand_rel(dst, val),
-        AcqRel  => intrinsics::atomic_nand_acqrel(dst, val),
-        Relaxed => intrinsics::atomic_nand_relaxed(dst, val),
-        SeqCst  => intrinsics::atomic_nand(dst, val)
-    }
-}
-
-
-#[inline]
 unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
         Acquire => intrinsics::atomic_or_acq(dst, val),
@@ -1466,7 +1439,6 @@ unsafe fn atomic_or<T>(dst: *mut T, val: T, order: Ordering) -> T {
         SeqCst  => intrinsics::atomic_or(dst, val)
     }
 }
-
 
 #[inline]
 unsafe fn atomic_xor<T>(dst: *mut T, val: T, order: Ordering) -> T {
