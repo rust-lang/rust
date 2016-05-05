@@ -326,6 +326,22 @@ impl fmt::Debug for CStr {
     }
 }
 
+#[stable(feature = "cstr_default", since = "1.10.0")]
+impl<'a> Default for &'a CStr {
+    fn default() -> &'a CStr {
+        static SLICE: &'static [c_char] = &[0];
+        unsafe { CStr::from_ptr(SLICE.as_ptr()) }
+    }
+}
+
+#[stable(feature = "cstr_default", since = "1.10.0")]
+impl Default for CString {
+    fn default() -> CString {
+        let a: &CStr = Default::default();
+        a.to_owned()
+    }
+}
+
 #[stable(feature = "cstr_borrow", since = "1.3.0")]
 impl Borrow<CStr> for CString {
     fn borrow(&self) -> &CStr { self }
