@@ -247,7 +247,8 @@ pub const tag_rustc_version: usize = 0x10f;
 pub fn rustc_version() -> String {
     format!(
         "rustc {}",
-        option_env!("CFG_VERSION").unwrap_or("unknown version")
+//        option_env!("CFG_VERSION").unwrap_or("unknown version")
+        "nightly edition"
     )
 }
 

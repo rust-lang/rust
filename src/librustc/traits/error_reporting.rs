@@ -511,113 +511,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// that we can give a more helpful error message (and, in particular,
     /// we do not suggest increasing the overflow limit, which is not
     /// going to help).
-    pub fn report_overflow_error_cycle(&self, cycle: &Vec<PredicateObligation<'tcx>>) -> ! {
-        assert!(cycle.len() > 1);
-
-        debug!("report_overflow_error_cycle(cycle length = {})", cycle.len());
-
-        let cycle = self.resolve_type_vars_if_possible(cycle);
+    pub fn report_overflow_error_cycle(&self, cycle: &[PredicateObligation<'tcx>]) -> ! {
+        let cycle = self.resolve_type_vars_if_possible(&cycle.to_owned());
 
         debug!("report_overflow_error_cycle: cycle={:?}", cycle);
 
-        assert_eq!(&cycle[0].predicate, &cycle.last().unwrap().predicate);
-
-        self.try_report_overflow_error_type_of_infinite_size(&cycle);
         self.report_overflow_error(&cycle[0], false);
-    }
-
-    /// If a cycle results from evaluated whether something is Sized, that
-    /// is a particular special case that always results from a struct or
-    /// enum definition that lacks indirection (e.g., `struct Foo { x: Foo
-    /// }`). We wish to report a targeted error for this case.
-    pub fn try_report_overflow_error_type_of_infinite_size(&self,
-        cycle: &[PredicateObligation<'tcx>])
-    {
-        let sized_trait = match self.tcx.lang_items.sized_trait() {
-            Some(v) => v,
-            None => return,
-        };
-        let top_is_sized = {
-            match cycle[0].predicate {
-                ty::Predicate::Trait(ref data) => data.def_id() == sized_trait,
-                _ => false,
-            }
-        };
-        if !top_is_sized {
-            return;
-        }
-
-        // The only way to have a type of infinite size is to have,
-        // somewhere, a struct/enum type involved. Identify all such types
-        // and report the cycle to the user.
-
-        let struct_enum_tys: Vec<_> =
-            cycle.iter()
-                 .flat_map(|obligation| match obligation.predicate {
-                     ty::Predicate::Trait(ref data) => {
-                         assert_eq!(data.def_id(), sized_trait);
-                         let self_ty = data.skip_binder().trait_ref.self_ty(); // (*)
-                         // (*) ok to skip binder because this is just
-                         // error reporting and regions don't really
-                         // matter
-                         match self_ty.sty {
-                             ty::TyEnum(..) | ty::TyStruct(..) => Some(self_ty),
-                             _ => None,
-                         }
-                     }
-                     _ => {
-                         span_bug!(obligation.cause.span,
-                                   "Sized cycle involving non-trait-ref: {:?}",
-                                   obligation.predicate);
-                     }
-                 })
-                 .collect();
-
-        assert!(!struct_enum_tys.is_empty());
-
-        // This is a bit tricky. We want to pick a "main type" in the
-        // listing that is local to the current crate, so we can give a
-        // good span to the user. But it might not be the first one in our
-        // cycle list. So find the first one that is local and then
-        // rotate.
-        let (main_index, main_def_id) =
-            struct_enum_tys.iter()
-                           .enumerate()
-                           .filter_map(|(index, ty)| match ty.sty {
-                               ty::TyEnum(adt_def, _) | ty::TyStruct(adt_def, _)
-                                   if adt_def.did.is_local() =>
-                                   Some((index, adt_def.did)),
-                               _ =>
-                                   None,
-                           })
-                           .next()
-                           .unwrap(); // should always be SOME local type involved!
-
-        // Rotate so that the "main" type is at index 0.
-        let struct_enum_tys: Vec<_> =
-            struct_enum_tys.iter()
-                           .cloned()
-                           .skip(main_index)
-                           .chain(struct_enum_tys.iter().cloned().take(main_index))
-                           .collect();
-
-        let tcx = self.tcx;
-        let mut err = tcx.recursive_type_with_infinite_size_error(main_def_id);
-        let len = struct_enum_tys.len();
-        if len > 2 {
-            err.note(&format!("type `{}` is embedded within `{}`...",
-                     struct_enum_tys[0],
-                     struct_enum_tys[1]));
-            for &next_ty in &struct_enum_tys[1..len-1] {
-                err.note(&format!("...which in turn is embedded within `{}`...", next_ty));
-            }
-            err.note(&format!("...which in turn is embedded within `{}`, \
-                               completing the cycle.",
-                              struct_enum_tys[len-1]));
-        }
-        err.emit();
-        self.tcx.sess.abort_if_errors();
-        bug!();
     }
 
     pub fn report_selection_error(&self,
