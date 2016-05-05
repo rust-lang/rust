@@ -64,8 +64,6 @@ pub struct Stats {
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
-    local_ccxs: Vec<LocalCrateContext<'tcx>>,
-
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
 
@@ -95,7 +93,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    tn: TypeNames,
+    tn: TypeNames, // FIXME: This seems to be largely unused.
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
@@ -191,16 +189,65 @@ impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
     }
 }
 
+pub struct CrateContextList<'a, 'tcx: 'a> {
+    shared: &'a SharedCrateContext<'a, 'tcx>,
+    local_ccxs: Vec<LocalCrateContext<'tcx>>,
+}
+
+impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
+
+    pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
+               local_count: usize)
+               -> CrateContextList<'a, 'tcx> {
+        CrateContextList {
+            shared: shared_ccx,
+            local_ccxs: (0..local_count).map(|index| {
+                // Append ".rs" to crate name as LLVM module identifier.
+                //
+                // LLVM code generator emits a ".file filename" directive
+                // for ELF backends. Value of the "filename" is set as the
+                // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
+                // crashes if the module identifier is same as other symbols
+                // such as a function name in the module.
+                // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
+                let llmod_id = format!("{}.{}.rs", shared_ccx.link_meta.crate_name, index);
+                LocalCrateContext::new(shared_ccx, &llmod_id[..])
+            }).collect()
+        }
+    }
+
+    pub fn iter<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
+        CrateContextIterator {
+            shared: self.shared,
+            index: 0,
+            local_ccxs: &self.local_ccxs[..]
+        }
+    }
+
+    pub fn get_ccx<'b>(&'b self, index: usize) -> CrateContext<'b, 'tcx> {
+        CrateContext {
+            shared: self.shared,
+            index: index,
+            local_ccxs: &self.local_ccxs[..],
+        }
+    }
+
+    pub fn shared(&self) -> &'a SharedCrateContext<'a, 'tcx> {
+        self.shared
+    }
+}
+
 pub struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
-    local: &'a LocalCrateContext<'tcx>,
-    /// The index of `local` in `shared.local_ccxs`.  This is used in
+    local_ccxs: &'a [LocalCrateContext<'tcx>],
+    /// The index of `local` in `local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
     index: usize,
 }
 
 pub struct CrateContextIterator<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
+    local_ccxs: &'a [LocalCrateContext<'tcx>],
     index: usize,
 }
 
@@ -208,7 +255,7 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
     type Item = CrateContext<'a, 'tcx>;
 
     fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
-        if self.index >= self.shared.local_ccxs.len() {
+        if self.index >= self.local_ccxs.len() {
             return None;
         }
 
@@ -217,8 +264,8 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
 
         Some(CrateContext {
             shared: self.shared,
-            local: &self.shared.local_ccxs[index],
             index: index,
+            local_ccxs: self.local_ccxs,
         })
     }
 }
@@ -226,6 +273,7 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
 /// The iterator produced by `CrateContext::maybe_iter`.
 pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
+    local_ccxs: &'a [LocalCrateContext<'tcx>],
     index: usize,
     single: bool,
     origin: usize,
@@ -235,20 +283,20 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
     type Item = (CrateContext<'a, 'tcx>, bool);
 
     fn next(&mut self) -> Option<(CrateContext<'a, 'tcx>, bool)> {
-        if self.index >= self.shared.local_ccxs.len() {
+        if self.index >= self.local_ccxs.len() {
             return None;
         }
 
         let index = self.index;
         self.index += 1;
         if self.single {
-            self.index = self.shared.local_ccxs.len();
+            self.index = self.local_ccxs.len();
         }
 
         let ccx = CrateContext {
             shared: self.shared,
-            local: &self.shared.local_ccxs[index],
             index: index,
+            local_ccxs: self.local_ccxs
         };
         Some((ccx, index == self.origin))
     }
@@ -288,9 +336,7 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 }
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
-    pub fn new(crate_name: &str,
-               local_count: usize,
-               tcx: &'b TyCtxt<'tcx>,
+    pub fn new(tcx: &'b TyCtxt<'tcx>,
                mir_map: &'b MirMap<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
@@ -348,8 +394,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         // start) and then strongly recommending static linkage on MSVC!
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
-        let mut shared_ccx = SharedCrateContext {
-            local_ccxs: Vec::with_capacity(local_count),
+        SharedCrateContext {
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
             export_map: export_map,
@@ -378,54 +423,8 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FnvHashMap()),
-        };
-
-        for i in 0..local_count {
-            // Append ".rs" to crate name as LLVM module identifier.
-            //
-            // LLVM code generator emits a ".file filename" directive
-            // for ELF backends. Value of the "filename" is set as the
-            // LLVM module identifier.  Due to a LLVM MC bug[1], LLVM
-            // crashes if the module identifier is same as other symbols
-            // such as a function name in the module.
-            // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-            let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, &llmod_id[..]);
-            shared_ccx.local_ccxs.push(local_ccx);
-        }
-
-        shared_ccx
-    }
-
-    pub fn iter<'a>(&'a self) -> CrateContextIterator<'a, 'tcx> {
-        CrateContextIterator {
-            shared: self,
-            index: 0,
         }
     }
-
-    pub fn get_ccx<'a>(&'a self, index: usize) -> CrateContext<'a, 'tcx> {
-        CrateContext {
-            shared: self,
-            local: &self.local_ccxs[index],
-            index: index,
-        }
-    }
-
-    fn get_smallest_ccx<'a>(&'a self) -> CrateContext<'a, 'tcx> {
-        let (local_ccx, index) =
-            self.local_ccxs
-                .iter()
-                .zip(0..self.local_ccxs.len())
-                .min_by_key(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
-                .unwrap();
-        CrateContext {
-            shared: self,
-            local: local_ccx,
-            index: index,
-        }
-    }
-
 
     pub fn metadata_llmod(&self) -> ModuleRef {
         self.metadata_llmod
@@ -481,7 +480,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 None
             };
 
-            let mut local_ccx = LocalCrateContext {
+            let local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
                 tn: TypeNames::new(),
@@ -522,21 +521,28 @@ impl<'tcx> LocalCrateContext<'tcx> {
                                                                     .clone())),
             };
 
-            local_ccx.int_type = Type::int(&local_ccx.dummy_ccx(shared));
-            local_ccx.opaque_vec_type = Type::opaque_vec(&local_ccx.dummy_ccx(shared));
+            let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
+                // Do a little dance to create a dummy CrateContext, so we can
+                // create some things in the LLVM module of this codegen unit
+                let mut local_ccxs = vec![local_ccx];
+                let (int_type, opaque_vec_type, str_slice_ty) = {
+                    let dummy_ccx = LocalCrateContext::dummy_ccx(shared,
+                                                                 local_ccxs.as_mut_slice());
+                    let mut str_slice_ty = Type::named_struct(&dummy_ccx, "str_slice");
+                    str_slice_ty.set_struct_body(&[Type::i8p(&dummy_ccx),
+                                                   Type::int(&dummy_ccx)],
+                                                 false);
+                    (Type::int(&dummy_ccx), Type::opaque_vec(&dummy_ccx), str_slice_ty)
+                };
+                (int_type, opaque_vec_type, str_slice_ty, local_ccxs.pop().unwrap())
+            };
 
-            // Done mutating local_ccx directly.  (The rest of the
-            // initialization goes through RefCell.)
-            {
-                let ccx = local_ccx.dummy_ccx(shared);
+            local_ccx.int_type = int_type;
+            local_ccx.opaque_vec_type = opaque_vec_type;
+            local_ccx.tn.associate_type("str_slice", &str_slice_ty);
 
-                let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
-                str_slice_ty.set_struct_body(&[Type::i8p(&ccx), ccx.int_type()], false);
-                ccx.tn().associate_type("str_slice", &str_slice_ty);
-
-                if ccx.sess().count_llvm_insns() {
-                    base::init_insn_ctxt()
-                }
+            if shared.tcx.sess.count_llvm_insns() {
+                base::init_insn_ctxt()
             }
 
             local_ccx
@@ -545,18 +551,19 @@ impl<'tcx> LocalCrateContext<'tcx> {
 
     /// Create a dummy `CrateContext` from `self` and  the provided
     /// `SharedCrateContext`.  This is somewhat dangerous because `self` may
-    /// not actually be an element of `shared.local_ccxs`, which can cause some
-    /// operations to panic unexpectedly.
+    /// not be fully initialized.
     ///
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
     /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx<'a>(&'a self, shared: &'a SharedCrateContext<'a, 'tcx>)
+    fn dummy_ccx<'a>(shared: &'a SharedCrateContext<'a, 'tcx>,
+                     local_ccxs: &'a [LocalCrateContext<'tcx>])
                      -> CrateContext<'a, 'tcx> {
+        assert!(local_ccxs.len() == 1);
         CrateContext {
             shared: shared,
-            local: self,
-            index: !0 as usize,
+            index: 0,
+            local_ccxs: local_ccxs
         }
     }
 }
@@ -567,13 +574,23 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn local(&self) -> &'b LocalCrateContext<'tcx> {
-        self.local
+        &self.local_ccxs[self.index]
     }
 
     /// Get a (possibly) different `CrateContext` from the same
     /// `SharedCrateContext`.
-    pub fn rotate(&self) -> CrateContext<'b, 'tcx> {
-        self.shared.get_smallest_ccx()
+    pub fn rotate(&'b self) -> CrateContext<'b, 'tcx> {
+        let (_, index) =
+            self.local_ccxs
+                .iter()
+                .zip(0..self.local_ccxs.len())
+                .min_by_key(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
+                .unwrap();
+        CrateContext {
+            shared: self.shared,
+            index: index,
+            local_ccxs: &self.local_ccxs[..],
+        }
     }
 
     /// Either iterate over only `self`, or iterate over all `CrateContext`s in
@@ -588,9 +605,9 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
             index: if iter_all { 0 } else { self.index },
             single: !iter_all,
             origin: self.index,
+            local_ccxs: self.local_ccxs,
         }
     }
-
 
     pub fn tcx<'a>(&'a self) -> &'a TyCtxt<'tcx> {
         self.shared.tcx
@@ -605,7 +622,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn raw_builder<'a>(&'a self) -> BuilderRef {
-        self.local.builder.b
+        self.local().builder.b
     }
 
     pub fn get_intrinsic(&self, key: &str) -> ValueRef {
@@ -619,11 +636,11 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn llmod(&self) -> ModuleRef {
-        self.local.llmod
+        self.local().llmod
     }
 
     pub fn llcx(&self) -> ContextRef {
-        self.local.llcx
+        self.local().llcx
     }
 
     pub fn td(&self) -> llvm::TargetDataRef {
@@ -631,7 +648,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn tn<'a>(&'a self) -> &'a TypeNames {
-        &self.local.tn
+        &self.local().tn
     }
 
     pub fn export_map<'a>(&'a self) -> &'a ExportMap {
@@ -651,56 +668,56 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, bool>> {
-        &self.local.needs_unwind_cleanup_cache
+        &self.local().needs_unwind_cleanup_cache
     }
 
     pub fn fn_pointer_shims(&self) -> &RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
-        &self.local.fn_pointer_shims
+        &self.local().fn_pointer_shims
     }
 
     pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>> {
-        &self.local.drop_glues
+        &self.local().drop_glues
     }
 
     pub fn external<'a>(&'a self) -> &'a RefCell<DefIdMap<Option<ast::NodeId>>> {
-        &self.local.external
+        &self.local().external
     }
 
     pub fn external_srcs<'a>(&'a self) -> &'a RefCell<NodeMap<DefId>> {
-        &self.local.external_srcs
+        &self.local().external_srcs
     }
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
-        &self.local.instances
+        &self.local().instances
     }
 
     pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<usize>> {
-        &self.local.monomorphizing
+        &self.local().monomorphizing
     }
 
     pub fn vtables<'a>(&'a self) -> &'a RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>> {
-        &self.local.vtables
+        &self.local().vtables
     }
 
     pub fn const_cstr_cache<'a>(&'a self) -> &'a RefCell<FnvHashMap<InternedString, ValueRef>> {
-        &self.local.const_cstr_cache
+        &self.local().const_cstr_cache
     }
 
     pub fn const_unsized<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
-        &self.local.const_unsized
+        &self.local().const_unsized
     }
 
     pub fn const_globals<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
-        &self.local.const_globals
+        &self.local().const_globals
     }
 
     pub fn const_values<'a>(&'a self) -> &'a RefCell<FnvHashMap<(ast::NodeId, &'tcx Substs<'tcx>),
                                                                 ValueRef>> {
-        &self.local.const_values
+        &self.local().const_values
     }
 
     pub fn extern_const_values<'a>(&'a self) -> &'a RefCell<DefIdMap<ValueRef>> {
-        &self.local.extern_const_values
+        &self.local().extern_const_values
     }
 
     pub fn statics<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, DefId>> {
@@ -709,27 +726,27 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn impl_method_cache<'a>(&'a self)
             -> &'a RefCell<FnvHashMap<(DefId, ast::Name), DefId>> {
-        &self.local.impl_method_cache
+        &self.local().impl_method_cache
     }
 
     pub fn closure_bare_wrapper_cache<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
-        &self.local.closure_bare_wrapper_cache
+        &self.local().closure_bare_wrapper_cache
     }
 
     pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
-        &self.local.statics_to_rauw
+        &self.local().statics_to_rauw
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Type>> {
-        &self.local.lltypes
+        &self.local().lltypes
     }
 
     pub fn llsizingtypes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Type>> {
-        &self.local.llsizingtypes
+        &self.local().llsizingtypes
     }
 
     pub fn adt_reprs<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>> {
-        &self.local.adt_reprs
+        &self.local().adt_reprs
     }
 
     pub fn symbol_hasher<'a>(&'a self) -> &'a RefCell<Sha256> {
@@ -737,7 +754,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn type_hashcodes<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, String>> {
-        &self.local.type_hashcodes
+        &self.local().type_hashcodes
     }
 
     pub fn stats<'a>(&'a self) -> &'a Stats {
@@ -753,43 +770,43 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn int_type(&self) -> Type {
-        self.local.int_type
+        self.local().int_type
     }
 
     pub fn opaque_vec_type(&self) -> Type {
-        self.local.opaque_vec_type
+        self.local().opaque_vec_type
     }
 
     pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<Instance<'tcx>, ValueRef>> {
-        &self.local.closure_vals
+        &self.local().closure_vals
     }
 
     pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {
-        &self.local.dbg_cx
+        &self.local().dbg_cx
     }
 
     pub fn eh_personality<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local.eh_personality
+        &self.local().eh_personality
     }
 
     pub fn eh_unwind_resume<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local.eh_unwind_resume
+        &self.local().eh_unwind_resume
     }
 
     pub fn rust_try_fn<'a>(&'a self) -> &'a Cell<Option<ValueRef>> {
-        &self.local.rust_try_fn
+        &self.local().rust_try_fn
     }
 
     fn intrinsics<'a>(&'a self) -> &'a RefCell<FnvHashMap<&'static str, ValueRef>> {
-        &self.local.intrinsics
+        &self.local().intrinsics
     }
 
     pub fn count_llvm_insn(&self) {
-        self.local.n_llvm_insns.set(self.local.n_llvm_insns.get() + 1);
+        self.local().n_llvm_insns.set(self.local().n_llvm_insns.get() + 1);
     }
 
     pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
-        &self.local.trait_cache
+        &self.local().trait_cache
     }
 
     pub fn obj_size_bound(&self) -> u64 {
@@ -803,14 +820,14 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn enter_type_of(&self, ty: Ty<'tcx>) -> TypeOfDepthLock<'b, 'tcx> {
-        let current_depth = self.local.type_of_depth.get();
+        let current_depth = self.local().type_of_depth.get();
         debug!("enter_type_of({:?}) at depth {:?}", ty, current_depth);
         if current_depth > self.sess().recursion_limit.get() {
             self.sess().fatal(
                 &format!("overflow representing the type `{}`", ty))
         }
-        self.local.type_of_depth.set(current_depth + 1);
-        TypeOfDepthLock(self.local)
+        self.local().type_of_depth.set(current_depth + 1);
+        TypeOfDepthLock(self.local())
     }
 
     pub fn check_overflow(&self) -> bool {
