@@ -27,7 +27,7 @@ fn main() {
     //~ TRANS_ITEM fn cgu_extern_closures::inlined_fn_generic[0]::{{closure}}[0]<i32>
     let _ = cgu_extern_closures::inlined_fn_generic(3, 4, 5i32);
 
-    // Nothing should be generated for this call, we just link to the instance instance
+    // Nothing should be generated for this call, we just link to the instance
     // in the extern crate.
     let _ = cgu_extern_closures::non_inlined_fn(6, 7);
 }
