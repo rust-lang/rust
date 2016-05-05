@@ -378,7 +378,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
         // We've been here already, no need to search again.
         return;
     }
-    debug!("BEGIN collect_items_rec({})", starting_point.to_string(ccx));
+    debug!("BEGIN collect_items_rec({})", starting_point.to_string(ccx.tcx()));
 
     let mut neighbors = Vec::new();
     let recursion_depth_reset;
@@ -430,7 +430,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
         recursion_depths.insert(def_id, depth);
     }
 
-    debug!("END collect_items_rec({})", starting_point.to_string(ccx));
+    debug!("END collect_items_rec({})", starting_point.to_string(ccx.tcx()));
 }
 
 fn record_references<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -657,7 +657,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    debug!("find_drop_glue_neighbors: {}", type_to_string(ccx, ty));
+    debug!("find_drop_glue_neighbors: {}", type_to_string(ccx.tcx(), ty));
 
     // Make sure the exchange_free_fn() lang-item gets translated if
     // there is a boxed value.
@@ -786,7 +786,7 @@ fn do_static_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 param_substs: &'tcx Substs<'tcx>)
                                 -> Option<(DefId, &'tcx Substs<'tcx>)> {
     debug!("do_static_dispatch(fn_def_id={}, fn_substs={:?}, param_substs={:?})",
-           def_id_to_string(ccx, fn_def_id),
+           def_id_to_string(ccx.tcx(), fn_def_id),
            fn_substs,
            param_substs);
 
@@ -834,8 +834,8 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                             trait_id={}, \
                                             callee_substs={:?}, \
                                             param_substs={:?}",
-           def_id_to_string(ccx, trait_method.def_id),
-           def_id_to_string(ccx, trait_id),
+           def_id_to_string(ccx.tcx(), trait_method.def_id),
+           def_id_to_string(ccx.tcx(), trait_id),
            callee_substs,
            param_substs);
 
@@ -968,7 +968,7 @@ fn create_fn_trans_item<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   -> TransItem<'tcx>
 {
     debug!("create_fn_trans_item(def_id={}, fn_substs={:?}, param_substs={:?})",
-            def_id_to_string(ccx, def_id),
+            def_id_to_string(ccx.tcx(), def_id),
             fn_substs,
             param_substs);
 
@@ -1079,7 +1079,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
 
                     if self.mode == TransItemCollectionMode::Eager {
                         debug!("RootCollector: ADT drop-glue for {}",
-                               def_id_to_string(self.ccx,
+                               def_id_to_string(self.ccx.tcx(),
                                                 self.ccx.tcx().map.local_def_id(item.id)));
 
                         let ty = glue::get_drop_glue_type(self.ccx, ty);
@@ -1089,7 +1089,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
             }
             hir::ItemStatic(..) => {
                 debug!("RootCollector: ItemStatic({})",
-                       def_id_to_string(self.ccx,
+                       def_id_to_string(self.ccx.tcx(),
                                         self.ccx.tcx().map.local_def_id(item.id)));
                 self.output.push(TransItem::Static(item.id));
             }
@@ -1099,7 +1099,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                     let def_id = self.ccx.tcx().map.local_def_id(item.id);
 
                     debug!("RootCollector: ItemFn({})",
-                           def_id_to_string(self.ccx, def_id));
+                           def_id_to_string(self.ccx.tcx(), def_id));
 
                     let instance = Instance::mono(self.ccx.tcx(), def_id);
                     self.output.push(TransItem::Fn(instance));
@@ -1136,7 +1136,7 @@ impl<'b, 'a, 'v> hir_visit::Visitor<'v> for RootCollector<'b, 'a, 'v> {
                     let def_id = self.ccx.tcx().map.local_def_id(ii.id);
 
                     debug!("RootCollector: MethodImplItem({})",
-                           def_id_to_string(self.ccx, def_id));
+                           def_id_to_string(self.ccx.tcx(), def_id));
 
                     let instance = Instance::mono(self.ccx.tcx(), def_id);
                     self.output.push(TransItem::Fn(instance));
@@ -1167,7 +1167,7 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let impl_def_id = tcx.map.local_def_id(item.id);
 
             debug!("create_trans_items_for_default_impls(item={})",
-                   def_id_to_string(ccx, impl_def_id));
+                   def_id_to_string(ccx.tcx(), impl_def_id));
 
             if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 let default_impls = tcx.provided_trait_methods(trait_ref.def_id);
@@ -1229,9 +1229,9 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
-pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                       t: ty::Ty<'tcx>,
-                                       output: &mut String) {
+pub fn push_unique_type_name<'tcx>(tcx: &TyCtxt<'tcx>,
+                                   t: ty::Ty<'tcx>,
+                                   output: &mut String) {
     match t.sty {
         ty::TyBool              => output.push_str("bool"),
         ty::TyChar              => output.push_str("char"),
@@ -1250,13 +1250,13 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::TyFloat(ast::FloatTy::F64) => output.push_str("f64"),
         ty::TyStruct(adt_def, substs) |
         ty::TyEnum(adt_def, substs) => {
-            push_item_name(cx, adt_def.did, output);
-            push_type_params(cx, &substs.types, &[], output);
+            push_item_name(tcx, adt_def.did, output);
+            push_type_params(tcx, &substs.types, &[], output);
         },
         ty::TyTuple(ref component_types) => {
             output.push('(');
             for &component_type in component_types {
-                push_unique_type_name(cx, component_type, output);
+                push_unique_type_name(tcx, component_type, output);
                 output.push_str(", ");
             }
             if !component_types.is_empty() {
@@ -1267,7 +1267,7 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         ty::TyBox(inner_type) => {
             output.push_str("Box<");
-            push_unique_type_name(cx, inner_type, output);
+            push_unique_type_name(tcx, inner_type, output);
             output.push('>');
         },
         ty::TyRawPtr(ty::TypeAndMut { ty: inner_type, mutbl } ) => {
@@ -1277,7 +1277,7 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 hir::MutMutable => output.push_str("mut "),
             }
 
-            push_unique_type_name(cx, inner_type, output);
+            push_unique_type_name(tcx, inner_type, output);
         },
         ty::TyRef(_, ty::TypeAndMut { ty: inner_type, mutbl }) => {
             output.push('&');
@@ -1285,22 +1285,22 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 output.push_str("mut ");
             }
 
-            push_unique_type_name(cx, inner_type, output);
+            push_unique_type_name(tcx, inner_type, output);
         },
         ty::TyArray(inner_type, len) => {
             output.push('[');
-            push_unique_type_name(cx, inner_type, output);
+            push_unique_type_name(tcx, inner_type, output);
             output.push_str(&format!("; {}", len));
             output.push(']');
         },
         ty::TySlice(inner_type) => {
             output.push('[');
-            push_unique_type_name(cx, inner_type, output);
+            push_unique_type_name(tcx, inner_type, output);
             output.push(']');
         },
         ty::TyTrait(ref trait_data) => {
-            push_item_name(cx, trait_data.principal.skip_binder().def_id, output);
-            push_type_params(cx,
+            push_item_name(tcx, trait_data.principal.skip_binder().def_id, output);
+            push_type_params(tcx,
                              &trait_data.principal.skip_binder().substs.types,
                              &trait_data.bounds.projection_bounds,
                              output);
@@ -1319,10 +1319,10 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx().erase_late_bound_regions(sig);
+            let sig = tcx.erase_late_bound_regions(sig);
             if !sig.inputs.is_empty() {
                 for &parameter_type in &sig.inputs {
-                    push_unique_type_name(cx, parameter_type, output);
+                    push_unique_type_name(tcx, parameter_type, output);
                     output.push_str(", ");
                 }
                 output.pop();
@@ -1343,7 +1343,7 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 ty::FnConverging(result_type) if result_type.is_nil() => {}
                 ty::FnConverging(result_type) => {
                     output.push_str(" -> ");
-                    push_unique_type_name(cx, result_type, output);
+                    push_unique_type_name(tcx, result_type, output);
                 }
                 ty::FnDiverging => {
                     output.push_str(" -> !");
@@ -1351,11 +1351,11 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
         },
         ty::TyClosure(def_id, ref closure_substs) => {
-            push_item_name(cx, def_id, output);
+            push_item_name(tcx, def_id, output);
             output.push_str("{");
             output.push_str(&format!("{}:{}", def_id.krate, def_id.index.as_usize()));
             output.push_str("}");
-            push_type_params(cx, &closure_substs.func_substs.types, &[], output);
+            push_type_params(tcx, &closure_substs.func_substs.types, &[], output);
         }
         ty::TyError |
         ty::TyInfer(_) |
@@ -1367,17 +1367,17 @@ pub fn push_unique_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn push_item_name(ccx: &CrateContext,
+fn push_item_name(tcx: &TyCtxt,
                   def_id: DefId,
                   output: &mut String) {
-    let def_path = ccx.tcx().def_path(def_id);
+    let def_path = tcx.def_path(def_id);
 
     // some_crate::
-    output.push_str(&ccx.tcx().crate_name(def_path.krate));
+    output.push_str(&tcx.crate_name(def_path.krate));
     output.push_str("::");
 
     // foo::bar::ItemName::
-    for part in ccx.tcx().def_path(def_id).data {
+    for part in tcx.def_path(def_id).data {
         output.push_str(&format!("{}[{}]::",
                         part.data.as_interned_str(),
                         part.disambiguator));
@@ -1388,10 +1388,10 @@ fn push_item_name(ccx: &CrateContext,
     output.pop();
 }
 
-fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                              types: &'tcx subst::VecPerParamSpace<Ty<'tcx>>,
-                              projections: &[ty::PolyProjectionPredicate<'tcx>],
-                              output: &mut String) {
+fn push_type_params<'tcx>(tcx: &TyCtxt<'tcx>,
+                          types: &'tcx subst::VecPerParamSpace<Ty<'tcx>>,
+                          projections: &[ty::PolyProjectionPredicate<'tcx>],
+                          output: &mut String) {
     if types.is_empty() && projections.is_empty() {
         return;
     }
@@ -1399,7 +1399,7 @@ fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     output.push('<');
 
     for &type_parameter in types {
-        push_unique_type_name(cx, type_parameter, output);
+        push_unique_type_name(tcx, type_parameter, output);
         output.push_str(", ");
     }
 
@@ -1408,7 +1408,7 @@ fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let name = token::get_ident_interner().get(projection.projection_ty.item_name);
         output.push_str(&name[..]);
         output.push_str("=");
-        push_unique_type_name(cx, projection.ty, output);
+        push_unique_type_name(tcx, projection.ty, output);
         output.push_str(", ");
     }
 
@@ -1418,24 +1418,24 @@ fn push_type_params<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     output.push('>');
 }
 
-fn push_instance_as_string<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                     instance: Instance<'tcx>,
-                                     output: &mut String) {
-    push_item_name(ccx, instance.def, output);
-    push_type_params(ccx, &instance.substs.types, &[], output);
+fn push_instance_as_string<'tcx>(tcx: &TyCtxt<'tcx>,
+                                 instance: Instance<'tcx>,
+                                 output: &mut String) {
+    push_item_name(tcx, instance.def, output);
+    push_type_params(tcx, &instance.substs.types, &[], output);
 }
 
-pub fn def_id_to_string(ccx: &CrateContext, def_id: DefId) -> String {
+pub fn def_id_to_string(tcx: &TyCtxt, def_id: DefId) -> String {
     let mut output = String::new();
-    push_item_name(ccx, def_id, &mut output);
+    push_item_name(tcx, def_id, &mut output);
     output
 }
 
-fn type_to_string<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            ty: ty::Ty<'tcx>)
-                            -> String {
+fn type_to_string<'tcx>(tcx: &TyCtxt<'tcx>,
+                        ty: ty::Ty<'tcx>)
+                        -> String {
     let mut output = String::new();
-    push_unique_type_name(ccx, ty, &mut output);
+    push_unique_type_name(tcx, ty, &mut output);
     output
 }
 
@@ -1492,8 +1492,8 @@ impl<'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        let hir_map = &ccx.tcx().map;
+    pub fn to_string(&self, tcx: &TyCtxt<'tcx>) -> String {
+        let hir_map = &tcx.map;
 
         return match *self {
             TransItem::DropGlue(dg) => {
@@ -1502,26 +1502,26 @@ impl<'tcx> TransItem<'tcx> {
                     DropGlueKind::Ty(_) => s.push_str("drop-glue "),
                     DropGlueKind::TyContents(_) => s.push_str("drop-glue-contents "),
                 };
-                push_unique_type_name(ccx, dg.ty(), &mut s);
+                push_unique_type_name(tcx, dg.ty(), &mut s);
                 s
             }
             TransItem::Fn(instance) => {
-                to_string_internal(ccx, "fn ", instance)
+                to_string_internal(tcx, "fn ", instance)
             },
             TransItem::Static(node_id) => {
                 let def_id = hir_map.local_def_id(node_id);
-                let instance = Instance::mono(ccx.tcx(), def_id);
-                to_string_internal(ccx, "static ", instance)
+                let instance = Instance::mono(tcx, def_id);
+                to_string_internal(tcx, "static ", instance)
             },
         };
 
-        fn to_string_internal<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                        prefix: &str,
-                                        instance: Instance<'tcx>)
-                                        -> String {
+        fn to_string_internal<'tcx>(tcx: &TyCtxt<'tcx>,
+                                    prefix: &str,
+                                    instance: Instance<'tcx>)
+                                    -> String {
             let mut result = String::with_capacity(32);
             result.push_str(prefix);
-            push_instance_as_string(ccx, instance, &mut result);
+            push_instance_as_string(tcx, instance, &mut result);
             result
         }
     }
@@ -1575,7 +1575,7 @@ pub fn print_collection_results<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
         let mut item_keys = FnvHashMap();
 
         for (item, item_state) in trans_items.iter() {
-            let k = item.to_string(&ccx);
+            let k = item.to_string(ccx.tcx());
 
             if item_keys.contains_key(&k) {
                 let prev: (TransItem, TransItemState) = item_keys[&k];
@@ -1603,7 +1603,7 @@ pub fn print_collection_results<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
     let mut generated = FnvHashSet();
 
     for (item, item_state) in trans_items.iter() {
-        let item_key = item.to_string(&ccx);
+        let item_key = item.to_string(ccx.tcx());
 
         match *item_state {
             TransItemState::PredictedAndGenerated => {
