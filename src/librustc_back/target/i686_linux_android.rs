@@ -12,7 +12,11 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::android_base::opts();
-    base.cpu = "pentium4".to_string();
+
+    // Use i686 as default CPU and enable SSSE3.
+    // Clang and GCC do the same.
+    base.cpu = "i686".to_string();
+    base.features = "+ssse3".to_string();
 
     Target {
         llvm_target: "i686-linux-android".to_string(),

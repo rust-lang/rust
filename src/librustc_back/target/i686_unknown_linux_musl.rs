@@ -14,7 +14,11 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
+
+    // Use pentium4 as default CPU to enable SSE[2] instructions.
+    // Clang uses the same default.
     base.cpu = "pentium4".to_string();
+
     base.pre_link_args.push("-m32".to_string());
     base.pre_link_args.push("-Wl,-melf_i386".to_string());
 
