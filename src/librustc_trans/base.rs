@@ -68,7 +68,7 @@ use common::{node_id_type, fulfill_obligation};
 use common::{type_is_immediate, type_is_zero_size, val_ty};
 use common;
 use consts;
-use context::SharedCrateContext;
+use context::{SharedCrateContext, CrateContextList};
 use controlflow;
 use datum;
 use debuginfo::{self, DebugLoc, ToDebugLoc};
@@ -2522,7 +2522,7 @@ pub fn write_metadata<'a, 'tcx>(cx: &SharedCrateContext<'a, 'tcx>,
 
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
-fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
+fn internalize_symbols(cx: &CrateContextList, reachable: &HashSet<&str>) {
     unsafe {
         let mut declared = HashSet::new();
 
@@ -2577,12 +2577,12 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<&str>) {
 // when using MSVC linker.  We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_imps(cx: &SharedCrateContext) {
+fn create_imps(cx: &CrateContextList) {
     // The x86 ABI seems to require that leading underscores are added to symbol
     // names, so we need an extra underscore on 32-bit. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
     // underscores added in front).
-    let prefix = if cx.sess().target.target.target_pointer_width == "32" {
+    let prefix = if cx.shared().sess().target.target.target_pointer_width == "32" {
         "\x01__imp__"
     } else {
         "\x01__imp_"
@@ -2714,10 +2714,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
 
     let link_meta = link::build_link_meta(&tcx, name);
 
-    let codegen_units = tcx.sess.opts.cg.codegen_units;
-    let shared_ccx = SharedCrateContext::new(&link_meta.crate_name,
-                                             codegen_units,
-                                             tcx,
+    let shared_ccx = SharedCrateContext::new(tcx,
                                              &mir_map,
                                              export_map,
                                              Sha256::new(),
@@ -2726,8 +2723,11 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
                                              check_overflow,
                                              check_dropflag);
 
+    let codegen_units = tcx.sess.opts.cg.codegen_units;
+    let crate_context_list = CrateContextList::new(&shared_ccx, codegen_units);
+
     {
-        let ccx = shared_ccx.get_ccx(0);
+        let ccx = crate_context_list.get_ccx(0);
         collect_translation_items(&ccx);
 
         // Translate all items. See `TransModVisitor` for
@@ -2743,7 +2743,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         symbol_names_test::report_symbol_names(&ccx);
     }
 
-    for ccx in shared_ccx.iter() {
+    for ccx in crate_context_list.iter() {
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
         }
@@ -2792,7 +2792,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     }
 
-    let modules = shared_ccx.iter()
+    let modules = crate_context_list.iter()
         .map(|ccx| ModuleTranslation { llcx: ccx.llcx(), llmod: ccx.llmod() })
         .collect();
 
@@ -2819,13 +2819,13 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
     }
 
     if codegen_units > 1 {
-        internalize_symbols(&shared_ccx,
+        internalize_symbols(&crate_context_list,
                             &reachable_symbols.iter().map(|x| &x[..]).collect());
     }
 
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-        create_imps(&shared_ccx);
+        create_imps(&crate_context_list);
     }
 
     let metadata_module = ModuleTranslation {
