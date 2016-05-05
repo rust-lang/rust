@@ -107,3 +107,11 @@ fn main() {
     test_emphasis();
     test_units();
 }
+
+/// I am confused by brackets? (`x_y`)
+/// I am confused by brackets? (foo `x_y`)
+/// I am confused by brackets? (`x_y` foo)
+/// be_sure_we_got_to_the_end_of_it
+//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+fn issue900() {
+}
