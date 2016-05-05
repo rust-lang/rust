@@ -266,7 +266,10 @@ declare_features! (
     (active, specialization, "1.7.0", Some(31844)),
 
     // pub(restricted) visibilities (RFC 1422)
-    (active, pub_restricted, "1.9.0", Some(32409))
+    (active, pub_restricted, "1.9.0", Some(32409)),
+
+     // Allow Drop types in statics/const functions (RFC 1440)
+    (active, drop_types_in_const, "1.9.0", Some(33156))
 );
 
 declare_features! (
