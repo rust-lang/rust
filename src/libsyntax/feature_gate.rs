@@ -401,6 +401,9 @@ declare_features! (
     // Allows `extern "x86-interrupt" fn()`.
     (active, abi_x86_interrupt, "1.17.0", Some(40180), None),
 
+    // `extern "avr-interrupt" fn()`
+    (active, abi_avr_interrupt, "1.18.0", Some(000), None),
+
     // Allows module-level inline assembly by way of `global_asm!()`.
     (active, global_asm, "1.18.0", Some(35119), None),
 
@@ -1838,6 +1841,11 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::X86Interrupt => {
                 gate_feature_post!(&self, abi_x86_interrupt, span,
                                    "x86-interrupt ABI is experimental and subject to change");
+            }
+            Abi::AvrInterrupt | Abi::AvrNonBlockingInterrupt => {
+                gate_feature_post!(&self, abi_avr_interrupt, span,
+                                   "avr-interrupt and avr-non-blocking-interrupt ABIs are \
+                                   experimental and subject to change");
             },
             Abi::AmdGpuKernel => {
                 gate_feature_post!(&self, abi_amdgpu_kernel, span,
