@@ -521,12 +521,24 @@ use string;
 ///
 /// # Examples
 ///
+/// Basic usage:
+///
 /// ```
 /// use std::fmt;
 ///
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
+///
+/// Please note that using `[format!]` might be preferrable.
+/// Example:
+///
+/// ```
+/// let s = format!("Hello, {}!", "world");
+/// assert_eq!(s, "Hello, world!".to_string());
+/// ```
+///
+/// [format!]: ../std/macro.format!.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
