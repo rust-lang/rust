@@ -1,0 +1,32 @@
+language: generic
+sudo: required
+services:
+  - docker
+
+# LLVM takes awhile to check out and otherwise we'll manage the submodules in
+# our configure script, so disable auto submodule management.
+git:
+  submodules: false
+  depth: 1
+
+env:
+  - CXX=/usr/bin/g++-4.7 RUST_BACKTRACE=1
+
+before_install:
+  - docker build -t rust -f src/etc/Dockerfile src/etc
+
+script:
+  - docker run -v `pwd`:/build rust
+    sh -c "
+      ./configure --enable-rustbuild --llvm-root=/usr/lib/llvm-3.7 --enable-quiet-tests &&
+      make tidy &&
+      make check -j4
+    "
+
+# Real testing happens on http://buildbot.rust-lang.org/
+#
+# See https://github.com/rust-lang/rust-buildbot
+#     CONTRIBUTING.md#pull-requests
+
+notifications:
+  email: false
