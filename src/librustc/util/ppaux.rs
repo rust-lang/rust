@@ -459,6 +459,9 @@ impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::Predicate::Trait(ref a) => write!(f, "{:?}", a),
+            ty::Predicate::Rfc1592(ref a) => {
+                write!(f, "RFC1592({:?})", a)
+            }
             ty::Predicate::Equate(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::RegionOutlives(ref pair) => write!(f, "{:?}", pair),
             ty::Predicate::TypeOutlives(ref pair) => write!(f, "{:?}", pair),
@@ -493,7 +496,7 @@ impl fmt::Debug for ty::BoundRegion {
             BrAnon(n) => write!(f, "BrAnon({:?})", n),
             BrFresh(n) => write!(f, "BrFresh({:?})", n),
             BrNamed(did, name) => {
-                write!(f, "BrNamed({:?}, {:?})", did, name)
+                write!(f, "BrNamed({:?}:{:?}, {:?})", did.krate, did.index, name)
             }
             BrEnv => "BrEnv".fmt(f),
         }
@@ -1056,6 +1059,7 @@ impl<'tcx> fmt::Display for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::Predicate::Trait(ref data) => write!(f, "{}", data),
+            ty::Predicate::Rfc1592(ref data) => write!(f, "{}", data),
             ty::Predicate::Equate(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::RegionOutlives(ref predicate) => write!(f, "{}", predicate),
             ty::Predicate::TypeOutlives(ref predicate) => write!(f, "{}", predicate),

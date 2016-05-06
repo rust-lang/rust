@@ -28,6 +28,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 pub use self::error_reporting::TraitErrorKey;
 pub use self::error_reporting::recursive_type_with_infinite_size_error;
 pub use self::error_reporting::report_fulfillment_errors;
+pub use self::error_reporting::report_fulfillment_errors_as_warnings;
 pub use self::error_reporting::report_overflow_error;
 pub use self::error_reporting::report_overflow_error_cycle;
 pub use self::error_reporting::report_selection_error;
@@ -106,8 +107,11 @@ pub enum ObligationCauseCode<'tcx> {
     /// Not well classified or should be obvious from span.
     MiscObligation,
 
-    /// This is the trait reference from the given projection
+    /// A slice or array is WF only if `T: Sized`
     SliceOrArrayElem,
+
+    /// A tuple is WF only if its middle elements are Sized
+    TupleElem,
 
     /// This is the trait reference from the given projection
     ProjectionWf(ty::ProjectionTy<'tcx>),

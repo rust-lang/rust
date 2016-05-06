@@ -13,7 +13,6 @@
 pub use self::MethodMatchResult::*;
 pub use self::MethodMatchedData::*;
 use self::SelectionCandidate::*;
-use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
 use super::coherence;
@@ -50,7 +49,6 @@ use std::fmt;
 use std::rc::Rc;
 use syntax::abi::Abi;
 use hir;
-use util::common::ErrorReported;
 use util::nodemap::FnvHashMap;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
@@ -188,7 +186,7 @@ pub enum MethodMatchedData {
 /// parameter environment.
 #[derive(PartialEq,Eq,Debug,Clone)]
 enum SelectionCandidate<'tcx> {
-    BuiltinCandidate(ty::BuiltinBound),
+    BuiltinCandidate { has_nested: bool },
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(DefId),
     DefaultImplCandidate(DefId),
@@ -232,10 +230,18 @@ struct EvaluatedCandidate<'tcx> {
     evaluation: EvaluationResult,
 }
 
-enum BuiltinBoundConditions<'tcx> {
-    If(ty::Binder<Vec<Ty<'tcx>>>),
-    ParameterBuiltin,
-    AmbiguousBuiltin
+/// When does the builtin impl for `T: Trait` apply?
+enum BuiltinImplConditions<'tcx> {
+    /// The impl is conditional on T1,T2,.. : Trait
+    Where(ty::Binder<Vec<Ty<'tcx>>>),
+    /// There is no built-in impl. There may be some other
+    /// candidate (a where-clause or user-defined impl).
+    None,
+    /// There is *no* impl for this, builtin or not. Ignore
+    /// all where-clauses.
+    Never,
+    /// It is unknown whether there is an impl.
+    Ambiguous
 }
 
 #[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
@@ -412,6 +418,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match obligation.predicate {
+            ty::Predicate::Rfc1592(..) => EvaluatedToOk,
+
             ty::Predicate::Trait(ref t) => {
                 assert!(!t.has_escaping_regions());
                 let obligation = obligation.with(t.clone());
@@ -993,15 +1001,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.assemble_candidates_from_impls(obligation, &mut candidates)?;
 
                 // For other types, we'll use the builtin rules.
-                self.assemble_builtin_bound_candidates(ty::BoundCopy,
-                                                       obligation,
-                                                       &mut candidates)?;
+                let copy_conditions = self.copy_conditions(obligation);
+                self.assemble_builtin_bound_candidates(copy_conditions, &mut candidates)?;
             }
-            Some(bound @ ty::BoundSized) => {
+            Some(ty::BoundSized) => {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
-                self.assemble_builtin_bound_candidates(bound,
-                                                       obligation,
+                let sized_conditions = self.sized_conditions(obligation);
+                self.assemble_builtin_bound_candidates(sized_conditions,
                                                        &mut candidates)?;
             }
 
@@ -1394,7 +1401,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.in_snapshot(|snapshot| {
             let (self_ty, _) =
                 self.infcx().skolemize_late_bound_regions(&obligation.self_ty(), snapshot);
             let poly_trait_ref = match self_ty.sty {
@@ -1405,7 +1412,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 debug!("assemble_candidates_from_object_ty: matched builtin bound, \
                                         pushing candidate");
                                 candidates.vec.push(BuiltinObjectCandidate);
-                                return Ok(());
+                                return;
                             }
                         }
                         _ => {}
@@ -1416,10 +1423,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::TyInfer(ty::TyVar(_)) => {
                     debug!("assemble_candidates_from_object_ty: ambiguous");
                     candidates.ambiguous = true; // could wind up being an object type
-                    return Ok(());
+                    return;
                 }
                 _ => {
-                    return Ok(());
+                    return;
                 }
             };
 
@@ -1447,9 +1454,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if upcast_trait_refs == 1 {
                 candidates.vec.push(ObjectCandidate);
             }
-
-            Ok::<(),()>(())
-        }).unwrap();
+        })
     }
 
     /// Search for unsizing that might apply to `obligation`.
@@ -1570,7 +1575,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 BuiltinObjectCandidate |
                 BuiltinUnsizeCandidate |
                 DefaultImplObjectCandidate(..) |
-                BuiltinCandidate(..) => {
+                BuiltinCandidate { .. } => {
                     // We have a where-clause so don't go around looking
                     // for impls.
                     true
@@ -1608,200 +1613,69 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // those will hopefully change to library-defined traits in the
     // future.
 
+    // HACK: if this returns an error, selection exits without considering
+    // other impls.
     fn assemble_builtin_bound_candidates<'o>(&mut self,
-                                             bound: ty::BuiltinBound,
-                                             obligation: &TraitObligation<'tcx>,
+                                             conditions: BuiltinImplConditions<'tcx>,
                                              candidates: &mut SelectionCandidateSet<'tcx>)
                                              -> Result<(),SelectionError<'tcx>>
     {
-        match self.builtin_bound(bound, obligation) {
-            Ok(If(..)) => {
-                debug!("builtin_bound: bound={:?}",
-                       bound);
-                candidates.vec.push(BuiltinCandidate(bound));
+        match conditions {
+            BuiltinImplConditions::Where(nested) => {
+                debug!("builtin_bound: nested={:?}", nested);
+                candidates.vec.push(BuiltinCandidate {
+                    has_nested: nested.skip_binder().len() > 0
+                });
                 Ok(())
             }
-            Ok(ParameterBuiltin) => { Ok(()) }
-            Ok(AmbiguousBuiltin) => {
+            BuiltinImplConditions::None => { Ok(()) }
+            BuiltinImplConditions::Ambiguous => {
                 debug!("assemble_builtin_bound_candidates: ambiguous builtin");
                 Ok(candidates.ambiguous = true)
             }
-            Err(e) => { Err(e) }
+            BuiltinImplConditions::Never => { Err(Unimplemented) }
         }
     }
 
-    fn builtin_bound(&mut self,
-                     bound: ty::BuiltinBound,
-                     obligation: &TraitObligation<'tcx>)
-                     -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
+    fn sized_conditions(&mut self, obligation: &TraitObligation<'tcx>)
+                     -> BuiltinImplConditions<'tcx>
     {
-        // Note: these tests operate on types that may contain bound
-        // regions. To be proper, we ought to skolemize here, but we
-        // forego the skolemization and defer it until the
-        // confirmation step.
+        use self::BuiltinImplConditions::{Ambiguous, None, Never, Where};
 
-        let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
-        return match self_ty.sty {
-            ty::TyInfer(ty::IntVar(_)) |
-            ty::TyInfer(ty::FloatVar(_)) |
-            ty::TyUint(_) |
-            ty::TyInt(_) |
-            ty::TyBool |
-            ty::TyFloat(_) |
-            ty::TyFnDef(..) |
-            ty::TyFnPtr(_) |
-            ty::TyChar => {
+        // NOTE: binder moved to (*)
+        let self_ty = self.infcx.shallow_resolve(
+            obligation.predicate.skip_binder().self_ty());
+
+        match self_ty.sty {
+            ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyRawPtr(..) |
+            ty::TyChar | ty::TyBox(_) | ty::TyRef(..) |
+            ty::TyArray(..) | ty::TyClosure(..) |
+            ty::TyError => {
                 // safe for everything
-                ok_if(Vec::new())
+                Where(ty::Binder(Vec::new()))
             }
 
-            ty::TyBox(_) => {  // Box<T>
-                match bound {
-                    ty::BoundCopy => Err(Unimplemented),
+            ty::TyStr | ty::TySlice(_) | ty::TyTrait(..) => Never,
 
-                    ty::BoundSized => ok_if(Vec::new()),
-
-                    ty::BoundSync | ty::BoundSend => {
-                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-                }
-            }
-
-            ty::TyRawPtr(..) => {     // *const T, *mut T
-                match bound {
-                    ty::BoundCopy | ty::BoundSized => ok_if(Vec::new()),
-
-                    ty::BoundSync | ty::BoundSend => {
-                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-                }
-            }
-
-            ty::TyTrait(ref data) => {
-                match bound {
-                    ty::BoundSized => Err(Unimplemented),
-                    ty::BoundCopy => {
-                        if data.bounds.builtin_bounds.contains(&bound) {
-                            ok_if(Vec::new())
-                        } else {
-                            // Recursively check all supertraits to find out if any further
-                            // bounds are required and thus we must fulfill.
-                            let principal =
-                                data.principal_trait_ref_with_self_ty(self.tcx(),
-                                                                      self.tcx().types.err);
-                            let copy_def_id = obligation.predicate.def_id();
-                            for tr in util::supertraits(self.tcx(), principal) {
-                                if tr.def_id() == copy_def_id {
-                                    return ok_if(Vec::new())
-                                }
-                            }
-
-                            Err(Unimplemented)
-                        }
-                    }
-                    ty::BoundSync | ty::BoundSend => {
-                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-                }
-            }
-
-            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl }) => {
-                // &mut T or &T
-                match bound {
-                    ty::BoundCopy => {
-                        match mutbl {
-                            // &mut T is affine and hence never `Copy`
-                            hir::MutMutable => Err(Unimplemented),
-
-                            // &T is always copyable
-                            hir::MutImmutable => ok_if(Vec::new()),
-                        }
-                    }
-
-                    ty::BoundSized => ok_if(Vec::new()),
-
-                    ty::BoundSync | ty::BoundSend => {
-                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-                }
-            }
-
-            ty::TyArray(element_ty, _) => {
-                // [T; n]
-                match bound {
-                    ty::BoundCopy => ok_if(vec![element_ty]),
-                    ty::BoundSized => ok_if(Vec::new()),
-                    ty::BoundSync | ty::BoundSend => {
-                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-                }
-            }
-
-            ty::TyStr | ty::TySlice(_) => {
-                match bound {
-                    ty::BoundSync | ty::BoundSend => {
-                        bug!("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-
-                    ty::BoundCopy | ty::BoundSized => Err(Unimplemented),
-                }
-            }
-
-            // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-            ty::TyTuple(ref tys) => ok_if(tys.clone()),
-
-            ty::TyClosure(_, ref substs) => {
-                // FIXME -- This case is tricky. In the case of by-ref
-                // closures particularly, we need the results of
-                // inference to decide how to reflect the type of each
-                // upvar (the upvar may have type `T`, but the runtime
-                // type could be `&mut`, `&`, or just `T`). For now,
-                // though, we'll do this unsoundly and assume that all
-                // captures are by value. Really what we ought to do
-                // is reserve judgement and then intertwine this
-                // analysis with closure inference.
-
-                // Unboxed closures shouldn't be
-                // implicitly copyable
-                if bound == ty::BoundCopy {
-                    return Ok(ParameterBuiltin);
-                }
-
-                // Upvars are always local variables or references to
-                // local variables, and local variables cannot be
-                // unsized, so the closure struct as a whole must be
-                // Sized.
-                if bound == ty::BoundSized {
-                    return ok_if(Vec::new());
-                }
-
-                ok_if(substs.upvar_tys.clone())
+            ty::TyTuple(ref tys) => {
+                // FIXME(#33242) we only need to constrain the last field
+                Where(ty::Binder(tys.clone()))
             }
 
             ty::TyStruct(def, substs) | ty::TyEnum(def, substs) => {
-                let types: Vec<Ty> = def.all_fields().map(|f| {
-                    f.ty(self.tcx(), substs)
-                }).collect();
-                nominal(bound, types)
+                let sized_crit = def.sized_constraint(self.tcx());
+                // (*) binder moved here
+                Where(ty::Binder(match sized_crit.sty {
+                    ty::TyTuple(ref tys) => tys.to_owned().subst(self.tcx(), substs),
+                    ty::TyBool => vec![],
+                    _ => vec![sized_crit.subst(self.tcx(), substs)]
+                }))
             }
 
-            ty::TyProjection(_) | ty::TyParam(_) => {
-                // Note: A type parameter is only considered to meet a
-                // particular bound if there is a where clause telling
-                // us that it does, and that case is handled by
-                // `assemble_candidates_from_caller_bounds()`.
-                Ok(ParameterBuiltin)
-            }
-
-            ty::TyInfer(ty::TyVar(_)) => {
-                // Unbound type variable. Might or might not have
-                // applicable impls and so forth, depending on what
-                // those type variables wind up being bound to.
-                debug!("assemble_builtin_bound_candidates: ambiguous builtin");
-                Ok(AmbiguousBuiltin)
-            }
-
-            ty::TyError => ok_if(Vec::new()),
+            ty::TyProjection(_) | ty::TyParam(_) => None,
+            ty::TyInfer(ty::TyVar(_)) => Ambiguous,
 
             ty::TyInfer(ty::FreshTy(_))
             | ty::TyInfer(ty::FreshIntTy(_))
@@ -1809,27 +1683,60 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 bug!("asked to assemble builtin bounds of unexpected type: {:?}",
                      self_ty);
             }
-        };
-
-        fn ok_if<'tcx>(v: Vec<Ty<'tcx>>)
-                       -> Result<BuiltinBoundConditions<'tcx>, SelectionError<'tcx>> {
-            Ok(If(ty::Binder(v)))
         }
+    }
 
-        fn nominal<'cx, 'tcx>(bound: ty::BuiltinBound,
-                              types: Vec<Ty<'tcx>>)
-                              -> Result<BuiltinBoundConditions<'tcx>, SelectionError<'tcx>>
-        {
-            // First check for markers and other nonsense.
-            match bound {
+    fn copy_conditions(&mut self, obligation: &TraitObligation<'tcx>)
+                     -> BuiltinImplConditions<'tcx>
+    {
+        // NOTE: binder moved to (*)
+        let self_ty = self.infcx.shallow_resolve(
+            obligation.predicate.skip_binder().self_ty());
+
+        use self::BuiltinImplConditions::{Ambiguous, None, Never, Where};
+
+        match self_ty.sty {
+            ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) |
+            ty::TyUint(_) | ty::TyInt(_) | ty::TyBool | ty::TyFloat(_) |
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
+            ty::TyRawPtr(..) | ty::TyError |
+            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
+                Where(ty::Binder(Vec::new()))
+            }
+
+            ty::TyBox(_) | ty::TyTrait(..) | ty::TyStr | ty::TySlice(..) |
+            ty::TyClosure(..) |
+            ty::TyRef(_, ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
+                Never
+            }
+
+            ty::TyArray(element_ty, _) => {
+                // (*) binder moved here
+                Where(ty::Binder(vec![element_ty]))
+            }
+
+            ty::TyTuple(ref tys) => {
+                // (*) binder moved here
+                Where(ty::Binder(tys.clone()))
+            }
+
+            ty::TyStruct(..) | ty::TyEnum(..) | ty::TyProjection(..) | ty::TyParam(..) => {
                 // Fallback to whatever user-defined impls exist in this case.
-                ty::BoundCopy => Ok(ParameterBuiltin),
+                None
+            }
 
-                // Sized if all the component types are sized.
-                ty::BoundSized => ok_if(types),
+            ty::TyInfer(ty::TyVar(_)) => {
+                // Unbound type variable. Might or might not have
+                // applicable impls and so forth, depending on what
+                // those type variables wind up being bound to.
+                Ambiguous
+            }
 
-                // Shouldn't be coming through here.
-                ty::BoundSend | ty::BoundSync => bug!(),
+            ty::TyInfer(ty::FreshTy(_))
+            | ty::TyInfer(ty::FreshIntTy(_))
+            | ty::TyInfer(ty::FreshFloatTy(_)) => {
+                bug!("asked to assemble builtin bounds of unexpected type: {:?}",
+                     self_ty);
             }
         }
     }
@@ -1916,20 +1823,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn collect_predicates_for_types(&mut self,
-                                    obligation: &TraitObligation<'tcx>,
+                                    cause: ObligationCause<'tcx>,
+                                    recursion_depth: usize,
                                     trait_def_id: DefId,
                                     types: ty::Binder<Vec<Ty<'tcx>>>)
                                     -> Vec<PredicateObligation<'tcx>>
     {
-        let derived_cause = match self.tcx().lang_items.to_builtin_kind(trait_def_id) {
-            Some(_) => {
-                self.derived_cause(obligation, BuiltinDerivedObligation)
-            },
-            None => {
-                self.derived_cause(obligation, ImplDerivedObligation)
-            }
-        };
-
         // Because the types were potentially derived from
         // higher-ranked obligations they may reference late-bound
         // regions. For example, `for<'a> Foo<&'a int> : Copy` would
@@ -1944,40 +1843,28 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // 2. Produce something like `&'0 int : Copy`
         // 3. Re-bind the regions back to `for<'a> &'a int : Copy`
 
-        // Move the binder into the individual types
-        let bound_types: Vec<ty::Binder<Ty<'tcx>>> =
-            types.skip_binder()
-                 .iter()
-                 .map(|&nested_ty| ty::Binder(nested_ty))
-                 .collect();
+        types.skip_binder().into_iter().flat_map(|ty| { // binder moved -\
+            let ty: ty::Binder<Ty<'tcx>> = ty::Binder(ty); // <----------/
 
-        // For each type, produce a vector of resulting obligations
-        let obligations: Result<Vec<Vec<_>>, _> = bound_types.iter().map(|nested_ty| {
-            self.infcx.commit_if_ok(|snapshot| {
+            self.infcx.in_snapshot(|snapshot| {
                 let (skol_ty, skol_map) =
-                    self.infcx().skolemize_late_bound_regions(nested_ty, snapshot);
+                    self.infcx().skolemize_late_bound_regions(&ty, snapshot);
                 let Normalized { value: normalized_ty, mut obligations } =
                     project::normalize_with_depth(self,
-                                                  obligation.cause.clone(),
-                                                  obligation.recursion_depth + 1,
+                                                  cause.clone(),
+                                                  recursion_depth,
                                                   &skol_ty);
                 let skol_obligation =
                     util::predicate_for_trait_def(self.tcx(),
-                                                  derived_cause.clone(),
+                                                  cause.clone(),
                                                   trait_def_id,
-                                                  obligation.recursion_depth + 1,
+                                                  recursion_depth,
                                                   normalized_ty,
                                                   vec![]);
                 obligations.push(skol_obligation);
-                Ok(self.infcx().plug_leaks(skol_map, snapshot, &obligations))
+                self.infcx().plug_leaks(skol_map, snapshot, &obligations)
             })
-        }).collect();
-
-        // Flatten those vectors (couldn't do it above due `collect`)
-        match obligations {
-            Ok(obligations) => obligations.into_iter().flat_map(|o| o).collect(),
-            Err(ErrorReported) => Vec::new(),
-        }
+        }).collect()
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1997,9 +1884,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                candidate);
 
         match candidate {
-            BuiltinCandidate(builtin_bound) => {
+            BuiltinCandidate { has_nested } => {
                 Ok(VtableBuiltin(
-                    self.confirm_builtin_candidate(obligation, builtin_bound)?))
+                    self.confirm_builtin_candidate(obligation, has_nested)))
             }
 
             ParamCandidate(param) => {
@@ -2018,9 +1905,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ImplCandidate(impl_def_id) => {
-                let vtable_impl =
-                    self.confirm_impl_candidate(obligation, impl_def_id)?;
-                Ok(VtableImpl(vtable_impl))
+                Ok(VtableImpl(self.confirm_impl_candidate(obligation, impl_def_id)))
             }
 
             ClosureCandidate(closure_def_id, substs, kind) => {
@@ -2064,14 +1949,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_projection_candidate(&mut self,
                                     obligation: &TraitObligation<'tcx>)
     {
-        let _: Result<(),()> =
-            self.infcx.commit_if_ok(|snapshot| {
-                let result =
-                    self.match_projection_obligation_against_bounds_from_trait(obligation,
-                                                                               snapshot);
-                assert!(result);
-                Ok(())
-            });
+        self.infcx.in_snapshot(|snapshot| {
+            let result =
+                self.match_projection_obligation_against_bounds_from_trait(obligation,
+                                                                           snapshot);
+            assert!(result);
+        })
     }
 
     fn confirm_param_candidate(&mut self,
@@ -2099,45 +1982,40 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn confirm_builtin_candidate(&mut self,
                                  obligation: &TraitObligation<'tcx>,
-                                 bound: ty::BuiltinBound)
-                                 -> Result<VtableBuiltinData<PredicateObligation<'tcx>>,
-                                           SelectionError<'tcx>>
+                                 has_nested: bool)
+                                 -> VtableBuiltinData<PredicateObligation<'tcx>>
     {
-        debug!("confirm_builtin_candidate({:?})",
-               obligation);
+        debug!("confirm_builtin_candidate({:?}, {:?})",
+               obligation, has_nested);
 
-        match self.builtin_bound(bound, obligation)? {
-            If(nested) => Ok(self.vtable_builtin_data(obligation, bound, nested)),
-            AmbiguousBuiltin | ParameterBuiltin => {
-                span_bug!(
-                    obligation.cause.span,
-                    "builtin bound for {:?} was ambig",
-                    obligation);
-            }
-        }
-    }
+        let obligations = if has_nested {
+            let trait_def = obligation.predicate.def_id();
+            let conditions = match trait_def {
+                _ if Some(trait_def) == self.tcx().lang_items.sized_trait() => {
+                    self.sized_conditions(obligation)
+                }
+                _ if Some(trait_def) == self.tcx().lang_items.copy_trait() => {
+                    self.copy_conditions(obligation)
+                }
+                _ => bug!("unexpected builtin trait {:?}", trait_def)
+            };
+            let nested = match conditions {
+                BuiltinImplConditions::Where(nested) => nested,
+                _ => bug!("obligation {:?} had matched a builtin impl but now doesn't",
+                          obligation)
+            };
 
-    fn vtable_builtin_data(&mut self,
-                           obligation: &TraitObligation<'tcx>,
-                           bound: ty::BuiltinBound,
-                           nested: ty::Binder<Vec<Ty<'tcx>>>)
-                           -> VtableBuiltinData<PredicateObligation<'tcx>>
-    {
-        debug!("vtable_builtin_data(obligation={:?}, bound={:?}, nested={:?})",
-               obligation, bound, nested);
-
-        let trait_def = match self.tcx().lang_items.from_builtin_kind(bound) {
-            Ok(def_id) => def_id,
-            Err(_) => {
-                bug!("builtin trait definition not found");
-            }
+            let cause = self.derived_cause(obligation, BuiltinDerivedObligation);
+            self.collect_predicates_for_types(cause,
+                                              obligation.recursion_depth+1,
+                                              trait_def,
+                                              nested)
+        } else {
+            vec![]
         };
 
-        let obligations = self.collect_predicates_for_types(obligation, trait_def, nested);
-
-        debug!("vtable_builtin_data: obligations={:?}",
+        debug!("confirm_builtin_candidate: obligations={:?}",
                obligations);
-
         VtableBuiltinData { nested: obligations }
     }
 
@@ -2205,28 +2083,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            nested: ty::Binder<Vec<Ty<'tcx>>>)
                            -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
-        debug!("vtable_default_impl_data: nested={:?}", nested);
+        debug!("vtable_default_impl: nested={:?}", nested);
 
-        let mut obligations = self.collect_predicates_for_types(obligation,
-                                                                trait_def_id,
-                                                                nested);
+        let cause = self.derived_cause(obligation, BuiltinDerivedObligation);
+        let mut obligations = self.collect_predicates_for_types(
+            cause,
+            obligation.recursion_depth+1,
+            trait_def_id,
+            nested);
 
-        let trait_obligations: Result<Vec<_>,()> = self.infcx.commit_if_ok(|snapshot| {
+        let trait_obligations = self.infcx.in_snapshot(|snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 self.infcx().skolemize_late_bound_regions(&poly_trait_ref, snapshot);
-            Ok(self.impl_or_trait_obligations(obligation.cause.clone(),
-                                              obligation.recursion_depth + 1,
-                                              trait_def_id,
-                                              &trait_ref.substs,
-                                              skol_map,
-                                              snapshot))
+            let cause = self.derived_cause(obligation, ImplDerivedObligation);
+            self.impl_or_trait_obligations(cause,
+                                           obligation.recursion_depth + 1,
+                                           trait_def_id,
+                                           &trait_ref.substs,
+                                           skol_map,
+                                           snapshot)
         });
 
-        // no Errors in that code above
-        obligations.append(&mut trait_obligations.unwrap());
+        obligations.extend(trait_obligations);
 
-        debug!("vtable_default_impl_data: obligations={:?}", obligations);
+        debug!("vtable_default_impl: obligations={:?}", obligations);
 
         VtableDefaultImplData {
             trait_def_id: trait_def_id,
@@ -2237,8 +2118,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_impl_candidate(&mut self,
                               obligation: &TraitObligation<'tcx>,
                               impl_def_id: DefId)
-                              -> Result<VtableImplData<'tcx, PredicateObligation<'tcx>>,
-                                        SelectionError<'tcx>>
+                              -> VtableImplData<'tcx, PredicateObligation<'tcx>>
     {
         debug!("confirm_impl_candidate({:?},{:?})",
                obligation,
@@ -2246,13 +2126,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.commit_if_ok(|snapshot| {
+        self.infcx.in_snapshot(|snapshot| {
             let (substs, skol_map) =
                 self.rematch_impl(impl_def_id, obligation,
                                   snapshot);
             debug!("confirm_impl_candidate substs={:?}", substs);
-            Ok(self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
-                                obligation.recursion_depth + 1, skol_map, snapshot))
+            let cause = self.derived_cause(obligation, ImplDerivedObligation);
+            self.vtable_impl(impl_def_id, substs, cause,
+                             obligation.recursion_depth + 1,
+                             skol_map, snapshot)
         })
     }
 
@@ -2507,9 +2389,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             // T -> Trait.
             (_, &ty::TyTrait(ref data)) => {
-                let object_did = data.principal_def_id();
-                if !object_safety::is_object_safe(tcx, object_did) {
-                    return Err(TraitNotObjectSafe(object_did));
+                let mut object_dids = Some(data.principal_def_id()).into_iter();
+                // FIXME(#33243)
+//                    data.bounds.builtin_bounds.iter().flat_map(|bound| {
+//                        tcx.lang_items.from_builtin_kind(bound).ok()
+//                    })
+//                    .chain(Some(data.principal_def_id()));
+                if let Some(did) = object_dids.find(|did| {
+                    !object_safety::is_object_safe(tcx, *did)
+                }) {
+                    return Err(TraitNotObjectSafe(did))
                 }
 
                 let cause = ObligationCause::new(obligation.cause.span,

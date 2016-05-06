@@ -179,6 +179,7 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
                 ty::Predicate::TypeOutlives(..) => None,
                 ty::Predicate::WellFormed(..) => None,
                 ty::Predicate::ObjectSafe(..) => None,
+                ty::Predicate::Rfc1592(..) => None,
 
                 // NB: This predicate is created by breaking down a
                 // `ClosureType: FnFoo()` predicate, where

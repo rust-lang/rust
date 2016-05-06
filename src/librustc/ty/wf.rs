@@ -94,6 +94,9 @@ pub fn predicate_obligations<'a,'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         }
         ty::Predicate::ClosureKind(..) => {
         }
+        ty::Predicate::Rfc1592(ref data) => {
+            bug!("RFC1592 predicate `{:?}` in predicate_obligations", data);
+        }
     }
 
     wf.normalize()
@@ -155,6 +158,7 @@ pub fn implied_bounds<'a,'tcx>(
                 assert!(!obligation.has_escaping_regions());
                 match obligation.predicate {
                     ty::Predicate::Trait(..) |
+                    ty::Predicate::Rfc1592(..) |
                     ty::Predicate::Equate(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::ClosureKind(..) |
@@ -280,11 +284,35 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
         }
     }
 
+    fn require_sized(&mut self, subty: Ty<'tcx>, cause: traits::ObligationCauseCode<'tcx>,
+                     rfc1592: bool) {
+        if !subty.has_escaping_regions() {
+            let cause = self.cause(cause);
+            match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
+                                                      ty::BoundSized,
+                                                      subty) {
+                Ok(trait_ref) => {
+                    let predicate = trait_ref.to_predicate();
+                    let predicate = if rfc1592 {
+                        ty::Predicate::Rfc1592(box predicate)
+                    } else {
+                        predicate
+                    };
+                    self.out.push(
+                        traits::Obligation::new(cause,
+                                                predicate));
+                }
+                Err(ErrorReported) => { }
+            }
+        }
+    }
+
     /// Push new obligations into `out`. Returns true if it was able
     /// to generate all the predicates needed to validate that `ty0`
     /// is WF. Returns false if `ty0` is an unresolved type variable,
     /// in which case we are not able to simplify at all.
     fn compute(&mut self, ty0: Ty<'tcx>) -> bool {
+        let tcx = self.infcx.tcx;
         let mut subtys = ty0.walk();
         while let Some(ty) = subtys.next() {
             match ty.sty {
@@ -301,23 +329,18 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
 
                 ty::TySlice(subty) |
                 ty::TyArray(subty, _) => {
-                    if !subty.has_escaping_regions() {
-                        let cause = self.cause(traits::SliceOrArrayElem);
-                        match traits::trait_ref_for_builtin_bound(self.infcx.tcx,
-                                                                  ty::BoundSized,
-                                                                  subty) {
-                            Ok(trait_ref) => {
-                                self.out.push(
-                                    traits::Obligation::new(cause,
-                                                            trait_ref.to_predicate()));
-                            }
-                            Err(ErrorReported) => { }
+                    self.require_sized(subty, traits::SliceOrArrayElem, false);
+                }
+
+                ty::TyTuple(ref tys) => {
+                    if let Some((_last, rest)) = tys.split_last() {
+                        for elem in rest {
+                            self.require_sized(elem, traits::TupleElem, true);
                         }
                     }
                 }
 
                 ty::TyBox(_) |
-                ty::TyTuple(_) |
                 ty::TyRawPtr(_) => {
                     // simple cases that are WF if their type args are WF
                 }
@@ -374,10 +397,25 @@ impl<'a,'tcx> WfPredicates<'a,'tcx> {
                     // checking those
 
                     let cause = self.cause(traits::MiscObligation);
-                    self.out.push(
-                        traits::Obligation::new(
-                            cause,
-                            ty::Predicate::ObjectSafe(data.principal_def_id())));
+
+                    // FIXME(#33243): remove RFC1592
+                    self.out.push(traits::Obligation::new(
+                        cause.clone(),
+                        ty::Predicate::ObjectSafe(data.principal_def_id())
+                    ));
+                    let component_traits =
+                        data.bounds.builtin_bounds.iter().flat_map(|bound| {
+                            tcx.lang_items.from_builtin_kind(bound).ok()
+                        });
+//                        .chain(Some(data.principal_def_id()));
+                    self.out.extend(
+                        component_traits.map(|did| { traits::Obligation::new(
+                            cause.clone(),
+                            ty::Predicate::Rfc1592(
+                                box ty::Predicate::ObjectSafe(did)
+                            )
+                        )})
+                    );
                 }
 
                 // Inference variables are the complicated case, since we don't

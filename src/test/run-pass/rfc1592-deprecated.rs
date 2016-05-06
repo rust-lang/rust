@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: overflow representing the type `S`
+use std::fmt;
 
-trait Mirror { type It: ?Sized; }
-impl<T: ?Sized> Mirror for T { type It = Self; }
-struct S(Option<<S as Mirror>::It>);
+trait Foo {
+    fn foo(&self) -> (Self, Self);
+}
+
+impl<T: Copy> Foo for T {
+    fn foo(&self) -> (Self, Self) {
+        (*self, *self)
+    }
+}
 
 fn main() {
-    let _s = S(None);
+    assert_eq!((11).foo(), (11, 11));
+
+    let junk: Box<fmt::Debug+Sized> = Box::new(42);
+    let f = format!("{:?}", junk);
+    assert_eq!(f, "42");
 }

@@ -36,23 +36,27 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use std::cmp;
 use std::fmt;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
+use syntax::ast;
 use syntax::codemap::Span;
 use syntax::errors::DiagnosticBuilder;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TraitErrorKey<'tcx> {
     span: Span,
+    warning_node_id: Option<ast::NodeId>,
     predicate: ty::Predicate<'tcx>
 }
 
 impl<'tcx> TraitErrorKey<'tcx> {
     fn from_error<'a>(infcx: &InferCtxt<'a, 'tcx>,
-                      e: &FulfillmentError<'tcx>) -> Self {
+                      e: &FulfillmentError<'tcx>,
+                      warning_node_id: Option<ast::NodeId>) -> Self {
         let predicate =
             infcx.resolve_type_vars_if_possible(&e.obligation.predicate);
         TraitErrorKey {
             span: e.obligation.cause.span,
-            predicate: infcx.tcx.erase_regions(&predicate)
+            predicate: infcx.tcx.erase_regions(&predicate),
+            warning_node_id: warning_node_id
         }
     }
 }
@@ -60,13 +64,23 @@ impl<'tcx> TraitErrorKey<'tcx> {
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                            errors: &Vec<FulfillmentError<'tcx>>) {
     for error in errors {
-        report_fulfillment_error(infcx, error);
+        report_fulfillment_error(infcx, error, None);
+    }
+}
+
+pub fn report_fulfillment_errors_as_warnings<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
+                                                       errors: &Vec<FulfillmentError<'tcx>>,
+                                                       node_id: ast::NodeId)
+{
+    for error in errors {
+        report_fulfillment_error(infcx, error, Some(node_id));
     }
 }
 
 fn report_fulfillment_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                      error: &FulfillmentError<'tcx>) {
-    let error_key = TraitErrorKey::from_error(infcx, error);
+                                      error: &FulfillmentError<'tcx>,
+                                      warning_node_id: Option<ast::NodeId>) {
+    let error_key = TraitErrorKey::from_error(infcx, error, warning_node_id);
     debug!("report_fulfillment_errors({:?}) - key={:?}",
            error, error_key);
     if !infcx.reported_trait_errors.borrow_mut().insert(error_key) {
@@ -75,10 +89,10 @@ fn report_fulfillment_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
     match error.code {
         FulfillmentErrorCode::CodeSelectionError(ref e) => {
-            report_selection_error(infcx, &error.obligation, e);
+            report_selection_error(infcx, &error.obligation, e, warning_node_id);
         }
         FulfillmentErrorCode::CodeProjectionError(ref e) => {
-            report_projection_error(infcx, &error.obligation, e);
+            report_projection_error(infcx, &error.obligation, e, warning_node_id);
         }
         FulfillmentErrorCode::CodeAmbiguity => {
             maybe_report_ambiguity(infcx, &error.obligation);
@@ -88,18 +102,29 @@ fn report_fulfillment_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
 pub fn report_projection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                          obligation: &PredicateObligation<'tcx>,
-                                         error: &MismatchedProjectionTypes<'tcx>)
+                                         error: &MismatchedProjectionTypes<'tcx>,
+                                         warning_node_id: Option<ast::NodeId>)
 {
     let predicate =
         infcx.resolve_type_vars_if_possible(&obligation.predicate);
 
     if !predicate.references_error() {
-        let mut err = struct_span_err!(infcx.tcx.sess, obligation.cause.span, E0271,
-            "type mismatch resolving `{}`: {}",
-            predicate,
-            error.err);
-        note_obligation_cause(infcx, &mut err, obligation);
-        err.emit();
+        if let Some(warning_node_id) = warning_node_id {
+            infcx.tcx.sess.add_lint(
+                ::lint::builtin::UNSIZED_IN_TUPLE,
+                warning_node_id,
+                obligation.cause.span,
+                format!("type mismatch resolving `{}`: {}",
+                        predicate,
+                        error.err));
+        } else {
+            let mut err = struct_span_err!(infcx.tcx.sess, obligation.cause.span, E0271,
+                                           "type mismatch resolving `{}`: {}",
+                                           predicate,
+                                           error.err);
+            note_obligation_cause(infcx, &mut err, obligation);
+            err.emit();
+        }
     }
 }
 
@@ -383,7 +408,8 @@ pub fn recursive_type_with_infinite_size_error<'tcx>(tcx: &TyCtxt<'tcx>,
 
 pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                         obligation: &PredicateObligation<'tcx>,
-                                        error: &SelectionError<'tcx>)
+                                        error: &SelectionError<'tcx>,
+                                        warning_node_id: Option<ast::NodeId>)
 {
     match *error {
         SelectionError::Unimplemented => {
@@ -401,6 +427,17 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
                         if !infcx.tcx.sess.has_errors() || !trait_predicate.references_error() {
                             let trait_ref = trait_predicate.to_poly_trait_ref();
+
+                            if let Some(warning_node_id) = warning_node_id {
+                                infcx.tcx.sess.add_lint(
+                                    ::lint::builtin::UNSIZED_IN_TUPLE,
+                                    warning_node_id,
+                                    obligation.cause.span,
+                                    format!("the trait bound `{}` is not satisfied",
+                                            trait_ref.to_predicate()));
+                                return;
+                            }
+
                             let mut err = struct_span_err!(
                                 infcx.tcx.sess, obligation.cause.span, E0277,
                                 "the trait bound `{}` is not satisfied",
@@ -480,12 +517,15 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     ty::Predicate::ObjectSafe(trait_def_id) => {
                         let violations = object_safety_violations(
                             infcx.tcx, trait_def_id);
-                        let mut err = report_object_safety_error(infcx.tcx,
-                                                                 obligation.cause.span,
-                                                                 trait_def_id,
-                                                                 violations);
-                        note_obligation_cause(infcx, &mut err, obligation);
-                        err.emit();
+                        let err = report_object_safety_error(infcx.tcx,
+                                                             obligation.cause.span,
+                                                             trait_def_id,
+                                                             warning_node_id,
+                                                             violations);
+                        if let Some(mut err) = err {
+                            note_obligation_cause(infcx, &mut err, obligation);
+                            err.emit();
+                        }
                     }
 
                     ty::Predicate::ClosureKind(closure_def_id, kind) => {
@@ -514,6 +554,13 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                             "WF predicate not satisfied for {:?}",
                             ty);
                     }
+
+                    ty::Predicate::Rfc1592(ref data) => {
+                        span_bug!(
+                            obligation.cause.span,
+                            "RFC1592 predicate not satisfied for {:?}",
+                            data);
+                    }
                 }
             }
         }
@@ -537,10 +584,13 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 
         TraitNotObjectSafe(did) => {
             let violations = object_safety_violations(infcx.tcx, did);
-            let mut err = report_object_safety_error(infcx.tcx, obligation.cause.span, did,
-                                                     violations);
-            note_obligation_cause(infcx, &mut err, obligation);
-            err.emit();
+            let err = report_object_safety_error(infcx.tcx, obligation.cause.span, did,
+                                                 warning_node_id,
+                                                 violations);
+            if let Some(mut err) = err {
+                note_obligation_cause(infcx, &mut err, obligation);
+                err.emit();
+            }
         }
     }
 }
@@ -548,47 +598,70 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
 pub fn report_object_safety_error<'tcx>(tcx: &TyCtxt<'tcx>,
                                         span: Span,
                                         trait_def_id: DefId,
+                                        warning_node_id: Option<ast::NodeId>,
                                         violations: Vec<ObjectSafetyViolation>)
-                                        -> DiagnosticBuilder<'tcx>
+                                        -> Option<DiagnosticBuilder<'tcx>>
 {
-    let mut err = struct_span_err!(
-        tcx.sess, span, E0038,
-        "the trait `{}` cannot be made into an object",
-        tcx.item_path_str(trait_def_id));
+    let mut err = match warning_node_id {
+        Some(_) => None,
+        None => {
+            Some(struct_span_err!(
+                tcx.sess, span, E0038,
+                "the trait `{}` cannot be made into an object",
+                tcx.item_path_str(trait_def_id)))
+        }
+    };
 
     let mut reported_violations = FnvHashSet();
     for violation in violations {
         if !reported_violations.insert(violation.clone()) {
             continue;
         }
-        match violation {
+        let buf;
+        let note = match violation {
             ObjectSafetyViolation::SizedSelf => {
-                err.note("the trait cannot require that `Self : Sized`");
+                "the trait cannot require that `Self : Sized`"
             }
 
             ObjectSafetyViolation::SupertraitSelf => {
-                err.note("the trait cannot use `Self` as a type parameter \
-                          in the supertrait listing");
+                "the trait cannot use `Self` as a type parameter \
+                     in the supertrait listing"
             }
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::StaticMethod) => {
-                err.note(&format!("method `{}` has no receiver",
-                         method.name));
+                buf = format!("method `{}` has no receiver",
+                              method.name);
+                &buf
             }
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::ReferencesSelf) => {
-                err.note(&format!("method `{}` references the `Self` type \
+                buf = format!("method `{}` references the `Self` type \
                                    in its arguments or return type",
-                                  method.name));
+                              method.name);
+                &buf
             }
 
             ObjectSafetyViolation::Method(method,
                                           MethodViolationCode::Generic) => {
-                err.note(&format!("method `{}` has generic type parameters",
-                                  method.name));
+                buf = format!("method `{}` has generic type parameters",
+                              method.name);
+                &buf
             }
+        };
+        match (warning_node_id, &mut err) {
+            (Some(node_id), &mut None) => {
+                tcx.sess.add_lint(
+                    ::lint::builtin::OBJECT_UNSAFE_FRAGMENT,
+                    node_id,
+                    span,
+                    note.to_string());
+            }
+            (None, &mut Some(ref mut err)) => {
+                err.note(note);
+            }
+            _ => unreachable!()
         }
     }
     err
@@ -763,6 +836,9 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
         ObligationCauseCode::MiscObligation => { }
         ObligationCauseCode::SliceOrArrayElem => {
             err.note("slice and array elements must have `Sized` type");
+        }
+        ObligationCauseCode::TupleElem => {
+            err.note("tuple elements must have `Sized` type");
         }
         ObligationCauseCode::ProjectionWf(data) => {
             err.note(&format!("required so that the projection `{}` is well-formed",

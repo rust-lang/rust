@@ -45,15 +45,15 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
 
     // borrowed object types are generally ok
     assert_copy::<&'a Dummy>();
-    assert_copy::<&'a (Dummy+Copy)>();
-    assert_copy::<&'static (Dummy+Copy)>();
+    assert_copy::<&'a (Dummy+Send)>();
+    assert_copy::<&'static (Dummy+Send)>();
 
     // owned object types are not ok
     assert_copy::<Box<Dummy>>(); //~ ERROR : std::marker::Copy` is not satisfied
-    assert_copy::<Box<Dummy+Copy>>(); //~ ERROR : std::marker::Copy` is not satisfied
+    assert_copy::<Box<Dummy+Send>>(); //~ ERROR : std::marker::Copy` is not satisfied
 
     // mutable object types are not ok
-    assert_copy::<&'a mut (Dummy+Copy)>();  //~ ERROR : std::marker::Copy` is not satisfied
+    assert_copy::<&'a mut (Dummy+Send)>();  //~ ERROR : std::marker::Copy` is not satisfied
 
     // unsafe ptrs are ok
     assert_copy::<*const isize>();

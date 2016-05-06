@@ -804,6 +804,9 @@ pub enum Predicate<'tcx> {
     /// would be the parameters in the `TypeSpace`.
     Trait(PolyTraitPredicate<'tcx>),
 
+    /// A predicate created by RFC1592
+    Rfc1592(Box<Predicate<'tcx>>),
+
     /// where `T1 == T2`.
     Equate(PolyEquatePredicate<'tcx>),
 
@@ -904,6 +907,8 @@ impl<'tcx> Predicate<'tcx> {
         match *self {
             Predicate::Trait(ty::Binder(ref data)) =>
                 Predicate::Trait(ty::Binder(data.subst(tcx, substs))),
+            Predicate::Rfc1592(ref pi) =>
+                Predicate::Rfc1592(Box::new(pi.subst_supertrait(tcx, trait_ref))),
             Predicate::Equate(ty::Binder(ref data)) =>
                 Predicate::Equate(ty::Binder(data.subst(tcx, substs))),
             Predicate::RegionOutlives(ty::Binder(ref data)) =>
@@ -1083,6 +1088,9 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::Trait(ref data) => {
                 data.0.trait_ref.substs.types.as_slice().to_vec()
             }
+            ty::Predicate::Rfc1592(ref data) => {
+                return data.walk_tys()
+            }
             ty::Predicate::Equate(ty::Binder(ref data)) => {
                 vec![data.0, data.1]
             }
@@ -1123,6 +1131,7 @@ impl<'tcx> Predicate<'tcx> {
             Predicate::Trait(ref t) => {
                 Some(t.to_poly_trait_ref())
             }
+            Predicate::Rfc1592(..) |
             Predicate::Projection(..) |
             Predicate::Equate(..) |
             Predicate::RegionOutlives(..) |
@@ -1498,6 +1507,7 @@ pub struct AdtDefData<'tcx, 'container: 'tcx> {
     pub variants: Vec<VariantDefData<'tcx, 'container>>,
     destructor: Cell<Option<DefId>>,
     flags: Cell<AdtFlags>,
+    sized_constraint: ivar::TyIVar<'tcx, 'container>,
 }
 
 impl<'tcx, 'container> PartialEq for AdtDefData<'tcx, 'container> {
@@ -1575,7 +1585,8 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             did: did,
             variants: variants,
             flags: Cell::new(flags),
-            destructor: Cell::new(None)
+            destructor: Cell::new(None),
+            sized_constraint: ivar::TyIVar::new(),
         }
     }
 
@@ -1715,6 +1726,185 @@ impl<'tcx, 'container> AdtDefData<'tcx, 'container> {
             }
             None => NoDtor,
         }
+    }
+
+    /// Returns a simpler type such that `Self: Sized` if and only
+    /// if that type is Sized, or `TyErr` if this type is recursive.
+    ///
+    /// HACK: instead of returning a list of types, this function can
+    /// return a tuple. In that case, the result is Sized only if
+    /// all elements of the tuple are Sized.
+    ///
+    /// This is generally the `struct_tail` if this is a struct, or a
+    /// tuple of them if this is an enum.
+    ///
+    /// Oddly enough, checking that the sized-constraint is Sized is
+    /// actually more expressive than checking all members:
+    /// the Sized trait is inductive, so an associated type that references
+    /// Self would prevent its containing ADT from being Sized.
+    ///
+    /// Due to normalization being eager, this applies even if
+    /// the associated type is behind a pointer, e.g. issue #31299.
+    pub fn sized_constraint(&self, tcx: &ty::TyCtxt<'tcx>) -> Ty<'tcx> {
+        let dep_node = DepNode::SizedConstraint(self.did);
+        match self.sized_constraint.get(dep_node) {
+            None => {
+                let this = tcx.lookup_adt_def_master(self.did);
+                this.calculate_sized_constraint_inner(tcx, &mut Vec::new());
+                self.sized_constraint(tcx)
+            }
+            Some(ty) => ty
+        }
+    }
+}
+
+impl<'tcx> AdtDefData<'tcx, 'tcx> {
+    /// Calculates the Sized-constraint.
+    ///
+    /// As the Sized-constraint of enums can be a *set* of types,
+    /// the Sized-constraint may need to be a set also. Because introducing
+    /// a new type of IVar is currently a complex affair, the Sized-constraint
+    /// may be a tuple.
+    ///
+    /// In fact, there are only a few options for the constraint:
+    ///     - `bool`, if the type is always Sized
+    ///     - an obviously-unsized type
+    ///     - a type parameter or projection whose Sizedness can't be known
+    ///     - a tuple of type parameters or projections, if there are multiple
+    ///       such.
+    ///     - a TyError, if a type contained itself. The representability
+    ///       check should catch this case.
+    fn calculate_sized_constraint_inner(&'tcx self, tcx: &ty::TyCtxt<'tcx>,
+                                        stack: &mut Vec<AdtDefMaster<'tcx>>)
+    {
+
+        let dep_node = DepNode::SizedConstraint(self.did);
+
+        if self.sized_constraint.get(dep_node).is_some() {
+            return;
+        }
+
+        if stack.contains(&self) {
+            debug!("calculate_sized_constraint: {:?} is recursive", self);
+            // This should be reported as an error by `check_representable`.
+            //
+            // Consider the type as Sized in the meanwhile to avoid
+            // further errors.
+            self.sized_constraint.fulfill(dep_node, tcx.types.err);
+            return;
+        }
+
+        stack.push(self);
+
+        let tys : Vec<_> =
+            self.variants.iter().flat_map(|v| {
+                v.fields.last()
+            }).flat_map(|f| {
+                self.sized_constraint_for_ty(tcx, stack, f.unsubst_ty())
+            }).collect();
+
+        let self_ = stack.pop().unwrap();
+        assert_eq!(self_, self);
+
+        let ty = match tys.len() {
+            _ if tys.references_error() => tcx.types.err,
+            0 => tcx.types.bool,
+            1 => tys[0],
+            _ => tcx.mk_tup(tys)
+        };
+
+        match self.sized_constraint.get(dep_node) {
+            Some(old_ty) => {
+                debug!("calculate_sized_constraint: {:?} recurred", self);
+                assert_eq!(old_ty, tcx.types.err)
+            }
+            None => {
+                debug!("calculate_sized_constraint: {:?} => {:?}", self, ty);
+                self.sized_constraint.fulfill(dep_node, ty)
+            }
+        }
+    }
+
+    fn sized_constraint_for_ty(
+        &'tcx self,
+        tcx: &ty::TyCtxt<'tcx>,
+        stack: &mut Vec<AdtDefMaster<'tcx>>,
+        ty: Ty<'tcx>
+    ) -> Vec<Ty<'tcx>> {
+        let result = match ty.sty {
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyBox(..) | TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyArray(..) | TyClosure(..) => {
+                vec![]
+            }
+
+            TyStr | TyTrait(..) | TySlice(_) | TyError => {
+                // these are never sized - return the target type
+                vec![ty]
+            }
+
+            TyTuple(ref tys) => {
+                // FIXME(#33242) we only need to constrain the last field
+                tys.iter().flat_map(|ty| {
+                    self.sized_constraint_for_ty(tcx, stack, ty)
+                }).collect()
+            }
+
+            TyEnum(adt, substs) | TyStruct(adt, substs) => {
+                // recursive case
+                let adt = tcx.lookup_adt_def_master(adt.did);
+                adt.calculate_sized_constraint_inner(tcx, stack);
+                let adt_ty =
+                    adt.sized_constraint
+                    .unwrap(DepNode::SizedConstraint(adt.did))
+                    .subst(tcx, substs);
+                debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
+                       ty, adt_ty);
+                if let ty::TyTuple(ref tys) = adt_ty.sty {
+                    tys.iter().flat_map(|ty| {
+                        self.sized_constraint_for_ty(tcx, stack, ty)
+                    }).collect()
+                } else {
+                    self.sized_constraint_for_ty(tcx, stack, adt_ty)
+                }
+            }
+
+            TyProjection(..) => {
+                // must calculate explicitly.
+                // FIXME: consider special-casing always-Sized projections
+                vec![ty]
+            }
+
+            TyParam(..) => {
+                // perf hack: if there is a `T: Sized` bound, then
+                // we know that `T` is Sized and do not need to check
+                // it on the impl.
+
+                let sized_trait = match tcx.lang_items.sized_trait() {
+                    Some(x) => x,
+                    _ => return vec![ty]
+                };
+                let sized_predicate = Binder(TraitRef {
+                    def_id: sized_trait,
+                    substs: tcx.mk_substs(Substs::new_trait(
+                        vec![], vec![], ty
+                    ))
+                }).to_predicate();
+                let predicates = tcx.lookup_predicates(self.did).predicates;
+                if predicates.into_iter().any(|p| p == sized_predicate) {
+                    vec![]
+                } else {
+                    vec![ty]
+                }
+            }
+
+            TyInfer(..) => {
+                bug!("unexpected type `{:?}` in sized_constraint_for_ty",
+                     ty)
+            }
+        };
+        debug!("sized_constraint_for_ty({:?}) = {:?}", ty, result);
+        result
     }
 }
 

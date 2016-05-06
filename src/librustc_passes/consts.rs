@@ -277,6 +277,9 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
                 traits::report_fulfillment_errors(&infcx, errors);
             }
         }
+        if let Err(ref errors) = fulfillment_cx.select_rfc1592_obligations(&infcx) {
+            traits::report_fulfillment_errors_as_warnings(&infcx, errors, e.id);
+        }
     }
 }
 
