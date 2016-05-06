@@ -211,8 +211,7 @@ use syntax::parse::token;
 
 use base::{custom_coerce_unsize_info, llvm_linkage_by_name};
 use context::CrateContext;
-use common::{fulfill_obligation, normalize_and_test_predicates,
-                    type_is_sized};
+use common::{fulfill_obligation, normalize_and_test_predicates, type_is_sized};
 use glue::{self, DropGlueKind};
 use llvm;
 use meth;
@@ -937,7 +936,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
          &ty::TyStruct(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
-            let kind = custom_coerce_unsize_info(ccx, source_ty, target_ty);
+            let kind = custom_coerce_unsize_info(ccx.shared(), source_ty, target_ty);
 
             let coerce_index = match kind {
                 CustomCoerceUnsized::Struct(i) => i

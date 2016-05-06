@@ -664,7 +664,7 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
+pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &SharedCrateContext<'ccx, 'tcx>,
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
@@ -678,7 +678,7 @@ pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
         substs: ccx.tcx().mk_substs(trait_substs)
     });
 
-    match fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
+    match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
             ccx.tcx().custom_coerce_unsized_kind(impl_def_id)
         }
