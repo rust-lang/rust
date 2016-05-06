@@ -701,7 +701,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             substs: self_type_substs,
         }.to_poly_trait_ref();
 
-        let substs = match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
+        let substs = match fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
             traits::VtableImpl(data) => data.substs,
             _ => bug!()
         };
@@ -844,7 +844,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                        callee_substs);
 
     let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
-    let vtbl = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
+    let vtbl = fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -999,7 +999,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         // Walk all methods of the trait, including those of its supertraits
         for trait_ref in traits::supertraits(ccx.tcx(), poly_trait_ref) {
-            let vtable = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
+            let vtable = fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
             match vtable {
                 traits::VtableImpl(
                     traits::VtableImplData {

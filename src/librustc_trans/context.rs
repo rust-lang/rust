@@ -84,6 +84,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     use_dll_storage_attrs: bool,
 
     translation_items: RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>>,
+    trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -169,8 +170,6 @@ pub struct LocalCrateContext<'tcx> {
 
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
-
-    trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
 }
 
 // Implement DepTrackingMapConfig for `trait_cache`
@@ -423,6 +422,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             available_drop_glues: RefCell::new(FnvHashMap()),
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FnvHashMap()),
+            trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
     }
 
@@ -444,6 +444,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn item_symbols<'a>(&'a self) -> &'a RefCell<NodeMap<String>> {
         &self.item_symbols
+    }
+
+    pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
+        &self.trait_cache
     }
 
     pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
@@ -516,9 +520,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 intrinsics: RefCell::new(FnvHashMap()),
                 n_llvm_insns: Cell::new(0),
                 type_of_depth: Cell::new(0),
-                trait_cache: RefCell::new(DepTrackingMap::new(shared.tcx
-                                                                    .dep_graph
-                                                                    .clone())),
             };
 
             let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
@@ -803,10 +804,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn count_llvm_insn(&self) {
         self.local().n_llvm_insns.set(self.local().n_llvm_insns.get() + 1);
-    }
-
-    pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
-        &self.local().trait_cache
     }
 
     pub fn obj_size_bound(&self) -> u64 {
