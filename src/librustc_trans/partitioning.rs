@@ -182,7 +182,19 @@ pub fn partition<'tcx, I>(tcx: &TyCtxt<'tcx>,
     // easily determine which declarations need to be placed within each one.
     let post_declarations = place_declarations(post_inlining, reference_map);
 
-    post_declarations.0
+    let mut final_partitioning = post_declarations.0;
+
+    if final_partitioning.len() == 0 {
+        // Some crates don't contain anything that will result in a translation
+        // item. We still want to have at least one (empty) codegen unit in that
+        // case.
+        final_partitioning.push(CodegenUnit {
+            name: token::intern_and_get_ident(&format!("{}.0", tcx.crate_name)[..]),
+            items: FnvHashMap()
+        });
+    }
+
+    final_partitioning
 }
 
 struct PreInliningPartitioning<'tcx> {
