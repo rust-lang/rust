@@ -22,6 +22,7 @@ use rustc::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
+use rustc::hir::map::DefKey;
 use rustc::mir::repr::Mir;
 use rustc::mir::mir_map::MirMap;
 use rustc::util::nodemap::{FnvHashMap, NodeMap, NodeSet, DefIdMap};
@@ -406,6 +407,14 @@ impl<'tcx> CrateStore<'tcx> for cstore::CStore {
     {
         let cdata = self.get_crate_data(cnum);
         decoder::get_reachable_ids(&cdata)
+    }
+
+    fn def_index_for_def_key(&self,
+                             cnum: ast::CrateNum,
+                             def: DefKey)
+                             -> Option<DefIndex> {
+        let cdata = self.get_crate_data(cnum);
+        cdata.key_map.get(&def).cloned()
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
