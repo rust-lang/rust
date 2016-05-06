@@ -371,7 +371,7 @@ impl Ipv6Addr {
     }
 
     /// Returns true if this is an address reserved for documentation
-    /// This is defined to be 2001:db8::/32 in RFC RFC 3849
+    /// This is defined to be 2001:db8::/32 in RFC 3849.
     pub fn is_documentation(&self) -> bool {
         (self.segments()[0] == 0x2001) && (self.segments()[1] == 0xdb8)
     }
