@@ -1952,15 +1952,7 @@ pub trait Iterator {
         Self::Item: PartialEq<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            match (self.next(), other.next()) {
-                (None, None) => return false,
-                (None, _) | (_, None) => return true,
-                (Some(x), Some(y)) => if x.ne(&y) { return true },
-            }
-        }
+        !self.eq(other)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
