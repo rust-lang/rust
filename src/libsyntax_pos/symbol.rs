@@ -118,6 +118,7 @@ symbols! {
         abi_unadjusted,
         abi_vectorcall,
         abi_x86_interrupt,
+        abi_avr_interrupt,
         aborts,
         advanced_slice_patterns,
         adx_target_feature,

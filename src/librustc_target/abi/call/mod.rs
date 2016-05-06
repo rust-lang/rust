@@ -6,6 +6,7 @@ mod aarch64;
 mod amdgpu;
 mod arm;
 mod asmjs;
+mod avr;
 mod hexagon;
 mod mips;
 mod mips64;
@@ -516,6 +517,8 @@ pub enum Conv {
     X86_64Win64,
 
     AmdGpuKernel,
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
 }
 
 /// Metadata describing how the arguments to a native function
@@ -573,6 +576,7 @@ impl<'a, Ty> FnType<'a, Ty> {
                     wasm32::compute_abi_info(self)
                 }
             }
+            "avr" => avr::compute_abi_info(self),
             "msp430" => msp430::compute_abi_info(self),
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),

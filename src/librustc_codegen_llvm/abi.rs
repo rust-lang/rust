@@ -377,6 +377,8 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         match self.conv {
             Conv::C => llvm::CCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
+            Conv::AvrInterrupt => llvm::AvrInterrupt,
+            Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
             Conv::Msp430Intr => llvm::Msp430Intr,
             Conv::PtxKernel => llvm::PtxKernel,

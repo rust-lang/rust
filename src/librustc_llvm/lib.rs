@@ -36,6 +36,12 @@ pub fn initialize_available_targets() {
                  LLVMInitializeARMTargetMC,
                  LLVMInitializeARMAsmPrinter,
                  LLVMInitializeARMAsmParser);
+    init_target!(llvm_component = "avr",
+                 LLVMInitializeAVRTargetInfo,
+                 LLVMInitializeAVRTarget,
+                 LLVMInitializeAVRTargetMC,
+                 LLVMInitializeAVRAsmPrinter,
+                 LLVMInitializeAVRAsmParser);
     init_target!(llvm_component = "aarch64",
                  LLVMInitializeAArch64TargetInfo,
                  LLVMInitializeAArch64Target,

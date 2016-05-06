@@ -226,6 +226,11 @@ impl<'a> PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, abi_msp430_interrupt, span,
                                    "msp430-interrupt ABI is experimental and subject to change");
             },
+            Abi::AvrInterrupt | Abi::AvrNonBlockingInterrupt => {
+                gate_feature_post!(&self, abi_avr_interrupt, span,
+                                   "avr-interrupt and avr-non-blocking-interrupt ABIs are \
+                                   experimental and subject to change");
+            },
             Abi::X86Interrupt => {
                 gate_feature_post!(&self, abi_x86_interrupt, span,
                                    "x86-interrupt ABI is experimental and subject to change");
