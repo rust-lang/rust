@@ -469,6 +469,28 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
     }
+
+    pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
+        if def_id.is_local() {
+            let node_id = self.tcx.map.as_local_node_id(def_id).unwrap();
+            self.mir_map.map.get(&node_id).map(CachedMir::Ref)
+        } else {
+            if let Some(mir) = self.mir_cache.borrow().get(&def_id).cloned() {
+                return Some(CachedMir::Owned(mir));
+            }
+
+            let mir = self.sess().cstore.maybe_get_item_mir(self.tcx, def_id);
+            let cached = mir.map(Rc::new);
+            if let Some(ref mir) = cached {
+                self.mir_cache.borrow_mut().insert(def_id, mir.clone());
+            }
+            cached.map(CachedMir::Owned)
+        }
+    }
+
+    pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {
+        &self.translation_items
+    }
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {
@@ -843,21 +865,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn get_mir(&self, def_id: DefId) -> Option<CachedMir<'b, 'tcx>> {
-        if def_id.is_local() {
-            let node_id = self.tcx().map.as_local_node_id(def_id).unwrap();
-            self.shared.mir_map.map.get(&node_id).map(CachedMir::Ref)
-        } else {
-            if let Some(mir) = self.shared.mir_cache.borrow().get(&def_id).cloned() {
-                return Some(CachedMir::Owned(mir));
-            }
-
-            let mir = self.sess().cstore.maybe_get_item_mir(self.tcx(), def_id);
-            let cached = mir.map(Rc::new);
-            if let Some(ref mir) = cached {
-                self.shared.mir_cache.borrow_mut().insert(def_id, mir.clone());
-            }
-            cached.map(CachedMir::Owned)
-        }
+        self.shared.get_mir(def_id)
     }
 
     pub fn translation_items(&self) -> &RefCell<FnvHashMap<TransItem<'tcx>, TransItemState>> {

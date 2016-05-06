@@ -210,7 +210,7 @@ use syntax::{attr, errors};
 use syntax::parse::token;
 
 use base::{custom_coerce_unsize_info, llvm_linkage_by_name};
-use context::CrateContext;
+use context::SharedCrateContext;
 use common::{fulfill_obligation, normalize_and_test_predicates, type_is_sized};
 use glue::{self, DropGlueKind};
 use llvm;
@@ -319,7 +319,7 @@ impl<'tcx> ReferenceMap<'tcx> {
     }
 }
 
-pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                                                  mode: TransItemCollectionMode)
                                                  -> (FnvHashSet<TransItem<'tcx>>,
                                                      ReferenceMap<'tcx>) {
@@ -347,7 +347,7 @@ pub fn collect_crate_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
-fn collect_roots<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn collect_roots<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                            mode: TransItemCollectionMode)
                            -> Vec<TransItem<'tcx>> {
     debug!("Collecting roots");
@@ -368,7 +368,7 @@ fn collect_roots<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 // Collect all monomorphized translation items reachable from `starting_point`
-fn collect_items_rec<'a, 'tcx: 'a>(ccx: &CrateContext<'a, 'tcx>,
+fn collect_items_rec<'a, 'tcx: 'a>(ccx: &SharedCrateContext<'a, 'tcx>,
                                    starting_point: TransItem<'tcx>,
                                    visited: &mut FnvHashSet<TransItem<'tcx>>,
                                    recursion_depths: &mut DefIdMap<usize>,
@@ -473,7 +473,7 @@ fn check_recursion_limit<'tcx>(tcx: &TyCtxt<'tcx>,
 }
 
 struct MirNeighborCollector<'a, 'tcx: 'a> {
-    ccx: &'a CrateContext<'a, 'tcx>,
+    ccx: &'a SharedCrateContext<'a, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
     output: &'a mut Vec<TransItem<'tcx>>,
     param_substs: &'tcx Substs<'tcx>
@@ -593,7 +593,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 // object shim or a closure that is handled differently),
                 // we check if the callee is something that will actually
                 // result in a translation item ...
-                if can_result_in_trans_item(self.ccx, callee_def_id) {
+                if can_result_in_trans_item(self.ccx.tcx(), callee_def_id) {
                     // ... and create one if it does.
                     let trans_item = create_fn_trans_item(self.ccx.tcx(),
                                                           callee_def_id,
@@ -606,21 +606,21 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         self.super_operand(operand);
 
-        fn can_result_in_trans_item<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                              def_id: DefId)
-                                              -> bool {
-            if !match ccx.tcx().lookup_item_type(def_id).ty.sty {
+        fn can_result_in_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
+                                          def_id: DefId)
+                                          -> bool {
+            if !match tcx.lookup_item_type(def_id).ty.sty {
                 ty::TyFnDef(def_id, _, _) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in
                     // translation item. Same for FFI functions.
-                    match ccx.tcx().map.get_if_local(def_id) {
+                    match tcx.map.get_if_local(def_id) {
                         Some(hir_map::NodeVariant(_))    |
                         Some(hir_map::NodeStructCtor(_)) |
                         Some(hir_map::NodeForeignItem(_)) => false,
                         Some(_) => true,
                         None => {
-                            ccx.sess().cstore.variant_kind(def_id).is_none()
+                            tcx.sess.cstore.variant_kind(def_id).is_none()
                         }
                     }
                 }
@@ -630,7 +630,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 return false;
             }
 
-            can_have_local_instance(ccx.tcx(), def_id)
+            can_have_local_instance(tcx, def_id)
         }
     }
 }
@@ -644,7 +644,7 @@ fn can_have_local_instance<'tcx>(tcx: &TyCtxt<'tcx>,
     def_id.is_local() || tcx.sess.cstore.is_item_mir_available(def_id)
 }
 
-fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                                       dg: DropGlueKind<'tcx>,
                                       output: &mut Vec<TransItem<'tcx>>) {
     let ty = match dg {
@@ -700,7 +700,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             substs: self_type_substs,
         }.to_poly_trait_ref();
 
-        let substs = match fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
+        let substs = match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
             traits::VtableImpl(data) => data.substs,
             _ => bug!()
         };
@@ -779,7 +779,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-fn do_static_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn do_static_dispatch<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                                 fn_def_id: DefId,
                                 fn_substs: &'tcx Substs<'tcx>,
                                 param_substs: &'tcx Substs<'tcx>)
@@ -822,7 +822,7 @@ fn do_static_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 // Given a trait-method and substitution information, find out the actual
 // implementation of the trait method.
-fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                                              trait_method: &ty::Method,
                                              trait_id: DefId,
                                              callee_substs: &'tcx Substs<'tcx>,
@@ -843,7 +843,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                        callee_substs);
 
     let trait_ref = ty::Binder(rcvr_substs.to_trait_ref(tcx, trait_id));
-    let vtbl = fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
+    let vtbl = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -911,7 +911,7 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 ///
 /// Finally, there is also the case of custom unsizing coercions, e.g. for
 /// smart pointers such as `Rc` and `Arc`.
-fn find_vtable_types_for_unsizing<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn find_vtable_types_for_unsizing<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                                             source_ty: ty::Ty<'tcx>,
                                             target_ty: ty::Ty<'tcx>)
                                             -> (ty::Ty<'tcx>, ty::Ty<'tcx>) {
@@ -936,7 +936,7 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
          &ty::TyStruct(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
-            let kind = custom_coerce_unsize_info(ccx.shared(), source_ty, target_ty);
+            let kind = custom_coerce_unsize_info(ccx, source_ty, target_ty);
 
             let coerce_index = match kind {
                 CustomCoerceUnsized::Struct(i) => i
@@ -986,7 +986,7 @@ fn create_fn_trans_item<'tcx>(tcx: &TyCtxt<'tcx>,
 
 /// Creates a `TransItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
-fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>,
                                                    trait_ty: ty::Ty<'tcx>,
                                                    impl_ty: ty::Ty<'tcx>,
                                                    output: &mut Vec<TransItem<'tcx>>) {
@@ -998,7 +998,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         // Walk all methods of the trait, including those of its supertraits
         for trait_ref in traits::supertraits(ccx.tcx(), poly_trait_ref) {
-            let vtable = fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref);
+            let vtable = fulfill_obligation(ccx, DUMMY_SP, trait_ref);
             match vtable {
                 traits::VtableImpl(
                     traits::VtableImplData {
@@ -1035,7 +1035,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 //=-----------------------------------------------------------------------------
 
 struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
-    ccx: &'b CrateContext<'a, 'tcx>,
+    ccx: &'b SharedCrateContext<'a, 'tcx>,
     mode: TransItemCollectionMode,
     output: &'b mut Vec<TransItem<'tcx>>,
     enclosing_item: Option<&'tcx hir::Item>,
@@ -1546,12 +1546,12 @@ pub enum TransItemState {
     NotPredictedButGenerated,
 }
 
-pub fn collecting_debug_information(ccx: &CrateContext) -> bool {
+pub fn collecting_debug_information(ccx: &SharedCrateContext) -> bool {
     return cfg!(debug_assertions) &&
            ccx.sess().opts.debugging_opts.print_trans_items.is_some();
 }
 
-pub fn print_collection_results<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
+pub fn print_collection_results<'a, 'tcx>(ccx: &SharedCrateContext<'a, 'tcx>) {
     use std::hash::{Hash, SipHasher, Hasher};
 
     if !collecting_debug_information(ccx) {
