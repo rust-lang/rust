@@ -1772,7 +1772,7 @@ mod tests {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("mkdir_error_twice");
         check!(fs::create_dir(dir));
-        let e = fs::create_dir(dir).err().unwrap();
+        let e = fs::create_dir(dir).unwrap_err();
         assert_eq!(e.kind(), ErrorKind::AlreadyExists);
     }
 
