@@ -31,7 +31,7 @@ pub struct EscapePass;
 /// }
 /// ```
 declare_lint! {
-    pub BOXED_LOCAL, Warn, "using Box<T> where unnecessary"
+    pub BOXED_LOCAL, Warn, "using `Box<T>` where unnecessary"
 }
 
 fn is_non_trait_box(ty: ty::Ty) -> bool {

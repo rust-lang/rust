@@ -1,0 +1,12 @@
+{
+  "plugins": {
+    "lint": {
+      "table-pipes": false,
+      "table-pipe-alignment": false,
+      "maximum-line-length": 120
+    }
+  },
+  "settings": {
+    "commonmark": true
+  }
+}

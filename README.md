@@ -1,4 +1,5 @@
-#rust-clippy
+# rust-clippy
+
 [![Build Status](https://travis-ci.org/Manishearth/rust-clippy.svg?branch=master)](https://travis-ci.org/Manishearth/rust-clippy)
 [![Clippy Linting Result](http://clippy.bashy.io/github/Manishearth/rust-clippy/master/badge.svg)](http://clippy.bashy.io/github/Manishearth/rust-clippy/master/log)
 [![Current Version](http://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
@@ -7,13 +8,15 @@
 A collection of lints to catch common mistakes and improve your Rust code.
 
 Table of contents:
-* [Lint list](#lints)
-* [Usage instructions](#usage)
-* [Configuration](#configuration)
-* [*clippy-service*](#link-with-clippy-service)
-* [License](#license)
 
-##Lints
+*   [Lint list](#lints)
+*   [Usage instructions](#usage)
+*   [Configuration](#configuration)
+*   [*clippy-service*](#link-with-clippy-service)
+*   [License](#license)
+
+## Lints
+
 There are 146 lints included in this crate:
 
 name                                                                                                                 | default | meaning
@@ -27,7 +30,7 @@ name                                                                            
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt)             | warn    | avoid complex blocks in conditions, instead move the block higher and bind it with 'let'; e.g: `if { let x = true; x } ...`
 [bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                                   | warn    | comparing a variable to a boolean, e.g. `if x == true`
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                                   | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
-[boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                                           | warn    | using Box<T> where unnecessary
+[boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                                           | warn    | using `Box<T>` where unnecessary
 [cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)                 | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
 [cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                             | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
 [cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)                           | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
@@ -145,7 +148,7 @@ name                                                                            
 [transmute_ptr_to_ref](https://github.com/Manishearth/rust-clippy/wiki#transmute_ptr_to_ref)                         | warn    | transmutes from a pointer to a reference type
 [trivial_regex](https://github.com/Manishearth/rust-clippy/wiki#trivial_regex)                                       | warn    | finds trivial regular expressions in `Regex::new(_)` invocations
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                   | warn    | usage of very complex types; recommends factoring out parts into `type` definitions
-[unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                   | allow   | using a unicode literal not in NFC normal form (see http://www.unicode.org/reports/tr15/ for further information)
+[unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                   | allow   | using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                 | warn    | comparing unit values (which is always `true` or `false`, respectively)
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                     | warn    | an argument is passed as a mutable reference although the function/method only demands an immutable reference
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                     | warn    | Struct fields are bound to a wildcard instead of using `..`
@@ -167,19 +170,25 @@ name                                                                            
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!
 
-##Usage
+## Usage
 
-Compiler plugins are highly unstable and will only work with a nightly Rust for now. Since stable Rust is backwards compatible, you should be able to compile your stable programs with nightly Rust with clippy plugged in to circumvent this.
+Compiler plugins are highly unstable and will only work with a nightly Rust for now.
+Since stable Rust is backwards compatible, you should be able to compile
+your stable programs with nightly Rust with clippy plugged in to circumvent
+this.
 
 Add in your `Cargo.toml`:
+
 ```toml
 [dependencies]
 clippy = "*"
 ```
 
-You then need to add `#![feature(plugin)]` and `#![plugin(clippy)]` to the top of your crate entry point (`main.rs` or `lib.rs`).
+You then need to add `#![feature(plugin)]` and `#![plugin(clippy)]` to the top
+of your crate entry point (`main.rs` or `lib.rs`).
 
 Sample `main.rs`:
+
 ```rust
 #![feature(plugin)]
 
@@ -196,7 +205,8 @@ fn main(){
 ```
 
 Produces this warning:
-```
+
+```terminal
 src/main.rs:8:5: 11:6 warning: you seem to be trying to use match for destructuring a single type. Consider using `if let`, #[warn(single_match)] on by default
 src/main.rs:8     match x {
 src/main.rs:9         Some(y) => println!("{:?}", y),
@@ -206,29 +216,37 @@ src/main.rs:8:5: 11:6 help: Try
 if let Some(y) = x { println!("{:?}", y) }
 ```
 
-
-An alternate way to use clippy is by compiling and using [`cargo clippy`](https://github.com/arcnmx/cargo-clippy), a custom cargo subcommand that runs clippy on a given project.
+An alternate way to use clippy is by compiling and using [`cargo clippy`](https://github.com/arcnmx/cargo-clippy),
+a custom cargo subcommand that runs clippy on a given project.
 
 You can add options  to `allow`/`warn`/`deny`:
-- the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
-- all lints using both the `clippy` and `clippy_pedantic` lint groups (`#![deny(clippy)]`, `#![deny(clippy_pedantic)]`). Note that `clippy_pedantic` contains some very aggressive lints prone to false positives.
-- only some lints (`#![deny(single_match, box_vec)]`, etc)
-- `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
+
+*   the whole set of `Warn` lints using the `clippy` lint group (`#![deny(clippy)]`)
+
+*   all lints using both the `clippy` and `clippy_pedantic` lint groups (`#![deny(clippy)]`,
+    `#![deny(clippy_pedantic)]`). Note that `clippy_pedantic` contains some very aggressive
+    lints prone to false positives.
+
+*   only some lints (`#![deny(single_match, box_vec)]`, etc)
+
+*   `allow`/`warn`/`deny` can be limited to a single function or module using `#[allow(...)]`, etc
 
 Note: `deny` produces errors instead of warnings
 
 To have cargo compile your crate with clippy without needing `#![plugin(clippy)]`
 in your code, you can use:
 
-```
+```terminal
 cargo rustc -- -L /path/to/clippy_so -Z extra-plugins=clippy
 ```
 
-*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):* Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
+*[Note](https://github.com/Manishearth/rust-clippy/wiki#a-word-of-warning):*
+Be sure that clippy was compiled with the same version of rustc that cargo invokes here!
 
 If you want to make clippy an optional dependency, you can do the following:
 
 In your `Cargo.toml`:
+
 ```toml
 [dependencies]
 clippy = {version = "*", optional = true}
@@ -245,9 +263,13 @@ And, in your `main.rs` or `lib.rs`:
 #![cfg_attr(feature="clippy", plugin(clippy))]
 ```
 
-Instead of adding the `cfg_attr` attributes you can also run clippy on demand: `cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy` (the `-Z no trans`, while not neccessary, will stop the compilation process after typechecking (and lints) have completed, which can significantly reduce the runtime).
+Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
+`cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
+(the `-Z no trans`, while not neccessary, will stop the compilation process after
+typechecking (and lints) have completed, which can significantly reduce the runtime).
 
 ## Configuration
+
 Some lints can be configured in a `clippy.toml` file. It contains basic `variable = value` mapping eg.
 
 ```toml
@@ -259,16 +281,21 @@ See the wiki for more information about which lints can be configured and the
 meaning of the variables.
 
 You can also specify the path to the configuration file with:
+
 ```rust
 #![plugin(clippy(conf_file="path/to/clippy's/configuration"))]
 ```
 
-##Link with clippy service
+## Link with clippy service
+
 `clippy-service` is a rust web initiative providing `rust-clippy` as a web service.
 
-Both projects are independent and maintained by different people (even if some `clippy-service`'s contributions are authored by some `rust-clippy` members).
+Both projects are independent and maintained by different people
+(even if some `clippy-service`'s contributions are authored by some `rust-clippy` members).
 
 You can check out this great service at [clippy.bashy.io](https://clippy.bashy.io/).
 
-##License
-Licensed under [MPL](https://www.mozilla.org/MPL/2.0/). If you're having issues with the license, let me know and I'll try to change it to something more permissive.
+## License
+
+Licensed under [MPL](https://www.mozilla.org/MPL/2.0/).
+If you're having issues with the license, let me know and I'll try to change it to something more permissive.
