@@ -140,6 +140,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
         if let Some(t) = cx.tcx_opt() {
             cx.deref_trait_did.set(t.lang_items.deref_trait());
             cx.renderinfo.borrow_mut().deref_trait_did = cx.deref_trait_did.get();
+            cx.renderinfo.borrow_mut().copy_trait_did = t.lang_items.copy_trait();
         }
 
         let mut externs = Vec::new();
