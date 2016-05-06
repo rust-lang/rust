@@ -352,7 +352,13 @@ fn handle_explain(code: &str,
     match descriptions.find_description(&normalised) {
         Some(ref description) => {
             // Slice off the leading newline and print.
-            print!("{}", &description[1..]);
+            print!("{}", &(&description[1..]).split("\n").map(|x| {
+                format!("{}\n", if x.starts_with("```") {
+                    "```"
+                } else {
+                    x
+                })
+            }).collect::<String>());
         }
         None => {
             early_error(output, &format!("no extended information for {}", code));
