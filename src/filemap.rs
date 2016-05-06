@@ -80,11 +80,11 @@ pub fn write_system_newlines<T>(writer: T,
     }
 }
 
-fn write_file<T>(text: &StringBuffer,
-                 filename: &str,
-                 out: &mut T,
-                 config: &Config)
-                 -> Result<Option<String>, io::Error>
+pub fn write_file<T>(text: &StringBuffer,
+                     filename: &str,
+                     out: &mut T,
+                     config: &Config)
+                     -> Result<Option<String>, io::Error>
     where T: Write
 {
 
