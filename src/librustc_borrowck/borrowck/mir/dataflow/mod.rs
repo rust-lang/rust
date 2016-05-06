@@ -25,7 +25,10 @@ use super::DropFlagState;
 
 use bitslice::BitSlice; // adds set_bit/get_bit to &[usize] bitvector rep.
 
+pub use self::sanity_check::sanity_check_via_rustc_peek;
+
 mod graphviz;
+mod sanity_check;
 
 pub trait Dataflow {
     fn dataflow(&mut self);
