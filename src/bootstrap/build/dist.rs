@@ -217,23 +217,23 @@ pub fn debugger_scripts(build: &Build,
         t!(fs::create_dir_all(&dst));
         install(&build.src.join("src/etc/").join(file), &dst, 0o644);
     };
-    if host.contains("windows") {
+    if host.contains("windows-msvc") {
         // no debugger scripts
-    } else if host.contains("darwin") {
-        // lldb debugger scripts
-        install(&build.src.join("src/etc/rust-lldb"), &sysroot.join("bin"),
-                0o755);
-
-        cp_debugger_script("lldb_rust_formatters.py");
-        cp_debugger_script("debugger_pretty_printers_common.py");
     } else {
+        cp_debugger_script("debugger_pretty_printers_common.py");
+
         // gdb debugger scripts
         install(&build.src.join("src/etc/rust-gdb"), &sysroot.join("bin"),
                 0o755);
 
         cp_debugger_script("gdb_load_rust_pretty_printers.py");
         cp_debugger_script("gdb_rust_pretty_printing.py");
-        cp_debugger_script("debugger_pretty_printers_common.py");
+
+        // lldb debugger scripts
+        install(&build.src.join("src/etc/rust-lldb"), &sysroot.join("bin"),
+                0o755);
+
+        cp_debugger_script("lldb_rust_formatters.py");
     }
 }
 
