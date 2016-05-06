@@ -1371,7 +1371,7 @@ if [ -z "$CFG_ENABLE_RUSTBUILD" ]; then
       make_dir $t/rt/compiler-rt
       for i in                                          \
         isaac sync test \
-        arch/i386 arch/x86_64 arch/arm arch/aarch64 arch/mips arch/powerpc
+        arch/i386 arch/x86_64 arch/arm arch/avr arch/aarch64 arch/mips arch/powerpc
       do
         make_dir $t/rt/stage$s/$i
       done

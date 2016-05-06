@@ -24,6 +24,7 @@ pub enum Os {
     Netbsd,
     Openbsd,
     NaCl,
+    None,
     Solaris,
 }
 
@@ -40,6 +41,8 @@ pub enum Abi {
     Aapcs,
     Win64,
     SysV64,
+    AvrInterrupt,
+    AvrNonBlockingInterrupt,
 
     // Multiplatform ABIs second
     Rust,
@@ -56,6 +59,7 @@ pub enum Architecture {
     X86,
     X86_64,
     Arm,
+    AVR,
     Mips,
     Mipsel
 }
@@ -88,6 +92,8 @@ const AbiDatas: &'static [AbiData] = &[
     AbiData {abi: Abi::Aapcs, name: "aapcs" },
     AbiData {abi: Abi::Win64, name: "win64" },
     AbiData {abi: Abi::SysV64, name: "sysv64" },
+    AbiData {abi: Abi::AvrInterrupt, name: "avr-interrupt" },
+    AbiData {abi: Abi::AvrNonBlockingInterrupt, name: "avr-non-blocking-interrupt" },
 
     // Cross-platform ABIs
     //
@@ -146,6 +152,7 @@ impl fmt::Display for Os {
             Os::Netbsd => "netbsd".fmt(f),
             Os::Openbsd => "openbsd".fmt(f),
             Os::NaCl => "nacl".fmt(f),
+            Os::None => "none".fmt(f),
             Os::Solaris => "solaris".fmt(f),
         }
     }

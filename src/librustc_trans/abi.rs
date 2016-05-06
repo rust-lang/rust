@@ -18,6 +18,7 @@ use cabi_x86_64;
 use cabi_x86_win64;
 use cabi_arm;
 use cabi_aarch64;
+use cabi_avr;
 use cabi_powerpc;
 use cabi_powerpc64;
 use cabi_s390x;
@@ -273,6 +274,8 @@ impl FnType {
             C => llvm::CCallConv,
             Win64 => llvm::X86_64_Win64,
             SysV64 => llvm::X86_64_SysV,
+            AvrInterrupt => llvm::AvrInterrupt,
+            AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
@@ -505,6 +508,7 @@ impl FnType {
                 cabi_x86_64::compute_abi_info(ccx, self);
             },
             "aarch64" => cabi_aarch64::compute_abi_info(ccx, self),
+            "avr" => cabi_avr::compute_abi_info(ccx, self),
             "arm" => {
                 let flavor = if ccx.sess().target.target.target_os == "ios" {
                     cabi_arm::Flavor::Ios
