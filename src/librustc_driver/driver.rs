@@ -140,17 +140,16 @@ pub fn compile_input(sess: &Session,
 
         write_out_deps(sess, &outputs, &id);
 
-        {            controller_entry_point!(after_write_deps,
-                                    sess,
-                                    CompileState::state_after_write_deps(input,
-                                                                         sess,
-                                                                         outdir,
-                                                                         output,
-                                                                         &cstore,
-                                                                         &expanded_crate,
-                                                                         &id),
-                                    Ok(()));
-        }
+        controller_entry_point!(after_write_deps,
+                                sess,
+                                CompileState::state_after_write_deps(input,
+                                                                     sess,
+                                                                     outdir,
+                                                                     output,
+                                                                     &cstore,
+                                                                     &expanded_crate,
+                                                                     &id),
+                                Ok(()));
 
         let expanded_crate = assign_node_ids(sess, expanded_crate);
         let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
