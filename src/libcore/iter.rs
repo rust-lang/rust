@@ -2853,7 +2853,7 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
 /// impl ExactSizeIterator for Counter {
 ///     // We already have the number of iterations, so we can use it directly.
 ///     fn len(&self) -> usize {
-///         self.count
+///         5 - self.count
 ///     }
 /// }
 ///
