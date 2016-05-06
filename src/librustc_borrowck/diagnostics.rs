@@ -450,6 +450,7 @@ fn foo(a: &mut i32) {
     let bar = || {
         inside_closure(a)
     };
+}
 ```
 "##,
 
