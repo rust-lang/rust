@@ -28,6 +28,7 @@ use mir::CachedMir;
 use monomorphize::Instance;
 
 use collector::{TransItem, TransItemState};
+use partitioning::CodegenUnit;
 use type_::{Type, TypeNames};
 use rustc::ty::subst::{Substs, VecPerParamSpace};
 use rustc::ty::{self, Ty, TyCtxt};
@@ -196,11 +197,12 @@ pub struct CrateContextList<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
 
     pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
-               local_count: usize)
+               codegen_units: Vec<CodegenUnit<'tcx>>)
                -> CrateContextList<'a, 'tcx> {
         CrateContextList {
             shared: shared_ccx,
-            local_ccxs: (0..local_count).map(|index| {
+            // FIXME: We don't actually use the codegen unit partitioning yet.
+            local_ccxs: codegen_units.iter().map(|cgu| {
                 // Append ".rs" to crate name as LLVM module identifier.
                 //
                 // LLVM code generator emits a ".file filename" directive
@@ -209,7 +211,7 @@ impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
                 // crashes if the module identifier is same as other symbols
                 // such as a function name in the module.
                 // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-                let llmod_id = format!("{}.{}.rs", shared_ccx.link_meta.crate_name, index);
+                let llmod_id = format!("{}.rs", cgu.name);
                 LocalCrateContext::new(shared_ccx, &llmod_id[..])
             }).collect()
         }

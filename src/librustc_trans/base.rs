@@ -81,7 +81,7 @@ use machine::{llalign_of_min, llsize_of, llsize_of_real};
 use meth;
 use mir;
 use monomorphize::{self, Instance};
-use partitioning::{self, PartitioningStrategy, InstantiationMode};
+use partitioning::{self, PartitioningStrategy, InstantiationMode, CodegenUnit};
 use symbol_names_test;
 use tvec;
 use type_::Type;
@@ -2186,7 +2186,8 @@ pub fn update_linkage(ccx: &CrateContext,
             // `llval` is a translation of an item defined in a separate
             // compilation unit.  This only makes sense if there are at least
             // two compilation units.
-            assert!(ccx.sess().opts.cg.codegen_units > 1);
+            assert!(ccx.sess().opts.cg.codegen_units > 1 ||
+                    ccx.sess().opts.debugging_opts.incremental.is_some());
             // `llval` is a copy of something defined elsewhere, so use
             // `AvailableExternallyLinkage` to avoid duplicating code in the
             // output.
@@ -2723,12 +2724,15 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
                                              check_overflow,
                                              check_dropflag);
 
-    let codegen_units = tcx.sess.opts.cg.codegen_units;
+    let codegen_units = collect_and_partition_translation_items(&shared_ccx);
+    let codegen_unit_count = codegen_units.len();
+    assert!(tcx.sess.opts.cg.codegen_units == codegen_unit_count ||
+            tcx.sess.opts.debugging_opts.incremental.is_some());
+
     let crate_context_list = CrateContextList::new(&shared_ccx, codegen_units);
 
     {
         let ccx = crate_context_list.get_ccx(0);
-        collect_translation_items(&ccx);
 
         // Translate all items. See `TransModVisitor` for
         // details on why we walk in this particular way.
@@ -2818,7 +2822,7 @@ pub fn trans_crate<'tcx>(tcx: &TyCtxt<'tcx>,
         }
     }
 
-    if codegen_units > 1 {
+    if codegen_unit_count > 1 {
         internalize_symbols(&crate_context_list,
                             &reachable_symbols.iter().map(|x| &x[..]).collect());
     }
@@ -2910,10 +2914,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TransItemsWithinModVisitor<'a, 'tcx> {
     }
 }
 
-fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
-    let time_passes = ccx.sess().time_passes();
+fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)
+                                                     -> Vec<CodegenUnit<'tcx>> {
+    let time_passes = scx.sess().time_passes();
 
-    let collection_mode = match ccx.sess().opts.debugging_opts.print_trans_items {
+    let collection_mode = match scx.sess().opts.debugging_opts.print_trans_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
@@ -2924,7 +2929,7 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
                     let message = format!("Unknown codegen-item collection mode '{}'. \
                                            Falling back to 'lazy' mode.",
                                            mode_string);
-                    ccx.sess().warn(&message);
+                    scx.sess().warn(&message);
                 }
 
                 TransItemCollectionMode::Lazy
@@ -2934,27 +2939,27 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
     };
 
     let (items, reference_map) = time(time_passes, "translation item collection", || {
-        collector::collect_crate_translation_items(ccx.shared(), collection_mode)
+        collector::collect_crate_translation_items(scx, collection_mode)
     });
 
-    let strategy = if ccx.sess().opts.debugging_opts.incremental.is_some() {
+    let strategy = if scx.sess().opts.debugging_opts.incremental.is_some() {
         PartitioningStrategy::PerModule
     } else {
-        PartitioningStrategy::FixedUnitCount(ccx.sess().opts.cg.codegen_units)
+        PartitioningStrategy::FixedUnitCount(scx.sess().opts.cg.codegen_units)
     };
 
     let codegen_units = time(time_passes, "codegen unit partitioning", || {
-        partitioning::partition(ccx.tcx(),
+        partitioning::partition(scx.tcx(),
                                 items.iter().cloned(),
                                 strategy,
                                 &reference_map)
     });
 
-    if ccx.sess().opts.debugging_opts.print_trans_items.is_some() {
+    if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
         let mut item_to_cgus = HashMap::new();
 
-        for cgu in codegen_units {
-            for (trans_item, linkage) in cgu.items {
+        for cgu in &codegen_units {
+            for (&trans_item, &linkage) in &cgu.items {
                 item_to_cgus.entry(trans_item)
                             .or_insert(Vec::new())
                             .push((cgu.name.clone(), linkage));
@@ -2964,7 +2969,7 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = i.to_string(ccx.tcx());
+                let mut output = i.to_string(scx.tcx());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let mut cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
@@ -3003,10 +3008,12 @@ fn collect_translation_items<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>) {
             println!("TRANS_ITEM {}", item);
         }
 
-        let mut ccx_map = ccx.translation_items().borrow_mut();
+        let mut ccx_map = scx.translation_items().borrow_mut();
 
         for cgi in items {
             ccx_map.insert(cgi, TransItemState::PredictedButNotGenerated);
         }
     }
+
+    codegen_units
 }
