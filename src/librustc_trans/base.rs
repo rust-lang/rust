@@ -664,7 +664,7 @@ pub fn coerce_unsized_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &SharedCrateContext<'ccx, 'tcx>,
+pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
                                              source_ty: Ty<'tcx>,
                                              target_ty: Ty<'tcx>)
                                              -> CustomCoerceUnsized {
@@ -674,13 +674,13 @@ pub fn custom_coerce_unsize_info<'ccx, 'tcx>(ccx: &SharedCrateContext<'ccx, 'tcx
                                    subst::VecPerParamSpace::empty());
 
     let trait_ref = ty::Binder(ty::TraitRef {
-        def_id: ccx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: ccx.tcx().mk_substs(trait_substs)
+        def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
+        substs: scx.tcx().mk_substs(trait_substs)
     });
 
-    match fulfill_obligation(ccx, DUMMY_SP, trait_ref) {
+    match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-            ccx.tcx().custom_coerce_unsized_kind(impl_def_id)
+            scx.tcx().custom_coerce_unsized_kind(impl_def_id)
         }
         vtable => {
             bug!("invalid CoerceUnsized vtable: {:?}", vtable);
@@ -2660,10 +2660,10 @@ fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
-    ccx.reachable().iter().map(|x| *x).filter(|id| {
+pub fn filter_reachable_ids(scx: &SharedCrateContext) -> NodeSet {
+    scx.reachable().iter().map(|x| *x).filter(|id| {
         // First, only worry about nodes which have a symbol name
-        ccx.item_symbols().borrow().contains_key(id)
+        scx.item_symbols().borrow().contains_key(id)
     }).filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
@@ -2678,9 +2678,9 @@ pub fn filter_reachable_ids(ccx: &SharedCrateContext) -> NodeSet {
         //
         // As a result, if this id is an FFI item (foreign item) then we only
         // let it through if it's included statically.
-        match ccx.tcx().map.get(id) {
+        match scx.tcx().map.get(id) {
             hir_map::NodeForeignItem(..) => {
-                ccx.sess().cstore.is_statically_included_foreign_item(id)
+                scx.sess().cstore.is_statically_included_foreign_item(id)
             }
             _ => true,
         }
