@@ -29,6 +29,7 @@ trait Int: Zero + PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
            Sub<Output=Self> + Copy {
     fn from_u8(u: u8) -> Self;
     fn to_u8(&self) -> u8;
+    fn to_u16(&self) -> u16;
     fn to_u32(&self) -> u32;
     fn to_u64(&self) -> u64;
 }
@@ -37,6 +38,7 @@ macro_rules! doit {
     ($($t:ident)*) => ($(impl Int for $t {
         fn from_u8(u: u8) -> $t { u as $t }
         fn to_u8(&self) -> u8 { *self as u8 }
+        fn to_u16(&self) -> u16 { *self as u16 }
         fn to_u32(&self) -> u32 { *self as u32 }
         fn to_u64(&self) -> u64 { *self as u64 }
     })*)
@@ -256,6 +258,8 @@ macro_rules! impl_Display {
 
 impl_Display!(i8, u8, i16, u16, i32, u32: to_u32);
 impl_Display!(i64, u64: to_u64);
+#[cfg(target_pointer_width = "16")]
+impl_Display!(isize, usize: to_u16);
 #[cfg(target_pointer_width = "32")]
 impl_Display!(isize, usize: to_u32);
 #[cfg(target_pointer_width = "64")]

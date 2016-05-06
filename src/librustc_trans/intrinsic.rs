@@ -1577,6 +1577,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
         TyInt(t) => Some((match t {
             ast::IntTy::Is => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+                    "16" => 16,
                     "32" => 32,
                     "64" => 64,
                     tws => bug!("Unsupported target word size for isize: {}", tws),
@@ -1590,6 +1591,7 @@ fn int_type_width_signed<'tcx>(sty: &ty::TypeVariants<'tcx>, ccx: &CrateContext)
         TyUint(t) => Some((match t {
             ast::UintTy::Us => {
                 match &ccx.tcx().sess.target.target.target_pointer_width[..] {
+                    "16" => 16,
                     "32" => 32,
                     "64" => 64,
                     tws => bug!("Unsupported target word size for usize: {}", tws),
