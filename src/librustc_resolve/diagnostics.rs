@@ -506,11 +506,10 @@ Example of erroneous code:
 ```compile_fail
 match x {
     Some(y) | None => { /* use y */ } // error: variable `y` from pattern #1 is
-                                      // not bound in pattern #2
+                                      //        not bound in pattern #2
     _ => ()
 }
 ```
-
 
 Here, `y` is bound to the contents of the `Some` and can be used within the
 block corresponding to the match arm. However, in case `x` is `None`, we have
@@ -530,14 +529,15 @@ or, bind the variable to a field of the same type in all sub-patterns of the
 or pattern:
 
 ```
-let x = (0,2);
+let x = (0, 2);
 match x {
     (0, y) | (y, 0) => { /* use y */}
+    _ => {}
 }
 ```
 
 In this example, if `x` matches the pattern `(0, _)`, the second field is set
-to `y`, and if it matches `(_, 0)`, the first field is set to `y`, so in all
+to `y`. If it matches `(_, 0)`, the first field is set to `y`; so in all
 cases `y` is set to some value.
 "##,
 
@@ -548,36 +548,35 @@ across patterns.
 Example of erroneous code:
 
 ```compile_fail
-let x = (0,2);
+let x = (0, 2);
 match x {
     (0, ref y) | (y, 0) => { /* use y */} // error: variable `y` is bound with
-                                          // different mode in pattern #2 than
-                                          // in pattern #1
+                                          //        different mode in pattern #2
+                                          //        than in pattern #1
     _ => ()
 }
 ```
 
-
 Here, `y` is bound by-value in one case and by-reference in the other.
 
 To fix this error, just use the same mode in both cases.
-Generally using `ref` or `ref mut` where not already used will fix this.
+Generally using `ref` or `ref mut` where not already used will fix this:
 
-```
-let x = (0,2);
+```ignore
+let x = (0, 2);
 match x {
     (0, ref y) | (ref y, 0) => { /* use y */}
     _ => ()
 }
 ```
 
-Alternatively, split the pattern
+Alternatively, split the pattern:
 
-```compile_fail
-let x = (0,2);
+```
+let x = (0, 2);
 match x {
-    (0, ref y) => { /* use y */}
     (y, 0) => { /* use y */ }
+    (0, ref y) => { /* use y */}
     _ => ()
 }
 ```

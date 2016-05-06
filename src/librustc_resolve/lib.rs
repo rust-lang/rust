@@ -126,12 +126,10 @@ enum ResolutionError<'a> {
     TypeNotMemberOfTrait(Name, &'a str),
     /// error E0438: const is not a member of trait
     ConstNotMemberOfTrait(Name, &'a str),
-    /// error E0408: variable `{}` from pattern #1 is not bound in pattern
-    VariableNotBoundInPattern(Name, usize),
+    /// error E0408: variable `{}` from pattern #{} is not bound in pattern #{}
+    VariableNotBoundInPattern(Name, usize, usize),
     /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
     VariableBoundWithDifferentMode(Name, usize),
-    /// error E0410: variable from pattern is not bound in pattern #1
-    VariableNotBoundInParentPattern(Name, usize),
     /// error E0411: use of `Self` outside of an impl or trait
     SelfUsedOutsideImplOrTrait,
     /// error E0412: use of undeclared
@@ -272,13 +270,14 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              const_,
                              trait_)
         }
-        ResolutionError::VariableNotBoundInPattern(variable_name, pattern_number) => {
+        ResolutionError::VariableNotBoundInPattern(variable_name, from, to) => {
             struct_span_err!(resolver.session,
                              span,
                              E0408,
-                             "variable `{}` from pattern #1 is not bound in pattern #{}",
+                             "variable `{}` from pattern #{} is not bound in pattern #{}",
                              variable_name,
-                             pattern_number)
+                             from,
+                             to)
         }
         ResolutionError::VariableBoundWithDifferentMode(variable_name, pattern_number) => {
             struct_span_err!(resolver.session,
@@ -286,14 +285,6 @@ fn resolve_struct_error<'b, 'a: 'b, 'tcx: 'a>(resolver: &'b Resolver<'a, 'tcx>,
                              E0409,
                              "variable `{}` is bound with different mode in pattern #{} than in \
                               pattern #1",
-                             variable_name,
-                             pattern_number)
-        }
-        ResolutionError::VariableNotBoundInParentPattern(variable_name, pattern_number) => {
-            struct_span_err!(resolver.session,
-                             span,
-                             E0410,
-                             "variable `{}` from pattern #{} is not bound in pattern #1",
                              variable_name,
                              pattern_number)
         }
@@ -2038,7 +2029,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     None => {
                         resolve_error(self,
                                       p.span,
-                                      ResolutionError::VariableNotBoundInPattern(key, i + 1));
+                                      ResolutionError::VariableNotBoundInPattern(key, 1, i + 1));
                     }
                     Some(binding_i) => {
                         if binding_0.binding_mode != binding_i.binding_mode {
@@ -2055,7 +2046,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if !map_0.contains_key(&key) {
                     resolve_error(self,
                                   binding.span,
-                                  ResolutionError::VariableNotBoundInParentPattern(key, i + 1));
+                                  ResolutionError::VariableNotBoundInPattern(key, i + 1, 1));
                 }
             }
         }
